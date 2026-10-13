@@ -1,0 +1,34 @@
+{
+  "name": "@waffarly/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    "types": "./dist/src/index.d.ts",
+    "import": "./dist/src/index.js"
+  },
+  "scripts": {
+    "build": "pnpm db:generate && tsc -p tsconfig.json",
+    "lint": "eslint src prisma.config.ts",
+    "typecheck": "pnpm db:generate && tsc -p tsconfig.json --noEmit",
+    "test": "node --test",
+    "db:generate": "prisma generate --config ./prisma.config.ts",
+    "db:validate": "prisma validate --config ./prisma.config.ts",
+    "db:migrate": "prisma migrate dev --config ./prisma.config.ts",
+    "db:check": "pnpm db:validate && pnpm db:generate && prisma migrate status --config ./prisma.config.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "pg": "8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@waffarly/typescript-config": "workspace:*",
+    "dotenv": "17.2.3",
+    "prisma": "7.10.0",
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,16 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Infrastructure-only marker keeps the Prisma generator and migration toolchain verifiable.
+// It has no business meaning and contains no merchant or customer data.
+model FoundationMarker {
+  id Int @id @default(dbgenerated("nextval('_waffarly_foundation_marker_id_seq'::regclass)"))
+
+  @@map("_waffarly_foundation_marker")
+}

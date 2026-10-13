@@ -1,0 +1,11 @@
+node_modules
+dist
+build
+.next
+.turbo
+coverage
+packages/database/generated
+apps/storefront/next-env.d.ts
+pnpm-lock.yaml
+PROJECT_OVERVIEW.md
+MVP_SCOPE.md

@@ -1,0 +1,15 @@
+{
+  "name": "@waffarly/typescript-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./base": "./base.json",
+    "./node": "./node.json",
+    "./shared": "./shared.json",
+    "./react": "./react.json",
+    "./react-library": "./react-library.json",
+    "./next": "./next.json",
+    "./package": "./package.json"
+  }
+}

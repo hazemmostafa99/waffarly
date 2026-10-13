@@ -1,0 +1,26 @@
+{
+  "name": "@waffarly/pos",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5175 --strictPort",
+    "build": "vite build",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@waffarly/ui": "workspace:*",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.10",
+    "@types/react-dom": "19.2.4",
+    "@vitejs/plugin-react": "6.0.1",
+    "@waffarly/typescript-config": "workspace:*",
+    "typescript": "5.9.3",
+    "vite": "8.3.3"
+  }
+}

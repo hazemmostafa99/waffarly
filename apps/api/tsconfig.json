@@ -1,0 +1,12 @@
+{
+  "extends": "@waffarly/typescript-config/node",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "sourceMap": true,
+    "declaration": true
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

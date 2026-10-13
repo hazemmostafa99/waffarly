@@ -1,0 +1,9 @@
+{
+  "extends": "@waffarly/typescript-config/react-library",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}
