@@ -1,6 +1,6 @@
 # Waffarly (وفّرلي)
 
-Waffarly is a multi-merchant commerce and operations platform. The first release targets restaurants in Egypt. Product direction and scope are recorded in [`PROJECT_OVERVIEW.md`](./PROJECT_OVERVIEW.md) and [`MVP_SCOPE.md`](./MVP_SCOPE.md). The first Super Admin implementation slice follows the decisions in [`docs/features/SUPER_ADMIN.md`](docs/features/SUPER_ADMIN.md).
+Waffarly is a multi-merchant commerce and operations platform for different business activities, including restaurants, clothing stores, supermarkets, and other businesses. Registration records the business activity; shared profile and branding modules serve all activities, while storefront templates can target one activity or all activities. Product direction and scope are recorded in [`PROJECT_OVERVIEW.md`](./PROJECT_OVERVIEW.md) and [`MVP_SCOPE.md`](./MVP_SCOPE.md). Restaurant operations are activity-specific, rather than requirements for every merchant.
 
 ## Requirements
 
@@ -55,6 +55,8 @@ pnpm db:check
 ```
 
 For detailed local setup and package responsibilities, see [`docs/setup/LOCAL_DEVELOPMENT.md`](docs/setup/LOCAL_DEVELOPMENT.md) and [`docs/architecture/REPOSITORY_STRUCTURE.md`](docs/architecture/REPOSITORY_STRUCTURE.md).
+
+All four frontends share shadcn/ui components, Tailwind CSS v4, and English/Arabic localization through i18next. Use the language switcher for Arabic and RTL layouts. See [UI and localization](docs/architecture/UI_AND_LOCALIZATION.md) for the shared components and `pnpm test:ui` browser checks.
 
 ## Implemented first slice
 

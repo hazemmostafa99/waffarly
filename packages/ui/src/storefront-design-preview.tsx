@@ -1,3 +1,5 @@
+'use client';
+import { useLocale } from './i18n.js';
 import type { CSSProperties } from 'react';
 
 export interface StorefrontDesignPreviewProps {
@@ -17,9 +19,12 @@ export function StorefrontDesignPreview({
   logoData = null,
   className,
 }: StorefrontDesignPreviewProps) {
+  const { t } = useLocale();
   return (
     <section
-      aria-label={`${layout === 'menu' ? 'Menu-first' : 'Welcome-first'} restaurant storefront preview`}
+      aria-label={t('{{layout}} business storefront preview', {
+        layout: layout === 'menu' ? t('Catalog-first') : t('Welcome-first'),
+      })}
       className={['storefront-design', `design-${layout}`, className].filter(Boolean).join(' ')}
       style={{ '--design-accent': accentColor } as CSSProperties}
     >
@@ -31,29 +36,29 @@ export function StorefrontDesignPreview({
             <span className="design-monogram">{name.trim().charAt(0) || 'R'}</span>
           )}
           <span>
-            {name || 'Your restaurant'}
-            <small>FRESH FROM OUR KITCHEN</small>
+            {name || t('Your business')}
+            <small>{t('WELCOME TO OUR BUSINESS')}</small>
           </span>
         </span>
         <span className="design-nav">
-          <span>OUR MENU</span>
-          <span>OUR STORY</span>
+          <span>{t('OUR CATALOG')}</span>
+          <span>{t('OUR STORY')}</span>
         </span>
         <span className="design-header-action">
-          ORDER NOW <span aria-hidden="true">↗</span>
+          {t('EXPLORE NOW')} <span aria-hidden="true">↗</span>
         </span>
       </header>
 
       <div className="design-hero-copy">
         <span className="design-eyebrow">
-          {layout === 'menu' ? 'GOOD FOOD, GROWN HERE' : 'A PLACE AT OUR TABLE'}
+          {layout === 'menu' ? t('DISCOVER OUR COLLECTION') : t('WELCOME TO OUR STORE')}
         </span>
         <h2>
-          {layout === 'menu' ? 'A little garden\nin every meal.' : 'Come hungry.\nLeave happy.'}
+          {layout === 'menu' ? t('Great finds.\nEvery day.') : t('Your favorites.\nOne place.')}
         </h2>
-        <p>{description || 'Thoughtfully prepared food, gathered around the table.'}</p>
+        <p>{description || t('Discover our products and services, chosen with care.')}</p>
         <span className="design-cta">
-          EXPLORE THE MENU <span aria-hidden="true">→</span>
+          {t('EXPLORE THE CATALOG')} <span aria-hidden="true">→</span>
         </span>
       </div>
 
@@ -64,24 +69,24 @@ export function StorefrontDesignPreview({
           <span className="design-food-center">✹</span>
           <span className="design-food-seed">· · ·</span>
         </span>
-        <span className="design-art-label">MADE WITH CARE</span>
+        <span className="design-art-label">{t('MADE WITH CARE')}</span>
       </div>
 
       <div className="design-menu-strip">
         <span>
-          <small>01</small> MADE FRESH DAILY
+          <small>01</small> {t('EXPLORE OUR RANGE')}{' '}
         </span>
         <span>
-          <small>02</small> SEASONAL INGREDIENTS
+          <small>02</small> {t('CHOSEN WITH CARE')}{' '}
         </span>
         <span>
-          <small>03</small> YOUR TABLE IS READY
+          <small>03</small> {t('HERE FOR YOU')}{' '}
         </span>
       </div>
 
       <footer className="design-footer">
-        <span>GOOD THINGS ARE GATHERED HERE</span>
-        <span>SCROLL TO EXPLORE ↓</span>
+        <span>{t('GOOD THINGS ARE GATHERED HERE')}</span>
+        <span>{t('SCROLL TO EXPLORE ↓')}</span>
       </footer>
     </section>
   );

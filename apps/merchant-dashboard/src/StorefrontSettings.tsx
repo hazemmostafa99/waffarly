@@ -1,22 +1,24 @@
+import type { LocalizedMessage } from '@waffarly/ui';
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import type {
   MerchantStorefrontSettings,
   OwnerProfile,
   SaveMerchantStorefrontRequest,
 } from '@waffarly/contracts';
-import { StorefrontDesignPreview } from '@waffarly/ui';
+import { StorefrontDesignPreview, useLocale, Button, Input, Card } from '@waffarly/ui';
 import { apiRequest } from './lib/api-client.js';
 
 const defaultColor = '#315b43';
 const maxLogoBytes = 48 * 1024;
 
 export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
+  const { t, errorText } = useLocale();
   const [settings, setSettings] = useState<MerchantStorefrontSettings | null>(null);
   const [draft, setDraft] = useState<SaveMerchantStorefrontRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const [notice, setNotice] = useState<LocalizedMessage>('');
 
   useEffect(() => {
     let current = true;
@@ -89,7 +91,7 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
         logoData: updated.logoData,
         revision: updated.revision,
       });
-      setNotice('The design is saved for this restaurant.');
+      setNotice('The design is saved for this business.');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not save the design.');
     } finally {
@@ -98,42 +100,45 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
   }
 
   return (
-    <section className="panel merchant-design" aria-labelledby="merchant-design-heading">
+    <Card className="panel merchant-design" aria-labelledby="merchant-design-heading">
       <div className="merchant-design-intro">
-        <div className="eyebrow">YOUR RESTAURANT</div>
-        <h2 id="merchant-design-heading">Storefront design</h2>
-        <p>Choose a complete design, add your logo, and make it yours with a signature color.</p>
+        <div className="eyebrow">{t('YOUR RESTAURANT')}</div>
+        <h2 id="merchant-design-heading">{t('Storefront design')}</h2>
+        <p>
+          {t('Choose a complete design, add your logo, and make it yours with a signature color.')}
+        </p>
       </div>
 
       {error && (
         <p className="error" role="alert">
-          {error}
+          {errorText(error)}
         </p>
       )}
       {notice && (
         <p className="merchant-design-notice" role="status">
-          {notice}
+          {t(notice)}
         </p>
       )}
 
       {loading ? (
-        <p>Loading restaurant designs…</p>
+        <p>{t('Loading business designs…')}</p>
       ) : !settings || !draft ? null : settings.templates.length === 0 ? (
         <div className="merchant-design-empty">
           <span aria-hidden="true">✳</span>
-          <h3>Designs are on their way</h3>
-          <p>Available restaurant designs will appear here.</p>
+          <h3>{t('Designs are on their way')}</h3>
+          <p>{t('Available business designs will appear here.')}</p>
         </div>
       ) : (
         <form className="merchant-design-form" onSubmit={(event) => void save(event)}>
           <fieldset className="merchant-design-choices">
-            <legend>Choose your design</legend>
+            <legend>{t('Choose your design')}</legend>
             <div className="merchant-design-grid">
               {settings.templates.map((template) => (
-                <button
+                <Button
                   key={template.id}
                   type="button"
-                  className={`merchant-design-choice ${draft.templateId === template.id ? 'merchant-design-choice-active' : ''}`}
+                  variant="outline"
+                  className={`merchant-design-choice grid h-auto w-full min-w-0 whitespace-normal p-2.5 ${draft.templateId === template.id ? 'merchant-design-choice-active' : ''}`}
                   aria-pressed={draft.templateId === template.id}
                   onClick={() => {
                     setDraft((current) =>
@@ -165,15 +170,15 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
                       <strong>{template.name}</strong>
                       <small>
                         {template.layout === 'menu'
-                          ? 'Editorial · menu first'
-                          : 'Storytelling · welcome first'}
+                          ? t('Editorial · catalog first')
+                          : t('Storytelling · welcome first')}
                       </small>
                     </span>
                     <span className="merchant-design-radio" aria-hidden="true">
                       {draft.templateId === template.id ? '✓' : ''}
                     </span>
                   </span>
-                </button>
+                </Button>
               ))}
             </div>
           </fieldset>
@@ -181,36 +186,44 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
           <div className="merchant-design-customize">
             <div className="merchant-design-customize-heading">
               <div>
-                <div className="eyebrow">YOUR PERSONAL TOUCH</div>
-                <h3>Logo & colour</h3>
+                <div className="eyebrow">{t('YOUR PERSONAL TOUCH')}</div>
+                <h3>{t('Logo & colour')}</h3>
               </div>
-              <span>Only changes this restaurant</span>
+              <span>{t('Only changes this business')}</span>
             </div>
             <div className="merchant-design-controls">
               <label className="merchant-logo-upload">
-                Restaurant logo<span>PNG, JPG or WebP · max 48 KB</span>
-                <input type="file" accept="image/png,image/jpeg,image/webp" onChange={uploadLogo} />
+                {t('Business logo')}
+                <span>{t('PNG, JPG or WebP · max 48 KB')}</span>
+                <Input
+                  className="size-px p-0 opacity-0"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={uploadLogo}
+                />
                 <span className="merchant-file-button">
-                  {draft.logoData ? 'Choose a different logo' : 'Choose a logo'}{' '}
+                  {draft.logoData ? t('Choose a different logo') : t('Choose a logo')}{' '}
                   <span aria-hidden="true">↗</span>
                 </span>
               </label>
               {draft.logoData && (
-                <button
+                <Button
+                  variant="ghost"
                   className="merchant-logo-remove"
                   type="button"
                   onClick={() =>
                     setDraft((current) => (current ? { ...current, logoData: null } : current))
                   }
                 >
-                  Remove logo
-                </button>
+                  {t('Remove logo')}{' '}
+                </Button>
               )}
               <label className="merchant-colour-control">
-                Your accent colour<span>Used for buttons and highlights</span>
+                {t('Your accent colour')}
+                <span>{t('Used for buttons and highlights')}</span>
                 <span className="merchant-colour-picker">
-                  <input
-                    aria-label="Storefront accent colour"
+                  <Input
+                    aria-label={t('Storefront accent colour')}
                     type="color"
                     value={draft.accentColor}
                     onChange={(event) =>
@@ -228,8 +241,8 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
           {selected && (
             <div className="merchant-design-live-preview">
               <div className="merchant-design-preview-label">
-                <span>LIVE PREVIEW</span>
-                <span>Example storefront · sample content</span>
+                <span>{t('LIVE PREVIEW')}</span>
+                <span>{t('Example storefront · sample content')}</span>
               </div>
               <StorefrontDesignPreview
                 layout={selected.layout}
@@ -243,15 +256,15 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
 
           <div className="merchant-design-save-row">
             <p>
-              Saved to {profile.merchantName}'s restaurant only. The preview uses sample menu
-              content.
+              {t('Saved to')} {profile.merchantName}
+              {t("'s business only. The preview uses sample catalog content.")}{' '}
             </p>
-            <button type="submit" disabled={saving || !draft.templateId}>
-              {saving ? 'Saving…' : 'Save design'}
-            </button>
+            <Button type="submit" disabled={saving || !draft.templateId}>
+              {saving ? t('Saving…') : t('Save design')}
+            </Button>
           </div>
         </form>
       )}
-    </section>
+    </Card>
   );
 }

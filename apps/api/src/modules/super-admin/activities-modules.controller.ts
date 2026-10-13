@@ -1,3 +1,4 @@
+import { BUSINESS_ACTIVITY_KEYS } from '@waffarly/contracts';
 import {
   BadRequestException,
   Body,
@@ -48,7 +49,7 @@ export class ActivitiesModulesController {
   @Patch('activities/:key')
   async updateActivity(@Param('key') key: string, @Body() body: unknown, @Req() request: Request) {
     return this.catalog.updateActivity(
-      parse(z.literal('restaurant'), key),
+      parse(z.enum(BUSINESS_ACTIVITY_KEYS), key),
       parse(activitySettings, body),
       await this.auth.requireAdmin(request),
     );

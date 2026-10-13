@@ -3,7 +3,8 @@
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist",
-    "declaration": true
+    "declaration": true,
+    "paths": { "@waffarly/ui": ["./src"], "@waffarly/ui/*": ["./src/*"] }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

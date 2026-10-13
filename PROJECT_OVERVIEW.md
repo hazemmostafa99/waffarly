@@ -1,5 +1,7 @@
 # Waffarly (وفّرلي) — Project Overview
 
+> **Scope correction — 2026-10-13:** The product owner clarified that Waffarly serves different business activities, including clothing stores, supermarkets, restaurants, and other businesses. This supersedes earlier restaurant-only launch restrictions in this working draft. Shared merchant registration, profiles, plans, and branding must remain activity-neutral. Restaurant order acceptance and kitchen flows apply to restaurants; specialized operations for other activities still need their own scope decisions.
+
 > **Document status:** Working draft v0.2 — first-release direction and core technology decisions recorded; unresolved requirements remain explicitly marked.
 >
 > **Last updated:** 2026-10-13  
@@ -47,7 +49,7 @@ These decisions were explicitly provided by the project owner on **2026-10-13**.
 
 | Area | Confirmed decision | Boundary / clarification |
 | --- | --- | --- |
-| First business activity | **Restaurants** | Other activities remain part of the long-term Waffarly vision, not approved for the initial release. |
+| Business activities | **Multiple activities** | Restaurants, clothing stores, supermarkets, and other businesses share the platform foundation. Specialized operational modules are scoped per activity. |
 | Initial market | **Egypt** | Currency, tax rules, and delivery/payment mechanics are not yet specified. |
 | Backend stack | **NestJS + PostgreSQL + Prisma** | Exact versions, deployment, and infrastructure choices remain open. |
 | Public merchant storefronts | **Next.js** | Storefront template count, PWA scope, and domain behavior remain open. |
@@ -631,7 +633,7 @@ In the **first release**, a merchant is associated with a **monthly subscription
 
 | ID | Decision | Status |
 | --- | --- | --- |
-| DEC-001 | Restaurants are the initial business activity. | Approved |
+| DEC-001 | Multiple business activities share the platform foundation: restaurants, clothing stores, supermarkets, and other businesses. | Approved — corrected 2026-10-13 |
 | DEC-002 | Next.js for public storefronts; React for Super Admin, Merchant Dashboard, and POS. | Approved |
 | DEC-003 | Restaurant online orders must reach POS; cashier acceptance is required before kitchen preparation. | Approved |
 | DEC-004 | POS offline mode is deferred beyond the first release. | Approved |

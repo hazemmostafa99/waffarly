@@ -126,7 +126,7 @@ describe('business activity and module administration', () => {
       .expect(200);
     assert.deepEqual(
       response.body.activities.map((entry: { key: string }) => entry.key),
-      ['restaurant'],
+      ['restaurant', 'clothing', 'supermarket', 'other'],
     );
     assert.deepEqual(
       response.body.modules.map((entry: { key: string }) => entry.key),
@@ -135,6 +135,18 @@ describe('business activity and module administration', () => {
     assert.equal(response.body.activities[0].revision, 0);
     assert.equal(response.body.modules[0].updatedBy, null);
     assert.equal(activity.records.size + module.records.size, 0);
+  });
+
+  it('supports shared modules for clothing, supermarkets and other businesses', async () => {
+    for (const key of ['clothing', 'supermarket', 'other']) {
+      const response = await request(app.getHttpServer())
+        .patch(`${base}/activities/${key}`)
+        .set('x-test-admin', 'yes')
+        .send({ ...body(), name: key, moduleKeys: ['merchant-profile', 'storefront-design'] })
+        .expect(200);
+      assert.equal(response.body.key, key);
+      assert.deepEqual(response.body.moduleKeys, ['merchant-profile', 'storefront-design']);
+    }
   });
 
   it('saves normalized metadata and activity associations with attribution', async () => {
@@ -163,7 +175,12 @@ describe('business activity and module administration', () => {
       .send({ name: ' Branding ', description: ' Choose a design ', revision: 0 })
       .expect(200);
     assert.equal(response.body.name, 'Branding');
-    assert.deepEqual(response.body.supportedActivities, ['restaurant']);
+    assert.deepEqual(response.body.supportedActivities, [
+      'restaurant',
+      'clothing',
+      'supermarket',
+      'other',
+    ]);
     assert.deepEqual(response.body.dependencies, []);
     const list = await request(app.getHttpServer())
       .get(base)
@@ -194,7 +211,7 @@ describe('business activity and module administration', () => {
         .expect(400);
     }
     await request(app.getHttpServer())
-      .patch(`${base}/activities/clothing`)
+      .patch(`${base}/activities/unsupported`)
       .set('x-test-admin', 'yes')
       .send(body())
       .expect(400);

@@ -1,134 +1,136 @@
-.capability-note {
-  padding: 16px 20px;
-  background: #f0f3e9;
-  border: 1px solid #dce3d6;
-  border-radius: 12px;
-  font-size: 0.9rem;
-  margin: 0 0 24px;
-}
-.capability-columns.with-editor {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
-  gap: 24px;
-  align-items: start;
-}
-.capability-catalog {
-  display: grid;
-  gap: 24px;
-  min-width: 0;
-}
-.capability-section-heading,
-.capability-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-.capability-section-heading h3 {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-.capability-section-heading > span,
-.capability-detail {
-  font-size: 0.85rem;
-  color: #6b725f;
-}
-.capability-card {
-  margin-top: 20px;
-  padding: 20px;
-  border: 1px solid #dce3d6;
-  border-radius: 14px;
-  background: #fffefa;
-}
-.capability-card > p {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.capability-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.capability-tags > span {
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: #e9eee3;
-  color: #315b43;
-  font-size: 0.8rem;
-}
-.capability-footer {
-  border-top: 1px solid #e8ece5;
-  padding-top: 14px;
-  margin-top: 18px;
-}
-.capability-footer code {
-  overflow-wrap: anywhere;
-  font-size: 0.8rem;
-}
-.capability-footer button {
-  flex-shrink: 0;
-  font-size: 0.8rem;
-}
-.capability-search {
-  display: grid;
-  gap: 8px;
-  margin-top: 20px;
-  font-size: 0.9rem;
-}
-.capability-fields {
-  display: grid;
-  gap: 18px;
-  border: 0;
-  margin: 0;
-  padding: 0;
-  min-width: 0;
-}
-.capability-fields textarea {
-  width: 100%;
-  border: 1px solid #aab8a8;
-  border-radius: 9px;
-  padding: 11px 12px;
-  font: inherit;
-  resize: vertical;
-}
-.capability-options {
-  display: grid;
-  gap: 14px;
-  margin: 0;
-  padding: 16px;
-  border: 1px solid #dce3d6;
-  border-radius: 10px;
-}
-.capability-options label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 400;
-}
-.capability-options input {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  accent-color: #315b43;
-  flex-shrink: 0;
-}
-.admin-nav {
-  flex-wrap: wrap;
-}
-@media (max-width: 850px) {
+@layer components {
+  .capability-note {
+    padding: 16px 20px;
+    background: #f0f3e9;
+    border: 1px solid #dce3d6;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    margin: 0 0 24px;
+  }
   .capability-columns.with-editor {
-    grid-template-columns: 1fr;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+    gap: 24px;
+    align-items: start;
   }
-  .capability-editor {
-    grid-row: 1;
+  .capability-catalog {
+    display: grid;
+    gap: 24px;
+    min-width: 0;
   }
-}
-@media (max-width: 520px) {
   .capability-section-heading,
   .capability-footer {
-    flex-wrap: wrap;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .capability-section-heading h3 {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .capability-section-heading > span,
+  .capability-detail {
+    font-size: 0.85rem;
+    color: #6b725f;
   }
   .capability-card {
+    margin-top: 20px;
+    padding: 20px;
+    border: 1px solid #dce3d6;
+    border-radius: 14px;
+    background: #fffefa;
+  }
+  .capability-card > p {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+  .capability-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .capability-tags > span {
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: #e9eee3;
+    color: #315b43;
+    font-size: 0.8rem;
+  }
+  .capability-footer {
+    border-top: 1px solid #e8ece5;
+    padding-top: 14px;
+    margin-top: 18px;
+  }
+  .capability-footer code {
+    overflow-wrap: anywhere;
+    font-size: 0.8rem;
+  }
+  .capability-footer button {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+  }
+  .capability-search {
+    display: grid;
+    gap: 8px;
+    margin-top: 20px;
+    font-size: 0.9rem;
+  }
+  .capability-fields {
+    display: grid;
+    gap: 18px;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+  }
+  .capability-fields textarea {
+    width: 100%;
+    border: 1px solid #aab8a8;
+    border-radius: 9px;
+    padding: 11px 12px;
+    font: inherit;
+    resize: vertical;
+  }
+  .capability-options {
+    display: grid;
+    gap: 14px;
+    margin: 0;
     padding: 16px;
+    border: 1px solid #dce3d6;
+    border-radius: 10px;
+  }
+  .capability-options label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 400;
+  }
+  .capability-options input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: #315b43;
+    flex-shrink: 0;
+  }
+  .admin-nav {
+    flex-wrap: wrap;
+  }
+  @media (max-width: 850px) {
+    .capability-columns.with-editor {
+      grid-template-columns: 1fr;
+    }
+    .capability-editor {
+      grid-row: 1;
+    }
+  }
+  @media (max-width: 520px) {
+    .capability-section-heading,
+    .capability-footer {
+      flex-wrap: wrap;
+    }
+    .capability-card {
+      padding: 16px;
+    }
   }
 }

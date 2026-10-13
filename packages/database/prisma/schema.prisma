@@ -15,10 +15,11 @@ model FoundationMarker {
   @@map("_waffarly_foundation_marker")
 }
 
-// A merchant is the tenant boundary for the first restaurant release.
+// A merchant is the tenant boundary across business activities.
 model Merchant {
   id                    String               @id @default(uuid()) @db.Uuid
   name                  String               @db.VarChar(160)
+  activity String @default("other") @db.VarChar(32)
   contactPhone          String               @db.VarChar(32)
   ownerName             String               @db.VarChar(160)
   ownerMobile           String               @db.VarChar(32)
@@ -36,12 +37,16 @@ model Merchant {
 model MerchantApplication {
   id           String    @id @default(uuid()) @db.Uuid
   name         String    @db.VarChar(160)
+  activity String @default("other") @db.VarChar(32)
   contactPhone String    @db.VarChar(32)
   ownerName    String    @db.VarChar(160)
   ownerMobile  String    @db.VarChar(32)
   createdAt    DateTime  @default(now()) @db.Timestamptz(6)
   approvedAt   DateTime? @db.Timestamptz(6)
   approvedBy   String?   @db.VarChar(80)
+  rejectedAt   DateTime? @db.Timestamptz(6)
+  rejectedBy   String?   @db.VarChar(80)
+  rejectionReason String? @db.Text
   merchantId   String?   @unique @db.Uuid
   merchant     Merchant? @relation(fields: [merchantId], references: [id], onDelete: Restrict)
 

@@ -1,3 +1,4 @@
+import { BUSINESS_ACTIVITY_KEYS } from '@waffarly/contracts';
 import {
   BadRequestException,
   Body,
@@ -21,7 +22,7 @@ import { TemplateService } from './template.service.js';
 const settings = z.object({
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(1000),
-  activity: z.literal('restaurant'),
+  activity: z.enum(['general', ...BUSINESS_ACTIVITY_KEYS]),
   layout: z.enum(['menu', 'hero']),
   accentColor: z
     .string()

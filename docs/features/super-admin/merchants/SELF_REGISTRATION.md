@@ -7,7 +7,7 @@
 
 ## Feature Overview
 
-A restaurant owner submits an application containing four required contact fields. Submission creates an application record only. A Super Admin reviews the application and performs the platform's verification work. After approval, the owner account and merchant tenant are created together. Account setup uses the current recorded administrator-provisioned username and password flow. The new owner remains unable to sign in until the separately controlled first-month activation. If the Super Admin rejects an application, that decision is final for that application; an applicant who wants to try again must submit a new application (MER-D05). The Super Admin must provide a rejection reason, and the reason must be visible to the applicant (MER-D06); the access/delivery mechanism is OPEN.
+A restaurant owner submits an application containing four required contact fields. Submission creates an application record only. A Super Admin reviews the application and performs the platform's verification work. After approval, the owner account and merchant tenant are created together. Account setup uses the current recorded administrator-provisioned username and password flow. The new owner remains unable to sign in until the separately controlled first-month activation. If the Super Admin rejects an application, that decision is final for that application; an applicant who wants to try again must submit a new application (MER-D05). The Super Admin must enter a required free-text rejection reason, and the reason must be visible to the applicant (MER-D06/MER-D08). Per MER-D07, decide the reason access/delivery mechanism only after defining application-tracking UX.
 
 ## Business Goals
 
@@ -28,13 +28,15 @@ A restaurant owner submits an application containing four required contact field
 - **Confirmed — application-only submission:** Submission creates an application record. It does not create an owner account, credential, merchant tenant, or dashboard session.
 - **Confirmed — approval and provisioning order:** The owner account is not provisioned until Super Admin approval (MER-D02). In this implementation slice, merchant and owner records are created transactionally as part of approval; tenant provisioning timing is an implementation choice, not a separately approved business rule.
 - **Confirmed — manual verification boundary:** The Super Admin personally reviews the information and performs any checks they consider necessary (MER-D04). Waffarly does not perform automated phone/contact verification or require a verification checkbox.
-- **Confirmed — rejection outcome:** Rejection is final for the submitted application. It cannot be returned for correction or reopened for resubmission. A retry begins with a separate new application (MER-D05). Whether that new application is associated with the rejected one is OPEN.
+- **Confirmed — rejection outcome:** Rejection is final for the submitted application. It cannot be returned for correction or reopened for resubmission. A retry begins with a separate new application (MER-D05).
 - **Confirmed — rejection reason:** The Super Admin must provide a reason, and it must be visible to the applicant (MER-D06). Reason format, content rules, and secure access/delivery mechanism remain OPEN.
+- **Confirmed — rejection reason input:** The reason is mandatory free text entered by the Super Admin (MER-D08). Length bounds and content restrictions remain OPEN.
+- **Confirmed — reapplication:** A new application from the same restaurant or owner contact is accepted as a separate application. If either the restaurant contact number or owner mobile number matches a prior rejected application, the Super Admin can see all its recorded data, including the rejection reason (MER-D09–MER-D11). Phone normalization/equality, multiple-match presentation, permissions, and retention/privacy rules remain OPEN. Reapplication does not reopen the rejected record or guarantee approval.
 - **Preserved recorded policy:** Administrator-provisioned username and password remain the current recorded first-release setup route. The app does not store or log the plaintext password. Manual delivery and credential recovery remain subject to the source conflict and existing security questions SA-R02/MER-Q03.
 - **Preserved recorded access rule:** Owner login and dashboard profile remain blocked before first-month subscription activation (SA-D05/SA-D06). Approval or account provisioning alone does not activate a subscription.
 - **MVP delivery:** Self-registration is a confirmed discovery candidate. Shipping it alongside or instead of manual creation remains OPEN.
 
-Rejection criteria, reason format/content constraints, secure applicant access/delivery, duplicate/reapplication handling, application status tracking, phone verification rules, retention, rate limits, and subscription renewal behavior remain OPEN. MER-D05/MER-D06 settle the outcome and visibility requirement, but do not specify a rejection screen, communication channel, applicant tracking page, or record-linking mechanism.
+Rejection criteria, reason format/content constraints, applicant tracking UX, secure reason access/delivery, prior-application matching/history presentation, phone verification rules, retention, rate limits, and subscription renewal behavior remain OPEN. The owner explicitly left applicant-tracking UX undecided on 2026-10-13. MER-D05/MER-D06/MER-D08/MER-D09 settle the rejection outcome, visibility/input requirements, and reviewer access to prior rejection history on a new application, but do not specify a rejection screen, communication channel, applicant tracking page, matching logic, or record retention. Under MER-D07, do not choose a reason delivery/access channel before defining applicant tracking UX.
 
 ## Happy Paths
 
@@ -61,7 +63,7 @@ Rejection criteria, reason format/content constraints, secure applicant access/d
 - An existing owner username returns a conflict. Application approval and merchant/account creation roll back together, leaving the application available for an administrator to retry with another username.
 - If a database error occurs during provisioning, no partially approved request, orphan tenant, or owner is committed.
 - A rejected application remains rejected and cannot be corrected/reopened for resubmission; a retry must use a new application (MER-D05). Rejection requires a reason visible to the applicant (MER-D06), but the mechanism and timing are OPEN.
-- Rejection administration is not implemented in the current slice. No owner account before approval or applicant dashboard access is allowed.
+- The current slice implements Super Admin rejection with a mandatory free-text reason, permanent rejection, and authenticated visibility of matching prior rejected applications. Applicant access to the reason and applicant dashboard access remain unimplemented/open. No owner account is created before approval.
 
 ## Validation and Security Requirements
 
@@ -81,21 +83,23 @@ Rejection criteria, reason format/content constraints, secure applicant access/d
 
 ## Proposed Data and API Concepts
 
-The approved slice adds a `MerchantApplication` persistence record with the four submitted fields, submission timestamp, approval timestamp/administrator, and a nullable unique link to its approved merchant. It has no user/account fields before approval. This model is scoped to the feature and does not finalize the overall merchant lifecycle schema.
+The implemented slice stores the four submitted fields, submission timestamp, approval timestamp/administrator, rejection timestamp/administrator/reason, and a nullable unique link to its approved merchant. It has no user/account fields before approval. This model is scoped to the feature and does not finalize the overall merchant lifecycle schema.
 
 | Endpoint | Access | Behavior |
 | --- | --- | --- |
 | `POST /merchant-applications` | Public | Validate and store the four contact fields; return only `{ received: true }`. |
 | `GET /admin/merchant-applications` | Super Admin | List submitted applications for human review. |
 | `POST /admin/merchant-applications/:id/approve` | Super Admin | Accept `{ username, password }`; atomically approve, create/link merchant, and create owner account. Return the normal merchant summary. |
+| `POST /admin/merchant-applications/:id/reject` | Super Admin | Accept a required non-empty `{ reason }`; permanently reject the application and record reviewer/time. |
 
-Requests and responses use shared runtime-independent TypeScript contracts. This bounded contract is implementation-specific; MER-D05/MER-D06 confirm the rejection outcome and applicant-visible reason, but any rejection endpoint/status contract and reason-delivery mechanism remain future work and require feature analysis. No such endpoint is implemented in the current slice.
+Requests and responses use shared runtime-independent TypeScript contracts. The rejection endpoint and Super Admin reason/history response are implemented for this slice. No public endpoint exposes a rejection reason; per MER-D07, decide applicant access only after defining application-tracking UX. The API currently matches stored phone strings exactly after submission trimming; broader phone normalization remains OPEN.
 
 ## UI Requirements
 
 - The public storefront shell exposes an application link and a form with the four fields, loading/submit state, validation feedback, and a clear receipt confirmation. It does not show a login form or application-tracking link.
 - Super Admin shows submitted contact details in an authenticated applications panel, provides username/password inputs for an approval action, and reports validation/conflict/server failures safely.
-- The current panel has no rejection action. MER-D05 requires any future rejection action to close that application permanently. MER-D06 requires a reason visible to the applicant; reason input rules, confirmation, and safe delivery/access are OPEN product/UI questions.
+- The panel provides a required free-text rejection reason and permanent rejection action. Confirmation is shown before rejection. The panel displays prior rejected applications, including all submitted fields and the reason, when either stored phone field matches. Applicant access to the reason remains unimplemented pending tracking UX; reason length/content constraints, phone normalization, and history privacy are OPEN.
+- When either the restaurant contact number or owner mobile number matches a prior rejected application, the Super Admin must be able to view all data recorded for that earlier application, including its rejection reason (MER-D09–MER-D11). Phone normalization/equality, multiple-match presentation, and history permissions remain OPEN.
 - After successful approval, the new merchant appears in the existing merchant list and credential panel. The existing manual first-month activation action remains distinct.
 - The form text does not promise a review deadline, acceptance, or subscription activation.
 
@@ -111,14 +115,18 @@ Requests and responses use shared runtime-independent TypeScript contracts. This
 - **AC-08:** Username collision or transactional failure leaves no partial tenant/account or approved application link.
 - **AC-09:** Password is hashed. Owner cannot authenticate or read the Merchant Dashboard profile before first-month activation.
 - **AC-10:** Manual verification remains an operator activity without an automated call/message integration.
-- **AC-11 (approved business outcome; not implemented in the current slice):** Once rejected, an application cannot be approved later or reopened for corrections/resubmission. Any applicant retry is submitted as a new application.
-- **AC-12 (approved business outcome; not implemented in the current slice):** A Super Admin must provide a rejection reason, and the applicant must be able to see it. The implementation must not expose the reason through an unapproved or unauthenticated access path.
+- **AC-11:** Once rejected, an application cannot be approved later or reopened for corrections/resubmission. Any applicant retry is submitted as a new application.
+- **AC-12 (partially implemented):** The Super Admin records a rejection reason. Applicant visibility remains pending the tracking UX and access decision.
+- **AC-13:** The rejection action requires a non-empty free-text reason from the Super Admin. Length bounds, formatting, and content restrictions remain OPEN.
+- **AC-14:** A reapplication from the same restaurant or owner contact is accepted as a new application. When identified as related, the Super Admin can view the prior rejected application; the earlier record remains rejected and is not reopened.
+- **AC-15:** A match on either the restaurant contact number or owner mobile number surfaces every matching prior rejected application to the Super Admin, with all recorded application data and rejection reason. Current matching is exact on trimmed stored strings; broader phone normalization/equality remains OPEN.
 
 ## Open Questions
 
 - Is self-registration included alongside the manual route in the MVP?
-- What rejection criteria and reason format/content constraints apply, and through which secure channel or access mechanism does the applicant see the reason? MER-D06 defines the visibility requirement, not delivery, access, or timing.
-- What record retention and duplicate/reapplication rules apply? MER-D05 requires a new application for any retry; it does not define whether submissions are linked or duplicates are blocked.
+- Does the applicant need to track application status without an account, and what should that experience expose? This was explicitly left OPEN on 2026-10-13; decide before selecting the reason delivery/access mechanism (MER-D07).
+- What rejection criteria, free-text length bounds, and content restrictions apply? The delivery/access question follows the application-tracking decision (MER-D06–MER-D08).
+- What phone normalization/equality, multiple-match presentation, administrator permission, and retention/privacy rules apply when either contact phone matches a prior rejected application? MER-D10/MER-D11 confirm match fields and full-data visibility, not comparison or presentation rules.
 - What duplicate application/identity policy and contact normalization rules should apply?
 - How does the owner receive credentials, and how is a lost or disclosed password replaced?
 - Do applicants need submission receipt, corrections, or any way to check progress that does not grant dashboard access?

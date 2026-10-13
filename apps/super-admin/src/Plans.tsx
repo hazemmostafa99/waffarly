@@ -1,3 +1,5 @@
+import type { LocalizedMessage } from '@waffarly/ui';
+import { useLocale, Button, Input, Card, Textarea } from '@waffarly/ui';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type {
   CreateMonthlyPlanRequest,
@@ -23,11 +25,12 @@ function explainError(cause: unknown): string {
 }
 
 export function Plans() {
+  const { t, locale, formatDate, errorText } = useLocale();
   const [plans, setPlans] = useState<MonthlyPlanSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const [notice, setNotice] = useState<LocalizedMessage>('');
   const [form, setForm] = useState<FormValues>(emptyForm);
   const [editing, setEditing] = useState<MonthlyPlanSummary | null>(null);
   const [saving, setSaving] = useState(false);
@@ -115,7 +118,10 @@ export function Plans() {
         });
       }
       setPlans((current) => [saved, ...current.filter((plan) => plan.id !== saved.id)]);
-      setNotice(`${saved.name} ${editing ? 'updated' : 'created'}.`);
+      setNotice({
+        key: editing ? '{{name}} updated.' : '{{name}} created.',
+        values: { name: saved.name },
+      });
       reset();
     } catch (cause) {
       setError(explainError(cause));
@@ -129,50 +135,56 @@ export function Plans() {
     <section aria-labelledby="plans-heading">
       <div className="library-heading">
         <div>
-          <span className="eyebrow">Plans & subscriptions</span>
-          <h2 id="plans-heading">Monthly plans</h2>
-          <p>Set the monthly offer for your restaurant merchants.</p>
+          <span className="eyebrow">{t('Plans & subscriptions')}</span>
+          <h2 id="plans-heading">{t('Monthly plans')}</h2>
+          <p>{t('Set the monthly offer for your business merchants.')}</p>
         </div>
-        <button type="button" className="secondary" disabled={loading || saving} onClick={refresh}>
-          Refresh plans
-        </button>
+        <Button
+          variant="outline"
+          type="button"
+          className="secondary"
+          disabled={loading || saving}
+          onClick={refresh}
+        >
+          {t('Refresh plans')}{' '}
+        </Button>
       </div>
       {notice && (
         <p className="notice" role="status">
-          {notice}
+          {t(notice)}
         </p>
       )}
       <div className="plan-columns">
-        <section className="panel" aria-labelledby="plan-editor-heading">
+        <Card className="panel" aria-labelledby="plan-editor-heading">
           <h3 id="plan-editor-heading" ref={editorHeading} tabIndex={-1}>
-            {editing ? 'Edit monthly plan' : 'Create a monthly plan'}
+            {editing ? t('Edit monthly plan') : t('Create a monthly plan')}
           </h3>
           {error && (
             <p className="error" role="alert">
-              {error}
+              {errorText(error)}
             </p>
           )}
           <form className="form" onSubmit={(event) => void save(event)}>
             <fieldset disabled={saving || loading} className="plan-fields">
               <label>
-                Plan name
-                <input
+                {t('Plan name')}{' '}
+                <Input
                   required
                   maxLength={160}
                   value={form.name}
-                  placeholder="Monthly plan"
+                  placeholder={t('Monthly plan')}
                   onChange={(event) => change('name', event.target.value)}
                 />
               </label>
               <div className="plan-price-inputs">
                 <label>
-                  Monthly price
-                  <input
+                  {t('Monthly price')}{' '}
+                  <Input
                     required
                     type="text"
                     inputMode="decimal"
                     pattern="(?:0|[1-9][0-9]{0,7})(?:\.[0-9]{1,2})?"
-                    title="An amount from 0 to 99999999.99, with up to two decimal places"
+                    title={t('An amount from 0 to 99999999.99, with up to two decimal places')}
                     maxLength={11}
                     value={form.monthlyPrice}
                     placeholder="0.00"
@@ -180,27 +192,27 @@ export function Plans() {
                   />
                 </label>
                 <label>
-                  Currency
+                  {t('Currency')}{' '}
                   <select
                     required
                     value={form.currency}
                     onChange={(event) => change('currency', event.target.value as PlanCurrency)}
                   >
                     <option value="" disabled>
-                      Select currency
+                      {t('Select currency')}{' '}
                     </option>
-                    <option value="EGP">EGP</option>
-                    <option value="USD">USD</option>
-                    <option value="EUR">EUR</option>
+                    <option value="EGP">{t('EGP')}</option>
+                    <option value="USD">{t('USD')}</option>
+                    <option value="EUR">{t('EUR')}</option>
                   </select>
                 </label>
               </div>
               <p className="plan-interval">
-                Billing interval <strong>Monthly</strong>
+                {t('Billing interval')} <strong>{t('Monthly')}</strong>
               </p>
               <label>
-                Description <small>Optional</small>
-                <textarea
+                {t('Description')} <small>{t('Optional')}</small>
+                <Textarea
                   rows={3}
                   maxLength={1000}
                   value={form.description}
@@ -208,39 +220,41 @@ export function Plans() {
                 />
               </label>
               <div className="template-form-actions">
-                <button type="submit" disabled={conflict}>
-                  {saving ? 'Saving…' : editing ? 'Save changes' : 'Create plan'}
-                </button>
+                <Button type="submit" disabled={conflict}>
+                  {saving ? t('Saving…') : editing ? t('Save changes') : t('Create plan')}
+                </Button>
                 {(editing || conflict) && (
-                  <button className="secondary" type="button" onClick={reset}>
-                    Cancel
-                  </button>
+                  <Button variant="outline" className="secondary" type="button" onClick={reset}>
+                    {t('Cancel')}{' '}
+                  </Button>
                 )}
               </div>
               {conflict && (
                 <p className="plan-help">
-                  Refresh plans and reopen the plan to review its latest values.
+                  {t('Refresh plans and reopen the plan to review its latest values.')}{' '}
                 </p>
               )}
             </fieldset>
           </form>
-        </section>
-        <section className="panel" aria-labelledby="plan-list-heading" aria-busy={loading}>
+        </Card>
+        <Card className="panel" aria-labelledby="plan-list-heading" aria-busy={loading}>
           <div className="plan-list-heading">
-            <h3 id="plan-list-heading">Plan catalog</h3>
-            <span>{plans.length} plans</span>
+            <h3 id="plan-list-heading">{t('Plan catalog')}</h3>
+            <span>
+              {plans.length} {t('plans')}
+            </span>
           </div>
           {loadError && (
             <p className="error" role="alert">
-              {loadError}
+              {errorText(loadError)}
             </p>
           )}
           {loading ? (
-            <p role="status">Loading plans…</p>
+            <p role="status">{t('Loading plans…')}</p>
           ) : !loadError && plans.length === 0 ? (
             <div className="library-empty">
-              <h3>Your first monthly plan</h3>
-              <p>Enter a name and monthly price to get started.</p>
+              <h3>{t('Your first monthly plan')}</h3>
+              <p>{t('Enter a name and monthly price to get started.')}</p>
             </div>
           ) : (
             <div className="plan-list">
@@ -248,32 +262,38 @@ export function Plans() {
                 <article className="plan-card" key={plan.id}>
                   <div className="plan-card-heading">
                     <h3>{plan.name}</h3>
-                    <span className="template-status status-available">Monthly</span>
+                    <span className="template-status status-available">{t('Monthly')}</span>
                   </div>
                   <p className="plan-price">
                     <strong>
-                      {plan.currency} {plan.monthlyPrice}
+                      {new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', {
+                        style: 'currency',
+                        currency: plan.currency,
+                      }).format(Number(plan.monthlyPrice))}
                     </strong>
-                    <span> / month</span>
+                    <span> {t('/ month')}</span>
                   </p>
                   {plan.description && <p className="plan-description">{plan.description}</p>}
                   <div className="plan-card-footer">
-                    <span>Updated {new Date(plan.updatedAt).toLocaleDateString()}</span>
-                    <button
+                    <span>
+                      {t('Updated')} {formatDate(plan.updatedAt)}
+                    </span>
+                    <Button
+                      variant="outline"
                       type="button"
                       className="secondary"
                       disabled={saving || loading || Boolean(loadError)}
-                      aria-label={`Edit ${plan.name}`}
+                      aria-label={t('Edit {{name}}', { name: plan.name })}
                       onClick={() => edit(plan)}
                     >
-                      Edit plan
-                    </button>
+                      {t('Edit plan')}{' '}
+                    </Button>
                   </div>
                 </article>
               ))}
             </div>
           )}
-        </section>
+        </Card>
       </div>
     </section>
   );

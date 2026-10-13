@@ -1,4 +1,10 @@
 'use client';
+import {
+  BUSINESS_ACTIVITY_KEYS,
+  BUSINESS_ACTIVITY_LABELS,
+  type BusinessActivityKey,
+} from '@waffarly/contracts';
+import { useLocale, Input, Button } from '@waffarly/ui';
 
 import { useState, type FormEvent } from 'react';
 import type { SubmitMerchantApplicationRequest } from '@waffarly/contracts';
@@ -6,6 +12,7 @@ import { ApiError, apiPost } from '../../lib/api-client';
 
 const EMPTY_APPLICATION: SubmitMerchantApplicationRequest = {
   name: '',
+  activity: 'other',
   contactPhone: '',
   ownerName: '',
   ownerMobile: '',
@@ -16,13 +23,14 @@ const FIELDS: ReadonlyArray<{
   label: string;
   autocomplete: string;
 }> = [
-  { key: 'name', label: 'Restaurant name', autocomplete: 'organization' },
-  { key: 'contactPhone', label: 'Restaurant contact number', autocomplete: 'tel' },
+  { key: 'name', label: 'Business name', autocomplete: 'organization' },
+  { key: 'contactPhone', label: 'Business contact number', autocomplete: 'tel' },
   { key: 'ownerName', label: 'Owner name', autocomplete: 'name' },
   { key: 'ownerMobile', label: 'Owner mobile number', autocomplete: 'tel' },
 ];
 
 export function MerchantApplicationForm() {
+  const { t, errorText } = useLocale();
   const [application, setApplication] = useState(EMPTY_APPLICATION);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmitted, setHasSubmitted] = useState(false);
@@ -50,11 +58,12 @@ export function MerchantApplicationForm() {
   if (hasSubmitted) {
     return (
       <div className="join-success" role="status">
-        <h2>Your application has been received</h2>
-        <p>Our Super Admin team will review the information you shared.</p>
+        <h2>{t('Your application has been received')}</h2>
+        <p>{t('Our Super Admin team will review the information you shared.')}</p>
         <p>
-          Your owner account will be set up only after approval. You cannot access the Merchant
-          Dashboard before then.
+          {t(
+            'Your owner account will be set up only after approval. You cannot access the Merchant Dashboard before then.',
+          )}{' '}
         </p>
       </div>
     );
@@ -62,10 +71,29 @@ export function MerchantApplicationForm() {
 
   return (
     <form className="join-form" onSubmit={(event) => void submit(event)}>
+      <label>
+        {t('Business activity')}
+        <select
+          aria-label={t('Business activity')}
+          value={application.activity ?? 'other'}
+          onChange={(event) =>
+            setApplication((current) => ({
+              ...current,
+              activity: event.target.value as BusinessActivityKey,
+            }))
+          }
+        >
+          {BUSINESS_ACTIVITY_KEYS.map((key) => (
+            <option key={key} value={key}>
+              {t(BUSINESS_ACTIVITY_LABELS[key])}
+            </option>
+          ))}
+        </select>
+      </label>
       {FIELDS.map(({ key, label, autocomplete }) => (
         <label key={key}>
-          {label}
-          <input
+          {t(label)}
+          <Input
             autoComplete={autocomplete}
             maxLength={key.endsWith('Phone') || key.endsWith('Mobile') ? 32 : 160}
             minLength={key.endsWith('Phone') || key.endsWith('Mobile') ? 3 : 1}
@@ -80,15 +108,16 @@ export function MerchantApplicationForm() {
       ))}
       {error && (
         <p className="join-error" role="alert">
-          {error}
+          {errorText(error)}
         </p>
       )}
-      <button disabled={isSubmitting} type="submit">
-        {isSubmitting ? 'Sending application…' : 'Submit application'}
-      </button>
+      <Button disabled={isSubmitting} type="submit">
+        {isSubmitting ? t('Sending application…') : t('Submit application')}
+      </Button>
       <p className="join-note">
-        Applying does not create an account or grant dashboard access. Your owner account is set up
-        after approval.
+        {t(
+          'Applying does not create an account or grant dashboard access. Your owner account is set up after approval.',
+        )}{' '}
       </p>
     </form>
   );

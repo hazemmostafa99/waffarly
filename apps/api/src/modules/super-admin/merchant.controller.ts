@@ -1,3 +1,4 @@
+import { BUSINESS_ACTIVITY_KEYS } from '@waffarly/contracts';
 import {
   BadRequestException,
   Body,
@@ -20,6 +21,7 @@ import { MerchantService } from './merchant.service.js';
 
 const creationSchema = z.object({
   name: z.string().trim().min(1).max(160),
+  activity: z.enum(BUSINESS_ACTIVITY_KEYS).default('other'),
   contactPhone: z.string().trim().min(3).max(32),
   ownerName: z.string().trim().min(1).max(160),
   ownerMobile: z.string().trim().min(3).max(32),

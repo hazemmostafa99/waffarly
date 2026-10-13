@@ -1,3 +1,4 @@
+import { BUSINESS_ACTIVITY_KEYS } from '@waffarly/contracts';
 import {
   BadRequestException,
   Body,
@@ -15,6 +16,7 @@ import type {
   ApproveMerchantApplicationRequest,
   MerchantApplicationSummary,
   MerchantSummary,
+  RejectMerchantApplicationRequest,
   SubmitMerchantApplicationRequest,
 } from '@waffarly/contracts';
 import { z } from 'zod';
@@ -25,6 +27,7 @@ import { MerchantService } from './merchant.service.js';
 const applicationSchema = z
   .object({
     name: z.string().trim().min(1).max(160),
+    activity: z.enum(BUSINESS_ACTIVITY_KEYS).default('other'),
     contactPhone: z.string().trim().min(3).max(32),
     ownerName: z.string().trim().min(1).max(160),
     ownerMobile: z.string().trim().min(3).max(32),
@@ -42,6 +45,8 @@ const approvalSchema = z
     password: z.string().min(12).max(128),
   })
   .strict();
+
+const rejectionSchema = z.object({ reason: z.string().trim().min(1) }).strict();
 
 function validate<T>(schema: z.ZodType<T>, body: unknown, description: string): T {
   const result = schema.safeParse(body);
@@ -92,5 +97,19 @@ export class AdminMerchantApplicationController {
       'owner credentials',
     );
     return this.merchants.approveApplication(id, input, await this.auth.requireAdmin(request));
+  }
+
+  @Post(':id/reject')
+  async reject(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: unknown,
+    @Req() request: Request,
+  ): Promise<MerchantApplicationSummary> {
+    const input = validate<RejectMerchantApplicationRequest>(
+      rejectionSchema,
+      body,
+      'rejection reason',
+    );
+    return this.merchants.rejectApplication(id, input, await this.auth.requireAdmin(request));
   }
 }

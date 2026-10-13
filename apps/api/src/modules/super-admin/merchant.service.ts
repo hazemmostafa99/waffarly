@@ -1,9 +1,18 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type {
   ApproveMerchantApplicationRequest,
+  BusinessActivityKey,
   CreateMerchantRequest,
   MerchantApplicationSummary,
   MerchantSummary,
+  RejectedMerchantApplicationSummary,
+  RejectMerchantApplicationRequest,
   SubmitMerchantApplicationRequest,
 } from '@waffarly/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
@@ -12,6 +21,7 @@ import { hashPassword } from '../auth/password.js';
 type MerchantWithOwner = {
   id: string;
   name: string;
+  activity?: string;
   contactPhone: string;
   ownerName: string;
   ownerMobile: string;
@@ -24,6 +34,7 @@ function toSummary(merchant: MerchantWithOwner): MerchantSummary {
   return {
     id: merchant.id,
     name: merchant.name,
+    activity: (merchant.activity ?? 'other') as BusinessActivityKey,
     contactPhone: merchant.contactPhone,
     ownerName: merchant.ownerName,
     ownerMobile: merchant.ownerMobile,
@@ -36,19 +47,29 @@ function toSummary(merchant: MerchantWithOwner): MerchantSummary {
 type MerchantApplicationRecord = {
   id: string;
   name: string;
+  activity?: string;
   contactPhone: string;
   ownerName: string;
   ownerMobile: string;
   createdAt: Date;
   approvedAt: Date | null;
   approvedBy: string | null;
+  rejectedAt: Date | null;
+  rejectedBy: string | null;
+  rejectionReason: string | null;
   merchantId: string | null;
 };
 
-function toApplicationSummary(application: MerchantApplicationRecord): MerchantApplicationSummary {
+function toRejectedApplicationSummary(
+  application: MerchantApplicationRecord,
+): RejectedMerchantApplicationSummary {
+  if (!application.rejectedAt || !application.rejectedBy || application.rejectionReason === null) {
+    throw new Error('Rejected application is missing rejection metadata.');
+  }
   return {
     id: application.id,
     name: application.name,
+    activity: (application.activity ?? 'other') as BusinessActivityKey,
     contactPhone: application.contactPhone,
     ownerName: application.ownerName,
     ownerMobile: application.ownerMobile,
@@ -56,6 +77,31 @@ function toApplicationSummary(application: MerchantApplicationRecord): MerchantA
     approvedAt: application.approvedAt?.toISOString() ?? null,
     approvedBy: application.approvedBy,
     merchantId: application.merchantId,
+    rejectedAt: application.rejectedAt.toISOString(),
+    rejectedBy: application.rejectedBy,
+    rejectionReason: application.rejectionReason,
+  };
+}
+
+function toApplicationSummary(
+  application: MerchantApplicationRecord,
+  priorRejectedApplications: RejectedMerchantApplicationSummary[] = [],
+): MerchantApplicationSummary {
+  return {
+    id: application.id,
+    name: application.name,
+    activity: (application.activity ?? 'other') as BusinessActivityKey,
+    contactPhone: application.contactPhone,
+    ownerName: application.ownerName,
+    ownerMobile: application.ownerMobile,
+    createdAt: application.createdAt.toISOString(),
+    approvedAt: application.approvedAt?.toISOString() ?? null,
+    approvedBy: application.approvedBy,
+    merchantId: application.merchantId,
+    rejectedAt: application.rejectedAt?.toISOString() ?? null,
+    rejectedBy: application.rejectedBy,
+    rejectionReason: application.rejectionReason,
+    priorRejectedApplications,
   };
 }
 
@@ -84,6 +130,7 @@ export class MerchantService {
       const merchant = await this.prisma.merchant.create({
         data: {
           name: input.name.trim(),
+          activity: input.activity ?? 'other',
           contactPhone: input.contactPhone.trim(),
           ownerName: input.ownerName.trim(),
           ownerMobile: input.ownerMobile.trim(),
@@ -103,15 +150,87 @@ export class MerchantService {
   }
 
   async submitApplication(input: SubmitMerchantApplicationRequest): Promise<{ received: true }> {
-    await this.prisma.merchantApplication.create({ data: input });
+    await this.prisma.merchantApplication.create({
+      data: { ...input, activity: input.activity ?? 'other' },
+    });
     return { received: true };
   }
 
   async listApplications(): Promise<MerchantApplicationSummary[]> {
-    const applications = await this.prisma.merchantApplication.findMany({
-      orderBy: { createdAt: 'desc' },
+    const applications: MerchantApplicationRecord[] =
+      await this.prisma.merchantApplication.findMany({
+        orderBy: { createdAt: 'desc' },
+      });
+
+    const rejectedByBusinessPhone = new Map<string, MerchantApplicationRecord[]>();
+    const rejectedByOwnerMobile = new Map<string, MerchantApplicationRecord[]>();
+    for (const application of applications) {
+      if (!application.rejectedAt) continue;
+      const businessMatches = rejectedByBusinessPhone.get(application.contactPhone) ?? [];
+      businessMatches.push(application);
+      rejectedByBusinessPhone.set(application.contactPhone, businessMatches);
+      const ownerMatches = rejectedByOwnerMobile.get(application.ownerMobile) ?? [];
+      ownerMatches.push(application);
+      rejectedByOwnerMobile.set(application.ownerMobile, ownerMatches);
+    }
+
+    return applications.map((application) => {
+      const matches = new Map<string, MerchantApplicationRecord>();
+      for (const previous of [
+        ...(rejectedByBusinessPhone.get(application.contactPhone) ?? []),
+        ...(rejectedByOwnerMobile.get(application.ownerMobile) ?? []),
+      ]) {
+        if (
+          previous.id !== application.id &&
+          previous.createdAt.getTime() <= application.createdAt.getTime()
+        ) {
+          matches.set(previous.id, previous);
+        }
+      }
+      return toApplicationSummary(
+        application,
+        [...matches.values()].map(toRejectedApplicationSummary),
+      );
     });
-    return applications.map(toApplicationSummary);
+  }
+
+  async rejectApplication(
+    applicationId: string,
+    input: RejectMerchantApplicationRequest,
+    administratorUsername: string,
+  ): Promise<MerchantApplicationSummary> {
+    const reason = input.reason.trim();
+    if (!reason) throw new BadRequestException('A rejection reason is required.');
+    const rejected = await this.prisma.$transaction(async (transaction) => {
+      const application = await transaction.merchantApplication.findUnique({
+        where: { id: applicationId },
+      });
+      if (!application) throw new NotFoundException('Application was not found.');
+      if (application.approvedAt || application.merchantId || application.rejectedAt) {
+        throw new ConflictException('Application has already been processed.');
+      }
+
+      const changed = await transaction.merchantApplication.updateMany({
+        where: {
+          id: applicationId,
+          approvedAt: null,
+          merchantId: null,
+          rejectedAt: null,
+        },
+        data: {
+          rejectedAt: new Date(),
+          rejectedBy: administratorUsername,
+          rejectionReason: reason,
+        },
+      });
+      if (changed.count !== 1) {
+        throw new ConflictException('Application has already been processed.');
+      }
+      return transaction.merchantApplication.findUniqueOrThrow({
+        where: { id: applicationId },
+      });
+    });
+    return toApplicationSummary(rejected);
   }
 
   async approveApplication(
@@ -128,21 +247,22 @@ export class MerchantService {
           where: { id: applicationId },
         });
         if (!application) throw new NotFoundException('Application was not found.');
-        if (application.approvedAt || application.merchantId) {
-          throw new ConflictException('Application has already been approved.');
+        if (application.approvedAt || application.merchantId || application.rejectedAt) {
+          throw new ConflictException('Application has already been processed.');
         }
 
         const reserved = await transaction.merchantApplication.updateMany({
-          where: { id: applicationId, approvedAt: null, merchantId: null },
+          where: { id: applicationId, approvedAt: null, merchantId: null, rejectedAt: null },
           data: { approvedAt: new Date(), approvedBy: administratorUsername },
         });
         if (reserved.count !== 1) {
-          throw new ConflictException('Application has already been approved.');
+          throw new ConflictException('Application has already been processed.');
         }
 
         const merchant = await transaction.merchant.create({
           data: {
             name: application.name,
+            activity: application.activity ?? 'other',
             contactPhone: application.contactPhone,
             ownerName: application.ownerName,
             ownerMobile: application.ownerMobile,

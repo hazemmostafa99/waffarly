@@ -37,11 +37,12 @@ export class StorefrontService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async getSettings(merchantId: string): Promise<MerchantStorefrontSettings> {
+    const merchant = await this.prisma.merchant.findUniqueOrThrow({ where: { id: merchantId } });
     const [selected, available] = await Promise.all([
       this.prisma.merchantStorefront.findUnique({ where: { merchantId } }),
       this.prisma.storefrontTemplate.findMany({
         where: {
-          activity: 'restaurant',
+          activity: { in: ['general', merchant.activity] },
           OR: [{ status: 'available' }, { merchants: { some: { merchantId } } }],
         },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
@@ -88,12 +89,17 @@ export class StorefrontService {
     }
 
     await this.prisma.$transaction(async (transaction) => {
+      const merchant = await transaction.merchant.findUniqueOrThrow({ where: { id: merchantId } });
       const template = await transaction.storefrontTemplate.findFirst({
-        where: { id: input.templateId, status: 'available', activity: 'restaurant' },
+        where: {
+          id: input.templateId,
+          status: 'available',
+          activity: { in: ['general', merchant.activity] },
+        },
         select: { id: true },
       });
       if (!template) {
-        throw new BadRequestException('Choose a restaurant design that is currently available.');
+        throw new BadRequestException('Choose an available design for your business activity.');
       }
 
       const current = await transaction.merchantStorefront.findUnique({ where: { merchantId } });

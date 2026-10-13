@@ -1,3 +1,4 @@
+import type { BusinessActivityKey } from '@waffarly/contracts';
 import { createHash, randomBytes } from 'node:crypto';
 import {
   ForbiddenException,
@@ -85,6 +86,7 @@ export class AuthService {
       username: account.username,
       merchantId: account.merchantId,
       merchantName: account.merchant.name,
+      activity: account.merchant.activity as BusinessActivityKey,
       contactPhone: account.merchant.contactPhone,
       ownerName: account.merchant.ownerName,
       ownerMobile: account.merchant.ownerMobile,

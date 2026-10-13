@@ -1,3 +1,5 @@
+import type { BusinessActivityKey } from './activities-modules.js';
+
 export type TemplateLayout = 'menu' | 'hero';
 export type TemplateStatus = 'draft' | 'available';
 
@@ -21,7 +23,7 @@ export interface CreateStorefrontTemplateRequest {
   key: string;
   name: string;
   description: string;
-  activity: 'restaurant';
+  activity: BusinessActivityKey | 'general';
   layout: TemplateLayout;
   accentColor: string;
   status: TemplateStatus;

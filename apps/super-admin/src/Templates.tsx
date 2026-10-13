@@ -1,3 +1,5 @@
+import { BUSINESS_ACTIVITY_KEYS, BUSINESS_ACTIVITY_LABELS } from '@waffarly/contracts';
+import type { LocalizedMessage } from '@waffarly/ui';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import type {
   CreateStorefrontTemplateRequest,
@@ -6,14 +8,14 @@ import type {
   TemplateStatus,
   UpdateStorefrontTemplateRequest,
 } from '@waffarly/contracts';
-import { StorefrontDesignPreview } from '@waffarly/ui';
+import { StorefrontDesignPreview, useLocale, Button, Input, Textarea } from '@waffarly/ui';
 import { ApiError, apiRequest } from './lib/api-client.js';
 
 const emptyTemplate: CreateStorefrontTemplateRequest = {
   key: '',
   name: '',
   description: '',
-  activity: 'restaurant',
+  activity: 'general',
   layout: 'menu',
   accentColor: '#315b43',
   status: 'draft',
@@ -38,11 +40,12 @@ function StorefrontPreview({
   description: string;
   accentColor: string;
 }) {
+  const { t } = useLocale();
   return (
     <StorefrontDesignPreview
       className="storefront-preview"
       layout={layout}
-      name={name || 'Your restaurant'}
+      name={name || t('Your business')}
       description={description}
       accentColor={accentColor}
     />
@@ -62,6 +65,7 @@ function TemplateForm({
   onCancel: () => void;
   onValueChange: (value: CreateStorefrontTemplateRequest) => void;
 }) {
+  const { t } = useLocale();
   const [form, setForm] = useState(initial);
   const [showPreview, setShowPreview] = useState(false);
 
@@ -78,30 +82,33 @@ function TemplateForm({
     <form className="template-editor" onSubmit={onSubmit}>
       <div className="template-fields">
         <div className="template-editor-heading">
-          <span className="eyebrow">{initial.key ? 'EDIT TEMPLATE' : 'NEW DESIGN'}</span>
-          <button
+          <span className="eyebrow">{initial.key ? t('EDIT TEMPLATE') : t('NEW DESIGN')}</span>
+          <Button
+            variant="ghost"
+            size="icon"
             type="button"
             className="icon-button"
-            aria-label="Close editor"
+            aria-label={t('Close editor')}
             onClick={onCancel}
           >
             ×
-          </button>
+          </Button>
         </div>
         <label>
-          Display name
-          <input
+          {t('Display name')}{' '}
+          <Input
             autoFocus
             maxLength={160}
             required
             value={form.name}
-            placeholder="Sunday Table"
+            placeholder={t('Sunday Table')}
             onChange={(event) => update('name', event.target.value)}
           />
         </label>
         <label>
-          Library key<small>Permanent identifier for this design</small>
-          <input
+          {t('Library key')}
+          <small>{t('Permanent identifier for this design')}</small>
+          <Input
             disabled={Boolean(initial.key)}
             maxLength={80}
             required
@@ -114,30 +121,47 @@ function TemplateForm({
           />
         </label>
         <label>
-          Description <small>Shown to administrators in the library</small>
-          <textarea
+          {t('Description')} <small>{t('Shown to administrators in the library')}</small>
+          <Textarea
             maxLength={1000}
             rows={3}
             value={form.description}
-            placeholder="A relaxed layout that puts your menu first."
+            placeholder={t('A clear layout that puts your catalog first.')}
             onChange={(event) => update('description', event.target.value)}
           />
         </label>
         <label>
-          Restaurant layout
+          {t('Business activity')}
+          <select
+            aria-label={t('Business activity')}
+            value={form.activity ?? 'other'}
+            onChange={(event) =>
+              update('activity', event.target.value as CreateStorefrontTemplateRequest['activity'])
+            }
+          >
+            <option value="general">{t('All business activities')}</option>
+            {BUSINESS_ACTIVITY_KEYS.map((key) => (
+              <option key={key} value={key}>
+                {t(BUSINESS_ACTIVITY_LABELS[key])}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t('Business layout')}{' '}
           <select
             value={form.layout}
             onChange={(event) => update('layout', event.target.value as TemplateLayout)}
           >
-            <option value="menu">Menu first · editorial grid</option>
-            <option value="hero">Welcome first · featured menu</option>
+            <option value="menu">{t('Catalog first · editorial grid')}</option>
+            <option value="hero">{t('Welcome first · featured catalog')}</option>
           </select>
         </label>
         <label>
-          Accent color
+          {t('Accent color')}{' '}
           <div className="template-color-field">
-            <input
-              aria-label="Accent color"
+            <Input
+              aria-label={t('Accent color')}
               type="color"
               value={form.accentColor}
               onChange={(event) => update('accentColor', event.target.value)}
@@ -146,30 +170,34 @@ function TemplateForm({
           </div>
         </label>
         <label>
-          Library status
+          {t('Library status')}{' '}
           <select
             value={form.status}
             onChange={(event) => update('status', event.target.value as TemplateStatus)}
           >
-            <option value="draft">Draft · only admins can see it</option>
-            <option value="available">Available · ready for future merchant selection</option>
+            <option value="draft">{t('Draft · only admins can see it')}</option>
+            <option value="available">
+              {t('Available · ready for future merchant selection')}
+            </option>
           </select>
         </label>
         <p className="template-form-note">
-          A restaurant preview using sample content. Availability adds this design to the library;
-          it does not publish a restaurant storefront.
+          {t(
+            'A business preview using sample content. Availability adds this design to the library; it does not publish a business storefront.',
+          )}{' '}
         </p>
         <div className="template-form-actions">
-          <button type="submit" disabled={busy}>
-            {busy ? 'Saving…' : initial.key ? 'Save changes' : 'Create template'}
-          </button>
-          <button
+          <Button type="submit" disabled={busy}>
+            {busy ? t('Saving…') : initial.key ? t('Save changes') : t('Create template')}
+          </Button>
+          <Button
+            variant="outline"
             type="button"
             className="secondary"
             onClick={() => setShowPreview((current) => !current)}
           >
-            {showPreview ? 'Hide preview' : 'Preview design'}
-          </button>
+            {showPreview ? t('Hide preview') : t('Preview design')}
+          </Button>
         </div>
       </div>
       {showPreview && (
@@ -185,11 +213,12 @@ function TemplateForm({
 }
 
 export function Templates() {
+  const { t, errorText } = useLocale();
   const [templates, setTemplates] = useState<StorefrontTemplateSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const [notice, setNotice] = useState<LocalizedMessage>('');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<'all' | TemplateStatus>('all');
   const [editing, setEditing] = useState<StorefrontTemplateSummary | null | undefined>(undefined);
@@ -244,14 +273,14 @@ export function Templates() {
         setTemplates((current) =>
           current.map((template) => (template.id === saved.id ? saved : template)),
         );
-        setNotice(`${saved.name} updated.`);
+        setNotice({ key: '{{name}} updated.', values: { name: saved.name } });
       } else {
         const saved = await apiRequest<StorefrontTemplateSummary>('/admin/templates', {
           method: 'POST',
           body: JSON.stringify(draft),
         });
         setTemplates((current) => [saved, ...current]);
-        setNotice(`${saved.name} added to the library.`);
+        setNotice({ key: '{{name}} added to the library.', values: { name: saved.name } });
       }
       setEditing(undefined);
     } catch (cause) {
@@ -285,11 +314,11 @@ export function Templates() {
     <section className="template-library" aria-labelledby="library-heading">
       <header className="library-heading">
         <div>
-          <span className="eyebrow">STOREFRONT · RESTAURANTS</span>
-          <h2 id="library-heading">The design library</h2>
-          <p>Curate the restaurant designs merchants can discover.</p>
+          <span className="eyebrow">{t('STOREFRONT · BUSINESSES')}</span>
+          <h2 id="library-heading">{t('The design library')}</h2>
+          <p>{t('Curate the business designs merchants can discover.')}</p>
         </div>
-        <button
+        <Button
           type="button"
           onClick={() => {
             setDraft(emptyTemplate);
@@ -298,59 +327,64 @@ export function Templates() {
             setError('');
           }}
         >
-          ＋ Add a template
-        </button>
+          {t('＋ Add a template')}{' '}
+        </Button>
       </header>
       {error && (
         <p className="error" role="alert">
-          {error}
+          {errorText(error)}
         </p>
       )}
       {notice && (
         <p className="notice" role="status">
-          {notice}
+          {t(notice)}
         </p>
       )}
       <div className="library-toolbar">
-        <div className="template-filters" aria-label="Filter templates">
-          <button
+        <div className="template-filters" aria-label={t('Filter templates')}>
+          <Button
+            variant="ghost"
             type="button"
             className={filter === 'all' ? 'filter-active' : ''}
             onClick={() => setFilter('all')}
           >
-            All <span>{templates.length}</span>
-          </button>
-          <button
+            {t('All')} <span>{templates.length}</span>
+          </Button>
+          <Button
+            variant="ghost"
             type="button"
             className={filter === 'available' ? 'filter-active' : ''}
             onClick={() => setFilter('available')}
           >
-            Available{' '}
+            {t('Available')}{' '}
             <span>{templates.filter((template) => template.status === 'available').length}</span>
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             type="button"
             className={filter === 'draft' ? 'filter-active' : ''}
             onClick={() => setFilter('draft')}
           >
-            Drafts <span>{templates.filter((template) => template.status === 'draft').length}</span>
-          </button>
+            {t('Drafts')}{' '}
+            <span>{templates.filter((template) => template.status === 'draft').length}</span>
+          </Button>
         </div>
-        <input
+        <Input
           className="template-search"
-          aria-label="Search templates"
-          placeholder="Search the library"
+          aria-label={t('Search templates')}
+          placeholder={t('Search the library')}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <button
+        <Button
+          variant="outline"
           type="button"
           className="secondary refresh-button"
           onClick={() => void reload()}
           disabled={loading}
         >
-          {loading ? 'Loading…' : 'Refresh'}
-        </button>
+          {loading ? t('Loading…') : t('Refresh')}
+        </Button>
       </div>
       {editing !== undefined && (
         <TemplateForm
@@ -364,23 +398,24 @@ export function Templates() {
       )}
       {loading && templates.length === 0 ? (
         <div className="library-empty">
-          <p>Loading your design library…</p>
+          <p>{t('Loading your design library…')}</p>
         </div>
       ) : visibleTemplates.length === 0 ? (
         <div className="library-empty">
           <span className="empty-mark">✳</span>
           <h3>
             {query || filter !== 'all'
-              ? 'No designs match that search'
-              : 'Your library starts here'}
+              ? t('No designs match that search')
+              : t('Your library starts here')}
           </h3>
           <p>
             {query || filter !== 'all'
-              ? 'Try another name or status.'
-              : 'Add a restaurant design to start curating what merchants can discover.'}
+              ? t('Try another name or status.')
+              : t('Add a business design to start curating what merchants can discover.')}
           </p>
           {!query && filter === 'all' && (
-            <button
+            <Button
+              variant="outline"
               type="button"
               className="secondary"
               onClick={() => {
@@ -388,18 +423,19 @@ export function Templates() {
                 setEditing(null);
               }}
             >
-              Create the first template
-            </button>
+              {t('Create the first template')}{' '}
+            </Button>
           )}
         </div>
       ) : (
         <div className="template-grid">
           {visibleTemplates.map((template, index) => (
             <article className="template-card" key={template.id}>
-              <button
-                className="template-art"
+              <Button
+                variant="ghost"
+                className="template-art block h-auto w-full whitespace-normal rounded-none p-0"
                 type="button"
-                aria-label={`Preview ${template.name}`}
+                aria-label={t('Preview {{name}}', { name: template.name })}
                 onClick={() => edit(template)}
               >
                 <StorefrontPreview
@@ -409,30 +445,31 @@ export function Templates() {
                   accentColor={template.accentColor}
                 />
                 <span className="art-overlay">
-                  View & edit design <span aria-hidden="true">↗</span>
+                  {t('View & edit design')} <span aria-hidden="true">↗</span>
                 </span>
-              </button>
+              </Button>
               <div className="template-card-copy">
                 <div className="template-card-meta">
                   <span className={`template-status status-${template.status}`}>
                     <span aria-hidden="true">●</span>
-                    {template.status === 'available' ? 'Available' : 'Draft'}
+                    {template.status === 'available' ? t('Available') : t('Draft')}
                   </span>
                   <span className="template-layout-label">
-                    {template.layout === 'menu' ? 'Menu first' : 'Welcome first'}
+                    {template.layout === 'menu' ? t('Catalog first') : t('Welcome first')}
                   </span>
                 </div>
                 <h3>{template.name}</h3>
-                <p>{template.description || 'A restaurant storefront design.'}</p>
+                <p>{template.description || t('A business storefront design.')}</p>
                 <div className="template-card-footer">
                   <span className="template-key">/{template.key}</span>
-                  <button
+                  <Button
+                    variant="ghost"
                     className="template-edit-link"
                     type="button"
                     onClick={() => edit(template)}
                   >
-                    Edit <span aria-hidden="true">↗</span>
-                  </button>
+                    {t('Edit')} <span aria-hidden="true">↗</span>
+                  </Button>
                 </div>
               </div>
               <span className="template-index">{String(index + 1).padStart(2, '0')}</span>
@@ -443,12 +480,12 @@ export function Templates() {
       <footer className="library-footnote">
         <span>
           <span className="footnote-dot">✳</span> {templates.length}{' '}
-          {templates.length === 1 ? 'design' : 'designs'} in the library
+          {templates.length === 1 ? t('design') : t('designs')} {t('in the library')}{' '}
         </span>
         <span>
-          Restaurant activity ·{' '}
-          {templates.filter((template) => template.status === 'available').length} available for
-          discovery
+          {t('Business activities ·')}{' '}
+          {templates.filter((template) => template.status === 'available').length}{' '}
+          {t('available for discovery')}{' '}
         </span>
       </footer>
     </section>

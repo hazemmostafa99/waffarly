@@ -1,123 +1,125 @@
-.plan-columns {
-  display: grid;
-  grid-template-columns: minmax(280px, 380px) 1fr;
-  gap: 24px;
-  align-items: start;
-}
-.plan-fields {
-  display: grid;
-  gap: 18px;
-  border: 0;
-  margin: 0;
-  padding: 0;
-  min-width: 0;
-}
-.plan-fields select,
-.plan-fields textarea {
-  width: 100%;
-  border: 1px solid #aab8a8;
-  border-radius: 9px;
-  padding: 11px 12px;
-  background: white;
-  color: inherit;
-  font: inherit;
-}
-.plan-fields textarea {
-  resize: vertical;
-}
-.plan-fields select:focus,
-.plan-fields textarea:focus {
-  outline: 2px solid #79a886;
-  outline-offset: 1px;
-}
-.plan-price-inputs {
-  display: grid;
-  grid-template-columns: 1fr 120px;
-  gap: 12px;
-}
-.plan-interval {
-  display: flex;
-  justify-content: space-between;
-  margin: 0;
-  padding: 12px 0;
-  border-block: 1px solid #e8ece5;
-  font-size: 0.9rem;
-}
-.plan-interval strong {
-  color: #315b43;
-}
-.plan-list-heading,
-.plan-card-heading,
-.plan-card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-.plan-list-heading h3 {
-  margin: 0;
-}
-.plan-list-heading > span,
-.plan-card-footer > span,
-.plan-help {
-  color: #6b725f;
-  font-size: 0.8rem;
-}
-.plan-list {
-  display: grid;
-  gap: 16px;
-  margin-top: 20px;
-}
-.plan-card {
-  padding: 20px;
-  border: 1px solid #dce3d6;
-  border-radius: 14px;
-  background: #fffefa;
-  min-width: 0;
-}
-.plan-card h3 {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-.plan-price {
-  margin: 20px 0 12px;
-}
-.plan-price strong {
-  color: #315b43;
-  font-size: clamp(1.2rem, 2.5vw, 1.8rem);
-  font-variant-numeric: tabular-nums;
-}
-.plan-price span {
-  font-size: 0.85rem;
-}
-.plan-description {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font-size: 0.9rem;
-}
-.plan-card-footer {
-  border-top: 1px solid #e8ece5;
-  padding-top: 14px;
-  margin-top: 18px;
-}
-.plan-card-footer button {
-  font-size: 0.8rem;
-  padding: 8px 12px;
-  flex-shrink: 0;
-}
-.plan-help {
-  margin: 0;
-}
-@media (max-width: 800px) {
+@layer components {
   .plan-columns {
-    grid-template-columns: 1fr;
+    display: grid;
+    grid-template-columns: minmax(280px, 380px) 1fr;
+    gap: 24px;
+    align-items: start;
   }
-}
-@media (max-width: 520px) {
-  .admin-nav {
-    flex-wrap: wrap;
+  .plan-fields {
+    display: grid;
+    gap: 18px;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+  }
+  .plan-fields select,
+  .plan-fields textarea {
+    width: 100%;
+    border: 1px solid #aab8a8;
+    border-radius: 9px;
+    padding: 11px 12px;
+    background: white;
+    color: inherit;
+    font: inherit;
+  }
+  .plan-fields textarea {
+    resize: vertical;
+  }
+  .plan-fields select:focus,
+  .plan-fields textarea:focus {
+    outline: 2px solid #79a886;
+    outline-offset: 1px;
+  }
+  .plan-price-inputs {
+    display: grid;
+    grid-template-columns: 1fr 120px;
+    gap: 12px;
+  }
+  .plan-interval {
+    display: flex;
+    justify-content: space-between;
+    margin: 0;
+    padding: 12px 0;
+    border-block: 1px solid #e8ece5;
+    font-size: 0.9rem;
+  }
+  .plan-interval strong {
+    color: #315b43;
+  }
+  .plan-list-heading,
+  .plan-card-heading,
+  .plan-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .plan-list-heading h3 {
+    margin: 0;
+  }
+  .plan-list-heading > span,
+  .plan-card-footer > span,
+  .plan-help {
+    color: #6b725f;
+    font-size: 0.8rem;
+  }
+  .plan-list {
+    display: grid;
+    gap: 16px;
+    margin-top: 20px;
+  }
+  .plan-card {
+    padding: 20px;
+    border: 1px solid #dce3d6;
+    border-radius: 14px;
+    background: #fffefa;
+    min-width: 0;
+  }
+  .plan-card h3 {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+  .plan-price {
+    margin: 20px 0 12px;
+  }
+  .plan-price strong {
+    color: #315b43;
+    font-size: clamp(1.2rem, 2.5vw, 1.8rem);
+    font-variant-numeric: tabular-nums;
+  }
+  .plan-price span {
+    font-size: 0.85rem;
+  }
+  .plan-description {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 0.9rem;
   }
   .plan-card-footer {
-    flex-wrap: wrap;
+    border-top: 1px solid #e8ece5;
+    padding-top: 14px;
+    margin-top: 18px;
+  }
+  .plan-card-footer button {
+    font-size: 0.8rem;
+    padding: 8px 12px;
+    flex-shrink: 0;
+  }
+  .plan-help {
+    margin: 0;
+  }
+  @media (max-width: 800px) {
+    .plan-columns {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 520px) {
+    .admin-nav {
+      flex-wrap: wrap;
+    }
+    .plan-card-footer {
+      flex-wrap: wrap;
+    }
   }
 }

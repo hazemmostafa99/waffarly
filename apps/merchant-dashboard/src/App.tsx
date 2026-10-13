@@ -1,9 +1,15 @@
+import { useLocale, Input, Button, Card, PasswordInput } from '@waffarly/ui';
 import { useEffect, useState, type FormEvent } from 'react';
-import type { LoginRequest, OwnerProfile } from '@waffarly/contracts';
+import {
+  BUSINESS_ACTIVITY_LABELS,
+  type LoginRequest,
+  type OwnerProfile,
+} from '@waffarly/contracts';
 import { apiRequest } from './lib/api-client.js';
 import { StorefrontSettings } from './StorefrontSettings.js';
 
 export function App() {
+  const { t, errorText } = useLocale();
   const [profile, setProfile] = useState<OwnerProfile | null | undefined>(undefined);
   const [login, setLogin] = useState<LoginRequest>({ username: '', password: '' });
   const [busy, setBusy] = useState(false);
@@ -39,18 +45,25 @@ export function App() {
     }
   }
 
-  if (profile === undefined) return <main className="shell">Loading Merchant Dashboard…</main>;
+  if (profile === undefined)
+    return (
+      <main id="main-content" tabIndex={-1} className="shell">
+        {t('Loading Merchant Dashboard…')}
+      </main>
+    );
 
   if (profile === null)
     return (
-      <main className="shell narrow">
-        <div className="eyebrow">Waffarly · Merchant</div>
-        <h1>Merchant Dashboard</h1>
-        <p>Your account opens after Waffarly activates the first month of your subscription.</p>
+      <main id="main-content" tabIndex={-1} className="shell narrow">
+        <div className="eyebrow">{t('Waffarly · Merchant')}</div>
+        <h1>{t('Merchant Dashboard')}</h1>
+        <p>
+          {t('Your account opens after Waffarly activates the first month of your subscription.')}
+        </p>
         <form className="panel form" onSubmit={(event) => void signIn(event)}>
           <label>
-            Username
-            <input
+            {t('Username')}{' '}
+            <Input
               autoComplete="username"
               value={login.username}
               onChange={(event) => setLogin({ ...login, username: event.target.value })}
@@ -58,71 +71,82 @@ export function App() {
             />
           </label>
           <label>
-            Password
-            <input
-              type="password"
+            {t('Password')}{' '}
+            <PasswordInput
+              aria-label={t('Password')}
               autoComplete="current-password"
               value={login.password}
               onChange={(event) => setLogin({ ...login, password: event.target.value })}
               required
             />
           </label>
-          <button type="submit" disabled={busy}>
-            Sign in
-          </button>
+          <Button type="submit" disabled={busy}>
+            {busy ? t('Signing in…') : t('Sign in')}{' '}
+          </Button>
         </form>
         {error && (
           <p className="error" role="alert">
-            {error}
+            {errorText(error)}
           </p>
         )}
       </main>
     );
 
   return (
-    <main className="shell">
+    <main id="main-content" tabIndex={-1} className="shell">
       <header className="topbar">
         <div>
-          <div className="eyebrow">Waffarly · Merchant</div>
+          <div className="eyebrow">{t('Waffarly · Merchant')}</div>
           <h1>{profile.merchantName}</h1>
-          <p>Signed in as {profile.username}</p>
+          <p>
+            {t('Signed in as')} {profile.username}
+          </p>
         </div>
-        <button className="secondary" type="button" onClick={() => void signOut()}>
-          Sign out
-        </button>
+        <Button
+          variant="outline"
+          className="secondary"
+          type="button"
+          onClick={() => void signOut()}
+        >
+          {t('Sign out')}{' '}
+        </Button>
       </header>
       {error && (
         <p className="error" role="alert">
-          {error}
+          {errorText(error)}
         </p>
       )}
-      <section className="panel">
+      <Card className="panel">
         <div className="section-heading">
           <div>
-            <div className="eyebrow">Restaurant account</div>
-            <h2>Contact details</h2>
+            <div className="eyebrow">{t('Business account')}</div>
+            <h2>{t('Contact details')}</h2>
           </div>
-          <span className="status-badge">Subscription active</span>
+          <span className="status-badge">{t('Subscription active')}</span>
         </div>
         <dl className="profile-grid">
           <div className="profile-item">
-            <dt>Restaurant name</dt>
+            <dt>{t('Business activity')}</dt>
+            <dd>{t(BUSINESS_ACTIVITY_LABELS[profile.activity ?? 'other'])}</dd>
+          </div>
+          <div className="profile-item">
+            <dt>{t('Business name')}</dt>
             <dd>{profile.merchantName}</dd>
           </div>
           <div className="profile-item">
-            <dt>Restaurant phone</dt>
+            <dt>{t('Business phone')}</dt>
             <dd>{profile.contactPhone}</dd>
           </div>
           <div className="profile-item">
-            <dt>Owner name</dt>
+            <dt>{t('Owner name')}</dt>
             <dd>{profile.ownerName}</dd>
           </div>
           <div className="profile-item">
-            <dt>Owner mobile</dt>
+            <dt>{t('Owner mobile')}</dt>
             <dd>{profile.ownerMobile}</dd>
           </div>
         </dl>
-      </section>
+      </Card>
       <StorefrontSettings profile={profile} />
     </main>
   );

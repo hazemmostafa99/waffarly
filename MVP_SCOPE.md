@@ -1,5 +1,7 @@
 # Waffarly (وفّرلي) — Restaurant MVP Scope
 
+> **Scope correction — 2026-10-13:** Restaurant-only platform scope has been superseded by the owner's multi-business clarification. This document now represents a restaurant workflow proposal. Clothing stores, supermarkets, and other businesses use the shared merchant foundation; restaurant-specific workflows must not be imposed on them. Their specialized operations remain subject to separate feature decisions.
+
 > **Document status:** Draft v0.1 — **not yet approved as final MVP scope**  
 > **Last updated:** 2026-10-13  
 > **Parent document:** [`PROJECT_OVERVIEW.md`](./PROJECT_OVERVIEW.md) (working draft v0.2)  

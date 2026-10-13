@@ -1,5 +1,8 @@
 {
   "extends": "@waffarly/typescript-config/react",
-  "compilerOptions": { "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo" },
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo",
+    "paths": { "@/*": ["./src/*"] }
+  },
   "include": ["src", "vite.config.ts"]
 }

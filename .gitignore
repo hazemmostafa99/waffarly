@@ -3,8 +3,11 @@ node_modules/
 dist/
 build/
 .next/
+.next-ui-tests/
 .turbo/
 coverage/
+test-results/
+playwright-report/
 *.tsbuildinfo
 *.log
 .DS_Store
