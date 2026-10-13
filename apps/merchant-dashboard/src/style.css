@@ -45,3 +45,132 @@ p {
   font: inherit;
   cursor: pointer;
 }
+
+.shell {
+  max-width: 800px;
+  padding: 48px 24px;
+}
+.shell.narrow {
+  max-width: 520px;
+  padding-top: 10vh;
+}
+.topbar {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 30px;
+}
+.topbar h1 {
+  margin-bottom: 4px;
+}
+.topbar p {
+  margin-top: 0;
+}
+.panel {
+  border: 1px solid #dce3d6;
+  border-radius: 18px;
+  background: white;
+  padding: 24px;
+  box-shadow: 0 10px 30px #2d493011;
+}
+.panel h2 {
+  margin-top: 0;
+}
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.section-heading h2 {
+  margin: 6px 0 0;
+}
+.status-badge {
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: #e8f3e9;
+  color: #315b43;
+  padding: 7px 11px;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.profile-item {
+  min-width: 0;
+  border: 1px solid #e4e9e1;
+  border-radius: 12px;
+  padding: 16px;
+}
+.profile-item dt {
+  color: #6b725f;
+  font-size: 0.82rem;
+}
+.profile-item dd {
+  overflow-wrap: anywhere;
+  margin: 7px 0 0;
+  font-weight: 650;
+}
+.form {
+  display: grid;
+  gap: 16px;
+}
+label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.94rem;
+}
+input {
+  width: 100%;
+  border: 1px solid #aab8a8;
+  border-radius: 9px;
+  padding: 11px 12px;
+  font: inherit;
+}
+input:focus {
+  outline: 2px solid #79a886;
+  outline-offset: 1px;
+}
+button {
+  border: 0;
+  border-radius: 9px;
+  background: #315b43;
+  color: white;
+  padding: 11px 15px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+button.secondary {
+  border: 1px solid #315b43;
+  background: transparent;
+  color: #315b43;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.error {
+  max-width: none;
+  padding: 12px 16px;
+  border-radius: 9px;
+  background: #fff0ed;
+  color: #9b2c17;
+}
+
+@media (max-width: 560px) {
+  .section-heading {
+    align-items: start;
+    flex-direction: column;
+  }
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+}

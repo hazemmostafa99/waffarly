@@ -18,4 +18,16 @@ export class AppConfiguration {
       .map((origin) => origin.trim())
       .filter(Boolean);
   }
+
+  get superAdminUsername(): string {
+    return this.environment.SUPER_ADMIN_USERNAME.trim().toLowerCase();
+  }
+
+  get superAdminPasswordHash(): string {
+    return this.environment.SUPER_ADMIN_PASSWORD_HASH;
+  }
+
+  get isProduction(): boolean {
+    return this.environment.NODE_ENV === 'production';
+  }
 }

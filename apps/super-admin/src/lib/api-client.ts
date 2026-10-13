@@ -16,10 +16,20 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const response = await fetch(new URL(path.replace(/^\//, ''), `${apiBaseUrl()}/`));
+export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(new URL(path.replace(/^\//, ''), `${apiBaseUrl()}/`), {
+    ...init,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...init.headers },
+  });
   if (!response.ok) {
-    throw new ApiError(`API request failed with status ${response.status}.`, response.status);
+    const body = (await response.json().catch(() => null)) as {
+      message?: string | string[];
+    } | null;
+    const message = Array.isArray(body?.message)
+      ? body.message.join(', ')
+      : (body?.message ?? `API request failed with status ${response.status}.`);
+    throw new ApiError(message, response.status);
   }
   return (await response.json()) as T;
 }

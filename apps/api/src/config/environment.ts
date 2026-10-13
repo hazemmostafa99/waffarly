@@ -14,6 +14,8 @@ const environmentSchema = z.object({
     .default(
       'http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5175',
     ),
+  SUPER_ADMIN_USERNAME: z.string().max(80).default(''),
+  SUPER_ADMIN_PASSWORD_HASH: z.string().max(255).default(''),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

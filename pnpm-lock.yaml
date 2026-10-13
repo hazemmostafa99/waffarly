@@ -81,6 +81,9 @@ importers:
 
   apps/merchant-dashboard:
     dependencies:
+      '@waffarly/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@waffarly/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -174,6 +177,9 @@ importers:
 
   apps/super-admin:
     dependencies:
+      '@waffarly/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@waffarly/ui':
         specifier: workspace:*
         version: link:../../packages/ui

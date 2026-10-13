@@ -2,7 +2,7 @@
 
 ## Product decisions preserved from the source documents
 
-The approved product constraints remain in `PROJECT_OVERVIEW.md` and `MVP_SCOPE.md`. This scaffold follows the confirmed NestJS + TypeScript, PostgreSQL + Prisma, Next.js storefront, and React dashboard directions. It does not implement proposed or open product requirements.
+The approved product constraints remain in `PROJECT_OVERVIEW.md` and `MVP_SCOPE.md`. The first Super Admin implementation slice follows later product-owner decisions recorded in `docs/features/SUPER_ADMIN.md`. It does not implement the remaining proposed or open product requirements.
 
 ## Initial implementation choices
 
@@ -25,15 +25,17 @@ All npm dependencies are declared with exact versions and the lockfile pins tran
 
 ## Database schema boundary
 
-The initial Prisma schema has no business entities. `FoundationMarker` maps to `_waffarly_foundation_marker`; it is an infrastructure-only table used to validate Prisma Client generation and migrations. It carries no merchant, user, catalog, or order data. Remove or replace it only when an approved business ERD is ready and its migration implications are reviewed.
+The initial Prisma schema contained only `FoundationMarker`, which remains an infrastructure-only table. The approved first Super Admin slice adds `Merchant`, `OwnerAccount`, and `AuthSession` plus an additive migration. `Merchant` is the tenant boundary for this slice. No catalog, order, or full recurring-subscription schema has been added.
 
 Prisma 7 requires a PostgreSQL driver adapter at runtime and stores CLI datasource configuration in `prisma.config.ts`. The API creates one `PrismaService` instance through Nest dependency injection. It does not connect eagerly at startup: the health request performs the query, so API liveness remains available if PostgreSQL is down. Nest shutdown hooks call `$disconnect()`.
+
+The first slice uses an environment-configured Super Admin username and scrypt password hash, backend sessions represented by opaque tokens stored only as hashes, and HTTP-only cookies. This is a reversible implementation choice, not approval of a final platform authentication strategy. Owner passwords are hashed with scrypt; the admin-created plaintext password is shown only immediately after creation for manual delivery. The owner cannot sign in before first-month activation. Renewal and expiry enforcement are not yet implemented.
 
 ## Decisions still open
 
 - Whether POS is independently deployed or part of the merchant dashboard.
-- Authentication/session strategy and tenant-isolation enforcement mechanism.
+- Final authentication/session strategy, administrator roles, and tenant-isolation enforcement for future operational modules.
 - API hosting, application deployment topology, and production environment management.
-- The first approved business modules, data model, and API contracts.
+- Additional business modules, the full ERD, and further API contracts.
 - Checkout, branch routing, subscription lifecycle, restaurant kitchen handoff, and the other open questions in `MVP_SCOPE.md`.
 - Realtime transport, queues, and any infrastructure beyond PostgreSQL.

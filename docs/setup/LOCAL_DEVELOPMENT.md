@@ -16,16 +16,17 @@ From the repository root in PowerShell:
 corepack enable
 pnpm install
 Copy-Item .env.example .env
+Copy-Item apps/super-admin/.env.example apps/super-admin/.env.local
+Copy-Item apps/merchant-dashboard/.env.example apps/merchant-dashboard/.env.local
+pnpm --filter @waffarly/api admin:hash-password
 ```
 
-The example credentials are for local development only. Do not put real credentials in the repository. Docker PostgreSQL uses host port `5433` by default to avoid a locally installed PostgreSQL service on `5432`. If you choose another host port, update both `POSTGRES_PORT` and the port in `DATABASE_URL` in `.env`.
+The last command prompts for a Super Admin password without echoing it and prints a scrypt hash. Copy that hash into `SUPER_ADMIN_PASSWORD_HASH` in the local root `.env`; `SUPER_ADMIN_USERNAME` defaults to `admin` in the example. Without both values, health endpoints still run but Super Admin login returns a configuration error. Do not put real credentials in the repository. Docker PostgreSQL uses host port `5433` by default to avoid a locally installed PostgreSQL service on `5432`. If you choose another host port, update both `POSTGRES_PORT` and the port in `DATABASE_URL` in `.env`.
 
-Optional frontend-only environment files can be created from the matching samples:
+The Super Admin and Merchant Dashboard environment files above are needed for their API clients. Additional frontend-only environment files can be created from the matching samples:
 
 ```powershell
 Copy-Item apps/storefront/.env.example apps/storefront/.env.local
-Copy-Item apps/super-admin/.env.example apps/super-admin/.env.local
-Copy-Item apps/merchant-dashboard/.env.example apps/merchant-dashboard/.env.local
 Copy-Item apps/pos/.env.example apps/pos/.env.local
 ```
 
@@ -44,7 +45,7 @@ pnpm db:check
 
 Compose runs a container named `waffarly-postgres` and persists local PostgreSQL data in the named `waffarly-postgres-data` volume. To stop the container while keeping the data, run `docker compose --env-file .env -f infrastructure/docker/compose.yaml down`. The database health check runs `pg_isready`.
 
-`db:migrate` creates/applies the Prisma development migration for the infrastructure marker only. There is no seed script and no business data. `db:check` validates the schema, generates the client, and checks applied migration status; PostgreSQL must be running for the final command.
+`db:migrate` applies the foundation marker and first Super Admin slice migrations. There is no seed script or mock business data. `db:check` validates the schema, generates the client, and checks applied migration status; PostgreSQL must be running for the final command.
 
 ## Start the workspace
 
@@ -62,16 +63,25 @@ pnpm exec turbo run dev --filter=@waffarly/merchant-dashboard
 pnpm exec turbo run dev --filter=@waffarly/pos
 ```
 
-| App                      | Local URL                       |
-| ------------------------ | ------------------------------- |
-| Storefront               | http://localhost:3000           |
-| Super Admin shell        | http://localhost:5173           |
-| Merchant Dashboard shell | http://localhost:5174           |
-| POS workspace shell      | http://localhost:5175           |
-| API liveness             | http://localhost:4000/health    |
-| API database health      | http://localhost:4000/health/db |
+| App                 | Local URL                       |
+| ------------------- | ------------------------------- |
+| Storefront          | http://localhost:3000           |
+| Super Admin         | http://localhost:5173           |
+| Merchant Dashboard  | http://localhost:5174           |
+| POS workspace shell | http://localhost:5175           |
+| API liveness        | http://localhost:4000/health    |
+| API database health | http://localhost:4000/health/db |
 
 The API validates `DATABASE_URL`, `PORT`, `NODE_ENV`, and `CORS_ORIGINS` at startup. Its liveness route does not depend on PostgreSQL. The database route executes `SELECT 1` and returns HTTP 503 with `DATABASE_UNAVAILABLE` when that query fails. The API logs structured JSON to stdout/stderr and closes Prisma during Nest shutdown.
+
+## First Super Admin workflow
+
+1. Open http://localhost:5173 and sign in with `SUPER_ADMIN_USERNAME` and the password used to generate the configured hash.
+2. Enter the restaurant name, restaurant contact number, owner name, owner mobile number, owner username, and owner password. The four contact fields are the approved merchant information; username/password provision owner access.
+3. After creation, call the owner to verify the mobile number, then send the displayed credentials manually in a private message. Dismiss the credential panel when done. No messaging API is called.
+4. The owner cannot sign in at http://localhost:5174 yet. After first-month collection is confirmed outside Waffarly, use **Activate first month** in Super Admin. The owner can then sign in.
+
+Sessions use HTTP-only cookies and require the configured local frontend origins. Passwords are stored as hashes, never returned from the API. The current slice does not implement password recovery, renewal, expiry, or any restaurant configuration feature; do not use it as a complete production subscription service.
 
 ## Checks
 

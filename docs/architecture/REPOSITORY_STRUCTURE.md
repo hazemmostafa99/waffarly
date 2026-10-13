@@ -1,17 +1,17 @@
 # Repository structure
 
-The repository is a pnpm workspace coordinated by Turborepo. Each app owns its presentation and runtime configuration; the NestJS API owns future business behavior and is the only application that connects to PostgreSQL.
+The repository is a pnpm workspace coordinated by Turborepo. Each app owns its presentation and runtime configuration; the NestJS API owns business behavior and is the only application that connects to PostgreSQL.
 
 ```text
 apps/
-  api/                 NestJS HTTP API and infrastructure health endpoints
+  api/                 NestJS HTTP API, health, auth, and first Super Admin slice
   storefront/          Next.js App Router public shell
-  super-admin/         React + Vite platform shell
-  merchant-dashboard/  React + Vite merchant shell
+  super-admin/         React + Vite merchant creation and first-month activation
+  merchant-dashboard/  React + Vite owner login and merchant shell
   pos/                 Minimal React + Vite POS workspace shell
 packages/
   database/            Prisma schema, generated client, migrations, adapter
-  contracts/           Future API contracts; intentionally has no business DTOs
+  contracts/           Shared types for the approved first slice
   ui/                  Small shared React component package
   eslint-config/       Shared flat ESLint rules
   typescript-config/   Shared strict TypeScript configurations
