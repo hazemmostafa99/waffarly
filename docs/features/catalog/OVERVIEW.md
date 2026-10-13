@@ -17,7 +17,7 @@ The first backend Catalog slice is now implemented; the following capabilities r
 
 - The Catalog NestJS module now exposes owner-scoped Media registration/listing, Category management, and Product management APIs. Variants, modifiers, selling units, pricing, inventory, orders, public product listing, configurator, and POS selection are not implemented.
 - The Prisma schema now contains tenant-owned MediaAsset, Category, Product, ProductImage, and ProductCategory models. Pricing, inventory, and order entities remain absent.
-- The Merchant Dashboard currently exposes contact information and storefront design settings. The storefront design component renders sample presentation content rather than persisted products.
+- The Merchant Dashboard now exposes the first owner Catalog workspace for Media references, Categories, and Products. Public Storefront and POS projections still render no persisted catalog.
 - The public Next.js application is an onboarding/marketing shell. It does not resolve or render a merchant catalog.
 - The POS application is a placeholder workspace with no sales or catalog behavior.
 - The backend currently provides Super Admin, authentication, merchant application, monthly plan, activity/module metadata, storefront-design behavior, and the first `catalog` module slice. It has no `pricing` module.
@@ -305,7 +305,7 @@ The first selected feature document is:
 docs/features/catalog/PRODUCTS.md
 ```
 
-The [Products discovery specification](PRODUCTS.md) records approved business rules for product information and lifecycle. The [Categories discovery specification](CATEGORIES.md) records the selected hierarchical classification behavior. The current implementation adds backend models and owner APIs for the minimal Products, Categories, and reusable Media reference slice; UI and channel projections remain deferred.
+The [Products discovery specification](PRODUCTS.md) records approved business rules for product information and lifecycle. The [Categories discovery specification](CATEGORIES.md) records the selected hierarchical classification behavior. The current implementation adds backend models, owner APIs, and a minimal Merchant Dashboard workspace for Products, Categories, and reusable Media references; public channel projections remain deferred.
 
 Subsequent filenames and IDs should be chosen only when their feature is selected, preserving the mapping to existing parent CAT IDs.
 

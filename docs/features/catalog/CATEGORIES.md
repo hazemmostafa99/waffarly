@@ -289,9 +289,9 @@ This boundary does not approve classes, routes, repository abstractions, or a da
 
 ### 12.2 Candidate frontend responsibility
 
-The Merchant Dashboard would eventually present hierarchy, image, content, availability, lifecycle, and permitted management actions. It must render backend errors and cannot decide tenant ownership, hierarchy validity, link existence, deletion eligibility, or permission.
+The Merchant Dashboard now presents the first Category creation/list/archive workspace with image references and hierarchy selection. It must render backend errors and cannot decide tenant ownership, hierarchy validity, link existence, deletion eligibility, or permission.
 
-No UI is approved by this specification.
+Public Storefront/POS category navigation remains outside this slice.
 
 ## 13. Dependencies
 
@@ -369,7 +369,7 @@ Image limits and media behavior will be handled in the Product Media discovery r
 1. Record answers to the remaining focused questions and update the parent decision record.
 2. Complete minimal Product Media discovery because Category and Product images are required.
 3. Reconcile Products with approved Category lifecycle and assignment behavior.
-4. Seek explicit approval before designing Prisma models, NestJS APIs, React UI, or tests.
-5. Seek separate explicit authorization before implementing any approved design.
+4. Validate the backend and Merchant Dashboard slice before adding public channel projections.
+5. Keep additional implementation behind the documented feature sequence.
 
-**Current authorization boundary:** tenant-scoped owner APIs and relational backend behavior for Categories, with reusable Media references.
+**Current authorization boundary:** tenant-scoped owner APIs and Merchant Dashboard behavior for Categories, with reusable Media references.

@@ -73,7 +73,7 @@ The product owner confirmed the following on 2026-10-13:
 - Product reviews, nutrition, allergens, preparation time, SKU, barcode, tax codes, cost price, supplier data, and activity-specific extensions.
 - Clothing, supermarket, and electronics operational implementation.
 - Staff roles and granular product permissions.
-- Prisma schema, migrations, API contracts, React UI, and media-provider selection.
+- Public Storefront/POS UI, advanced editing, and media-provider selection.
 
 ## 4. Actors and Permissions
 
@@ -277,9 +277,9 @@ This does not approve module files or service decomposition. A modular-monolith 
 
 ### 10.2 Candidate frontend responsibility
 
-The Merchant Dashboard would eventually provide owner product management. It would collect Arabic content, price input, image, category, and availability, then display backend validation results and lifecycle state. It must not decide authorization, cross-tenant validity, deletion eligibility, or authoritative pricing.
+The Merchant Dashboard now provides the first owner product-management workspace. It collects content, price input, Media references, category links, and availability, then displays backend validation results and lifecycle state. It must not decide authorization, cross-tenant validity, deletion eligibility, or authoritative pricing.
 
-No UI is approved by this specification.
+Public Storefront/POS UI and advanced product editing remain outside this slice.
 
 ## 11. Dependencies
 
@@ -373,7 +373,7 @@ Categories and reusable Media references are implemented in the first backend sl
 1. Analyze minimal Categories because one or more category assignments are mandatory.
 2. Analyze minimal Product Media because one or more images and exactly one primary image are mandatory.
 3. Return to Products to close remaining validation, lifecycle, and dependency behavior.
-4. Validate the backend slice, then seek approval before adding React UI, Storefront/POS projections, or deferred domain features.
+4. Validate the backend and Merchant Dashboard slice, then seek approval before adding Storefront/POS projections or deferred domain features.
 5. Keep additional implementation behind the documented feature sequence.
 
-**Current authorization boundary:** minimal backend Models, owner APIs, and automated validation for Products, Categories, and reusable Media references.
+**Current authorization boundary:** minimal backend models, owner APIs, Merchant Dashboard management UI, and automated validation for Products, Categories, and reusable Media references.

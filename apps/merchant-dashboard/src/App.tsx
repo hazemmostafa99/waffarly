@@ -7,6 +7,7 @@ import {
 } from '@waffarly/contracts';
 import { apiRequest } from './lib/api-client.js';
 import { StorefrontSettings } from './StorefrontSettings.js';
+import { CatalogWorkspace } from './CatalogWorkspace.js';
 
 export function App() {
   const { t, errorText } = useLocale();
@@ -147,6 +148,7 @@ export function App() {
           </div>
         </dl>
       </Card>
+      <CatalogWorkspace />
       <StorefrontSettings profile={profile} />
     </main>
   );
