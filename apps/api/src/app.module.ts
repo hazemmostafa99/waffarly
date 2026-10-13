@@ -4,8 +4,16 @@ import { DatabaseModule } from './infrastructure/database/database.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { SuperAdminModule } from './modules/super-admin/super-admin.module.js';
+import { CatalogModule } from './modules/catalog/catalog.module.js';
 
 @Module({
-  imports: [ConfigurationModule, DatabaseModule, HealthModule, AuthModule, SuperAdminModule],
+  imports: [
+    ConfigurationModule,
+    DatabaseModule,
+    HealthModule,
+    AuthModule,
+    SuperAdminModule,
+    CatalogModule,
+  ],
 })
 export class AppModule {}
