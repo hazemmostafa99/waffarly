@@ -17,17 +17,36 @@ model FoundationMarker {
 
 // A merchant is the tenant boundary for the first restaurant release.
 model Merchant {
-  id                    String        @id @default(uuid()) @db.Uuid
-  name                  String        @db.VarChar(160)
-  contactPhone          String        @db.VarChar(32)
-  ownerName             String        @db.VarChar(160)
-  ownerMobile           String        @db.VarChar(32)
-  firstMonthActivatedAt DateTime?     @db.Timestamptz(6)
-  firstMonthActivatedBy String?       @db.VarChar(80)
-  createdAt             DateTime      @default(now()) @db.Timestamptz(6)
+  id                    String               @id @default(uuid()) @db.Uuid
+  name                  String               @db.VarChar(160)
+  contactPhone          String               @db.VarChar(32)
+  ownerName             String               @db.VarChar(160)
+  ownerMobile           String               @db.VarChar(32)
+  firstMonthActivatedAt DateTime?            @db.Timestamptz(6)
+  firstMonthActivatedBy String?              @db.VarChar(80)
+  createdAt             DateTime             @default(now()) @db.Timestamptz(6)
   owner                 OwnerAccount?
+  application           MerchantApplication?
+  storefront            MerchantStorefront?
 
   @@map("merchants")
+}
+
+// Public merchant applications remain separate from merchant tenants until approval.
+model MerchantApplication {
+  id           String    @id @default(uuid()) @db.Uuid
+  name         String    @db.VarChar(160)
+  contactPhone String    @db.VarChar(32)
+  ownerName    String    @db.VarChar(160)
+  ownerMobile  String    @db.VarChar(32)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+  approvedAt   DateTime? @db.Timestamptz(6)
+  approvedBy   String?   @db.VarChar(80)
+  merchantId   String?   @unique @db.Uuid
+  merchant     Merchant? @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+
+  @@index([createdAt])
+  @@map("merchant_applications")
 }
 
 model OwnerAccount {
@@ -52,4 +71,81 @@ model AuthSession {
   @@index([subjectKind, subjectId])
   @@index([expiresAt])
   @@map("auth_sessions")
+}
+
+// Platform-owned presentation definitions. Tenant choices are persisted separately; publication is distinct.
+model StorefrontTemplate {
+  id          String               @id @default(uuid()) @db.Uuid
+  key         String               @unique @db.VarChar(80)
+  name        String               @db.VarChar(160)
+  description String               @db.VarChar(1000)
+  activity    String               @db.VarChar(32)
+  layout      String               @db.VarChar(32)
+  accentColor String               @db.VarChar(7)
+  status      String               @default("draft") @db.VarChar(16)
+  revision    Int                  @default(1)
+  updatedBy   String               @db.VarChar(80)
+  createdAt   DateTime             @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime             @updatedAt @db.Timestamptz(6)
+  merchants   MerchantStorefront[]
+
+  @@index([activity, status])
+  @@map("storefront_templates")
+}
+
+// Merchant-specific choices are separate from the shared presentation definition.
+model MerchantStorefront {
+  merchantId  String             @id @db.Uuid
+  templateId  String             @db.Uuid
+  accentColor String             @db.VarChar(7)
+  logoData    String?            @db.Text
+  revision    Int                @default(1)
+  updatedAt   DateTime           @updatedAt @db.Timestamptz(6)
+  merchant    Merchant           @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  template    StorefrontTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+
+  @@index([templateId])
+  @@map("merchant_storefronts")
+}
+
+// Commercial definitions only. Merchant coverage and collection are separate concerns.
+model MonthlyPlan {
+  id              String   @id @default(uuid()) @db.Uuid
+  creationRequest String   @unique @db.Uuid
+  name            String   @db.VarChar(160)
+  description     String   @db.VarChar(1000)
+  monthlyPrice    Decimal  @db.Decimal(10, 2)
+  currency        String   @db.VarChar(3)
+  billingInterval String   @default("monthly") @db.VarChar(16)
+  revision        Int      @default(1)
+  createdBy       String   @db.VarChar(80)
+  updatedBy       String   @db.VarChar(80)
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("monthly_plans")
+}
+
+// Dashboard overrides of code-managed definitions. Applicability is catalog metadata only.
+model BusinessActivity {
+  key         String   @id @db.VarChar(80)
+  name        String   @db.VarChar(160)
+  description String   @db.VarChar(1000)
+  moduleKeys  String[] @default([])
+  revision    Int      @default(1)
+  updatedBy   String   @db.VarChar(80)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("business_activities")
+}
+
+model PlatformModule {
+  key         String   @id @db.VarChar(80)
+  name        String   @db.VarChar(160)
+  description String   @db.VarChar(1000)
+  revision    Int      @default(1)
+  updatedBy   String   @db.VarChar(80)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("platform_modules")
 }

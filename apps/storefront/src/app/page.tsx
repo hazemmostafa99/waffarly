@@ -1,4 +1,4 @@
-import { Button } from '@waffarly/ui';
+import Link from 'next/link';
 
 export default function HomePage() {
   return (
@@ -6,7 +6,9 @@ export default function HomePage() {
       <span className="eyebrow">Waffarly · Foundation</span>
       <h1>Public storefront</h1>
       <p>The Next.js App Router shell is ready for approved storefront requirements.</p>
-      <Button type="button">Storefront foundation is ready</Button>
+      <Link className="apply-link" href="/join">
+        Apply to set up your restaurant
+      </Link>
     </main>
   );
 }

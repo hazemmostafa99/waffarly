@@ -41,8 +41,11 @@ This section defines the intended product direction, **not** a final agreement t
 | DEC-007 | Initial market | **Egypt**; language, tax, local delivery, and checkout rules remain open. |
 | DEC-008 | Merchant commercial model | **Monthly subscription** at launch; prices, collection/activation, and lifecycle remain open. |
 | DEC-009 | Payment integration | **No payment gateway/provider integration** in the initial release; **no customer payment method is implied**. |
+| Plans & Subscriptions PS-D02 | Launch plan catalog | **Multiple monthly subscription plans** for restaurants, confirmed by the owner on 2026-10-13 in [Plans & Subscriptions discovery](docs/features/super-admin/plans-subscriptions/OVERVIEW.md). Exact count, names, differences, prices, currency/tax treatment, and catalog governance remain **[OPEN]**; implementation is not authorized by this decision. |
 
 ### 2.3 Explicit non-assumptions
+
+**Implementation update, 2026-10-13 — PS-D04:** The owner authorized documenting and implementing [basic monthly-plan administration](docs/features/super-admin/plans-subscriptions/MONTHLY_PLAN.md). Authenticated create/list/edit is implemented; actual offer names/prices are entered by the administrator. This slice does not finalize merchant assignment, entitlements, collection, or recurring coverage.
 
 - **No cash-on-delivery or cash-at-pickup default.** Customer checkout/payment handling is **[OPEN]**.
 - **No default kitchen interface.** Dedicated KDS, POS kitchen view, ticket printing, and other handoff mechanisms are **[OPEN]**.

@@ -1,0 +1,49 @@
+.storefront-design {
+  --design-accent: #315b43;
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(160px, 1fr) auto auto;
+  min-height: 360px;
+  aspect-ratio: 1.45;
+  overflow: hidden;
+  padding: 25px 5.5% 16px;
+  background: #faf7ef;
+  color: #2c3830;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+.design-hero { background: #f1ebe1; }
+.design-header { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; gap: 12px; min-width: 0; }
+.design-brand { display: inline-flex; align-items: center; gap: 8px; min-width: 0; color: var(--design-accent); font-family: Georgia, 'Times New Roman', serif; font-size: clamp(10px, 1.1vw, 15px); font-weight: 600; }
+.design-brand > span:last-child { display: grid; gap: 3px; }
+.design-brand small { color: #8a8c7d; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 5px; font-weight: 500; letter-spacing: .12em; }
+.design-monogram, .design-logo { display: grid; place-items: center; width: 27px; height: 27px; flex: 0 0 27px; border-radius: 50%; background: var(--design-accent); color: #fffdf8; object-fit: contain; }
+.design-logo { padding: 2px; background: #fff; }
+.design-nav { display: inline-flex; gap: clamp(8px, 1.7vw, 23px); color: #666c5f; font-size: 6px; letter-spacing: .1em; }
+.design-header-action { border-bottom: 1px solid var(--design-accent); padding: 0 0 5px; color: var(--design-accent); font-size: 6px; font-weight: 700; letter-spacing: .08em; white-space: nowrap; }
+.design-header-action > span { padding-left: 7px; }
+.design-hero-copy { position: relative; z-index: 1; align-self: center; width: 59%; padding: 26px 0 23px; }
+.design-eyebrow { color: var(--design-accent); font-size: 6px; font-weight: 700; letter-spacing: .22em; }
+.design-hero-copy h2 { margin: 11px 0 10px; color: #2d3830; font-family: Georgia, 'Times New Roman', serif; font-size: clamp(27px, 4.1vw, 54px); font-weight: 400; letter-spacing: -.065em; line-height: .98; white-space: pre-line; }
+.design-hero-copy p { display: -webkit-box; overflow: hidden; max-width: 245px; margin: 0 0 14px; color: #717367; font-size: 8px; line-height: 1.55; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.design-cta { display: inline-flex; gap: 10px; border-bottom: 1px solid var(--design-accent); padding-bottom: 5px; color: var(--design-accent); font-size: 7px; font-weight: 700; letter-spacing: .08em; }
+.design-cta > span { font-size: 10px; line-height: 8px; }
+.design-food-art { position: absolute; top: 21%; right: 5%; display: grid; place-items: center; width: 38%; aspect-ratio: 1; }
+.design-hero .design-food-art { top: 20%; right: 8%; width: 35%; }
+.design-art-sun { position: absolute; top: 0; right: 5%; width: 55%; aspect-ratio: 1; border-radius: 50%; background: color-mix(in srgb, var(--design-accent) 13%, #e9d7af); }
+.design-plate { position: relative; display: grid; place-items: center; width: 78%; aspect-ratio: 1; border: 8px double #fffdf7; border-radius: 50%; background: #e8ddc7; box-shadow: 0 9px 24px #4a3c251b; color: var(--design-accent); }
+.design-food-leaf { position: absolute; top: 17%; left: 27%; font-size: clamp(13px, 2vw, 25px); transform: rotate(-24deg); }
+.design-food-center { position: absolute; right: 22%; bottom: 23%; color: #c28942; font-size: clamp(16px, 2.4vw, 30px); }
+.design-food-seed { position: absolute; right: 23%; top: 20%; color: #ad6345; font-size: 11px; letter-spacing: 2px; transform: rotate(60deg); }
+.design-art-label { position: absolute; right: -2%; bottom: 2%; display: grid; place-items: center; width: 46px; height: 46px; border: 1px solid color-mix(in srgb, var(--design-accent) 50%, transparent); border-radius: 50%; color: var(--design-accent); font-family: Georgia, 'Times New Roman', serif; font-size: 5px; letter-spacing: .05em; text-align: center; transform: rotate(10deg); }
+.design-menu-strip { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid #dedccf; border-bottom: 1px solid #dedccf; color: #565d51; font-size: 6px; font-weight: 600; letter-spacing: .08em; }
+.design-menu-strip small { padding-right: 4px; color: var(--design-accent); font-size: 6px; }
+.design-footer { display: flex; justify-content: space-between; padding-top: 11px; color: #858578; font-size: 5px; letter-spacing: .13em; }
+@media (max-width: 560px) {
+  .storefront-design { min-height: 295px; padding-top: 17px; }
+  .design-nav { display: none; }
+  .design-hero-copy { width: 66%; }
+  .design-hero-copy h2 { font-size: clamp(26px, 8vw, 40px); }
+  .design-food-art { right: 0; width: 41%; }
+  .design-menu-strip { gap: 4px; font-size: 5px; }
+  .design-footer { font-size: 4px; }
+}

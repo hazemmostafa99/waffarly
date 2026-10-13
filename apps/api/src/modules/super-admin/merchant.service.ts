@@ -1,5 +1,11 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { CreateMerchantRequest, MerchantSummary } from '@waffarly/contracts';
+import type {
+  ApproveMerchantApplicationRequest,
+  CreateMerchantRequest,
+  MerchantApplicationSummary,
+  MerchantSummary,
+  SubmitMerchantApplicationRequest,
+} from '@waffarly/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { hashPassword } from '../auth/password.js';
 
@@ -25,6 +31,36 @@ function toSummary(merchant: MerchantWithOwner): MerchantSummary {
     firstMonthActivatedAt: merchant.firstMonthActivatedAt?.toISOString() ?? null,
     createdAt: merchant.createdAt.toISOString(),
   };
+}
+
+type MerchantApplicationRecord = {
+  id: string;
+  name: string;
+  contactPhone: string;
+  ownerName: string;
+  ownerMobile: string;
+  createdAt: Date;
+  approvedAt: Date | null;
+  approvedBy: string | null;
+  merchantId: string | null;
+};
+
+function toApplicationSummary(application: MerchantApplicationRecord): MerchantApplicationSummary {
+  return {
+    id: application.id,
+    name: application.name,
+    contactPhone: application.contactPhone,
+    ownerName: application.ownerName,
+    ownerMobile: application.ownerMobile,
+    createdAt: application.createdAt.toISOString(),
+    approvedAt: application.approvedAt?.toISOString() ?? null,
+    approvedBy: application.approvedBy,
+    merchantId: application.merchantId,
+  };
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
 }
 
 @Injectable()
@@ -59,12 +95,66 @@ export class MerchantService {
       });
       return toSummary(merchant);
     } catch (error) {
-      if (
-        typeof error === 'object' &&
-        error !== null &&
-        'code' in error &&
-        error.code === 'P2002'
-      ) {
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException('Username is already in use.');
+      }
+      throw error;
+    }
+  }
+
+  async submitApplication(input: SubmitMerchantApplicationRequest): Promise<{ received: true }> {
+    await this.prisma.merchantApplication.create({ data: input });
+    return { received: true };
+  }
+
+  async listApplications(): Promise<MerchantApplicationSummary[]> {
+    const applications = await this.prisma.merchantApplication.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    return applications.map(toApplicationSummary);
+  }
+
+  async approveApplication(
+    applicationId: string,
+    input: ApproveMerchantApplicationRequest,
+    administratorUsername: string,
+  ): Promise<MerchantSummary> {
+    const username = input.username.trim().toLowerCase();
+    const passwordHash = await hashPassword(input.password);
+
+    try {
+      return await this.prisma.$transaction(async (transaction) => {
+        const application = await transaction.merchantApplication.findUnique({
+          where: { id: applicationId },
+        });
+        if (!application) throw new NotFoundException('Application was not found.');
+        if (application.approvedAt || application.merchantId) {
+          throw new ConflictException('Application has already been approved.');
+        }
+
+        const reserved = await transaction.merchantApplication.updateMany({
+          where: { id: applicationId, approvedAt: null, merchantId: null },
+          data: { approvedAt: new Date(), approvedBy: administratorUsername },
+        });
+        if (reserved.count !== 1) {
+          throw new ConflictException('Application has already been approved.');
+        }
+
+        const merchant = await transaction.merchant.create({
+          data: {
+            name: application.name,
+            contactPhone: application.contactPhone,
+            ownerName: application.ownerName,
+            ownerMobile: application.ownerMobile,
+            application: { connect: { id: applicationId } },
+            owner: { create: { username, passwordHash } },
+          },
+          include: { owner: { select: { username: true } } },
+        });
+        return toSummary(merchant);
+      });
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
         throw new ConflictException('Username is already in use.');
       }
       throw error;

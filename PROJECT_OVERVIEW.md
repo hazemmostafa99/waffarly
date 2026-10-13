@@ -299,6 +299,10 @@ Both are enforced server-side. Frontend visibility reflects permissions/entitlem
 
 ### 8.1 Commercial models and release boundary
 
+**Implementation update, 2026-10-13 — PS-D04:** The owner authorized both documentation and app implementation of [basic monthly-plan administration](docs/features/super-admin/plans-subscriptions/MONTHLY_PLAN.md). Super Admin can create/list/edit definitions with administrator-entered name, decimal price, currency, and optional description. This does not approve or implement merchant assignment, entitlements, renewal, expiry, or collection.
+
+**[CONFIRMED, 2026-10-13 — PS-D02]:** Launch will offer multiple monthly subscription plans for restaurants. The owner selected “multiple plans” during [Plans & Subscriptions discovery](docs/features/super-admin/plans-subscriptions/OVERVIEW.md). Exact count, names, differences, prices, currency/tax treatment, and catalog governance remain **[OPEN]**. This scope decision does not authorize implementation or finalize subscription lifecycle rules.
+
 - **Monthly subscription — [CONFIRMED first release]:** The first release uses a monthly merchant subscription model. **No payment gateway/provider is integrated initially.** How Super Admin records payment, activates access, and renews/suspends accounts is **[OPEN]**; do not assume manual payment confirmation or automatic renewal.
 - **Commission — [FUTURE SCOPE TO CONFIRM]:** Percentage calculated on qualifying sales according to rules to be approved later.
 - **Hybrid — [FUTURE SCOPE TO CONFIRM]:** Subscription combined with commission/add-ons.
@@ -634,6 +638,8 @@ In the **first release**, a merchant is associated with a **monthly subscription
 | DEC-005 | Egypt is the initial launch market. | Approved |
 | DEC-006 | No payment gateway/provider integration in the initial release. | Approved |
 | DEC-007 | Monthly subscription is the initial merchant commercial model, without integrated gateway collection. | Approved |
+| Plans & Subscriptions PS-D02 | Multiple monthly subscription plans for restaurants at launch; exact count, names, differences, prices, and governance remain open. | Approved scope decision; no implementation authorization |
+| Plans & Subscriptions PS-D04 | Document and implement basic monthly-plan administration; actual commercial offers and recurring subscription rules remain open. | Authorized initial implementation |
 
 ---
 

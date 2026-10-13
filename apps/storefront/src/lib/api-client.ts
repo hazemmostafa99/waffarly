@@ -23,3 +23,21 @@ export async function apiGet<T>(path: string): Promise<T> {
   }
   return (await response.json()) as T;
 }
+
+export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(new URL(path.replace(/^\//, ''), `${getApiBaseUrl()}/`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => null)) as {
+      message?: string | string[];
+    } | null;
+    const message = Array.isArray(body?.message)
+      ? body.message.join(', ')
+      : (body?.message ?? `API request failed with status ${response.status}.`);
+    throw new ApiError(message, response.status);
+  }
+  return (await response.json()) as T;
+}

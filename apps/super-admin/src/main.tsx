@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
 import './style.css';
+import '@waffarly/ui/storefront-design.css';
 
 const rootElement = document.getElementById('root');
 

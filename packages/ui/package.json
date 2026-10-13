@@ -4,8 +4,11 @@
   "private": true,
   "type": "module",
   "exports": {
-    "types": "./dist/index.d.ts",
-    "import": "./dist/index.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./storefront-design.css": "./src/storefront-design.css"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -21,5 +24,11 @@
   },
   "peerDependencies": {
     "react": "^19.3.0"
+  },
+  "dependencies": {
+    "@radix-ui/react-slot": "1.5.0",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "tailwind-merge": "3.7.0"
   }
 }

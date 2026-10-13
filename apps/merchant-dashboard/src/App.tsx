@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { LoginRequest, OwnerProfile } from '@waffarly/contracts';
 import { apiRequest } from './lib/api-client.js';
+import { StorefrontSettings } from './StorefrontSettings.js';
 
 export function App() {
   const [profile, setProfile] = useState<OwnerProfile | null | undefined>(undefined);
@@ -122,6 +123,7 @@ export function App() {
           </div>
         </dl>
       </section>
+      <StorefrontSettings profile={profile} />
     </main>
   );
 }

@@ -16,6 +16,7 @@ Node 24 LTS is selected because it is supported by the current framework and Pri
 corepack enable
 pnpm install
 Copy-Item .env.example .env
+Copy-Item apps/storefront/.env.example apps/storefront/.env.local
 Copy-Item apps/super-admin/.env.example apps/super-admin/.env.local
 Copy-Item apps/merchant-dashboard/.env.example apps/merchant-dashboard/.env.local
 pnpm --filter @waffarly/api admin:hash-password
@@ -57,7 +58,9 @@ For detailed local setup and package responsibilities, see [`docs/setup/LOCAL_DE
 
 ## Implemented first slice
 
+- Super Admin **Activities & modules** provides the restaurant catalog, code-managed merchant profile and storefront design capabilities, editable catalog descriptions, and restaurant applicability. Apply the additive activities/modules migration. Applicability is catalog metadata; existing merchant access rules continue to apply. See the [Business Activities & Modules overview](docs/features/super-admin/activities-modules/OVERVIEW.md).
+- Super Admin **Plans** supports creating, listing, and editing monthly offers with name, decimal monthly price, explicitly selected EGP/USD/EUR currency, and optional description. Apply the additive monthly-plans migration; no commercial offers are seeded. See the [Monthly Plan specification](docs/features/super-admin/plans-subscriptions/MONTHLY_PLAN.md).
 - A configured Super Admin can sign in, create a restaurant and owner account using the four approved contact fields, and manually activate the first month after confirming collection outside the platform.
 - The Super Admin creates the owner username/password and sends them manually after verifying the owner by phone. The UI shows the password only immediately after creation; the backend stores a one-way hash.
 - The owner cannot sign in to the Merchant Dashboard before activation. After activation, the dashboard displays the four confirmed restaurant and owner contact fields as a read-only profile.
-- No messaging API, payment gateway, renewal/expiry rule, restaurant configuration workflow, or other business module is implemented yet. This first slice is not a complete recurring subscription system.
+- No messaging API, payment gateway, renewal/expiry rule, or restaurant configuration workflow is implemented yet. Monthly plan definitions do not assign a merchant plan or activate coverage. This first slice is not a complete recurring subscription system.
