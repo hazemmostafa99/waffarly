@@ -14,9 +14,11 @@ type SalesPoint = { label: string; orderValue: number; orders: number };
 function DashboardOrderChart({
   points,
   t,
+  formatNumber,
 }: {
   points: SalesPoint[];
   t: (message: string) => string;
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
 }) {
   const maxValue = Math.max(1, ...points.map((point) => point.orderValue));
   const maxOrders = Math.max(1, ...points.map((point) => point.orders));
@@ -39,7 +41,9 @@ function DashboardOrderChart({
             <g key={ratio}>
               <line x1="38" x2="382" y1={yPosition} y2={yPosition} stroke="#edf1f6" />
               <text x="28" y={yPosition + 3} textAnchor="end" className="dashboard-chart-label">
-                {value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k` : value}
+                {value >= 1000
+                  ? `${formatNumber(value / 1000, { maximumFractionDigits: value >= 10000 ? 0 : 1 })}k`
+                  : formatNumber(value)}
               </text>
             </g>
           );
@@ -56,7 +60,7 @@ function DashboardOrderChart({
               rx="4"
               fill="#e4f7ec"
             >
-              <title>{`${t(point.label)}: EGP ${point.orderValue.toLocaleString('en-EG')} (${point.orders} ${t('orders')})`}</title>
+              <title>{`${t(point.label)}: EGP ${formatNumber(point.orderValue)} (${formatNumber(point.orders)} ${t('orders')})`}</title>
             </rect>
           );
         })}
@@ -68,7 +72,7 @@ function DashboardOrderChart({
         />
         {points.map((point, index) => (
           <circle key={`dot-${point.label}`} cx={x(index)} cy={y(point.orders, maxOrders)} r="3" fill="#1c654e">
-            <title>{`${t(point.label)}: ${point.orders} ${t('orders')}`}</title>
+            <title>{`${t(point.label)}: ${formatNumber(point.orders)} ${t('orders')}`}</title>
           </circle>
         ))}
         {points.map((point, index) => (
@@ -90,7 +94,7 @@ function statusLabel(status: StorefrontOrderStatus, t: (message: string) => stri
 }
 
 export function Dashboard() {
-  const { t, locale } = useLocale();
+  const { t, locale, formatNumber } = useLocale();
   const copy = (message: string) => dashboardCopy(message, locale, t);
   const navigate = useNavigate();
   const { profile, search } = useOutletContext<{ profile: OwnerProfile; search: string }>();
@@ -172,7 +176,7 @@ export function Dashboard() {
       if (period === 'weekly') pointDate.setDate(pointDate.getDate() + index);
       return {
         label: period === 'weekly'
-          ? new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { weekday: 'short' }).format(pointDate)
+          ? new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG-u-nu-latn', { weekday: 'short' }).format(pointDate)
           : `Week ${index + 1}`,
         orderValue: 0,
         orders: 0,
@@ -218,13 +222,13 @@ export function Dashboard() {
     : '#edf3f0';
 
   const money = (amount: number, decimals = 0) =>
-    new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', {
+    new Intl.NumberFormat('en-EG-u-nu-latn', {
       style: 'currency',
       currency: 'EGP',
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     }).format(amount);
-  const dateTime = (value: string) => new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', {
+  const dateTime = (value: string) => new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG-u-nu-latn', {
     dateStyle: 'short',
     timeStyle: 'short',
   }).format(new Date(value));
@@ -232,8 +236,8 @@ export function Dashboard() {
   const productByName = new Map(products.map((product) => [product.name.toLocaleLowerCase(), product]));
   const stats = [
     ['Order Value', loading || loadError ? '—' : money(report.orderValue, 2), 'revenue', 'mint'],
-    ['Total Orders', loading || loadError ? '—' : String(report.orders), 'calendar', 'cream'],
-    ['Unique Customers', loading || loadError ? '—' : String(report.customers), 'customers', 'blue'],
+    ['Total Orders', loading || loadError ? '—' : formatNumber(report.orders), 'calendar', 'cream'],
+    ['Unique Customers', loading || loadError ? '—' : formatNumber(report.customers), 'customers', 'blue'],
     ['Avg. Order Value', loading || loadError ? '—' : money(report.average, 2), 'receipt', 'lavender'],
   ] as const;
   const actions = [
@@ -341,11 +345,11 @@ export function Dashboard() {
             </div>
             <div>
               <span>{copy('Orders')}</span>
-              <div><strong>{loading || loadError ? '—' : report.orders}</strong><small>{copy('All statuses')}</small></div>
+              <div><strong>{loading || loadError ? '—' : formatNumber(report.orders)}</strong><small>{copy('All statuses')}</small></div>
             </div>
           </div>
           {periodOrders.length > 0
-            ? <DashboardOrderChart points={series} t={copy} />
+            ? <DashboardOrderChart points={series} t={copy} formatNumber={formatNumber} />
             : <p className="dashboard-chart-empty">{loading ? copy('Loading orders…') : loadError ? copy('Dashboard data is unavailable.') : copy('No orders in this period.')}</p>}
         </section>
       </div>
@@ -358,10 +362,10 @@ export function Dashboard() {
               className="dashboard-donut"
               style={{ background: fulfillmentGradient }}
               role="img"
-              aria-label={`${copy('Pickup')}: ${fulfillment.pickup}, ${copy('Delivery')}: ${fulfillment.delivery}`}
+              aria-label={`${copy('Pickup')}: ${formatNumber(fulfillment.pickup)}, ${copy('Delivery')}: ${formatNumber(fulfillment.delivery)}`}
             >
               <div>
-                <strong dir="ltr">{fulfillmentTotal}</strong>
+                <strong dir="ltr">{formatNumber(fulfillmentTotal)}</strong>
                 <small>{copy('Orders in selected period')}</small>
               </div>
             </div>
@@ -372,8 +376,8 @@ export function Dashboard() {
                 return (
                   <li key={kind}>
                     <span className="dashboard-branch-dot" style={{ background: kind === 'pickup' ? '#1b654f' : '#77b9ef' }} />
-                    <span>{copy(kind === 'pickup' ? 'Pickup' : 'Delivery')}<small>{count} {copy('orders')}</small></span>
-                    <strong dir="ltr">{share}%</strong>
+                    <span>{copy(kind === 'pickup' ? 'Pickup' : 'Delivery')}<small>{formatNumber(count)} {copy('orders')}</small></span>
+                    <strong dir="ltr">{formatNumber(share)}%</strong>
                   </li>
                 );
               })}
@@ -388,7 +392,7 @@ export function Dashboard() {
             {productTotals.map(({ name, quantity, value }) => (
               <div className="dashboard-product-row" key={name}>
                 <ProductThumb product={productByName.get(name.toLocaleLowerCase())} fallback="product" />
-                <span><strong>{name}</strong><small>{quantity} {copy('items sold')}</small></span>
+                <span><strong>{name}</strong><small>{formatNumber(quantity)} {copy('items sold')}</small></span>
                 <span dir="ltr">{money(value)}</span>
               </div>
             ))}

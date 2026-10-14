@@ -16,7 +16,7 @@ interface ActivityCardProps {
 
 export function ActivityCard({ activity, modules }: ActivityCardProps) {
   const { t, locale } = useLocale();
-  const formatCount = (value: number) => new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-GB').format(value);
+  const formatCount = (value: number) => new Intl.NumberFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB-u-nu-latn').format(value);
   const Icon = activityIcons[activity.key];
   const compatibleModules = activity.moduleKeys.map((key) => modules.find((module) => module.key === key)).filter((module) => module !== undefined);
 

@@ -27,7 +27,7 @@ function matchesDateRange(createdAt: string, dateRange: DateRange) {
 }
 
 export function StorefrontOrdersPage() {
-  const { t, locale } = useLocale();
+  const { t, locale, formatNumber, formatDigits } = useLocale();
   const language = locale === 'ar' ? 'ar' : 'en';
   const copy = (message: string, values?: Record<string, unknown>) =>
     ordersCopy(message, locale, t, values);
@@ -107,8 +107,8 @@ export function StorefrontOrdersPage() {
 
   const stats = [
     { label: copy('Average order value'), value: money(averageOrderValue), icon: 'receipt', tone: 'lavender' },
-    { label: copy('Unique customers'), value: String(uniqueCustomers), icon: 'customers', tone: 'blue' },
-    { label: copy('Total orders'), value: String(orders.length), icon: 'calendar', tone: 'cream' },
+    { label: copy('Unique customers'), value: formatNumber(uniqueCustomers), icon: 'customers', tone: 'blue' },
+    { label: copy('Total orders'), value: formatNumber(orders.length), icon: 'calendar', tone: 'cream' },
     { label: copy('Total order value'), value: money(orderValue), icon: 'revenue', tone: 'mint' },
   ] as const;
 
@@ -129,14 +129,14 @@ export function StorefrontOrdersPage() {
     : '#edf1f5';
 
   function money(amount: string | number) {
-    return new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-EG', {
+    return new Intl.NumberFormat('en-EG-u-nu-latn', {
       style: 'currency',
       currency: 'EGP',
     }).format(Number(amount));
   }
 
   function dateTime(value: string) {
-    return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG' : 'en-EG', {
+    return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG-u-nu-latn', {
       dateStyle: 'short',
       timeStyle: 'short',
     }).format(new Date(value));
@@ -285,18 +285,18 @@ export function StorefrontOrdersPage() {
                       return (
                         <Fragment key={order.id}>
                           <tr className={isSelected ? 'is-selected' : ''}>
-                            <td><strong dir="ltr">#{order.id.slice(0, 8).toLocaleUpperCase()}</strong></td>
+                            <td><strong dir="ltr">#{formatDigits(order.id.slice(0, 8).toLocaleUpperCase())}</strong></td>
                             <td>
                               <strong>{order.customerName}</strong>
-                              <small dir="ltr">{order.customerPhone}</small>
+                              <small dir="ltr">{formatDigits(order.customerPhone)}</small>
                             </td>
                             <td>
                               <span className="orders-fulfillment">{copy(order.fulfillmentType === 'pickup' ? 'Pickup' : 'Delivery')}</span>
                               {order.fulfillmentType === 'delivery' && order.deliveryAddress && <small className="orders-address-cell">{order.deliveryAddress}</small>}
                             </td>
                             <td>
-                              <strong>{itemCount} {copy(itemCount === 1 ? 'item' : 'items')}</strong>
-                              {order.lines[0] && <small>{order.lines.length > 1 ? `${order.lines[0].productName} + ${order.lines.length - 1}` : order.lines[0].productName}</small>}
+                              <strong>{formatNumber(itemCount)} {copy(itemCount === 1 ? 'item' : 'items')}</strong>
+                              {order.lines[0] && <small>{order.lines.length > 1 ? `${order.lines[0].productName} + ${formatNumber(order.lines.length - 1)}` : order.lines[0].productName}</small>}
                             </td>
                             <td dir="ltr">{money(order.total)}</td>
                             <td><span className={`orders-status orders-status-${order.status}`}><i />{statusLabel(order.status)}</span></td>
@@ -305,7 +305,7 @@ export function StorefrontOrdersPage() {
                               <button
                                 type="button"
                                 className="orders-row-action"
-                                aria-label={`${copy('Order details')} ${order.id.slice(0, 8)}`}
+                                aria-label={`${copy('Order details')} ${formatDigits(order.id.slice(0, 8))}`}
                                 aria-expanded={isSelected}
                                 onClick={() => setSelectedId(isSelected ? null : order.id)}
                               >
@@ -319,16 +319,16 @@ export function StorefrontOrdersPage() {
                                 <div className="orders-expanded-detail">
                                   <div className="orders-expanded-heading">
                                     <div>
-                                      <strong>{copy('Order details')} <b dir="ltr">#{order.id.slice(0, 8).toLocaleUpperCase()}</b></strong>
+                                      <strong>{copy('Order details')} <b dir="ltr">#{formatDigits(order.id.slice(0, 8).toLocaleUpperCase())}</b></strong>
                                       <span>{order.fulfillmentType === 'delivery' ? order.deliveryAddress : copy('Pickup')}</span>
                                     </div>
-                                    <a href={`tel:${order.customerPhone}`} dir="ltr">{order.customerPhone}</a>
+                                    <a href={`tel:${order.customerPhone}`} dir="ltr">{formatDigits(order.customerPhone)}</a>
                                   </div>
                                   <div className="orders-expanded-lines">
                                     {order.lines.map((line) => (
                                       <div className="orders-expanded-line" key={line.id}>
                                         <div>
-                                          <strong>{line.quantity} × {line.productName}{line.variantName ? ` — ${line.variantName}` : ''}</strong>
+                                          <strong>{formatNumber(line.quantity)} × {line.productName}{line.variantName ? ` — ${line.variantName}` : ''}</strong>
                                           {line.selections.length > 0 && <small>{line.selections.map((selection) => `${selection.groupName}: ${selection.optionName}`).join(' · ')}</small>}
                                         </div>
                                         <strong dir="ltr">{money(line.lineTotal)}</strong>
@@ -387,15 +387,15 @@ export function StorefrontOrdersPage() {
             <div className="orders-side-heading"><h3 id="orders-distribution-title">{copy('Orders status distribution')}</h3></div>
             <div className="orders-donut-wrap">
               <div className="orders-donut" style={{ background: donutBackground }} role="img" aria-label={copy('Order status distribution chart')}>
-                <div><strong>{counts.all}</strong><span>{copy('Total orders')}</span></div>
+                <div><strong>{formatNumber(counts.all)}</strong><span>{copy('Total orders')}</span></div>
               </div>
             </div>
             <ul className="orders-legend">
               {distribution.map(({ key, count, color }) => (
                 <li key={key}>
                   <span className="orders-legend-label"><i style={{ background: color }} />{statusLabel(key)}</span>
-                  <span>{count} {copy('orders')}</span>
-                  <strong>{counts.all ? `${Math.round(count / counts.all * 100)}%` : '0%'}</strong>
+                  <span>{formatNumber(count)} {copy('orders')}</span>
+                  <strong>{counts.all ? `${formatNumber(Math.round(count / counts.all * 100))}%` : `${formatNumber(0)}%`}</strong>
                 </li>
               ))}
             </ul>
@@ -409,7 +409,7 @@ export function StorefrontOrdersPage() {
               {orders.slice(0, 3).map((order) => (
                 <button type="button" className="orders-recent-row" key={order.id} onClick={() => { resetFilters(); setSelectedId(order.id); }}>
                   <span>
-                    <strong dir="ltr">#{order.id.slice(0, 8).toLocaleUpperCase()}</strong>
+                    <strong dir="ltr">#{formatDigits(order.id.slice(0, 8).toLocaleUpperCase())}</strong>
                     <small>{order.customerName}</small>
                   </span>
                   <span>

@@ -34,7 +34,7 @@ export function ModulesPage() {
   const rawRelation = searchParams.get('relation') as RelationFilter | null;
   const relation = rawRelation && relationFilters.includes(rawRelation) ? rawRelation : 'all';
   const normalizedSearch = search.trim().toLocaleLowerCase(locale);
-  const formatCount = (value: number) => new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-GB').format(value);
+  const formatCount = (value: number) => new Intl.NumberFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB-u-nu-latn').format(value);
   const allActivities = catalog.data?.activities ?? [];
   const allModules = catalog.data?.modules ?? [];
   const selectedActivity = allActivities.find((activity) => activity.key === activityKey);

@@ -7,18 +7,21 @@ import { cn } from './utils.js';
 
 // eslint-disable-next-line react-refresh/only-export-components -- This shared library also exposes its variant helper.
 export const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-button text-sm font-extrabold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-        secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        default:
+          'bg-gradient-to-br from-waffarly-primary to-waffarly-primary-deep text-white shadow-button hover:from-waffarly-primary-dark hover:to-waffarly-primary-deep hover:shadow-md',
+        accent:
+          'bg-gradient-to-br from-waffarly-gold to-waffarly-gold-muted text-waffarly-primary-deep shadow-sm hover:from-waffarly-gold-soft hover:to-waffarly-gold-muted hover:shadow-md',
+        secondary: 'bg-waffarly-cream text-waffarly-primary-deep hover:bg-waffarly-gold-light',
         outline:
-          'border border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground',
-        ghost: 'bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground',
-        destructive: 'bg-destructive text-white hover:bg-destructive/90',
+          'border border-waffarly-outline bg-waffarly-surface text-waffarly-primary-deep hover:bg-waffarly-cream hover:text-waffarly-primary-deep',
+        ghost: 'bg-transparent text-waffarly-primary-deep hover:bg-waffarly-cream hover:text-waffarly-primary-deep',
+        destructive: 'bg-waffarly-danger text-white hover:bg-waffarly-danger/90',
       },
-      size: { default: 'h-11 px-4 py-2', sm: 'h-9 px-3', lg: 'h-12 px-6', icon: 'size-11' },
+      size: { default: 'h-12 px-6 py-3', sm: 'h-10 px-4', lg: 'h-14 px-7', icon: 'size-12' },
     },
     defaultVariants: { variant: 'default', size: 'default' },
   },

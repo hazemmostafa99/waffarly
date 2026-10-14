@@ -1,4 +1,5 @@
 import type { Locale } from '@waffarly/ui';
+import { formatDigits } from '@waffarly/ui';
 
 const arabic: Record<string, string> = {
   Orders: 'الطلبات',
@@ -109,6 +110,6 @@ export function ordersCopy(
   translate: (message: string, values?: Record<string, unknown>) => string,
   values?: Record<string, unknown>,
 ) {
-  if (locale === 'ar' && !values) return arabic[message] ?? translate(message);
+  if (locale === 'ar' && !values) return formatDigits(arabic[message] ?? translate(message), locale);
   return translate(locale === 'ar' ? (arabic[message] ?? message) : message, values);
 }

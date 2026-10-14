@@ -32,8 +32,8 @@ export function StorefrontProductCard({
 
   return (
     <>
-      <Card className="group overflow-hidden rounded-[1.5rem] border-store-border bg-white p-0 shadow-[0_8px_30px_rgba(23,35,48,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_16px_40px_rgba(23,35,48,0.1)]">
-        <div className="relative aspect-[1.5] overflow-hidden bg-store-cream">
+      <Card className="group overflow-hidden rounded-card border-store-border bg-store-surface p-0 shadow-card transition duration-300 hover:-translate-y-1 hover:border-store-primary/30">
+        <div className="relative aspect-square overflow-hidden bg-store-cream">
           {imageSource ? (
             <Link href={`/s/${slug}/products/${product.id}`} className="absolute inset-0">
               <Image
@@ -81,17 +81,18 @@ export function StorefrontProductCard({
               {availableVariants.length > 0 && (
                 <span className="block text-xs font-medium text-store-muted">{t.priceFrom}</span>
               )}
-              <strong className="font-heading text-lg font-extrabold text-store-accent">
+              <strong className="font-heading text-lg font-extrabold text-store-primary-deep">
                 <bdi dir="auto">{hasUnavailableVariants ? '—' : formatStorefrontPrice(displayPrice, locale)}</bdi>
               </strong>
             </div>
             <Button
               type="button"
+              variant="accent"
               size="icon"
               aria-label={hasUnavailableVariants ? t.unavailable : `${t.addToCart}: ${product.name}`}
               disabled={hasUnavailableVariants}
               onClick={() => setIsCustomizing(true)}
-              className="size-11 shrink-0 rounded-full bg-store-accent text-white hover:bg-store-primary-dark"
+              className="size-11 shrink-0 rounded-full"
             >
               {hasUnavailableVariants ? <span className="text-xs">—</span> : <Plus className="size-5" aria-hidden="true" />}
             </Button>

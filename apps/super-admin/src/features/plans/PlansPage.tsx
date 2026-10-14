@@ -36,7 +36,7 @@ function PlanCard({ plan }: { plan: MonthlyPlanSummary }) {
       </div>
       <p className="mb-0 mt-5 flex flex-wrap items-baseline gap-x-1.5">
         <strong className="text-2xl font-extrabold tracking-tight text-waffarly-ink">
-          {new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-GB', {
+          {new Intl.NumberFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB-u-nu-latn', {
             style: 'currency',
             currency: plan.currency,
             minimumFractionDigits: 2,

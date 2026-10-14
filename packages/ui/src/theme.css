@@ -16,34 +16,48 @@
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--foreground);
   --color-muted: var(--secondary);
-  --color-muted-foreground: var(--muted-foreground, #64746c);
-  --color-accent: var(--accent, #e8f2ec);
+  --color-muted-foreground: var(--muted-foreground, var(--storefront-muted));
+  --color-accent: var(--accent, var(--storefront-cream));
   --color-accent-foreground: var(--primary);
-  --color-destructive: var(--destructive, #b42318);
+  --color-destructive: var(--destructive, var(--storefront-error));
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
   --color-border: var(--border);
   --color-input: var(--border);
-  --color-ring: var(--ring, #54886a);
-  --color-waffarly-primary: #00583f;
-  --color-waffarly-primary-hover: #004a36;
-  --color-waffarly-success: #0ea77a;
-  --color-waffarly-gold: #e8a12f;
-  --color-waffarly-gold-light: #fff3dd;
-  --color-waffarly-background: #fafbfc;
-  --color-waffarly-surface: #ffffff;
-  --color-waffarly-ink: #14203e;
-  --color-waffarly-muted: #7384a1;
-  --color-waffarly-border: #e9eef2;
-  --color-waffarly-kpi-mint: #e3f8ec;
-  --color-waffarly-kpi-gold: #fff3dd;
-  --color-waffarly-kpi-blue: #eaf3ff;
-  --color-waffarly-kpi-purple: #f2eafb;
-  --color-waffarly-danger: #d54850;
-  --color-waffarly-danger-bg: #fce8e9;
-  --color-waffarly-info: #2168c8;
-  --color-waffarly-input: #f7f9fb;
+  --color-ring: var(--ring, var(--storefront-primary));
+  --color-waffarly-primary: var(--storefront-primary);
+  --color-waffarly-primary-hover: var(--storefront-primary-dark);
+  --color-waffarly-primary-dark: var(--storefront-primary-dark);
+  --color-waffarly-primary-deep: var(--storefront-primary-deep);
+  --color-waffarly-success: var(--storefront-primary);
+  --color-waffarly-success-bg: var(--storefront-success-bg);
+  --color-waffarly-gold: var(--storefront-gold);
+  --color-waffarly-gold-muted: var(--storefront-gold-muted);
+  --color-waffarly-gold-soft: var(--storefront-gold-soft);
+  --color-waffarly-gold-ink: var(--storefront-gold-ink);
+  --color-waffarly-gold-light: var(--storefront-warning-bg);
+  --color-waffarly-background: var(--storefront-page);
+  --color-waffarly-surface: var(--storefront-surface);
+  --color-waffarly-cream: var(--storefront-cream);
+  --color-waffarly-ink: var(--storefront-ink);
+  --color-waffarly-muted: var(--storefront-muted);
+  --color-waffarly-border: var(--storefront-border);
+  --color-waffarly-outline: var(--storefront-outline);
+  --color-waffarly-kpi-mint: var(--storefront-success-bg);
+  --color-waffarly-kpi-gold: var(--storefront-warning-bg);
+  --color-waffarly-kpi-blue: var(--storefront-info-bg);
+  --color-waffarly-kpi-purple: var(--storefront-cream);
+  --color-waffarly-danger: var(--storefront-error);
+  --color-waffarly-danger-bg: var(--storefront-error-bg);
+  --color-waffarly-info: var(--storefront-info);
+  --color-waffarly-info-bg: var(--storefront-info-bg);
+  --color-waffarly-warning-bg: var(--storefront-warning-bg);
+  --color-waffarly-input: var(--storefront-surface);
+  --radius-button: 14px;
+  --radius-card: 26px;
+  --shadow-card: 0 12px 38px rgba(30, 38, 36, 0.045);
+  --shadow-button: 0 8px 20px rgba(10, 86, 69, 0.16);
   --font-admin: Cairo, 'Noto Sans Arabic UI', 'Noto Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif;
   --color-store-primary: var(--storefront-primary);
   --color-store-primary-dark: var(--storefront-primary-dark);
@@ -70,6 +84,8 @@
   --storefront-primary-deep: #063d31;
   --storefront-gold: #f5b544;
   --storefront-gold-muted: #dba13d;
+  --storefront-gold-soft: #f9d88e;
+  --storefront-gold-ink: #936517;
   --storefront-cream: #fff8f0;
   --storefront-page: #faf8f4;
   --storefront-surface: #ffffff;
@@ -77,16 +93,26 @@
   --storefront-secondary: #5c667a;
   --storefront-muted: #8a93a6;
   --storefront-border: #eae6de;
+  --storefront-outline: #d6e2da;
   --storefront-error: #d94c4e;
-  --background: #f5f7f5;
-  --foreground: #1b3027;
-  --card: #fff;
-  --primary: #245c43;
-  --secondary: #edf2ee;
-  --success: #0ea77a;
-  --warning: #f0b24a;
-  --info: #2168c8;
-  --border: #dce5df;
+  --storefront-error-bg: #fce7e7;
+  --storefront-success-bg: #ddf5e8;
+  --storefront-info-bg: #eaf3ff;
+  --storefront-warning-bg: #fff0d4;
+  --storefront-info: #2479a6;
+  --background: var(--storefront-page);
+  --foreground: var(--storefront-ink);
+  --muted-foreground: var(--storefront-secondary);
+  --card: var(--storefront-surface);
+  --primary: var(--storefront-primary);
+  --destructive: var(--storefront-error);
+  --secondary: var(--storefront-cream);
+  --accent: var(--storefront-cream);
+  --success: var(--storefront-primary);
+  --warning: var(--storefront-gold-muted);
+  --info: var(--storefront-info);
+  --border: var(--storefront-border);
+  --ring: var(--storefront-primary);
   --radius: 0.75rem;
 }
 
@@ -117,7 +143,7 @@
     font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
   }
   :focus-visible {
-    outline: 2px solid var(--ring, #54886a);
+    outline: 2px solid var(--ring, var(--storefront-primary));
     outline-offset: 3px;
   }
   [dir='rtl'] {
@@ -217,7 +243,7 @@
   min-height: 36px;
 }
 [data-slot='button'] {
-  font-weight: 600;
+  font-weight: 800;
 }
 [data-slot='button']:disabled {
   cursor: not-allowed;

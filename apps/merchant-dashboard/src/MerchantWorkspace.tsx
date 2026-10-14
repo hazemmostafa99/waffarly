@@ -511,8 +511,8 @@ export function MerchantWorkspace({
   const available = products.filter((product) => product.availability === 'available').length;
   const showLegacyDashboard = false;
   const categories = catalog?.categories.filter((category) => !category.archivedAt) ?? [];
-  const number = new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG');
-  const money = new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', {
+  const number = new Intl.NumberFormat('en-EG-u-nu-latn');
+  const money = new Intl.NumberFormat('en-EG-u-nu-latn', {
     style: 'currency',
     currency: 'EGP',
   });

@@ -105,6 +105,8 @@ export function ProductEditor({
               <input
                 required
                 type="number"
+                lang="en"
+                dir="ltr"
                 min="0.01"
                 max="9999999999.99"
                 step="0.01"

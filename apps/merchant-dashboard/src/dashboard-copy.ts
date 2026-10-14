@@ -1,3 +1,5 @@
+import { formatDigits } from '@waffarly/ui';
+
 const arabic: Record<string, string> = {
   'Welcome, {{name}}!': 'مرحباً {{name}}!',
   "Here's an overview of your business today.": 'إليك نظرة سريعة على أداء مطعمك اليوم.',
@@ -99,5 +101,6 @@ export function dashboardCopy(
   locale: string,
   translate: (message: string) => string,
 ) {
-  return locale === 'ar' ? (arabic[message] ?? translate(message)) : translate(message);
+  const result = locale === 'ar' ? (arabic[message] ?? translate(message)) : translate(message);
+  return formatDigits(result, locale);
 }

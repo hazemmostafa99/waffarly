@@ -1,4 +1,5 @@
 import type { Locale } from '@waffarly/ui';
+import { formatDigits } from '@waffarly/ui';
 
 const ar: Record<string, string> = {
   'Media Library': 'مكتبة الوسائط',
@@ -82,5 +83,5 @@ const ar: Record<string, string> = {
 };
 
 export function mediaCopy(message: string, locale: Locale): string {
-  return locale === 'ar' ? (ar[message] ?? message) : message;
+  return formatDigits(locale === 'ar' ? (ar[message] ?? message) : message, locale);
 }

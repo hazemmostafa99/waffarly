@@ -26,7 +26,7 @@ export function CatalogWorkspace({
   search?: string;
   onSnapshot?: (snapshot: CatalogSnapshot) => void;
 }) {
-  const { t, errorText } = useLocale();
+  const { t, errorText, formatNumber } = useLocale();
   const [media, setMedia] = useState<MediaAsset[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -234,6 +234,8 @@ export function CatalogWorkspace({
                 <Input
                   required
                   type="number"
+                  lang="en"
+                  dir="ltr"
                   min="1"
                   value={mediaDraft.sizeBytes}
                   onChange={(event) =>
@@ -339,6 +341,8 @@ export function CatalogWorkspace({
                 {t('Base price (EGP)')}
                 <Input
                   required
+                  lang="en"
+                  dir="ltr"
                   inputMode="decimal"
                   value={productDraft.basePrice}
                   onChange={(event) =>
@@ -427,7 +431,7 @@ export function CatalogWorkspace({
                       <img src={asset.publicUrl} alt={asset.storageKey} loading="lazy" />
                       <strong>{asset.storageKey}</strong>
                       <small>
-                        {asset.mimeType} · {Math.ceil(asset.sizeBytes / 1024)} KB
+                        {asset.mimeType} · {formatNumber(Math.ceil(asset.sizeBytes / 1024))} KB
                       </small>
                     </article>
                   ))

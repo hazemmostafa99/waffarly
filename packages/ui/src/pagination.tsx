@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useLocale } from './i18n.js';
 
 export type PaginationProps = {
   page: number;
@@ -26,6 +27,7 @@ export function Pagination({
   summary,
   disabled = false,
 }: PaginationProps) {
+  const { formatNumber } = useLocale();
   const pages = Math.max(1, Math.ceil(Math.max(0, total) / Math.max(1, pageSize)));
   const current = Math.min(pages, Math.max(1, page));
   const visible =
@@ -68,7 +70,7 @@ export function Pagination({
               disabled={disabled}
               onClick={() => onPageChange(item)}
             >
-              {item}
+              {formatNumber(item)}
             </button>
           </span>
         ))}

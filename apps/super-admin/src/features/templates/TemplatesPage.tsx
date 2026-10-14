@@ -37,7 +37,7 @@ export function TemplatesPage() {
   const activityFilter = rawActivity === 'all' || rawActivity === 'general' || BUSINESS_ACTIVITY_KEYS.includes(rawActivity as typeof BUSINESS_ACTIVITY_KEYS[number])
     ? rawActivity
     : 'all';
-  const formatCount = (value: number) => new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-GB').format(value);
+  const formatCount = (value: number) => new Intl.NumberFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB-u-nu-latn').format(value);
   const busy = createTemplate.isPending || updateTemplate.isPending;
 
   function updateFilter(key: 'q' | 'status' | 'activity', value: string) {

@@ -69,7 +69,7 @@ export function StorefrontMenuPage({
       const difference = Number(getProductStartingPrice(left)) - Number(getProductStartingPrice(right));
       return sort === 'price-asc' ? difference : -difference;
     });
-  const number = filteredProducts.length.toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-EG');
+  const number = filteredProducts.length.toLocaleString(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG-u-nu-latn');
   const categoryImages = catalog.categories.map((category) => {
     const matchingProduct = catalog.products.find((product) =>
       product.categories.some((productCategory) => productCategory.id === category.id),

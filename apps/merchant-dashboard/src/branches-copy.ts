@@ -1,4 +1,5 @@
 import type { Locale } from '@waffarly/ui';
+import { formatDigits } from '@waffarly/ui';
 
 const arabic: Record<string, string> = {
   Branches: 'الفروع',
@@ -65,5 +66,6 @@ const arabic: Record<string, string> = {
 };
 
 export function branchesCopy(message: string, locale: Locale, translate: (value: string) => string) {
-  return locale === 'ar' ? (arabic[message] ?? translate(message)) : translate(message);
+  const result = locale === 'ar' ? (arabic[message] ?? translate(message)) : translate(message);
+  return formatDigits(result, locale);
 }

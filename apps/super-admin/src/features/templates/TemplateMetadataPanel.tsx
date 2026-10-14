@@ -9,7 +9,7 @@ function activityLabel(activity: StorefrontTemplateSummary['activity']) {
 
 export function TemplateMetadataPanel({ template }: { template: StorefrontTemplateSummary }) {
   const { t, locale, formatDate } = useLocale();
-  const formatCount = (value: number) => new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-GB').format(value);
+  const formatCount = (value: number) => new Intl.NumberFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB-u-nu-latn').format(value);
 
   return (
     <Card className="grid content-start gap-4 rounded-2xl border-waffarly-border bg-white p-4 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)] md:p-5" aria-labelledby="template-metadata-heading">

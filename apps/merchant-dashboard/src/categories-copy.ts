@@ -1,4 +1,5 @@
 import type { Locale } from '@waffarly/ui';
+import { formatDigits } from '@waffarly/ui';
 
 const ar: Record<string, string> = {
   Categories: 'التصنيفات',
@@ -72,5 +73,5 @@ const ar: Record<string, string> = {
 };
 
 export function categoriesCopy(message: string, locale: Locale): string {
-  return locale === 'ar' ? (ar[message] ?? message) : message;
+  return formatDigits(locale === 'ar' ? (ar[message] ?? message) : message, locale);
 }

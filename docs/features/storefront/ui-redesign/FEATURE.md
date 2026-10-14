@@ -127,7 +127,7 @@ The URL owns product routes, categories, search, sort, and other shareable state
 
 ## Design Foundation
 
-Use the supplied tokens as the storefront theme baseline:
+Use the supplied `design-system.html`, `design-tokens.json`, and screenshots as the visual source of truth for the shared Waffarly design system:
 
 - Primary: `#0F705A`
 - Primary dark: `#0A5645`
@@ -141,18 +141,26 @@ Use the supplied tokens as the storefront theme baseline:
 - Secondary text: `#5C667A`
 - Muted text: `#8A93A6`
 - Border: `#EAE6DE`
+- Success surface: `#DDF5E8`
+- Information surface: `#EAF3FF`
 - Error: `#D94C4E`
+- Error surface: `#FCE7E7`
+- Warning surface: `#FFF0D4`
 - Heading font: Cairo
 - Body font: Tajawal
 - Content width: `1240px`
+- Button radius: `14px`; bold primary/accent controls use a `48px` default height.
+- Card radius: `26px`; card shadow: `0 12px 38px rgba(30, 38, 36, 0.045)`.
 - Reference mobile viewport: `390x844`
 - Reference desktop viewport: `1440x900`
 
 Rules for fidelity:
 
 - Preserve the warm, premium, food-first visual character.
-- Apply this Waffarly palette consistently to every storefront route. A catalog-provided merchant `accentColor` must not override these brand tokens; merchant logos and product imagery remain content, not theme colors.
-- Scope shadcn semantic colors inside the storefront so default buttons, inputs, focus rings, and cards use the same palette without changing admin, POS, or merchant-dashboard themes.
+- Primary buttons use the deep-green gradient and soft brand shadow; accent buttons use the warm-gold gradient; outline buttons use a white surface, fine green-tinted border, and dark-green text.
+- Cards use the white surface, warm border, large card radius, and restrained shadow. Status chips use the defined success, warning, information, and error surfaces with readable semantic foreground colors.
+- Apply this Waffarly palette consistently through shared design-system tokens and every storefront route. A catalog-provided merchant `accentColor` must not override these brand tokens; merchant logos and product imagery remain content, not theme colors.
+- Map shared shadcn semantic colors and primitives to the Waffarly tokens so default buttons, inputs, focus rings, badges, and cards remain consistent across apps. Feature-level storefront tokens must alias the shared values rather than fork them.
 - Use the defined green, gold, cream, page, surface, text, border, and error tokens for storefront UI. Do not introduce Tailwind's unrelated emerald/amber shades for brand decoration or selection states; reserve red/error treatment for actual errors and unavailable states.
 - Use the supplied WebP assets without regenerating or visually altering them unless requested.
 - Prefer merchant-provided product photos; use a supplied WebP as a presentational fallback only when the API URL identifies a seed/demo placeholder, and never as product or pricing data.
@@ -206,6 +214,7 @@ Use this scale as the default target. Small adjustments are allowed only when sc
 - Product names may clamp only in repeated cards, normally to two lines. Full names and descriptions must remain available on the product page and to assistive technology.
 - Buttons and inputs must not clip Arabic glyphs at any supported zoom level. Their line height and vertical padding must accommodate Cairo/Tajawal ascenders and descenders.
 - Prices must use `bdi` or an equivalent direction-isolation strategy so numbers and `ج.م` render correctly inside RTL text.
+- Always render Western/Latin digits (`0-9`) for numbers in every locale, including Arabic. Use `nu-latn` for locale-aware number/date formatting and normalize Arabic-Indic or Persian digits from translated or API-derived display strings; keep surrounding Arabic text and RTL isolation localized.
 - Use tabular numerals for quantities, aligned prices, cart summaries, and tracking identifiers when supported by the active font.
 - Do not uppercase Arabic text, fake small caps, distort text with transforms, or use decorative script fonts for operational UI.
 - Native font scaling and browser zoom up to 200% must not hide content, overlap controls, or require horizontal page scrolling.

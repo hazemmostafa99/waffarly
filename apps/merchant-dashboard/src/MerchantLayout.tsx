@@ -19,7 +19,7 @@ const navigation = [
 ] as const;
 
 export function MerchantLayout() {
-  const { t, locale, errorText } = useLocale();
+  const { t, locale, errorText, formatNumber } = useLocale();
   const copy = (message: string) => dashboardCopy(message, locale, t);
   const navigate = useNavigate();
   const location = useLocation();
@@ -109,7 +109,7 @@ export function MerchantLayout() {
             >
               <Icon name={item.icon} />
               <span>{t(item.label)}</span>
-              {item.id === 'orders' && <small aria-hidden="true">12</small>}
+              {item.id === 'orders' && <small aria-hidden="true">{formatNumber(12)}</small>}
             </NavLink>
           ))}
         </nav>

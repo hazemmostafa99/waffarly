@@ -24,15 +24,15 @@ Strict tracking requirements:
 
 ## Current Status
 
-- Overall: Core responsive catalog-to-order storefront implemented; route-wide palette alignment is code-verified, with visual/accessibility verification still remaining.
-- Current milestone: Storefront visual consistency and responsive/accessibility verification.
-- Current slice: Apply the supplied Waffarly palette consistently across the storefront routes and shadcn defaults.
+- Overall: Core responsive catalog-to-order storefront implemented; the supplied Waffarly palette is now mapped into shared design tokens and component defaults, with visual/accessibility verification still remaining.
+- Current milestone: Shared design-system alignment and storefront visual/accessibility verification.
+- Current slice: Apply the supplied design-system colors, buttons, and cards to shared UI, the merchant design-system preview, and reusable storefront product cards.
 - Visual reference: Supplied Waffarly Bistro Arabic RTL desktop/mobile UI kit.
 - Target app: `apps/storefront`.
 - Primary route namespace: `/s/[slug]`.
 - Last updated: 2026-10-14.
-- Last verified state: Uncommitted worktree; no commit created. Palette token, lint, typecheck, build, served CSS, and storefront route checks passed; visual color comparison remains unverified.
-- Worktree note: Storefront, lockfile, shared Tailwind tokens, and this feature documentation were changed for this slice. Additional API/contracts/database/docs workspace edits were observed outside scope and left untouched; preserve them.
+- Last verified state: Uncommitted worktree; no commit created. Shared UI and merchant dashboard lint/typecheck/build checks, plus storefront lint/typecheck/build, passed; palette visual comparison remains unverified.
+- Worktree note: Shared UI primitives/theme, merchant design-system preview, storefront product-card styling, and this feature documentation were changed for this slice. Other pre-existing workspace edits—including number-formatting work—were left untouched; preserve them.
 
 ## Entry Gates
 
@@ -54,21 +54,25 @@ Strict tracking requirements:
 - [x] Create merchant-scoped, versioned Zustand persistence.
 - [x] Map supplied design tokens to shared semantic Tailwind/shadcn variables.
 - [x] Configure Cairo and Tajawal through locally hosted `next/font` assets.
-- [x] Keep shared workspace semantic colors scoped so storefront tokens do not recolor admin, POS, or merchant-dashboard screens.
+- [x] Map the shared workspace semantic colors and legacy Waffarly aliases to the supplied brand palette.
+- [x] Style shared buttons, cards, badges, borders, and focus rings with the design-system tokens.
 - [x] Copy supplied WebP assets into the storefront public asset directory.
-- [x] Reuse the existing shared shadcn/UI primitives; no unrelated UI package changes were needed.
+- [x] Reuse the existing shared shadcn/UI primitives and update only the generic shared style defaults needed for design-system alignment.
 - [x] Use Tailwind utilities for the migrated storefront routes.
 - [x] Establish a typed API client with consistent error handling.
 - [x] Define explicit Next.js cache tags and revalidation for public catalog reads.
 - [~] Production build passed for the application including unrelated routes; visual regression comparison was not available.
 
-## Palette Consistency
+## Shared Design System
 
-- [x] Centralize the supplied exact storefront colors as semantic tokens: primary, dark/deep greens, gold/muted gold, cream/page/surface, text, border, and error.
+- [x] Centralize the supplied colors as shared semantic tokens: primary, dark/deep greens, gold/muted gold, cream/page/surface, text, border, and status colors.
 - [x] Prevent public catalog `accentColor` from replacing the supplied Waffarly brand palette.
-- [x] Scope shadcn primary, surface, border, focus-ring, success, warning, and destructive tokens to the storefront route wrapper.
-- [x] Replace unrelated emerald/amber/red utilities in brand decoration, selection/success states, and storefront errors with the supplied palette tokens.
-- [~] Visually compare affected routes against the reference at mobile and desktop widths; browser setup returned `missing field sandboxPolicy` and the local headless fallback produced no screenshot. Served route/CSS and production build were checked, but visual completion is not claimed.
+- [x] Map shared shadcn semantic colors and legacy Waffarly Tailwind aliases to the design-system tokens.
+- [x] Apply shared button variants (green primary, gold accent, cream secondary, green-tinted outline) and button/card geometry/shadows.
+- [x] Apply semantic success, warning, information, and error colors to shared status chips.
+- [x] Rebuild the merchant Design System preview around the supplied color swatches, buttons/chips, typography, product card, and inputs.
+- [x] Align the reusable storefront product card with the reference's square image, warm card surface, deep-green price, and gold add action.
+- [~] Visually compare the merchant preview and affected storefront routes against the reference at desktop and mobile widths; browser setup returned `missing field sandboxPolicy`, so no new visual comparison is claimed for this slice.
 
 ## Application Shell
 
@@ -224,10 +228,14 @@ Each completed page must record evidence for all applicable checks.
 | --- | --- | --- |
 | Storefront typecheck | Passed | `pnpm --filter @waffarly/storefront typecheck` (Node 20.19.0 emitted the package's Node >=24.11 <25 engine warning) |
 | Storefront lint | Passed | `pnpm --filter @waffarly/storefront lint` (same engine warning) |
-| Storefront production build | Passed | `pnpm --filter @waffarly/storefront build`; all current app routes compiled on 2026-10-14 (Node 20.19.0 emitted the package's Node >=24.11 <25 engine warning) |
+| Storefront production build | Passed | `pnpm --filter @waffarly/storefront build`; all current app routes compiled on 2026-10-14 (Node 20.19.0 emitted the package's Node >=24.11 <25 engine warning; sandboxed TypeScript worker needed approved escalation) |
 | Contracts typecheck/build | Not run | Outside this UI slice |
 | API typecheck/lint/tests | Not run | Outside this UI slice |
-| Shared UI typecheck/build | Not run | Shared theme CSS gained Tailwind storefront tokens; storefront production build compiled the import successfully |
+| Shared UI lint | Passed | `pnpm --filter @waffarly/ui lint`; one existing `react-refresh/only-export-components` warning in `badge.tsx` |
+| Shared UI typecheck/build | Passed | `pnpm --filter @waffarly/ui typecheck` and `pnpm --filter @waffarly/ui build` |
+| Shared UI tests | Passed (no tests present) | `pnpm --filter @waffarly/ui test` exited successfully with zero tests |
+| Merchant dashboard lint/typecheck | Passed | `pnpm --filter @waffarly/merchant-dashboard lint` and `pnpm --filter @waffarly/merchant-dashboard typecheck` |
+| Merchant dashboard production build | Passed | `pnpm --filter @waffarly/merchant-dashboard build`; Vite emitted the existing >500 kB chunk-size advisory (Node 20.19.0 engine warning; sandboxed native-module/helper spawn needed approved escalation) |
 | Playwright primary journey | Not implemented | No primary journey test added in this slice |
 | HTTP smoke | Passed (live catalog) | Product route `/s/test-a5d13b8340d34e1fb85341be51ca4528/products/15533a31-d61a-4440-9707-63bedd525870` returned 200 from the production Next server at `localhost:3000` |
 | Runtime recovery | Passed | Fresh production product route returned 200 with no page errors or failed requests; the reported RSC module-factory error did not recur |
@@ -312,6 +320,17 @@ Each completed page must record evidence for all applicable checks.
 - Verified the live `localhost:3000/s/test-a5d13b8340d34e1fb85341be51ca4528` route returned HTTP 200 and its served CSS included the exact primary, gold, cream, and page values plus `.bg-store-accent { background-color: var(--storefront-primary) }`.
 - `pnpm --filter @waffarly/storefront typecheck`, `pnpm --filter @waffarly/storefront lint`, and `git diff --check` passed. The first sandboxed production build compiled but its TypeScript worker hit `spawn EPERM`; rerunning `pnpm --filter @waffarly/storefront build` with the required permission passed all compilation, TypeScript, static generation, and route output steps.
 - Browser verification remains incomplete: in-app browser setup returned `missing field sandboxPolicy`; the local headless Edge fallback was unable to save a capture, so no screenshot comparison or visual completion is claimed. The workspace continues to emit the existing Node 20.19.0 vs required Node `>=24.11.0 <25` engine warning.
+
+### 2026-10-14 - Shared Design System Alignment
+
+- Updated the shared Tailwind/shadcn theme to use the supplied Waffarly design-system palette across the workspace; legacy `waffarly-*` utility names now alias semantic brand tokens instead of retaining the previous green/blue colors.
+- Updated reusable shared Button variants (green primary, gold accent, cream secondary, tinted outline), shared Card radius/surface/shadow, and status Badge colors to match the design-system reference.
+- Rebuilt the merchant dashboard Design System preview to show the reference color tokens, buttons/chips, Arabic typography, product card, and inputs. Reused the existing burger WebP asset for the card sample.
+- Refined the storefront's reusable product card to use the warm surface/border, square product image, deep-green price, and gold add action from the same system.
+- Verification passed: `pnpm --filter @waffarly/ui lint`, `pnpm --filter @waffarly/ui typecheck`, `pnpm --filter @waffarly/ui build`, and `pnpm --filter @waffarly/ui test` (zero tests present); `pnpm --filter @waffarly/storefront lint`, `pnpm --filter @waffarly/storefront typecheck`, and `pnpm --filter @waffarly/storefront build`; `pnpm --filter @waffarly/merchant-dashboard lint`, `pnpm --filter @waffarly/merchant-dashboard typecheck`, and `pnpm --filter @waffarly/merchant-dashboard build`; `git diff --check`.
+- Build notes: storefront and merchant builds needed approved permission because their worker/helper spawns failed with `EPERM` inside the sandbox. Merchant Vite build passed and emitted a chunk-size advisory for a >500 kB JS bundle. All pnpm commands continue to warn that Node 20.19.0 is below the required `>=24.11.0 <25` range.
+- Browser visual comparison remains pending; the in-app browser initialization returned `missing field sandboxPolicy`, so this slice is not marked visually complete.
+- The user's unrelated number-formatting edits and other dirty workspace changes were preserved; no number-formatting source was changed in this slice.
 
 ## Decisions and Blockers
 

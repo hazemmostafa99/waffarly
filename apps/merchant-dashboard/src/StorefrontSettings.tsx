@@ -13,7 +13,7 @@ const maxLogoBytes = 48 * 1024;
 const storefrontBaseUrl = (import.meta.env.VITE_STOREFRONT_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
 export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
-  const { t, errorText, locale } = useLocale();
+  const { t, errorText, locale, formatNumber } = useLocale();
   const [settings, setSettings] = useState<MerchantStorefrontSettings | null>(null);
   const [draft, setDraft] = useState<SaveMerchantStorefrontRequest | null>(null);
   const [loading, setLoading] = useState(true);
@@ -198,7 +198,7 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
                 onChange={(event) => setDescription(event.target.value)}
               />
               <small>{t('A short description customers will see on your storefront.')}</small>
-              <em>{description.length}/300</em>
+              <em>{formatNumber(description.length)}/{formatNumber(300)}</em>
             </label>
           </div>
 

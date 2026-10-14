@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { Pagination, useLocale } from '@waffarly/ui';
+import { Pagination, formatNumber as formatLocalizedNumber, useLocale } from '@waffarly/ui';
 import type { Category, MediaAsset, Product } from './CatalogWorkspace.js';
 import { DashboardDialog } from './components/DashboardDialog.js';
 import { Icon } from './Icons.js';
@@ -33,10 +33,10 @@ function fileFormat(asset: MediaAsset): string {
   return (mime === 'jpeg' ? 'jpg' : mime).toUpperCase();
 }
 
-function fileSize(bytes: number): string {
-  if (bytes === 0) return '0 B';
+function getFileSize(bytes: number, locale: string): string {
+  if (bytes === 0) return `${formatLocalizedNumber(0, locale)} B`;
   const unit = Math.min(3, Math.max(0, Math.floor(Math.log(bytes) / Math.log(1024))));
-  return `${Number((bytes / 1024 ** unit).toFixed(1))} ${['B', 'KB', 'MB', 'GB'][unit]}`;
+  return `${formatLocalizedNumber(bytes / 1024 ** unit, locale, { maximumFractionDigits: 1 })} ${['B', 'KB', 'MB', 'GB'][unit]}`;
 }
 
 function safeUrl(value: string): string | undefined {
@@ -74,7 +74,8 @@ function MediaThumbnail({ asset, preview = false }: { asset: MediaAsset; preview
 
 export function MediaPage() {
   const { search: globalSearch } = useOutletContext<{ search: string }>();
-  const { locale, errorText } = useLocale();
+  const { locale, errorText, formatNumber } = useLocale();
+  const fileSize = (bytes: number) => getFileSize(bytes, locale);
   const copy = (message: string) => mediaCopy(message, locale);
   const [media, setMedia] = useState<MediaAsset[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -347,7 +348,7 @@ export function MediaPage() {
       {selected.length > 0 && (
         <div className="media-selection">
           <strong>
-            {selected.length} {copy('selected')}
+            {formatNumber(selected.length)} {copy('selected')}
           </strong>
           <button type="button" onClick={() => setDialog('selection')}>
             {copy('Selected files')}
@@ -570,7 +571,7 @@ export function MediaPage() {
                     {copy(kind.label)}
                     <small dir="ltr">{kind.formats}</small>
                   </span>
-                  <b>{loading || error ? '—' : kind.count}</b>
+                  <b>{loading || error ? '—' : formatNumber(kind.count)}</b>
                 </button>
               ))}
             </div>
@@ -660,6 +661,8 @@ export function MediaPage() {
                       <input
                         required
                         type="number"
+                        lang="en"
+                        dir="ltr"
                         min={1}
                         max={10 * 1024 * 1024}
                         step={1}
@@ -755,13 +758,13 @@ export function MediaPage() {
         >
           <div className="media-storage-details">
             <p>
-              {media.length} {copy('Files in your library')}{' '}
+              {formatNumber(media.length)} {copy('Files in your library')}{' '}
               <strong dir="ltr">{fileSize(totalBytes)}</strong>
             </p>
             {totals.map((kind) => (
               <div key={kind.id}>
                 <span>{copy(kind.label)}</span>
-                <b>{kind.count}</b>
+                <b>{formatNumber(kind.count)}</b>
                 <strong dir="ltr">{fileSize(kind.bytes)}</strong>
               </div>
             ))}

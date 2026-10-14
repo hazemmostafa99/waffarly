@@ -16,6 +16,7 @@ export type { PaginationProps } from './pagination.js';
 export { cn } from './utils.js';
 export { LocaleProvider, LanguageSwitcher, useLocale } from './i18n.js';
 export type { Locale, LocalizedMessage } from './i18n.js';
+export { formatDigits, formatNumber } from './number-format.js';
 export { WorkspaceChrome } from './workspace-chrome.js';
 export { StorefrontDesignPreview } from './storefront-design-preview.js';
 export type { StorefrontDesignPreviewProps } from './storefront-design-preview.js';

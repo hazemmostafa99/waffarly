@@ -49,12 +49,12 @@ function newId() {
 }
 
 export function ProductBuilderPage() {
-  const { locale, errorText } = useLocale();
+  const { locale, errorText, formatNumber, formatDigits } = useLocale();
   const isArabic = locale === 'ar';
   const navigate = useNavigate();
   const { id: productId } = useParams<{ id: string }>();
   const isEditing = Boolean(productId);
-  const text = (english: string, arabic: string) => (isArabic ? arabic : english);
+  const text = (english: string, arabic: string) => formatDigits(isArabic ? arabic : english);
   const [activeTab, setActiveTab] = useState(0);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -814,6 +814,7 @@ export function ProductBuilderPage() {
                   )}
                   groups={groups}
                   variants={variants}
+                  formatNumber={formatNumber}
                   text={text}
                 />
               )}
@@ -880,6 +881,7 @@ export function ProductBuilderPage() {
                 ? Math.min(...variants.map((variant) => Number(variant.price || 0)))
                 : Number(basePrice || 0)) + defaultAdjustment
             }
+            formatNumber={formatNumber}
             text={text}
           />
         </div>
@@ -908,7 +910,7 @@ function BasicInformationTab({
   return (
     <div className="builder-fields">
       <div className="builder-section-heading">
-        <span>01</span>
+        <span>{text('01', '01')}</span>
         <div>
           <h2>{text('Basic information', 'المعلومات الأساسية')}</h2>
           <p>
@@ -943,7 +945,7 @@ function BasicInformationTab({
             'اكتب وصفاً للمكونات أو ما يميز المنتج.',
           )}
         />
-        <small>{description.length}/1000</small>
+        <small>{text(String(description.length), String(description.length))}/{text('1000', '1000')}</small>
       </label>
       <div className="builder-field-row">
         <label className="builder-field">
@@ -954,6 +956,8 @@ function BasicInformationTab({
             <input
               required
               type="number"
+              lang="en"
+              dir="ltr"
               inputMode="decimal"
               min="0.01"
               max="9999999999.99"
@@ -1008,7 +1012,7 @@ function ProductDetailsTab({
   return (
     <div className="builder-fields">
       <div className="builder-section-heading">
-        <span>02</span>
+        <span>{text('02', '02')}</span>
         <div>
           <h2>{text('Product details', 'تفاصيل المنتج')}</h2>
           <p>
@@ -1202,7 +1206,7 @@ function OptionsTab({
   return (
     <div className="builder-fields">
       <div className="builder-section-heading builder-heading-action">
-        <span>03</span>
+        <span>{text('03', '03')}</span>
         <div>
           <h2>{text('Options', 'الخيارات')}</h2>
           <p>
@@ -1326,6 +1330,8 @@ function OptionsTab({
                   </span>
                   <input
                     type="number"
+                    lang="en"
+                    dir="ltr"
                     min="0.01"
                     step="0.01"
                     value={variant.price}
@@ -1361,6 +1367,8 @@ function OptionsTab({
                   <span>{text('Stock quantity', 'كمية المخزون')}</span>
                   <input
                     type="number"
+                    lang="en"
+                    dir="ltr"
                     min="0"
                     step="1"
                     value={variant.stockQuantity}
@@ -1443,7 +1451,7 @@ function OptionsTab({
             onClick={() => setGroupEntryMode('library')}
           >
             {text('Use saved group', 'استخدام مجموعة محفوظة')}
-            <span>{availableLibraryGroups.length}</span>
+            <span>{text(String(availableLibraryGroups.length), String(availableLibraryGroups.length))}</span>
           </button>
           <button
             type="button"
@@ -1560,7 +1568,7 @@ function OptionsTab({
           <h3>{text('Choices on this product', 'الخيارات على هذا المنتج')}</h3>
           <p>{text('Adjust selection limits and prices for this product.', 'عدّل حدود الاختيار والأسعار لهذا المنتج.')}</p>
         </div>
-        <span className="builder-count-badge">{groups.length}</span>
+        <span className="builder-count-badge">{text(String(groups.length), String(groups.length))}</span>
       </div>
       {!groups.length && (
         <div className="builder-empty-state builder-empty-options">
@@ -1647,13 +1655,15 @@ function OptionsTab({
               <details className="builder-advanced builder-limits-details">
                 <summary>
                   {text('Selection limits', 'حدود الاختيار')}
-                  <span>{group.minSelections}–{group.maxSelections}</span>
+                  <span>{text(String(group.minSelections), String(group.minSelections))}–{text(String(group.maxSelections), String(group.maxSelections))}</span>
                 </summary>
               <div className="builder-selection-limits">
                 <label className="builder-field">
                   <span>{text('Minimum selections', 'أقل عدد للاختيارات')}</span>
                   <input
                     type="number"
+                    lang="en"
+                    dir="ltr"
                     min="0"
                     max={group.options.length}
                     value={group.minSelections}
@@ -1666,6 +1676,8 @@ function OptionsTab({
                   <span>{text('Maximum selections', 'أكبر عدد للاختيارات')}</span>
                   <input
                     type="number"
+                    lang="en"
+                    dir="ltr"
                     min="1"
                     max={group.options.length}
                     disabled={group.selectionMode === 'single'}
@@ -1692,6 +1704,8 @@ function OptionsTab({
                     <input
                       aria-label={text('Price adjustment in EGP', 'فرق السعر بالجنيه')}
                       type="number"
+                      lang="en"
+                      dir="ltr"
                       min="0"
                       step="0.01"
                       value={option.priceAdjustment}
@@ -1754,6 +1768,7 @@ function PreviewPublishTab({
   images,
   groups,
   variants,
+  formatNumber,
   text,
 }: {
   onEditStep: (step: number) => void;
@@ -1766,12 +1781,13 @@ function PreviewPublishTab({
   images: CatalogMediaAsset[];
   groups: GroupDraft[];
   variants: VariantDraft[];
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
   text: (english: string, arabic: string) => string;
 }) {
   return (
     <div className="builder-fields">
       <div className="builder-section-heading">
-        <span>04</span>
+        <span>{text('04', '04')}</span>
         <div>
           <h2>{text('Preview and publish', 'المعاينة والنشر')}</h2>
           <p>
@@ -1813,14 +1829,14 @@ function PreviewPublishTab({
               {variants.map((variant) => (
                 <span key={variant.id}>
                   {variant.name || text('Unnamed variant', 'متغير بلا اسم')} —{' '}
-                  <b dir="ltr">EGP {Number(variant.price || 0).toFixed(2)}</b>
+                  <b dir="ltr">EGP {formatNumber(Number(variant.price || 0), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>
                   {variant.stockQuantity !== '' &&
-                    ` · ${text('Stock', 'المخزون')}: ${variant.stockQuantity}`}
+                    ` · ${text('Stock', 'المخزون')}: ${text(variant.stockQuantity, variant.stockQuantity)}`}
                 </span>
               ))}
             </div>
           ) : (
-            <strong dir="ltr">EGP {Number(basePrice || 0).toFixed(2)}</strong>
+            <strong dir="ltr">EGP {formatNumber(Number(basePrice || 0), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
           )}
           <small>{text('Sold per piece', 'يباع بالقطعة')}</small>
         </div>
@@ -1834,13 +1850,13 @@ function PreviewPublishTab({
         <div className="builder-review-groups">
           <h3>
             {text('Customer choices', 'اختيارات العميل')}
-            <span className="builder-count-badge">{groups.length}</span>
+            <span className="builder-count-badge">{text(String(groups.length), String(groups.length))}</span>
           </h3>
           {groups.map((group) => (
             <article key={group.id}>
               <strong>{group.name || text('Unnamed group', 'مجموعة بدون اسم')}</strong>
               <small>
-                {group.minSelections}–{group.maxSelections} {text('choices', 'اختيارات')} ·{' '}
+                {text(String(group.minSelections), String(group.minSelections))}–{text(String(group.maxSelections), String(group.maxSelections))} {text('choices', 'اختيارات')} ·{' '}
                 {group.selectionMode === 'single'
                   ? text('Single choice', 'اختيار واحد')
                   : text('Multiple choice', 'اختيارات متعددة')}
@@ -1849,7 +1865,7 @@ function PreviewPublishTab({
                 {group.options
                   .map(
                     (option) =>
-                      `${option.name || text('Unnamed choice', 'اختيار بدون اسم')} (+ EGP ${Number(option.priceAdjustment || 0).toFixed(2)})`,
+                      `${option.name || text('Unnamed choice', 'اختيار بدون اسم')} (+ EGP ${formatNumber(Number(option.priceAdjustment || 0), { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
                   )
                   .join(' · ')}
               </p>
@@ -1859,7 +1875,7 @@ function PreviewPublishTab({
       )}
       {!groups.length && (
         <div className="builder-review-groups builder-review-empty-card">
-          <h3>{text('Customer choices', 'اختيارات العميل')}<span className="builder-count-badge">0</span></h3>
+          <h3>{text('Customer choices', 'اختيارات العميل')}<span className="builder-count-badge">{text('0', '0')}</span></h3>
           <p className="builder-review-empty">
             {text('No add-ons or extra choices for this product.', 'لا توجد إضافات أو خيارات أخرى لهذا المنتج.')}
           </p>
@@ -1919,6 +1935,7 @@ function ProductPreview({
   groups,
   variants,
   total,
+  formatNumber,
   text,
 }: {
   name: string;
@@ -1929,6 +1946,7 @@ function ProductPreview({
   groups: GroupDraft[];
   variants: VariantDraft[];
   total: number;
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
   text: (english: string, arabic: string) => string;
 }) {
   return (
@@ -1957,8 +1975,8 @@ function ProductPreview({
         <strong className="preview-base-price">
           {variants.length ? text('From ', 'ابتداءً من ') : ''}EGP{' '}
           {variants.length
-            ? Math.min(...variants.map((variant) => Number(variant.price || 0))).toFixed(2)
-            : Number(basePrice || 0).toFixed(2)}
+            ? formatNumber(Math.min(...variants.map((variant) => Number(variant.price || 0))), { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : formatNumber(Number(basePrice || 0), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </strong>
       </div>
       {!!variants.length && (
@@ -1967,7 +1985,7 @@ function ProductPreview({
           {variants.map((variant) => (
             <div className="preview-option-row" key={variant.id}>
               <span>{variant.name || text('Variant', 'متغير')}</span>
-              <span dir="ltr">EGP {Number(variant.price || 0).toFixed(2)}</span>
+              <span dir="ltr">EGP {formatNumber(Number(variant.price || 0), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             </div>
           ))}
         </div>
@@ -1993,7 +2011,7 @@ function ProductPreview({
       )}
       <div className="preview-total">
         <span>{text('Starting total', 'الإجمالي المبدئي')}</span>
-        <strong dir="ltr">EGP {total.toFixed(2)}</strong>
+        <strong dir="ltr">EGP {formatNumber(total, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
       </div>
       <p className="preview-note">
         {text(

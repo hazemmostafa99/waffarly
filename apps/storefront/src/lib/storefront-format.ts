@@ -2,7 +2,7 @@ import type { Locale } from '@waffarly/ui';
 import type { PublicStorefrontProduct } from '@waffarly/contracts';
 
 export function formatStorefrontPrice(value: string | number, locale: Locale): string {
-  return new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', {
+  return new Intl.NumberFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG-u-nu-latn', {
     style: 'currency',
     currency: 'EGP',
     maximumFractionDigits: 2,

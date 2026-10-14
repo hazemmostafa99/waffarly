@@ -182,8 +182,16 @@ function typeLabel(type: DiscountType) {
 }
 
 export function DiscountsPage() {
-  const { t, locale } = useLocale();
+  const { t, locale, formatNumber } = useLocale();
   const copy = (message: string) => discountsCopy(message, locale, t);
+  const formatNumericText = (value: string) =>
+    value.replace(/\d+(?:,\d{3})*(?:\.\d+)?/g, (digits) => {
+      const fractionDigits = digits.split('.')[1]?.length ?? 0;
+      return formatNumber(Number(digits.replace(/,/g, '')), {
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
+      });
+    });
   const [query, setQuery] = useState('');
   const [branch, setBranch] = useState('all');
   const [type, setType] = useState('all');
@@ -244,9 +252,9 @@ export function DiscountsPage() {
               </span>
               <div className="discount-stat-copy">
                 <span>{copy(stat.label)}</span>
-                <strong dir="ltr">{stat.value}</strong>
+                <strong dir="ltr">{formatNumericText(stat.value)}</strong>
                 <small className="discount-growth" dir="ltr">
-                  ↑ {stat.change}
+                  ↑ {formatNumericText(stat.change)}
                 </small>
                 <small>{copy('Compared to last month')}</small>
               </div>
@@ -340,15 +348,15 @@ export function DiscountsPage() {
             </div>
             <div>
               <dt>{copy('Value')}</dt>
-              <dd dir="ltr">{selected.value}</dd>
+              <dd dir="ltr">{formatNumericText(selected.value)}</dd>
             </div>
             <div>
               <dt>{copy('Minimum order')}</dt>
-              <dd dir="ltr">{selected.minimum}</dd>
+              <dd dir="ltr">{formatNumericText(selected.minimum)}</dd>
             </div>
             <div>
               <dt>{copy('Maximum discount')}</dt>
-              <dd dir="ltr">{selected.maximum}</dd>
+            <dd dir="ltr">{formatNumericText(selected.maximum)}</dd>
             </div>
             <div>
               <dt>{copy('Date range')}</dt>
@@ -356,7 +364,7 @@ export function DiscountsPage() {
             </div>
             <div>
               <dt>{copy('Usage limit')}</dt>
-              <dd dir="ltr">{selected.usage}</dd>
+            <dd dir="ltr">{formatNumericText(selected.usage)}</dd>
             </div>
             <div>
               <dt>{copy('Branches')}</dt>
@@ -416,9 +424,9 @@ export function DiscountsPage() {
                       {copy(typeLabel(discount.type))}
                     </em>
                   </span>
-                  <strong dir="ltr">{discount.value}</strong>
+                  <strong dir="ltr">{formatNumericText(discount.value)}</strong>
                   <span className="discount-usage" dir="ltr">
-                    {discount.usage}
+                    {formatNumericText(discount.usage)}
                   </span>
                   <span className={`discount-status ${discount.status}`}>
                     <i /> {copy(statusLabel(discount.status))}
@@ -438,9 +446,9 @@ export function DiscountsPage() {
               ‹
             </button>
             <button className="active" type="button" aria-current="page">
-              1
+              {formatNumber(1)}
             </button>
-            <button type="button">2</button>
+            <button type="button">{formatNumber(2)}</button>
             <button type="button" aria-label="Next page">
               ›
             </button>

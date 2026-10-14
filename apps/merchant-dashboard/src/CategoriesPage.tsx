@@ -36,7 +36,7 @@ function categoryDraft(category: Category | null, media: MediaAsset[]): Category
 
 export function CategoriesPage() {
   const { search: globalSearch } = useOutletContext<{ search: string }>();
-  const { locale, errorText } = useLocale();
+  const { locale, errorText, formatNumber } = useLocale();
   const copy = (message: string) => categoriesCopy(message, locale);
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -405,7 +405,7 @@ export function CategoriesPage() {
       <div className="categories-workspace">
         <DashboardCard
           title={copy('Category list')}
-          description={`${filtered.length} ${copy('categories')}`}
+          description={`${formatNumber(filtered.length)} ${copy('categories')}`}
           className="categories-list-card"
         >
           <DataTable
@@ -432,7 +432,7 @@ export function CategoriesPage() {
             previousLabel={copy('Previous page')}
             nextLabel={copy('Next page')}
             summary={(start, end, total) =>
-              `${copy('Showing')} ${start}–${end} ${copy('of')} ${total} ${copy('categories')}`
+              `${copy('Showing')} ${formatNumber(start)}–${formatNumber(end)} ${copy('of')} ${formatNumber(total)} ${copy('categories')}`
             }
           />
         </DashboardCard>
@@ -478,7 +478,7 @@ export function CategoriesPage() {
                     value={draft.description}
                     onChange={(event) => setDraft({ ...draft, description: event.target.value })}
                   />
-                  <small>{draft.description.length}/1000</small>
+                  <small>{formatNumber(draft.description.length)}/{formatNumber(1000)}</small>
                 </label>
                 <label>
                   {copy('Parent category')}

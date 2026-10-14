@@ -6,6 +6,7 @@ import { I18nextProvider, initReactI18next, useTranslation } from 'react-i18next
 import { ar } from './locales/ar.js';
 import { Button } from './button.js';
 import { cn } from './utils.js';
+import { formatDigits, formatNumber } from './number-format.js';
 
 export type Locale = 'en' | 'ar';
 export type LocalizedMessage = string | { key: string; values?: Record<string, unknown> };
@@ -85,29 +86,39 @@ export function useLocale() {
     ...context,
     t: (message: LocalizedMessage, values: Record<string, unknown> = {}) => {
       const text = typeof message === 'string' ? message : message.key;
-      return String(
+      const interpolation = typeof message === 'string' ? values : message.values ?? {};
+      const formattedValues = Object.fromEntries(
+        Object.entries(interpolation).map(([key, value]) => [
+          key,
+          typeof value === 'number' ? formatNumber(value, context.locale) : value,
+        ]),
+      );
+      return formatDigits(String(
         translate(text, {
-          ...(typeof message === 'string' ? values : message.values),
+          ...formattedValues,
           defaultValue: text,
         }),
-      );
+      ), context.locale);
     },
     errorText: (text: string) => {
-      if (context.locale === 'en') return text;
-      if (ar[text]) return String(translate(text));
+      if (context.locale === 'en') return formatDigits(text, context.locale);
+      if (ar[text]) return formatDigits(String(translate(text)), context.locale);
       const required = text.match(/^Select the required modules for (.+)\.$/);
-      return String(
+      return formatDigits(String(
         translate(
           required
             ? 'Select the required modules for {{name}}.'
             : 'Please check the entered details and try again.',
           { name: required?.[1] },
         ),
-      );
+      ), context.locale);
     },
+    formatDigits: (value: string | number) => formatDigits(value, context.locale),
+    formatNumber: (value: number, options?: Intl.NumberFormatOptions) =>
+      formatNumber(value, context.locale, options),
     formatDate: (value: string, withTime = false) =>
       new Intl.DateTimeFormat(
-        context.locale === 'ar' ? 'ar-EG' : 'en-GB',
+        context.locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB-u-nu-latn',
         withTime ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' },
       ).format(new Date(value)),
   };

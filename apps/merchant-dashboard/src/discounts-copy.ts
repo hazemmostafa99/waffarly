@@ -1,3 +1,5 @@
+import { formatDigits } from '@waffarly/ui';
+
 const arabic: Record<string, string> = {
   Discounts: 'الخصومات',
   'Manage coupons and promotional offers to increase your sales.':
@@ -76,5 +78,6 @@ export function discountsCopy(
   locale: string,
   translate: (message: string) => string,
 ) {
-  return locale === 'ar' ? (arabic[message] ?? translate(message)) : translate(message);
+  const result = locale === 'ar' ? (arabic[message] ?? translate(message)) : translate(message);
+  return formatDigits(result, locale);
 }

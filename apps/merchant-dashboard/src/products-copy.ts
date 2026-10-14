@@ -1,4 +1,5 @@
 import type { Locale } from '@waffarly/ui';
+import { formatDigits } from '@waffarly/ui';
 
 const ar: Record<string, string> = {
   'Catalog data unavailable. Refresh to try again.':
@@ -103,5 +104,5 @@ const ar: Record<string, string> = {
 };
 
 export function productsCopy(message: string, locale: Locale): string {
-  return locale === 'ar' ? (ar[message] ?? message) : message;
+  return formatDigits(locale === 'ar' ? (ar[message] ?? message) : message, locale);
 }

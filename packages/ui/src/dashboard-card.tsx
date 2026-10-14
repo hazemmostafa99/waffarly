@@ -1,5 +1,6 @@
 import { useId, type ComponentProps, type ReactNode } from 'react';
 import { cn } from './utils.js';
+import { useLocale } from './i18n.js';
 
 export type DashboardCardProps = Omit<ComponentProps<'section'>, 'title'> & {
   title: ReactNode;
@@ -16,12 +17,13 @@ export function DashboardCard({
   ...props
 }: DashboardCardProps) {
   const headingId = useId();
+  const { formatDigits } = useLocale();
   return (
     <section className={cn('wf-dashboard-card', className)} aria-labelledby={headingId} {...props}>
       <header className="wf-card-heading">
         <div>
-          <h2 id={headingId}>{title}</h2>
-          {description && <p>{description}</p>}
+          <h2 id={headingId}>{typeof title === 'string' ? formatDigits(title) : title}</h2>
+          {description && <p>{typeof description === 'string' ? formatDigits(description) : description}</p>}
         </div>
         {action}
       </header>
@@ -47,13 +49,14 @@ export function SummaryCard({
   tone = 'mint',
   className,
 }: SummaryCardProps) {
+  const { formatNumber, formatDigits } = useLocale();
   return (
     <article className={cn('wf-summary-card', className)}>
       <div className={`wf-summary-inner wf-tone-${tone}`}>
         <div className="wf-summary-copy">
           <span>{label}</span>
-          <strong>{value}</strong>
-          {detail && <small>{detail}</small>}
+          <strong>{typeof value === 'number' ? formatNumber(value) : typeof value === 'string' ? formatDigits(value) : value}</strong>
+          {detail && <small>{typeof detail === 'string' ? formatDigits(detail) : detail}</small>}
         </div>
         {icon && (
           <span className="wf-summary-icon" aria-hidden="true">

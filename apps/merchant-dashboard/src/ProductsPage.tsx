@@ -27,7 +27,7 @@ function productStartingPrice(product: Product): number {
 export function ProductsPage() {
   const { search: globalSearch } = useOutletContext<{ search: string }>();
   const navigate = useNavigate();
-  const { locale, errorText } = useLocale();
+  const { locale, errorText, formatNumber } = useLocale();
   const copy = (text: string) => productsCopy(text, locale);
   const [catalog, setCatalog] = useState<CatalogSnapshot>({
     products: [],
@@ -256,14 +256,14 @@ export function ProductsPage() {
       cell: (product) => {
         const prices = product.variants.map((variant) => Number(variant.price));
         if (!prices.length)
-          return <span dir="ltr">EGP {Number(product.basePrice).toFixed(2)}</span>;
+          return <span dir="ltr">EGP {formatNumber(Number(product.basePrice), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>;
         const minimum = Math.min(...prices);
         const maximum = Math.max(...prices);
         return (
           <span dir="ltr">
             {minimum === maximum
-              ? `EGP ${minimum.toFixed(2)}`
-              : `EGP ${minimum.toFixed(2)} – ${maximum.toFixed(2)}`}
+              ? `EGP ${formatNumber(minimum, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : `EGP ${formatNumber(minimum, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} – ${formatNumber(maximum, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           </span>
         );
       },
@@ -291,7 +291,7 @@ export function ProductsPage() {
       header: copy('Categories'),
       cell: (product) => (
         <span className="products-pill blue">
-          {product.categories.length} {copy('Categories')}
+          {formatNumber(product.categories.length)} {copy('Categories')}
         </span>
       ),
     },
@@ -471,7 +471,7 @@ export function ProductsPage() {
       {selected.length > 0 && (
         <div className="products-selection">
           <span>
-            {selected.length} {copy('selected')}
+            {formatNumber(selected.length)} {copy('selected')}
           </span>
           <button
             type="button"
@@ -489,7 +489,7 @@ export function ProductsPage() {
             className="products-donut"
             role="img"
             aria-label={
-              distribution.map((item) => `${item.name}: ${item.count}`).join(', ') ||
+              distribution.map((item) => `${item.name}: ${formatNumber(item.count)}`).join(', ') ||
               copy('No category data yet.')
             }
             style={{
@@ -499,7 +499,7 @@ export function ProductsPage() {
             }}
           >
             <div>
-              <strong>{loading || !hasLoaded ? '—' : products.length}</strong>
+              <strong>{loading || !hasLoaded ? '—' : formatNumber(products.length)}</strong>
               <small>{copy('Total Products')}</small>
             </div>
           </div>
@@ -511,7 +511,7 @@ export function ProductsPage() {
                   style={{ background: palette[index % palette.length] }}
                 />
                 <span>{item.name}</span>
-                <strong>{Math.round((item.count / products.length) * 100)}%</strong>
+                <strong>{formatNumber(Math.round((item.count / products.length) * 100))}%</strong>
               </li>
             ))}
           </ul>
@@ -524,7 +524,7 @@ export function ProductsPage() {
           className="products-table-card"
           action={
             <span className="products-result-count">
-              {copy('Showing')} {visible.length} {copy('of')} {filtered.length} {copy('products')}
+              {copy('Showing')} {formatNumber(visible.length)} {copy('of')} {formatNumber(filtered.length)} {copy('products')}
             </span>
           }
         >
@@ -556,7 +556,7 @@ export function ProductsPage() {
             previousLabel={copy('Previous page')}
             nextLabel={copy('Next page')}
             summary={(start, end, total) =>
-              `${copy('Showing')} ${start}–${end} ${copy('of')} ${total} ${copy('products')}`
+              `${copy('Showing')} ${formatNumber(start)}–${formatNumber(end)} ${copy('of')} ${formatNumber(total)} ${copy('products')}`
             }
           />
         </DashboardCard>
@@ -594,7 +594,7 @@ export function ProductsPage() {
               disabled={busy}
               onClick={() => void updateSelected('archive')}
             >
-              {copy('Archive')} ({selected.length})
+              {copy('Archive')} ({formatNumber(selected.length)})
             </button>
           </footer>
         </DashboardDialog>

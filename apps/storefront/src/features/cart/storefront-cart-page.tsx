@@ -82,7 +82,7 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
         <p className="text-sm font-extrabold text-store-accent">{catalog.merchantName}</p>
         <h1 className="mt-1 font-heading text-3xl font-black text-store-ink sm:text-4xl">{t.basket}</h1>
         <p className="mt-2 text-base text-store-muted">
-          {cart.reduce((count, line) => count + line.quantity, 0).toLocaleString(locale === 'ar' ? 'ar-EG' : 'en-EG')} {t.products}
+          {cart.reduce((count, line) => count + line.quantity, 0).toLocaleString(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG-u-nu-latn')} {t.products}
         </p>
       </header>
 
