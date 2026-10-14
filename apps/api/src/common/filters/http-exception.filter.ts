@@ -33,9 +33,44 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const errorCode = typeof body?.code === 'string' ? body.code : undefined;
 
     if (statusCode >= 500) {
-      const detail = exception instanceof Error ? exception.message : String(exception);
+      const error = exception instanceof Error ? exception : undefined;
+      const errorWithMetadata =
+        typeof exception === 'object' && exception !== null
+          ? (exception as { code?: unknown; meta?: unknown })
+          : {};
+      const databaseCode =
+        typeof errorWithMetadata.code === 'string' ? errorWithMetadata.code : undefined;
+      const databaseMeta =
+        typeof errorWithMetadata.meta === 'object' && errorWithMetadata.meta !== null
+          ? errorWithMetadata.meta
+          : undefined;
+      const databaseMetaRecord =
+        typeof databaseMeta === 'object' && databaseMeta !== null
+          ? (databaseMeta as Record<string, unknown>)
+          : undefined;
+      const missingTable =
+        typeof databaseMetaRecord?.table === 'string' ? databaseMetaRecord.table : undefined;
+      const path = request.originalUrl ?? request.url;
+
       this.logger.error(
-        JSON.stringify({ event: 'http.exception', statusCode, path: request.url, detail }),
+        {
+          event: 'http.exception',
+          method: request.method,
+          path,
+          statusCode,
+          ...(error
+            ? { errorName: error.name, detail: error.message }
+            : { detail: String(exception) }),
+          ...(databaseCode ? { databaseCode } : {}),
+          ...(databaseMeta ? { databaseMeta } : {}),
+          ...(missingTable ? { summary: `Database table "${missingTable}" is missing.` } : {}),
+          ...(error?.stack ? { stack: error.stack } : {}),
+          ...(databaseCode === 'P2021'
+            ? {
+                hint: 'The database table is missing. Run "pnpm db:migrate" against the same DATABASE_URL.',
+              }
+            : {}),
+        },
         'HttpExceptionFilter',
       );
     }
@@ -44,7 +79,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       statusCode,
       ...(errorCode ? { errorCode } : {}),
       message,
-      path: request.url,
+      path: request.originalUrl ?? request.url,
       timestamp: new Date().toISOString(),
     });
   }

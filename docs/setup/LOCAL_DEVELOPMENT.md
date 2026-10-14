@@ -45,7 +45,7 @@ pnpm db:check
 
 Compose runs a container named `waffarly-postgres` and persists local PostgreSQL data in the named `waffarly-postgres-data` volume. To stop the container while keeping the data, run `docker compose --env-file .env -f infrastructure/docker/compose.yaml down`. The database health check runs `pg_isready`.
 
-`db:migrate` applies the foundation marker and first Super Admin slice migrations. There is no seed script or mock business data. `db:check` validates the schema, generates the client, and checks applied migration status; PostgreSQL must be running for the final command.
+`db:migrate` applies all pending development migrations, including the catalog tables. There is no seed script or mock business data. `db:check` validates the schema, generates the client, and checks applied migration status; PostgreSQL must be running for the final command.
 
 ## Start the workspace
 

@@ -47,7 +47,17 @@ describe('catalog owner endpoints', () => {
         },
         {
           provide: MediaService,
-          useValue: { list: async () => [], register: async () => ({}) },
+          useValue: {
+            list: async () => [],
+            register: async () => ({
+              id: 'media-asset',
+              storageKey: 'catalog/burger.webp',
+              publicUrl: 'https://cdn.example.test/catalog/burger.webp',
+              mimeType: 'image/webp',
+              sizeBytes: 1024,
+              createdAt: new Date('2026-01-01T00:00:00.000Z'),
+            }),
+          },
         },
         {
           provide: CategoryService,
