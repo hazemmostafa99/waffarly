@@ -6,6 +6,7 @@ build/
 .next-ui-tests/
 .turbo/
 coverage/
+apps/api/uploads/
 test-results/
 playwright-report/
 *.tsbuildinfo

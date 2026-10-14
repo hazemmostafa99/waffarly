@@ -6,13 +6,22 @@ import {
   Inject,
   Post,
   Req,
+  UploadedFile,
+  UseInterceptors,
   UseGuards,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request } from 'express';
 import { z } from 'zod';
 import { OwnerGuard } from '../auth/owner.guard.js';
 import { AuthService } from '../auth/auth.service.js';
+import { MAX_MEDIA_SIZE_BYTES } from './catalog.constants.js';
 import { MediaService } from './media.service.js';
+
+interface MultipartImageFile {
+  buffer: Buffer;
+  originalname: string;
+}
 
 const mediaSchema = z.object({
   storageKey: z.string().trim().min(1).max(255),
@@ -44,6 +53,23 @@ export class MediaController {
     const owner = await this.auth.requireOwner(request);
     return toMediaResponse(
       await this.media.register(owner.merchantId, owner.username, parsed.data),
+    );
+  }
+
+  @Post('upload')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_MEDIA_SIZE_BYTES, files: 1, parts: 1 },
+    }),
+  )
+  async upload(@Req() request: Request, @UploadedFile() file: MultipartImageFile | undefined) {
+    if (!file) throw new BadRequestException('Choose an image file to upload.');
+    const owner = await this.auth.requireOwner(request);
+    return toMediaResponse(
+      await this.media.upload(owner.merchantId, owner.username, {
+        buffer: file.buffer,
+        originalName: file.originalname,
+      }),
     );
   }
 }

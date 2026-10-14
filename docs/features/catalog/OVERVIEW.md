@@ -1,7 +1,8 @@
 # Catalog & Dynamic Product Builder Overview
 
-**Status:** Discovery baseline; first backend Catalog slice implementation in progress  
-**Last updated:** 2026-10-13  
+**Status:** Discovery baseline; first backend Catalog slice and local-disk image upload MVP implemented
+
+**Last updated:** 2026-10-14
 **Scope:** Shared Product Core, restaurant-first implementation, future cross-activity extensibility  
 **Sources:** [Project Overview](../../../PROJECT_OVERVIEW.md), [Restaurant MVP Scope](../../../MVP_SCOPE.md), [Technical Decisions](../../architecture/TECHNICAL_DECISIONS.md), and existing feature specifications under `docs/features/`
 
@@ -15,7 +16,7 @@ The first implementation is intended to focus on restaurants in Egypt. That deli
 
 The first backend Catalog slice is now implemented; the following capabilities remain outside it:
 
-- The Catalog NestJS module now exposes owner-scoped Media registration/listing, Category management, and Product management APIs. The basic slice includes tenant-safe references, optimistic revisions, archive/restore management, shared API contracts, and bounded EGP/image validation. Variants, modifiers, selling units, pricing, inventory, orders, public product listing, configurator, and POS selection are not implemented.
+- The Catalog NestJS module now exposes owner-scoped Media upload/registration/listing, Category management, and Product management APIs. The basic slice includes tenant-safe references, optimistic revisions, archive/restore management, shared API contracts, bounded EGP/image validation, and configurable local-disk image storage. Variants, modifiers, selling units, pricing, inventory, orders, public product listing, configurator, and POS selection are not implemented.
 - The Prisma schema now contains tenant-owned MediaAsset, Category, Product, ProductImage, and ProductCategory models. Pricing, inventory, and order entities remain absent.
 - The Merchant Dashboard now exposes the first owner Catalog workspace for Media references, Categories, and Products. Public Storefront and POS projections still render no persisted catalog.
 - The public Next.js application is an onboarding/marketing shell. It does not resolve or render a merchant catalog.
@@ -116,19 +117,19 @@ These mappings preserve existing references while allowing one independently doc
 
 ## 6. Feature Responsibilities and Domain Boundaries
 
-| Concern                   | Owning or candidate boundary         | Catalog interaction                                                                                                                       |
-| ------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Merchant/tenant identity  | Merchant/Tenancy                     | Supplies authenticated tenant context. Catalog records are never selected solely by a client-provided merchant ID.                        |
-| Activity compatibility    | Activities & Modules                 | Declares whether an implemented Catalog capability is compatible with an activity. It does not grant a subscription or user access.       |
-| Commercial access         | Plans & Subscriptions / Entitlements | Determines whether a merchant is entitled to use a capability or limit. Catalog must enforce approved checks through backend integration. |
-| User authorization        | Identity / Access Control            | Determines which owner/staff actor may view, create, edit, publish, or archive Catalog data.                                              |
-| Product definitions       | Catalog                              | Owns product identity, content, categories, configuration definitions, and Catalog lifecycle once specified.                              |
-| Authoritative quotes      | Pricing candidate domain             | Validates selections in context and calculates amounts. Whether simple base-price storage remains in Catalog is OPEN.                     |
-| Stock balances/movements  | Inventory                            | Owns stock identities, balances, reservations, and movements. Catalog may reference stock policy/identity but must not invent deductions. |
-| Order history             | Orders                               | Persists ordered configuration and pricing snapshots; does not depend on mutable Catalog data to reconstruct history.                     |
-| Public presentation       | Storefront                           | Reads public Catalog projections and renders configuration. It cannot publish hidden data or override backend validation.                 |
-| Cashier product selection | POS                                  | Uses the same Product Core and authoritative pricing path, subject to channel/branch rules.                                               |
-| Images/files              | Media/storage boundary               | Catalog references approved media; upload provider, limits, processing, ownership, and deletion are OPEN.                                 |
+| Concern                   | Owning or candidate boundary         | Catalog interaction                                                                                                                                      |
+| ------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Merchant/tenant identity  | Merchant/Tenancy                     | Supplies authenticated tenant context. Catalog records are never selected solely by a client-provided merchant ID.                                       |
+| Activity compatibility    | Activities & Modules                 | Declares whether an implemented Catalog capability is compatible with an activity. It does not grant a subscription or user access.                      |
+| Commercial access         | Plans & Subscriptions / Entitlements | Determines whether a merchant is entitled to use a capability or limit. Catalog must enforce approved checks through backend integration.                |
+| User authorization        | Identity / Access Control            | Determines which owner/staff actor may view, create, edit, publish, or archive Catalog data.                                                             |
+| Product definitions       | Catalog                              | Owns product identity, content, categories, configuration definitions, and Catalog lifecycle once specified.                                             |
+| Authoritative quotes      | Pricing candidate domain             | Validates selections in context and calculates amounts. Whether simple base-price storage remains in Catalog is OPEN.                                    |
+| Stock balances/movements  | Inventory                            | Owns stock identities, balances, reservations, and movements. Catalog may reference stock policy/identity but must not invent deductions.                |
+| Order history             | Orders                               | Persists ordered configuration and pricing snapshots; does not depend on mutable Catalog data to reconstruct history.                                    |
+| Public presentation       | Storefront                           | Reads public Catalog projections and renders configuration. It cannot publish hidden data or override backend validation.                                |
+| Cashier product selection | POS                                  | Uses the same Product Core and authoritative pricing path, subject to channel/branch rules.                                                              |
+| Images/files              | Media/storage boundary               | Owner image upload currently stores JPEG/PNG/WebP files on configurable server disk; final limits, processing, external provider, and deletion are OPEN. |
 
 ## 7. Restaurant MVP Boundary versus Future Capability
 
@@ -252,18 +253,18 @@ No Product Core Prisma design should be approved until the decisions relevant to
 
 ## 12. Dependencies
 
-| Dependency               | Current state                                                                                                                               | Catalog need                                                                                                            |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| **Tenancy / Merchant**   | Merchant is the implemented tenant boundary; activated Owner sessions exist.                                                                | Authenticated merchant scoping and tenant-safe references. Staff/membership model remains OPEN.                         |
-| **Activities & Modules** | Code-managed registry exists, but Catalog is not registered.                                                                                | Future Catalog capability definition and compatibility only after implementation is authorized.                         |
-| **Plans / Entitlements** | Monthly plan definitions exist; assignment and entitlements do not.                                                                         | Do not equate an available Catalog module with paid access. Decide enforcement timing separately.                       |
-| **Branches**             | Not implemented.                                                                                                                            | Branch-aware pricing, availability, and stock must remain outside the first slice unless Branches is approved.          |
-| **Pricing**              | Not implemented.                                                                                                                            | Server-owned configuration validation and quote calculation are mandatory; ownership boundary is OPEN.                  |
-| **Inventory**            | Not implemented.                                                                                                                            | Stock identity/movements remain Inventory-owned; no inferred deduction behavior.                                        |
-| **Orders**               | Not implemented.                                                                                                                            | Needs immutable configuration/price snapshots and revalidation contract when Orders is analyzed.                        |
-| **Storefront**           | Next.js shell and design previews exist; no merchant catalog route.                                                                         | Public Catalog projection and configurator only after Catalog behavior is approved.                                     |
-| **POS**                  | React placeholder exists.                                                                                                                   | Later consumes the same product/configuration/pricing APIs; no separate POS catalog source of truth.                    |
-| **Media storage**        | The Catalog slice stores reusable tenant-owned Media metadata and external references; binary upload/provider lifecycle is not implemented. | Product media needs a separate approved storage/security lifecycle; logo storage is not a precedent for product images. |
+| Dependency               | Current state                                                                                                               | Catalog need                                                                                                                                   |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Tenancy / Merchant**   | Merchant is the implemented tenant boundary; activated Owner sessions exist.                                                | Authenticated merchant scoping and tenant-safe references. Staff/membership model remains OPEN.                                                |
+| **Activities & Modules** | Code-managed registry exists, but Catalog is not registered.                                                                | Future Catalog capability definition and compatibility only after implementation is authorized.                                                |
+| **Plans / Entitlements** | Monthly plan definitions exist; assignment and entitlements do not.                                                         | Do not equate an available Catalog module with paid access. Decide enforcement timing separately.                                              |
+| **Branches**             | Not implemented.                                                                                                            | Branch-aware pricing, availability, and stock must remain outside the first slice unless Branches is approved.                                 |
+| **Pricing**              | Not implemented.                                                                                                            | Server-owned configuration validation and quote calculation are mandatory; ownership boundary is OPEN.                                         |
+| **Inventory**            | Not implemented.                                                                                                            | Stock identity/movements remain Inventory-owned; no inferred deduction behavior.                                                               |
+| **Orders**               | Not implemented.                                                                                                            | Needs immutable configuration/price snapshots and revalidation contract when Orders is analyzed.                                               |
+| **Storefront**           | Next.js shell and design previews exist; no merchant catalog route.                                                         | Public Catalog projection and configurator only after Catalog behavior is approved.                                                            |
+| **POS**                  | React placeholder exists.                                                                                                   | Later consumes the same product/configuration/pricing APIs; no separate POS catalog source of truth.                                           |
+| **Media storage**        | The Catalog slice stores reusable tenant-owned Media metadata and supports image uploads to configurable local server disk. | Local disk needs a persistent deployment volume; image processing, deletion/cleanup, and migration to an external provider remain future work. |
 
 ## 13. Risks of Overengineering and Underdesign
 
@@ -305,7 +306,7 @@ The first selected feature document is:
 docs/features/catalog/PRODUCTS.md
 ```
 
-The [Products discovery specification](PRODUCTS.md) records approved business rules for product information and lifecycle. The [Categories discovery specification](CATEGORIES.md) records the selected hierarchical classification behavior. The current implementation adds backend models, owner APIs, and a minimal Merchant Dashboard workspace for Products, Categories, and reusable Media references; public channel projections remain deferred.
+The [Products discovery specification](PRODUCTS.md) records approved business rules for product information and lifecycle. The [Categories discovery specification](CATEGORIES.md) records the selected hierarchical classification behavior. The current implementation adds backend models, owner APIs, and a minimal Merchant Dashboard workspace for Products, Categories, and reusable Media references, including server-disk image uploads; public channel projections remain deferred.
 
 Subsequent filenames and IDs should be chosen only when their feature is selected, preserving the mapping to existing parent CAT IDs.
 

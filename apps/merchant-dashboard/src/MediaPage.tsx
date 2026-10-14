@@ -4,7 +4,7 @@ import { Pagination, useLocale } from '@waffarly/ui';
 import type { Category, MediaAsset, Product } from './CatalogWorkspace.js';
 import { DashboardDialog } from './components/DashboardDialog.js';
 import { Icon } from './Icons.js';
-import { apiRequest } from './lib/api-client.js';
+import { apiRequest, apiUpload } from './lib/api-client.js';
 import { mediaCopy } from './media-copy.js';
 
 type FileKind = 'images' | 'videos' | 'documents' | 'other';
@@ -91,6 +91,8 @@ export function MediaPage() {
   const [menu, setMenu] = useState<string | null>(null);
   const [preview, setPreview] = useState<MediaAsset | null>(null);
   const [dialog, setDialog] = useState<'add' | 'storage' | 'selection' | null>(null);
+  const [addMode, setAddMode] = useState<'upload' | 'url'>('upload');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [draft, setDraft] = useState(initialDraft);
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState('');
@@ -211,37 +213,59 @@ export function MediaPage() {
   async function addImage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError('');
-    const url = safeUrl(draft.publicUrl);
-    const bytes = Number(draft.sizeBytes);
-    if (!url) {
-      setFormError('Use a valid public HTTP or HTTPS image URL.');
-      return;
-    }
-    if (!Number.isInteger(bytes) || bytes <= 0 || bytes > 10 * 1024 * 1024) {
-      setFormError('Image size must be greater than zero and at most 10 MB.');
-      return;
-    }
-    if (draft.storageKey.trim().length > 255) {
-      setFormError('File name must be at most 255 characters.');
-      return;
+    let url: string | undefined;
+    let bytes: number | undefined;
+    if (addMode === 'upload') {
+      if (!selectedFile) {
+        setFormError('Choose an image file to upload.');
+        return;
+      }
+      if (
+        selectedFile.size <= 0 ||
+        selectedFile.size > 10 * 1024 * 1024 ||
+        !['image/jpeg', 'image/png', 'image/webp'].includes(selectedFile.type)
+      ) {
+        setFormError('Choose a JPEG, PNG, or WebP image up to 10 MB.');
+        return;
+      }
+    } else {
+      url = safeUrl(draft.publicUrl);
+      bytes = Number(draft.sizeBytes);
+      if (!url) {
+        setFormError('Use a valid public HTTP or HTTPS image URL.');
+        return;
+      }
+      if (!Number.isInteger(bytes) || bytes <= 0 || bytes > 10 * 1024 * 1024) {
+        setFormError('Image size must be greater than zero and at most 10 MB.');
+        return;
+      }
+      if (draft.storageKey.trim().length > 255) {
+        setFormError('File name must be at most 255 characters.');
+        return;
+      }
     }
     setBusy(true);
     try {
-      const asset = await apiRequest<MediaAsset>('/owner/catalog/media', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...draft,
-          storageKey: draft.storageKey.trim(),
-          publicUrl: url,
-          sizeBytes: bytes,
-        }),
-      });
+      const asset =
+        addMode === 'upload'
+          ? await apiUpload<MediaAsset>('/owner/catalog/media/upload', selectedFile!)
+          : await apiRequest<MediaAsset>('/owner/catalog/media', {
+              method: 'POST',
+              body: JSON.stringify({
+                ...draft,
+                storageKey: draft.storageKey.trim(),
+                publicUrl: url,
+                sizeBytes: bytes,
+              }),
+            });
       setMedia((current) => [asset, ...current]);
       clearFilters();
       setPage(1);
       setDialog(null);
+      setAddMode('upload');
+      setSelectedFile(null);
       setDraft(initialDraft);
-      setNotice('Image added.');
+      setNotice(addMode === 'upload' ? 'Image uploaded to this server.' : 'Image added.');
     } catch (cause) {
       setFormError(cause instanceof Error ? cause.message : 'Could not add image.');
     } finally {
@@ -261,6 +285,8 @@ export function MediaPage() {
           className="products-button primary"
           onClick={() => {
             setDialog('add');
+            setAddMode('upload');
+            setSelectedFile(null);
             setFormError('');
           }}
         >
@@ -366,6 +392,8 @@ export function MediaPage() {
                     ? clearFilters
                     : () => {
                         setDialog('add');
+                        setAddMode('upload');
+                        setSelectedFile(null);
                         setFormError('');
                       }
                 }
@@ -557,60 +585,102 @@ export function MediaPage() {
           busy={busy}
         >
           <form className="products-form media-add-form" onSubmit={(event) => void addImage(event)}>
+            <div className="media-add-modes" role="group" aria-label={copy('Add media method')}>
+              <button
+                type="button"
+                aria-pressed={addMode === 'upload'}
+                onClick={() => {
+                  setAddMode('upload');
+                  setFormError('');
+                }}
+              >
+                {copy('Upload from device')}
+              </button>
+              <button
+                type="button"
+                aria-pressed={addMode === 'url'}
+                onClick={() => {
+                  setAddMode('url');
+                  setFormError('');
+                }}
+              >
+                {copy('Add by URL')}
+              </button>
+            </div>
             <p>
               {copy(
-                'Add a hosted image using its public URL. JPEG, PNG, and WebP images up to 10 MB are supported.',
+                addMode === 'upload'
+                  ? 'Choose an image from your device. It will be stored on this server. JPEG, PNG, and WebP up to 10 MB are supported.'
+                  : 'Add a hosted image using its public URL. JPEG, PNG, and WebP images up to 10 MB are supported.',
               )}
             </p>
             <fieldset className="products-fields" disabled={busy}>
-              <label>
-                {copy('Image URL')}
-                <input
-                  required
-                  type="url"
-                  maxLength={2000}
-                  placeholder="https://…"
-                  dir="ltr"
-                  value={draft.publicUrl}
-                  onChange={(event) => setDraft({ ...draft, publicUrl: event.target.value })}
-                />
-              </label>
-              <label>
-                {copy('File name')}
-                <input
-                  required
-                  maxLength={255}
-                  dir="ltr"
-                  placeholder="product-image.jpg"
-                  value={draft.storageKey}
-                  onChange={(event) => setDraft({ ...draft, storageKey: event.target.value })}
-                />
-              </label>
-              <div className="products-form-grid">
+              {addMode === 'upload' ? (
                 <label>
-                  {copy('File size in bytes')}
+                  {copy('Choose image')}
                   <input
-                    required
-                    type="number"
-                    min={1}
-                    max={10 * 1024 * 1024}
-                    step={1}
-                    value={draft.sizeBytes}
-                    onChange={(event) => setDraft({ ...draft, sizeBytes: event.target.value })}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)}
                   />
+                  {selectedFile && (
+                    <small dir="ltr">
+                      {selectedFile.name} · {fileSize(selectedFile.size)}
+                    </small>
+                  )}
                 </label>
-                <label>
-                  {copy('Format')}
-                  <select
-                    value={draft.mimeType}
-                    onChange={(event) => setDraft({ ...draft, mimeType: event.target.value })}
-                  >
-                    <option value="image/jpeg">JPEG</option>
-                    <option value="image/png">PNG</option>
-                    <option value="image/webp">WebP</option>
-                  </select>
-                </label>
-              </div>
+              ) : (
+                <>
+                  <label>
+                    {copy('Image URL')}
+                    <input
+                      required
+                      type="url"
+                      maxLength={2000}
+                      placeholder="https://…"
+                      dir="ltr"
+                      value={draft.publicUrl}
+                      onChange={(event) => setDraft({ ...draft, publicUrl: event.target.value })}
+                    />
+                  </label>
+                  <label>
+                    {copy('File name')}
+                    <input
+                      required
+                      maxLength={255}
+                      dir="ltr"
+                      placeholder="product-image.jpg"
+                      value={draft.storageKey}
+                      onChange={(event) => setDraft({ ...draft, storageKey: event.target.value })}
+                    />
+                  </label>
+                  <div className="products-form-grid">
+                    <label>
+                      {copy('File size in bytes')}
+                      <input
+                        required
+                        type="number"
+                        min={1}
+                        max={10 * 1024 * 1024}
+                        step={1}
+                        value={draft.sizeBytes}
+                        onChange={(event) => setDraft({ ...draft, sizeBytes: event.target.value })}
+                      />
+                    </label>
+                    <label>
+                      {copy('Format')}
+                      <select
+                        value={draft.mimeType}
+                        onChange={(event) => setDraft({ ...draft, mimeType: event.target.value })}
+                      >
+                        <option value="image/jpeg">JPEG</option>
+                        <option value="image/png">PNG</option>
+                        <option value="image/webp">WebP</option>
+                      </select>
+                    </label>
+                  </div>
+                </>
+              )}
             </fieldset>
             {formError && (
               <p className="products-error" role="alert">
@@ -627,7 +697,15 @@ export function MediaPage() {
                 {copy('Cancel')}
               </button>
               <button type="submit" className="products-button primary" disabled={busy}>
-                {copy(busy ? 'Adding…' : 'Add image')}
+                {copy(
+                  busy
+                    ? addMode === 'upload'
+                      ? 'Uploading…'
+                      : 'Adding…'
+                    : addMode === 'upload'
+                      ? 'Upload image'
+                      : 'Add image',
+                )}
               </button>
             </footer>
           </form>

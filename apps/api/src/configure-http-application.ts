@@ -64,6 +64,16 @@ export function configureHttpApplication(
       },
     ),
   );
+  app.getHttpAdapter().useStaticAssets?.(config.mediaStorageDirectory, {
+    prefix: '/media',
+    dotfiles: 'deny',
+    fallthrough: true,
+    index: false,
+    immutable: true,
+    maxAge: '1y',
+    setHeaders: (response: { setHeader(name: string, value: string): unknown }) =>
+      response.setHeader('X-Content-Type-Options', 'nosniff'),
+  });
   app.use((request: Request, response: Response, next: NextFunction) => {
     if (
       !['GET', 'HEAD', 'OPTIONS'].includes(request.method) &&

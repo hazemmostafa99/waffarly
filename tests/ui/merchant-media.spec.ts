@@ -28,9 +28,27 @@ async function mockLibrary(page: Page, { empty = false, failure = false } = {}) 
   await page.route('**/owner/catalog/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (route.request().method() === 'POST') {
-      const body = route.request().postDataJSON() as Record<string, unknown>;
-      posts.push(body);
-      const asset = { ...body, id: 'new-media' };
+      const isUpload = path.endsWith('/media/upload');
+      const body = isUpload
+        ? {
+            storageKey: `catalog/${
+              route
+                .request()
+                .postDataBuffer()
+                ?.toString('latin1')
+                .match(/filename="([^"]+)"/)?.[1] ?? 'uploaded-image.jpg'
+            }`,
+            publicUrl: 'http://localhost:4000/media/catalog/uploaded-image.jpg',
+            mimeType: 'image/jpeg',
+            sizeBytes: 6,
+          }
+        : (route.request().postDataJSON() as Record<string, unknown>);
+      posts.push(isUpload ? { uploadedFile: body.storageKey } : body);
+      const asset = {
+        ...body,
+        id: 'new-media',
+        ...(isUpload ? { storageKey: body.storageKey } : {}),
+      };
       media = [asset as (typeof fixtures)[number], ...media];
       await route.fulfill({ json: asset });
     } else if (path.endsWith('/media')) {
@@ -131,6 +149,27 @@ test('previews, actions, and file selection work without mutating assets', async
   await expect(page.getByRole('dialog')).toContainText('25 MB');
 });
 
+test('the image dialog uploads a local image into the library', async ({ page }) => {
+  const posts = await mockLibrary(page, { empty: true });
+  await page.addInitScript(() => localStorage.setItem('waffarly-locale', 'en'));
+  await page.goto('http://127.0.0.1:5274/media');
+  await page.getByRole('button', { name: 'Add media', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('button', { name: 'Upload from device' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await dialog.getByLabel('Choose image').setInputFiles({
+    name: 'device-image.jpg',
+    mimeType: 'image/jpeg',
+    buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]),
+  });
+  await dialog.getByRole('button', { name: 'Upload image', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator('.media-file-name')).toHaveText('device-image.jpg');
+  expect(posts).toEqual([{ uploadedFile: 'catalog/device-image.jpg' }]);
+});
+
 test('the image dialog persists valid API metadata and rejects unsafe URLs', async ({ page }) => {
   const posts = await mockLibrary(page, { empty: true });
   await page.addInitScript(() => localStorage.setItem('waffarly-locale', 'en'));
@@ -138,6 +177,7 @@ test('the image dialog persists valid API metadata and rejects unsafe URLs', asy
   await expect(page.getByRole('heading', { name: 'Your media library starts here' })).toBeVisible();
   await page.getByRole('button', { name: 'Add media', exact: true }).click();
   const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Add by URL', exact: true }).click();
   await dialog
     .getByRole('textbox', { name: 'Image URL', exact: true })
     .fill('ftp://example.com/serum.jpg');

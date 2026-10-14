@@ -1,7 +1,8 @@
 # CAT-F02 — Products
 
-**Status:** Discovery draft; initial business rules confirmed; backend slice implementation in progress  
-**Last updated:** 2026-10-13  
+**Status:** Discovery draft; initial business rules confirmed; first backend slice implemented
+
+**Last updated:** 2026-10-14
 **Parent:** [Catalog & Dynamic Product Builder Overview](OVERVIEW.md)  
 **Parent feature mapping:** Existing `CAT-01 — Categories and products`  
 **Identifier note:** `CAT-F02` is temporary because `CAT-01` through `CAT-03` already identify broader Catalog feature groups.
@@ -283,19 +284,19 @@ Public Storefront/POS UI and advanced product editing remain outside this slice.
 
 ## 11. Dependencies
 
-| Dependency             | Need                                                                        | Current status                                                                                                                     |
-| ---------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Merchant/Tenancy       | Authenticated merchant ownership and isolation.                             | Merchant tenant and activated Owner session implemented; broader tenancy/access model incomplete.                                  |
-| Categories (CAT-F01)   | One or more valid categories are mandatory at product creation/update.      | Implemented with tenant-safe references, a two-level hierarchy, lifecycle actions, and multiple equal Product links.               |
-| Media                  | A valid image is mandatory.                                                 | Reusable tenant-owned Media metadata and owner registration are implemented; binary storage/provider integration remains deferred. |
-| Pricing (CAT-F06)      | Positive EGP base-price validation and later authoritative quote semantics. | Not implemented; currency/positivity confirmed, while precision and calculation rules remain OPEN.                                 |
-| Availability (CAT-F07) | Channel/public meaning of Available/Unavailable and Archived.               | Manual state selected conceptually; channel rules not implemented.                                                                 |
-| Orders                 | Deletion prohibition after order use and historical snapshot.               | Not implemented; relationship/snapshot design OPEN.                                                                                |
-| Activities & Modules   | Catalog compatibility metadata when capability is implemented.              | Registry exists; Catalog capability absent. Compatibility does not grant access.                                                   |
-| Plans/Entitlements     | Commercial access if Catalog becomes plan-gated.                            | Plan definitions exist; assignment/entitlements absent and rules OPEN.                                                             |
-| Audit                  | Attribution/history for sensitive changes if required.                      | No general audit domain exists; scope OPEN.                                                                                        |
+| Dependency             | Need                                                                        | Current status                                                                                                                                                        |
+| ---------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Merchant/Tenancy       | Authenticated merchant ownership and isolation.                             | Merchant tenant and activated Owner session implemented; broader tenancy/access model incomplete.                                                                     |
+| Categories (CAT-F01)   | One or more valid categories are mandatory at product creation/update.      | Implemented with tenant-safe references, a two-level hierarchy, lifecycle actions, and multiple equal Product links.                                                  |
+| Media                  | A valid image is mandatory.                                                 | Reusable tenant-owned Media and owner image upload to configurable server disk are implemented; processing, cleanup, and external-provider lifecycle remain deferred. |
+| Pricing (CAT-F06)      | Positive EGP base-price validation and later authoritative quote semantics. | Not implemented; currency/positivity confirmed, while precision and calculation rules remain OPEN.                                                                    |
+| Availability (CAT-F07) | Channel/public meaning of Available/Unavailable and Archived.               | Manual state selected conceptually; channel rules not implemented.                                                                                                    |
+| Orders                 | Deletion prohibition after order use and historical snapshot.               | Not implemented; relationship/snapshot design OPEN.                                                                                                                   |
+| Activities & Modules   | Catalog compatibility metadata when capability is implemented.              | Registry exists; Catalog capability absent. Compatibility does not grant access.                                                                                      |
+| Plans/Entitlements     | Commercial access if Catalog becomes plan-gated.                            | Plan definitions exist; assignment/entitlements absent and rules OPEN.                                                                                                |
+| Audit                  | Attribution/history for sensitive changes if required.                      | No general audit domain exists; scope OPEN.                                                                                                                           |
 
-The mandatory category and image decisions are implemented through the minimal Categories and reusable Media reference boundaries. The dashboard supports product descriptions, explicit primary-image selection, archived views, and restoration. Binary upload, Storefront rendering, and channel behavior remain deferred.
+The mandatory category and image decisions are implemented through the minimal Categories and reusable Media boundaries. The dashboard supports product descriptions, explicit primary-image selection, archived views, restoration, and JPEG/PNG/WebP upload to configurable server disk. Image processing, durable deployment storage configuration, Storefront rendering, and channel behavior remain future work.
 
 ## 12. Acceptance Criteria
 
@@ -366,7 +367,7 @@ The primary Product decisions from the first two rounds are confirmed. The follo
 7. What atomicity/concurrency rule prevents an order from being created while a never-ordered product is being permanently deleted?
 8. What happens to active carts/configurations after product content, price, availability, categories, or images change?
 
-Categories and reusable Media references are implemented in the first backend slice; remaining Media storage and Product behavior still require focused discovery before expansion.
+Categories and reusable Media references are implemented in the first backend slice, including initial local-disk image upload; processing, cleanup, external storage, and remaining Product behavior still require focused discovery before expansion.
 
 ## 15. Documentation and Approval Path
 

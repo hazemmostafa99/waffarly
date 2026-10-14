@@ -1,7 +1,8 @@
 # CAT-F01 — Categories
 
-**Status:** Discovery draft; initial business rules confirmed; backend slice implementation in progress  
-**Last updated:** 2026-10-13  
+**Status:** Discovery draft; initial business rules confirmed; first backend slice implemented
+
+**Last updated:** 2026-10-14
 **Parent:** [Catalog & Dynamic Product Builder Overview](OVERVIEW.md)  
 **Related:** [Products discovery specification](PRODUCTS.md)  
 **Parent feature mapping:** Existing `CAT-01 — Categories and products`  
@@ -295,16 +296,16 @@ Public Storefront/POS category navigation remains outside this slice.
 
 ## 13. Dependencies
 
-| Dependency              | Need                                                                         | Current state                                                                                                                        |
-| ----------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Merchant/Tenancy        | Authenticated merchant ownership and isolation.                              | Merchant tenant and activated Owner session exist; staff membership/RBAC is absent.                                                  |
-| Identity/Access Control | Allow approved owner and non-owner Category managers.                        | Only owner/admin session concepts exist; exact Category roles remain OPEN.                                                           |
-| Product Media           | Required Category image lifecycle.                                           | Reusable tenant-owned Media references are implemented; binary upload, processing, deletion, and provider lifecycle remain deferred. |
-| Products                | Mandatory one-or-more equal Category associations.                           | Product associations are implemented in the first backend slice.                                                                     |
-| Availability/Storefront | Meaning of Category availability for navigation and Product discoverability. | Not implemented; channel effects OPEN.                                                                                               |
-| Audit                   | Attribution/history if required for hierarchy/lifecycle changes.             | No general audit domain; scope OPEN.                                                                                                 |
+| Dependency              | Need                                                                         | Current state                                                                                                                                                      |
+| ----------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Merchant/Tenancy        | Authenticated merchant ownership and isolation.                              | Merchant tenant and activated Owner session exist; staff membership/RBAC is absent.                                                                                |
+| Identity/Access Control | Allow approved owner and non-owner Category managers.                        | Only owner/admin session concepts exist; exact Category roles remain OPEN.                                                                                         |
+| Product Media           | Required Category image lifecycle.                                           | Reusable tenant-owned Media references and local-disk JPEG/PNG/WebP upload are implemented; processing, deletion, and external-provider lifecycle remain deferred. |
+| Products                | Mandatory one-or-more equal Category associations.                           | Product associations are implemented in the first backend slice.                                                                                                   |
+| Availability/Storefront | Meaning of Category availability for navigation and Product discoverability. | Not implemented; channel effects OPEN.                                                                                                                             |
+| Audit                   | Attribution/history if required for hierarchy/lifecycle changes.             | No general audit domain; scope OPEN.                                                                                                                               |
 
-The backend slice requires a registered reusable Media reference and the existing Owner session. Employee `Manage Catalog` roles, binary upload, and channel projections remain deferred.
+The backend slice requires a registered reusable Media reference and the existing Owner session. Employee `Manage Catalog` roles, image processing/deletion, and channel projections remain deferred; initial uploads use configurable server disk.
 
 ## 14. Acceptance Criteria
 

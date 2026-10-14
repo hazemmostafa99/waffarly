@@ -486,6 +486,30 @@
 .media-add-form {
   margin-top: 8px;
 }
+.media-add-modes {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.media-add-modes button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 8px;
+  background: #fff;
+  color: #596779;
+  font: inherit;
+  cursor: pointer;
+}
+.media-add-modes button[aria-pressed='true'] {
+  border-color: #087858;
+  background: #eaf6f1;
+  color: #087858;
+  font-weight: 700;
+}
+.media-add-form input[type='file'] {
+  width: 100%;
+}
 .media-detail-preview {
   display: grid;
   place-items: center;

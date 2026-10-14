@@ -67,6 +67,18 @@ const ar: Record<string, string> = {
   Close: 'إغلاق',
   Cancel: 'إلغاء',
   'Files in your library': 'ملفات في مكتبتك',
+  'Add media method': 'طريقة إضافة الوسائط',
+  'Upload from device': 'رفع من الجهاز',
+  'Add by URL': 'إضافة عبر رابط',
+  'Choose image': 'اختر صورة',
+  'Upload image': 'رفع الصورة',
+  'Uploading…': 'جارٍ الرفع…',
+  'Choose an image from your device. It will be stored on this server. JPEG, PNG, and WebP up to 10 MB are supported.':
+    'اختر صورة من جهازك. سيتم تخزينها على هذا الخادم. الصيغ المدعومة JPEG وPNG وWebP بحجم يصل إلى 10 ميجابايت.',
+  'Image uploaded to this server.': 'تم رفع الصورة إلى هذا الخادم.',
+  'Choose an image file to upload.': 'اختر ملف صورة لرفعه.',
+  'Choose a JPEG, PNG, or WebP image up to 10 MB.':
+    'اختر صورة بصيغة JPEG أو PNG أو WebP بحجم لا يتجاوز 10 ميجابايت.',
 };
 
 export function mediaCopy(message: string, locale: Locale): string {

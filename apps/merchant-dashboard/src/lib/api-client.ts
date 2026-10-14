@@ -22,6 +22,21 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...init.headers },
   });
+  return readResponse<T>(response);
+}
+
+export async function apiUpload<T>(path: string, file: File): Promise<T> {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await fetch(new URL(path.replace(/^\//, ''), `${apiBaseUrl()}/`), {
+    method: 'POST',
+    credentials: 'include',
+    body: form,
+  });
+  return readResponse<T>(response);
+}
+
+async function readResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as {
       message?: string | string[];
