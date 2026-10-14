@@ -22,6 +22,7 @@ export function ProductEditor({
   const { locale, errorText } = useLocale();
   const copy = (text: string) => productsCopy(text, locale);
   const [name, setName] = useState(product?.name ?? '');
+  const [description, setDescription] = useState(product?.description ?? '');
   const [price, setPrice] = useState(product?.basePrice ?? '');
   const [availability, setAvailability] = useState(product?.availability ?? 'available');
   const [imageIds, setImageIds] = useState(
@@ -44,6 +45,7 @@ export function ProductEditor({
         method: product ? 'PATCH' : 'POST',
         body: JSON.stringify({
           name,
+          description,
           basePrice: price,
           availability,
           imageAssetIds: imageIds,
@@ -88,6 +90,15 @@ export function ProductEditor({
               onChange={(event) => setName(event.target.value)}
             />
           </label>
+          <label>
+            {copy('Description')}
+            <textarea
+              maxLength={1000}
+              rows={3}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+            />
+          </label>
           <div className="products-form-grid">
             <label>
               {copy('Base price (EGP)')}
@@ -95,6 +106,7 @@ export function ProductEditor({
                 required
                 type="number"
                 min="0.01"
+                max="9999999999.99"
                 step="0.01"
                 value={price}
                 onChange={(event) => setPrice(event.target.value)}
@@ -104,7 +116,9 @@ export function ProductEditor({
               {copy('Publication status')}
               <select
                 value={availability}
-                onChange={(event) => setAvailability(event.target.value)}
+                onChange={(event) =>
+                  setAvailability(event.target.value as 'available' | 'unavailable')
+                }
               >
                 <option value="available">{copy('Available')}</option>
                 <option value="unavailable">{copy('Unavailable')}</option>
@@ -138,20 +152,36 @@ export function ProductEditor({
             <legend>{copy('Product images')}</legend>
             <div className="products-image-options">
               {media.map((asset) => (
-                <label className="products-check" key={asset.id}>
-                  <input
-                    type="checkbox"
-                    checked={imageIds.includes(asset.id)}
-                    disabled={!imageIds.includes(asset.id) && imageIds.length >= 10}
-                    onChange={(event) => {
-                      setImageIds(toggle(imageIds, asset.id, event.target.checked));
-                      if (!event.target.checked && asset.id === primaryImageId)
-                        setPrimaryImageId(undefined);
-                    }}
-                  />
-                  <img src={asset.publicUrl} alt="" />
-                  <span>{asset.storageKey}</span>
-                </label>
+                <div className="products-image-choice" key={asset.id}>
+                  <label className="products-check">
+                    <input
+                      type="checkbox"
+                      checked={imageIds.includes(asset.id)}
+                      disabled={!imageIds.includes(asset.id) && imageIds.length >= 10}
+                      onChange={(event) => {
+                        const nextIds = toggle(imageIds, asset.id, event.target.checked);
+                        setImageIds(nextIds);
+                        if (event.target.checked && !primaryImageId) setPrimaryImageId(asset.id);
+                        if (!event.target.checked && asset.id === primaryImageId) {
+                          setPrimaryImageId(nextIds[0]);
+                        }
+                      }}
+                    />
+                    <img src={asset.publicUrl} alt="" />
+                    <span>{asset.storageKey}</span>
+                  </label>
+                  {imageIds.includes(asset.id) && (
+                    <label className="products-primary-image">
+                      <input
+                        type="radio"
+                        name="primary-product-image"
+                        checked={primaryImageId === asset.id}
+                        onChange={() => setPrimaryImageId(asset.id)}
+                      />
+                      {copy('Primary image')}
+                    </label>
+                  )}
+                </div>
               ))}
             </div>
             {!media.length && (

@@ -1,13 +1,9 @@
 import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import type { RegisterCatalogMediaRequest } from '@waffarly/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { MAX_MEDIA_SIZE_BYTES, isImageMimeType } from './catalog.constants.js';
 
-export type RegisterMediaInput = {
-  storageKey: string;
-  publicUrl: string;
-  mimeType: string;
-  sizeBytes: number;
-};
+export type RegisterMediaInput = RegisterCatalogMediaRequest;
 
 @Injectable()
 export class MediaService {

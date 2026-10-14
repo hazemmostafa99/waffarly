@@ -88,6 +88,7 @@
 }
 .media-checkbox {
   position: absolute;
+  z-index: 2;
   top: 7px;
   left: 7px;
   margin: 0;
@@ -98,6 +99,7 @@
 }
 .media-card-actions {
   position: absolute;
+  z-index: 2;
   top: 7px;
   right: 7px;
 }

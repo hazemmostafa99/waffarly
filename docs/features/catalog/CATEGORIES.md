@@ -295,14 +295,14 @@ Public Storefront/POS category navigation remains outside this slice.
 
 ## 13. Dependencies
 
-| Dependency              | Need                                                                         | Current state                                                                       |
-| ----------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Merchant/Tenancy        | Authenticated merchant ownership and isolation.                              | Merchant tenant and activated Owner session exist; staff membership/RBAC is absent. |
-| Identity/Access Control | Allow approved owner and non-owner Category managers.                        | Only owner/admin session concepts exist; exact Category roles remain OPEN.          |
-| Product Media           | Required Category image lifecycle.                                           | Not implemented or selected. Existing logo storage is not a Category-image design.  |
-| Products                | Mandatory one-or-more equal Category associations.                           | Product associations are implemented in the first backend slice.                    |
-| Availability/Storefront | Meaning of Category availability for navigation and Product discoverability. | Not implemented; channel effects OPEN.                                              |
-| Audit                   | Attribution/history if required for hierarchy/lifecycle changes.             | No general audit domain; scope OPEN.                                                |
+| Dependency              | Need                                                                         | Current state                                                                                                                        |
+| ----------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Merchant/Tenancy        | Authenticated merchant ownership and isolation.                              | Merchant tenant and activated Owner session exist; staff membership/RBAC is absent.                                                  |
+| Identity/Access Control | Allow approved owner and non-owner Category managers.                        | Only owner/admin session concepts exist; exact Category roles remain OPEN.                                                           |
+| Product Media           | Required Category image lifecycle.                                           | Reusable tenant-owned Media references are implemented; binary upload, processing, deletion, and provider lifecycle remain deferred. |
+| Products                | Mandatory one-or-more equal Category associations.                           | Product associations are implemented in the first backend slice.                                                                     |
+| Availability/Storefront | Meaning of Category availability for navigation and Product discoverability. | Not implemented; channel effects OPEN.                                                                                               |
+| Audit                   | Attribution/history if required for hierarchy/lifecycle changes.             | No general audit domain; scope OPEN.                                                                                                 |
 
 The backend slice requires a registered reusable Media reference and the existing Owner session. Employee `Manage Catalog` roles, binary upload, and channel projections remain deferred.
 

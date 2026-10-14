@@ -56,7 +56,7 @@ export function CategoriesPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const activeCategories = categories.filter((category) => !category.archivedAt);
-  const selected = activeCategories.find((category) => category.id === selectedId) ?? null;
+  const selected = categories.find((category) => category.id === selectedId) ?? null;
 
   function productCount(category: Category): number {
     return (
@@ -77,17 +77,18 @@ export function CategoriesPage() {
     setProducts(nextProducts);
     setMedia(nextMedia);
     setHasLoaded(true);
-    const nextActive = nextCategories.filter((category) => !category.archivedAt);
     const nextId =
-      preferredId && nextActive.some((category) => category.id === preferredId)
+      preferredId && nextCategories.some((category) => category.id === preferredId)
         ? preferredId
-        : selectedId && nextActive.some((category) => category.id === selectedId)
+        : selectedId && nextCategories.some((category) => category.id === selectedId)
           ? selectedId
-          : (nextActive[0]?.id ?? null);
+          : (nextCategories.find((category) => !category.archivedAt)?.id ??
+            nextCategories[0]?.id ??
+            null);
     setSelectedId(nextId);
     if (!creating) {
       setDraft(
-        categoryDraft(nextActive.find((category) => category.id === nextId) ?? null, nextMedia),
+        categoryDraft(nextCategories.find((category) => category.id === nextId) ?? null, nextMedia),
       );
     }
   }
@@ -163,10 +164,32 @@ export function CategoriesPage() {
     }
   }
 
+  async function changeArchiveState(action: 'archive' | 'restore') {
+    if (!selected) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      const saved = await apiRequest<Category>(
+        `/owner/catalog/categories/${selected.id}/${action}`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ revision: selected.revision }),
+        },
+      );
+      setNotice(action === 'archive' ? 'Category archived.' : 'Category restored as unavailable.');
+      await refresh(saved.id);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not update category lifecycle.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const normalizedQueries = [query, globalSearch].map((value) =>
     value.trim().toLocaleLowerCase(locale),
   );
-  const filtered = activeCategories
+  const filtered = categories
     .filter(
       (category) =>
         normalizedQueries.every((value) =>
@@ -174,7 +197,10 @@ export function CategoriesPage() {
             .toLocaleLowerCase(locale)
             .includes(value),
         ) &&
-        (!status || category.availability === status),
+        (!status ||
+          (status === 'archived'
+            ? Boolean(category.archivedAt)
+            : !category.archivedAt && category.availability === status)),
     )
     .sort((a, b) => {
       if (sort === 'products') return productCount(b) - productCount(a);
@@ -209,7 +235,7 @@ export function CategoriesPage() {
       cell: (category) => (
         <span className="categories-parent">
           {category.parent?.name ??
-            activeCategories.find((item) => item.id === category.parentId)?.name ??
+            categories.find((item) => item.id === category.parentId)?.name ??
             '—'}
         </span>
       ),
@@ -222,13 +248,20 @@ export function CategoriesPage() {
     {
       id: 'status',
       header: copy('Status'),
-      cell: (category) => (
-        <span
-          className={`products-pill ${category.availability === 'available' ? 'mint' : 'cream'}`}
-        >
-          {copy(category.availability === 'available' ? 'Active' : 'Inactive')}
-        </span>
-      ),
+      cell: (category) => {
+        const label = category.archivedAt
+          ? 'Archived'
+          : category.availability === 'available'
+            ? 'Active'
+            : 'Inactive';
+        return (
+          <span
+            className={`products-pill ${!category.archivedAt && category.availability === 'available' ? 'mint' : 'cream'}`}
+          >
+            {copy(label)}
+          </span>
+        );
+      },
     },
     {
       id: 'actions',
@@ -357,6 +390,7 @@ export function CategoriesPage() {
           <option value="">{copy('All statuses')}</option>
           <option value="available">{copy('Active')}</option>
           <option value="unavailable">{copy('Inactive')}</option>
+          <option value="archived">{copy('Archived')}</option>
         </select>
         <select
           aria-label={copy('Sort by')}
@@ -382,7 +416,7 @@ export function CategoriesPage() {
             loading={loading}
             loadingState={copy('Loading categories…')}
             emptyState={copy(
-              activeCategories.length
+              categories.length
                 ? 'No matching categories.'
                 : 'No categories yet. Add your first category to get started.',
             )}
@@ -412,7 +446,7 @@ export function CategoriesPage() {
             <p className="categories-empty-editor">{copy('Select a category to edit it.')}</p>
           ) : (
             <form className="categories-form" onSubmit={(event) => void save(event)}>
-              <fieldset disabled={busy}>
+              <fieldset disabled={busy || Boolean(selected?.archivedAt)}>
                 <div className="categories-cover-preview">
                   {draft.imageAssetId ? (
                     <img
@@ -438,13 +472,13 @@ export function CategoriesPage() {
                 <label>
                   {copy('Description')}
                   <textarea
-                    maxLength={200}
+                    maxLength={1000}
                     rows={3}
                     placeholder={copy('Description placeholder')}
                     value={draft.description}
                     onChange={(event) => setDraft({ ...draft, description: event.target.value })}
                   />
-                  <small>{draft.description.length}/200</small>
+                  <small>{draft.description.length}/1000</small>
                 </label>
                 <label>
                   {copy('Parent category')}
@@ -511,20 +545,34 @@ export function CategoriesPage() {
               <button
                 type="submit"
                 className="products-button primary categories-save"
-                disabled={busy || !draft.imageAssetId}
+                disabled={busy || !draft.imageAssetId || Boolean(selected?.archivedAt)}
               >
                 {copy('Save changes')}
               </button>
               {selected && (
-                <button
-                  type="button"
-                  className="categories-delete"
-                  disabled={busy}
-                  onClick={() => setDeleteOpen(true)}
-                >
-                  <Icon name="trash" />
-                  {copy('Delete category')}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="products-button"
+                    disabled={busy}
+                    onClick={() =>
+                      void changeArchiveState(selected.archivedAt ? 'restore' : 'archive')
+                    }
+                  >
+                    {copy(selected.archivedAt ? 'Restore category' : 'Archive category')}
+                  </button>
+                  {!selected.archivedAt && (
+                    <button
+                      type="button"
+                      className="categories-delete"
+                      disabled={busy}
+                      onClick={() => setDeleteOpen(true)}
+                    >
+                      <Icon name="trash" />
+                      {copy('Delete category')}
+                    </button>
+                  )}
+                </>
               )}
             </form>
           )}

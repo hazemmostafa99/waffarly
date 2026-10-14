@@ -286,7 +286,7 @@ Public Storefront/POS UI and advanced product editing remain outside this slice.
 | Dependency             | Need                                                                        | Current status                                                                                                                     |
 | ---------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Merchant/Tenancy       | Authenticated merchant ownership and isolation.                             | Merchant tenant and activated Owner session implemented; broader tenancy/access model incomplete.                                  |
-| Categories (CAT-F01)   | One or more valid categories are mandatory at product creation/update.      | Not implemented; multiple equal links and no primary category confirmed, while category lifecycle/display behavior remains OPEN.   |
+| Categories (CAT-F01)   | One or more valid categories are mandatory at product creation/update.      | Implemented with tenant-safe references, a two-level hierarchy, lifecycle actions, and multiple equal Product links.               |
 | Media                  | A valid image is mandatory.                                                 | Reusable tenant-owned Media metadata and owner registration are implemented; binary storage/provider integration remains deferred. |
 | Pricing (CAT-F06)      | Positive EGP base-price validation and later authoritative quote semantics. | Not implemented; currency/positivity confirmed, while precision and calculation rules remain OPEN.                                 |
 | Availability (CAT-F07) | Channel/public meaning of Available/Unavailable and Archived.               | Manual state selected conceptually; channel rules not implemented.                                                                 |
@@ -295,7 +295,7 @@ Public Storefront/POS UI and advanced product editing remain outside this slice.
 | Plans/Entitlements     | Commercial access if Catalog becomes plan-gated.                            | Plan definitions exist; assignment/entitlements absent and rules OPEN.                                                             |
 | Audit                  | Attribution/history for sensitive changes if required.                      | No general audit domain exists; scope OPEN.                                                                                        |
 
-The mandatory category and image decisions are implemented through the minimal Categories and reusable Media reference boundaries. Binary upload, Storefront rendering, and channel behavior remain deferred.
+The mandatory category and image decisions are implemented through the minimal Categories and reusable Media reference boundaries. The dashboard supports product descriptions, explicit primary-image selection, archived views, and restoration. Binary upload, Storefront rendering, and channel behavior remain deferred.
 
 ## 12. Acceptance Criteria
 

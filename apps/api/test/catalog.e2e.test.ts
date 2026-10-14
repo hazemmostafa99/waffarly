@@ -136,5 +136,87 @@ describe('catalog owner endpoints', () => {
         sizeBytes: 1024,
       })
       .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/owner/catalog/media')
+      .send({
+        storageKey: 'catalog/burger.webp',
+        publicUrl: 'ftp://cdn.example.test/catalog/burger.webp',
+        mimeType: 'image/webp',
+        sizeBytes: 1024,
+      })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/owner/catalog/media')
+      .send({
+        storageKey: 'catalog/broken.webp',
+        publicUrl: 'not-a-url',
+        mimeType: 'image/webp',
+        sizeBytes: 1024,
+      })
+      .expect(400);
+  });
+
+  it('rejects a product price above the database precision boundary', async () => {
+    await request(app.getHttpServer())
+      .post('/owner/catalog/products')
+      .send({
+        name: 'Impossible price',
+        basePrice: '10000000000.00',
+        availability: 'available',
+        imageAssetIds: ['11111111-1111-4111-8111-111111111111'],
+        categoryIds: ['22222222-2222-4222-8222-222222222222'],
+      })
+      .expect(400);
+  });
+});
+
+describe('catalog service invariants', () => {
+  it('rejects making a category its own parent', async () => {
+    const categoryId = '22222222-2222-4222-8222-222222222222';
+    const service = new CategoryService({} as never);
+
+    await assert.rejects(
+      service.update(owner.merchantId, owner.username, categoryId, 1, {
+        parentId: categoryId,
+      }),
+      /cannot be its own parent/i,
+    );
+  });
+
+  it('rejects moving a main category with children beneath another category', async () => {
+    const categoryId = '22222222-2222-4222-8222-222222222222';
+    const parentId = '33333333-3333-4333-8333-333333333333';
+    const service = new CategoryService({
+      category: {
+        findFirst: async () => ({ _count: { children: 1 } }),
+      },
+    } as never);
+
+    await assert.rejects(
+      service.update(owner.merchantId, owner.username, categoryId, 1, { parentId }),
+      /with children cannot become a child category/i,
+    );
+  });
+
+  it('rejects archived category references on product creation', async () => {
+    const service = new ProductService({
+      mediaAsset: {
+        findMany: async () => [{ id: '11111111-1111-4111-8111-111111111111' }],
+      },
+      category: { findMany: async () => [] },
+    } as never);
+
+    await assert.rejects(
+      service.create(owner.merchantId, owner.username, {
+        name: 'Burger',
+        basePrice: '75.00',
+        availability: 'available',
+        imageAssetIds: ['11111111-1111-4111-8111-111111111111'],
+        categoryIds: ['22222222-2222-4222-8222-222222222222'],
+      }),
+      /Every category must belong to this merchant/i,
+    );
   });
 });

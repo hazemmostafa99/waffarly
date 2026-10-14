@@ -5,18 +5,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { CatalogProductFields } from '@waffarly/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
-import { MAX_PRODUCT_IMAGES } from './catalog.constants.js';
+import { MAX_PRODUCT_IMAGES, MAX_PRODUCT_PRICE, isValidProductPrice } from './catalog.constants.js';
 
-export type ProductInput = {
-  name: string;
-  description?: string | undefined;
-  basePrice: string;
-  availability: 'available' | 'unavailable';
-  imageAssetIds: string[];
-  primaryImageAssetId?: string | undefined;
-  categoryIds: string[];
-};
+export type ProductInput = CatalogProductFields;
 type ProductPatch = { [Key in keyof ProductInput]?: ProductInput[Key] | undefined };
 
 @Injectable()
@@ -195,7 +188,9 @@ export class ProductService {
       this.prisma.mediaAsset.findMany({ where: { merchantId, id: { in: imageAssetIds } } }),
       categoryIds === undefined
         ? Promise.resolve([])
-        : this.prisma.category.findMany({ where: { merchantId, id: { in: categoryIds } } }),
+        : this.prisma.category.findMany({
+            where: { merchantId, id: { in: categoryIds }, archivedAt: null },
+          }),
     ]);
     if (images.length !== imageAssetIds.length) {
       throw new BadRequestException('Every image must belong to this merchant.');
@@ -264,9 +259,9 @@ function toProductResponse(product: {
 }
 
 function assertBasePrice(value: string): void {
-  if (!/^\d+(\.\d{1,2})?$/.test(value) || Number(value) <= 0) {
+  if (!isValidProductPrice(value)) {
     throw new BadRequestException(
-      'Base price must be a positive EGP amount with at most two decimals.',
+      `Base price must be between 0.01 and ${MAX_PRODUCT_PRICE} EGP with at most two decimals.`,
     );
   }
 }

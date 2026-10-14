@@ -20,7 +20,7 @@ const names = [
   'آيس لاتيه',
 ];
 
-async function mockCatalog(page: Page, empty = false) {
+async function mockCatalog(page: Page, empty = false, includeArchived = false) {
   let products = Array.from({ length: empty ? 0 : 24 }, (_, index) => ({
     id: `product-${index + 1}`,
     name: `${names[index % names.length]} ${String(index + 1).padStart(2, '0')}`,
@@ -31,6 +31,18 @@ async function mockCatalog(page: Page, empty = false) {
     images: [{ mediaAssetId: 'image-1', publicUrl: imageUrl, isPrimary: true }],
     categories: [categories[index % categories.length]!],
   }));
+  if (includeArchived) {
+    products.push({
+      id: 'archived-product',
+      name: 'Archived Burger',
+      basePrice: '99.00',
+      availability: 'unavailable',
+      archivedAt: '2026-10-13',
+      revision: 2,
+      images: [{ mediaAssetId: 'image-1', publicUrl: imageUrl, isPrimary: true }],
+      categories: [categories[0]!],
+    });
+  }
   const mutations: { method: string; path: string; body: Record<string, unknown> }[] = [];
   await page.route('**/auth/owner/me', (route) =>
     route.fulfill({
@@ -81,6 +93,17 @@ async function mockCatalog(page: Page, empty = false) {
       products = products.map((product) =>
         path.endsWith(`/${product.id}/archive`)
           ? { ...product, archivedAt: '2026-10-13' }
+          : product,
+      );
+    } else if (path.endsWith('/restore')) {
+      products = products.map((product) =>
+        path.endsWith(`/${product.id}/restore`)
+          ? {
+              ...product,
+              archivedAt: null,
+              availability: 'unavailable',
+              revision: product.revision + 1,
+            }
           : product,
       );
     } else {
@@ -171,6 +194,7 @@ test('add/edit use API payloads and dialogs restore focus', async ({ page }) => 
   await add.click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Product name', { exact: true }).fill('New Burger');
+  await dialog.getByLabel('Description', { exact: true }).fill('Freshly prepared');
   await dialog.getByLabel('Base price (EGP)').fill('149.50');
   await dialog.getByRole('checkbox', { name: 'برجر', exact: true }).check();
   await dialog.getByRole('checkbox', { name: 'burger.svg' }).check();
@@ -179,8 +203,10 @@ test('add/edit use API payloads and dialogs restore focus', async ({ page }) => 
   expect(mutations[0]?.body).toMatchObject({
     name: 'New Burger',
     basePrice: '149.50',
+    description: 'Freshly prepared',
     categoryIds: ['category-0'],
     imageAssetIds: ['image-1'],
+    primaryImageAssetId: 'image-1',
   });
   await expect(page.locator('.wf-summary-card').first()).toContainText('25');
   await page.getByRole('textbox', { name: 'Search products', exact: true }).fill('New Burger');
@@ -195,6 +221,24 @@ test('add/edit use API payloads and dialogs restore focus', async ({ page }) => 
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   await expect(add).toBeFocused();
+});
+
+test('archived products can be viewed and restored as unavailable', async ({ page }) => {
+  const mutations = await mockCatalog(page, false, true);
+  await page.goto('http://127.0.0.1:5274/products');
+  await page
+    .getByRole('combobox', { name: 'Publication status', exact: true })
+    .selectOption('archived');
+  await expect(page.locator('.wf-data-table tbody tr')).toHaveCount(1);
+  await expect(page.locator('.wf-data-table')).toContainText('Archived Burger');
+  await page.getByRole('button', { name: 'Restore Archived Burger' }).click();
+  await expect(page.getByText('Product restored as unavailable.', { exact: true })).toBeVisible();
+  expect(mutations.at(-1)).toMatchObject({
+    method: 'POST',
+    path: '/owner/catalog/products/archived-product/restore',
+    body: { revision: 2 },
+  });
+  await expect(page.getByText('No matching products.')).toBeVisible();
 });
 
 test('bulk hide updates only selected products and archive requires confirmation', async ({

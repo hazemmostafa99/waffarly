@@ -5,15 +5,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { CatalogCategoryFields } from '@waffarly/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 
-export type CategoryInput = {
-  name: string;
-  description?: string | undefined;
-  imageAssetId: string;
-  parentId?: string | null | undefined;
-  availability: 'available' | 'unavailable';
-};
+export type CategoryInput = CatalogCategoryFields;
 type CategoryPatch = { [Key in keyof CategoryInput]?: CategoryInput[Key] | undefined };
 
 @Injectable()
@@ -63,7 +58,7 @@ export class CategoryService {
     input: CategoryPatch,
   ) {
     if (input.imageAssetId) await this.assertImage(merchantId, input.imageAssetId);
-    if (input.parentId !== undefined) await this.assertParent(merchantId, input.parentId);
+    if (input.parentId !== undefined) await this.assertParent(merchantId, input.parentId, id);
     const changed = await this.prisma.category.updateMany({
       where: { id, merchantId, revision },
       data: {
@@ -138,8 +133,24 @@ export class CategoryService {
     if (!image) throw new BadRequestException('Image does not belong to this merchant.');
   }
 
-  private async assertParent(merchantId: string, parentId: string | null): Promise<void> {
+  private async assertParent(
+    merchantId: string,
+    parentId: string | null,
+    categoryId?: string,
+  ): Promise<void> {
     if (!parentId) return;
+    if (parentId === categoryId) {
+      throw new BadRequestException('A category cannot be its own parent.');
+    }
+    if (categoryId) {
+      const category = await this.prisma.category.findFirst({
+        where: { id: categoryId, merchantId },
+        include: { _count: { select: { children: true } } },
+      });
+      if (category && category._count.children > 0) {
+        throw new BadRequestException('A category with children cannot become a child category.');
+      }
+    }
     const parent = await this.prisma.category.findFirst({
       where: { id: parentId, merchantId, parentId: null, archivedAt: null },
     });

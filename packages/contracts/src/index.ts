@@ -37,3 +37,19 @@ export type {
   PlanCurrency,
   UpdateMonthlyPlanRequest,
 } from './plans.js';
+export type {
+  CatalogAvailability,
+  CatalogCategoryFields,
+  CatalogCategoryReference,
+  CatalogCategorySummary,
+  CatalogMediaAsset,
+  CatalogProductFields,
+  CatalogProductImage,
+  CatalogProductSummary,
+  CatalogRevisionRequest,
+  CreateCatalogCategoryRequest,
+  CreateCatalogProductRequest,
+  RegisterCatalogMediaRequest,
+  UpdateCatalogCategoryRequest,
+  UpdateCatalogProductRequest,
+} from './catalog.js';

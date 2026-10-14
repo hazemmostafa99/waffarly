@@ -15,7 +15,7 @@ The first implementation is intended to focus on restaurants in Egypt. That deli
 
 The first backend Catalog slice is now implemented; the following capabilities remain outside it:
 
-- The Catalog NestJS module now exposes owner-scoped Media registration/listing, Category management, and Product management APIs. Variants, modifiers, selling units, pricing, inventory, orders, public product listing, configurator, and POS selection are not implemented.
+- The Catalog NestJS module now exposes owner-scoped Media registration/listing, Category management, and Product management APIs. The basic slice includes tenant-safe references, optimistic revisions, archive/restore management, shared API contracts, and bounded EGP/image validation. Variants, modifiers, selling units, pricing, inventory, orders, public product listing, configurator, and POS selection are not implemented.
 - The Prisma schema now contains tenant-owned MediaAsset, Category, Product, ProductImage, and ProductCategory models. Pricing, inventory, and order entities remain absent.
 - The Merchant Dashboard now exposes the first owner Catalog workspace for Media references, Categories, and Products. Public Storefront and POS projections still render no persisted catalog.
 - The public Next.js application is an onboarding/marketing shell. It does not resolve or render a merchant catalog.

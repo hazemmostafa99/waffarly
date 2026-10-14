@@ -137,21 +137,22 @@ test('the image dialog persists valid API metadata and rejects unsafe URLs', asy
   await page.goto('http://127.0.0.1:5274/media');
   await expect(page.getByRole('heading', { name: 'Your media library starts here' })).toBeVisible();
   await page.getByRole('button', { name: 'Add media', exact: true }).click();
-  await page
+  const dialog = page.getByRole('dialog');
+  await dialog
     .getByRole('textbox', { name: 'Image URL', exact: true })
     .fill('ftp://example.com/serum.jpg');
-  await page.getByRole('textbox', { name: 'File name', exact: true }).fill('new-serum.jpg');
-  await page.getByRole('spinbutton', { name: 'File size in bytes' }).fill('2048');
-  await page.getByRole('button', { name: 'Add image', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText(
+  await dialog.getByRole('textbox', { name: 'File name', exact: true }).fill('new-serum.jpg');
+  await dialog.getByRole('spinbutton', { name: 'File size in bytes' }).fill('2048');
+  await dialog.getByRole('button', { name: 'Add image', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toContainText(
     'Use a valid public HTTP or HTTPS image URL.',
   );
   expect(posts).toHaveLength(0);
-  await page
+  await dialog
     .getByRole('textbox', { name: 'Image URL', exact: true })
     .fill('https://example.com/serum.jpg');
-  await page.getByRole('button', { name: 'Add image', exact: true }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Add image', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
   await expect(page.locator('.media-file-name')).toHaveText('new-serum.jpg');
   expect(posts).toEqual([
     {

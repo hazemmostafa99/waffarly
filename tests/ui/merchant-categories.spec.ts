@@ -110,6 +110,23 @@ async function mockCategoryCatalog(page: Page) {
       await route.fulfill({ json: created });
       return;
     }
+    if (request.method() === 'POST' && (path.endsWith('/archive') || path.endsWith('/restore'))) {
+      const categoryId = path.split('/').at(-2)!;
+      const restoring = path.endsWith('/restore');
+      let saved = categories[0]!;
+      categories = categories.map((category) => {
+        if (category.id !== categoryId) return category;
+        saved = {
+          ...category,
+          archivedAt: restoring ? null : '2026-10-14',
+          availability: restoring ? 'unavailable' : category.availability,
+          revision: category.revision + 1,
+        };
+        return saved;
+      });
+      await route.fulfill({ json: saved });
+      return;
+    }
     const id = path.split('/').at(-1)!;
     if (request.method() === 'PATCH') {
       let updated = categories[0]!;
@@ -245,4 +262,21 @@ test('deleting a category requires confirmation and refreshes totals', async ({ 
     path: '/owner/catalog/categories/child-1-1',
   });
   await expect(page.locator('.wf-summary-card').last()).toContainText('17');
+});
+
+test('categories can be archived, viewed, and restored as unavailable', async ({ page }) => {
+  const mutations = await mockCategoryCatalog(page);
+  const target = makeCategories().find((category) => category.id === 'root-3')!;
+  await page.goto('http://127.0.0.1:5274/categories');
+  await page.getByRole('button', { name: `Category details: ${target.name}` }).click();
+  await page.getByRole('button', { name: 'Archive category' }).click();
+  await expect(page.getByText('Category archived.', { exact: true })).toBeVisible();
+  await page.getByRole('combobox', { name: 'All statuses' }).selectOption('archived');
+  await expect(page.locator('.wf-data-table tbody tr')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Restore category' }).click();
+  await expect(page.getByText('Category restored as unavailable.', { exact: true })).toBeVisible();
+  expect(mutations.slice(-2)).toMatchObject([
+    { method: 'POST', path: '/owner/catalog/categories/root-3/archive', body: { revision: 1 } },
+    { method: 'POST', path: '/owner/catalog/categories/root-3/restore', body: { revision: 2 } },
+  ]);
 });

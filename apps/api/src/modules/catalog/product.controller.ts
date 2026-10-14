@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { z } from 'zod';
+import { MAX_PRODUCT_PRICE, isValidProductPrice } from './catalog.constants.js';
 import { AuthService } from '../auth/auth.service.js';
 import { OwnerGuard } from '../auth/owner.guard.js';
 import { ProductService } from './product.service.js';
@@ -24,8 +25,10 @@ const productFields = {
   description: z.string().trim().max(1000).optional(),
   basePrice: z
     .string()
-    .regex(/^\d+(\.\d{1,2})?$/)
-    .refine((value) => Number(value) > 0, 'Base price must be greater than zero.'),
+    .refine(
+      isValidProductPrice,
+      `Base price must be between 0.01 and ${MAX_PRODUCT_PRICE} EGP with at most two decimals.`,
+    ),
   availability,
   imageAssetIds: z.array(z.string().uuid()).min(1).max(10),
   primaryImageAssetId: z.string().uuid().optional(),

@@ -16,7 +16,9 @@ import { MediaService } from './media.service.js';
 
 const mediaSchema = z.object({
   storageKey: z.string().trim().min(1).max(255),
-  publicUrl: z.string().trim().url().max(2000),
+  publicUrl: z.string().trim().url().max(2000).refine(isHttpUrl, {
+    message: 'Media URL must use HTTP or HTTPS.',
+  }),
   mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp']),
   sizeBytes: z.number().int().positive(),
 });
@@ -62,4 +64,12 @@ function toMediaResponse(asset: {
     sizeBytes: asset.sizeBytes,
     createdAt: asset.createdAt.toISOString(),
   };
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    return ['http:', 'https:'].includes(new URL(value).protocol);
+  } catch {
+    return false;
+  }
 }

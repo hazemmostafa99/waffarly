@@ -1,38 +1,15 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Button, Card, Input, useLocale } from '@waffarly/ui';
+import type {
+  CatalogCategorySummary,
+  CatalogMediaAsset,
+  CatalogProductSummary,
+} from '@waffarly/contracts';
 import { apiRequest } from './lib/api-client.js';
 
-export type MediaAsset = {
-  id: string;
-  storageKey: string;
-  publicUrl: string;
-  mimeType: string;
-  sizeBytes: number;
-};
-export type Category = {
-  id: string;
-  name: string;
-  description?: string | null;
-  parentId: string | null;
-  parent?: { id: string; name: string } | null;
-  availability: string;
-  archivedAt: string | null;
-  revision: number;
-  effectiveVisible: boolean;
-  image: MediaAsset;
-  childCount?: number;
-  productCount?: number;
-};
-export type Product = {
-  id: string;
-  name: string;
-  basePrice: string;
-  availability: string;
-  archivedAt: string | null;
-  revision: number;
-  images: Array<{ mediaAssetId: string; publicUrl: string; isPrimary: boolean }>;
-  categories: Array<{ id: string; name: string }>;
-};
+export type MediaAsset = CatalogMediaAsset;
+export type Category = CatalogCategorySummary;
+export type Product = CatalogProductSummary;
 
 const initialMedia = { storageKey: '', publicUrl: '', mimeType: 'image/jpeg', sizeBytes: '1000' };
 const initialCategory = { name: '', imageAssetId: '', parentId: '', availability: 'available' };

@@ -413,6 +413,23 @@
   max-height: 180px;
   overflow: auto;
 }
+.products-image-choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.products-image-choice > .products-check {
+  min-width: 0;
+}
+.products-primary-image {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #52617b;
+}
 .products-form p,
 .products-dialog > p {
   color: #8493b1;
@@ -439,8 +456,8 @@
   padding: 12px;
   font-size: 12px;
 }
-.products-page :is(button, select, input):focus-visible,
-.products-dialog :is(button, select, input):focus-visible {
+.products-page :is(button, select, input, textarea):focus-visible,
+.products-dialog :is(button, select, input, textarea):focus-visible {
   outline: 2px solid #087858;
   outline-offset: 2px;
 }

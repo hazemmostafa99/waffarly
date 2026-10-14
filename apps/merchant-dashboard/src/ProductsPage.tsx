@@ -74,7 +74,9 @@ export function ProductsPage() {
 
   const products = catalog.products.filter((product) => !product.archivedAt);
   const published = products.filter((product) => product.availability === 'available').length;
-  const filtered = products
+  const filteredSource =
+    status === 'archived' ? catalog.products.filter((product) => product.archivedAt) : products;
+  const filtered = filteredSource
     .filter((product) => {
       const text = `${product.name} ${product.id}`.toLocaleLowerCase(locale);
       return (
@@ -82,7 +84,7 @@ export function ProductsPage() {
           text.includes(search.trim().toLocaleLowerCase(locale)),
         ) &&
         (!category || product.categories.some((item) => item.id === category)) &&
-        (!status || product.availability === status)
+        (!status || status === 'archived' || product.availability === status)
       );
     })
     .sort((a, b) =>
@@ -92,9 +94,11 @@ export function ProductsPage() {
     );
   const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / pageSize)));
   const visible = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const selectableVisible = visible.filter((product) => !product.archivedAt);
   const allSelected =
-    visible.length > 0 && visible.every((product) => selected.includes(product.id));
-  const someSelected = visible.some((product) => selected.includes(product.id));
+    selectableVisible.length > 0 &&
+    selectableVisible.every((product) => selected.includes(product.id));
+  const someSelected = selectableVisible.some((product) => selected.includes(product.id));
   const filterKey = `${query}\0${globalSearch}\0${category}\0${status}\0${sort}`;
   useEffect(() => {
     setPage(1);
@@ -158,6 +162,23 @@ export function ProductsPage() {
       setArchiveOpen(false);
     }
   }
+  async function restoreProduct(product: Product) {
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      await apiRequest(`/owner/catalog/products/${product.id}/restore`, {
+        method: 'POST',
+        body: JSON.stringify({ revision: product.revision }),
+      });
+      await refresh();
+      setNotice('Product restored as unavailable.');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not restore product.');
+    } finally {
+      setBusy(false);
+    }
+  }
   const columns: DataTableColumn<Product>[] = [
     {
       id: 'select',
@@ -172,8 +193,8 @@ export function ProductsPage() {
           onChange={(event) =>
             setSelected((ids) =>
               event.target.checked
-                ? [...new Set([...ids, ...visible.map((product) => product.id)])]
-                : ids.filter((id) => !visible.some((product) => product.id === id)),
+                ? [...new Set([...ids, ...selectableVisible.map((product) => product.id)])]
+                : ids.filter((id) => !selectableVisible.some((product) => product.id === id)),
             )
           }
         />
@@ -183,7 +204,7 @@ export function ProductsPage() {
           type="checkbox"
           aria-label={`${copy('Select')} ${product.name}`}
           checked={selected.includes(product.id)}
-          disabled={busy}
+          disabled={busy || Boolean(product.archivedAt)}
           onChange={(event) =>
             setSelected((ids) =>
               event.target.checked ? [...ids, product.id] : ids.filter((id) => id !== product.id),
@@ -232,13 +253,20 @@ export function ProductsPage() {
     {
       id: 'status',
       header: copy('Status'),
-      cell: (product) => (
-        <span
-          className={`products-pill ${product.availability === 'available' ? 'mint' : 'cream'}`}
-        >
-          {copy(product.availability === 'available' ? 'Available' : 'Unavailable')}
-        </span>
-      ),
+      cell: (product) => {
+        const label = product.archivedAt
+          ? 'Archived'
+          : product.availability === 'available'
+            ? 'Available'
+            : 'Unavailable';
+        return (
+          <span
+            className={`products-pill ${!product.archivedAt && product.availability === 'available' ? 'mint' : 'cream'}`}
+          >
+            {copy(label)}
+          </span>
+        );
+      },
     },
     {
       id: 'categories',
@@ -252,17 +280,28 @@ export function ProductsPage() {
     {
       id: 'edit',
       header: copy('Edit'),
-      cell: (product) => (
-        <button
-          type="button"
-          className="products-icon-button"
-          aria-label={`${copy('Edit')} ${product.name}`}
-          disabled={busy}
-          onClick={() => setEditor({ product })}
-        >
-          <Icon name="edit" />
-        </button>
-      ),
+      cell: (product) =>
+        product.archivedAt ? (
+          <button
+            type="button"
+            className="products-button"
+            aria-label={`${copy('Restore')} ${product.name}`}
+            disabled={busy}
+            onClick={() => void restoreProduct(product)}
+          >
+            {copy('Restore')}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="products-icon-button"
+            aria-label={`${copy('Edit')} ${product.name}`}
+            disabled={busy}
+            onClick={() => setEditor({ product })}
+          >
+            <Icon name="edit" />
+          </button>
+        ),
     },
   ];
   return (
@@ -387,6 +426,7 @@ export function ProductsPage() {
           <option value="">{copy('All statuses')}</option>
           <option value="available">{copy('Available')}</option>
           <option value="unavailable">{copy('Unavailable')}</option>
+          <option value="archived">{copy('Archived')}</option>
         </select>
         <select
           aria-label={copy('Sort')}
@@ -484,7 +524,7 @@ export function ProductsPage() {
               !hasLoaded
                 ? copy('Catalog data unavailable. Refresh to try again.')
                 : copy(
-                    products.length
+                    catalog.products.length
                       ? 'No matching products.'
                       : 'No products yet. Add your first product to get started.',
                   )
