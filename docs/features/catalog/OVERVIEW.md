@@ -1,6 +1,6 @@
 # Catalog & Dynamic Product Builder Overview
 
-**Status:** Discovery baseline; first backend Catalog slice, local-disk image upload, and Product Builder MVP implemented
+**Status:** Discovery baseline; backend Catalog, local-disk image upload, Product Builder, and basic configuration quote implemented
 
 **Last updated:** 2026-10-14
 **Scope:** Shared Product Core, restaurant-first implementation, future cross-activity extensibility  
@@ -16,7 +16,7 @@ The first implementation is intended to focus on restaurants in Egypt. That deli
 
 The first backend Catalog slice is now implemented; the following capabilities remain outside it:
 
-- The Catalog NestJS module exposes owner-scoped Media upload/registration/listing, Category management, and Product management APIs. The Product Builder MVP adds product-local single/multiple modifier groups with explicit selection bounds, defaults, fixed EGP adjustments, ordering, and piece-only selling units. Variants, branch pricing, inventory, orders, public product listing, storefront configurator, and POS selection are not implemented.
+- The Catalog NestJS module exposes owner-scoped Media upload/registration/listing, Category management, and Product management APIs, plus `POST /catalog/products/:id/quote` for authoritative validation and pricing of one available product configuration. The Product Builder MVP adds product-local single/multiple modifier groups with explicit selection bounds, defaults, fixed EGP adjustments, ordering, and piece-only selling units. Variants, branch pricing, inventory, orders, public product listing, storefront configurator, and POS selection are not implemented.
 - The Prisma schema contains tenant-owned MediaAsset, Category, Product, ProductImage, ProductCategory, ProductModifierGroup, and ProductModifierOption models. Pricing, inventory, and order entities remain absent.
 - The Merchant Dashboard exposes the owner Catalog workspace and the four-step Product Builder at `/products/new`. Public Storefront and POS projections still render no persisted catalog.
 - The public Next.js application is an onboarding/marketing shell. It does not resolve or render a merchant catalog.
@@ -101,7 +101,7 @@ The temporary IDs below avoid conflicts with the existing parent groups:
 | **CAT-F03**  | Variants & Attributes              | **CONFIRMED platform capability**; restaurant MVP inclusion **OPEN**                   | Represent variant-defining dimensions and descriptive properties without equating every attribute combination with a variant. SKU/barcode/price/stock implications remain OPEN.                                                                     |
 | **CAT-F04**  | Modifier Groups & Options          | **Restaurant MVP rules CONFIRMED and implemented**                                     | Product-local single/multiple choice groups with explicit min/max selections, optional defaults, fixed EGP adjustments, and ordering. Nested/conditional groups, reuse, modifier stock, and bundles are deferred.                                   |
 | **CAT-F05**  | Selling Units                      | **Piece-only restaurant MVP CONFIRMED and implemented**                                | Products are sold per piece. Fractional quantities, unit catalog governance, conversions, packaging, and measured-at-sale workflows remain deferred.                                                                                                |
-| **CAT-F06**  | Pricing & Configuration Validation | Backend authority **CONFIRMED**; domain boundary and detailed rules **OPEN**           | Validate a requested configuration and calculate an authoritative result. Pricing may become a separate backend domain; Catalog supplies definitions and constraints but must not duplicate quote logic across channels.                            |
+| **CAT-F06**  | Pricing & Configuration Validation | Basic product/modifier quote **IMPLEMENTED**; broader rules/domain boundary **OPEN**   | The Catalog exposes a revision-tagged, fixed-precision EGP quote for one available product configuration. Discounts, taxes, fees, branch/channel context, and a separate Pricing domain remain deferred.                                            |
 | **CAT-F07**  | Product Availability & Visibility  | **Available/Unavailable states CONFIRMED and implemented; public visibility deferred** | Operational state is separate from public discovery/selection. Draft/publication, branch/channel/time availability, sold-out behavior, and Inventory interaction remain outside the current slice.                                                  |
 | **CAT-F08**  | Storefront Product Configurator    | **PROPOSED MVP candidate**                                                             | Next.js customer experience driven by Catalog APIs and server validation. It renders definitions and selection errors but does not own configuration rules or price authority. POS may consume the same backend capabilities through a separate UI. |
 
@@ -117,19 +117,19 @@ These mappings preserve existing references while allowing one independently doc
 
 ## 6. Feature Responsibilities and Domain Boundaries
 
-| Concern                   | Owning or candidate boundary         | Catalog interaction                                                                                                                                      |
-| ------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Merchant/tenant identity  | Merchant/Tenancy                     | Supplies authenticated tenant context. Catalog records are never selected solely by a client-provided merchant ID.                                       |
-| Activity compatibility    | Activities & Modules                 | Declares whether an implemented Catalog capability is compatible with an activity. It does not grant a subscription or user access.                      |
-| Commercial access         | Plans & Subscriptions / Entitlements | Determines whether a merchant is entitled to use a capability or limit. Catalog must enforce approved checks through backend integration.                |
-| User authorization        | Identity / Access Control            | Determines which owner/staff actor may view, create, edit, publish, or archive Catalog data.                                                             |
-| Product definitions       | Catalog                              | Owns product identity, content, categories, configuration definitions, and Catalog lifecycle once specified.                                             |
-| Authoritative quotes      | Pricing candidate domain             | Validates selections in context and calculates amounts. Whether simple base-price storage remains in Catalog is OPEN.                                    |
-| Stock balances/movements  | Inventory                            | Owns stock identities, balances, reservations, and movements. Catalog may reference stock policy/identity but must not invent deductions.                |
-| Order history             | Orders                               | Persists ordered configuration and pricing snapshots; does not depend on mutable Catalog data to reconstruct history.                                    |
-| Public presentation       | Storefront                           | Reads public Catalog projections and renders configuration. It cannot publish hidden data or override backend validation.                                |
-| Cashier product selection | POS                                  | Uses the same Product Core and authoritative pricing path, subject to channel/branch rules.                                                              |
-| Images/files              | Media/storage boundary               | Owner image upload currently stores JPEG/PNG/WebP files on configurable server disk; final limits, processing, external provider, and deletion are OPEN. |
+| Concern                   | Owning or candidate boundary         | Catalog interaction                                                                                                                                               |
+| ------------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Merchant/tenant identity  | Merchant/Tenancy                     | Supplies authenticated tenant context. Catalog records are never selected solely by a client-provided merchant ID.                                                |
+| Activity compatibility    | Activities & Modules                 | Declares whether an implemented Catalog capability is compatible with an activity. It does not grant a subscription or user access.                               |
+| Commercial access         | Plans & Subscriptions / Entitlements | Determines whether a merchant is entitled to use a capability or limit. Catalog must enforce approved checks through backend integration.                         |
+| User authorization        | Identity / Access Control            | Determines which owner/staff actor may view, create, edit, publish, or archive Catalog data.                                                                      |
+| Product definitions       | Catalog                              | Owns product identity, content, categories, configuration definitions, and Catalog lifecycle once specified.                                                      |
+| Authoritative quotes      | Catalog now; Pricing boundary OPEN   | Catalog validates and quotes the basic product/modifier configuration. Discounts, taxes, fees, contextual pricing, and a separate Pricing module remain deferred. |
+| Stock balances/movements  | Inventory                            | Owns stock identities, balances, reservations, and movements. Catalog may reference stock policy/identity but must not invent deductions.                         |
+| Order history             | Orders                               | Persists ordered configuration and pricing snapshots; does not depend on mutable Catalog data to reconstruct history.                                             |
+| Public presentation       | Storefront                           | Reads public Catalog projections and renders configuration. It cannot publish hidden data or override backend validation.                                         |
+| Cashier product selection | POS                                  | Uses the same Product Core and authoritative pricing path, subject to channel/branch rules.                                                                       |
+| Images/files              | Media/storage boundary               | Owner image upload currently stores JPEG/PNG/WebP files on configurable server disk; final limits, processing, external provider, and deletion are OPEN.          |
 
 ## 7. Restaurant MVP Boundary versus Future Capability
 
@@ -259,7 +259,7 @@ No Product Core Prisma design should be approved until the decisions relevant to
 | **Activities & Modules** | Code-managed registry exists, but Catalog is not registered.                                                                | Future Catalog capability definition and compatibility only after implementation is authorized.                                                |
 | **Plans / Entitlements** | Monthly plan definitions exist; assignment and entitlements do not.                                                         | Do not equate an available Catalog module with paid access. Decide enforcement timing separately.                                              |
 | **Branches**             | Not implemented.                                                                                                            | Branch-aware pricing, availability, and stock must remain outside the first slice unless Branches is approved.                                 |
-| **Pricing**              | Not implemented.                                                                                                            | Server-owned configuration validation and quote calculation are mandatory; ownership boundary is OPEN.                                         |
+| **Pricing**              | Basic configuration quote is implemented inside Catalog; no standalone Pricing module.                                      | Discounts, taxes, fees, branch/channel pricing, and the eventual domain boundary remain OPEN/deferred.                                         |
 | **Inventory**            | Not implemented.                                                                                                            | Stock identity/movements remain Inventory-owned; no inferred deduction behavior.                                                               |
 | **Orders**               | Not implemented.                                                                                                            | Needs immutable configuration/price snapshots and revalidation contract when Orders is analyzed.                                               |
 | **Storefront**           | Next.js shell and design previews exist; no merchant catalog route.                                                         | Public Catalog projection and configurator only after Catalog behavior is approved.                                                            |
@@ -288,7 +288,7 @@ This is a discovery and implementation sequence. The first backend slice covers 
 1. **CAT-F02 — Products:** define basic product identity, ownership, lifecycle, actors, required restaurant fields, and security boundaries.
 2. **CAT-F01 — Categories:** define organization after the product boundary is understood; category decisions should not block a minimal standalone product unless the owner makes categories mandatory.
 3. **CAT-F04 — Modifier Groups & Options:** minimum restaurant configuration rules are approved and implemented in the Product Builder.
-4. **CAT-F06 — Pricing & Configuration Validation:** approve calculation semantics and backend contract alongside the modifier model.
+4. **CAT-F06 — Pricing & Configuration Validation:** the basic configuration quote is implemented; expand only after approving contextual pricing rules.
 5. **CAT-F07 — Product Availability & Visibility:** define draft/public and manual availability rules needed to expose products safely.
 6. **CAT-F08 — Storefront Product Configurator:** render approved public products and configurations through the Next.js storefront.
 7. **CAT-F03 — Variants & Attributes:** move earlier if restaurant sizes are confirmed to require variant identity; otherwise document after the minimal modifier flow.

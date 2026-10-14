@@ -11,7 +11,6 @@ import {
 import type { CatalogSnapshot, Product } from './CatalogWorkspace.js';
 import { apiRequest } from './lib/api-client.js';
 import { Icon } from './Icons.js';
-import { ProductEditor } from './ProductEditor.js';
 import { ProductImport } from './ProductImport.js';
 import { DashboardDialog } from './components/DashboardDialog.js';
 import { productsCopy } from './products-copy.js';
@@ -40,7 +39,6 @@ export function ProductsPage() {
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  const [editor, setEditor] = useState<{ product: Product | null } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const selectAllRef = useRef<HTMLInputElement>(null);
@@ -298,7 +296,7 @@ export function ProductsPage() {
             className="products-icon-button"
             aria-label={`${copy('Edit')} ${product.name}`}
             disabled={busy}
-            onClick={() => setEditor({ product })}
+            onClick={() => navigate(`/products/${product.id}/edit`)}
           >
             <Icon name="edit" />
           </button>
@@ -544,15 +542,6 @@ export function ProductsPage() {
           />
         </DashboardCard>
       </div>
-      {editor && (
-        <ProductEditor
-          product={editor.product}
-          categories={catalog.categories}
-          media={catalog.media}
-          onClose={() => setEditor(null)}
-          onSaved={() => reloadAfterSave('Product saved.')}
-        />
-      )}
       {importOpen && (
         <ProductImport
           categories={catalog.categories}

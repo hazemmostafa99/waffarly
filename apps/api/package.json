@@ -11,6 +11,7 @@
     "lint": "eslint src test",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsx --test test/health.e2e.test.ts test/plans.e2e.test.ts test/activities-modules.e2e.test.ts test/merchant-applications.e2e.test.ts test/multi-business.e2e.test.ts test/catalog.e2e.test.ts",
+    "test:catalog-db": "tsx --test test/catalog.database.test.ts",
     "test:activities-db": "tsx --test test/activities-modules.database.test.ts"
   },
   "dependencies": {

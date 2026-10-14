@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLocale } from '@waffarly/ui';
 import type {
   CatalogCategorySummary,
@@ -37,6 +37,8 @@ export function ProductBuilderPage() {
   const { locale, errorText } = useLocale();
   const isArabic = locale === 'ar';
   const navigate = useNavigate();
+  const { id: productId } = useParams<{ id: string }>();
+  const isEditing = Boolean(productId);
   const text = (english: string, arabic: string) => (isArabic ? arabic : english);
   const [activeTab, setActiveTab] = useState(0);
   const [name, setName] = useState('');
@@ -50,6 +52,9 @@ export function ProductBuilderPage() {
   const [primaryImageAssetId, setPrimaryImageAssetId] = useState('');
   const [groups, setGroups] = useState<GroupDraft[]>([]);
   const [loading, setLoading] = useState(true);
+  const [productLoading, setProductLoading] = useState(Boolean(productId));
+  const [notFound, setNotFound] = useState(false);
+  const [revision, setRevision] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -72,6 +77,86 @@ export function ProductBuilderPage() {
       )
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setNotFound(false);
+    setError('');
+    setActiveTab(0);
+    setRevision(null);
+
+    if (!productId) {
+      setProductLoading(false);
+      setName('');
+      setDescription('');
+      setBasePrice('');
+      setAvailability('available');
+      setCategoryIds([]);
+      setImageAssetIds([]);
+      setPrimaryImageAssetId('');
+      setGroups([]);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setProductLoading(true);
+    void apiRequest<CatalogProductSummary[]>('/owner/catalog/products')
+      .then((products) => {
+        if (cancelled) return;
+        const product = products.find((item) => item.id === productId);
+        if (!product) {
+          setNotFound(true);
+          return;
+        }
+
+        const productImages = [...product.images].sort((a, b) => a.position - b.position);
+        setName(product.name);
+        setDescription(product.description ?? '');
+        setBasePrice(product.basePrice);
+        setAvailability(product.availability);
+        setCategoryIds(product.categories.map((category) => category.id));
+        setImageAssetIds(productImages.map((image) => image.mediaAssetId));
+        setPrimaryImageAssetId(
+          productImages.find((image) => image.isPrimary)?.mediaAssetId ??
+            productImages[0]?.mediaAssetId ??
+            '',
+        );
+        setGroups(
+          [...product.modifierGroups]
+            .sort((a, b) => a.position - b.position)
+            .map((group) => ({
+              id: group.id,
+              name: group.name,
+              description: group.description ?? '',
+              selectionMode: group.selectionMode,
+              minSelections: group.minSelections,
+              maxSelections: group.maxSelections,
+              options: [...group.options]
+                .sort((a, b) => a.position - b.position)
+                .map((option) => ({
+                  id: option.id,
+                  name: option.name,
+                  priceAdjustment: option.priceAdjustment,
+                  defaultSelected: option.defaultSelected,
+                })),
+            })),
+        );
+        setRevision(product.revision);
+      })
+      .catch((cause: unknown) => {
+        if (!cancelled) {
+          setError(cause instanceof Error ? cause.message : 'Could not load product.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setProductLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [productId]);
 
   const selectedImages = useMemo(
     () => imageAssetIds.map((id) => media.find((asset) => asset.id === id)).filter(Boolean),
@@ -263,6 +348,10 @@ export function ProductBuilderPage() {
   }
 
   async function submitProduct() {
+    if (isEditing && revision === null) {
+      setError(text('The product is not ready to save.', 'المنتج غير جاهز للحفظ.'));
+      return;
+    }
     for (let step = 0; step <= 2; step += 1) {
       if (!validateStep(step)) {
         setActiveTab(step);
@@ -288,21 +377,25 @@ export function ProductBuilderPage() {
       }),
     );
     try {
-      await apiRequest<CatalogProductSummary>('/owner/catalog/products', {
-        method: 'POST',
-        body: JSON.stringify({
-          name: name.trim(),
-          description: description.trim(),
-          basePrice: Number(basePrice).toFixed(2),
-          availability,
-          imageAssetIds,
-          primaryImageAssetId: imageAssetIds.includes(primaryImageAssetId)
-            ? primaryImageAssetId
-            : imageAssetIds[0],
-          categoryIds,
-          modifierGroups,
-        }),
-      });
+      await apiRequest<CatalogProductSummary>(
+        productId ? `/owner/catalog/products/${productId}` : '/owner/catalog/products',
+        {
+          method: isEditing ? 'PATCH' : 'POST',
+          body: JSON.stringify({
+            ...(isEditing ? { revision } : {}),
+            name: name.trim(),
+            description: description.trim(),
+            basePrice: Number(basePrice).toFixed(2),
+            availability,
+            imageAssetIds,
+            primaryImageAssetId: imageAssetIds.includes(primaryImageAssetId)
+              ? primaryImageAssetId
+              : imageAssetIds[0],
+            categoryIds,
+            modifierGroups,
+          }),
+        },
+      );
       navigate('/products', { replace: true });
     } catch (cause) {
       setError(
@@ -333,14 +426,25 @@ export function ProductBuilderPage() {
           >
             <Link to="/products">{text('Products', 'المنتجات')}</Link>
             <span>/</span>
-            <span>{text('New product', 'منتج جديد')}</span>
+            <span>
+              {isEditing ? text('Edit product', 'تعديل المنتج') : text('New product', 'منتج جديد')}
+            </span>
           </nav>
-          <h1>{text('Create a product', 'إضافة منتج')}</h1>
+          <h1>
+            {isEditing
+              ? text('Edit product', 'تعديل المنتج')
+              : text('Create a product', 'إضافة منتج')}
+          </h1>
           <p>
-            {text(
-              'Add the product, its choices, then review how it will appear in your catalog.',
-              'أضف المنتج وخياراته، ثم راجع طريقة ظهوره في الكتالوج.',
-            )}
+            {isEditing
+              ? text(
+                  'Update the product details, choices, and catalog preview.',
+                  'حدّث تفاصيل المنتج وخياراته ومعاينته في الكتالوج.',
+                )
+              : text(
+                  'Add the product, its choices, then review how it will appear in your catalog.',
+                  'أضف المنتج وخياراته، ثم راجع طريقة ظهوره في الكتالوج.',
+                )}
           </p>
         </div>
         <Link className="builder-button ghost" to="/products">
@@ -378,9 +482,18 @@ export function ProductBuilderPage() {
           {errorText(error)}
         </p>
       )}
-      {loading ? (
+      {loading || productLoading ? (
         <section className="builder-panel" role="status">
-          {text('Loading categories and media…', 'جارٍ تحميل التصنيفات والوسائط…')}
+          {isEditing
+            ? text('Loading product…', 'جارٍ تحميل المنتج…')
+            : text('Loading categories and media…', 'جارٍ تحميل التصنيفات والوسائط…')}
+        </section>
+      ) : notFound ? (
+        <section className="builder-panel" role="status">
+          <p>{text('This product could not be found.', 'تعذّر العثور على هذا المنتج.')}</p>
+          <Link className="builder-button ghost" to="/products">
+            {text('Back to products', 'العودة إلى المنتجات')}
+          </Link>
         </section>
       ) : (
         <div className="builder-columns">
@@ -483,9 +596,11 @@ export function ProductBuilderPage() {
                     <Icon name="check" />
                     {submitting
                       ? text('Saving…', 'جارٍ الحفظ…')
-                      : availability === 'available'
-                        ? text('Create and publish', 'إنشاء ونشر')
-                        : text('Create as unavailable', 'إنشاء كغير متاح')}
+                      : isEditing
+                        ? text('Save changes', 'حفظ التغييرات')
+                        : availability === 'available'
+                          ? text('Create and publish', 'إنشاء ونشر')
+                          : text('Create as unavailable', 'إنشاء كغير متاح')}
                   </button>
                 )}
               </footer>

@@ -4,6 +4,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Inject,
   Param,
   ParseUUIDPipe,
@@ -14,6 +16,7 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { z } from 'zod';
+import type { CatalogProductQuoteRequest } from '@waffarly/contracts';
 import { MAX_PRODUCT_PRICE, isValidProductPrice } from './catalog.constants.js';
 import { AuthService } from '../auth/auth.service.js';
 import { OwnerGuard } from '../auth/owner.guard.js';
@@ -102,6 +105,15 @@ const updateSchema = z.object(productFields).partial().extend({
   revision: z.number().int().positive(),
 });
 const revisionSchema = z.object({ revision: z.number().int().positive() });
+const quoteSelectionSchema = z
+  .object({
+    groupId: z.string().uuid(),
+    optionIds: z.array(z.string().uuid()).max(100),
+  })
+  .strict();
+const quoteSchema = z
+  .object({ selections: z.array(quoteSelectionSchema).max(30).optional() })
+  .strict();
 
 @UseGuards(OwnerGuard)
 @Controller('owner/catalog/products')
@@ -164,6 +176,20 @@ export class ProductController {
   async remove(@Req() request: Request, @Param('id', new ParseUUIDPipe()) id: string) {
     const owner = await this.auth.requireOwner(request);
     return this.products.remove(owner.merchantId, id);
+  }
+}
+
+@Controller('catalog/products')
+export class ProductQuoteController {
+  constructor(@Inject(ProductService) private readonly products: ProductService) {}
+
+  @Post(':id/quote')
+  @HttpCode(HttpStatus.OK)
+  async quote(@Param('id', new ParseUUIDPipe()) id: string, @Body() body: unknown) {
+    const parsed = quoteSchema.safeParse(body ?? {});
+    if (!parsed.success) throw new BadRequestException(parsed.error.issues);
+    const input: CatalogProductQuoteRequest = parsed.data;
+    return this.products.quote(id, input.selections ?? []);
   }
 }
 

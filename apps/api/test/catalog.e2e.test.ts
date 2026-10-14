@@ -15,7 +15,10 @@ import { CategoryController } from '../src/modules/catalog/category.controller.j
 import { CategoryService } from '../src/modules/catalog/category.service.js';
 import { MediaController } from '../src/modules/catalog/media.controller.js';
 import { MediaService } from '../src/modules/catalog/media.service.js';
-import { ProductController } from '../src/modules/catalog/product.controller.js';
+import {
+  ProductController,
+  ProductQuoteController,
+} from '../src/modules/catalog/product.controller.js';
 import { ProductService } from '../src/modules/catalog/product.service.js';
 
 const owner: OwnerProfile = {
@@ -33,12 +36,14 @@ describe('catalog owner endpoints', () => {
   let app: INestApplication;
   let authorized: boolean;
   let createdProduct: Record<string, unknown> | undefined;
+  let quotedProduct: { id: string; selections: unknown } | undefined;
 
   beforeEach(async () => {
     authorized = true;
     createdProduct = undefined;
+    quotedProduct = undefined;
     const module = await Test.createTestingModule({
-      controllers: [MediaController, CategoryController, ProductController],
+      controllers: [MediaController, CategoryController, ProductController, ProductQuoteController],
       providers: [
         OwnerGuard,
         {
@@ -83,6 +88,10 @@ describe('catalog owner endpoints', () => {
             create: async (_merchantId: string, _actor: string, input: unknown) => {
               createdProduct = input as Record<string, unknown>;
               return { id: 'product', ...createdProduct };
+            },
+            quote: async (id: string, selections: unknown) => {
+              quotedProduct = { id, selections };
+              return { productId: id, selections };
             },
           },
         },
@@ -159,6 +168,27 @@ describe('catalog owner endpoints', () => {
         ...payload,
         modifierGroups: [{ ...payload.modifierGroups[0], minSelections: 2 }],
       })
+      .expect(400);
+  });
+
+  it('exposes a public quote endpoint and validates its selection payload', async () => {
+    const groupId = '33333333-3333-4333-8333-333333333333';
+    const optionId = '44444444-4444-4444-8444-444444444444';
+    const productId = '55555555-5555-4555-8555-555555555555';
+    authorized = false;
+
+    await request(app.getHttpServer())
+      .post(`/catalog/products/${productId}/quote`)
+      .send({ selections: [{ groupId, optionIds: [optionId] }] })
+      .expect(200);
+    assert.deepEqual(quotedProduct, {
+      id: productId,
+      selections: [{ groupId, optionIds: [optionId] }],
+    });
+
+    await request(app.getHttpServer())
+      .post(`/catalog/products/${productId}/quote`)
+      .send({ selections: [{ groupId: 'not-a-uuid', optionIds: [] }] })
       .expect(400);
   });
 
@@ -245,6 +275,61 @@ describe('catalog owner endpoints', () => {
 });
 
 describe('catalog service invariants', () => {
+  it('quotes defaults using fixed-precision arithmetic and the current product revision', async () => {
+    const product = {
+      id: 'product',
+      availability: 'available',
+      basePrice: { toString: () => '75.10' },
+      revision: 7,
+      modifierGroups: [
+        {
+          id: 'size-group',
+          name: 'Size',
+          selectionMode: 'single',
+          minSelections: 1,
+          maxSelections: 1,
+          options: [
+            {
+              id: 'regular',
+              name: 'Regular',
+              priceAdjustment: { toString: () => '0.20' },
+              defaultSelected: false,
+            },
+            {
+              id: 'large',
+              name: 'Large',
+              priceAdjustment: { toString: () => '25.35' },
+              defaultSelected: true,
+            },
+          ],
+        },
+      ],
+    };
+    const service = new ProductService({
+      product: { findFirst: async () => product },
+    } as never);
+
+    const quote = await service.quote('product');
+    assert.deepEqual(quote, {
+      productId: 'product',
+      productRevision: 7,
+      currency: 'EGP',
+      basePrice: '75.10',
+      modifierTotal: '25.35',
+      totalPrice: '100.45',
+      selections: [{ groupId: 'size-group', optionIds: ['large'], priceAdjustment: '25.35' }],
+    });
+
+    await assert.rejects(
+      service.quote('product', [{ groupId: 'other-product-group', optionIds: ['large'] }]),
+      /does not belong to this product/i,
+    );
+    await assert.rejects(
+      service.quote('product', [{ groupId: 'size-group', optionIds: [] }]),
+      /Select between 1 and 1/i,
+    );
+  });
+
   it('stores uploads under a generated tenant path and verifies the actual file signature', async () => {
     const storageDirectory = await mkdtemp(join(tmpdir(), 'waffarly-catalog-media-'));
     const image = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);

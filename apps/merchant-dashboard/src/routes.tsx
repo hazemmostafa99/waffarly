@@ -30,6 +30,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: <Navigate to="/" replace /> },
       { path: 'products', element: <ProductsPage /> },
       { path: 'products/new', element: <ProductBuilderPage /> },
+      { path: 'products/:id/edit', element: <ProductBuilderPage /> },
       { path: 'products/create', element: <ProductBuilderPage /> },
       { path: 'products/builder', element: <ProductBuilderPage /> },
       { path: 'product-builder', element: <ProductBuilderPage /> },

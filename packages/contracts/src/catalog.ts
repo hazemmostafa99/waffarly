@@ -84,6 +84,29 @@ export interface CatalogProductModifierGroup {
   options: CatalogProductModifierOption[];
 }
 
+export interface CatalogProductQuoteSelection {
+  groupId: string;
+  optionIds: string[];
+}
+
+export interface CatalogProductQuoteRequest {
+  selections?: CatalogProductQuoteSelection[] | undefined;
+}
+
+export interface CatalogProductQuoteResponse {
+  productId: string;
+  productRevision: number;
+  currency: 'EGP';
+  basePrice: string;
+  modifierTotal: string;
+  totalPrice: string;
+  selections: Array<{
+    groupId: string;
+    optionIds: string[];
+    priceAdjustment: string;
+  }>;
+}
+
 export interface RegisterCatalogMediaRequest {
   storageKey: string;
   publicUrl: string;

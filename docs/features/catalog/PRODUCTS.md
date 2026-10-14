@@ -1,6 +1,6 @@
 # CAT-F02 — Products
 
-**Status:** Product-core rules confirmed and implemented; Product Builder MVP implemented
+**Status:** Product-core rules, Product Builder MVP, and basic configuration quote implemented
 
 **Last updated:** 2026-10-14
 **Parent:** [Catalog & Dynamic Product Builder Overview](OVERVIEW.md)  
@@ -38,7 +38,7 @@ The product owner confirmed the following on 2026-10-13:
 
 ### 2.1 Qualifications that remain open
 
-- CAT-D001/CAT-D008/CAT-D031 do not yet define monetary precision, maximum price, image formats, image storage, ordering, or the numeric media limits.
+- The implementation stores EGP prices at two-decimal precision with a provisional database maximum; the owner has not confirmed a final commercial price ceiling. CAT-D008/CAT-D031 still leave image formats, image storage, ordering, and numeric media limits open.
 - CAT-D002 defines operational availability, not a publication workflow, schedule, inventory result, or channel-specific state.
 - CAT-D003/CAT-D011 require an authoritative order-use check before permanent deletion. Related media/configuration cleanup and race behavior remain OPEN.
 - CAT-D004/CAT-D007/CAT-D019 require one or more equal category links with no primary category. Display order and reassignment behavior remain OPEN.
@@ -56,13 +56,21 @@ The product owner confirmed the following on 2026-10-13:
 - Products are sold by the piece only. A size is a modifier unless it needs a stable SKU, stock, barcode, or other independent sellable identity; variants are not part of this implementation.
 - Conditional/nested modifiers, reusable groups, branch pricing, modifier stock, bundles, and order-time pricing are deferred.
 
+### 2.3 Backend configuration and quote MVP (2026-10-14)
+
+- Product-local modifier groups/options are persisted with the Product. Create uses atomic nested writes; updates replace configuration inside the revision-checked product transaction.
+- `POST /catalog/products/:id/quote` is the authoritative single-product configuration quote. It only quotes non-archived, available products and only accepts groups/options belonging to that product.
+- If a group is omitted from the request, its default options are applied. An explicitly supplied group with an empty `optionIds` array means no options are selected and is still subject to that group's minimum.
+- Quotes enforce every group's min/max selection bounds and return EGP base, modifier, and total amounts as fixed two-decimal strings, plus resolved selections and `productRevision`.
+- This quote is not an order snapshot and does not include discounts, taxes, fees, branch/channel context, or inventory checks. Variants remain out of scope; the MVP selling unit is `piece`.
+
 ## 3. Scope
 
 ### 3.1 In scope for product discovery
 
 - Tenant-owned product identity.
 - Required Arabic name.
-- Required positive EGP base price as a backend-owned commercial input; precision and later quote semantics remain OPEN.
+- Required positive EGP base price as a backend-owned commercial input. Two-decimal storage and basic modifier quote semantics are implemented; contextual pricing rules remain OPEN.
 - Optional Arabic description.
 - Multiple product images with exactly one primary image; removing the primary automatically selects another remaining image. Media limits and processing remain OPEN.
 - One or more mandatory category assignments, consuming the separately documented Categories capability.
@@ -76,7 +84,7 @@ The product owner confirmed the following on 2026-10-13:
 - Category creation, hierarchy, ordering, and visibility rules beyond the dependency that a valid category is required.
 - Variants, attributes, bundles, and configurable-product rules beyond the separately approved CAT-F04 modifier MVP.
 - Selling units other than piece.
-- Detailed authoritative quote calculation, discounts, taxes, fees, price schedules, branch/channel prices, and currency conversion.
+- Discounts, taxes, fees, price schedules, branch/channel prices, and currency conversion. The basic configuration quote MVP is implemented separately below.
 - Stock balances, recipes, ingredients, reservations, deductions, batches, and inventory availability.
 - Product publishing workflow, scheduled availability, branch availability, storefront/POS channel overrides, and sold-out derivation.
 - Order creation, cart behavior, checkout, historical order schema, and kitchen behavior.
@@ -114,7 +122,7 @@ Activity compatibility, subscription entitlement, merchant configuration, and us
 
 The Product definition must not add fields such as restaurant meal size, sauce, topping, recipe, kitchen station, clothing color, grocery weight, or electronics warranty. Those concepts belong to generic configuration capabilities or activity extensions as described in the Catalog Overview.
 
-The required base price does not mean every future sellable configuration must use only that amount. Variant, modifier, unit, contextual pricing, and quote rules will define how the base participates in authoritative pricing after approval.
+The required base price does not mean every future sellable configuration must use only that amount. The restaurant MVP quote adds selected fixed EGP modifier adjustments to the base. Variant, unit, and contextual pricing behavior remains OPEN or deferred.
 
 ## 6. Lifecycle Concepts
 
@@ -264,7 +272,7 @@ Feature specifications for Orders, Pricing, Media, Categories, and Availability 
 
 ## 10. Conceptual Data and Architecture
 
-No physical model or relationship cardinality is approved. A future design will likely need to express these concepts without adopting these as table names:
+The current restaurant MVP uses explicit Product, ProductImage, ProductCategory, ProductModifierGroup, and ProductModifierOption records for these concepts. This physical design does not settle future variants, stock, branch pricing, orders, or broader relationship cardinalities:
 
 - Tenant-owned Product identity.
 - Arabic product content for the initial version.
@@ -281,7 +289,7 @@ Strong tenant ownership, commercial relationships, lifecycle state, category/med
 
 ### 10.1 Candidate backend boundary
 
-Under the repository convention, approved implementation would belong under an `apps/api/src/modules/catalog/` feature boundary. The Catalog application layer would enforce authenticated tenant context and coordinate with explicit interfaces for Categories, Media, Pricing, Entitlements, and Orders as those domains become available.
+The current implementation lives under `apps/api/src/modules/catalog/`. Owner product writes enforce authenticated tenant context; the single-product quote is an application service in Catalog until broader pricing needs justify a separate boundary. Future integrations with Entitlements and Orders remain open.
 
 This does not approve module files or service decomposition. A modular-monolith boundary is sufficient; no separate Catalog microservice is proposed.
 
@@ -293,17 +301,17 @@ Public Storefront/POS UI and advanced product editing remain outside this slice.
 
 ## 11. Dependencies
 
-| Dependency             | Need                                                                        | Current status                                                                                                                                                        |
-| ---------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Merchant/Tenancy       | Authenticated merchant ownership and isolation.                             | Merchant tenant and activated Owner session implemented; broader tenancy/access model incomplete.                                                                     |
-| Categories (CAT-F01)   | One or more valid categories are mandatory at product creation/update.      | Implemented with tenant-safe references, a two-level hierarchy, lifecycle actions, and multiple equal Product links.                                                  |
-| Media                  | A valid image is mandatory.                                                 | Reusable tenant-owned Media and owner image upload to configurable server disk are implemented; processing, cleanup, and external-provider lifecycle remain deferred. |
-| Pricing (CAT-F06)      | Positive EGP base-price validation and later authoritative quote semantics. | Not implemented; currency/positivity confirmed, while precision and calculation rules remain OPEN.                                                                    |
-| Availability (CAT-F07) | Channel/public meaning of Available/Unavailable and Archived.               | Manual state selected conceptually; channel rules not implemented.                                                                                                    |
-| Orders                 | Deletion prohibition after order use and historical snapshot.               | Not implemented; relationship/snapshot design OPEN.                                                                                                                   |
-| Activities & Modules   | Catalog compatibility metadata when capability is implemented.              | Registry exists; Catalog capability absent. Compatibility does not grant access.                                                                                      |
-| Plans/Entitlements     | Commercial access if Catalog becomes plan-gated.                            | Plan definitions exist; assignment/entitlements absent and rules OPEN.                                                                                                |
-| Audit                  | Attribution/history for sensitive changes if required.                      | No general audit domain exists; scope OPEN.                                                                                                                           |
+| Dependency             | Need                                                                   | Current status                                                                                                                                                        |
+| ---------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Merchant/Tenancy       | Authenticated merchant ownership and isolation.                        | Merchant tenant and activated Owner session implemented; broader tenancy/access model incomplete.                                                                     |
+| Categories (CAT-F01)   | One or more valid categories are mandatory at product creation/update. | Implemented with tenant-safe references, a two-level hierarchy, lifecycle actions, and multiple equal Product links.                                                  |
+| Media                  | A valid image is mandatory.                                            | Reusable tenant-owned Media and owner image upload to configurable server disk are implemented; processing, cleanup, and external-provider lifecycle remain deferred. |
+| Pricing (CAT-F06)      | Positive EGP base-price validation and a configuration quote.          | Basic product/modifier quote and fixed-precision response are implemented; discounts, taxes, context pricing, and a separate Pricing domain remain deferred.          |
+| Availability (CAT-F07) | Channel/public meaning of Available/Unavailable and Archived.          | Manual state selected conceptually; channel rules not implemented.                                                                                                    |
+| Orders                 | Deletion prohibition after order use and historical snapshot.          | Not implemented; relationship/snapshot design OPEN.                                                                                                                   |
+| Activities & Modules   | Catalog compatibility metadata when capability is implemented.         | Registry exists; Catalog capability absent. Compatibility does not grant access.                                                                                      |
+| Plans/Entitlements     | Commercial access if Catalog becomes plan-gated.                       | Plan definitions exist; assignment/entitlements absent and rules OPEN.                                                                                                |
+| Audit                  | Attribution/history for sensitive changes if required.                 | No general audit domain exists; scope OPEN.                                                                                                                           |
 
 The mandatory category and image decisions are implemented through the minimal Categories and reusable Media boundaries. The dashboard supports product descriptions, explicit primary-image selection, archived views, restoration, and JPEG/PNG/WebP upload to configurable server disk. Image processing, durable deployment storage configuration, Storefront rendering, and channel behavior remain future work.
 

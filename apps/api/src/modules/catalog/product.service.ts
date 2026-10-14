@@ -5,7 +5,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { CatalogProductFields } from '@waffarly/contracts';
+import type {
+  CatalogProductFields,
+  CatalogProductQuoteResponse,
+  CatalogProductQuoteSelection,
+} from '@waffarly/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { MAX_PRODUCT_IMAGES, MAX_PRODUCT_PRICE, isValidProductPrice } from './catalog.constants.js';
 
@@ -23,6 +27,87 @@ export class ProductService {
       orderBy: { createdAt: 'desc' },
     });
     return products.map(toProductResponse);
+  }
+
+  async quote(
+    id: string,
+    selections: CatalogProductQuoteSelection[] = [],
+  ): Promise<CatalogProductQuoteResponse> {
+    const product = await this.prisma.product.findFirst({
+      where: { id, archivedAt: null },
+      select: {
+        id: true,
+        availability: true,
+        basePrice: true,
+        revision: true,
+        modifierGroups: {
+          orderBy: { position: 'asc' },
+          include: { options: { orderBy: { position: 'asc' } } },
+        },
+      },
+    });
+    if (!product) throw new NotFoundException('Product was not found.');
+    if (product.availability !== 'available') {
+      throw new ConflictException('Product is unavailable.');
+    }
+
+    const requested = new Map<string, string[]>();
+    for (const selection of selections) {
+      if (requested.has(selection.groupId)) {
+        throw new BadRequestException('Each modifier group can be selected only once.');
+      }
+      requested.set(selection.groupId, selection.optionIds);
+    }
+
+    const productGroupIds = new Set(product.modifierGroups.map((group) => group.id));
+    if ([...requested.keys()].some((groupId) => !productGroupIds.has(groupId))) {
+      throw new BadRequestException('A modifier group does not belong to this product.');
+    }
+
+    let modifierTotalCents = 0n;
+    const resolvedSelections = product.modifierGroups.map((group) => {
+      assertPersistedModifierGroup(group);
+      const submittedOptionIds = requested.get(group.id);
+      const selectedIds =
+        submittedOptionIds ??
+        group.options.filter((option) => option.defaultSelected).map((option) => option.id);
+      if (new Set(selectedIds).size !== selectedIds.length) {
+        throw new BadRequestException('Modifier options must be unique within a group.');
+      }
+      if (selectedIds.length < group.minSelections || selectedIds.length > group.maxSelections) {
+        throw new BadRequestException(
+          `Select between ${group.minSelections} and ${group.maxSelections} options for ${group.name}.`,
+        );
+      }
+
+      const selectedIdSet = new Set(selectedIds);
+      const selectedOptions = group.options.filter((option) => selectedIdSet.has(option.id));
+      if (selectedOptions.length !== selectedIds.length) {
+        throw new BadRequestException('A modifier option does not belong to its selected group.');
+      }
+
+      const priceAdjustmentCents = selectedOptions.reduce(
+        (sum, option) => sum + toCents(option.priceAdjustment.toString()),
+        0n,
+      );
+      modifierTotalCents += priceAdjustmentCents;
+      return {
+        groupId: group.id,
+        optionIds: selectedOptions.map((option) => option.id),
+        priceAdjustment: formatCents(priceAdjustmentCents),
+      };
+    });
+
+    const basePriceCents = toCents(product.basePrice.toString());
+    return {
+      productId: product.id,
+      productRevision: product.revision,
+      currency: 'EGP',
+      basePrice: formatCents(basePriceCents),
+      modifierTotal: formatCents(modifierTotalCents),
+      totalPrice: formatCents(basePriceCents + modifierTotalCents),
+      selections: resolvedSelections,
+    };
   }
 
   async create(merchantId: string, actor: string, input: ProductInput) {
@@ -308,7 +393,7 @@ function toProductResponse(product: {
     id: product.id,
     name: product.name,
     description: product.description,
-    basePrice: product.basePrice.toString(),
+    basePrice: formatCents(toCents(product.basePrice.toString())),
     currency: 'EGP',
     sellingUnit: 'piece',
     availability: product.availability,
@@ -335,7 +420,7 @@ function toProductResponse(product: {
       options: group.options.map((option) => ({
         id: option.id,
         name: option.name,
-        priceAdjustment: option.priceAdjustment.toString(),
+        priceAdjustment: formatCents(toCents(option.priceAdjustment.toString())),
         defaultSelected: option.defaultSelected,
         position: option.position,
       })),
@@ -351,4 +436,34 @@ function assertBasePrice(value: string): void {
       `Base price must be between 0.01 and ${MAX_PRODUCT_PRICE} EGP with at most two decimals.`,
     );
   }
+}
+
+function assertPersistedModifierGroup(group: {
+  selectionMode: string;
+  minSelections: number;
+  maxSelections: number;
+  options: Array<{ defaultSelected: boolean }>;
+}): void {
+  const defaults = group.options.filter((option) => option.defaultSelected).length;
+  if (
+    !['single', 'multiple'].includes(group.selectionMode) ||
+    group.minSelections < 0 ||
+    group.maxSelections < 1 ||
+    group.minSelections > group.maxSelections ||
+    group.maxSelections > group.options.length ||
+    (group.selectionMode === 'single' && group.maxSelections !== 1) ||
+    defaults > group.maxSelections
+  ) {
+    throw new ConflictException('Product has an invalid modifier configuration.');
+  }
+}
+
+function toCents(value: string): bigint {
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(value);
+  if (!match) throw new ConflictException('Product has an invalid price configuration.');
+  return BigInt(match[1]!) * 100n + BigInt((match[2] ?? '').padEnd(2, '0'));
+}
+
+function formatCents(value: bigint): string {
+  return `${value / 100n}.${(value % 100n).toString().padStart(2, '0')}`;
 }
