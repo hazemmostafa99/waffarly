@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useNavigate, useOutletContext } from 'react-router-dom';
 import {
   DashboardCard,
   SummaryCard,
@@ -21,6 +21,7 @@ const palette = ['#f3a628', '#e34e5b', '#357beb', '#06936d', '#8796b4'];
 
 export function ProductsPage() {
   const { search: globalSearch } = useOutletContext<{ search: string }>();
+  const navigate = useNavigate();
   const { locale, errorText } = useLocale();
   const copy = (text: string) => productsCopy(text, locale);
   const [catalog, setCatalog] = useState<CatalogSnapshot>({
@@ -316,10 +317,7 @@ export function ProductsPage() {
             type="button"
             className="products-button primary"
             disabled={loading || busy || !hasLoaded}
-            onClick={() => {
-              setNotice('');
-              setEditor({ product: null });
-            }}
+            onClick={() => navigate('/products/new')}
           >
             <Icon name="plus" />
             {copy('Add Product')}

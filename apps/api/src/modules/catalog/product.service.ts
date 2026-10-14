@@ -35,7 +35,7 @@ export class ProductService {
     }
     const product = await this.prisma.product.create({
       data: {
-        merchantId,
+        merchant: { connect: { id: merchantId } },
         name: input.name.trim(),
         description: input.description?.trim() || null,
         basePrice: input.basePrice,
@@ -44,14 +44,37 @@ export class ProductService {
         updatedBy: actor,
         images: {
           create: input.imageAssetIds.map((mediaAssetId, position) => ({
-            merchantId,
-            mediaAssetId,
             position,
             isPrimary: mediaAssetId === primaryImageAssetId,
+            mediaAsset: {
+              connect: { id_merchantId: { id: mediaAssetId, merchantId } },
+            },
           })),
         },
         categoryLinks: {
-          create: input.categoryIds.map((categoryId) => ({ categoryId, merchantId })),
+          create: input.categoryIds.map((categoryId) => ({
+            category: {
+              connect: { id_merchantId: { id: categoryId, merchantId } },
+            },
+          })),
+        },
+        modifierGroups: {
+          create: (input.modifierGroups ?? []).map((group) => ({
+            name: group.name.trim(),
+            description: group.description?.trim() || null,
+            selectionMode: group.selectionMode,
+            minSelections: group.minSelections,
+            maxSelections: group.maxSelections,
+            position: group.position,
+            options: {
+              create: group.options.map((option) => ({
+                name: option.name.trim(),
+                priceAdjustment: option.priceAdjustment,
+                defaultSelected: option.defaultSelected,
+                position: option.position,
+              })),
+            },
+          })),
         },
       },
       include: productInclude,
@@ -116,6 +139,32 @@ export class ProductService {
         await transaction.productCategory.deleteMany({ where: { productId: id } });
         await transaction.productCategory.createMany({
           data: categoryIds.map((categoryId) => ({ productId: id, categoryId, merchantId })),
+        });
+      }
+      if (input.modifierGroups !== undefined) {
+        await transaction.productModifierGroup.deleteMany({ where: { productId: id, merchantId } });
+        await transaction.product.update({
+          where: { id },
+          data: {
+            modifierGroups: {
+              create: input.modifierGroups.map((group) => ({
+                name: group.name.trim(),
+                description: group.description?.trim() || null,
+                selectionMode: group.selectionMode,
+                minSelections: group.minSelections,
+                maxSelections: group.maxSelections,
+                position: group.position,
+                options: {
+                  create: group.options.map((option) => ({
+                    name: option.name.trim(),
+                    priceAdjustment: option.priceAdjustment,
+                    defaultSelected: option.defaultSelected,
+                    position: option.position,
+                  })),
+                },
+              })),
+            },
+          },
         });
       }
       return transaction.product.findUniqueOrThrow({ where: { id }, include: productInclude });
@@ -211,6 +260,10 @@ const productInclude = {
   categoryLinks: {
     include: { category: { select: { id: true, name: true, parentId: true, availability: true } } },
   },
+  modifierGroups: {
+    orderBy: { position: 'asc' as const },
+    include: { options: { orderBy: { position: 'asc' as const } } },
+  },
 } as const;
 
 function toProductResponse(product: {
@@ -218,6 +271,7 @@ function toProductResponse(product: {
   name: string;
   description: string | null;
   basePrice: { toString(): string };
+  sellingUnit: string;
   availability: string;
   archivedAt: Date | null;
   revision: number;
@@ -233,6 +287,22 @@ function toProductResponse(product: {
   categoryLinks: Array<{
     category: { id: string; name: string; parentId: string | null; availability: string };
   }>;
+  modifierGroups: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    selectionMode: string;
+    minSelections: number;
+    maxSelections: number;
+    position: number;
+    options: Array<{
+      id: string;
+      name: string;
+      priceAdjustment: { toString(): string };
+      defaultSelected: boolean;
+      position: number;
+    }>;
+  }>;
 }) {
   return {
     id: product.id,
@@ -240,6 +310,7 @@ function toProductResponse(product: {
     description: product.description,
     basePrice: product.basePrice.toString(),
     currency: 'EGP',
+    sellingUnit: 'piece',
     availability: product.availability,
     archivedAt: product.archivedAt?.toISOString() ?? null,
     revision: product.revision,
@@ -253,6 +324,22 @@ function toProductResponse(product: {
       position: image.position,
     })),
     categories: product.categoryLinks.map(({ category }) => category),
+    modifierGroups: product.modifierGroups.map((group) => ({
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      selectionMode: group.selectionMode,
+      minSelections: group.minSelections,
+      maxSelections: group.maxSelections,
+      position: group.position,
+      options: group.options.map((option) => ({
+        id: option.id,
+        name: option.name,
+        priceAdjustment: option.priceAdjustment.toString(),
+        defaultSelected: option.defaultSelected,
+        position: option.position,
+      })),
+    })),
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
   };

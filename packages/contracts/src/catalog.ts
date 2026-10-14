@@ -54,13 +54,34 @@ export interface CatalogProductSummary {
   description: string | null;
   basePrice: string;
   currency: 'EGP';
+  sellingUnit: 'piece';
   availability: CatalogAvailability;
   archivedAt: string | null;
   revision: number;
   images: CatalogProductImage[];
   categories: CatalogCategoryReference[];
+  modifierGroups: CatalogProductModifierGroup[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CatalogProductModifierOption {
+  id: string;
+  name: string;
+  priceAdjustment: string;
+  defaultSelected: boolean;
+  position: number;
+}
+
+export interface CatalogProductModifierGroup {
+  id: string;
+  name: string;
+  description: string | null;
+  selectionMode: 'single' | 'multiple';
+  minSelections: number;
+  maxSelections: number;
+  position: number;
+  options: CatalogProductModifierOption[];
 }
 
 export interface RegisterCatalogMediaRequest {
@@ -89,6 +110,24 @@ export interface CatalogProductFields {
   imageAssetIds: string[];
   primaryImageAssetId?: string | undefined;
   categoryIds: string[];
+  modifierGroups?: CatalogProductModifierGroupFields[] | undefined;
+}
+
+export interface CatalogProductModifierOptionFields {
+  name: string;
+  priceAdjustment: string;
+  defaultSelected: boolean;
+  position: number;
+}
+
+export interface CatalogProductModifierGroupFields {
+  name: string;
+  description?: string | undefined;
+  selectionMode: 'single' | 'multiple';
+  minSelections: number;
+  maxSelections: number;
+  position: number;
+  options: CatalogProductModifierOptionFields[];
 }
 
 export type CreateCatalogProductRequest = CatalogProductFields;

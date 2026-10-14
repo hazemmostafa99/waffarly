@@ -1,6 +1,6 @@
 # CAT-F02 — Products
 
-**Status:** Discovery draft; initial business rules confirmed; first backend slice implemented
+**Status:** Product-core rules confirmed and implemented; Product Builder MVP implemented
 
 **Last updated:** 2026-10-14
 **Parent:** [Catalog & Dynamic Product Builder Overview](OVERVIEW.md)  
@@ -11,9 +11,9 @@
 
 Products defines the minimum tenant-owned catalog identity used by later categories, variants, modifiers, selling units, pricing validation, visibility, storefront, inventory, POS, and order features.
 
-This first Products feature is documented for the restaurant MVP while preserving a generic Product Core. It does not add restaurant-specific fields or implement future-industry behavior. A simple product such as bottled water must fit without variants or modifiers. Configurable restaurant items will be added through separately documented generic capabilities.
+This Products feature is documented for the restaurant MVP while preserving a generic Product Core. It does not add restaurant-specific fields or implement future-industry behavior. A simple product such as bottled water fits without variants or modifiers. Configurable restaurant items use the separately approved product-local Modifier Groups & Options MVP (CAT-F04).
 
-This specification records business behavior only. It does not approve or finalize Prisma models, database relationships, APIs, frontend components, media storage, or implementation.
+This specification records the Product Core business behavior. Implementation details for the separately scoped Product Builder MVP are summarized below; future variants, inventory integration, storefront, and POS behavior remain outside the implemented slice.
 
 ## 2. Confirmed Decisions
 
@@ -48,6 +48,14 @@ The product owner confirmed the following on 2026-10-13:
 - CAT-D012 settles the restoration state but not whether archived product information can be edited before restoration.
 - The current backend uses provisional Media guards of at most 10 product images, 10 MB per asset, and JPEG/PNG/WebP. These defaults are implementation safeguards until the owner confirms final Media limits.
 
+### 2.2 Approved Product Builder MVP (2026-10-14)
+
+- Modifier groups belong to one product and support single or multiple choice.
+- `minSelections` and `maxSelections` define required/optional behavior and the allowed selection count. Options may be marked as defaults.
+- Options use fixed EGP price adjustments; groups and options have explicit ordering.
+- Products are sold by the piece only. A size is a modifier unless it needs a stable SKU, stock, barcode, or other independent sellable identity; variants are not part of this implementation.
+- Conditional/nested modifiers, reusable groups, branch pricing, modifier stock, bundles, and order-time pricing are deferred.
+
 ## 3. Scope
 
 ### 3.1 In scope for product discovery
@@ -66,7 +74,8 @@ The product owner confirmed the following on 2026-10-13:
 ### 3.2 Explicitly outside this feature
 
 - Category creation, hierarchy, ordering, and visibility rules beyond the dependency that a valid category is required.
-- Variants, attributes, modifier groups/options, selling units beyond the eventual default quantity basis, bundles, and configurable-product rules.
+- Variants, attributes, bundles, and configurable-product rules beyond the separately approved CAT-F04 modifier MVP.
+- Selling units other than piece.
 - Detailed authoritative quote calculation, discounts, taxes, fees, price schedules, branch/channel prices, and currency conversion.
 - Stock balances, recipes, ingredients, reservations, deductions, batches, and inventory availability.
 - Product publishing workflow, scheduled availability, branch availability, storefront/POS channel overrides, and sold-out derivation.
@@ -337,7 +346,7 @@ Arabic validation details, price precision/bounds, image validity/limits, and ca
 
 - A simple product such as bottled water can be represented with the required core information and without dummy variants or modifiers.
 - No restaurant-only product field is required by the core Product definition.
-- Later Variants, Modifiers, Selling Units, Inventory, and activity extensions can reference the stable Product identity through explicit approved boundaries.
+- Simple products need no variants or modifier groups; the approved modifier MVP references the stable Product identity through product-local groups. Variants, broader selling units, Inventory, and activity extensions remain deferred.
 
 ### AC-P06 — Backend authority
 

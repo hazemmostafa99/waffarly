@@ -129,6 +129,39 @@ describe('catalog owner endpoints', () => {
       .expect(400);
   });
 
+  it('accepts ordered product-local modifier groups and validates selection bounds', async () => {
+    const payload = {
+      name: 'Burger',
+      basePrice: '75.00',
+      availability: 'available',
+      imageAssetIds: ['11111111-1111-4111-8111-111111111111'],
+      categoryIds: ['22222222-2222-4222-8222-222222222222'],
+      modifierGroups: [
+        {
+          name: 'Size',
+          selectionMode: 'single',
+          minSelections: 1,
+          maxSelections: 1,
+          position: 0,
+          options: [
+            { name: 'Regular', priceAdjustment: '0', defaultSelected: false, position: 0 },
+            { name: 'Large', priceAdjustment: '25.00', defaultSelected: true, position: 1 },
+          ],
+        },
+      ],
+    };
+    await request(app.getHttpServer()).post('/owner/catalog/products').send(payload).expect(201);
+    assert.deepEqual(createdProduct?.modifierGroups, payload.modifierGroups);
+
+    await request(app.getHttpServer())
+      .post('/owner/catalog/products')
+      .send({
+        ...payload,
+        modifierGroups: [{ ...payload.modifierGroups[0], minSelections: 2 }],
+      })
+      .expect(400);
+  });
+
   it('accepts reusable media metadata only for approved image formats', async () => {
     await request(app.getHttpServer())
       .post('/owner/catalog/media')
@@ -285,6 +318,157 @@ describe('catalog service invariants', () => {
       service.update(owner.merchantId, owner.username, categoryId, 1, { parentId }),
       /with children cannot become a child category/i,
     );
+  });
+
+  it('creates products through tenant-scoped Prisma relation connects', async () => {
+    const imageId = '11111111-1111-4111-8111-111111111111';
+    const categoryId = '22222222-2222-4222-8222-222222222222';
+    let createData: Record<string, unknown> | undefined;
+    const now = new Date('2026-01-01T00:00:00.000Z');
+    const service = new ProductService({
+      mediaAsset: { findMany: async () => [{ id: imageId }] },
+      category: { findMany: async () => [{ id: categoryId }] },
+      product: {
+        create: async ({ data }: { data: Record<string, unknown> }) => {
+          createData = data;
+          return {
+            id: 'product',
+            name: 'Burger',
+            description: null,
+            basePrice: { toString: () => '75.00' },
+            sellingUnit: 'piece',
+            availability: 'available',
+            archivedAt: null,
+            revision: 1,
+            createdAt: now,
+            updatedAt: now,
+            images: [
+              {
+                id: 'product-image',
+                mediaAssetId: imageId,
+                isPrimary: true,
+                position: 0,
+                mediaAsset: {
+                  id: imageId,
+                  publicUrl: 'http://localhost:4000/media/burger.jpg',
+                  mimeType: 'image/jpeg',
+                  sizeBytes: 12,
+                },
+              },
+            ],
+            categoryLinks: [
+              {
+                category: {
+                  id: categoryId,
+                  name: 'Mains',
+                  parentId: null,
+                  availability: 'available',
+                },
+              },
+            ],
+            modifierGroups: [
+              {
+                id: 'modifier-group',
+                name: 'Size',
+                description: null,
+                selectionMode: 'single',
+                minSelections: 1,
+                maxSelections: 1,
+                position: 0,
+                options: [
+                  {
+                    id: 'modifier-option',
+                    name: 'Large',
+                    priceAdjustment: { toString: () => '25.00' },
+                    defaultSelected: true,
+                    position: 0,
+                  },
+                ],
+              },
+            ],
+          };
+        },
+      },
+    } as never);
+
+    const product = await service.create(owner.merchantId, owner.username, {
+      name: 'Burger',
+      basePrice: '75.00',
+      availability: 'available',
+      imageAssetIds: [imageId],
+      categoryIds: [categoryId],
+      modifierGroups: [
+        {
+          name: 'Size',
+          selectionMode: 'single',
+          minSelections: 1,
+          maxSelections: 1,
+          position: 0,
+          options: [
+            {
+              name: 'Large',
+              priceAdjustment: '25.00',
+              defaultSelected: true,
+              position: 0,
+            },
+          ],
+        },
+      ],
+    });
+    assert.equal(product.sellingUnit, 'piece');
+    assert.deepEqual(product.modifierGroups[0]?.options[0]?.priceAdjustment, '25.00');
+
+    assert.deepEqual(createData, {
+      merchant: { connect: { id: owner.merchantId } },
+      name: 'Burger',
+      description: null,
+      basePrice: '75.00',
+      availability: 'available',
+      createdBy: owner.username,
+      updatedBy: owner.username,
+      images: {
+        create: [
+          {
+            position: 0,
+            isPrimary: true,
+            mediaAsset: {
+              connect: { id_merchantId: { id: imageId, merchantId: owner.merchantId } },
+            },
+          },
+        ],
+      },
+      categoryLinks: {
+        create: [
+          {
+            category: {
+              connect: { id_merchantId: { id: categoryId, merchantId: owner.merchantId } },
+            },
+          },
+        ],
+      },
+      modifierGroups: {
+        create: [
+          {
+            name: 'Size',
+            description: null,
+            selectionMode: 'single',
+            minSelections: 1,
+            maxSelections: 1,
+            position: 0,
+            options: {
+              create: [
+                {
+                  name: 'Large',
+                  priceAdjustment: '25.00',
+                  defaultSelected: true,
+                  position: 0,
+                },
+              ],
+            },
+          },
+        ],
+      },
+    });
   });
 
   it('rejects archived category references on product creation', async () => {
