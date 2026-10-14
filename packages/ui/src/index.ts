@@ -1,10 +1,18 @@
 export { Button } from './button.js';
 export type { ButtonProps } from './button.js';
 export { buttonVariants } from './button.js';
+export { Badge, badgeVariants } from './badge.js';
+export type { BadgeProps } from './badge.js';
 export { Input } from './input.js';
 export { Textarea } from './textarea.js';
 export { PasswordInput } from './password-input.js';
 export { Card } from './card.js';
+export { DashboardCard, SummaryCard } from './dashboard-card.js';
+export type { DashboardCardProps, SummaryCardProps } from './dashboard-card.js';
+export { DataTable } from './data-table.js';
+export type { DataTableColumn, DataTableProps } from './data-table.js';
+export { Pagination } from './pagination.js';
+export type { PaginationProps } from './pagination.js';
 export { cn } from './utils.js';
 export { LocaleProvider, LanguageSwitcher, useLocale } from './i18n.js';
 export type { Locale, LocalizedMessage } from './i18n.js';

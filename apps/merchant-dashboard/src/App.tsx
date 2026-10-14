@@ -1,4 +1,4 @@
-import { useLocale, Input, Button, Card, PasswordInput } from '@waffarly/ui';
+import { useLocale, Input, Button, Card, PasswordInput, LanguageSwitcher } from '@waffarly/ui';
 import { useEffect, useState, type FormEvent } from 'react';
 import {
   BUSINESS_ACTIVITY_LABELS,
@@ -6,8 +6,7 @@ import {
   type OwnerProfile,
 } from '@waffarly/contracts';
 import { apiRequest } from './lib/api-client.js';
-import { StorefrontSettings } from './StorefrontSettings.js';
-import { CatalogWorkspace } from './CatalogWorkspace.js';
+import { MerchantWorkspace } from './MerchantWorkspace.js';
 
 export function App() {
   const { t, errorText } = useLocale();
@@ -56,6 +55,7 @@ export function App() {
   if (profile === null)
     return (
       <main id="main-content" tabIndex={-1} className="shell narrow">
+        <LanguageSwitcher />
         <div className="eyebrow">{t('Waffarly · Merchant')}</div>
         <h1>{t('Merchant Dashboard')}</h1>
         <p>
@@ -94,62 +94,50 @@ export function App() {
     );
 
   return (
-    <main id="main-content" tabIndex={-1} className="shell">
-      <header className="topbar">
-        <div>
-          <div className="eyebrow">{t('Waffarly · Merchant')}</div>
-          <h1>{profile.merchantName}</h1>
-          <p>
-            {t('Signed in as')} {profile.username}
+    <MerchantWorkspace
+      profile={profile}
+      signOut={() => void signOut()}
+      error={
+        error ? (
+          <p className="error" role="alert">
+            {errorText(error)}
           </p>
-        </div>
-        <Button
-          variant="outline"
-          className="secondary"
-          type="button"
-          onClick={() => void signOut()}
-        >
-          {t('Sign out')}{' '}
-        </Button>
-      </header>
-      {error && (
-        <p className="error" role="alert">
-          {errorText(error)}
-        </p>
-      )}
-      <Card className="panel">
-        <div className="section-heading">
-          <div>
-            <div className="eyebrow">{t('Business account')}</div>
-            <h2>{t('Contact details')}</h2>
+        ) : null
+      }
+      account={
+        <Card className="panel">
+          <div className="section-heading">
+            <div>
+              <div className="eyebrow">{t('Business account')}</div>
+              <h2>{t('Contact details')}</h2>
+            </div>
+            <span className="status-badge">{t('Subscription active')}</span>
           </div>
-          <span className="status-badge">{t('Subscription active')}</span>
-        </div>
-        <dl className="profile-grid">
-          <div className="profile-item">
-            <dt>{t('Business activity')}</dt>
-            <dd>{t(BUSINESS_ACTIVITY_LABELS[profile.activity ?? 'other'])}</dd>
-          </div>
-          <div className="profile-item">
-            <dt>{t('Business name')}</dt>
-            <dd>{profile.merchantName}</dd>
-          </div>
-          <div className="profile-item">
-            <dt>{t('Business phone')}</dt>
-            <dd>{profile.contactPhone}</dd>
-          </div>
-          <div className="profile-item">
-            <dt>{t('Owner name')}</dt>
-            <dd>{profile.ownerName}</dd>
-          </div>
-          <div className="profile-item">
-            <dt>{t('Owner mobile')}</dt>
-            <dd>{profile.ownerMobile}</dd>
-          </div>
-        </dl>
-      </Card>
-      <CatalogWorkspace />
-      <StorefrontSettings profile={profile} />
-    </main>
+          <h3 className="merchant-dashboard-account-name">{profile.merchantName}</h3>
+          <dl className="profile-grid">
+            <div className="profile-item">
+              <dt>{t('Business activity')}</dt>
+              <dd>{t(BUSINESS_ACTIVITY_LABELS[profile.activity ?? 'other'])}</dd>
+            </div>
+            <div className="profile-item">
+              <dt>{t('Business name')}</dt>
+              <dd>{profile.merchantName}</dd>
+            </div>
+            <div className="profile-item">
+              <dt>{t('Business phone')}</dt>
+              <dd>{profile.contactPhone}</dd>
+            </div>
+            <div className="profile-item">
+              <dt>{t('Owner name')}</dt>
+              <dd>{profile.ownerName}</dd>
+            </div>
+            <div className="profile-item">
+              <dt>{t('Owner mobile')}</dt>
+              <dd>{profile.ownerMobile}</dd>
+            </div>
+          </dl>
+        </Card>
+      }
+    />
   );
 }

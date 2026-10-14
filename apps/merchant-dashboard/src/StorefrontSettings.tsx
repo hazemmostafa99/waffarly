@@ -7,18 +7,27 @@ import type {
 } from '@waffarly/contracts';
 import { StorefrontDesignPreview, useLocale, Button, Input, Card } from '@waffarly/ui';
 import { apiRequest } from './lib/api-client.js';
+import { Icon } from './Icons.js';
 
-const defaultColor = '#315b43';
 const maxLogoBytes = 48 * 1024;
 
 export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
-  const { t, errorText } = useLocale();
+  const { t, errorText, locale } = useLocale();
   const [settings, setSettings] = useState<MerchantStorefrontSettings | null>(null);
   const [draft, setDraft] = useState<SaveMerchantStorefrontRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState<LocalizedMessage>('');
+  const [description, setDescription] = useState('');
+
+  useEffect(() => {
+    setDescription(
+      locale === 'ar'
+        ? 'وفّرلي يقدم أفضل أنواع الوافل والبرجر والحلويات الطازجة بمكونات عالية الجودة.'
+        : 'Waffarly serves the best waffles, burgers, and fresh desserts made with quality ingredients.',
+    );
+  }, [locale]);
 
   useEffect(() => {
     let current = true;
@@ -44,8 +53,6 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
       current = false;
     };
   }, []);
-
-  const selected = settings?.templates.find((template) => template.id === draft?.templateId);
 
   function uploadLogo(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
@@ -75,7 +82,11 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!draft?.templateId) return;
+    if (!draft) return;
+    if (!draft.templateId) {
+      setError('Choose a business design before saving.');
+      return;
+    }
     setSaving(true);
     setError('');
     setNotice('');
@@ -100,13 +111,22 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
   }
 
   return (
-    <Card className="panel merchant-design" aria-labelledby="merchant-design-heading">
-      <div className="merchant-design-intro">
-        <div className="eyebrow">{t('YOUR RESTAURANT')}</div>
-        <h2 id="merchant-design-heading">{t('Storefront design')}</h2>
-        <p>
-          {t('Choose a complete design, add your logo, and make it yours with a signature color.')}
-        </p>
+    <Card
+      id="settings-identity"
+      className="panel merchant-design settings-card settings-identity-card"
+      aria-labelledby="merchant-design-heading"
+    >
+      <div className="settings-card-heading">
+        <div className="settings-heading-copy">
+          <span className="settings-section-icon mint">
+            <Icon name="store" />
+          </span>
+          <div>
+            <div className="settings-eyebrow">{t('STORE BRANDING')}</div>
+            <h2 id="merchant-design-heading">{t('Storefront design')}</h2>
+            <p>{t('Manage your store logo, description, and customer-facing identity.')}</p>
+          </div>
+        </div>
       </div>
 
       {error && (
@@ -122,89 +142,32 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
 
       {loading ? (
         <p>{t('Loading business designs…')}</p>
-      ) : !settings || !draft ? null : settings.templates.length === 0 ? (
-        <div className="merchant-design-empty">
-          <span aria-hidden="true">✳</span>
-          <h3>{t('Designs are on their way')}</h3>
-          <p>{t('Available business designs will appear here.')}</p>
-        </div>
-      ) : (
-        <form className="merchant-design-form" onSubmit={(event) => void save(event)}>
-          <fieldset className="merchant-design-choices">
-            <legend>{t('Choose your design')}</legend>
-            <div className="merchant-design-grid">
-              {settings.templates.map((template) => (
-                <Button
-                  key={template.id}
-                  type="button"
-                  variant="outline"
-                  className={`merchant-design-choice grid h-auto w-full min-w-0 whitespace-normal p-2.5 ${draft.templateId === template.id ? 'merchant-design-choice-active' : ''}`}
-                  aria-pressed={draft.templateId === template.id}
-                  onClick={() => {
-                    setDraft((current) =>
-                      current
-                        ? {
-                            ...current,
-                            templateId: template.id,
-                            accentColor: settings.templateId
-                              ? current.accentColor
-                              : template.accentColor,
-                          }
-                        : current,
-                    );
-                    setError('');
-                    setNotice('');
-                  }}
-                >
-                  <StorefrontDesignPreview
-                    layout={template.layout}
-                    name={profile.merchantName}
-                    description={template.description}
-                    accentColor={
-                      draft.templateId === template.id ? draft.accentColor : template.accentColor
-                    }
-                    logoData={draft.logoData}
-                  />
-                  <span className="merchant-design-choice-copy">
-                    <span>
-                      <strong>{template.name}</strong>
-                      <small>
-                        {template.layout === 'menu'
-                          ? t('Editorial · catalog first')
-                          : t('Storytelling · welcome first')}
-                      </small>
-                    </span>
-                    <span className="merchant-design-radio" aria-hidden="true">
-                      {draft.templateId === template.id ? '✓' : ''}
-                    </span>
-                  </span>
-                </Button>
-              ))}
-            </div>
-          </fieldset>
-
-          <div className="merchant-design-customize">
-            <div className="merchant-design-customize-heading">
-              <div>
-                <div className="eyebrow">{t('YOUR PERSONAL TOUCH')}</div>
-                <h3>{t('Logo & colour')}</h3>
+      ) : !settings || !draft ? null : (
+        <form className="settings-identity-form" onSubmit={(event) => void save(event)}>
+          <div className="settings-identity-grid">
+            <div className="settings-logo-column">
+              <div className="settings-field-label">{t('Store logo')}</div>
+              <div className="settings-logo-preview">
+                {draft.logoData ? (
+                  <img src={draft.logoData} alt={t('Current store logo')} />
+                ) : (
+                  <div className="settings-logo-wordmark">
+                    <span aria-hidden="true">♨</span>
+                    <strong>Waffarly</strong>
+                  </div>
+                )}
               </div>
-              <span>{t('Only changes this business')}</span>
-            </div>
-            <div className="merchant-design-controls">
-              <label className="merchant-logo-upload">
-                {t('Business logo')}
-                <span>{t('PNG, JPG or WebP · max 48 KB')}</span>
+              <label className="settings-logo-upload">
                 <Input
                   className="size-px p-0 opacity-0"
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
                   onChange={uploadLogo}
                 />
-                <span className="merchant-file-button">
-                  {draft.logoData ? t('Choose a different logo') : t('Choose a logo')}{' '}
-                  <span aria-hidden="true">↗</span>
+                <span>
+                  {draft.logoData ? t('Choose a different logo') : t('Upload store logo')}
                 </span>
+                <small>{t('PNG or JPG, up to 48 KB')}</small>
               </label>
               {draft.logoData && (
                 <Button
@@ -215,51 +178,74 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
                     setDraft((current) => (current ? { ...current, logoData: null } : current))
                   }
                 >
-                  {t('Remove logo')}{' '}
+                  {t('Remove logo')}
                 </Button>
               )}
-              <label className="merchant-colour-control">
-                {t('Your accent colour')}
-                <span>{t('Used for buttons and highlights')}</span>
-                <span className="merchant-colour-picker">
-                  <Input
-                    aria-label={t('Storefront accent colour')}
-                    type="color"
-                    value={draft.accentColor}
-                    onChange={(event) =>
-                      setDraft((current) =>
-                        current ? { ...current, accentColor: event.target.value } : current,
-                      )
-                    }
-                  />
-                  <code>{draft.accentColor.toUpperCase()}</code>
-                </span>
-              </label>
             </div>
+
+            <label className="settings-description-field">
+              <span>{t('Store description')}</span>
+              <textarea
+                value={description}
+                maxLength={300}
+                onChange={(event) => setDescription(event.target.value)}
+              />
+              <small>{t('A short description customers will see on your storefront.')}</small>
+              <em>{description.length}/300</em>
+            </label>
           </div>
 
-          {selected && (
-            <div className="merchant-design-live-preview">
-              <div className="merchant-design-preview-label">
-                <span>{t('LIVE PREVIEW')}</span>
-                <span>{t('Example storefront · sample content')}</span>
+          {settings.templates.length > 0 && (
+            <details className="settings-template-details">
+              <summary>{t('Choose your design')}</summary>
+              <div className="merchant-design-grid">
+                {settings.templates.map((template) => (
+                  <Button
+                    key={template.id}
+                    type="button"
+                    variant="outline"
+                    className={`merchant-design-choice ${draft.templateId === template.id ? 'merchant-design-choice-active' : ''}`}
+                    aria-pressed={draft.templateId === template.id}
+                    onClick={() => {
+                      setDraft((current) =>
+                        current
+                          ? {
+                              ...current,
+                              templateId: template.id,
+                              accentColor: settings.templateId
+                                ? current.accentColor
+                                : template.accentColor,
+                            }
+                          : current,
+                      );
+                      setError('');
+                      setNotice('');
+                    }}
+                  >
+                    <StorefrontDesignPreview
+                      layout={template.layout}
+                      name={profile.merchantName}
+                      description={template.description}
+                      accentColor={
+                        draft.templateId === template.id ? draft.accentColor : template.accentColor
+                      }
+                      logoData={draft.logoData}
+                    />
+                    <span className="merchant-design-choice-copy">
+                      <strong>{template.name}</strong>
+                      <span className="merchant-design-radio" aria-hidden="true">
+                        {draft.templateId === template.id ? '✓' : ''}
+                      </span>
+                    </span>
+                  </Button>
+                ))}
               </div>
-              <StorefrontDesignPreview
-                layout={selected.layout}
-                name={profile.merchantName}
-                description={selected.description}
-                accentColor={draft.accentColor || defaultColor}
-                logoData={draft.logoData}
-              />
-            </div>
+            </details>
           )}
 
-          <div className="merchant-design-save-row">
-            <p>
-              {t('Saved to')} {profile.merchantName}
-              {t("'s business only. The preview uses sample catalog content.")}{' '}
-            </p>
-            <Button type="submit" disabled={saving || !draft.templateId}>
+          <div className="settings-card-footer">
+            <p>{t('These changes apply to this business only.')}</p>
+            <Button type="submit" disabled={saving || settings.templates.length === 0}>
               {saving ? t('Saving…') : t('Save design')}
             </Button>
           </div>

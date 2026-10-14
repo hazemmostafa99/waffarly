@@ -23,6 +23,7 @@ const template = {
 
 async function mockApi(page: Page, signedIn = true) {
   await page.route('**/*', async (route) => {
+    if (route.request().isNavigationRequest()) return route.continue();
     const path = new URL(route.request().url()).pathname;
     const responses: Record<string, unknown> = {
       '/auth/admin/me': { username: 'admin' },
@@ -48,6 +49,9 @@ async function mockApi(page: Page, signedIn = true) {
         },
       ],
       '/admin/activities-modules': { activities: [], modules: [] },
+      '/owner/catalog/media': [],
+      '/owner/catalog/categories': [],
+      '/owner/catalog/products': [],
       '/auth/owner/storefront': {
         templateId: 'garden',
         accentColor: '#315b43',
@@ -124,15 +128,15 @@ test('admin translates every section, formats prices, and searches businesses', 
   await page.getByLabel('البحث في المتاجر').fill('Nile');
   await expect(page.getByRole('heading', { name: 'Nile Kitchen' })).toBeVisible();
   await assertFits(page);
-  await page.getByRole('button', { name: 'مكتبة التصاميم واجهات المتاجر' }).click();
+  await page.getByRole('link', { name: 'مكتبة التصاميم واجهات المتاجر' }).click();
   await expect(page.getByRole('heading', { name: 'مكتبة التصاميم', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'اختيارات مميزة. كل يوم.' })).toBeVisible();
   await assertFits(page);
-  await page.getByRole('button', { name: 'الباقات العروض الشهرية' }).click();
+  await page.getByRole('link', { name: 'الباقات العروض الشهرية' }).click();
   await expect(page.getByRole('heading', { name: 'الباقات الشهرية', exact: true })).toHaveCount(2);
   await expect(page.locator('.plan-price')).toContainText('٢٠٠');
   await assertFits(page);
-  await page.getByRole('button', { name: 'الأنشطة والوحدات الإمكانات' }).click();
+  await page.getByRole('link', { name: 'الأنشطة والوحدات الإمكانات' }).click();
   await expect(page.getByRole('heading', { name: 'الأنشطة والإمكانات' })).toBeVisible();
   await assertFits(page);
 });
@@ -141,7 +145,7 @@ test('merchant dashboard translates contact details and design previews', async 
   page,
 }, testInfo) => {
   await mockApi(page);
-  await page.goto('http://127.0.0.1:5274');
+  await page.goto('http://127.0.0.1:5274/settings');
   await expect(page.getByRole('heading', { name: 'Nile Kitchen' })).toBeVisible();
   await page.getByRole('button', { name: 'Change language' }).click();
   await expect(page.getByRole('heading', { name: 'بيانات التواصل' })).toBeVisible();

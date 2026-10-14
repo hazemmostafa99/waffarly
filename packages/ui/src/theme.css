@@ -20,6 +20,9 @@
   --color-accent: #e8f2ec;
   --color-accent-foreground: var(--primary);
   --color-destructive: #b42318;
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
   --color-border: var(--border);
   --color-input: var(--border);
   --color-ring: #54886a;
@@ -31,6 +34,9 @@
   --card: #fff;
   --primary: #245c43;
   --secondary: #edf2ee;
+  --success: #0ea77a;
+  --warning: #f0b24a;
+  --info: #2168c8;
   --border: #dce5df;
   --radius: 0.75rem;
 }

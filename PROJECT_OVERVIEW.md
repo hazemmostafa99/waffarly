@@ -338,6 +338,7 @@ Do not implement a provider integration or invent a payment-collection workflow 
 | Merchant dashboard | **React** (SPA) | **[CONFIRMED]** |
 | POS frontend | **React** (SPA) | **[CONFIRMED]**; standalone app vs embedded feature [OPEN] |
 | Dashboard build tooling | Vite candidate for React SPAs | **[PROPOSED]**; not explicitly selected |
+| **Frontend styling & UI components** | **Tailwind CSS v4 + shadcn/ui** (all frontends) | **[CONFIRMED]** |
 | Initial business activity | Restaurants | **[CONFIRMED]** |
 | Initial market | Egypt | **[CONFIRMED]** |
 | First-release POS connectivity | Online-first; offline deferred | **[CONFIRMED]** |

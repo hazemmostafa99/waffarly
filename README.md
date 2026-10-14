@@ -36,6 +36,14 @@ Applications run at:
 - API liveness: http://localhost:4000/health
 - API database check: http://localhost:4000/health/db
 
+The dashboards use React Router with URL navigation:
+
+- Super Admin: `/` (businesses), `/templates`, `/plans`, `/activities`, and `/login`.
+- Merchant: `/`, `/products`, `/categories`, `/media`, `/settings`, and `/login`. `/orders`, `/customers`, `/discounts`, and `/branches` currently show preparation screens.
+- POS: `/` is the preparation screen; POS authentication endpoints are not implemented yet.
+
+Protected dashboard links return to the requested page after login. Production hosting must serve the app's `index.html` for frontend paths so direct links and refreshes work. Run the desktop/mobile dashboard checks with `pnpm exec playwright test --config playwright.routes.config.ts` after building the three React apps.
+
 The database health endpoint returns HTTP 503 when PostgreSQL cannot be reached. The API itself starts without eagerly connecting to PostgreSQL so liveness can still be checked while the database is unavailable.
 
 ## Common commands

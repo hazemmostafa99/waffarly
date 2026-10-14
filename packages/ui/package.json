@@ -10,6 +10,7 @@
     },
     "./storefront-design.css": "./src/storefront-design.css",
     "./theme.css": "./src/theme.css",
+    "./dashboard-components.css": "./src/dashboard-components.css",
     "./utils": {
       "types": "./dist/utils.d.ts",
       "import": "./dist/utils.js"
