@@ -2,7 +2,9 @@ import '@waffarly/ui/theme.css';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
-import { LocaleProvider, WorkspaceChrome } from '@waffarly/ui';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { LocaleProvider } from '@waffarly/ui';
+import { queryClient } from './app/query-client.js';
 import { router } from './routes.js';
 import './style.css';
 import '@waffarly/ui/storefront-design.css';
@@ -15,10 +17,10 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <React.StrictMode>
-    <LocaleProvider>
-      <WorkspaceChrome>
+    <QueryClientProvider client={queryClient}>
+      <LocaleProvider>
         <RouterProvider router={router} />
-      </WorkspaceChrome>
-    </LocaleProvider>
+      </LocaleProvider>
+    </QueryClientProvider>
   </React.StrictMode>,
 );

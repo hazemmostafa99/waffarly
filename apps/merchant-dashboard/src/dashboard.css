@@ -338,6 +338,30 @@ html[dir='rtl'] .merchant-sidebar {
   font-size: 10px;
   white-space: nowrap;
 }
+.dashboard-refresh {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--dashboard-green);
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.dashboard-refresh:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.dashboard-data-error {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #f1c9cb;
+  border-radius: 8px;
+  background: #fff5f5;
+  color: #9f343d;
+  font-size: 11px;
+}
 .dashboard-date-select {
   display: flex;
   align-items: center;
@@ -571,6 +595,18 @@ html[dir='rtl'] .merchant-sidebar {
   background: #fae8eb;
   color: #df737e;
 }
+.dashboard-status.pending {
+  background: #fdf2de;
+  color: #a96b12;
+}
+.dashboard-status.accepted {
+  background: #e4f7ec;
+  color: #207254;
+}
+.dashboard-status.rejected {
+  background: #fae8eb;
+  color: #a33c47;
+}
 .dashboard-period {
   font-size: 10px;
   color: var(--dashboard-ink);
@@ -602,8 +638,8 @@ html[dir='rtl'] .merchant-sidebar {
 }
 .dashboard-sales-summary small {
   font-size: 8px;
-  color: var(--dashboard-green);
-  font-weight: 650;
+  color: var(--dashboard-muted);
+  font-weight: 500;
 }
 .dashboard-chart {
   width: 100%;
@@ -611,6 +647,38 @@ html[dir='rtl'] .merchant-sidebar {
   display: block;
   direction: ltr;
   overflow: visible;
+}
+.dashboard-chart-legend {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin: 0 0 4px;
+  color: var(--dashboard-muted);
+  font-size: 9px;
+}
+.dashboard-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dashboard-chart-legend i {
+  width: 9px;
+  height: 9px;
+  display: inline-block;
+  border-radius: 50%;
+}
+.dashboard-chart-legend .is-order-value {
+  background: #b7e7cb;
+}
+.dashboard-chart-legend .is-order-count {
+  background: var(--dashboard-green);
+}
+.dashboard-chart-empty,
+.dashboard-empty-note {
+  margin: 12px 0;
+  color: var(--dashboard-muted);
+  font-size: 10px;
+  text-align: center;
 }
 .dashboard-chart-label {
   fill: var(--dashboard-muted);
@@ -1287,6 +1355,28 @@ html[dir='rtl'] .merchant-content-settings .merchant-page-heading > div {
   display: grid;
   gap: 15px;
   margin-top: 15px;
+}
+
+.settings-public-storefront {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #d9e6dc;
+  border-radius: 12px;
+  background: #f5faf6;
+  padding: 13px 16px;
+}
+
+.settings-public-storefront span {
+  color: #607164;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.settings-public-storefront a {
+  overflow-wrap: anywhere;
+  color: #246b4f;
+  font-size: 0.9rem;
+  font-weight: 750;
 }
 .settings-fields-grid {
   display: grid;

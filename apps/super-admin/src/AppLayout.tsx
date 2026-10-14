@@ -1,155 +1,81 @@
-import { Navigate, Outlet, useNavigate, useLocation, NavLink } from 'react-router-dom';
-import { useLocale, Button } from '@waffarly/ui';
-import { useEffect, useState } from 'react';
-import type { MerchantSummary, MerchantApplicationSummary } from '@waffarly/contracts';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useLocale } from '@waffarly/ui';
+import { useState } from 'react';
+import { AdminSidebar } from './components/AdminSidebar.js';
+import { AdminTopbar } from './components/AdminTopbar.js';
+import { adminQueryKeys } from './app/query-keys.js';
 import { apiRequest } from './lib/api-client.js';
+import { adminThemeClass } from './lib/admin-theme.js';
 
-function errorMessage(cause: unknown): string {
-  return cause instanceof Error ? cause.message : 'Something went wrong.';
+interface AdminProfile {
+  username: string;
 }
 
 export function AppLayout() {
-  const { t, errorText } = useLocale();
-  const navigate = useNavigate();
+  const { locale, t, errorText } = useLocale();
   const location = useLocation();
-  const [adminName, setAdminName] = useState('');
-  const [signedIn, setSignedIn] = useState<boolean | null>(null);
-  const [merchants, setMerchants] = useState<MerchantSummary[]>([]);
-  const [applications, setApplications] = useState<MerchantApplicationSummary[]>([]);
-  const [loadingMerchants, setLoadingMerchants] = useState(true);
-  const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const navigate = useNavigate();
+  const cache = useQueryClient();
+  const [signOutError, setSignOutError] = useState('');
+  const profile = useQuery({
+    queryKey: adminQueryKeys.profile,
+    queryFn: () => apiRequest<AdminProfile>('/auth/admin/me'),
+    retry: false,
+  });
 
-  useEffect(() => {
-    void apiRequest<{ username: string }>('/auth/admin/me')
-      .then((profile) => {
-        setAdminName(profile.username);
-        setSignedIn(true);
-      })
-      .catch(() => setSignedIn(false));
-  }, [navigate]);
-
-  useEffect(() => {
-    if (!adminName) return;
-    void Promise.all([
-      apiRequest<MerchantSummary[]>('/admin/merchants'),
-      apiRequest<MerchantApplicationSummary[]>('/admin/merchant-applications'),
-    ])
-      .then(([merchantRows, applicationRows]) => {
-        setMerchants(merchantRows);
-        setApplications(applicationRows);
-      })
-      .catch((cause: unknown) => setError(errorMessage(cause)))
-      .finally(() => setLoadingMerchants(false));
-  }, [adminName]);
-
-  async function signOut() {
-    try {
-      await apiRequest('/auth/admin/logout', { method: 'POST' });
-      setAdminName('');
-      setMerchants([]);
-      setApplications([]);
-      setError('');
-      setNotice('');
-      setSignedIn(false);
+  const signOut = useMutation({
+    mutationFn: () => apiRequest('/auth/admin/logout', { method: 'POST' }),
+    onSuccess: () => {
+      cache.clear();
       navigate('/login', { replace: true });
-    } catch (cause) {
-      setError(errorMessage(cause));
-    }
-  }
+    },
+    onError: (cause: unknown) => {
+      setSignOutError(cause instanceof Error ? cause.message : 'Something went wrong.');
+    },
+  });
 
-  const sections = [
-    { id: 'businesses', label: t('Businesses'), sub: t('Onboarding') },
-    { id: 'templates', label: t('Design library'), sub: t('Storefronts') },
-    { id: 'plans', label: t('Plans'), sub: t('Monthly offers') },
-    { id: 'activities', label: t('Activities & modules'), sub: t('Capabilities') },
-  ] as const;
-
-  const titles: Record<string, string> = {
-    businesses: 'Businesses',
-    templates: 'Templates & Design Library',
-    plans: 'Monthly plans',
-    activities: 'Activities & modules',
-  };
-
-  if (signedIn === null) {
+  if (profile.isPending) {
     return (
-      <main id="main-content" tabIndex={-1} className="shell">
-        {t('Loading…')}
-      </main>
+      <div className={adminThemeClass} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+        <main id="main-content" className="grid min-h-screen place-content-center justify-items-center gap-4 p-6" tabIndex={-1}>
+          <span className="grid size-12 place-items-center rounded-2xl bg-waffarly-primary text-lg font-bold text-white" aria-hidden="true">W</span>
+          <p className="text-sm text-waffarly-muted" role="status">{t('Loading Super Admin…')}</p>
+        </main>
+      </div>
     );
   }
-  if (!signedIn) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+
+  if (profile.isError) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: `${location.pathname}${location.search}${location.hash}` }}
+      />
+    );
+  }
 
   return (
-    <main id="main-content" tabIndex={-1} className="shell">
-      <header className="topbar">
-        <div>
-          <div className="eyebrow">{t('Waffarly · Platform')}</div>
-          <h1>{t(titles[location.pathname.slice(1)] ?? 'Businesses')}</h1>
-          <p>
-            {t('Signed in as')} {adminName}
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          className="secondary"
-          type="button"
-          onClick={() => void signOut()}
-        >
-          {t('Sign out')}{' '}
-        </Button>
-      </header>
-      <nav className="admin-nav" aria-label={t('Platform administration')}>
-        {sections.map((section) => (
-          <NavLink
-            key={section.id}
-            to={section.id === 'businesses' ? '/' : `/${section.id}`}
-            end
-            className={({ isActive }) => `admin-nav-button ${isActive ? 'admin-nav-active' : ''}`}
-            aria-current={
-              location.pathname === `/${section.id}` ||
-              (section.id === 'businesses' && location.pathname === '/')
-                ? 'page'
-                : undefined
-            }
-            onClick={() => {
-              setError('');
-              setNotice('');
+    <div className={adminThemeClass} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+      <a className="fixed -top-14 start-4 z-[100] rounded-lg border-2 border-waffarly-primary bg-white px-4 py-3 text-sm font-semibold text-waffarly-primary focus:top-3" href="#main-content">{t('Skip to content')}</a>
+      <div className="flex min-h-screen">
+        <AdminSidebar />
+        <main id="main-content" className="min-w-0 flex-1" tabIndex={-1}>
+          <AdminTopbar
+            adminName={profile.data?.username ?? ''}
+            onSignOut={() => {
+              setSignOutError('');
+              signOut.mutate();
             }}
-          >
-            {section.label} <span>{section.sub}</span>
-          </NavLink>
-        ))}
-      </nav>
-      {location.pathname === '/' && (
-        <section className="mb-6 grid gap-4 sm:grid-cols-3" aria-label={t('Business overview')}>
-          {[
-            ['Businesses', merchants.length],
-            [
-              'Awaiting review',
-              applications.filter((item) => !item.approvedAt && !item.rejectedAt).length,
-            ],
-            ['Active subscriptions', merchants.filter((item) => item.firstMonthActivatedAt).length],
-          ].map(([label, value]) => (
-            <div key={label} className="rounded-xl border bg-card p-5">
-              <p className="m-0 text-sm">{t(String(label))}</p>
-              <strong className="mt-2 block text-3xl">{loadingMerchants ? '—' : value}</strong>
-            </div>
-          ))}
-        </section>
-      )}
-      {location.pathname === '/' && error && (
-        <p className="error" role="alert">
-          {errorText(error)}
-        </p>
-      )}
-      {location.pathname === '/' && notice && (
-        <p className="notice" role="status">
-          {t(notice)}
-        </p>
-      )}
-      <Outlet />
-    </main>
+            signingOut={signOut.isPending}
+          />
+          <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 xl:p-8">
+            {signOutError && <p className="rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger" role="alert">{errorText(signOutError)}</p>}
+            <Outlet />
+          </div>
+        </main>
+      </div>
+    </div>
   );
 }

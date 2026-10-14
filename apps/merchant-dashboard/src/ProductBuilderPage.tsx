@@ -6,6 +6,7 @@ import type {
   CatalogMediaAsset,
   CatalogProductModifierGroupFields,
   CatalogProductSummary,
+  CatalogProductVariantFields,
 } from '@waffarly/contracts';
 import { Icon } from './Icons.js';
 import { apiRequest, apiUpload } from './lib/api-client.js';
@@ -25,6 +26,16 @@ type GroupDraft = {
   minSelections: number;
   maxSelections: number;
   options: OptionDraft[];
+};
+
+type VariantDraft = {
+  id: string;
+  name: string;
+  sku: string;
+  barcode: string;
+  price: string;
+  stockQuantity: string;
+  availability: 'available' | 'unavailable';
 };
 
 const tabKeys = ['basic', 'details', 'options', 'preview'] as const;
@@ -51,6 +62,7 @@ export function ProductBuilderPage() {
   const [imageAssetIds, setImageAssetIds] = useState<string[]>([]);
   const [primaryImageAssetId, setPrimaryImageAssetId] = useState('');
   const [groups, setGroups] = useState<GroupDraft[]>([]);
+  const [variants, setVariants] = useState<VariantDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [productLoading, setProductLoading] = useState(Boolean(productId));
   const [notFound, setNotFound] = useState(false);
@@ -95,6 +107,7 @@ export function ProductBuilderPage() {
       setImageAssetIds([]);
       setPrimaryImageAssetId('');
       setGroups([]);
+      setVariants([]);
       return () => {
         cancelled = true;
       };
@@ -140,6 +153,19 @@ export function ProductBuilderPage() {
                   priceAdjustment: option.priceAdjustment,
                   defaultSelected: option.defaultSelected,
                 })),
+            })),
+        );
+        setVariants(
+          [...product.variants]
+            .sort((a, b) => a.position - b.position)
+            .map((variant) => ({
+              id: variant.id,
+              name: variant.name,
+              sku: variant.sku ?? '',
+              barcode: variant.barcode ?? '',
+              price: variant.price,
+              stockQuantity: variant.stockQuantity === null ? '' : String(variant.stockQuantity),
+              availability: variant.availability,
             })),
         );
         setRevision(product.revision);
@@ -237,6 +263,35 @@ export function ProductBuilderPage() {
       }
     }
     if (step === 2) {
+      const duplicateSku = new Set<string>();
+      const duplicateBarcode = new Set<string>();
+      const invalidVariant = variants.find((variant) => {
+        const sku = variant.sku.trim().toLocaleLowerCase();
+        const barcode = variant.barcode.trim().toLocaleLowerCase();
+        const duplicate =
+          (sku && duplicateSku.has(sku)) || (barcode && duplicateBarcode.has(barcode));
+        if (sku) duplicateSku.add(sku);
+        if (barcode) duplicateBarcode.add(barcode);
+        return (
+          !variant.name.trim() ||
+          !/^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(variant.price) ||
+          Number(variant.price) <= 0 ||
+          (variant.stockQuantity !== '' &&
+            (!/^\d+$/.test(variant.stockQuantity) ||
+              !Number.isSafeInteger(Number(variant.stockQuantity)) ||
+              Number(variant.stockQuantity) > 2_147_483_647)) ||
+          duplicate
+        );
+      });
+      if (invalidVariant) {
+        setError(
+          text(
+            'Check each variant: enter a name and positive price, use a whole-number stock count, and keep SKU/barcode values unique.',
+            'راجع كل متغير: أدخل الاسم والسعر الموجب، واستخدم كمية مخزون صحيحة، وتأكد من عدم تكرار SKU أو الباركود.',
+          ),
+        );
+        return false;
+      }
       const invalidGroup = groups.find((group) => {
         const defaults = group.options.filter((option) => option.defaultSelected).length;
         return (
@@ -308,6 +363,37 @@ export function ProductBuilderPage() {
     ]);
   }
 
+  function addVariant() {
+    setVariants((current) => [
+      ...current,
+      {
+        id: newId(),
+        name: '',
+        sku: '',
+        barcode: '',
+        price: basePrice || '0',
+        stockQuantity: '',
+        availability: 'available',
+      },
+    ]);
+  }
+
+  function changeVariant(variantId: string, update: Partial<VariantDraft>) {
+    setVariants((current) =>
+      current.map((variant) => (variant.id === variantId ? { ...variant, ...update } : variant)),
+    );
+  }
+
+  function moveVariant(index: number, direction: -1 | 1) {
+    setVariants((current) => {
+      const target = index + direction;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index], next[target]] = [next[target]!, next[index]!];
+      return next;
+    });
+  }
+
   function addOption(group: GroupDraft) {
     const options = [
       ...group.options,
@@ -376,6 +462,15 @@ export function ProductBuilderPage() {
         })),
       }),
     );
+    const productVariants: CatalogProductVariantFields[] = variants.map((variant, position) => ({
+      name: variant.name.trim(),
+      sku: variant.sku.trim() || undefined,
+      barcode: variant.barcode.trim() || undefined,
+      price: Number(variant.price).toFixed(2),
+      stockQuantity: variant.stockQuantity === '' ? null : Number(variant.stockQuantity),
+      availability: variant.availability,
+      position,
+    }));
     try {
       await apiRequest<CatalogProductSummary>(
         productId ? `/owner/catalog/products/${productId}` : '/owner/catalog/products',
@@ -393,6 +488,7 @@ export function ProductBuilderPage() {
               : imageAssetIds[0],
             categoryIds,
             modifierGroups,
+            variants: productVariants,
           }),
         },
       );
@@ -544,6 +640,13 @@ export function ProductBuilderPage() {
                   onRemoveOption={removeOption}
                   onMoveGroup={moveGroup}
                   onMoveOption={moveOption}
+                  variants={variants}
+                  onVariantChange={changeVariant}
+                  onAddVariant={addVariant}
+                  onRemoveVariant={(variantId) =>
+                    setVariants((current) => current.filter((variant) => variant.id !== variantId))
+                  }
+                  onMoveVariant={moveVariant}
                   text={text}
                 />
               )}
@@ -559,6 +662,7 @@ export function ProductBuilderPage() {
                     Boolean(asset),
                   )}
                   groups={groups}
+                  variants={variants}
                   text={text}
                 />
               )}
@@ -619,7 +723,12 @@ export function ProductBuilderPage() {
             image={primaryImage?.publicUrl}
             categoryName={selectedCategories[0]?.name}
             groups={groups}
-            total={Number(basePrice || 0) + defaultAdjustment}
+            variants={variants}
+            total={
+              (variants.length
+                ? Math.min(...variants.map((variant) => Number(variant.price || 0)))
+                : Number(basePrice || 0)) + defaultAdjustment
+            }
             text={text}
           />
         </div>
@@ -653,7 +762,7 @@ function BasicInformationTab({
           <h2>{text('Basic information', 'المعلومات الأساسية')}</h2>
           <p>
             {text(
-              'Set the name and base price customers will see.',
+              'Set the product base price. When variants are added, each variant price is used for quotes instead.',
               'أدخل الاسم والسعر الأساسي الذي سيظهر للعملاء.',
             )}
           </p>
@@ -878,6 +987,11 @@ function OptionsTab({
   onRemoveOption,
   onMoveGroup,
   onMoveOption,
+  variants,
+  onVariantChange,
+  onAddVariant,
+  onRemoveVariant,
+  onMoveVariant,
   text,
 }: {
   groups: GroupDraft[];
@@ -889,6 +1003,11 @@ function OptionsTab({
   onRemoveOption: (group: GroupDraft, optionId: string) => void;
   onMoveGroup: (index: number, direction: -1 | 1) => void;
   onMoveOption: (group: GroupDraft, index: number, direction: -1 | 1) => void;
+  variants: VariantDraft[];
+  onVariantChange: (id: string, update: Partial<VariantDraft>) => void;
+  onAddVariant: () => void;
+  onRemoveVariant: (id: string) => void;
+  onMoveVariant: (index: number, direction: -1 | 1) => void;
   text: (english: string, arabic: string) => string;
 }) {
   return (
@@ -899,25 +1018,156 @@ function OptionsTab({
           <h2>{text('Options', 'الخيارات')}</h2>
           <p>
             {text(
-              'Create product-specific choices with fixed EGP price adjustments.',
-              'أنشئ خيارات خاصة بالمنتج مع فروق سعر ثابتة بالجنيه المصري.',
+              'Add separately sellable variants with their own SKU, barcode, price, and optional stock. Use modifier groups for ordinary add-ons and choices.',
+              'أضف متغيرات قابلة للبيع بهوية وسعر ومخزون مستقل، واستخدم مجموعات الخيارات للإضافات والاختيارات المعتادة.',
             )}
           </p>
         </div>
-        <button type="button" className="builder-button primary" onClick={onAddGroup}>
-          <Icon name="plus" />
-          {text('Add group', 'إضافة مجموعة')}
-        </button>
+        <div className="builder-heading-buttons">
+          <button
+            type="button"
+            className="builder-button"
+            onClick={onAddVariant}
+            disabled={variants.length >= 100}
+          >
+            <Icon name="plus" />
+            {text('Add variant', 'إضافة متغير')}
+          </button>
+          <button type="button" className="builder-button primary" onClick={onAddGroup}>
+            <Icon name="plus" />
+            {text('Add group', 'إضافة مجموعة')}
+          </button>
+        </div>
       </div>
       <div className="builder-info-banner">
         <span>i</span>
         <p>
           {text(
-            'Groups are single or multiple choice. Set the minimum and maximum number a customer may choose. A minimum of 0 means optional.',
-            'تكون المجموعة باختيار واحد أو عدة اختيارات. حدد أقل وأكبر عدد يمكن للعميل اختياره. الحد الأدنى 0 يعني أن المجموعة اختيارية.',
+            'Variants are required at checkout when added. Leave stock blank for untracked inventory; quote checks stock but does not reserve it. Modifier groups are single or multiple choice with explicit selection limits.',
+            'يجب اختيار متغير عند الطلب إذا تمت إضافته. اترك المخزون فارغاً لعدم تتبعه؛ التسعير يفحص المخزون لكنه لا يحجزه. مجموعات الخيارات لها حدود اختيار صريحة.',
           )}
         </p>
       </div>
+      {!!variants.length && (
+        <div className="builder-variant-list">
+          <h3>{text('Sellable variants', 'المتغيرات القابلة للبيع')}</h3>
+          {variants.map((variant, index) => (
+            <section className="builder-group-card builder-variant-card" key={variant.id}>
+              <header className="builder-group-header">
+                <div className="builder-order-buttons">
+                  <button
+                    type="button"
+                    aria-label={text('Move variant up', 'تحريك المتغير لأعلى')}
+                    disabled={index === 0}
+                    onClick={() => onMoveVariant(index, -1)}
+                  >
+                    <Icon name="arrow-up" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={text('Move variant down', 'تحريك المتغير لأسفل')}
+                    disabled={index === variants.length - 1}
+                    onClick={() => onMoveVariant(index, 1)}
+                  >
+                    <Icon name="arrow-down" />
+                  </button>
+                </div>
+                <span className="builder-group-index">{index + 1}</span>
+                <div>
+                  <strong>{variant.name || text('New variant', 'متغير جديد')}</strong>
+                  <small>
+                    {variant.availability === 'available'
+                      ? text('Available', 'متاح')
+                      : text('Unavailable', 'غير متاح')}
+                  </small>
+                </div>
+                <button
+                  type="button"
+                  className="builder-remove-button"
+                  aria-label={`${text('Remove variant', 'حذف المتغير')} ${variant.name}`}
+                  onClick={() => onRemoveVariant(variant.id)}
+                >
+                  <Icon name="close" />
+                </button>
+              </header>
+              <div className="builder-variant-grid">
+                <label className="builder-field">
+                  <span>
+                    {text('Variant name', 'اسم المتغير')} <i>*</i>
+                  </span>
+                  <input
+                    maxLength={160}
+                    value={variant.name}
+                    onChange={(event) => onVariantChange(variant.id, { name: event.target.value })}
+                    placeholder={text('e.g. 500 ml', 'مثال: 500 مل')}
+                  />
+                </label>
+                <label className="builder-field">
+                  <span>
+                    {text('Variant price (EGP)', 'سعر المتغير (جنيه)')} <i>*</i>
+                  </span>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={variant.price}
+                    onChange={(event) => onVariantChange(variant.id, { price: event.target.value })}
+                  />
+                </label>
+                <label className="builder-field">
+                  <span>{text('SKU (optional)', 'رمز SKU (اختياري)')}</span>
+                  <input
+                    maxLength={80}
+                    value={variant.sku}
+                    onChange={(event) => onVariantChange(variant.id, { sku: event.target.value })}
+                    placeholder={text('Unique merchant code', 'رمز فريد للمتجر')}
+                    dir="ltr"
+                  />
+                </label>
+                <label className="builder-field">
+                  <span>{text('Barcode (optional)', 'الباركود (اختياري)')}</span>
+                  <input
+                    maxLength={80}
+                    value={variant.barcode}
+                    onChange={(event) =>
+                      onVariantChange(variant.id, { barcode: event.target.value })
+                    }
+                    placeholder={text('Enter a barcode', 'أدخل الباركود')}
+                    dir="ltr"
+                  />
+                </label>
+                <label className="builder-field">
+                  <span>{text('Stock quantity', 'كمية المخزون')}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={variant.stockQuantity}
+                    onChange={(event) =>
+                      onVariantChange(variant.id, { stockQuantity: event.target.value })
+                    }
+                    placeholder={text('Blank = not tracked', 'فارغ = بدون تتبع')}
+                  />
+                </label>
+                <label className="builder-field">
+                  <span>{text('Variant availability', 'حالة المتغير')}</span>
+                  <select
+                    value={variant.availability}
+                    onChange={(event) =>
+                      onVariantChange(variant.id, {
+                        availability: event.target.value as VariantDraft['availability'],
+                      })
+                    }
+                  >
+                    <option value="available">{text('Available', 'متاح')}</option>
+                    <option value="unavailable">{text('Unavailable', 'غير متاح')}</option>
+                  </select>
+                </label>
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
       {!groups.length && (
         <div className="builder-empty-state builder-empty-options">
           <strong>{text('No option groups added', 'لم تتم إضافة مجموعات خيارات')}</strong>
@@ -943,7 +1193,7 @@ function OptionsTab({
                   disabled={groupIndex === 0}
                   onClick={() => onMoveGroup(groupIndex, -1)}
                 >
-                  ↑
+                  <Icon name="arrow-up" />
                 </button>
                 <button
                   type="button"
@@ -951,7 +1201,7 @@ function OptionsTab({
                   disabled={groupIndex === groups.length - 1}
                   onClick={() => onMoveGroup(groupIndex, 1)}
                 >
-                  ↓
+                  <Icon name="arrow-down" />
                 </button>
               </div>
               <span className="builder-group-index">{groupIndex + 1}</span>
@@ -969,7 +1219,7 @@ function OptionsTab({
                 aria-label={text('Remove group', 'حذف المجموعة')}
                 onClick={() => onGroupsChange(groups.filter((item) => item.id !== group.id))}
               >
-                ×
+                <Icon name="close" />
               </button>
             </header>
             <div className="builder-group-fields">
@@ -1059,7 +1309,7 @@ function OptionsTab({
                       disabled={optionIndex === 0}
                       onClick={() => onMoveOption(group, optionIndex, -1)}
                     >
-                      ↑
+                      <Icon name="arrow-up" />
                     </button>
                     <button
                       type="button"
@@ -1067,7 +1317,7 @@ function OptionsTab({
                       disabled={optionIndex === group.options.length - 1}
                       onClick={() => onMoveOption(group, optionIndex, 1)}
                     >
-                      ↓
+                      <Icon name="arrow-down" />
                     </button>
                   </div>
                   <input
@@ -1120,7 +1370,7 @@ function OptionsTab({
                     disabled={group.options.length === 1}
                     onClick={() => onRemoveOption(group, option.id)}
                   >
-                    ×
+                    <Icon name="close" />
                   </button>
                 </div>
               ))}
@@ -1145,6 +1395,7 @@ function PreviewPublishTab({
   categories,
   images,
   groups,
+  variants,
   text,
 }: {
   name: string;
@@ -1155,6 +1406,7 @@ function PreviewPublishTab({
   categories: CatalogCategorySummary[];
   images: CatalogMediaAsset[];
   groups: GroupDraft[];
+  variants: VariantDraft[];
   text: (english: string, arabic: string) => string;
 }) {
   return (
@@ -1185,7 +1437,21 @@ function PreviewPublishTab({
           </div>
           <h3>{name || text('Product name', 'اسم المنتج')}</h3>
           <p>{description || text('No description added.', 'لم تتم إضافة وصف.')}</p>
-          <strong dir="ltr">EGP {Number(basePrice || 0).toFixed(2)}</strong>
+          {variants.length ? (
+            <div className="builder-review-variants">
+              <strong>{text('Variant prices', 'أسعار المتغيرات')}</strong>
+              {variants.map((variant) => (
+                <span key={variant.id}>
+                  {variant.name || text('Unnamed variant', 'متغير بلا اسم')} —{' '}
+                  <b dir="ltr">EGP {Number(variant.price || 0).toFixed(2)}</b>
+                  {variant.stockQuantity !== '' &&
+                    ` · ${text('Stock', 'المخزون')}: ${variant.stockQuantity}`}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <strong dir="ltr">EGP {Number(basePrice || 0).toFixed(2)}</strong>
+          )}
           <small>{text('Sold per piece', 'يباع بالقطعة')}</small>
         </div>
       </div>
@@ -1265,6 +1531,7 @@ function ProductPreview({
   image,
   categoryName,
   groups,
+  variants,
   total,
   text,
 }: {
@@ -1274,6 +1541,7 @@ function ProductPreview({
   image?: string | undefined;
   categoryName?: string | undefined;
   groups: GroupDraft[];
+  variants: VariantDraft[];
   total: number;
   text: (english: string, arabic: string) => string;
 }) {
@@ -1300,8 +1568,24 @@ function ProductPreview({
           {description ||
             text('Your product description will appear here.', 'سيظهر وصف المنتج هنا.')}
         </p>
-        <strong className="preview-base-price">EGP {Number(basePrice || 0).toFixed(2)}</strong>
+        <strong className="preview-base-price">
+          {variants.length ? text('From ', 'ابتداءً من ') : ''}EGP{' '}
+          {variants.length
+            ? Math.min(...variants.map((variant) => Number(variant.price || 0))).toFixed(2)
+            : Number(basePrice || 0).toFixed(2)}
+        </strong>
       </div>
+      {!!variants.length && (
+        <div className="preview-selected-options">
+          <h3>{text('Variants', 'المتغيرات')}</h3>
+          {variants.map((variant) => (
+            <div className="preview-option-row" key={variant.id}>
+              <span>{variant.name || text('Variant', 'متغير')}</span>
+              <span dir="ltr">EGP {Number(variant.price || 0).toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {!!groups.length && (
         <div className="preview-selected-options">
           <h3>{text('Options', 'الخيارات')}</h3>

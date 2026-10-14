@@ -18,6 +18,7 @@ import { MediaService } from '../src/modules/catalog/media.service.js';
 import {
   ProductController,
   ProductQuoteController,
+  PublicStorefrontController,
 } from '../src/modules/catalog/product.controller.js';
 import { ProductService } from '../src/modules/catalog/product.service.js';
 
@@ -36,14 +37,24 @@ describe('catalog owner endpoints', () => {
   let app: INestApplication;
   let authorized: boolean;
   let createdProduct: Record<string, unknown> | undefined;
-  let quotedProduct: { id: string; selections: unknown } | undefined;
+  let quotedProduct:
+    | { id: string; variantId?: string; selections: unknown; storefrontSlug?: string }
+    | undefined;
+  let publicSlug: string | undefined;
 
   beforeEach(async () => {
     authorized = true;
     createdProduct = undefined;
     quotedProduct = undefined;
+    publicSlug = undefined;
     const module = await Test.createTestingModule({
-      controllers: [MediaController, CategoryController, ProductController, ProductQuoteController],
+      controllers: [
+        MediaController,
+        CategoryController,
+        ProductController,
+        ProductQuoteController,
+        PublicStorefrontController,
+      ],
       providers: [
         OwnerGuard,
         {
@@ -89,9 +100,23 @@ describe('catalog owner endpoints', () => {
               createdProduct = input as Record<string, unknown>;
               return { id: 'product', ...createdProduct };
             },
-            quote: async (id: string, selections: unknown) => {
-              quotedProduct = { id, selections };
+            quote: async (
+              id: string,
+              selections: unknown,
+              variantId?: string,
+              storefrontSlug?: string,
+            ) => {
+              quotedProduct = {
+                id,
+                ...(variantId ? { variantId } : {}),
+                selections,
+                ...(storefrontSlug ? { storefrontSlug } : {}),
+              };
               return { productId: id, selections };
+            },
+            getPublicStorefrontCatalog: async (slug: string) => {
+              publicSlug = slug;
+              return { slug, products: [] };
             },
           },
         },
@@ -171,7 +196,51 @@ describe('catalog owner endpoints', () => {
       .expect(400);
   });
 
-  it('exposes a public quote endpoint and validates its selection payload', async () => {
+  it('accepts sellable product variants and rejects invalid prices or duplicate identifiers', async () => {
+    const payload = {
+      name: 'Coffee',
+      basePrice: '80.00',
+      availability: 'available',
+      imageAssetIds: ['11111111-1111-4111-8111-111111111111'],
+      categoryIds: ['22222222-2222-4222-8222-222222222222'],
+      variants: [
+        {
+          name: 'Small',
+          sku: 'COF-S',
+          barcode: '1234567890123',
+          price: '80.00',
+          stockQuantity: 12,
+          availability: 'available',
+          position: 0,
+        },
+        {
+          name: 'Large',
+          sku: 'COF-L',
+          barcode: '1234567890124',
+          price: '105.50',
+          stockQuantity: null,
+          availability: 'available',
+          position: 1,
+        },
+      ],
+    };
+    await request(app.getHttpServer()).post('/owner/catalog/products').send(payload).expect(201);
+    assert.deepEqual(createdProduct?.variants, payload.variants);
+
+    await request(app.getHttpServer())
+      .post('/owner/catalog/products')
+      .send({ ...payload, variants: [{ ...payload.variants[0], price: '0' }] })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post('/owner/catalog/products')
+      .send({
+        ...payload,
+        variants: [payload.variants[0], { ...payload.variants[1], sku: ' cof-s ' }],
+      })
+      .expect(400);
+  });
+
+  it('exposes a public quote endpoint and validates its variant and selection payload', async () => {
     const groupId = '33333333-3333-4333-8333-333333333333';
     const optionId = '44444444-4444-4444-8444-444444444444';
     const productId = '55555555-5555-4555-8555-555555555555';
@@ -179,10 +248,11 @@ describe('catalog owner endpoints', () => {
 
     await request(app.getHttpServer())
       .post(`/catalog/products/${productId}/quote`)
-      .send({ selections: [{ groupId, optionIds: [optionId] }] })
+      .send({ variantId: optionId, selections: [{ groupId, optionIds: [optionId] }] })
       .expect(200);
     assert.deepEqual(quotedProduct, {
       id: productId,
+      variantId: optionId,
       selections: [{ groupId, optionIds: [optionId] }],
     });
 
@@ -190,6 +260,29 @@ describe('catalog owner endpoints', () => {
       .post(`/catalog/products/${productId}/quote`)
       .send({ selections: [{ groupId: 'not-a-uuid', optionIds: [] }] })
       .expect(400);
+    await request(app.getHttpServer())
+      .post(`/catalog/products/${productId}/quote`)
+      .send({ variantId: 'not-a-uuid' })
+      .expect(400);
+  });
+
+  it('exposes public storefront catalogs without requiring an owner session', async () => {
+    authorized = false;
+    const response = await request(app.getHttpServer()).get('/catalog/stores/cairo-cafe').expect(200);
+    assert.deepEqual(response.body, { slug: 'cairo-cafe', products: [] });
+    assert.equal(publicSlug, 'cairo-cafe');
+    await request(app.getHttpServer()).get('/catalog/stores/Not%20A%20Slug').expect(400);
+
+    const productId = '55555555-5555-4555-8555-555555555555';
+    await request(app.getHttpServer())
+      .post(`/catalog/stores/cairo-cafe/products/${productId}/quote`)
+      .send({})
+      .expect(200);
+    assert.deepEqual(quotedProduct, {
+      id: productId,
+      selections: [],
+      storefrontSlug: 'cairo-cafe',
+    });
   });
 
   it('accepts reusable media metadata only for approved image formats', async () => {
@@ -281,6 +374,7 @@ describe('catalog service invariants', () => {
       availability: 'available',
       basePrice: { toString: () => '75.10' },
       revision: 7,
+      variants: [],
       modifierGroups: [
         {
           id: 'size-group',
@@ -313,6 +407,8 @@ describe('catalog service invariants', () => {
     assert.deepEqual(quote, {
       productId: 'product',
       productRevision: 7,
+      variantId: null,
+      variantName: null,
       currency: 'EGP',
       basePrice: '75.10',
       modifierTotal: '25.35',
@@ -328,6 +424,58 @@ describe('catalog service invariants', () => {
       service.quote('product', [{ groupId: 'size-group', optionIds: [] }]),
       /Select between 1 and 1/i,
     );
+  });
+
+  it('quotes the selected variant price and rejects missing, foreign, unavailable, or sold-out variants', async () => {
+    const product = {
+      id: 'product',
+      availability: 'available',
+      basePrice: { toString: () => '75.10' },
+      revision: 3,
+      variants: [
+        {
+          id: 'small',
+          name: 'Small',
+          price: { toString: () => '80.00' },
+          availability: 'available',
+          stockQuantity: 4,
+        },
+        {
+          id: 'sold-out',
+          name: 'Sold out',
+          price: { toString: () => '90.00' },
+          availability: 'available',
+          stockQuantity: 0,
+        },
+        {
+          id: 'disabled',
+          name: 'Disabled',
+          price: { toString: () => '95.00' },
+          availability: 'unavailable',
+          stockQuantity: null,
+        },
+      ],
+      modifierGroups: [],
+    };
+    const service = new ProductService({
+      product: { findFirst: async () => product },
+    } as never);
+
+    await assert.rejects(service.quote('product'), /Choose a product variant/i);
+    await assert.rejects(service.quote('product', [], 'other'), /does not belong to this product/i);
+    await assert.rejects(service.quote('product', [], 'sold-out'), /out of stock/i);
+    await assert.rejects(service.quote('product', [], 'disabled'), /variant is unavailable/i);
+    assert.deepEqual(await service.quote('product', [], 'small'), {
+      productId: 'product',
+      productRevision: 3,
+      variantId: 'small',
+      variantName: 'Small',
+      currency: 'EGP',
+      basePrice: '80.00',
+      modifierTotal: '0.00',
+      totalPrice: '80.00',
+      selections: [],
+    });
   });
 
   it('stores uploads under a generated tenant path and verifies the actual file signature', async () => {
@@ -471,6 +619,7 @@ describe('catalog service invariants', () => {
                 ],
               },
             ],
+            variants: [],
           };
         },
       },
@@ -553,6 +702,7 @@ describe('catalog service invariants', () => {
           },
         ],
       },
+      variants: { create: [] },
     });
   });
 

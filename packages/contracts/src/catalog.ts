@@ -61,6 +61,7 @@ export interface CatalogProductSummary {
   images: CatalogProductImage[];
   categories: CatalogCategoryReference[];
   modifierGroups: CatalogProductModifierGroup[];
+  variants: CatalogProductVariant[];
   createdAt: string;
   updatedAt: string;
 }
@@ -84,18 +85,32 @@ export interface CatalogProductModifierGroup {
   options: CatalogProductModifierOption[];
 }
 
+export interface CatalogProductVariant {
+  id: string;
+  name: string;
+  sku: string | null;
+  barcode: string | null;
+  price: string;
+  stockQuantity: number | null;
+  availability: CatalogAvailability;
+  position: number;
+}
+
 export interface CatalogProductQuoteSelection {
   groupId: string;
   optionIds: string[];
 }
 
 export interface CatalogProductQuoteRequest {
+  variantId?: string | undefined;
   selections?: CatalogProductQuoteSelection[] | undefined;
 }
 
 export interface CatalogProductQuoteResponse {
   productId: string;
   productRevision: number;
+  variantId: string | null;
+  variantName: string | null;
   currency: 'EGP';
   basePrice: string;
   modifierTotal: string;
@@ -105,6 +120,94 @@ export interface CatalogProductQuoteResponse {
     optionIds: string[];
     priceAdjustment: string;
   }>;
+}
+
+export interface PublicStorefrontCategory {
+  id: string;
+  name: string;
+  parentId: string | null;
+}
+
+export interface PublicStorefrontProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  basePrice: string;
+  currency: 'EGP';
+  sellingUnit: 'piece';
+  images: Array<Pick<CatalogProductImage, 'publicUrl' | 'isPrimary' | 'position'>>;
+  categories: Array<Pick<PublicStorefrontCategory, 'id' | 'name'>>;
+  modifierGroups: CatalogProductModifierGroup[];
+  variants: Array<{
+    id: string;
+    name: string;
+    price: string;
+    availability: CatalogAvailability;
+    position: number;
+  }>;
+}
+
+export interface PublicStorefrontCatalog {
+  slug: string;
+  merchantName: string;
+  activity: string;
+  accentColor: string;
+  logoData: string | null;
+  template: { name: string; layout: 'menu' | 'hero' } | null;
+  categories: PublicStorefrontCategory[];
+  products: PublicStorefrontProduct[];
+}
+
+export interface CreateStorefrontOrderRequest {
+  customerName: string;
+  customerPhone: string;
+  fulfillmentType: 'pickup' | 'delivery';
+  deliveryAddress?: string | undefined;
+  items: Array<{
+    productId: string;
+    variantId?: string | undefined;
+    selections: CatalogProductQuoteSelection[];
+    quantity: number;
+  }>;
+}
+
+export type StorefrontOrderStatus = 'pending' | 'accepted' | 'rejected';
+
+export interface StorefrontOrderReceipt {
+  id: string;
+  status: StorefrontOrderStatus;
+  currency: 'EGP';
+  total: string;
+  createdAt: string;
+}
+
+export interface StorefrontOrderSummary {
+  id: string;
+  status: StorefrontOrderStatus;
+  customerName: string;
+  customerPhone: string;
+  fulfillmentType: 'pickup' | 'delivery';
+  deliveryAddress: string | null;
+  currency: 'EGP';
+  total: string;
+  createdAt: string;
+  lines: Array<{
+    id: string;
+    productName: string;
+    variantName: string | null;
+    quantity: number;
+    unitPrice: string;
+    lineTotal: string;
+    selections: Array<{
+      groupName: string;
+      optionName: string;
+      priceAdjustment: string;
+    }>;
+  }>;
+}
+
+export interface UpdateStorefrontOrderStatusRequest {
+  status: Extract<StorefrontOrderStatus, 'accepted' | 'rejected'>;
 }
 
 export interface RegisterCatalogMediaRequest {
@@ -134,6 +237,17 @@ export interface CatalogProductFields {
   primaryImageAssetId?: string | undefined;
   categoryIds: string[];
   modifierGroups?: CatalogProductModifierGroupFields[] | undefined;
+  variants?: CatalogProductVariantFields[] | undefined;
+}
+
+export interface CatalogProductVariantFields {
+  name: string;
+  sku?: string | undefined;
+  barcode?: string | undefined;
+  price: string;
+  stockQuantity?: number | null | undefined;
+  availability: CatalogAvailability;
+  position: number;
 }
 
 export interface CatalogProductModifierOptionFields {

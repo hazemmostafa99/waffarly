@@ -19,12 +19,55 @@ const template = {
   status: 'available',
   activity: 'general',
   revision: 1,
+  createdAt: '2026-10-12T10:00:00Z',
+  updatedAt: '2026-10-12T10:00:00Z',
+  updatedBy: 'admin',
 };
 
-async function mockApi(page: Page, signedIn = true) {
+async function mockApi(
+  page: Page,
+  signedIn = true,
+  initialTemplates: Array<Record<string, unknown>> = [template],
+) {
+  let templates = initialTemplates;
   await page.route('**/*', async (route) => {
     if (route.request().isNavigationRequest()) return route.continue();
     const path = new URL(route.request().url()).pathname;
+    const method = route.request().method();
+    if (path === '/admin/templates' && method === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(templates),
+      });
+    }
+    if (path.startsWith('/admin/templates/') && method === 'PATCH') {
+      const templateId = path.slice(path.lastIndexOf('/') + 1);
+      const body = route.request().postDataJSON() as Record<string, unknown>;
+      let saved: Record<string, unknown> | undefined;
+      templates = templates.map((current) => {
+        if (current.id !== templateId) return current;
+        saved = {
+          ...current,
+          ...body,
+          revision: Number(current.revision) + 1,
+          updatedBy: 'admin',
+        };
+        return saved;
+      });
+      if (!saved) {
+        return route.fulfill({
+          status: 404,
+          contentType: 'application/json',
+          body: JSON.stringify({ message: 'Template not found.' }),
+        });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(saved),
+      });
+    }
     const responses: Record<string, unknown> = {
       '/auth/admin/me': { username: 'admin' },
       '/auth/owner/me': {
@@ -36,7 +79,6 @@ async function mockApi(page: Page, signedIn = true) {
       },
       '/admin/merchants': [merchant],
       '/admin/merchant-applications': [],
-      '/admin/templates': [template],
       '/admin/plans': [
         {
           id: 'plan',
@@ -138,6 +180,47 @@ test('admin translates every section, formats prices, and searches businesses', 
   await assertFits(page);
   await page.getByRole('link', { name: 'الأنشطة والوحدات الإمكانات' }).click();
   await expect(page.getByRole('heading', { name: 'الأنشطة والإمكانات' })).toBeVisible();
+  await assertFits(page);
+});
+
+test('admin template details deep link supports revisioned edits and availability changes', async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.goto('http://127.0.0.1:5273/templates/garden');
+
+  await expect(page.locator('h1')).toHaveText('Garden');
+  await expect(page.getByRole('heading', { name: 'Merchant eligibility' })).toBeVisible();
+  await expect(page.getByText('Only available designs are offered for new merchant selections.')).toBeVisible();
+  await assertFits(page);
+
+  await page.getByRole('button', { name: 'Edit design' }).click();
+  await page.getByLabel('Display name').fill('Garden Updated');
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.locator('h1')).toHaveText('Garden Updated');
+  await expect(page.getByRole('status')).toContainText('Garden Updated updated.');
+
+  await page.getByRole('button', { name: 'Move to drafts' }).click();
+  await expect(page.getByRole('status')).toContainText('Garden Updated moved to drafts.');
+  await expect(page.getByRole('button', { name: 'Make available' })).toBeVisible();
+  await assertFits(page);
+
+  await page.getByRole('button', { name: 'Change language' }).click();
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await expect(page.getByRole('heading', { name: 'ملاءمة المتاجر' })).toBeVisible();
+  await assertFits(page);
+});
+
+test('admin template details shows a recoverable state for an unknown template', async ({
+  page,
+}) => {
+  await mockApi(page, true, []);
+  await page.goto('http://127.0.0.1:5273/templates/missing');
+
+  await expect(
+    page.getByRole('heading', { name: 'This template is no longer in the library.' }),
+  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Garden' })).toHaveCount(0);
   await assertFits(page);
 });
 

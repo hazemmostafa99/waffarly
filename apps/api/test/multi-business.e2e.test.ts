@@ -52,6 +52,7 @@ it('accepts each activity in public applications, defaults legacy requests and r
 });
 
 it('preserves the business activity when an application is approved', async () => {
+  let createdSlug = '';
   const prisma = {
     merchantApplication: {
       findUnique: async () => ({
@@ -67,13 +68,16 @@ it('preserves the business activity when an application is approved', async () =
       updateMany: async () => ({ count: 1 }),
     },
     merchant: {
-      create: async ({ data }: { data: Record<string, unknown> }) => ({
-        ...data,
-        id: 'merchant',
-        createdAt: new Date(),
-        firstMonthActivatedAt: null,
-        owner: { username: 'owner' },
-      }),
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        createdSlug = String(data.storefrontSlug);
+        return {
+          ...data,
+          id: 'merchant',
+          createdAt: new Date(),
+          firstMonthActivatedAt: null,
+          owner: { username: 'owner' },
+        };
+      },
     },
     $transaction: async <T>(fn: (client: unknown) => Promise<T>) => fn(prisma),
   };
@@ -84,12 +88,15 @@ it('preserves the business activity when an application is approved', async () =
     'admin',
   );
   assert.equal(merchant.activity, 'clothing');
+  assert.match(createdSlug, /^clothing-store-[a-f0-9]{32}$/);
 });
 
 it('lists shared and matching storefront templates and refuses a template for another activity', async () => {
   let visibleActivities: string[] = [];
   const prisma = {
-    merchant: { findUniqueOrThrow: async () => ({ activity: 'supermarket' }) },
+    merchant: {
+      findUniqueOrThrow: async () => ({ activity: 'supermarket', storefrontSlug: 'supermarket-demo' }),
+    },
     storefrontTemplate: {
       findMany: async ({ where }: { where: { activity: { in: string[] } } }) => {
         visibleActivities = where.activity.in;

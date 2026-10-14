@@ -168,6 +168,8 @@ export function Icon({ name }: { name: string }) {
     plus: <path d="M12 5v14M5 12h14" />,
     check: <path d="m5 12 4 4L19 6" />,
     close: <path d="m6 6 12 12M6 18 18 6" />,
+    'arrow-up': <path d="M12 19V5m-7 7 7-7 7 7" />,
+    'arrow-down': <path d="M12 5v14m-7-7 7 7 7-7" />,
     location: (
       <>
         <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />

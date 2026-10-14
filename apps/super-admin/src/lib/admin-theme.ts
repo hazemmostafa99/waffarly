@@ -1,0 +1,15 @@
+export const adminThemeClass = [
+  '[--background:#fafbfc]',
+  '[--foreground:#14203e]',
+  '[--card:#ffffff]',
+  '[--primary:#00583f]',
+  '[--secondary:#f7f9fb]',
+  '[--accent:#e3f8ec]',
+  '[--success:#0ea77a]',
+  '[--warning:#e8a12f]',
+  '[--info:#2168c8]',
+  '[--border:#e9eef2]',
+  '[--ring:#00583f]',
+  '[--radius:0.8rem]',
+  'font-admin min-h-screen bg-waffarly-background text-waffarly-ink antialiased',
+].join(' ');

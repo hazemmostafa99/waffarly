@@ -85,6 +85,57 @@ const modifierGroupsSchema = z
       context.addIssue({ code: 'custom', message: 'Modifier group positions must be unique.' });
     }
   });
+const productVariantsSchema = z
+  .array(
+    z.object({
+      name: z.string().trim().min(1).max(160),
+      sku: z.string().trim().max(80).optional(),
+      barcode: z.string().trim().max(80).optional(),
+      price: z
+        .string()
+        .refine(
+          isValidProductPrice,
+          `Variant price must be between 0.01 and ${MAX_PRODUCT_PRICE} EGP with at most two decimals.`,
+        ),
+      stockQuantity: z.number().int().min(0).max(2_147_483_647).nullable().optional(),
+      availability,
+      position: z.number().int().nonnegative(),
+    }),
+  )
+  .max(100)
+  .superRefine((variants, context) => {
+    const positions = new Set<number>();
+    const skus = new Set<string>();
+    const barcodes = new Set<string>();
+    variants.forEach((variant, index) => {
+      if (positions.has(variant.position)) {
+        context.addIssue({
+          code: 'custom',
+          path: [index, 'position'],
+          message: 'Variant positions must be unique.',
+        });
+      }
+      positions.add(variant.position);
+      const sku = variant.sku?.toLocaleLowerCase();
+      const barcode = variant.barcode?.toLocaleLowerCase();
+      if (sku && skus.has(sku)) {
+        context.addIssue({
+          code: 'custom',
+          path: [index, 'sku'],
+          message: 'Variant SKUs must be unique.',
+        });
+      }
+      if (barcode && barcodes.has(barcode)) {
+        context.addIssue({
+          code: 'custom',
+          path: [index, 'barcode'],
+          message: 'Variant barcodes must be unique.',
+        });
+      }
+      if (sku) skus.add(sku);
+      if (barcode) barcodes.add(barcode);
+    });
+  });
 const productFields = {
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(1000).optional(),
@@ -99,6 +150,7 @@ const productFields = {
   primaryImageAssetId: z.string().uuid().optional(),
   categoryIds: z.array(z.string().uuid()).min(1),
   modifierGroups: modifierGroupsSchema.optional(),
+  variants: productVariantsSchema.optional(),
 };
 const createSchema = z.object(productFields);
 const updateSchema = z.object(productFields).partial().extend({
@@ -112,7 +164,10 @@ const quoteSelectionSchema = z
   })
   .strict();
 const quoteSchema = z
-  .object({ selections: z.array(quoteSelectionSchema).max(30).optional() })
+  .object({
+    variantId: z.string().uuid().optional(),
+    selections: z.array(quoteSelectionSchema).max(30).optional(),
+  })
   .strict();
 
 @UseGuards(OwnerGuard)
@@ -186,11 +241,44 @@ export class ProductQuoteController {
   @Post(':id/quote')
   @HttpCode(HttpStatus.OK)
   async quote(@Param('id', new ParseUUIDPipe()) id: string, @Body() body: unknown) {
-    const parsed = quoteSchema.safeParse(body ?? {});
-    if (!parsed.success) throw new BadRequestException(parsed.error.issues);
-    const input: CatalogProductQuoteRequest = parsed.data;
-    return this.products.quote(id, input.selections ?? []);
+    const input = parseQuoteBody(body);
+    return this.products.quote(id, input.selections ?? [], input.variantId);
   }
+}
+
+@Controller('catalog/stores')
+export class PublicStorefrontController {
+  constructor(@Inject(ProductService) private readonly products: ProductService) {}
+
+  @Get(':slug')
+  async get(@Param('slug') slug: string) {
+    assertValidStorefrontSlug(slug);
+    return this.products.getPublicStorefrontCatalog(slug);
+  }
+
+  @Post(':slug/products/:id/quote')
+  @HttpCode(HttpStatus.OK)
+  async quote(
+    @Param('slug') slug: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: unknown,
+  ) {
+    assertValidStorefrontSlug(slug);
+    const input = parseQuoteBody(body);
+    return this.products.quote(id, input.selections ?? [], input.variantId, slug);
+  }
+}
+
+function assertValidStorefrontSlug(slug: string): void {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 120) {
+    throw new BadRequestException('Storefront address is invalid.');
+  }
+}
+
+function parseQuoteBody(body: unknown): CatalogProductQuoteRequest {
+  const parsed = quoteSchema.safeParse(body ?? {});
+  if (!parsed.success) throw new BadRequestException(parsed.error.issues);
+  return parsed.data;
 }
 
 function parseRevision(body: unknown): number {

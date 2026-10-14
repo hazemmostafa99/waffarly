@@ -37,7 +37,10 @@ export class StorefrontService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async getSettings(merchantId: string): Promise<MerchantStorefrontSettings> {
-    const merchant = await this.prisma.merchant.findUniqueOrThrow({ where: { id: merchantId } });
+    const merchant = await this.prisma.merchant.findUniqueOrThrow({
+      where: { id: merchantId },
+      select: { activity: true, storefrontSlug: true },
+    });
     const [selected, available] = await Promise.all([
       this.prisma.merchantStorefront.findUnique({ where: { merchantId } }),
       this.prisma.storefrontTemplate.findMany({
@@ -50,6 +53,7 @@ export class StorefrontService {
     ]);
     return {
       merchantId,
+      storefrontSlug: merchant.storefrontSlug,
       templateId: selected?.templateId ?? null,
       accentColor: selected?.accentColor ?? defaultAccent,
       logoData: selected?.logoData ?? null,

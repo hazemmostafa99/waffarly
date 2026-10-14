@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import type {
   ApproveMerchantApplicationRequest,
   BusinessActivityKey,
@@ -127,9 +128,12 @@ export class MerchantService {
     if (existing) throw new ConflictException('Username is already in use.');
 
     try {
+      const id = randomUUID();
       const merchant = await this.prisma.merchant.create({
         data: {
+          id,
           name: input.name.trim(),
+          storefrontSlug: createStorefrontSlug(input.name, id),
           activity: input.activity ?? 'other',
           contactPhone: input.contactPhone.trim(),
           ownerName: input.ownerName.trim(),
@@ -259,9 +263,12 @@ export class MerchantService {
           throw new ConflictException('Application has already been processed.');
         }
 
+        const id = randomUUID();
         const merchant = await transaction.merchant.create({
           data: {
+            id,
             name: application.name,
+            storefrontSlug: createStorefrontSlug(application.name, id),
             activity: application.activity ?? 'other',
             contactPhone: application.contactPhone,
             ownerName: application.ownerName,
@@ -303,4 +310,16 @@ export class MerchantService {
     });
     return toSummary(merchant);
   }
+}
+
+function createStorefrontSlug(name: string, id: string): string {
+  const namePart = name
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .toLocaleLowerCase('en')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80)
+    .replace(/-+$/g, '');
+  return `${namePart || 'store'}-${id.replaceAll('-', '').toLocaleLowerCase('en')}`;
 }

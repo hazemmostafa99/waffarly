@@ -17,7 +17,7 @@
   --color-secondary-foreground: var(--foreground);
   --color-muted: var(--secondary);
   --color-muted-foreground: #64746c;
-  --color-accent: #e8f2ec;
+  --color-accent: var(--accent, #e8f2ec);
   --color-accent-foreground: var(--primary);
   --color-destructive: #b42318;
   --color-success: var(--success);
@@ -25,7 +25,26 @@
   --color-info: var(--info);
   --color-border: var(--border);
   --color-input: var(--border);
-  --color-ring: #54886a;
+  --color-ring: var(--ring, #54886a);
+  --color-waffarly-primary: #00583f;
+  --color-waffarly-primary-hover: #004a36;
+  --color-waffarly-success: #0ea77a;
+  --color-waffarly-gold: #e8a12f;
+  --color-waffarly-gold-light: #fff3dd;
+  --color-waffarly-background: #fafbfc;
+  --color-waffarly-surface: #ffffff;
+  --color-waffarly-ink: #14203e;
+  --color-waffarly-muted: #7384a1;
+  --color-waffarly-border: #e9eef2;
+  --color-waffarly-kpi-mint: #e3f8ec;
+  --color-waffarly-kpi-gold: #fff3dd;
+  --color-waffarly-kpi-blue: #eaf3ff;
+  --color-waffarly-kpi-purple: #f2eafb;
+  --color-waffarly-danger: #d54850;
+  --color-waffarly-danger-bg: #fce8e9;
+  --color-waffarly-info: #2168c8;
+  --color-waffarly-input: #f7f9fb;
+  --font-admin: Cairo, 'Noto Sans Arabic UI', 'Noto Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 :root {

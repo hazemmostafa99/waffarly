@@ -5,6 +5,7 @@ import { createInstance } from 'i18next';
 import { I18nextProvider, initReactI18next, useTranslation } from 'react-i18next';
 import { ar } from './locales/ar.js';
 import { Button } from './button.js';
+import { cn } from './utils.js';
 
 export type Locale = 'en' | 'ar';
 export type LocalizedMessage = string | { key: string; values?: Record<string, unknown> };
@@ -112,18 +113,17 @@ export function useLocale() {
   };
 }
 
-export function LanguageSwitcher() {
+export function LanguageSwitcher({ className }: { className?: string }) {
   const { locale, setLocale, t } = useLocale();
   return (
     <Button
       variant="outline"
       size="sm"
-      className="language-switcher"
+      className={cn('border-waffarly-border bg-waffarly-surface text-waffarly-ink hover:bg-waffarly-input hover:text-waffarly-ink', className)}
       type="button"
       aria-label={t('Change language')}
       onClick={() => setLocale(locale === 'en' ? 'ar' : 'en')}
     >
-      <span aria-hidden="true">◎</span>
       <span lang={locale === 'en' ? 'ar' : 'en'}>{locale === 'en' ? 'العربية' : 'English'}</span>
     </Button>
   );

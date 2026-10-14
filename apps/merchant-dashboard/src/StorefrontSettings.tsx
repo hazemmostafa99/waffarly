@@ -10,6 +10,7 @@ import { apiRequest } from './lib/api-client.js';
 import { Icon } from './Icons.js';
 
 const maxLogoBytes = 48 * 1024;
+const storefrontBaseUrl = (import.meta.env.VITE_STOREFRONT_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
 export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
   const { t, errorText, locale } = useLocale();
@@ -144,6 +145,12 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
         <p>{t('Loading business designs…')}</p>
       ) : !settings || !draft ? null : (
         <form className="settings-identity-form" onSubmit={(event) => void save(event)}>
+          <div className="settings-public-storefront">
+            <span>{locale === 'ar' ? 'رابط المتجر للعملاء' : 'Customer storefront'}</span>
+            <a href={`${storefrontBaseUrl}/s/${settings.storefrontSlug}`} target="_blank" rel="noreferrer">
+              {storefrontBaseUrl}/s/{settings.storefrontSlug}
+            </a>
+          </div>
           <div className="settings-identity-grid">
             <div className="settings-logo-column">
               <div className="settings-field-label">{t('Store logo')}</div>

@@ -9,6 +9,8 @@ import type {
   CatalogProductFields,
   CatalogProductQuoteResponse,
   CatalogProductQuoteSelection,
+  CatalogProductVariantFields,
+  PublicStorefrontCatalog,
 } from '@waffarly/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { MAX_PRODUCT_IMAGES, MAX_PRODUCT_PRICE, isValidProductPrice } from './catalog.constants.js';
@@ -29,17 +31,138 @@ export class ProductService {
     return products.map(toProductResponse);
   }
 
+  async getPublicStorefrontCatalog(slug: string): Promise<PublicStorefrontCatalog> {
+    const merchant = await this.prisma.merchant.findUnique({
+      where: { storefrontSlug: slug },
+      select: {
+        id: true,
+        name: true,
+        activity: true,
+        storefrontSlug: true,
+        storefront: {
+          select: {
+            accentColor: true,
+            logoData: true,
+            template: { select: { name: true, layout: true } },
+          },
+        },
+      },
+    });
+    if (!merchant) throw new NotFoundException('Storefront was not found.');
+
+    const [categoryRecords, products] = await Promise.all([
+      this.prisma.category.findMany({
+        where: { merchantId: merchant.id },
+        select: {
+          id: true,
+          name: true,
+          parentId: true,
+          availability: true,
+          archivedAt: true,
+          parent: { select: { availability: true, archivedAt: true } },
+        },
+        orderBy: [{ parentId: 'asc' }, { name: 'asc' }],
+      }),
+      this.prisma.product.findMany({
+        where: { merchantId: merchant.id, availability: 'available', archivedAt: null },
+        include: productInclude,
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }),
+    ]);
+    const visibleCategories = categoryRecords.filter(
+      (category) =>
+        category.availability === 'available' &&
+        category.archivedAt === null &&
+        (!category.parent ||
+          (category.parent.availability === 'available' && category.parent.archivedAt === null)),
+    );
+    const visibleCategoryIds = new Set(visibleCategories.map((category) => category.id));
+
+    return {
+      slug: merchant.storefrontSlug,
+      merchantName: merchant.name,
+      activity: merchant.activity,
+      accentColor: merchant.storefront?.accentColor ?? '#315b43',
+      logoData: merchant.storefront?.logoData ?? null,
+      template: merchant.storefront?.template
+        ? {
+            name: merchant.storefront.template.name,
+            layout: merchant.storefront.template.layout as 'menu' | 'hero',
+          }
+        : null,
+      categories: visibleCategories.map(({ id, name, parentId }) => ({ id, name, parentId })),
+      products: products
+        .filter(
+          (product) =>
+            product.categoryLinks.length === 0 ||
+            product.categoryLinks.some((link) => visibleCategoryIds.has(link.category.id)),
+        )
+        .map((product) => {
+          const publicProduct = toProductResponse(product);
+          return {
+            id: publicProduct.id,
+            name: publicProduct.name,
+            description: publicProduct.description,
+            basePrice: publicProduct.basePrice,
+            currency: 'EGP' as const,
+            sellingUnit: 'piece' as const,
+            images: publicProduct.images.map(({ publicUrl, isPrimary, position }) => ({
+              publicUrl,
+              isPrimary,
+              position,
+            })),
+            categories: publicProduct.categories
+              .filter((category) => visibleCategoryIds.has(category.id))
+              .map(({ id, name }) => ({ id, name })),
+            modifierGroups: publicProduct.modifierGroups.map((group) => ({
+              ...group,
+              selectionMode: group.selectionMode as 'single' | 'multiple',
+            })),
+            variants: publicProduct.variants.map(
+              ({ id, name, price, availability, position, stockQuantity }) => ({
+                id,
+                name,
+                price,
+                availability:
+                  availability === 'available' && stockQuantity !== 0 ? 'available' : 'unavailable',
+                position,
+              }),
+            ),
+          };
+        }),
+    };
+  }
+
   async quote(
     id: string,
     selections: CatalogProductQuoteSelection[] = [],
+    variantId?: string,
+    storefrontSlug?: string,
   ): Promise<CatalogProductQuoteResponse> {
+    const merchant = storefrontSlug
+      ? await this.prisma.merchant.findUnique({
+          where: { storefrontSlug },
+          select: { id: true },
+        })
+      : null;
+    if (storefrontSlug && !merchant) throw new NotFoundException('Storefront was not found.');
     const product = await this.prisma.product.findFirst({
-      where: { id, archivedAt: null },
+      where: { id, archivedAt: null, ...(merchant ? { merchantId: merchant.id } : {}) },
       select: {
         id: true,
         availability: true,
         basePrice: true,
         revision: true,
+        variants: {
+          orderBy: { position: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            availability: true,
+            stockQuantity: true,
+          },
+        },
         modifierGroups: {
           orderBy: { position: 'asc' },
           include: { options: { orderBy: { position: 'asc' } } },
@@ -49,6 +172,24 @@ export class ProductService {
     if (!product) throw new NotFoundException('Product was not found.');
     if (product.availability !== 'available') {
       throw new ConflictException('Product is unavailable.');
+    }
+    const selectedVariant = variantId
+      ? product.variants.find((variant) => variant.id === variantId)
+      : undefined;
+    if (product.variants.length > 0 && !variantId) {
+      throw new BadRequestException('Choose a product variant.');
+    }
+    if (variantId && !selectedVariant) {
+      throw new BadRequestException('A variant does not belong to this product.');
+    }
+    if (
+      selectedVariant?.availability !== undefined &&
+      selectedVariant.availability !== 'available'
+    ) {
+      throw new ConflictException('Product variant is unavailable.');
+    }
+    if (selectedVariant?.stockQuantity === 0) {
+      throw new ConflictException('Product variant is out of stock.');
     }
 
     const requested = new Map<string, string[]>();
@@ -98,10 +239,12 @@ export class ProductService {
       };
     });
 
-    const basePriceCents = toCents(product.basePrice.toString());
+    const basePriceCents = toCents((selectedVariant?.price ?? product.basePrice).toString());
     return {
       productId: product.id,
       productRevision: product.revision,
+      variantId: selectedVariant?.id ?? null,
+      variantName: selectedVariant?.name ?? null,
       currency: 'EGP',
       basePrice: formatCents(basePriceCents),
       modifierTotal: formatCents(modifierTotalCents),
@@ -112,6 +255,8 @@ export class ProductService {
 
   async create(merchantId: string, actor: string, input: ProductInput) {
     assertBasePrice(input.basePrice);
+    assertVariants(input.variants);
+    await this.assertVariantIdentifiers(merchantId, input.variants);
     const primaryImageAssetId = input.primaryImageAssetId ?? input.imageAssetIds[0];
     if (!primaryImageAssetId) throw new BadRequestException('At least one image is required.');
     await this.assertReferences(merchantId, input.imageAssetIds, input.categoryIds);
@@ -161,6 +306,9 @@ export class ProductService {
             },
           })),
         },
+        variants: {
+          create: (input.variants ?? []).map(toVariantCreateData),
+        },
       },
       include: productInclude,
     });
@@ -187,13 +335,19 @@ export class ProductService {
       imageAssetIds[0];
     if (!primaryImageAssetId) throw new BadRequestException('At least one image is required.');
     if (input.basePrice !== undefined) assertBasePrice(input.basePrice);
+    assertVariants(input.variants);
+    if (input.variants !== undefined) {
+      await this.assertVariantIdentifiers(merchantId, input.variants, id);
+    }
     const categoryIds = input.categoryIds;
     await this.assertReferences(merchantId, imageAssetIds, categoryIds);
     if (!imageAssetIds.includes(primaryImageAssetId)) {
       throw new BadRequestException('Primary image must be one of the product images.');
     }
 
-    const product = await this.prisma.$transaction(async (transaction) => {
+    const product = await this.prisma
+      .$transaction(
+        async (transaction) => {
       const changed = await transaction.product.updateMany({
         where: { id, merchantId, revision },
         data: {
@@ -252,8 +406,42 @@ export class ProductService {
           },
         });
       }
+      if (input.variants !== undefined) {
+        const pendingReservation = await transaction.storefrontOrderLine.findFirst({
+          where: {
+            merchantId,
+            productId: id,
+            stockReserved: true,
+            order: { is: { status: 'pending' } },
+          },
+          select: { id: true },
+        });
+        if (pendingReservation) {
+          throw new ConflictException(
+            'Variants cannot be changed while a pending order holds a stock reservation.',
+          );
+        }
+        await transaction.productVariant.deleteMany({ where: { productId: id, merchantId } });
+        if (input.variants.length > 0) {
+          await transaction.productVariant.createMany({
+            data: input.variants.map((variant) => ({
+              productId: id,
+              merchantId,
+              ...toVariantCreateData(variant),
+            })),
+          });
+        }
+      }
       return transaction.product.findUniqueOrThrow({ where: { id }, include: productInclude });
-    });
+        },
+        { isolationLevel: 'Serializable' },
+      )
+      .catch((error: unknown) => {
+        if (isSerializationConflict(error)) {
+          throw new ConflictException('Product configuration changed concurrently. Please retry.');
+        }
+        throw error;
+      });
     return toProductResponse(product);
   }
 
@@ -283,11 +471,28 @@ export class ProductService {
   async remove(merchantId: string, id: string) {
     const product = await this.prisma.product.findFirst({ where: { id, merchantId } });
     if (!product) throw new NotFoundException('Product was not found.');
-    await this.prisma.$transaction(async (transaction) => {
-      await transaction.productImage.deleteMany({ where: { productId: id } });
-      await transaction.productCategory.deleteMany({ where: { productId: id } });
-      await transaction.product.delete({ where: { id } });
-    });
+    try {
+      await this.prisma.$transaction(
+        async (transaction) => {
+          const orderUse = await transaction.storefrontOrderLine.findFirst({
+            where: { merchantId, productId: id },
+            select: { id: true },
+          });
+          if (orderUse) {
+            throw new ConflictException('Products used in an order cannot be deleted; archive it instead.');
+          }
+          await transaction.productImage.deleteMany({ where: { productId: id } });
+          await transaction.productCategory.deleteMany({ where: { productId: id } });
+          await transaction.product.delete({ where: { id } });
+        },
+        { isolationLevel: 'Serializable' },
+      );
+    } catch (error) {
+      if (isSerializationConflict(error)) {
+        throw new ConflictException('Product has order history and cannot be deleted.');
+      }
+      throw error;
+    }
     return { deleted: true };
   }
 
@@ -333,6 +538,44 @@ export class ProductService {
       throw new BadRequestException('Every category must belong to this merchant.');
     }
   }
+
+  private async assertVariantIdentifiers(
+    merchantId: string,
+    variants: CatalogProductVariantFields[] | undefined,
+    excludingProductId?: string,
+  ): Promise<void> {
+    if (!variants?.length) return;
+    const skus = variants
+      .map((variant) => normalizeVariantCode(variant.sku))
+      .filter((sku): sku is string => sku !== undefined);
+    const barcodes = variants
+      .map((variant) => normalizeVariantCode(variant.barcode))
+      .filter((barcode): barcode is string => barcode !== undefined);
+    if (!skus.length && !barcodes.length) return;
+
+    const identifiers = await this.prisma.productVariant.findMany({
+      where: {
+        merchantId,
+        ...(excludingProductId ? { productId: { not: excludingProductId } } : {}),
+        OR: [
+          ...(skus.length ? [{ sku: { in: skus, mode: 'insensitive' as const } }] : []),
+          ...(barcodes.length ? [{ barcode: { in: barcodes, mode: 'insensitive' as const } }] : []),
+        ],
+      },
+      select: { sku: true, barcode: true },
+    });
+    const requestedSkus = new Set(skus.map((sku) => sku.toLocaleLowerCase()));
+    const requestedBarcodes = new Set(barcodes.map((barcode) => barcode.toLocaleLowerCase()));
+    if (
+      identifiers.some(
+        (variant) =>
+          (variant.sku && requestedSkus.has(variant.sku.toLocaleLowerCase())) ||
+          (variant.barcode && requestedBarcodes.has(variant.barcode.toLocaleLowerCase())),
+      )
+    ) {
+      throw new ConflictException('Variant SKU and barcode values must be unique per merchant.');
+    }
+  }
 }
 
 const productInclude = {
@@ -349,6 +592,7 @@ const productInclude = {
     orderBy: { position: 'asc' as const },
     include: { options: { orderBy: { position: 'asc' as const } } },
   },
+  variants: { orderBy: { position: 'asc' as const } },
 } as const;
 
 function toProductResponse(product: {
@@ -388,6 +632,16 @@ function toProductResponse(product: {
       position: number;
     }>;
   }>;
+  variants: Array<{
+    id: string;
+    name: string;
+    sku: string | null;
+    barcode: string | null;
+    price: { toString(): string };
+    stockQuantity: number | null;
+    availability: string;
+    position: number;
+  }>;
 }) {
   return {
     id: product.id,
@@ -425,9 +679,85 @@ function toProductResponse(product: {
         position: option.position,
       })),
     })),
+    variants: product.variants.map((variant) => ({
+      id: variant.id,
+      name: variant.name,
+      sku: variant.sku,
+      barcode: variant.barcode,
+      price: formatCents(toCents(variant.price.toString())),
+      stockQuantity: variant.stockQuantity,
+      availability: variant.availability,
+      position: variant.position,
+    })),
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
   };
+}
+
+function assertVariants(variants: CatalogProductVariantFields[] | undefined): void {
+  if (variants === undefined) return;
+  if (variants.length > 100)
+    throw new BadRequestException('A product can have at most 100 variants.');
+  const positions = new Set<number>();
+  const skus = new Set<string>();
+  const barcodes = new Set<string>();
+  for (const variant of variants) {
+    if (!variant.name.trim() || variant.name.trim().length > 160) {
+      throw new BadRequestException('Variant name must contain between 1 and 160 characters.');
+    }
+    assertBasePrice(variant.price);
+    if (
+      !Number.isInteger(variant.position) ||
+      variant.position < 0 ||
+      positions.has(variant.position)
+    ) {
+      throw new BadRequestException('Variant positions must be unique non-negative integers.');
+    }
+    positions.add(variant.position);
+    if (
+      variant.stockQuantity !== undefined &&
+      variant.stockQuantity !== null &&
+      (!Number.isInteger(variant.stockQuantity) ||
+        variant.stockQuantity < 0 ||
+        variant.stockQuantity > 2_147_483_647)
+    ) {
+      throw new BadRequestException(
+        'Variant stock must be a non-negative whole number or untracked.',
+      );
+    }
+    if (!['available', 'unavailable'].includes(variant.availability)) {
+      throw new BadRequestException('Variant availability is invalid.');
+    }
+    const sku = normalizeVariantCode(variant.sku)?.toLocaleLowerCase();
+    const barcode = normalizeVariantCode(variant.barcode)?.toLocaleLowerCase();
+    if (sku && sku.length > 80) throw new BadRequestException('Variant SKU is too long.');
+    if (barcode && barcode.length > 80) {
+      throw new BadRequestException('Variant barcode is too long.');
+    }
+    if (sku && skus.has(sku)) throw new BadRequestException('Variant SKUs must be unique.');
+    if (barcode && barcodes.has(barcode)) {
+      throw new BadRequestException('Variant barcodes must be unique.');
+    }
+    if (sku) skus.add(sku);
+    if (barcode) barcodes.add(barcode);
+  }
+}
+
+function toVariantCreateData(variant: CatalogProductVariantFields) {
+  return {
+    name: variant.name.trim(),
+    sku: normalizeVariantCode(variant.sku) || null,
+    barcode: normalizeVariantCode(variant.barcode) || null,
+    price: variant.price,
+    stockQuantity: variant.stockQuantity ?? null,
+    availability: variant.availability,
+    position: variant.position,
+  };
+}
+
+function normalizeVariantCode(value: string | undefined): string | undefined {
+  const normalized = value?.trim().toLocaleUpperCase();
+  return normalized || undefined;
 }
 
 function assertBasePrice(value: string): void {
@@ -462,6 +792,15 @@ function toCents(value: string): bigint {
   const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(value);
   if (!match) throw new ConflictException('Product has an invalid price configuration.');
   return BigInt(match[1]!) * 100n + BigInt((match[2] ?? '').padEnd(2, '0'));
+}
+
+function isSerializationConflict(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === 'P2034'
+  );
 }
 
 function formatCents(value: bigint): string {

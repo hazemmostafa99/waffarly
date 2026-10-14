@@ -18,6 +18,12 @@ import { productsCopy } from './products-copy.js';
 const pageSize = 6;
 const palette = ['#f3a628', '#e34e5b', '#357beb', '#06936d', '#8796b4'];
 
+function productStartingPrice(product: Product): number {
+  return product.variants.length
+    ? Math.min(...product.variants.map((variant) => Number(variant.price)))
+    : Number(product.basePrice);
+}
+
 export function ProductsPage() {
   const { search: globalSearch } = useOutletContext<{ search: string }>();
   const navigate = useNavigate();
@@ -89,7 +95,7 @@ export function ProductsPage() {
     .sort((a, b) =>
       sort === 'name'
         ? a.name.localeCompare(b.name, locale)
-        : (Number(a.basePrice) - Number(b.basePrice)) * (sort === 'price-desc' ? -1 : 1),
+        : (productStartingPrice(a) - productStartingPrice(b)) * (sort === 'price-desc' ? -1 : 1),
     );
   const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / pageSize)));
   const visible = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -247,7 +253,20 @@ export function ProductsPage() {
       id: 'price',
       header: copy('Base price'),
       className: 'products-price',
-      cell: (product) => <span dir="ltr">EGP {Number(product.basePrice).toFixed(2)}</span>,
+      cell: (product) => {
+        const prices = product.variants.map((variant) => Number(variant.price));
+        if (!prices.length)
+          return <span dir="ltr">EGP {Number(product.basePrice).toFixed(2)}</span>;
+        const minimum = Math.min(...prices);
+        const maximum = Math.max(...prices);
+        return (
+          <span dir="ltr">
+            {minimum === maximum
+              ? `EGP ${minimum.toFixed(2)}`
+              : `EGP ${minimum.toFixed(2)} – ${maximum.toFixed(2)}`}
+          </span>
+        );
+      },
     },
     {
       id: 'status',

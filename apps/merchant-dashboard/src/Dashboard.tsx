@@ -1,51 +1,240 @@
+import { useEffect, useMemo, useState } from 'react';
+import type { CatalogProductSummary, StorefrontOrderSummary, StorefrontOrderStatus } from '@waffarly/contracts';
 import { useLocale } from '@waffarly/ui';
 import type { OwnerProfile } from '@waffarly/contracts';
-import { useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Icon } from './Icons.js';
-import { RevenueChart, ProductThumb } from './MerchantDashboard.js';
+import { ProductThumb } from './MerchantDashboard.js';
+import { apiRequest } from './lib/api-client.js';
 import { dashboardCopy } from './dashboard-copy.js';
 
-// Reference data until the orders and reporting APIs are available.
-const recentOrders = [
-  ['10028', 'Signature Burger Meal', 'Mohamed Ali', 189, 'Delivered', 'delivered'],
-  ['10027', 'Classic Waffle', 'Sarah Ahmed', 124, 'Preparing', 'preparing'],
-  ['10026', 'Chicken Wings', 'Karim Hassan', 96, 'Paid', 'paid'],
-  ['10025', 'Cheesy Meal', 'Nourhan Ehab', 142, 'Out for delivery', 'shipping'],
-  ['10024', 'Truffle Fries', 'Ahmed Mahmoud', 78, 'Cancelled', 'cancelled'],
-] as const;
-const bestSellers = [
-  ['Signature Burger', 86, 6450],
-  ['Classic Waffle', 72, 4320],
-  ['Chicken Wings', 64, 3840],
-  ['Truffle Fries', 58, 2900],
-  ['Chicken Burger', 51, 2550],
-] as const;
-const branches = [
-  ['Zamalek Branch', 45, 10944, '#1b654f'],
-  ['Nasr City Branch', 28, 6810, '#41b38b'],
-  ['Maadi Branch', 18, 4378, '#eaa13c'],
-  ['Dokki Branch', 9, 2189, '#f8ecd5'],
-] as const;
+type ReportPeriod = 'weekly' | 'monthly';
+type SalesPoint = { label: string; orderValue: number; orders: number };
+
+function DashboardOrderChart({
+  points,
+  t,
+}: {
+  points: SalesPoint[];
+  t: (message: string) => string;
+}) {
+  const maxValue = Math.max(1, ...points.map((point) => point.orderValue));
+  const maxOrders = Math.max(1, ...points.map((point) => point.orders));
+  const x = (index: number) => 48 + index * (320 / Math.max(1, points.length - 1));
+  const y = (value: number, max: number) => 140 - (value / max) * 100;
+
+  return (
+    <>
+      <svg
+        className="dashboard-chart"
+        viewBox="0 0 400 180"
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={t('Order value and order count over time')}
+      >
+        {[0, 0.5, 1].map((ratio) => {
+          const value = Math.round(maxValue * ratio);
+          const yPosition = y(value, maxValue);
+          return (
+            <g key={ratio}>
+              <line x1="38" x2="382" y1={yPosition} y2={yPosition} stroke="#edf1f6" />
+              <text x="28" y={yPosition + 3} textAnchor="end" className="dashboard-chart-label">
+                {value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k` : value}
+              </text>
+            </g>
+          );
+        })}
+        {points.map((point, index) => {
+          const barY = y(point.orderValue, maxValue);
+          return (
+            <rect
+              key={`bar-${point.label}`}
+              x={x(index) - 13}
+              y={barY}
+              width="26"
+              height={140 - barY}
+              rx="4"
+              fill="#e4f7ec"
+            >
+              <title>{`${t(point.label)}: EGP ${point.orderValue.toLocaleString('en-EG')} (${point.orders} ${t('orders')})`}</title>
+            </rect>
+          );
+        })}
+        <polyline
+          points={points.map((point, index) => `${x(index)},${y(point.orders, maxOrders)}`).join(' ')}
+          fill="none"
+          stroke="#1c654e"
+          strokeWidth="2.3"
+        />
+        {points.map((point, index) => (
+          <circle key={`dot-${point.label}`} cx={x(index)} cy={y(point.orders, maxOrders)} r="3" fill="#1c654e">
+            <title>{`${t(point.label)}: ${point.orders} ${t('orders')}`}</title>
+          </circle>
+        ))}
+        {points.map((point, index) => (
+          <text key={`label-${point.label}`} x={x(index)} y="170" textAnchor="middle" className="dashboard-chart-label">
+            {t(point.label)}
+          </text>
+        ))}
+      </svg>
+      <div className="dashboard-chart-legend">
+        <span><i className="is-order-value" />{t('Order value')}</span>
+        <span><i className="is-order-count" />{t('Order count')}</span>
+      </div>
+    </>
+  );
+}
+
+function statusLabel(status: StorefrontOrderStatus, t: (message: string) => string) {
+  return t(status === 'pending' ? 'Pending' : status === 'accepted' ? 'Accepted' : 'Rejected');
+}
 
 export function Dashboard() {
   const { t, locale } = useLocale();
   const copy = (message: string) => dashboardCopy(message, locale, t);
   const navigate = useNavigate();
   const { profile, search } = useOutletContext<{ profile: OwnerProfile; search: string }>();
-  const [period, setPeriod] = useState('weekly');
-  const [week, setWeek] = useState('current');
+  const [period, setPeriod] = useState<ReportPeriod>('weekly');
+  const [orders, setOrders] = useState<StorefrontOrderSummary[]>([]);
+  const [products, setProducts] = useState<CatalogProductSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let current = true;
+    setLoading(true);
+    setLoadError(false);
+    void Promise.allSettled([
+      apiRequest<StorefrontOrderSummary[]>('/owner/orders'),
+      apiRequest<CatalogProductSummary[]>('/owner/catalog/products'),
+    ]).then(([orderResult, productResult]) => {
+      if (!current) return;
+      if (orderResult.status === 'fulfilled') setOrders(orderResult.value);
+      else {
+        setOrders([]);
+        setLoadError(true);
+      }
+      setProducts(productResult.status === 'fulfilled' ? productResult.value : []);
+    }).finally(() => {
+      if (current) setLoading(false);
+    });
+    return () => {
+      current = false;
+    };
+  }, [refreshKey]);
+
+  const matchingOrders = useMemo(() => {
+    const term = search.trim().toLocaleLowerCase();
+    const filtered = term
+      ? orders.filter((order) => [
+          order.id,
+          order.customerName,
+          order.customerPhone,
+          ...order.lines.map((line) => line.productName),
+        ].some((value) => value.toLocaleLowerCase().includes(term)))
+      : orders;
+    return filtered.slice(0, 5);
+  }, [orders, search]);
+
+  const periodOrders = useMemo(() => {
+    const days = period === 'weekly' ? 7 : 30;
+    const end = new Date();
+    const start = new Date(end);
+    start.setHours(0, 0, 0, 0);
+    start.setDate(start.getDate() - days + 1);
+    return orders.filter((order) => {
+      const createdAt = new Date(order.createdAt);
+      return createdAt >= start && createdAt <= end;
+    });
+  }, [orders, period]);
+
+  const report = useMemo(() => {
+    const nonRejected = periodOrders.filter((order) => order.status !== 'rejected');
+    const orderValue = nonRejected.reduce((sum, order) => sum + Number(order.total), 0);
+    return {
+      orderValue,
+      orders: periodOrders.length,
+      customers: new Set(nonRejected.map((order) => order.customerPhone)).size,
+      average: nonRejected.length ? orderValue / nonRejected.length : 0,
+    };
+  }, [periodOrders]);
+
+  const series = useMemo<SalesPoint[]>(() => {
+    const pointCount = period === 'weekly' ? 7 : 4;
+    const days = period === 'weekly' ? 7 : 30;
+    const end = new Date();
+    end.setHours(0, 0, 0, 0);
+    const start = new Date(end);
+    start.setDate(start.getDate() - days + 1);
+    const points = Array.from({ length: pointCount }, (_, index) => {
+      const pointDate = new Date(start);
+      if (period === 'weekly') pointDate.setDate(pointDate.getDate() + index);
+      return {
+        label: period === 'weekly'
+          ? new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', { weekday: 'short' }).format(pointDate)
+          : `Week ${index + 1}`,
+        orderValue: 0,
+        orders: 0,
+      };
+    });
+    for (const order of periodOrders) {
+      const created = new Date(order.createdAt);
+      const offset = Math.floor((created.getTime() - start.getTime()) / 86_400_000);
+      const bucket = period === 'weekly' ? offset : Math.min(pointCount - 1, Math.floor(offset / (days / pointCount)));
+      const point = points[bucket];
+      if (!point) continue;
+      point.orders += 1;
+      if (order.status !== 'rejected') point.orderValue += Number(order.total);
+    }
+    return points;
+  }, [locale, period, periodOrders]);
+
+  const productTotals = useMemo(() => {
+    const totals = new Map<string, { quantity: number; value: number }>();
+    for (const order of periodOrders) {
+      if (order.status === 'rejected') continue;
+      for (const line of order.lines) {
+        const current = totals.get(line.productName) ?? { quantity: 0, value: 0 };
+        current.quantity += line.quantity;
+        current.value += Number(line.lineTotal);
+        totals.set(line.productName, current);
+      }
+    }
+    return [...totals.entries()]
+      .map(([name, totals]) => ({ name, ...totals }))
+      .sort((left, right) => right.quantity - left.quantity || right.value - left.value)
+      .slice(0, 5);
+  }, [periodOrders]);
+
+  const fulfillment = useMemo(() => ({
+    pickup: periodOrders.filter((order) => order.fulfillmentType === 'pickup').length,
+    delivery: periodOrders.filter((order) => order.fulfillmentType === 'delivery').length,
+  }), [periodOrders]);
+  const fulfillmentTotal = fulfillment.pickup + fulfillment.delivery;
+  const pickupShare = fulfillmentTotal ? fulfillment.pickup / fulfillmentTotal * 100 : 0;
+  const fulfillmentGradient = fulfillmentTotal
+    ? `conic-gradient(#1b654f 0deg ${pickupShare * 3.6}deg, #77b9ef ${pickupShare * 3.6}deg 360deg)`
+    : '#edf3f0';
+
   const money = (amount: number, decimals = 0) =>
-    `EGP ${amount.toLocaleString('en-EG', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
-  const report =
-    week === 'previous'
-      ? { sales: 19000.39, orders: 152, customers: 31, average: 125.0 }
-      : { sales: 24320.5, orders: 186, customers: 42, average: 130.76 };
+    new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', {
+      style: 'currency',
+      currency: 'EGP',
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(amount);
+  const dateTime = (value: string) => new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date(value));
+
+  const productByName = new Map(products.map((product) => [product.name.toLocaleLowerCase(), product]));
   const stats = [
-    ['Total Sales', money(report.sales, 2), '28%', 'revenue', 'mint'],
-    ['Total Orders', String(report.orders), '22%', 'calendar', 'cream'],
-    ['New Customers', String(report.customers), '35%', 'customers', 'blue'],
-    ['Avg. Order Value', money(report.average, 2), '6%', 'receipt', 'lavender'],
+    ['Order Value', loading || loadError ? '—' : money(report.orderValue, 2), 'revenue', 'mint'],
+    ['Total Orders', loading || loadError ? '—' : String(report.orders), 'calendar', 'cream'],
+    ['Unique Customers', loading || loadError ? '—' : String(report.customers), 'customers', 'blue'],
+    ['Avg. Order Value', loading || loadError ? '—' : money(report.average, 2), 'receipt', 'lavender'],
   ] as const;
   const actions = [
     ['Add Product', 'box', '/products', 'mint'],
@@ -53,221 +242,168 @@ export function Dashboard() {
     ['Add Branch', 'store', '/branches', 'cream'],
     ['Manage Customers', 'customers', '/customers', 'blue'],
   ] as const;
-  const matchingOrders = recentOrders.filter((order) =>
-    `${copy(order[1])} ${copy(order[2])} ${order[0]}`
-      .toLowerCase()
-      .includes(search.trim().toLowerCase()),
-  );
+
   return (
     <div className="dashboard-view">
       <div className="dashboard-welcome">
         <div>
           <h1>
-            {copy('Welcome, {{name}}!').replace(
-              '{{name}}',
-              profile.ownerName.split(' ')[0] ?? profile.ownerName,
-            )}{' '}
+            {copy('Welcome, {{name}}!').replace('{{name}}', profile.ownerName.split(' ')[0] ?? profile.ownerName)}{' '}
             <span aria-hidden="true">👋</span>
           </h1>
-          <p>{copy("Here's an overview of your business today.")}</p>
+          <p>{copy('Live storefront reporting from the latest 100 orders.')}</p>
         </div>
         <div className="dashboard-date-tools">
-          <span className="dashboard-comparison">
-            {copy('Compared to last week')} <Icon name="trend" />
-          </span>
+          <span className="dashboard-comparison"><Icon name="globe" />{copy('Storefront orders only')}</span>
           <label className="dashboard-date-select">
-            <select
-              aria-label={copy('Reporting period')}
-              value={week}
-              onChange={(event) => setWeek(event.target.value)}
-            >
-              <option value="current">{copy('8 June – 14 June 2024')}</option>
-              <option value="previous">{copy('1 June – 7 June 2024')}</option>
+            <select aria-label={copy('Reporting period')} value={period} onChange={(event) => setPeriod(event.target.value as ReportPeriod)}>
+              <option value="weekly">{copy('Last 7 days')}</option>
+              <option value="monthly">{copy('Last 30 days')}</option>
             </select>
             <Icon name="calendar" />
           </label>
+          <button type="button" className="dashboard-refresh" disabled={loading} onClick={() => setRefreshKey((key) => key + 1)}>
+            {loading ? copy('Loading…') : copy('Refresh')}
+          </button>
         </div>
       </div>
+
+      {loadError && <p className="dashboard-data-error" role="alert">{copy('Could not load dashboard orders. Please refresh and try again.')}</p>}
+
       <div className="dashboard-stats">
-        {stats.map(([label, value, change, icon, tone]) => (
+        {stats.map(([label, value, icon, tone]) => (
           <article className="dashboard-stat" key={label}>
             <div className={`dashboard-stat-inner ${tone}`}>
               <div className="dashboard-stat-copy">
                 <span>{copy(label)}</span>
                 <strong dir="ltr">{value}</strong>
-                <small className="dashboard-growth" dir="ltr">
-                  ↑ {change}
-                </small>
-                <small>{copy('Compared to last week')}</small>
+                <small>{copy('Selected period · latest 100 orders')}</small>
               </div>
-              <span className="dashboard-stat-icon">
-                <Icon name={icon} />
-              </span>
+              <span className="dashboard-stat-icon"><Icon name={icon} /></span>
             </div>
           </article>
         ))}
       </div>
+
       <div className="dashboard-main-grid">
         <section className="dashboard-card dashboard-orders">
           <div className="dashboard-card-heading">
             <div>
               <h2>{copy('Latest Orders')}</h2>
-              <p>{copy('Latest orders from all channels')}</p>
+              <p>{copy('Latest orders from your online storefront')}</p>
             </div>
-            <button type="button" onClick={() => navigate('/orders')}>
-              {t('View All')}
-            </button>
+            <button type="button" onClick={() => navigate('/orders')}>{t('View All')}</button>
           </div>
           <table className="dashboard-order-table">
             <thead className="dashboard-sr-only">
-              <tr>
-                {['Product', 'Customer', 'Total', 'Status'].map((label) => (
-                  <th scope="col" key={label}>
-                    {t(label)}
-                  </th>
-                ))}
-              </tr>
+              <tr>{['Product', 'Customer', 'Total', 'Status'].map((label) => <th scope="col" key={label}>{t(label)}</th>)}</tr>
             </thead>
             <tbody>
-              {matchingOrders.map(([id, name, customer, amount, status, tone]) => (
-                <tr key={id}>
-                  <td>
-                    <div className="dashboard-order-product">
-                      <ProductThumb fallback="burger" />
-                      <span>
-                        <strong>{copy(name)}</strong>
-                        <small dir="ltr">#{id}</small>
-                      </span>
-                    </div>
-                  </td>
-                  <td>{copy(customer)}</td>
-                  <td>
-                    <span dir="ltr">{money(amount)}</span>
-                  </td>
-                  <td>
-                    <span className={`dashboard-status ${tone}`}>{copy(status)}</span>
-                  </td>
-                </tr>
-              ))}
+              {matchingOrders.map((order) => {
+                const firstLine = order.lines[0];
+                const product = firstLine ? productByName.get(firstLine.productName.toLocaleLowerCase()) : undefined;
+                return (
+                  <tr key={order.id}>
+                    <td>
+                      <div className="dashboard-order-product">
+                        <ProductThumb product={product} fallback="product" />
+                        <span>
+                          <strong>{firstLine?.productName ?? copy('No products')}</strong>
+                          <small dir="ltr">#{order.id.slice(0, 8).toLocaleUpperCase()} · {dateTime(order.createdAt)}</small>
+                        </span>
+                      </div>
+                    </td>
+                    <td>{order.customerName}</td>
+                    <td><span dir="ltr">{money(Number(order.total))}</span></td>
+                    <td><span className={`dashboard-status ${order.status}`}>{copy(statusLabel(order.status, (message) => message))}</span></td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-          {matchingOrders.length === 0 && (
-            <p className="dashboard-no-results">{copy('No matching orders.')}</p>
+          {!loading && !loadError && matchingOrders.length === 0 && (
+            <p className="dashboard-no-results">{copy(search ? 'No matching orders.' : 'No storefront orders yet.')}</p>
           )}
+          {loading && <p className="dashboard-no-results" role="status">{copy('Loading orders…')}</p>}
         </section>
+
         <section className="dashboard-card dashboard-sales">
           <div className="dashboard-card-heading">
             <div>
-              <h2>{copy('Sales Overview')}</h2>
-              <p>
-                {copy(
-                  period === 'monthly'
-                    ? 'Total sales and orders over 4 weeks'
-                    : 'Total sales and orders over 7 days',
-                )}
-              </p>
+              <h2>{copy('Online Order Overview')}</h2>
+              <p>{copy(period === 'monthly' ? 'Order value and count over the last 30 days' : 'Order value and count over the last 7 days')}</p>
             </div>
-            <select
-              className="dashboard-period"
-              aria-label={copy('Chart period')}
-              value={period}
-              onChange={(event) => setPeriod(event.target.value)}
-            >
-              <option value="weekly">{t('Weekly')}</option>
-              <option value="monthly">{copy('Monthly')}</option>
-            </select>
           </div>
           <div className="dashboard-sales-summary">
             <div>
-              <span>{copy('Sales')}</span>
-              <div>
-                <strong dir="ltr">{money(report.sales, 2)}</strong>
-                <small dir="ltr">↑ 28%</small>
-              </div>
+              <span>{copy('Order value')}</span>
+              <div><strong dir="ltr">{loading || loadError ? '—' : money(report.orderValue, 2)}</strong><small>{copy('Accepted and pending')}</small></div>
             </div>
             <div>
-              <span>{t('Orders')}</span>
-              <div>
-                <strong>{report.orders}</strong>
-                <small dir="ltr">↑ 22%</small>
-              </div>
+              <span>{copy('Orders')}</span>
+              <div><strong>{loading || loadError ? '—' : report.orders}</strong><small>{copy('All statuses')}</small></div>
             </div>
           </div>
-          <RevenueChart t={copy} period={period} previous={week === 'previous'} />
+          {periodOrders.length > 0
+            ? <DashboardOrderChart points={series} t={copy} />
+            : <p className="dashboard-chart-empty">{loading ? copy('Loading orders…') : loadError ? copy('Dashboard data is unavailable.') : copy('No orders in this period.')}</p>}
         </section>
       </div>
+
       <div className="dashboard-bottom-grid">
         <section className="dashboard-card dashboard-branches">
-          <div className="dashboard-card-heading">
-            <h2>{copy('Sales by Branch')}</h2>
-            <button type="button" onClick={() => navigate('/branches')}>
-              {t('View All')}
-            </button>
-          </div>
+          <div className="dashboard-card-heading"><h2>{copy('Orders by Fulfillment')}</h2></div>
           <div className="dashboard-branch-content">
             <div
               className="dashboard-donut"
+              style={{ background: fulfillmentGradient }}
               role="img"
-              aria-label={branches.map(([name, share]) => `${copy(name)}: ${share}%`).join(', ')}
+              aria-label={`${copy('Pickup')}: ${fulfillment.pickup}, ${copy('Delivery')}: ${fulfillment.delivery}`}
             >
               <div>
-                <strong dir="ltr">EGP 24,320</strong>
-                <small>{copy('Total Sales')}</small>
+                <strong dir="ltr">{fulfillmentTotal}</strong>
+                <small>{copy('Orders in selected period')}</small>
               </div>
             </div>
             <ul className="dashboard-branch-legend">
-              {branches.map(([name, share, amount, color]) => (
-                <li key={name}>
-                  <span className="dashboard-branch-dot" style={{ background: color }} />
-                  <span>
-                    {copy(name)}
-                    <small dir="ltr">{money(amount)}</small>
-                  </span>
-                  <strong dir="ltr">{share}%</strong>
-                </li>
-              ))}
+              {(['pickup', 'delivery'] as const).map((kind) => {
+                const count = fulfillment[kind];
+                const share = fulfillmentTotal ? Math.round(count / fulfillmentTotal * 100) : 0;
+                return (
+                  <li key={kind}>
+                    <span className="dashboard-branch-dot" style={{ background: kind === 'pickup' ? '#1b654f' : '#77b9ef' }} />
+                    <span>{copy(kind === 'pickup' ? 'Pickup' : 'Delivery')}<small>{count} {copy('orders')}</small></span>
+                    <strong dir="ltr">{share}%</strong>
+                  </li>
+                );
+              })}
             </ul>
           </div>
+          {!loading && !loadError && fulfillmentTotal === 0 && <p className="dashboard-empty-note">{copy('No orders in this period.')}</p>}
         </section>
+
         <section className="dashboard-card dashboard-bestsellers">
-          <div className="dashboard-card-heading">
-            <h2>{copy('Best-Selling Products')}</h2>
-            <button type="button" onClick={() => navigate('/products')}>
-              {t('View All')}
-            </button>
-          </div>
+          <div className="dashboard-card-heading"><h2>{copy('Most Ordered Products')}</h2><button type="button" onClick={() => navigate('/products')}>{t('View All')}</button></div>
           <div className="dashboard-product-list">
-            {bestSellers.map(([name, sold, amount]) => (
+            {productTotals.map(({ name, quantity, value }) => (
               <div className="dashboard-product-row" key={name}>
-                <ProductThumb fallback="burger" />
-                <span>
-                  <strong>{copy(name)}</strong>
-                  <small>
-                    {sold} {copy('orders')}
-                  </small>
-                </span>
-                <span dir="ltr">{money(amount)}</span>
+                <ProductThumb product={productByName.get(name.toLocaleLowerCase())} fallback="product" />
+                <span><strong>{name}</strong><small>{quantity} {copy('items sold')}</small></span>
+                <span dir="ltr">{money(value)}</span>
               </div>
             ))}
+            {!loading && !loadError && productTotals.length === 0 && <p className="dashboard-empty-note">{copy('No product orders in this period.')}</p>}
           </div>
         </section>
+
         <section className="dashboard-card dashboard-quick-actions">
           <div className="dashboard-card-heading">
-            <div>
-              <h2>{copy('Quick Actions')}</h2>
-              <p>{copy('Quick access to your most important tasks')}</p>
-            </div>
+            <div><h2>{copy('Quick Actions')}</h2><p>{copy('Quick access to your most important tasks')}</p></div>
           </div>
           <div className="dashboard-actions">
             {actions.map(([label, icon, destination, tone]) => (
-              <button
-                type="button"
-                className={tone}
-                key={label}
-                onClick={() => navigate(destination)}
-              >
-                <Icon name={icon} />
-                <span>{t(label)}</span>
+              <button type="button" className={tone} key={label} onClick={() => navigate(destination)}>
+                <Icon name={icon} /><span>{t(label)}</span>
               </button>
             ))}
           </div>

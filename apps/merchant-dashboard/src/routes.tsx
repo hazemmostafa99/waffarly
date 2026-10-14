@@ -10,7 +10,7 @@ import { MediaPage } from './MediaPage.js';
 import { DiscountsPage } from './DiscountsPage.js';
 import { BranchesPage } from './BranchesPage.js';
 import { ProductBuilderPage } from './ProductBuilderPage.js';
-import { OrdersPage } from './OrdersPage.js';
+import { StorefrontOrdersPage } from './StorefrontOrdersPage.js';
 import { DesignSystem } from './DesignSystem.js';
 
 export const router = createBrowserRouter([
@@ -36,7 +36,7 @@ export const router = createBrowserRouter([
       { path: 'product-builder', element: <ProductBuilderPage /> },
       { path: 'categories', element: <CategoriesPage /> },
       { path: 'media', element: <MediaPage /> },
-      { path: 'orders', element: <OrdersPage /> },
+      { path: 'orders', element: <StorefrontOrdersPage /> },
       { path: 'customers', element: <CustomersPage /> },
       { path: 'discounts', element: <DiscountsPage /> },
       { path: 'branches', element: <BranchesPage /> },

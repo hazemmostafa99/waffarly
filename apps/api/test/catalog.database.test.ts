@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import { config } from 'dotenv';
 import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
@@ -24,6 +25,7 @@ it(
             transaction.merchant.create({
               data: {
                 name: `Catalog verification ${suffix}`,
+                storefrontSlug: `catalog-verification-${suffix}-${randomUUID().replaceAll('-', '')}`,
                 activity: 'restaurant',
                 contactPhone: `010000${suffix.padStart(6, '0')}`,
                 ownerName: 'Catalog verification',
@@ -60,8 +62,10 @@ it(
           const otherReferences = await createFixtureReferences(otherMerchant.id, 'two');
           const service = new ProductService({
             product: transaction.product,
+            productVariant: transaction.productVariant,
             mediaAsset: transaction.mediaAsset,
             category: transaction.category,
+            merchant: transaction.merchant,
             $transaction: async (callback: (tx: typeof transaction) => Promise<unknown>) =>
               callback(transaction),
           } as unknown as PrismaService);
@@ -120,7 +124,80 @@ it(
                 ],
               },
             ],
+            variants: [
+              {
+                name: 'Single cup',
+                sku: 'VERIFICATION-CUP',
+                barcode: '9900000000001',
+                price: '6.25',
+                stockQuantity: 7,
+                availability: 'available',
+                position: 0,
+              },
+              {
+                name: 'Out of stock cup',
+                sku: 'VERIFICATION-OOS',
+                barcode: '9900000000002',
+                price: '8.50',
+                stockQuantity: 0,
+                availability: 'available',
+                position: 1,
+              },
+            ],
           });
+          await service.create(merchant.id, 'catalog-database-test', {
+            name: 'Verification coffee',
+            basePrice: '6.00',
+            availability: 'available',
+            imageAssetIds: [references.media.id],
+            categoryIds: [references.category.id],
+            variants: [
+              {
+                name: 'Regular cup',
+                sku: 'PUBLIC-VERIFICATION-CUP',
+                barcode: '9900000000099',
+                price: '6.00',
+                stockQuantity: 3,
+                availability: 'available',
+                position: 0,
+              },
+              {
+                name: 'Out of stock cup',
+                sku: 'PUBLIC-VERIFICATION-OOS',
+                barcode: '9900000000100',
+                price: '8.00',
+                stockQuantity: 0,
+                availability: 'available',
+                position: 1,
+              },
+            ],
+          });
+          await service.create(merchant.id, 'catalog-database-test', {
+            name: 'Unavailable item',
+            basePrice: '4.00',
+            availability: 'unavailable',
+            imageAssetIds: [references.media.id],
+            categoryIds: [references.category.id],
+          });
+
+          const publicCatalog = await service.getPublicStorefrontCatalog(merchant.storefrontSlug);
+          assert.equal(publicCatalog.slug, merchant.storefrontSlug);
+          assert.equal(publicCatalog.products.length, 2);
+          const publicVariant = publicCatalog.products.find((product) => product.name === 'Verification coffee')?.variants[0];
+          assert.ok(publicVariant);
+          assert.equal(publicVariant.availability, 'available');
+          assert.equal('sku' in publicVariant, false);
+          assert.equal('barcode' in publicVariant, false);
+          assert.equal('stockQuantity' in publicVariant, false);
+          const soldOutPublicVariant = publicCatalog.products
+            .find((product) => product.name === 'Verification coffee')
+            ?.variants.find((variant) => variant.name === 'Out of stock cup');
+          assert.equal(soldOutPublicVariant?.availability, 'unavailable');
+          assert.equal(publicCatalog.products.find((product) => product.name === 'Verification coffee')?.categories[0]?.name, 'Verification one');
+          await assert.rejects(
+            service.quote(otherProduct.id, [], undefined, merchant.storefrontSlug),
+            /Product was not found/i,
+          );
 
           assert.equal(firstProduct.revision, 1);
           assert.equal(firstProduct.sellingUnit, 'piece');
@@ -131,6 +208,8 @@ it(
           const cheeseOption = extrasGroup?.options.find((option) => option.name === 'Cheese');
           const baconOption = extrasGroup?.options.find((option) => option.name === 'Bacon');
           const otherOption = otherProduct.modifierGroups[0]?.options[0];
+          const singleCup = otherProduct.variants[0];
+          const outOfStockCup = otherProduct.variants[1];
           assert.ok(
             sizeGroup &&
               extrasGroup &&
@@ -138,7 +217,9 @@ it(
               regularOption &&
               cheeseOption &&
               baconOption &&
-              otherOption,
+              otherOption &&
+              singleCup &&
+              outOfStockCup,
           );
 
           const defaultQuote = await service.quote(firstProduct.id);
@@ -180,6 +261,20 @@ it(
             ]),
             /does not belong to this product/i,
           );
+          await assert.rejects(service.quote(otherProduct.id), /Choose a product variant/i);
+          await assert.rejects(
+            service.quote(otherProduct.id, [], firstProduct.variants[0]?.id ?? 'foreign-variant'),
+            /does not belong to this product/i,
+          );
+          await assert.rejects(
+            service.quote(otherProduct.id, [], outOfStockCup.id),
+            /out of stock/i,
+          );
+          const variantQuote = await service.quote(otherProduct.id, [], singleCup.id);
+          assert.equal(variantQuote.variantId, singleCup.id);
+          assert.equal(variantQuote.variantName, 'Single cup');
+          assert.equal(variantQuote.basePrice, '6.25');
+          assert.equal(variantQuote.totalPrice, '6.25');
 
           await transaction.$executeRawUnsafe('SAVEPOINT invalid_modifier_update');
           await assert.rejects(
@@ -215,6 +310,17 @@ it(
             1,
             {
               basePrice: '110.00',
+              variants: [
+                {
+                  name: 'New sellable identity',
+                  sku: 'VERIFICATION-NEW',
+                  barcode: '9900000000003',
+                  price: '125.00',
+                  stockQuantity: null,
+                  availability: 'available',
+                  position: 0,
+                },
+              ],
               modifierGroups: [
                 {
                   name: 'Size',
@@ -244,9 +350,30 @@ it(
           assert.equal(updated.basePrice, '110.00');
           assert.equal(updated.modifierGroups.length, 1);
           assert.notEqual(updated.modifierGroups[0]?.id, sizeGroup.id);
-          const updatedQuote = await service.quote(updated.id);
+          assert.equal(updated.variants.length, 1);
+          assert.equal(updated.variants[0]?.price, '125.00');
+          const updatedQuote = await service.quote(updated.id, [], updated.variants[0]!.id);
           assert.equal(updatedQuote.productRevision, 2);
-          assert.equal(updatedQuote.totalPrice, '110.00');
+          assert.equal(updatedQuote.totalPrice, '125.00');
+          await assert.rejects(
+            service.create(merchant.id, 'catalog-database-test', {
+              name: 'Duplicate variant code',
+              basePrice: '20.00',
+              availability: 'available',
+              imageAssetIds: [references.media.id],
+              categoryIds: [references.category.id],
+              variants: [
+                {
+                  name: 'Duplicate code',
+                  sku: 'verification-new',
+                  price: '20.00',
+                  availability: 'available',
+                  position: 0,
+                },
+              ],
+            }),
+            /unique per merchant/i,
+          );
           await assert.rejects(
             service.update(merchant.id, 'catalog-database-test', firstProduct.id, 1, {
               basePrice: '120.00',

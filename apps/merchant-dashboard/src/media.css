@@ -36,6 +36,11 @@
   gap: 14px;
   direction: ltr;
 }
+.media-gallery {
+  display: block;
+  min-width: 0;
+  margin: 0;
+}
 .media-page[dir='rtl'] :is(.media-gallery, .media-summary) {
   direction: rtl;
 }

@@ -1420,7 +1420,10 @@
   }
   html[dir='rtl'] .merchant-page-heading > div {
     direction: rtl;
-    text-align: left;
+    text-align: right;
+  }
+  html[dir='rtl'] .merchant-page-heading h1 {
+    font-weight: 700;
   }
   html[dir='rtl'] .merchant-nav-item,
   html[dir='rtl'] .merchant-topbar,

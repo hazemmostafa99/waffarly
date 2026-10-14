@@ -1,6 +1,6 @@
 # CAT-F02 — Products
 
-**Status:** Product-core rules, Product Builder MVP, and basic configuration quote implemented
+**Status:** Product core, Product Builder, sellable variants, authoritative configuration quote, and order-history deletion protection implemented
 
 **Last updated:** 2026-10-14
 **Parent:** [Catalog & Dynamic Product Builder Overview](OVERVIEW.md)  
@@ -9,11 +9,11 @@
 
 ## 1. Purpose
 
-Products defines the minimum tenant-owned catalog identity used by later categories, variants, modifiers, selling units, pricing validation, visibility, storefront, inventory, POS, and order features.
+Products defines the minimum tenant-owned catalog identity used by categories, variants, modifiers, selling units, pricing validation, visibility, storefront, inventory, POS, and order features.
 
 This Products feature is documented for the restaurant MVP while preserving a generic Product Core. It does not add restaurant-specific fields or implement future-industry behavior. A simple product such as bottled water fits without variants or modifiers. Configurable restaurant items use the separately approved product-local Modifier Groups & Options MVP (CAT-F04).
 
-This specification records the Product Core business behavior. Implementation details for the separately scoped Product Builder MVP are summarized below; future variants, inventory integration, storefront, and POS behavior remain outside the implemented slice.
+This specification records Product Core behavior. The Product Builder supports product-local modifiers and flat sellable variants. The storefront checkout re-quotes configured products and snapshots purchased names/prices; broader Inventory integration, variant-dimension generation, and POS remain outside the implemented slice.
 
 ## 2. Confirmed Decisions
 
@@ -40,7 +40,7 @@ The product owner confirmed the following on 2026-10-13:
 
 - The implementation stores EGP prices at two-decimal precision with a provisional database maximum; the owner has not confirmed a final commercial price ceiling. CAT-D008/CAT-D031 still leave image formats, image storage, ordering, and numeric media limits open.
 - CAT-D002 defines operational availability, not a publication workflow, schedule, inventory result, or channel-specific state.
-- CAT-D003/CAT-D011 require an authoritative order-use check before permanent deletion. Related media/configuration cleanup and race behavior remain OPEN.
+- CAT-D003/CAT-D011 require an authoritative order-use check before permanent deletion. Order-history protection and its serializable concurrency boundary are implemented; related media cleanup remains OPEN.
 - CAT-D004/CAT-D007/CAT-D019 require one or more equal category links with no primary category. Display order and reassignment behavior remain OPEN.
 - CAT-D005 does not establish a general role model. Staff product management is outside this initial feature.
 - CAT-D006 defines the initial authored-content language. It does not decide automatic translation, transliteration, search normalization, or the future multilingual model.
@@ -53,7 +53,9 @@ The product owner confirmed the following on 2026-10-13:
 - Modifier groups belong to one product and support single or multiple choice.
 - `minSelections` and `maxSelections` define required/optional behavior and the allowed selection count. Options may be marked as defaults.
 - Options use fixed EGP price adjustments; groups and options have explicit ordering.
-- Products are sold by the piece only. A size is a modifier unless it needs a stable SKU, stock, barcode, or other independent sellable identity; variants are not part of this implementation.
+- Products are sold by the piece only. A size or other choice is a modifier unless it needs a stable SKU, barcode, independently set price, tracked stock, or other sellable identity; such items are product-local variants.
+- Variants are explicit flat sellable records, not automatically generated combinations. Each has a name, positive EGP price, availability, order, optional merchant-unique SKU/barcode, and optional integer stock count (blank means untracked).
+- A product with variants requires the customer to select one for quoting. Variant price replaces the product base price; modifier adjustments are added afterward. A tracked quantity of zero or unavailable variant is rejected by quote. Quote alone does not reserve stock; storefront checkout reserves the quoted quantity atomically.
 - Conditional/nested modifiers, reusable groups, branch pricing, modifier stock, bundles, and order-time pricing are deferred.
 
 ### 2.3 Backend configuration and quote MVP (2026-10-14)
@@ -61,8 +63,16 @@ The product owner confirmed the following on 2026-10-13:
 - Product-local modifier groups/options are persisted with the Product. Create uses atomic nested writes; updates replace configuration inside the revision-checked product transaction.
 - `POST /catalog/products/:id/quote` is the authoritative single-product configuration quote. It only quotes non-archived, available products and only accepts groups/options belonging to that product.
 - If a group is omitted from the request, its default options are applied. An explicitly supplied group with an empty `optionIds` array means no options are selected and is still subject to that group's minimum.
-- Quotes enforce every group's min/max selection bounds and return EGP base, modifier, and total amounts as fixed two-decimal strings, plus resolved selections and `productRevision`.
-- This quote is not an order snapshot and does not include discounts, taxes, fees, branch/channel context, or inventory checks. Variants remain out of scope; the MVP selling unit is `piece`.
+- Quotes enforce every group's min/max selection bounds and return the effective EGP base, modifier, and total amounts as fixed two-decimal strings, plus resolved variant/selections and `productRevision`.
+- This quote is not an order snapshot and does not include discounts, taxes, fees, branch/channel context, stock reservation, or inventory movement. The MVP selling unit is `piece`.
+
+### 2.4 Storefront checkout and order MVP (2026-10-14)
+
+- `POST /catalog/stores/:slug/orders` accepts customer name/phone, pickup or delivery (with a required address), and configured product lines. Prices are never accepted from the browser: the API re-quotes every line and checks the product revision again in the transaction.
+- Order creation snapshots product/variant/option names and fixed-precision EGP prices. A serializable transaction creates the order and atomically decrements tracked variant stock; untracked variants remain unreserved.
+- `GET /owner/orders` returns the signed-in owner's latest 100 orders. `PATCH /owner/orders/:id/status` allows a pending order to be accepted or rejected; rejection restores any still-existing tracked variant reservation, while acceptance keeps it consumed.
+- Products with order lines cannot be permanently deleted. The owner may archive them while the order snapshots remain readable even if catalog definitions later change.
+- This is not a general Inventory ledger or fulfillment system. There is no online payment, delivery-fee calculation, tax/discount support, notification, POS order, branch routing, kitchen flow, or later fulfillment-state transition.
 
 ## 3. Scope
 
@@ -77,21 +87,22 @@ The product owner confirmed the following on 2026-10-13:
 - Initial `Available` and `Unavailable` operational states.
 - Archival/restoration behavior, deletion of never-ordered products, and the prohibition on deleting a product after it has appeared in an order.
 - Merchant Owner product-management authority.
+- Explicit sellable variant identity, price, optional SKU/barcode and stock count, per-variant availability, and variant-aware quote validation.
 - Tenant isolation, backend validation, concurrency expectations, and future references from other domains.
 
 ### 3.2 Explicitly outside this feature
 
 - Category creation, hierarchy, ordering, and visibility rules beyond the dependency that a valid category is required.
-- Variants, attributes, bundles, and configurable-product rules beyond the separately approved CAT-F04 modifier MVP.
+- Attribute definitions, automatic variant-combination generation, bundles, and configurable-product rules beyond CAT-F03/CAT-F04.
 - Selling units other than piece.
 - Discounts, taxes, fees, price schedules, branch/channel prices, and currency conversion. The basic configuration quote MVP is implemented separately below.
-- Stock balances, recipes, ingredients, reservations, deductions, batches, and inventory availability.
+- General stock balances, movements, replenishment, recipes, ingredients, batches, and inventory availability. Checkout only reserves the optional per-variant quantity described above.
 - Product publishing workflow, scheduled availability, branch availability, storefront/POS channel overrides, and sold-out derivation.
-- Order creation, cart behavior, checkout, historical order schema, and kitchen behavior.
+- POS orders, online payments, fees/taxes/discounts, delivery pricing, notifications, kitchen behavior, and a full fulfillment-state lifecycle. The basic storefront basket/checkout, order snapshots, tracked variant reservation, and owner accept/reject flow are implemented in CAT-F09.
 - Product reviews, nutrition, allergens, preparation time, SKU, barcode, tax codes, cost price, supplier data, and activity-specific extensions.
 - Clothing, supermarket, and electronics operational implementation.
 - Staff roles and granular product permissions.
-- Public Storefront/POS UI, advanced editing, and media-provider selection.
+- POS UI, advanced editing, and media-provider selection. The public Storefront checkout MVP is implemented separately.
 
 ## 4. Actors and Permissions
 
@@ -122,7 +133,7 @@ Activity compatibility, subscription entitlement, merchant configuration, and us
 
 The Product definition must not add fields such as restaurant meal size, sauce, topping, recipe, kitchen station, clothing color, grocery weight, or electronics warranty. Those concepts belong to generic configuration capabilities or activity extensions as described in the Catalog Overview.
 
-The required base price does not mean every future sellable configuration must use only that amount. The restaurant MVP quote adds selected fixed EGP modifier adjustments to the base. Variant, unit, and contextual pricing behavior remains OPEN or deferred.
+The required product base price remains the fallback for products without variants. When a variant is selected, its own positive EGP price is authoritative before fixed EGP modifier adjustments. Broader unit and contextual pricing behavior remains deferred.
 
 ## 6. Lifecycle Concepts
 
@@ -130,8 +141,8 @@ The concepts below describe behavior and do not prescribe an enum or database fi
 
 | Concept         | Meaning                                                                                                                   | Confirmed or open behavior                                                                              |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| **Available**   | Product is operationally allowed to be selected in applicable channels, subject to all other approved checks.             | CONFIRMED state; storefront/POS exposure, stock interaction, and transition prerequisites OPEN.         |
-| **Unavailable** | Product remains managed but is not currently allowed to be selected under the initial manual availability rule.           | CONFIRMED state; effect on existing carts/orders remains OPEN.                                          |
+| **Available**   | Product is operationally allowed to be selected in applicable channels, subject to all other approved checks.             | CONFIRMED state; public storefront lists it and quote/checkout revalidate state. POS and broader stock behavior remain outside the MVP. |
+| **Unavailable** | Product remains managed but is not currently allowed to be selected under the initial manual availability rule.           | CONFIRMED state; hidden from public storefront and rejected by quote/checkout; saved carts are revalidated on submission.               |
 | **Archived**    | Product is retired from ordinary active management and cannot be used for new selection under the eventual channel rules. | It may be restored; restoration always returns it as `Unavailable`. Edit/query visibility remains OPEN. |
 | **Deleted**     | Product identity is permanently removed.                                                                                  | Allowed only when the product has never appeared in an order; otherwise prohibited.                     |
 
@@ -144,7 +155,7 @@ Availability and archival are separate:
 
 ### 6.1 Historical-reference invariant
 
-Once an order references a product, permanent deletion is forbidden. Archival must preserve the identity needed for safe references and administration. The Orders domain is expected to preserve its own immutable purchased-product and price snapshot; it must not rely on the mutable current Product record to reproduce historical facts. The precise reference/snapshot design remains for Orders and schema discovery.
+Once an order references a product, permanent deletion is forbidden. Archival preserves the identity needed for administration. Storefront order lines preserve their own immutable purchased-product and price snapshot and do not depend on the mutable current Product record. The owner API enforces the no-delete rule in a serializable transaction; variant configuration cannot be replaced while a pending order holds a tracked-stock reservation.
 
 ## 7. Use Cases
 
@@ -181,7 +192,7 @@ Rules for editing an archived product and price-change effects on carts remain O
 2. The backend validates ownership, permission, current lifecycle state, and allowed transition.
 3. Future channel reads/selections follow the current authoritative state once those channel contracts exist.
 
-The behavior for active carts, accepted orders, branch/channel overrides, and Inventory-derived sold-out state remains OPEN.
+Existing order snapshots are immutable; a saved browser cart is revalidated when submitted. Branch/channel overrides and Inventory-derived sold-out state remain OPEN.
 
 ### UC-P05 — Archive a product
 
@@ -268,11 +279,11 @@ Related image cleanup, future configuration dependencies, audit behavior, and a 
 - Merchant access/subscription changes while a product mutation is in progress.
 - Future configuration records exist when a product is archived or considered for deletion.
 
-Feature specifications for Orders, Pricing, Media, Categories, and Availability must define the relevant cross-domain consistency behavior before implementation of those paths.
+The current checkout defines the minimum order snapshot/reservation path. Future full Orders, Pricing, Media, Categories, and Availability capabilities must define their additional cross-domain consistency behavior before those paths expand.
 
 ## 10. Conceptual Data and Architecture
 
-The current restaurant MVP uses explicit Product, ProductImage, ProductCategory, ProductModifierGroup, and ProductModifierOption records for these concepts. This physical design does not settle future variants, stock, branch pricing, orders, or broader relationship cardinalities:
+The current restaurant MVP uses explicit Product, ProductImage, ProductCategory, ProductVariant, ProductModifierGroup, and ProductModifierOption records. StorefrontOrder, order-line, and selection records separately snapshot customer purchases. Variant stock is a simple optional count used for checkout reservation; this does not settle general Inventory integration, branch pricing, or attribute-defined variant combinations:
 
 - Tenant-owned Product identity.
 - Arabic product content for the initial version.
@@ -289,7 +300,7 @@ Strong tenant ownership, commercial relationships, lifecycle state, category/med
 
 ### 10.1 Candidate backend boundary
 
-The current implementation lives under `apps/api/src/modules/catalog/`. Owner product writes enforce authenticated tenant context; the single-product quote is an application service in Catalog until broader pricing needs justify a separate boundary. Future integrations with Entitlements and Orders remain open.
+The current implementation lives under `apps/api/src/modules/catalog/`. Owner product writes enforce authenticated tenant context; quote and storefront-order services are initially colocated in Catalog. A separate Orders boundary may be extracted when fulfillment, payments, or POS workflows expand.
 
 This does not approve module files or service decomposition. A modular-monolith boundary is sufficient; no separate Catalog microservice is proposed.
 
@@ -297,7 +308,7 @@ This does not approve module files or service decomposition. A modular-monolith 
 
 The Merchant Dashboard now provides the first owner product-management workspace. It collects content, price input, Media references, category links, and availability, then displays backend validation results and lifecycle state. It must not decide authorization, cross-tenant validity, deletion eligibility, or authoritative pricing.
 
-Public Storefront/POS UI and advanced product editing remain outside this slice.
+The customer Storefront and checkout MVP are implemented separately; POS UI and advanced product editing remain outside this slice.
 
 ## 11. Dependencies
 
@@ -307,8 +318,8 @@ Public Storefront/POS UI and advanced product editing remain outside this slice.
 | Categories (CAT-F01)   | One or more valid categories are mandatory at product creation/update. | Implemented with tenant-safe references, a two-level hierarchy, lifecycle actions, and multiple equal Product links.                                                  |
 | Media                  | A valid image is mandatory.                                            | Reusable tenant-owned Media and owner image upload to configurable server disk are implemented; processing, cleanup, and external-provider lifecycle remain deferred. |
 | Pricing (CAT-F06)      | Positive EGP base-price validation and a configuration quote.          | Basic product/modifier quote and fixed-precision response are implemented; discounts, taxes, context pricing, and a separate Pricing domain remain deferred.          |
-| Availability (CAT-F07) | Channel/public meaning of Available/Unavailable and Archived.          | Manual state selected conceptually; channel rules not implemented.                                                                                                    |
-| Orders                 | Deletion prohibition after order use and historical snapshot.          | Not implemented; relationship/snapshot design OPEN.                                                                                                                   |
+| Availability (CAT-F07) | Channel/public meaning of Available/Unavailable and Archived.          | Public catalog filters unavailable/archived products; quote and checkout validate current availability. Broader channel rules remain open.                               |
+| Orders                 | Deletion prohibition after order use and historical snapshot.          | Pickup/delivery checkout, immutable lines, tracked-variant reservation, owner accept/reject, and deletion protection are implemented; full fulfillment remains deferred. |
 | Activities & Modules   | Catalog compatibility metadata when capability is implemented.         | Registry exists; Catalog capability absent. Compatibility does not grant access.                                                                                      |
 | Plans/Entitlements     | Commercial access if Catalog becomes plan-gated.                       | Plan definitions exist; assignment/entitlements absent and rules OPEN.                                                                                                |
 | Audit                  | Attribution/history for sensitive changes if required.                 | No general audit domain exists; scope OPEN.                                                                                                                           |
@@ -354,7 +365,7 @@ Arabic validation details, price precision/bounds, image validity/limits, and ca
 
 - A simple product such as bottled water can be represented with the required core information and without dummy variants or modifiers.
 - No restaurant-only product field is required by the core Product definition.
-- Simple products need no variants or modifier groups; the approved modifier MVP references the stable Product identity through product-local groups. Variants, broader selling units, Inventory, and activity extensions remain deferred.
+- Simple products need no variants or modifier groups. Explicit sellable variants have their own quote price, optional merchant-unique SKU/barcode, availability, and optional unreserved stock count; modifiers remain independent product-local choices. Attribute combination generation, broader selling units, Inventory, and activity extensions remain deferred.
 
 ### AC-P06 — Backend authority
 
