@@ -76,21 +76,30 @@ export class StorefrontOrdersService {
                     name: true,
                     availability: true,
                     stockQuantity: true,
+                    attributeSelections: {
+                      orderBy: { attribute: { position: 'asc' } },
+                      select: {
+                        attributeId: true,
+                        valueId: true,
+                        attribute: { select: { id: true, name: true, position: true } },
+                        value: { select: { id: true, value: true } },
+                      },
+                    },
                   },
                 },
                 modifierGroups: {
                   orderBy: { position: 'asc' },
                   select: {
                     id: true,
-                    name: true,
+                    modifierGroupId: true,
                     position: true,
+                    modifierGroup: { select: { name: true } },
                     options: {
-                      orderBy: { position: 'asc' },
+                      orderBy: { option: { position: 'asc' } },
                       select: {
-                        id: true,
-                        name: true,
+                        optionId: true,
                         priceAdjustment: true,
-                        position: true,
+                        option: { select: { name: true, position: true } },
                       },
                     },
                   },
@@ -140,15 +149,24 @@ export class StorefrontOrdersService {
             );
             const selectionSnapshots = product.modifierGroups.flatMap((group) =>
               group.options
-                .filter((option) => selectedOptions.get(group.id)?.has(option.id))
+                .filter((option) => selectedOptions.get(group.id)?.has(option.optionId))
                 .map((option) => ({
-                  groupName: group.name,
-                  optionName: option.name,
+                  modifierGroupId: group.modifierGroupId,
+                  modifierOptionId: option.optionId,
+                  groupName: group.modifierGroup.name,
+                  optionName: option.option.name,
                   priceAdjustment: option.priceAdjustment.toString(),
                   groupPosition: group.position,
-                  optionPosition: option.position,
+                  optionPosition: option.option.position,
                 })),
             );
+            const variantAttributeSnapshots = variant?.attributeSelections.map((selection) => ({
+              attributeId: selection.attributeId,
+              valueId: selection.valueId,
+              attributeName: selection.attribute.name,
+              attributeValue: selection.value.value,
+              position: selection.attribute.position,
+            })) ?? [];
             const unitPriceCents = toCents(quote.totalPrice);
             const lineTotalCents = unitPriceCents * BigInt(item.quantity);
             orderTotalCents += lineTotalCents;
@@ -163,12 +181,15 @@ export class StorefrontOrdersService {
                 variantId: variant?.id ?? null,
                 productName: product.name,
                 variantName: variant?.name ?? null,
+                basePrice: quote.basePrice,
+                modifierTotal: quote.modifierTotal,
                 quantity: item.quantity,
                 unitPrice: formatCents(unitPriceCents),
                 lineTotal: formatCents(lineTotalCents),
                 stockReserved,
                 position,
                 selections: { create: selectionSnapshots },
+                variantAttributes: { create: variantAttributeSnapshots },
               },
             });
           }
@@ -196,7 +217,10 @@ export class StorefrontOrdersService {
       include: {
         lines: {
           orderBy: { position: 'asc' },
-          include: { selections: { orderBy: [{ groupPosition: 'asc' }, { optionPosition: 'asc' }] } },
+          include: {
+            selections: { orderBy: [{ groupPosition: 'asc' }, { optionPosition: 'asc' }] },
+            variantAttributes: { orderBy: { position: 'asc' } },
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -251,6 +275,7 @@ export class StorefrontOrdersService {
                 orderBy: { position: 'asc' },
                 include: {
                   selections: { orderBy: [{ groupPosition: 'asc' }, { optionPosition: 'asc' }] },
+                  variantAttributes: { orderBy: { position: 'asc' } },
                 },
               },
             },
@@ -298,10 +323,21 @@ function toSummary(order: {
     id: string;
     productName: string;
     variantName: string | null;
+    basePrice: { toString(): string } | null;
+    modifierTotal: { toString(): string } | null;
     quantity: number;
     unitPrice: { toString(): string };
     lineTotal: { toString(): string };
+    variantAttributes: Array<{
+      attributeId: string | null;
+      valueId: string | null;
+      attributeName: string;
+      attributeValue: string;
+      position: number;
+    }>;
     selections: Array<{
+      modifierGroupId: string | null;
+      modifierOptionId: string | null;
       groupName: string;
       optionName: string;
       priceAdjustment: { toString(): string };
@@ -322,12 +358,17 @@ function toSummary(order: {
       id: line.id,
       productName: line.productName,
       variantName: line.variantName,
+      variantAttributes: line.variantAttributes,
+      basePrice: line.basePrice ? formatCents(toCents(line.basePrice.toString())) : null,
+      modifierTotal: line.modifierTotal ? formatCents(toCents(line.modifierTotal.toString())) : null,
       quantity: line.quantity,
       unitPrice: formatCents(toCents(line.unitPrice.toString())),
       lineTotal: formatCents(toCents(line.lineTotal.toString())),
       selections: line.selections.map((selection) => ({
         groupName: selection.groupName,
         optionName: selection.optionName,
+        modifierGroupId: selection.modifierGroupId,
+        modifierOptionId: selection.modifierOptionId,
         priceAdjustment: formatCents(toCents(selection.priceAdjustment.toString())),
       })),
     })),

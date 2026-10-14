@@ -75,7 +75,10 @@ export interface CatalogProductModifierOption {
 }
 
 export interface CatalogProductModifierGroup {
+  /** Product-specific assignment identity used when quoting selections. */
   id: string;
+  /** Shared merchant-owned modifier-group identity. */
+  modifierGroupId: string;
   name: string;
   description: string | null;
   selectionMode: 'single' | 'multiple';
@@ -94,6 +97,67 @@ export interface CatalogProductVariant {
   stockQuantity: number | null;
   availability: CatalogAvailability;
   position: number;
+  attributes: CatalogProductVariantAttributeSelection[];
+}
+
+export interface CatalogProductVariantAttributeSelection {
+  attributeId: string;
+  attributeName: string;
+  valueId: string;
+  value: string;
+  position: number;
+}
+
+export interface CatalogProductVariantAttributeSnapshot {
+  attributeId: string | null;
+  valueId: string | null;
+  attributeName: string;
+  attributeValue: string;
+  position: number;
+}
+
+export interface CatalogProductModifierGroupAssignmentFields {
+  modifierGroupId: string;
+  selectionMode: 'single' | 'multiple';
+  minSelections: number;
+  maxSelections: number;
+  position: number;
+  options: Array<{
+    optionId: string;
+    priceAdjustment: string;
+    defaultSelected: boolean;
+  }>;
+}
+
+export interface CatalogModifierGroupOption {
+  id: string;
+  name: string;
+  position: number;
+}
+
+export interface CatalogModifierGroupSummary {
+  id: string;
+  name: string;
+  description: string | null;
+  options: CatalogModifierGroupOption[];
+  assignedProductCount: number;
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CatalogModifierGroupFields {
+  name: string;
+  description?: string | undefined;
+  options: Array<{ name: string; position: number }>;
+}
+
+export type CreateCatalogModifierGroupRequest = CatalogModifierGroupFields;
+export interface UpdateCatalogModifierGroupRequest {
+  name?: string | undefined;
+  description?: string | undefined;
+  options?: CatalogModifierGroupFields['options'] | undefined;
+  revision: number;
 }
 
 export interface CatalogProductQuoteSelection {
@@ -111,12 +175,14 @@ export interface CatalogProductQuoteResponse {
   productRevision: number;
   variantId: string | null;
   variantName: string | null;
+  variantAttributes: CatalogProductVariantAttributeSelection[];
   currency: 'EGP';
   basePrice: string;
   modifierTotal: string;
   totalPrice: string;
   selections: Array<{
     groupId: string;
+    modifierGroupId: string;
     optionIds: string[];
     priceAdjustment: string;
   }>;
@@ -144,6 +210,7 @@ export interface PublicStorefrontProduct {
     price: string;
     availability: CatalogAvailability;
     position: number;
+    attributes: CatalogProductVariantAttributeSelection[];
   }>;
 }
 
@@ -195,15 +262,61 @@ export interface StorefrontOrderSummary {
     id: string;
     productName: string;
     variantName: string | null;
+    variantAttributes: CatalogProductVariantAttributeSnapshot[];
+    basePrice: string | null;
+    modifierTotal: string | null;
     quantity: number;
     unitPrice: string;
     lineTotal: string;
     selections: Array<{
       groupName: string;
       optionName: string;
+      modifierGroupId: string | null;
+      modifierOptionId: string | null;
       priceAdjustment: string;
     }>;
   }>;
+}
+
+export interface ProductConfigurationReport {
+  from: string;
+  to: string;
+  orderCount: number;
+  totalQuantity: number;
+  totalRevenue: string;
+  products: Array<{
+    productId: string;
+    productName: string;
+    quantity: number;
+    revenue: string;
+    variants: Array<{
+      variantId: string | null;
+      variantName: string | null;
+      quantity: number;
+      revenue: string;
+    }>;
+  }>;
+  attributeValues: Array<{
+    attributeId: string | null;
+    valueId: string | null;
+    attributeName: string;
+    attributeValue: string;
+    quantity: number;
+    revenue: string;
+  }>;
+  modifierOptions: Array<{
+    modifierGroupId: string | null;
+    modifierOptionId: string | null;
+    groupName: string;
+    optionName: string;
+    selectedQuantity: number;
+    additionalRevenue: string;
+  }>;
+  legacy: {
+    linesWithoutPriceBreakdown: number;
+    attributeSnapshotsWithoutIds: number;
+    modifierSelectionsWithoutIds: number;
+  };
 }
 
 export interface UpdateStorefrontOrderStatusRequest {
@@ -237,10 +350,12 @@ export interface CatalogProductFields {
   primaryImageAssetId?: string | undefined;
   categoryIds: string[];
   modifierGroups?: CatalogProductModifierGroupFields[] | undefined;
+  modifierGroupAssignments?: CatalogProductModifierGroupAssignmentFields[] | undefined;
   variants?: CatalogProductVariantFields[] | undefined;
 }
 
 export interface CatalogProductVariantFields {
+  id?: string | undefined;
   name: string;
   sku?: string | undefined;
   barcode?: string | undefined;
@@ -248,6 +363,12 @@ export interface CatalogProductVariantFields {
   stockQuantity?: number | null | undefined;
   availability: CatalogAvailability;
   position: number;
+  attributes?: Array<{
+    attributeId?: string | undefined;
+    valueId?: string | undefined;
+    name: string;
+    value: string;
+  }> | undefined;
 }
 
 export interface CatalogProductModifierOptionFields {

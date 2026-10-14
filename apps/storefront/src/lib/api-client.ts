@@ -16,8 +16,16 @@ function getApiBaseUrl(): string {
   return value;
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const response = await fetch(new URL(path.replace(/^\//, ''), `${getApiBaseUrl()}/`));
+export async function apiGet<T>(
+  path: string,
+  options: { revalidate?: number; tags?: string[] } = {},
+): Promise<T> {
+  const response = await fetch(new URL(path.replace(/^\//, ''), `${getApiBaseUrl()}/`), {
+    next: {
+      revalidate: options.revalidate ?? 300,
+      ...(options.tags ? { tags: options.tags } : {}),
+    },
+  });
   if (!response.ok) {
     throw new ApiError(`API request failed with status ${response.status}.`, response.status);
   }

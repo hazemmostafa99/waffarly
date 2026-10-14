@@ -4,6 +4,7 @@ import { it } from 'node:test';
 import { config } from 'dotenv';
 import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
 import type { PrismaService } from '../src/infrastructure/database/prisma.service.js';
+import { ModifierGroupService } from '../src/modules/catalog/modifier-group.service.js';
 import { ProductService } from '../src/modules/catalog/product.service.js';
 
 config({ path: new URL('../../../.env', import.meta.url), quiet: true });
@@ -11,7 +12,7 @@ config({ path: new URL('../../../.env', import.meta.url), quiet: true });
 const databaseUrl = process.env.DATABASE_URL;
 
 it(
-  'persists, updates, validates, and quotes product-local modifier configurations in PostgreSQL',
+  'persists legacy product-local writes as reusable modifier configurations in PostgreSQL',
   { skip: !databaseUrl },
   async () => {
     assert.ok(databaseUrl, 'Configure DATABASE_URL and apply migrations first.');
@@ -63,6 +64,7 @@ it(
           const service = new ProductService({
             product: transaction.product,
             productVariant: transaction.productVariant,
+            modifierGroup: transaction.modifierGroup,
             mediaAsset: transaction.mediaAsset,
             category: transaction.category,
             merchant: transaction.merchant,
@@ -222,6 +224,56 @@ it(
               outOfStockCup,
           );
 
+          const reusedProduct = await service.create(merchant.id, 'catalog-database-test', {
+            name: 'Reusable group target',
+            basePrice: '20.00',
+            availability: 'available',
+            imageAssetIds: [references.media.id],
+            categoryIds: [references.category.id],
+          });
+          const attachedProduct = await service.attachModifierGroup(
+            merchant.id,
+            'catalog-database-test',
+            reusedProduct.id,
+            reusedProduct.revision,
+            {
+              modifierGroupId: sizeGroup.modifierGroupId,
+              selectionMode: 'single',
+              minSelections: 1,
+              maxSelections: 1,
+              position: 0,
+              options: sizeGroup.options.map((option) => ({
+                optionId: option.id,
+                priceAdjustment: option.priceAdjustment,
+                defaultSelected: false,
+              })),
+            },
+          );
+          assert.equal(attachedProduct.modifierGroups.length, 1);
+          assert.equal(attachedProduct.modifierGroups[0]!.modifierGroupId, sizeGroup.modifierGroupId);
+          const modifierGroups = new ModifierGroupService({
+            modifierGroup: transaction.modifierGroup,
+            productModifierGroupAssignment: transaction.productModifierGroupAssignment,
+            $transaction: async (callback: (tx: typeof transaction) => Promise<unknown>) =>
+              callback(transaction),
+          } as unknown as PrismaService);
+          await assert.rejects(
+            modifierGroups.update(merchant.id, sizeGroup.modifierGroupId, {
+              revision: 1,
+              name: 'Changed Size',
+            }),
+            /Detach this modifier group from every product/i,
+          );
+          await service.detachModifierGroup(
+            merchant.id,
+            'catalog-database-test',
+            reusedProduct.id,
+            attachedProduct.modifierGroups[0]!.id,
+            attachedProduct.revision,
+          );
+          const firstProductQuoteAfterDetach = await service.quote(firstProduct.id);
+          assert.equal(firstProductQuoteAfterDetach.totalPrice, '135.45');
+
           const defaultQuote = await service.quote(firstProduct.id);
           assert.equal(defaultQuote.productRevision, 1);
           assert.equal(defaultQuote.basePrice, '100.00');
@@ -230,11 +282,13 @@ it(
           assert.deepEqual(defaultQuote.selections, [
             {
               groupId: sizeGroup.id,
+              modifierGroupId: sizeGroup.modifierGroupId,
               optionIds: [largeOption.id],
               priceAdjustment: '25.35',
             },
             {
               groupId: extrasGroup.id,
+              modifierGroupId: extrasGroup.modifierGroupId,
               optionIds: [cheeseOption.id],
               priceAdjustment: '10.10',
             },
@@ -394,7 +448,8 @@ it(
           await transaction.$executeRawUnsafe('SAVEPOINT invalid_modifier_price');
           await assert.rejects(
             transaction.$executeRawUnsafe(
-              'UPDATE "product_modifier_options" SET "priceAdjustment" = -1 WHERE "id" = $1::uuid',
+              'UPDATE "product_modifier_group_assignment_options" SET "priceAdjustment" = -1 WHERE "assignmentId" = $1::uuid AND "optionId" = $2::uuid',
+              updated.modifierGroups[0]!.id,
               updated.modifierGroups[0]!.options[0]!.id,
             ),
           );

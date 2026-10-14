@@ -16,10 +16,10 @@
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--foreground);
   --color-muted: var(--secondary);
-  --color-muted-foreground: #64746c;
+  --color-muted-foreground: var(--muted-foreground, #64746c);
   --color-accent: var(--accent, #e8f2ec);
   --color-accent-foreground: var(--primary);
-  --color-destructive: #b42318;
+  --color-destructive: var(--destructive, #b42318);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);
@@ -45,9 +45,39 @@
   --color-waffarly-info: #2168c8;
   --color-waffarly-input: #f7f9fb;
   --font-admin: Cairo, 'Noto Sans Arabic UI', 'Noto Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif;
+  --color-store-primary: var(--storefront-primary);
+  --color-store-primary-dark: var(--storefront-primary-dark);
+  --color-store-primary-deep: var(--storefront-primary-deep);
+  --color-store-gold: var(--storefront-gold);
+  --color-store-gold-muted: var(--storefront-gold-muted);
+  --color-store-cream: var(--storefront-cream);
+  --color-store-page: var(--storefront-page);
+  --color-store-surface: var(--storefront-surface);
+  --color-store-ink: var(--storefront-ink);
+  --color-store-secondary: var(--storefront-secondary);
+  --color-store-muted: var(--storefront-secondary);
+  --color-store-subtle: var(--storefront-muted);
+  --color-store-border: var(--storefront-border);
+  --color-store-error: var(--storefront-error);
+  --color-store-accent: var(--storefront-primary);
+  --font-heading: var(--font-cairo), 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+  --font-body: var(--font-tajawal), 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
 }
 
 :root {
+  --storefront-primary: #0f705a;
+  --storefront-primary-dark: #0a5645;
+  --storefront-primary-deep: #063d31;
+  --storefront-gold: #f5b544;
+  --storefront-gold-muted: #dba13d;
+  --storefront-cream: #fff8f0;
+  --storefront-page: #faf8f4;
+  --storefront-surface: #ffffff;
+  --storefront-ink: #172330;
+  --storefront-secondary: #5c667a;
+  --storefront-muted: #8a93a6;
+  --storefront-border: #eae6de;
+  --storefront-error: #d94c4e;
   --background: #f5f7f5;
   --foreground: #1b3027;
   --card: #fff;
@@ -58,6 +88,22 @@
   --info: #2168c8;
   --border: #dce5df;
   --radius: 0.75rem;
+}
+
+.storefront-theme {
+  --background: var(--storefront-page);
+  --foreground: var(--storefront-ink);
+  --muted-foreground: var(--storefront-secondary);
+  --card: var(--storefront-surface);
+  --primary: var(--storefront-primary);
+  --destructive: var(--storefront-error);
+  --secondary: var(--storefront-cream);
+  --accent: var(--storefront-cream);
+  --success: var(--storefront-primary);
+  --warning: var(--storefront-gold-muted);
+  --info: var(--storefront-primary);
+  --border: var(--storefront-border);
+  --ring: var(--storefront-primary);
 }
 
 @layer base {
@@ -71,7 +117,7 @@
     font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
   }
   :focus-visible {
-    outline: 2px solid #54886a;
+    outline: 2px solid var(--ring, #54886a);
     outline-offset: 3px;
   }
   [dir='rtl'] {

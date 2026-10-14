@@ -43,6 +43,7 @@ This section defines the intended product direction, **not** a final agreement t
 | DEC-007 | Initial market | **Egypt**; language, tax, local delivery, and checkout rules remain open. |
 | DEC-008 | Merchant commercial model | **Monthly subscription** at launch; prices, collection/activation, and lifecycle remain open. |
 | DEC-009 | Payment integration | **No payment gateway/provider integration** in the initial release; **no customer payment method is implied**. |
+| DEC-010 | Product Builder capability | The confirmed Builder supports simple products, optional priced variants with optional SKU/barcode/stock, generic variant attributes, reusable modifier definitions with product assignments, and server-authoritative configuration quotes. POS integration and wider inventory rules remain separate decisions. |
 | Plans & Subscriptions PS-D02 | Launch plan catalog | **Multiple monthly subscription plans** for restaurants, confirmed by the owner on 2026-10-13 in [Plans & Subscriptions discovery](docs/features/super-admin/plans-subscriptions/OVERVIEW.md). Exact count, names, differences, prices, currency/tax treatment, and catalog governance remain **[OPEN]**; implementation is not authorized by this decision. |
 
 ### 2.3 Explicit non-assumptions
@@ -74,7 +75,7 @@ These flows show what needs to be considered together. Only the steps explicitly
 
 1. Merchant creates an item with name, description, price and other required core data (**fields to finalize**).
 2. Merchant optionally configures sizes/variants, modifier groups, and modifier options (e.g. sauces, toppings, additions).
-3. Merchant defines allowed choices and any price changes; exact configurable rules **[OPEN]**.
+3. Merchant defines allowed choices and assignment-specific fixed price changes under the confirmed V1 Product Builder rules; conditional/contextual pricing behavior remains **[OPEN]**.
 4. The public storefront displays the supported configuration.
 5. Backend validates options and calculates authoritative item totals **[BASELINE]**.
 
@@ -132,7 +133,7 @@ These flows show what needs to be considered together. Only the steps explicitly
 | MER-02 | Branch profile | Restaurant location/operating data needed for ordering; exact fields open. | **[PROPOSED]** |
 | MER-03 | Staff assignment | Invite/create staff, assign branch/permission as approved. | **[PROPOSED]** |
 | CAT-01 | Menu/catalog CRUD | Categories, products, pricing and visibility. | **[PROPOSED]** |
-| CAT-02 | Dynamic Product Builder | Configurable products, variants/sizes, modifier groups/options; exact supported rules open. | **[PROPOSED MVP]**; **[CONFIRMED platform capability]** |
+| CAT-02 | Dynamic Product Builder | Simple products; optional priced variants and generic attributes; reusable modifier definitions with product-specific constraints/pricing; authoritative quote and order snapshots. | **[CONFIRMED platform capability]**; release sequencing remains subject to the overall MVP decision |
 | CAT-03 | Server-side product validation and pricing | Reject invalid choices; calculate totals from server-owned catalog/prices. | **[BASELINE]** |
 | WEB-01 | Public restaurant storefront | Display restaurant menu and configurable products using **Next.js [CONFIRMED]**. | **[PROPOSED MVP]** |
 | WEB-02 | Cart and checkout | Capture customer order using approved fulfillment and payment/collection approach. | **[PROPOSED]**, checkout rules **[OPEN]** |
@@ -172,7 +173,7 @@ Items below are **not silently included**. Some are explicitly deferred; others 
 | Recipe/ingredient-level inventory and purchasing | **[OPEN; not assumed included]** | Inventory granularity is an unanswered decision. |
 | Delivery partner integrations / dispatching | **[OPEN; not assumed included]** | Customer fulfillment mode remains open. |
 | Custom domain, theme marketplace, advanced PWA | **[OPEN; not assumed included]** | Minimal public storefront still needs an approved address/branding decision. |
-| Advanced product rules: bundles, conditional modifiers, reusable groups | **[OPEN; not assumed included]** | Decide minimum Builder rules. |
+| Advanced product rules: bundles and conditional modifiers | **[OPEN; not assumed included]** | Reusable Modifier Groups are confirmed for the Product Builder foundation; bundles and conditional behavior remain separate decisions. |
 
 ---
 
@@ -297,7 +298,6 @@ The following questions must be answered before this scope can be treated as com
 | P0 | MVP-Q05 | How is the **correct branch chosen** for an online order? One branch, customer selection, location/rules, or another mechanism? | Tenant/branch routing, checkout |
 | P0 | MVP-Q06 | How are monthly plans **assigned, activated, renewed and expired**, with no payment provider? | Subscription and entitlement logic |
 | P1 | MVP-Q07 | How do restaurants join: self-registration + admin approval, invitation, or admin creation? | Identity, onboarding, admin flows |
-| P1 | MVP-Q08 | What is the minimum Product Builder at launch: sizes/variants, configurable single/multi-choice modifiers, min/max, stock effects? | Catalog ERD, frontend builder |
 | P1 | MVP-Q09 | Is restaurant inventory required at launch? If yes, finished items, ingredients/recipes, or both? | Stock and purchase operations |
 | P1 | MVP-Q10 | Is POS a separate React app or part of merchant dashboard? How many active cashier devices may see branch orders? | Frontend deployments, sessions, realtime |
 | P1 | MVP-Q11 | Which languages, restaurant URLs, branding controls, and customer account model are required? | Storefront design and SEO |
@@ -374,7 +374,7 @@ For production launch, additionally agree on and verify backups, recovery, monit
 - [x] No payment gateway/provider integration is included initially.
 - [ ] Product owner chooses which **[PROPOSED]** features are in release one.
 - [ ] Launch-blocking checkout, kitchen, routing, rejection, and subscription questions answered.
-- [ ] Initial Product Builder rules and merchant authorization scope approved.
+- [x] Initial Product Builder rules and existing merchant-owner authorization scope approved/documented.
 - [ ] Final acceptance criteria and first release backlog approved.
 
 **MVP approval status:** **Not yet approved**. All original confirmed decisions are preserved; unconfirmed details are intentionally still open.

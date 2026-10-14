@@ -1,0 +1,59 @@
+-- DropIndex
+DROP INDEX "storefront_order_line_selections_modifierOptionId_idx";
+
+-- AlterTable
+ALTER TABLE "modifier_groups" ALTER COLUMN "updatedAt" DROP DEFAULT;
+
+-- RenameForeignKey
+ALTER TABLE "product_modifier_group_assignment_options" RENAME CONSTRAINT "product_modifier_group_assignment_options_assignment_fkey" TO "product_modifier_group_assignment_options_assignmentId_mod_fkey";
+
+-- RenameForeignKey
+ALTER TABLE "product_modifier_group_assignment_options" RENAME CONSTRAINT "product_modifier_group_assignment_options_option_fkey" TO "product_modifier_group_assignment_options_optionId_modifie_fkey";
+
+-- RenameForeignKey
+ALTER TABLE "product_modifier_group_assignments" RENAME CONSTRAINT "product_modifier_group_assignments_group_merchant_fkey" TO "product_modifier_group_assignments_modifierGroupId_merchan_fkey";
+
+-- RenameForeignKey
+ALTER TABLE "product_modifier_group_assignments" RENAME CONSTRAINT "product_modifier_group_assignments_product_merchant_fkey" TO "product_modifier_group_assignments_productId_merchantId_fkey";
+
+-- RenameForeignKey
+ALTER TABLE "product_variant_attribute_selections" RENAME CONSTRAINT "product_variant_attribute_selections_attribute_product_merchant" TO "product_variant_attribute_selections_attributeId_productId_fkey";
+
+-- RenameForeignKey
+ALTER TABLE "product_variant_attribute_selections" RENAME CONSTRAINT "product_variant_attribute_selections_value_attribute_product_me" TO "product_variant_attribute_selections_valueId_attributeId_p_fkey";
+
+-- RenameForeignKey
+ALTER TABLE "product_variant_attribute_selections" RENAME CONSTRAINT "product_variant_attribute_selections_variant_product_merchant_f" TO "product_variant_attribute_selections_variantId_productId_m_fkey";
+
+-- RenameForeignKey
+ALTER TABLE "product_variant_attribute_values" RENAME CONSTRAINT "product_variant_attribute_values_attribute_product_merchant_fke" TO "product_variant_attribute_values_attributeId_productId_mer_fkey";
+
+-- RenameForeignKey
+ALTER TABLE "product_variant_attributes" RENAME CONSTRAINT "product_variant_attributes_product_merchant_fkey" TO "product_variant_attributes_productId_merchantId_fkey";
+
+-- RenameIndex
+ALTER INDEX "product_modifier_group_assignments_id_group_merchant_key" RENAME TO "product_modifier_group_assignments_id_modifierGroupId_merch_key";
+
+-- RenameIndex
+ALTER INDEX "product_modifier_group_assignments_product_group_key" RENAME TO "product_modifier_group_assignments_productId_modifierGroupI_key";
+
+-- RenameIndex
+ALTER INDEX "product_variant_attribute_selections_merchant_attribute_value_i" RENAME TO "product_variant_attribute_selections_merchantId_attributeId_idx";
+
+-- RenameIndex
+ALTER INDEX "product_variant_attribute_selections_variant_value_key" RENAME TO "product_variant_attribute_selections_variantId_valueId_key";
+
+-- RenameIndex
+ALTER INDEX "product_variant_attribute_values_id_attribute_product_merchant_" RENAME TO "product_variant_attribute_values_id_attributeId_productId_m_key";
+
+-- RenameIndex
+ALTER INDEX "product_variant_attributes_id_product_merchant_key" RENAME TO "product_variant_attributes_id_productId_merchantId_key";
+
+-- RenameIndex
+ALTER INDEX "storefront_order_line_selections_orderLineId_groupPosition_opti" RENAME TO "storefront_order_line_selections_orderLineId_groupPosition__idx";
+
+-- RenameIndex
+ALTER INDEX "storefront_order_line_variant_attributes_attribute_value_idx" RENAME TO "storefront_order_line_variant_attributes_attributeId_valueI_idx";
+
+-- RenameIndex
+ALTER INDEX "storefront_order_line_variant_attributes_line_position_idx" RENAME TO "storefront_order_line_variant_attributes_orderLineId_positi_idx";

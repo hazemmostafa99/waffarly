@@ -72,7 +72,13 @@ it(
             where: { merchantId: merchant.id, name: 'برجر لحم كلاسيك' },
             include: {
               variants: { orderBy: { position: 'asc' } },
-              modifierGroups: { orderBy: { position: 'asc' }, include: { options: { orderBy: { position: 'asc' } } } },
+              modifierGroups: {
+                orderBy: { position: 'asc' },
+                include: {
+                  modifierGroup: { include: { options: { orderBy: { position: 'asc' } } } },
+                  options: { include: { option: true } },
+                },
+              },
             },
           });
           const ownerCola = await transaction.product.findFirstOrThrow({
@@ -81,7 +87,7 @@ it(
           });
           const regularBun = ownerClassic.variants.find((variant) => variant.name === 'خبز عادي');
           const zeroSugar = ownerCola.variants.find((variant) => variant.name === 'علبة بدون سكر');
-          const sauces = ownerClassic.modifierGroups.find((group) => group.name === 'الصلصات');
+          const sauces = ownerClassic.modifierGroups.find((group) => group.maxSelections === 2);
           assert.ok(regularBun && zeroSugar && sauces);
 
           const quoted = await catalogService.quote(ownerClassic.id, [], regularBun.id, merchant.storefrontSlug);
@@ -93,7 +99,7 @@ it(
           await assert.rejects(
             catalogService.quote(
               ownerClassic.id,
-              [{ groupId: sauces.id, optionIds: sauces.options.map((option) => option.id) }],
+              [{ groupId: sauces.id, optionIds: sauces.options.map((option) => option.option.id) }],
               regularBun.id,
               merchant.storefrontSlug,
             ),

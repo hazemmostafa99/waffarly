@@ -1,6 +1,6 @@
 # Catalog & Dynamic Product Builder Overview
 
-**Status:** Backend Catalog, local-disk media, Product Builder, sellable variants, public storefront, checkout MVP, stock reservation, and owner order inbox implemented
+**Status:** Backend Catalog, local-disk media, Product Builder, structured sellable variants, reusable modifiers, public storefront, checkout MVP, order snapshots/report query, and owner inbox implemented
 
 **Last updated:** 2026-10-14
 **Scope:** Shared Product Core, restaurant-first implementation, future cross-activity extensibility  
@@ -16,8 +16,8 @@ The first implementation is intended to focus on restaurants in Egypt. That deli
 
 The initial restaurant-first catalog and storefront checkout slice is implemented; broader commerce capabilities remain outside it:
 
-- The Catalog NestJS module exposes owner-scoped Media, Category, and Product APIs, a revision-tagged configuration quote, a public merchant catalog, and public order creation at `POST /catalog/stores/:slug/orders`. Checkout re-quotes each item, snapshots names/options/prices, and atomically reserves tracked variant stock. Owner order routes list orders and accept/reject pending orders; rejection restores the reservation. Variant-dimension generation, branch pricing, a separate Inventory/Pricing domain, online payments, and POS order selection remain outside the MVP.
-- The Prisma schema contains tenant-owned catalog models plus storefront order, line, and selection snapshots. Historical lines do not depend on mutable product rows; products with order history cannot be permanently deleted.
+- The Catalog NestJS module exposes owner-scoped Media, Category, Product, and reusable Modifier Group APIs, a revision-tagged configuration quote, public catalog/order routes, and the accepted-order product-configuration report. Checkout re-quotes each item, snapshots names/IDs/prices, and atomically reserves tracked variant stock. Owner order routes list orders and accept/reject pending orders; rejection restores the reservation. Automatic variant-combination generation, branch pricing, a separate Inventory/Pricing domain, online payments, and POS order selection remain outside the MVP.
+- The Prisma schema contains tenant-owned reusable modifier definitions and assignments, generic variant attributes, plus storefront order, line, and selection snapshots. Historical lines do not depend on mutable product rows; products with order history cannot be permanently deleted.
 - The Merchant Dashboard exposes the owner Catalog workspace, reusable Product Builder routes at `/products/new` and `/products/:id/edit`, and the live storefront order inbox at `/orders`.
 - The public Next.js application resolves merchant catalogs at `/s/:slug`, supports configuration/quoting, a local basket, and pickup/delivery checkout. It does not collect online payment.
 - The POS application is a placeholder workspace with no sales or catalog behavior.
@@ -98,8 +98,8 @@ The temporary IDs below avoid conflicts with the existing parent groups:
 | ------------ | ---------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **CAT-F01**  | Categories                         | **Initial rules CONFIRMED and implemented**                                                     | Tenant-owned hierarchical organization and navigation of products. Exactly one required image, availability, archival, ordering, depth, and permission details are documented in the feature specification. Categories do not own price or stock.               |
 | **CAT-F02**  | Products                           | **Product Core rules CONFIRMED and implemented**                                                | Product identity, basic merchant-authored content, and lifecycle entry point. Required fields, multi-image handling, operational availability, deletion/archive semantics, and tenant boundaries are implemented or documented.                                 |
-| **CAT-F03**  | Variants & Attributes              | **Flat sellable variant MVP CONFIRMED and implemented**; attributes/combination generation OPEN | Explicit product-local variants have their own price, optional merchant-unique SKU/barcode and stock count, availability, and order. Attribute definitions and generated combinations remain OPEN.                                                              |
-| **CAT-F04**  | Modifier Groups & Options          | **Restaurant MVP rules CONFIRMED and implemented**                                              | Product-local single/multiple choice groups with explicit min/max selections, optional defaults, fixed EGP adjustments, and ordering. Nested/conditional groups, reuse, modifier stock, and bundles are deferred.                                               |
+| **CAT-F03**  | Variants & Attributes              | **Optional sellable variants and generic structured attributes CONFIRMED and implemented**        | Variants have independent prices and optional SKU, barcode, and stock. Generic attribute definitions/values and variant selections are supported; automatic combination generation remains deferred.                                      |
+| **CAT-F04**  | Modifier Groups & Options          | **Reusable tenant-owned groups, assignments, and V1 safety boundaries implemented**              | Shared group/option definitions attach through product-specific assignments with selection constraints and assignment-level price/default settings. Conditional groups, modifier stock, and bundles remain deferred.                        |
 | **CAT-F05**  | Selling Units                      | **Piece-only restaurant MVP CONFIRMED and implemented**                                         | Products are sold per piece. Fractional quantities, unit catalog governance, conversions, packaging, and measured-at-sale workflows remain deferred.                                                                                                            |
 | **CAT-F06**  | Pricing & Configuration Validation | Basic variant/modifier quote **IMPLEMENTED**; broader rules/domain boundary **OPEN**            | The Catalog exposes a revision-tagged EGP quote; checkout re-quotes and snapshots accepted configurations. Discounts, taxes, delivery fees, branch/channel context, and a separate Pricing domain remain deferred.                                            |
 | **CAT-F07**  | Product Availability & Visibility  | **Available/Unavailable states CONFIRMED and implemented; broader publication deferred**       | Public projection includes non-archived available products and filters unavailable variants. Scheduling, branch visibility, and general Inventory-derived availability remain outside the current slice.                                                     |
@@ -136,7 +136,7 @@ These mappings preserve existing references while allowing one independently doc
 
 ### 7.1 Restaurant-first MVP direction
 
-The first coherent restaurant Catalog slice covers basic products, categories, price, availability, and the approved minimal modifier model. A size is a Variant only when it needs its own SKU, stock, barcode, or stable sellable identity; otherwise it is a Modifier Option. The word “size” alone does not determine the model.
+The first coherent restaurant Catalog slice covers basic products, categories, price, availability, optional sellable Variants, and reusable Modifier Groups. A size may be a Variant when it needs a distinct sellable price or identity; SKU, barcode, and stock remain optional. A no-cost customer choice may instead be a Modifier Option. The word “size” alone does not determine the model.
 
 The following are not approved merely by this overview:
 
@@ -205,9 +205,9 @@ If one of the four scenarios later requires a core change, the feature specifica
 - Material Catalog and price changes may require attributable audit events. Exact audit scope and retention remain OPEN.
 - JSONB, if used, requires server validation, bounded size/depth, an explicit schema/version strategy, and a rule forbidding critical money, stock history, tenant ownership, or authorization state from living only in unstructured data.
 
-## 11. Open Decisions Required Before Prisma Schema Design
+## 11. Remaining Open Decisions Before Further Catalog Schema Work
 
-No Product Core Prisma design should be approved until the decisions relevant to the selected feature are resolved.
+The Product Builder decisions below are resolved for the current implementation. The remaining questions concern broader product lifecycle, units, pricing context, and future Catalog extensions.
 
 ### Product identity and lifecycle
 
@@ -216,22 +216,17 @@ No Product Core Prisma design should be approved until the decisions relevant to
 3. Does Arabic-first content require Arabic-script validation, or may brand/product names contain Latin characters?
 4. How should equal Product/Category links affect storefront grouping, and how many hierarchy levels are needed initially?
 
-### Variants and attributes
+### Confirmed Product Builder rules
 
-5. Which condition makes a choice a Variant: independent SKU, price, barcode, stock, image, or explicit merchant designation?
-6. Must the MVP generate combinations from dimensions, or will merchants create only the sellable Variants they need?
-7. Are descriptive attributes required in the restaurant MVP, or should they remain outside the first implementation?
-
-### Modifiers
-
-8. Does the restaurant MVP require single-choice and multiple-choice groups, and which min/max/default rules are essential?
-9. Can an option be selected more than once? Can groups/options be reused across products, or should the first version keep them product-local?
-10. Are conditional/nested modifiers, bundles, and modifier stock effects explicitly deferred?
+- Variants are optional sellable records with their own price; SKU, barcode, and stock are optional.
+- Variant Attributes are generic name/value dimensions, and variants are created explicitly without automatic combinations.
+- Modifier Groups/Options are reusable within a merchant and attached with product-specific assignments and min/max/default rules.
+- Conditional/nested modifiers, bundles, option quantities, and modifier stock effects are deferred.
 
 ### Selling units and quantity
 
-11. Is the restaurant MVP piece-only, or must it support another selling unit immediately?
-12. Who governs allowed unit definitions, precision, minimum quantity, and increments?
+1. Is the restaurant MVP piece-only beyond the current Product Builder slice, or must it support another selling unit?
+2. Who governs allowed unit definitions, precision, minimum quantity, and increments?
 
 ### Pricing boundary
 
@@ -288,12 +283,12 @@ This is a discovery and implementation sequence. The first backend slice covers 
 
 1. **CAT-F02 — Products:** define basic product identity, ownership, lifecycle, actors, required restaurant fields, and security boundaries.
 2. **CAT-F01 — Categories:** define organization after the product boundary is understood; category decisions should not block a minimal standalone product unless the owner makes categories mandatory.
-3. **CAT-F04 — Modifier Groups & Options:** minimum restaurant configuration rules are approved and implemented in the Product Builder.
+3. **CAT-F04 — Modifier Groups & Options:** reusable tenant-owned definitions and product assignments are implemented; shared-definition edits are blocked while assigned.
 4. **CAT-F06 — Pricing & Configuration Validation:** the basic configuration quote is implemented; expand only after approving contextual pricing rules.
 5. **CAT-F07 — Product Availability & Visibility:** the public projection exposes available, non-archived products; define broader publication, scheduling, and branch visibility separately.
 6. **CAT-F08 — Storefront Product Configurator:** the restaurant MVP is implemented at `/s/:slug`; POS remains a separate channel.
 7. **CAT-F09 — Storefront Checkout & Orders:** the pickup/delivery, tracked-variant reservation, and owner accept/reject MVP is implemented; payments, fees, notifications, and fulfillment stages remain deferred.
-8. **CAT-F03 — Variants & Attributes:** explicit sellable variants are implemented; analyze attribute definitions and combination generation separately before expanding this model.
+8. **CAT-F03 — Variants & Attributes:** explicit sellable variants and generic structured attribute selections are implemented without automatic combination generation.
 9. **CAT-F05 — Selling Units:** keep the restaurant MVP piece-only if approved; analyze broader units before any weighted-product implementation.
 
 General Inventory, POS sales, restaurant preparation extensions, branch-specific rules, and future-activity features follow their own discovery and approval tracks. Checkout uses only the existing optional per-variant quantity as a reservation counter; it does not provide general stock movements or replenishment.
@@ -353,5 +348,10 @@ The first analysis should remain deliberately small: tenant-owned restaurant pro
 | CAT-D029 | 2026-10-13 | CONFIRMED | The same media asset may be reused by more than one Product or Category.                                                                  |
 | CAT-D030 | 2026-10-13 | CONFIRMED | If a product's primary image is removed, the system automatically selects another remaining image as primary.                             |
 | CAT-D031 | 2026-10-13 | CONFIRMED | Product media must enforce approved maximum count, file size, and format constraints; exact limits remain OPEN.                           |
+| CAT-D032 | 2026-10-14 | CONFIRMED | Variants are optional sellable identities with their own price; SKU, barcode, and stock are optional.                                     |
+| CAT-D033 | 2026-10-14 | CONFIRMED | Variant Attributes are generic name/value dimensions; merchants explicitly create sellable variants and no combinations are generated.  |
+| CAT-D034 | 2026-10-14 | CONFIRMED | Modifier Groups/Options are tenant-owned reusable definitions attached through product-specific assignments.                            |
+| CAT-D035 | 2026-10-14 | V1 IMPLEMENTATION | Modifier fixed adjustments/defaults are assignment-specific; existing product-local values are preserved on their original assignment. |
+| CAT-D036 | 2026-10-14 | CONFIRMED | Orders snapshot stable modifier/attribute identities and prices; accepted storefront orders can be aggregated from those snapshots.        |
 
-These decisions approve the documented business behavior, including the minimum product-local Modifier Groups & Options and piece-only Selling Unit MVP. They do not authorize deferred Variants, advanced modifier behavior, authoritative order pricing, Inventory, Storefront, POS, or future-activity implementations.
+These decisions approve optional sellable Variants, generic Variant Attributes, reusable modifier definitions/assignments, server-owned configuration pricing, structured order snapshots, and piece-only Selling Unit behavior. They do not authorize a full analytics dashboard, branch routing, POS configuration, inventory ledger, conditional modifiers, or future-activity implementations.

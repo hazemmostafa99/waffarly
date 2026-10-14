@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { cookies } from 'next/headers';
-import { LocaleProvider, WorkspaceChrome } from '@waffarly/ui';
+import { LocaleProvider } from '@waffarly/ui';
+import { SiteChrome } from './site-chrome';
 import '@waffarly/ui/theme.css';
 import './globals.css';
 import '@waffarly/ui/storefront-design.css';
@@ -17,7 +18,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     <html lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <body>
         <LocaleProvider initialLocale={locale}>
-          <WorkspaceChrome>{children}</WorkspaceChrome>
+          <SiteChrome>{children}</SiteChrome>
         </LocaleProvider>
       </body>
     </html>

@@ -4,7 +4,14 @@ const SEED_ACTOR = 'waffarly-catalog-seed';
 
 type CatalogSeedClient = Pick<
   PrismaClient,
-  'mediaAsset' | 'category' | 'product' | 'productModifierGroup' | 'productModifierOption' | 'productVariant'
+  | 'mediaAsset'
+  | 'category'
+  | 'product'
+  | 'modifierGroup'
+  | 'modifierOption'
+  | 'productModifierGroupAssignment'
+  | 'productModifierGroupAssignmentOption'
+  | 'productVariant'
 >;
 
 type SeedImage = {
@@ -544,7 +551,29 @@ export async function seedRestaurantCatalog(
       select: {
         id: true,
         name: true,
-        modifierGroups: { select: { id: true, name: true, options: { select: { id: true, name: true } } } },
+        modifierGroups: {
+          select: {
+            id: true,
+            selectionMode: true,
+            minSelections: true,
+            maxSelections: true,
+            position: true,
+            modifierGroup: {
+              select: {
+                id: true,
+                name: true,
+                options: { select: { id: true, name: true, position: true } },
+              },
+            },
+            options: {
+              select: {
+                optionId: true,
+                priceAdjustment: true,
+                defaultSelected: true,
+              },
+            },
+          },
+        },
         variants: { select: { id: true, name: true } },
       },
     });
@@ -562,21 +591,44 @@ export async function seedRestaurantCatalog(
         });
       }
       for (const group of product.modifiers ?? []) {
-        const persistedGroup = existing.modifierGroups.find((item) => item.name === group.name);
+        const persistedAssignment = existing.modifierGroups.find(
+          (item) => item.modifierGroup.name === group.name,
+        );
+        const persistedGroup = persistedAssignment?.modifierGroup;
         if (persistedGroup) {
-          await prisma.productModifierGroup.update({
+          await prisma.modifierGroup.update({
             where: { id: persistedGroup.id },
             data: {
               name: inArabic(group.name),
               ...(group.description ? { description: inArabic(group.description) } : {}),
             },
           });
+          await prisma.productModifierGroupAssignment.update({
+            where: { id: persistedAssignment!.id },
+            data: {
+              selectionMode: group.selectionMode,
+              minSelections: group.minSelections,
+              maxSelections: group.maxSelections,
+            },
+          });
           for (const option of group.options) {
             const persistedOption = persistedGroup.options.find((item) => item.name === option.name);
             if (persistedOption) {
-              await prisma.productModifierOption.update({
+              await prisma.modifierOption.update({
                 where: { id: persistedOption.id },
                 data: { name: inArabic(option.name) },
+              });
+              await prisma.productModifierGroupAssignmentOption.update({
+                where: {
+                  assignmentId_optionId: {
+                    assignmentId: persistedAssignment!.id,
+                    optionId: persistedOption.id,
+                  },
+                },
+                data: {
+                  priceAdjustment: option.priceAdjustment,
+                  defaultSelected: option.defaultSelected ?? false,
+                },
               });
             }
           }
@@ -600,7 +652,7 @@ export async function seedRestaurantCatalog(
       if (!category) throw new Error(`Missing seed category "${name}".`);
       return category.id;
     });
-    await prisma.product.create({
+    const createdProduct = await prisma.product.create({
       data: {
         merchantId,
         name: productName,
@@ -621,26 +673,6 @@ export async function seedRestaurantCatalog(
             category: { connect: { id_merchantId: { id: categoryId, merchantId } } },
           })),
         },
-        ...(product.modifiers
-          ? { modifierGroups: {
-              create: product.modifiers.map((group, groupPosition) => ({
-                name: inArabic(group.name),
-                ...(group.description ? { description: inArabic(group.description) } : {}),
-                selectionMode: group.selectionMode,
-                minSelections: group.minSelections,
-                maxSelections: group.maxSelections,
-                position: groupPosition,
-                options: {
-                  create: group.options.map((option, optionPosition) => ({
-                    name: inArabic(option.name),
-                    priceAdjustment: option.priceAdjustment,
-                    defaultSelected: option.defaultSelected ?? false,
-                    position: optionPosition,
-                  })),
-                },
-              })),
-            } }
-          : {}),
         ...(product.variants
           ? { variants: {
               create: product.variants.map((variant, position) => ({
@@ -655,7 +687,50 @@ export async function seedRestaurantCatalog(
             } }
           : {}),
       },
+      select: { id: true },
     });
+    for (const [groupPosition, group] of (product.modifiers ?? []).entries()) {
+      const modifierGroup = await prisma.modifierGroup.create({
+        data: {
+          merchantId,
+          name: inArabic(group.name),
+          ...(group.description ? { description: inArabic(group.description) } : {}),
+          options: {
+            create: group.options.map((option, position) => ({
+              name: inArabic(option.name),
+              position,
+            })),
+          },
+        },
+        include: { options: { orderBy: { position: 'asc' } } },
+      });
+      const assignment = await prisma.productModifierGroupAssignment.create({
+        data: {
+          merchantId,
+          productId: createdProduct.id,
+          modifierGroupId: modifierGroup.id,
+          selectionMode: group.selectionMode,
+          minSelections: group.minSelections,
+          maxSelections: group.maxSelections,
+          position: groupPosition,
+        },
+        select: { id: true },
+      });
+      await prisma.productModifierGroupAssignmentOption.createMany({
+        data: modifierGroup.options.map((option, position) => {
+          const seedOption = group.options[position];
+          if (!seedOption) throw new Error(`Missing seed option for ${group.name}.`);
+          return {
+            assignmentId: assignment.id,
+            modifierGroupId: modifierGroup.id,
+            optionId: option.id,
+            merchantId,
+            priceAdjustment: seedOption.priceAdjustment,
+            defaultSelected: seedOption.defaultSelected ?? false,
+          };
+        }),
+      });
+    }
     createdProducts += 1;
   }
 

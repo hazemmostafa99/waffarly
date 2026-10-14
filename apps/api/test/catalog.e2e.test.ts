@@ -15,6 +15,8 @@ import { CategoryController } from '../src/modules/catalog/category.controller.j
 import { CategoryService } from '../src/modules/catalog/category.service.js';
 import { MediaController } from '../src/modules/catalog/media.controller.js';
 import { MediaService } from '../src/modules/catalog/media.service.js';
+import { ModifierGroupController } from '../src/modules/catalog/modifier-group.controller.js';
+import { ModifierGroupService } from '../src/modules/catalog/modifier-group.service.js';
 import {
   ProductController,
   ProductQuoteController,
@@ -37,19 +39,26 @@ describe('catalog owner endpoints', () => {
   let app: INestApplication;
   let authorized: boolean;
   let createdProduct: Record<string, unknown> | undefined;
+  let createdModifierGroup: { merchantId: string; input: unknown } | undefined;
   let quotedProduct:
     | { id: string; variantId?: string; selections: unknown; storefrontSlug?: string }
     | undefined;
+  let attachedModifierGroup: { productId: string; revision: number; assignment: unknown } | undefined;
+  let detachedModifierGroup: { productId: string; assignmentId: string; revision: number } | undefined;
   let publicSlug: string | undefined;
 
   beforeEach(async () => {
     authorized = true;
     createdProduct = undefined;
+    createdModifierGroup = undefined;
     quotedProduct = undefined;
+    attachedModifierGroup = undefined;
+    detachedModifierGroup = undefined;
     publicSlug = undefined;
     const module = await Test.createTestingModule({
       controllers: [
         MediaController,
+        ModifierGroupController,
         CategoryController,
         ProductController,
         ProductQuoteController,
@@ -93,9 +102,40 @@ describe('catalog owner endpoints', () => {
           useValue: { list: async () => [], create: async () => ({ id: 'category' }) },
         },
         {
+          provide: ModifierGroupService,
+          useValue: {
+            list: async () => [],
+            get: async (_merchantId: string, id: string) => ({ id, name: 'Sauces' }),
+            create: async (merchantId: string, input: unknown) => {
+              createdModifierGroup = { merchantId, input };
+              return { id: 'modifier-group', ...(input as Record<string, unknown>) };
+            },
+          },
+        },
+        {
           provide: ProductService,
           useValue: {
             list: async () => [],
+            attachModifierGroup: async (
+              _merchantId: string,
+              _actor: string,
+              productId: string,
+              revision: number,
+              assignment: unknown,
+            ) => {
+              attachedModifierGroup = { productId, revision, assignment };
+              return { id: productId };
+            },
+            detachModifierGroup: async (
+              _merchantId: string,
+              _actor: string,
+              productId: string,
+              assignmentId: string,
+              revision: number,
+            ) => {
+              detachedModifierGroup = { productId, assignmentId, revision };
+              return { id: productId };
+            },
             create: async (_merchantId: string, _actor: string, input: unknown) => {
               createdProduct = input as Record<string, unknown>;
               return { id: 'product', ...createdProduct };
@@ -135,6 +175,32 @@ describe('catalog owner endpoints', () => {
     await request(app.getHttpServer()).get('/owner/catalog/products').expect(401);
     await request(app.getHttpServer()).get('/owner/catalog/categories').expect(401);
     await request(app.getHttpServer()).get('/owner/catalog/media').expect(401);
+    await request(app.getHttpServer()).get('/owner/catalog/modifier-groups').expect(401);
+  });
+
+  it('creates reusable merchant modifier definitions under the owner tenant', async () => {
+    const payload = {
+      name: 'Sauces',
+      description: 'Choose a sauce',
+      options: [
+        { name: 'Mayo', position: 0 },
+        { name: 'BBQ', position: 1 },
+      ],
+    };
+    const response = await request(app.getHttpServer())
+      .post('/owner/catalog/modifier-groups')
+      .send(payload)
+      .expect(201);
+    assert.equal(response.body.id, 'modifier-group');
+    assert.deepEqual(createdModifierGroup, { merchantId: owner.merchantId, input: payload });
+  });
+
+  it('reads one reusable modifier definition through the authenticated owner route', async () => {
+    const id = '33333333-3333-4333-8333-333333333333';
+    const response = await request(app.getHttpServer())
+      .get(`/owner/catalog/modifier-groups/${id}`)
+      .expect(200);
+    assert.equal(response.body.id, id);
   });
 
   it('validates the positive EGP product boundary and forwards tenant-owned input', async () => {
@@ -194,6 +260,69 @@ describe('catalog owner endpoints', () => {
         modifierGroups: [{ ...payload.modifierGroups[0], minSelections: 2 }],
       })
       .expect(400);
+  });
+
+  it('accepts a reusable-group assignment and generic variant attribute values', async () => {
+    const payload = {
+      name: 'Coffee',
+      basePrice: '80.00',
+      availability: 'available',
+      imageAssetIds: ['11111111-1111-4111-8111-111111111111'],
+      categoryIds: ['22222222-2222-4222-8222-222222222222'],
+      modifierGroupAssignments: [
+        {
+          modifierGroupId: '33333333-3333-4333-8333-333333333333',
+          selectionMode: 'single',
+          minSelections: 0,
+          maxSelections: 1,
+          position: 0,
+          options: [
+            {
+              optionId: '44444444-4444-4444-8444-444444444444',
+              priceAdjustment: '5.00',
+              defaultSelected: false,
+            },
+          ],
+        },
+      ],
+      variants: [
+        {
+          name: 'Large cup',
+          price: '100.00',
+          availability: 'available',
+          position: 0,
+          attributes: [{ name: 'Cup size', value: 'Large' }],
+        },
+      ],
+    };
+    await request(app.getHttpServer()).post('/owner/catalog/products').send(payload).expect(201);
+    assert.deepEqual(createdProduct?.modifierGroupAssignments, payload.modifierGroupAssignments);
+    assert.deepEqual(createdProduct?.variants, payload.variants);
+  });
+
+  it('attaches and detaches reusable groups with product revision checks', async () => {
+    const productId = '11111111-1111-4111-8111-111111111111';
+    const modifierGroupId = '22222222-2222-4222-8222-222222222222';
+    const optionId = '33333333-3333-4333-8333-333333333333';
+    const assignmentId = '44444444-4444-4444-8444-444444444444';
+    const assignment = {
+      modifierGroupId,
+      selectionMode: 'single',
+      minSelections: 0,
+      maxSelections: 1,
+      position: 0,
+      options: [{ optionId, priceAdjustment: '2.00', defaultSelected: false }],
+    };
+    await request(app.getHttpServer())
+      .post(`/owner/catalog/products/${productId}/modifier-groups`)
+      .send({ ...assignment, revision: 7 })
+      .expect(201);
+    assert.deepEqual(attachedModifierGroup, { productId, revision: 7, assignment });
+    await request(app.getHttpServer())
+      .delete(`/owner/catalog/products/${productId}/modifier-groups/${assignmentId}`)
+      .send({ revision: 8 })
+      .expect(200);
+    assert.deepEqual(detachedModifierGroup, { productId, assignmentId, revision: 8 });
   });
 
   it('accepts sellable product variants and rejects invalid prices or duplicate identifiers', async () => {
@@ -378,20 +507,21 @@ describe('catalog service invariants', () => {
       modifierGroups: [
         {
           id: 'size-group',
-          name: 'Size',
+          modifierGroupId: 'size-definition',
           selectionMode: 'single',
           minSelections: 1,
           maxSelections: 1,
+          modifierGroup: { id: 'size-definition', name: 'Size', description: null },
           options: [
             {
-              id: 'regular',
-              name: 'Regular',
+              optionId: 'regular',
+              option: { id: 'regular', name: 'Regular', position: 0 },
               priceAdjustment: { toString: () => '0.20' },
               defaultSelected: false,
             },
             {
-              id: 'large',
-              name: 'Large',
+              optionId: 'large',
+              option: { id: 'large', name: 'Large', position: 1 },
               priceAdjustment: { toString: () => '25.35' },
               defaultSelected: true,
             },
@@ -409,11 +539,12 @@ describe('catalog service invariants', () => {
       productRevision: 7,
       variantId: null,
       variantName: null,
+      variantAttributes: [],
       currency: 'EGP',
       basePrice: '75.10',
       modifierTotal: '25.35',
       totalPrice: '100.45',
-      selections: [{ groupId: 'size-group', optionIds: ['large'], priceAdjustment: '25.35' }],
+      selections: [{ groupId: 'size-group', modifierGroupId: 'size-definition', optionIds: ['large'], priceAdjustment: '25.35' }],
     });
 
     await assert.rejects(
@@ -439,6 +570,7 @@ describe('catalog service invariants', () => {
           price: { toString: () => '80.00' },
           availability: 'available',
           stockQuantity: 4,
+          attributeSelections: [],
         },
         {
           id: 'sold-out',
@@ -446,6 +578,7 @@ describe('catalog service invariants', () => {
           price: { toString: () => '90.00' },
           availability: 'available',
           stockQuantity: 0,
+          attributeSelections: [],
         },
         {
           id: 'disabled',
@@ -453,6 +586,7 @@ describe('catalog service invariants', () => {
           price: { toString: () => '95.00' },
           availability: 'unavailable',
           stockQuantity: null,
+          attributeSelections: [],
         },
       ],
       modifierGroups: [],
@@ -470,6 +604,7 @@ describe('catalog service invariants', () => {
       productRevision: 3,
       variantId: 'small',
       variantName: 'Small',
+      variantAttributes: [],
       currency: 'EGP',
       basePrice: '80.00',
       modifierTotal: '0.00',
@@ -553,76 +688,85 @@ describe('catalog service invariants', () => {
     );
   });
 
-  it('creates products through tenant-scoped Prisma relation connects', async () => {
+  it('creates tenant-owned modifier definitions and separate product assignments', async () => {
     const imageId = '11111111-1111-4111-8111-111111111111';
     const categoryId = '22222222-2222-4222-8222-222222222222';
-    let createData: Record<string, unknown> | undefined;
     const now = new Date('2026-01-01T00:00:00.000Z');
+    let productCreateData: Record<string, unknown> | undefined;
+    let modifierGroupData: Record<string, unknown> | undefined;
+    let assignmentData: Record<string, unknown> | undefined;
+    let assignmentOptionData: Array<Record<string, unknown>> | undefined;
+    let sharedGroupId = '';
+    const transaction = {
+      product: {
+        create: async ({ data }: { data: Record<string, unknown> }) => {
+          productCreateData = data;
+          return { id: 'product' };
+        },
+        findUniqueOrThrow: async () => ({
+          id: 'product',
+          name: 'Burger',
+          description: null,
+          basePrice: { toString: () => '75.00' },
+          availability: 'available',
+          archivedAt: null,
+          revision: 1,
+          createdAt: now,
+          updatedAt: now,
+          images: [{
+            id: 'product-image',
+            mediaAssetId: imageId,
+            isPrimary: true,
+            position: 0,
+            mediaAsset: {
+              id: imageId,
+              publicUrl: 'http://localhost:4000/media/burger.jpg',
+              mimeType: 'image/jpeg',
+              sizeBytes: 12,
+            },
+          }],
+          categoryLinks: [{ category: { id: categoryId, name: 'Mains', parentId: null, availability: 'available' } }],
+          modifierGroups: [{
+            id: 'assignment-id',
+            modifierGroupId: sharedGroupId,
+            modifierGroup: { id: sharedGroupId, name: 'Size', description: null },
+            selectionMode: 'single',
+            minSelections: 1,
+            maxSelections: 1,
+            position: 0,
+            options: [{
+              optionId: 'modifier-option',
+              option: { id: 'modifier-option', name: 'Large', position: 0 },
+              priceAdjustment: { toString: () => '25.00' },
+              defaultSelected: true,
+            }],
+          }],
+          variants: [],
+        }),
+      },
+      modifierGroup: {
+        create: async ({ data }: { data: Record<string, unknown> }) => {
+          modifierGroupData = data;
+          sharedGroupId = data.id as string;
+          return { id: sharedGroupId };
+        },
+      },
+      productModifierGroupAssignment: {
+        create: async ({ data }: { data: Record<string, unknown> }) => {
+          assignmentData = data;
+          return { id: 'assignment-id' };
+        },
+      },
+      productModifierGroupAssignmentOption: {
+        createMany: async ({ data }: { data: Array<Record<string, unknown>> }) => {
+          assignmentOptionData = data;
+        },
+      },
+    };
     const service = new ProductService({
       mediaAsset: { findMany: async () => [{ id: imageId }] },
       category: { findMany: async () => [{ id: categoryId }] },
-      product: {
-        create: async ({ data }: { data: Record<string, unknown> }) => {
-          createData = data;
-          return {
-            id: 'product',
-            name: 'Burger',
-            description: null,
-            basePrice: { toString: () => '75.00' },
-            sellingUnit: 'piece',
-            availability: 'available',
-            archivedAt: null,
-            revision: 1,
-            createdAt: now,
-            updatedAt: now,
-            images: [
-              {
-                id: 'product-image',
-                mediaAssetId: imageId,
-                isPrimary: true,
-                position: 0,
-                mediaAsset: {
-                  id: imageId,
-                  publicUrl: 'http://localhost:4000/media/burger.jpg',
-                  mimeType: 'image/jpeg',
-                  sizeBytes: 12,
-                },
-              },
-            ],
-            categoryLinks: [
-              {
-                category: {
-                  id: categoryId,
-                  name: 'Mains',
-                  parentId: null,
-                  availability: 'available',
-                },
-              },
-            ],
-            modifierGroups: [
-              {
-                id: 'modifier-group',
-                name: 'Size',
-                description: null,
-                selectionMode: 'single',
-                minSelections: 1,
-                maxSelections: 1,
-                position: 0,
-                options: [
-                  {
-                    id: 'modifier-option',
-                    name: 'Large',
-                    priceAdjustment: { toString: () => '25.00' },
-                    defaultSelected: true,
-                    position: 0,
-                  },
-                ],
-              },
-            ],
-            variants: [],
-          };
-        },
-      },
+      $transaction: async (callback: (tx: typeof transaction) => Promise<unknown>) => callback(transaction),
     } as never);
 
     const product = await service.create(owner.merchantId, owner.username, {
@@ -631,28 +775,27 @@ describe('catalog service invariants', () => {
       availability: 'available',
       imageAssetIds: [imageId],
       categoryIds: [categoryId],
-      modifierGroups: [
-        {
-          name: 'Size',
-          selectionMode: 'single',
-          minSelections: 1,
-          maxSelections: 1,
-          position: 0,
-          options: [
-            {
-              name: 'Large',
-              priceAdjustment: '25.00',
-              defaultSelected: true,
-              position: 0,
-            },
-          ],
-        },
-      ],
+      modifierGroups: [{
+        name: 'Size',
+        selectionMode: 'single',
+        minSelections: 1,
+        maxSelections: 1,
+        position: 0,
+        options: [{ name: 'Large', priceAdjustment: '25.00', defaultSelected: true, position: 0 }],
+      }],
     });
-    assert.equal(product.sellingUnit, 'piece');
-    assert.deepEqual(product.modifierGroups[0]?.options[0]?.priceAdjustment, '25.00');
 
-    assert.deepEqual(createData, {
+    assert.equal(product.sellingUnit, 'piece');
+    assert.equal(product.modifierGroups[0]?.modifierGroupId, sharedGroupId);
+    assert.equal(product.modifierGroups[0]?.options[0]?.priceAdjustment, '25.00');
+    assert.equal(modifierGroupData?.name, 'Size');
+    assert.equal(assignmentData?.productId, 'product');
+    assert.equal(assignmentData?.modifierGroupId, sharedGroupId);
+    assert.deepEqual(assignmentOptionData?.map((option) => ({
+      priceAdjustment: option.priceAdjustment,
+      defaultSelected: option.defaultSelected,
+    })), [{ priceAdjustment: '25.00', defaultSelected: true }]);
+    assert.deepEqual(productCreateData, {
       merchant: { connect: { id: owner.merchantId } },
       name: 'Burger',
       description: null,
@@ -661,48 +804,15 @@ describe('catalog service invariants', () => {
       createdBy: owner.username,
       updatedBy: owner.username,
       images: {
-        create: [
-          {
-            position: 0,
-            isPrimary: true,
-            mediaAsset: {
-              connect: { id_merchantId: { id: imageId, merchantId: owner.merchantId } },
-            },
-          },
-        ],
+        create: [{
+          position: 0,
+          isPrimary: true,
+          mediaAsset: { connect: { id_merchantId: { id: imageId, merchantId: owner.merchantId } } },
+        }],
       },
       categoryLinks: {
-        create: [
-          {
-            category: {
-              connect: { id_merchantId: { id: categoryId, merchantId: owner.merchantId } },
-            },
-          },
-        ],
+        create: [{ category: { connect: { id_merchantId: { id: categoryId, merchantId: owner.merchantId } } } }],
       },
-      modifierGroups: {
-        create: [
-          {
-            name: 'Size',
-            description: null,
-            selectionMode: 'single',
-            minSelections: 1,
-            maxSelections: 1,
-            position: 0,
-            options: {
-              create: [
-                {
-                  name: 'Large',
-                  priceAdjustment: '25.00',
-                  defaultSelected: true,
-                  position: 0,
-                },
-              ],
-            },
-          },
-        ],
-      },
-      variants: { create: [] },
     });
   });
 

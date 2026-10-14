@@ -76,6 +76,10 @@ it(
                 stockQuantity: 3,
                 availability: 'available',
                 position: 0,
+                attributes: [
+                  { name: 'Size', value: 'Large' },
+                  { name: 'Milk', value: 'Dairy' },
+                ],
               },
             ],
             modifierGroups: [
@@ -144,8 +148,27 @@ it(
           assert.equal(listed[0]!.deliveryAddress, '12 Cairo Street');
           assert.equal(listed[0]!.lines[0]!.productName, 'Verification bowl');
           assert.equal(listed[0]!.lines[0]!.variantName, 'Large');
+          const attributeSnapshots = listed[0]!.lines[0]!.variantAttributes;
+          assert.deepEqual(
+            attributeSnapshots.map(({ attributeName, attributeValue, position }) => ({
+              attributeName,
+              attributeValue,
+              position,
+            })),
+            [
+              { attributeName: 'Size', attributeValue: 'Large', position: 0 },
+              { attributeName: 'Milk', attributeValue: 'Dairy', position: 1 },
+            ],
+          );
+          assert.ok(attributeSnapshots.every((snapshot) => snapshot.attributeId && snapshot.valueId));
           assert.deepEqual(listed[0]!.lines[0]!.selections, [
-            { groupName: 'Extras', optionName: 'Cheese', priceAdjustment: '10.00' },
+            {
+              groupName: 'Extras',
+              optionName: 'Cheese',
+              priceAdjustment: '10.00',
+              modifierGroupId: product.modifierGroups[0]!.modifierGroupId,
+              modifierOptionId: product.modifierGroups[0]!.options[0]!.id,
+            },
           ]);
 
           const rejected = await orders.updateStatus(merchant.id, first.id, 'rejected');
@@ -173,6 +196,44 @@ it(
             where: { id: product.variants[0]!.id },
           });
           assert.equal(acceptedVariant.stockQuantity, 2);
+
+          const currentProductRevision = await transaction.product.findUniqueOrThrow({
+            where: { id: product.id },
+            select: { revision: true },
+          });
+          await products.update(merchant.id, 'order-verification-test', product.id, currentProductRevision.revision, {
+            variants: [
+              {
+                id: product.variants[0]!.id,
+                name: 'Extra large',
+                price: '120.00',
+                stockQuantity: acceptedVariant.stockQuantity,
+                availability: 'available',
+                position: 0,
+                attributes: product.variants[0]!.attributes.map((attribute) => ({
+                  attributeId: attribute.attributeId,
+                  valueId: attribute.valueId,
+                  name: attribute.attributeName,
+                  value: attribute.value,
+                })),
+              },
+            ],
+          });
+          const afterCatalogEdit = await orders.listForOwner(merchant.id);
+          const acceptedOrderSnapshot = afterCatalogEdit.find((order) => order.id === second.id)!.lines[0]!;
+          assert.equal(acceptedOrderSnapshot.variantName, 'Large');
+          assert.equal(acceptedOrderSnapshot.basePrice, '100.00');
+          assert.equal(acceptedOrderSnapshot.unitPrice, '100.00');
+          assert.deepEqual(
+            acceptedOrderSnapshot.variantAttributes.map(({ attributeName, attributeValue }) => ({
+              attributeName,
+              attributeValue,
+            })),
+            [
+              { attributeName: 'Size', attributeValue: 'Large' },
+              { attributeName: 'Milk', attributeValue: 'Dairy' },
+            ],
+          );
 
           throw rollback;
         }),

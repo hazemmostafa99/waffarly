@@ -188,29 +188,31 @@ Examples:
 - Bottled water: simple item with no extra choices.
 - Appliance: options like installation plus specialized warranty/serial tracking modules.
 
-### 5.2 Recommended conceptual model [PROPOSED; model requires approval]
+### 5.2 Product Builder conceptual model [CONFIRMED]
 
 | Concept | Responsibility | Example |
 | --- | --- | --- |
 | **Product** | Stable catalog identity and public description. | Classic Burger |
-| **Variant** | A sellable configuration with price/SKU/stock implications. | Large Burger; Black T-Shirt / XL |
-| **Attribute** | Descriptive or variant-defining property. | Color, size, material |
-| **Modifier Group** | Merchant-configurable customer selection group. | Sauces, toppings, bread type |
-| **Modifier Option** | An option within a group; may change price. | BBQ sauce, extra cheese |
+| **Variant** | An optional sellable configuration with its own identity and authoritative price. SKU, barcode, and stock are optional. | Large Burger; Black T-Shirt / XL |
+| **Variant Attribute** | A generic dimension and value used to describe a variant configuration. | Size: Large; Color: Black |
+| **Modifier Group** | A reusable, tenant-owned customer selection group attached to products through a product-specific assignment. | Sauces, toppings, bread type |
+| **Modifier Option** | A selectable choice in a shared group; V1 fixed price adjustment/default selection are configured per product assignment. | BBQ sauce, extra cheese |
 | **Selling Unit** | Quantity basis. | Piece, kilogram, liter |
 | **Product Metadata** | Additional validated flexible characteristics. | Fabric composition, descriptive product details |
 
 **Distinction:** Do not automatically generate a stock-tracked variant for every possible sauce/topping combination. Variants and modifiers serve different purposes and may have different inventory effects.
 
-### 5.3 Product Builder operations [CONFIRMED direction; exact rules OPEN]
+### 5.3 Product Builder operations [CONFIRMED]
 
 - Merchant creates a product and gives it basic information and imagery.
 - Merchant chooses the relevant selling mode and, if applicable, variants.
-- Merchant creates arbitrary named option groups, with options and optional price changes.
-- Merchant controls selection constraints (for example, minimum/maximum selections) if supported by the final specification.
+- Merchant creates reusable named modifier-group definitions and attaches them to products.
+- Merchant controls selection constraints, order, defaults, and fixed option adjustments on each product assignment.
 - Customer storefront and POS render product choices from the saved product configuration.
 - Backend validates selected product/variant/options and calculates authoritative pricing.
 - Orders preserve a snapshot of the purchased product configuration and prices, so later catalog edits do not rewrite past orders.
+
+Optional variants do not require SKU, barcode, or stock. Restaurant sizes may be represented as variants with generic attributes. Modifier Groups are reusable across products belonging to the same merchant, while their selection rules/defaults/fixed adjustments are configured per assignment. V1 safely blocks shared-definition edits while a group is attached. The initial storefront presents one parent product with selectable variants beneath it.
 
 **[OPEN]** Conditional option visibility, dependencies between options, defaults, max quantity per option, availability by branch/time, recurring add-ons, bundles/combo meals, tax treatment, and price overrides by branch/channel.
 
@@ -605,7 +607,7 @@ In the **first release**, a merchant is associated with a **monthly subscription
 
 ### Priority B — product behavior and future expansion [OPEN]
 
-9. **Product Builder specifics:** Which advanced rules are essential initially: conditional options, min/max quantity, reusable option groups, bundles, weight pricing, branch-specific availability?
+9. **Product Builder specifics:** Which advanced rules are essential initially: conditional options, option quantities, bundles, weight pricing, and branch-specific availability? Reusable option groups and assignment-level fixed pricing are resolved for V1.
 10. **Inventory:** When is stock reserved/deducted? Is negative stock allowed? Will restaurants initially track finished items, ingredients/recipes, or both?
 11. **Storefront scope:** PWA installation, custom domains, template count, Arabic/English support, visual customization, and release priorities?
 12. **Marketplace:** When does Waffarly's marketplace launch? One-merchant checkout or cross-merchant cart?

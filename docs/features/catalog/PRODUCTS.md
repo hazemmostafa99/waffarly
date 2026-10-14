@@ -1,6 +1,6 @@
 # CAT-F02 — Products
 
-**Status:** Product core, Product Builder, sellable variants, authoritative configuration quote, and order-history deletion protection implemented
+**Status:** Product core, Product Builder, sellable variants/attributes, reusable modifier assignments, authoritative configuration quote, and order-history deletion protection implemented
 
 **Last updated:** 2026-10-14
 **Parent:** [Catalog & Dynamic Product Builder Overview](OVERVIEW.md)  
@@ -11,9 +11,9 @@
 
 Products defines the minimum tenant-owned catalog identity used by categories, variants, modifiers, selling units, pricing validation, visibility, storefront, inventory, POS, and order features.
 
-This Products feature is documented for the restaurant MVP while preserving a generic Product Core. It does not add restaurant-specific fields or implement future-industry behavior. A simple product such as bottled water fits without variants or modifiers. Configurable restaurant items use the separately approved product-local Modifier Groups & Options MVP (CAT-F04).
+This Products feature is documented for the restaurant MVP while preserving a generic Product Core. It does not add restaurant-specific fields or implement future-industry behavior. A simple product such as bottled water fits without variants or modifiers. Configurable items use optional sellable Variants and reusable tenant-owned Modifier Groups connected by product-specific assignments.
 
-This specification records Product Core behavior. The Product Builder supports product-local modifiers and flat sellable variants. The storefront checkout re-quotes configured products and snapshots purchased names/prices; broader Inventory integration, variant-dimension generation, and POS remain outside the implemented slice.
+This specification records Product Core behavior. The implementation adds a migration from product-local modifier rows to reusable tenant-owned definitions and product-specific assignments; applying it to a fresh or representative pre-feature database remains a release verification step. The storefront checkout re-quotes configured products and snapshots purchased names, stable IDs, structured variant attributes, and prices; broader Inventory integration, automatic variant-combination generation, POS, and a reporting dashboard remain outside this feature.
 
 ## 2. Confirmed Decisions
 
@@ -48,28 +48,34 @@ The product owner confirmed the following on 2026-10-13:
 - CAT-D012 settles the restoration state but not whether archived product information can be edited before restoration.
 - The current backend uses provisional Media guards of at most 10 product images, 10 MB per asset, and JPEG/PNG/WebP. These defaults are implementation safeguards until the owner confirms final Media limits.
 
-### 2.2 Approved Product Builder MVP (2026-10-14)
+### 2.2 Approved Product Builder decisions (2026-10-14)
 
-- Modifier groups belong to one product and support single or multiple choice.
+- Modifier Groups are reusable across products belonging to the same merchant. Product-specific selection constraints and ordering belong to the product-to-group assignment.
 - `minSelections` and `maxSelections` define required/optional behavior and the allowed selection count. Options may be marked as defaults.
-- Options use fixed EGP price adjustments; groups and options have explicit ordering.
-- Products are sold by the piece only. A size or other choice is a modifier unless it needs a stable SKU, barcode, independently set price, tracked stock, or other sellable identity; such items are product-local variants.
-- Variants are explicit flat sellable records, not automatically generated combinations. Each has a name, positive EGP price, availability, order, optional merchant-unique SKU/barcode, and optional integer stock count (blank means untracked).
+- Variants are optional. Each is an explicitly configured sellable record with its own positive EGP price and stable identity. SKU, barcode, and stock are optional and are not prerequisites for creating a Variant.
+- Restaurant sizes may be represented as Variants. Variant Attributes are generic dimensions and values; a size label is not hardcoded into Product or Variant storage.
+- Variants are not automatically generated combinations. Products remain sold by the piece in the current restaurant MVP.
 - A product with variants requires the customer to select one for quoting. Variant price replaces the product base price; modifier adjustments are added afterward. A tracked quantity of zero or unavailable variant is rejected by quote. Quote alone does not reserve stock; storefront checkout reserves the quoted quantity atomically.
-- Conditional/nested modifiers, reusable groups, branch pricing, modifier stock, bundles, and order-time pricing are deferred.
+- Fixed modifier adjustments and defaults are product-assignment-specific in V1. This preserves old product prices during migration and lets a shared definition be used with different prices. Variant-specific prices, branch pricing, modifier stock, bundles, and conditional/nested modifiers are deferred.
 
 ### 2.3 Backend configuration and quote MVP (2026-10-14)
 
-- Product-local modifier groups/options are persisted with the Product. Create uses atomic nested writes; updates replace configuration inside the revision-checked product transaction.
+- The target schema separates tenant-owned modifier definitions/options from product assignments and their price/default configuration. The migration preserves old assignment and option IDs where safe, with new IDs for shared definitions.
 - `POST /catalog/products/:id/quote` is the authoritative single-product configuration quote. It only quotes non-archived, available products and only accepts groups/options belonging to that product.
 - If a group is omitted from the request, its default options are applied. An explicitly supplied group with an empty `optionIds` array means no options are selected and is still subject to that group's minimum.
-- Quotes enforce every group's min/max selection bounds and return the effective EGP base, modifier, and total amounts as fixed two-decimal strings, plus resolved variant/selections and `productRevision`.
+- Quotes enforce every assigned group's min/max selection bounds and return the effective EGP base, modifier, and total amounts as fixed two-decimal strings, plus resolved variant/selections and `productRevision`.
 - This quote is not an order snapshot and does not include discounts, taxes, fees, branch/channel context, stock reservation, or inventory movement. The MVP selling unit is `piece`.
 
-### 2.4 Storefront checkout and order MVP (2026-10-14)
+### 2.4 Configuration report boundary
+
+- `GET /owner/reports/product-configuration?from=YYYY-MM-DD&to=YYYY-MM-DD` aggregates accepted storefront orders by product, variant, attribute value, and modifier option from immutable snapshots.
+- Report dates are inclusive UTC calendar days and capped at 366 days. Legacy rows without structured IDs remain grouped by snapshot labels and are counted separately where identifiable.
+- This endpoint is not a reporting dashboard and does not include POS sales, rejected orders, taxes, discounts, or branch/channel breakdowns.
+
+### 2.5 Storefront checkout and order MVP (2026-10-14)
 
 - `POST /catalog/stores/:slug/orders` accepts customer name/phone, pickup or delivery (with a required address), and configured product lines. Prices are never accepted from the browser: the API re-quotes every line and checks the product revision again in the transaction.
-- Order creation snapshots product/variant/option names and fixed-precision EGP prices. A serializable transaction creates the order and atomically decrements tracked variant stock; untracked variants remain unreserved.
+- Order creation snapshots product/variant/attribute/modifier IDs and names, assignment-level price adjustments, and fixed-precision EGP prices. A serializable transaction creates the order and atomically decrements tracked variant stock; untracked variants remain unreserved.
 - `GET /owner/orders` returns the signed-in owner's latest 100 orders. `PATCH /owner/orders/:id/status` allows a pending order to be accepted or rejected; rejection restores any still-existing tracked variant reservation, while acceptance keeps it consumed.
 - Products with order lines cannot be permanently deleted. The owner may archive them while the order snapshots remain readable even if catalog definitions later change.
 - This is not a general Inventory ledger or fulfillment system. There is no online payment, delivery-fee calculation, tax/discount support, notification, POS order, branch routing, kitchen flow, or later fulfillment-state transition.
@@ -365,7 +371,7 @@ Arabic validation details, price precision/bounds, image validity/limits, and ca
 
 - A simple product such as bottled water can be represented with the required core information and without dummy variants or modifiers.
 - No restaurant-only product field is required by the core Product definition.
-- Simple products need no variants or modifier groups. Explicit sellable variants have their own quote price, optional merchant-unique SKU/barcode, availability, and optional unreserved stock count; modifiers remain independent product-local choices. Attribute combination generation, broader selling units, Inventory, and activity extensions remain deferred.
+- Simple products need no variants or modifier groups. Explicit sellable variants have their own quote price; SKU, barcode, and stock remain optional. Variant Attributes are generic dimensions and values. Modifier Groups are reusable tenant-owned definitions connected by product-specific assignments. Automatic attribute-combination generation, broader selling units, Inventory, and activity extensions remain deferred.
 
 ### AC-P06 — Backend authority
 

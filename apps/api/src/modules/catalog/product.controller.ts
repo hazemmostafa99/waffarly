@@ -88,6 +88,7 @@ const modifierGroupsSchema = z
 const productVariantsSchema = z
   .array(
     z.object({
+      id: z.string().uuid().optional(),
       name: z.string().trim().min(1).max(160),
       sku: z.string().trim().max(80).optional(),
       barcode: z.string().trim().max(80).optional(),
@@ -100,6 +101,17 @@ const productVariantsSchema = z
       stockQuantity: z.number().int().min(0).max(2_147_483_647).nullable().optional(),
       availability,
       position: z.number().int().nonnegative(),
+      attributes: z
+        .array(
+          z.object({
+            attributeId: z.string().uuid().optional(),
+            valueId: z.string().uuid().optional(),
+            name: z.string().trim().min(1).max(120),
+            value: z.string().trim().min(1).max(120),
+          }).strict(),
+        )
+        .max(10)
+        .optional(),
     }),
   )
   .max(100)
@@ -136,6 +148,39 @@ const productVariantsSchema = z
       if (barcode) barcodes.add(barcode);
     });
   });
+const modifierAssignmentSchema = z
+  .object({
+    modifierGroupId: z.string().uuid(),
+    selectionMode: z.enum(['single', 'multiple']),
+    minSelections: z.number().int().nonnegative(),
+    maxSelections: z.number().int().positive(),
+    position: z.number().int().nonnegative(),
+    options: z.array(z.object({
+      optionId: z.string().uuid(),
+      priceAdjustment: z.string().regex(/^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/),
+      defaultSelected: z.boolean(),
+    }).strict()).min(1).max(100),
+  })
+  .strict()
+  .superRefine((group, context) => {
+    if (group.minSelections > group.maxSelections) {
+      context.addIssue({ code: 'custom', path: ['minSelections'], message: 'Minimum selections cannot exceed maximum selections.' });
+    }
+    if (group.selectionMode === 'single' && group.maxSelections !== 1) {
+      context.addIssue({ code: 'custom', path: ['maxSelections'], message: 'Single-choice groups can select at most one option.' });
+    }
+    if (new Set(group.options.map((option) => option.optionId)).size !== group.options.length) {
+      context.addIssue({ code: 'custom', path: ['options'], message: 'Modifier options must be unique within a group.' });
+    }
+  });
+const modifierAssignmentsSchema = z.array(modifierAssignmentSchema).max(30).superRefine((groups, context) => {
+  if (new Set(groups.map((group) => group.position)).size !== groups.length) {
+    context.addIssue({ code: 'custom', message: 'Modifier group positions must be unique.' });
+  }
+  if (new Set(groups.map((group) => group.modifierGroupId)).size !== groups.length) {
+    context.addIssue({ code: 'custom', message: 'A modifier group can only be assigned once.' });
+  }
+});
 const productFields = {
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(1000).optional(),
@@ -150,6 +195,7 @@ const productFields = {
   primaryImageAssetId: z.string().uuid().optional(),
   categoryIds: z.array(z.string().uuid()).min(1),
   modifierGroups: modifierGroupsSchema.optional(),
+  modifierGroupAssignments: modifierAssignmentsSchema.optional(),
   variants: productVariantsSchema.optional(),
 };
 const createSchema = z.object(productFields);
@@ -157,6 +203,9 @@ const updateSchema = z.object(productFields).partial().extend({
   revision: z.number().int().positive(),
 });
 const revisionSchema = z.object({ revision: z.number().int().positive() });
+const attachModifierGroupSchema = modifierAssignmentSchema
+  .safeExtend({ revision: z.number().int().positive() })
+  .strict();
 const quoteSelectionSchema = z
   .object({
     groupId: z.string().uuid(),
@@ -203,6 +252,43 @@ export class ProductController {
     const { revision, ...input } = parsed.data;
     const owner = await this.auth.requireOwner(request);
     return this.products.update(owner.merchantId, owner.username, id, revision, input);
+  }
+
+  @Post(':id/modifier-groups')
+  async attachModifierGroup(
+    @Req() request: Request,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = attachModifierGroupSchema.safeParse(body);
+    if (!parsed.success) throw new BadRequestException(parsed.error.issues);
+    const { revision, ...assignment } = parsed.data;
+    const owner = await this.auth.requireOwner(request);
+    return this.products.attachModifierGroup(
+      owner.merchantId,
+      owner.username,
+      id,
+      revision,
+      assignment,
+    );
+  }
+
+  @Delete(':id/modifier-groups/:assignmentId')
+  async detachModifierGroup(
+    @Req() request: Request,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('assignmentId', new ParseUUIDPipe()) assignmentId: string,
+    @Body() body: unknown,
+  ) {
+    const revision = parseRevision(body);
+    const owner = await this.auth.requireOwner(request);
+    return this.products.detachModifierGroup(
+      owner.merchantId,
+      owner.username,
+      id,
+      assignmentId,
+      revision,
+    );
   }
 
   @Post(':id/archive')

@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLocale } from '@waffarly/ui';
 import type {
+  CatalogModifierGroupFields,
+  CatalogModifierGroupSummary,
   CatalogCategorySummary,
   CatalogMediaAsset,
-  CatalogProductModifierGroupFields,
+  CatalogProductModifierGroupAssignmentFields,
   CatalogProductSummary,
   CatalogProductVariantFields,
 } from '@waffarly/contracts';
@@ -20,6 +22,7 @@ type OptionDraft = {
 
 type GroupDraft = {
   id: string;
+  modifierGroupId: string;
   name: string;
   description: string;
   selectionMode: 'single' | 'multiple';
@@ -36,6 +39,7 @@ type VariantDraft = {
   price: string;
   stockQuantity: string;
   availability: 'available' | 'unavailable';
+  attributes: Array<{ attributeId?: string; valueId?: string; name: string; value: string }>;
 };
 
 const tabKeys = ['basic', 'details', 'options', 'preview'] as const;
@@ -58,11 +62,16 @@ export function ProductBuilderPage() {
   const [availability, setAvailability] = useState<'available' | 'unavailable'>('available');
   const [categories, setCategories] = useState<CatalogCategorySummary[]>([]);
   const [media, setMedia] = useState<CatalogMediaAsset[]>([]);
+  const [modifierLibrary, setModifierLibrary] = useState<CatalogModifierGroupSummary[]>([]);
+  const [selectedLibraryGroupId, setSelectedLibraryGroupId] = useState('');
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupOptions, setNewGroupOptions] = useState('');
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [imageAssetIds, setImageAssetIds] = useState<string[]>([]);
   const [primaryImageAssetId, setPrimaryImageAssetId] = useState('');
   const [groups, setGroups] = useState<GroupDraft[]>([]);
   const [variants, setVariants] = useState<VariantDraft[]>([]);
+  const [productMode, setProductMode] = useState<'simple' | 'variants'>('simple');
   const [loading, setLoading] = useState(true);
   const [productLoading, setProductLoading] = useState(Boolean(productId));
   const [notFound, setNotFound] = useState(false);
@@ -75,10 +84,12 @@ export function ProductBuilderPage() {
     void Promise.all([
       apiRequest<CatalogCategorySummary[]>('/owner/catalog/categories'),
       apiRequest<CatalogMediaAsset[]>('/owner/catalog/media'),
+      apiRequest<CatalogModifierGroupSummary[]>('/owner/catalog/modifier-groups'),
     ])
-      .then(([nextCategories, nextMedia]) => {
+      .then(([nextCategories, nextMedia, nextModifierLibrary]) => {
         setCategories(nextCategories.filter((category) => !category.archivedAt));
         setMedia(nextMedia);
+        setModifierLibrary(nextModifierLibrary);
       })
       .catch((cause: unknown) =>
         setError(
@@ -108,6 +119,7 @@ export function ProductBuilderPage() {
       setPrimaryImageAssetId('');
       setGroups([]);
       setVariants([]);
+      setProductMode('simple');
       return () => {
         cancelled = true;
       };
@@ -140,6 +152,7 @@ export function ProductBuilderPage() {
             .sort((a, b) => a.position - b.position)
             .map((group) => ({
               id: group.id,
+              modifierGroupId: group.modifierGroupId,
               name: group.name,
               description: group.description ?? '',
               selectionMode: group.selectionMode,
@@ -166,8 +179,15 @@ export function ProductBuilderPage() {
               price: variant.price,
               stockQuantity: variant.stockQuantity === null ? '' : String(variant.stockQuantity),
               availability: variant.availability,
+              attributes: variant.attributes.map((attribute) => ({
+                attributeId: attribute.attributeId,
+                valueId: attribute.valueId,
+                name: attribute.attributeName,
+                value: attribute.value,
+              })),
             })),
         );
+        setProductMode(product.variants.length ? 'variants' : 'simple');
         setRevision(product.revision);
       })
       .catch((cause: unknown) => {
@@ -268,6 +288,10 @@ export function ProductBuilderPage() {
       const invalidVariant = variants.find((variant) => {
         const sku = variant.sku.trim().toLocaleLowerCase();
         const barcode = variant.barcode.trim().toLocaleLowerCase();
+        const attributeNames = variant.attributes.map((attribute) => attribute.name.trim().toLocaleLowerCase());
+        const invalidAttributes = variant.attributes.some(
+          (attribute) => !attribute.name.trim() || !attribute.value.trim(),
+        ) || new Set(attributeNames).size !== attributeNames.length;
         const duplicate =
           (sku && duplicateSku.has(sku)) || (barcode && duplicateBarcode.has(barcode));
         if (sku) duplicateSku.add(sku);
@@ -280,6 +304,7 @@ export function ProductBuilderPage() {
             (!/^\d+$/.test(variant.stockQuantity) ||
               !Number.isSafeInteger(Number(variant.stockQuantity)) ||
               Number(variant.stockQuantity) > 2_147_483_647)) ||
+          invalidAttributes ||
           duplicate
         );
       });
@@ -348,22 +373,87 @@ export function ProductBuilderPage() {
     );
   }
 
-  function addGroup() {
+  function addGroupFromLibrary() {
+    const definition = modifierLibrary.find((group) => group.id === selectedLibraryGroupId);
+    if (!definition || groups.some((group) => group.modifierGroupId === definition.id)) return;
     setGroups((current) => [
       ...current,
       {
         id: newId(),
-        name: '',
-        description: '',
+        modifierGroupId: definition.id,
+        name: definition.name,
+        description: definition.description ?? '',
         selectionMode: 'single',
         minSelections: 0,
         maxSelections: 1,
-        options: [{ id: newId(), name: '', priceAdjustment: '0', defaultSelected: false }],
+        options: [...definition.options]
+          .sort((a, b) => a.position - b.position)
+          .map((option) => ({
+            id: option.id,
+            name: option.name,
+            priceAdjustment: '0.00',
+            defaultSelected: false,
+          })),
       },
     ]);
+    setSelectedLibraryGroupId('');
+  }
+
+  async function createAndAddModifierGroup() {
+    const optionNames = newGroupOptions
+      .split(/\r?\n/)
+      .map((option) => option.trim())
+      .filter(Boolean);
+    if (!newGroupName.trim() || optionNames.length === 0) {
+      setError(text('Enter a group name and at least one option.', 'أدخل اسم المجموعة وخياراً واحداً على الأقل.'));
+      return;
+    }
+    if (optionNames.length > 100) {
+      setError(text('A group can have up to 100 options.', 'يمكن أن تحتوي المجموعة على 100 خيار كحد أقصى.'));
+      return;
+    }
+    setSubmitting(true);
+    setError('');
+    try {
+      const body: CatalogModifierGroupFields = {
+        name: newGroupName.trim(),
+        options: optionNames.map((option, position) => ({ name: option, position })),
+      };
+      const created = await apiRequest<CatalogModifierGroupSummary>('/owner/catalog/modifier-groups', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      setModifierLibrary((current) => [...current, created].sort((a, b) => a.name.localeCompare(b.name)));
+      setSelectedLibraryGroupId(created.id);
+      setNewGroupName('');
+      setNewGroupOptions('');
+      setGroups((current) => [
+        ...current,
+        {
+          id: newId(),
+          modifierGroupId: created.id,
+          name: created.name,
+          description: created.description ?? '',
+          selectionMode: 'single',
+          minSelections: 0,
+          maxSelections: 1,
+          options: created.options.map((option) => ({
+            id: option.id,
+            name: option.name,
+            priceAdjustment: '0.00',
+            defaultSelected: false,
+          })),
+        },
+      ]);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : text('Could not create modifier group.', 'تعذر إنشاء مجموعة الخيارات.'));
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   function addVariant() {
+    setProductMode('variants');
     setVariants((current) => [
       ...current,
       {
@@ -374,13 +464,68 @@ export function ProductBuilderPage() {
         price: basePrice || '0',
         stockQuantity: '',
         availability: 'available',
+        attributes: [],
       },
     ]);
+  }
+
+  function changeProductMode(mode: 'simple' | 'variants') {
+    setProductMode(mode);
+    if (mode === 'simple') {
+      setVariants([]);
+    } else if (variants.length === 0) {
+      addVariant();
+    }
+  }
+
+  function removeVariant(variantId: string) {
+    const next = variants.filter((variant) => variant.id !== variantId);
+    setVariants(next);
+    if (next.length === 0) setProductMode('simple');
   }
 
   function changeVariant(variantId: string, update: Partial<VariantDraft>) {
     setVariants((current) =>
       current.map((variant) => (variant.id === variantId ? { ...variant, ...update } : variant)),
+    );
+  }
+
+  function changeVariantAttribute(
+    variantId: string,
+    attributeIndex: number,
+    update: Partial<VariantDraft['attributes'][number]>,
+  ) {
+    setVariants((current) =>
+      current.map((variant) =>
+        variant.id === variantId
+          ? {
+              ...variant,
+              attributes: variant.attributes.map((attribute, index) =>
+                index === attributeIndex ? { ...attribute, ...update } : attribute,
+              ),
+            }
+          : variant,
+      ),
+    );
+  }
+
+  function addVariantAttribute(variantId: string) {
+    setVariants((current) =>
+      current.map((variant) =>
+        variant.id === variantId
+          ? { ...variant, attributes: [...variant.attributes, { name: '', value: '' }] }
+          : variant,
+      ),
+    );
+  }
+
+  function removeVariantAttribute(variantId: string, attributeIndex: number) {
+    setVariants((current) =>
+      current.map((variant) =>
+        variant.id === variantId
+          ? { ...variant, attributes: variant.attributes.filter((_, index) => index !== attributeIndex) }
+          : variant,
+      ),
     );
   }
 
@@ -394,18 +539,6 @@ export function ProductBuilderPage() {
     });
   }
 
-  function addOption(group: GroupDraft) {
-    const options = [
-      ...group.options,
-      { id: newId(), name: '', priceAdjustment: '0', defaultSelected: false },
-    ];
-    changeGroup(group.id, {
-      options,
-      maxSelections:
-        group.selectionMode === 'single' ? 1 : Math.max(group.maxSelections, options.length),
-    });
-  }
-
   function moveGroup(index: number, direction: -1 | 1) {
     setGroups((current) => {
       const target = index + direction;
@@ -413,23 +546,6 @@ export function ProductBuilderPage() {
       const next = [...current];
       [next[index], next[target]] = [next[target]!, next[index]!];
       return next;
-    });
-  }
-
-  function moveOption(group: GroupDraft, index: number, direction: -1 | 1) {
-    const target = index + direction;
-    if (target < 0 || target >= group.options.length) return;
-    const options = [...group.options];
-    [options[index], options[target]] = [options[target]!, options[index]!];
-    changeGroup(group.id, { options });
-  }
-
-  function removeOption(group: GroupDraft, optionId: string) {
-    const options = group.options.filter((option) => option.id !== optionId);
-    changeGroup(group.id, {
-      options,
-      minSelections: Math.min(group.minSelections, options.length),
-      maxSelections: Math.max(1, Math.min(group.maxSelections, options.length)),
     });
   }
 
@@ -446,23 +562,22 @@ export function ProductBuilderPage() {
     }
     setSubmitting(true);
     setError('');
-    const modifierGroups: CatalogProductModifierGroupFields[] = groups.map(
+    const modifierGroupAssignments: CatalogProductModifierGroupAssignmentFields[] = groups.map(
       (group, groupPosition) => ({
-        name: group.name.trim(),
-        description: group.description.trim() || undefined,
+        modifierGroupId: group.modifierGroupId,
         selectionMode: group.selectionMode,
         minSelections: group.minSelections,
         maxSelections: group.maxSelections,
         position: groupPosition,
-        options: group.options.map((option, position) => ({
-          name: option.name.trim(),
+        options: group.options.map((option) => ({
+          optionId: option.id,
           priceAdjustment: Number(option.priceAdjustment).toFixed(2),
           defaultSelected: option.defaultSelected,
-          position,
         })),
       }),
     );
     const productVariants: CatalogProductVariantFields[] = variants.map((variant, position) => ({
+      id: variant.id,
       name: variant.name.trim(),
       sku: variant.sku.trim() || undefined,
       barcode: variant.barcode.trim() || undefined,
@@ -470,6 +585,12 @@ export function ProductBuilderPage() {
       stockQuantity: variant.stockQuantity === '' ? null : Number(variant.stockQuantity),
       availability: variant.availability,
       position,
+      attributes: variant.attributes.map((attribute) => ({
+        ...(attribute.attributeId ? { attributeId: attribute.attributeId } : {}),
+        ...(attribute.valueId ? { valueId: attribute.valueId } : {}),
+        name: attribute.name.trim(),
+        value: attribute.value.trim(),
+      })),
     }));
     try {
       await apiRequest<CatalogProductSummary>(
@@ -487,7 +608,7 @@ export function ProductBuilderPage() {
               ? primaryImageAssetId
               : imageAssetIds[0],
             categoryIds,
-            modifierGroups,
+            modifierGroupAssignments,
             variants: productVariants,
           }),
         },
@@ -557,18 +678,37 @@ export function ProductBuilderPage() {
           <button
             type="button"
             role="tab"
+            tabIndex={activeTab === index ? 0 : -1}
             aria-selected={activeTab === index}
             aria-controls={`product-builder-panel-${tabKeys[index]}`}
             id={`product-builder-tab-${tabKeys[index]}`}
-            className={`builder-step ${activeTab === index ? 'active' : index < activeTab ? 'done' : ''}`}
+            className={`builder-step ${activeTab === index ? 'active' : ''}`}
             key={tabKeys[index]}
+            onKeyDown={(event) => {
+              const direction = isArabic ? -1 : 1;
+              const offset = event.key === 'ArrowRight' ? direction : event.key === 'ArrowLeft' ? -direction : 0;
+              const target = event.key === 'Home' ? 0 : event.key === 'End' ? 3 : offset ? (index + offset + 4) % 4 : null;
+              if (target === null) return;
+              event.preventDefault();
+              setError('');
+              setActiveTab(target);
+              event.currentTarget.parentElement?.querySelector<HTMLButtonElement>(`#product-builder-tab-${tabKeys[target]}`)?.focus();
+            }}
             onClick={() => {
               setError('');
               setActiveTab(index);
             }}
           >
-            <span>{index < activeTab ? '✓' : index + 1}</span>
-            <strong>{label}</strong>
+            <span>{index + 1}</span>
+            <strong>
+              {label}
+              <small>{[
+                text('Name & price', 'الاسم والسعر'),
+                text('Categories & photos', 'التصنيفات والصور'),
+                text('Variants & add-ons', 'المتغيرات والإضافات'),
+                text('Review & save', 'المراجعة والحفظ'),
+              ][index]}</small>
+            </strong>
           </button>
         ))}
       </div>
@@ -632,26 +772,37 @@ export function ProductBuilderPage() {
               {activeTab === 2 && (
                 <OptionsTab
                   groups={groups}
+                  productMode={productMode}
+                  onProductModeChange={changeProductMode}
+                  modifierLibrary={modifierLibrary}
+                  libraryLoading={loading}
+                  selectedLibraryGroupId={selectedLibraryGroupId}
+                  onSelectedLibraryGroupChange={setSelectedLibraryGroupId}
+                  newGroupName={newGroupName}
+                  onNewGroupNameChange={setNewGroupName}
+                  newGroupOptions={newGroupOptions}
+                  onNewGroupOptionsChange={setNewGroupOptions}
+                  onAddGroupFromLibrary={addGroupFromLibrary}
+                  onCreateAndAddGroup={() => void createAndAddModifierGroup()}
+                  creatingGroup={submitting}
                   onGroupsChange={setGroups}
                   onGroupChange={changeGroup}
                   onOptionChange={changeOption}
-                  onAddGroup={addGroup}
-                  onAddOption={addOption}
-                  onRemoveOption={removeOption}
                   onMoveGroup={moveGroup}
-                  onMoveOption={moveOption}
                   variants={variants}
                   onVariantChange={changeVariant}
+                  onVariantAttributeChange={changeVariantAttribute}
+                  onAddVariantAttribute={addVariantAttribute}
+                  onRemoveVariantAttribute={removeVariantAttribute}
                   onAddVariant={addVariant}
-                  onRemoveVariant={(variantId) =>
-                    setVariants((current) => current.filter((variant) => variant.id !== variantId))
-                  }
+                  onRemoveVariant={removeVariant}
                   onMoveVariant={moveVariant}
                   text={text}
                 />
               )}
               {activeTab === 3 && (
                 <PreviewPublishTab
+                  onEditStep={(step) => { if (!submitting) { setError(''); setActiveTab(step); } }}
                   name={name}
                   description={description}
                   basePrice={basePrice}
@@ -687,7 +838,7 @@ export function ProductBuilderPage() {
                       validateStep(activeTab) && setActiveTab((current) => Math.min(3, current + 1))
                     }
                   >
-                    {text('Continue', 'متابعة')}
+                    {activeTab === 2 ? text('Review product', 'مراجعة المنتج') : `${text('Next: ', 'التالي: ')}${tabs[activeTab + 1]}`}
                     <span aria-hidden="true">{isArabic ? '←' : '→'}</span>
                   </button>
                 ) : (
@@ -979,37 +1130,75 @@ function ProductDetailsTab({
 
 function OptionsTab({
   groups,
+  productMode,
+  onProductModeChange,
+  modifierLibrary,
+  libraryLoading,
+  selectedLibraryGroupId,
+  onSelectedLibraryGroupChange,
+  newGroupName,
+  onNewGroupNameChange,
+  newGroupOptions,
+  onNewGroupOptionsChange,
+  onAddGroupFromLibrary,
+  onCreateAndAddGroup,
+  creatingGroup,
   onGroupsChange,
   onGroupChange,
   onOptionChange,
-  onAddGroup,
-  onAddOption,
-  onRemoveOption,
   onMoveGroup,
-  onMoveOption,
   variants,
   onVariantChange,
+  onVariantAttributeChange,
+  onAddVariantAttribute,
+  onRemoveVariantAttribute,
   onAddVariant,
   onRemoveVariant,
   onMoveVariant,
   text,
 }: {
   groups: GroupDraft[];
+  productMode: 'simple' | 'variants';
+  onProductModeChange: (mode: 'simple' | 'variants') => void;
+  modifierLibrary: CatalogModifierGroupSummary[];
+  libraryLoading: boolean;
+  selectedLibraryGroupId: string;
+  onSelectedLibraryGroupChange: (id: string) => void;
+  newGroupName: string;
+  onNewGroupNameChange: (value: string) => void;
+  newGroupOptions: string;
+  onNewGroupOptionsChange: (value: string) => void;
+  onAddGroupFromLibrary: () => void;
+  onCreateAndAddGroup: () => void;
+  creatingGroup: boolean;
   onGroupsChange: (groups: GroupDraft[]) => void;
   onGroupChange: (id: string, update: Partial<GroupDraft>) => void;
   onOptionChange: (groupId: string, optionId: string, update: Partial<OptionDraft>) => void;
-  onAddGroup: () => void;
-  onAddOption: (group: GroupDraft) => void;
-  onRemoveOption: (group: GroupDraft, optionId: string) => void;
   onMoveGroup: (index: number, direction: -1 | 1) => void;
-  onMoveOption: (group: GroupDraft, index: number, direction: -1 | 1) => void;
   variants: VariantDraft[];
   onVariantChange: (id: string, update: Partial<VariantDraft>) => void;
+  onVariantAttributeChange: (
+    id: string,
+    index: number,
+    update: Partial<VariantDraft['attributes'][number]>,
+  ) => void;
+  onAddVariantAttribute: (id: string) => void;
+  onRemoveVariantAttribute: (id: string, index: number) => void;
   onAddVariant: () => void;
   onRemoveVariant: (id: string) => void;
   onMoveVariant: (index: number, direction: -1 | 1) => void;
   text: (english: string, arabic: string) => string;
 }) {
+  const availableLibraryGroups = modifierLibrary.filter(
+    (group) => !groups.some((assigned) => assigned.modifierGroupId === group.id),
+  );
+  const [groupEntryMode, setGroupEntryMode] = useState<'library' | 'create'>(
+    availableLibraryGroups.length ? 'library' : 'create',
+  );
+  const newGroupOptionCount = newGroupOptions
+    .split(/\r?\n/)
+    .filter((option) => option.trim()).length;
+  const [confirmSimpleMode, setConfirmSimpleMode] = useState(false);
   return (
     <div className="builder-fields">
       <div className="builder-section-heading builder-heading-action">
@@ -1018,8 +1207,8 @@ function OptionsTab({
           <h2>{text('Options', 'الخيارات')}</h2>
           <p>
             {text(
-              'Add separately sellable variants with their own SKU, barcode, price, and optional stock. Use modifier groups for ordinary add-ons and choices.',
-              'أضف متغيرات قابلة للبيع بهوية وسعر ومخزون مستقل، واستخدم مجموعات الخيارات للإضافات والاختيارات المعتادة.',
+              'Choose how you sell this product, then add any customer choices.',
+              'اختر طريقة بيع المنتج، ثم أضف الخيارات التي يحتاجها العميل.',
             )}
           </p>
         </div>
@@ -1033,21 +1222,50 @@ function OptionsTab({
             <Icon name="plus" />
             {text('Add variant', 'إضافة متغير')}
           </button>
-          <button type="button" className="builder-button primary" onClick={onAddGroup}>
-            <Icon name="plus" />
-            {text('Add group', 'إضافة مجموعة')}
-          </button>
         </div>
       </div>
+      <details className="builder-advanced builder-options-help">
+        <summary>{text('When should I use variants or add-ons?', 'متى أستخدم المتغيرات أو الإضافات؟')}</summary>
       <div className="builder-info-banner">
         <span>i</span>
         <p>
           {text(
-            'Variants are required at checkout when added. Leave stock blank for untracked inventory; quote checks stock but does not reserve it. Modifier groups are single or multiple choice with explicit selection limits.',
-            'يجب اختيار متغير عند الطلب إذا تمت إضافته. اترك المخزون فارغاً لعدم تتبعه؛ التسعير يفحص المخزون لكنه لا يحجزه. مجموعات الخيارات لها حدود اختيار صريحة.',
+            'Variants are separately priced versions of a product. Add-ons are customer choices. SKU, barcode, and stock tracking are optional.',
+            'المتغيرات نسخ من المنتج بأسعار مستقلة، أما الإضافات فهي خيارات للعميل. تتبّع المخزون وحقولا SKU والباركود اختيارية.',
           )}
         </p>
       </div>
+      </details>
+      <fieldset className="builder-product-mode">
+        <legend>{text('Product type', 'نوع المنتج')}</legend>
+        <label className={productMode === 'simple' ? 'selected' : ''}>
+          <input type="radio" name="product-mode" checked={productMode === 'simple'} onChange={() => {
+            if (variants.length > 0) {
+              setConfirmSimpleMode(true);
+            } else onProductModeChange('simple');
+          }} />
+          <span>
+            <strong>{text('Simple product', 'منتج بسيط')}</strong>
+            <small>{text('One price, with no sellable variants.', 'سعر واحد بدون متغيرات قابلة للبيع.')}</small>
+          </span>
+        </label>
+        <label className={productMode === 'variants' ? 'selected' : ''}>
+          <input type="radio" name="product-mode" checked={productMode === 'variants'} onChange={() => onProductModeChange('variants')} />
+          <span>
+            <strong>{text('Product with variants', 'منتج بمتغيرات')}</strong>
+            <small>{text('Each variant has its own price and optional SKU, barcode, and stock.', 'لكل متغير سعره الخاص ورمز SKU وباركود ومخزون اختياري.')}</small>
+          </span>
+        </label>
+      </fieldset>
+      {confirmSimpleMode && (
+        <div className="builder-mode-confirmation" role="alert">
+          <p>{text('Switching to a simple product removes the variants you entered. Keep them or use one product price?', 'التحويل إلى منتج بسيط يزيل المتغيرات التي أدخلتها. هل تريد الاحتفاظ بها أم استخدام سعر واحد للمنتج؟')}</p>
+          <div>
+            <button type="button" className="builder-button" onClick={() => setConfirmSimpleMode(false)}>{text('Keep variants', 'الاحتفاظ بالمتغيرات')}</button>
+            <button type="button" className="builder-button" onClick={() => { onProductModeChange('simple'); setConfirmSimpleMode(false); }}>{text('Use one price', 'استخدام سعر واحد')}</button>
+          </div>
+        </div>
+      )}
       {!!variants.length && (
         <div className="builder-variant-list">
           <h3>{text('Sellable variants', 'المتغيرات القابلة للبيع')}</h3>
@@ -1114,6 +1332,9 @@ function OptionsTab({
                     onChange={(event) => onVariantChange(variant.id, { price: event.target.value })}
                   />
                 </label>
+                <details className="builder-advanced builder-variant-extras">
+                  <summary>{text('Optional codes, stock & availability', 'الأكواد والمخزون وحالة التوفر — اختياري')}</summary>
+                  <div className="builder-variant-grid">
                 <label className="builder-field">
                   <span>{text('SKU (optional)', 'رمز SKU (اختياري)')}</span>
                   <input
@@ -1163,23 +1384,188 @@ function OptionsTab({
                     <option value="unavailable">{text('Unavailable', 'غير متاح')}</option>
                   </select>
                 </label>
+                  </div>
+                </details>
+              </div>
+              <div className="builder-attributes">
+                <div className="builder-attributes-heading">
+                  <div>
+                    <strong>{text('Variant attributes', 'خصائص المتغير')}</strong>
+                    <small>{text('Add any dimensions, such as Size, Color, or Material.', 'أضف أي خصائص مثل المقاس أو اللون أو الخامة.')}</small>
+                  </div>
+                  <button type="button" className="builder-button" onClick={() => onAddVariantAttribute(variant.id)}>
+                    <Icon name="plus" />
+                    {text('Add attribute', 'إضافة خاصية')}
+                  </button>
+                </div>
+                {variant.attributes.map((attribute, attributeIndex) => (
+                  <div className="builder-attribute-row" key={`${variant.id}-${attributeIndex}`}>
+                    <label className="builder-field">
+                      <span>{text('Attribute', 'الخاصية')}</span>
+                      <input
+                        maxLength={120}
+                        value={attribute.name}
+                        onChange={(event) => onVariantAttributeChange(variant.id, attributeIndex, { name: event.target.value })}
+                        placeholder={text('e.g. Size', 'مثال: المقاس')}
+                      />
+                    </label>
+                    <label className="builder-field">
+                      <span>{text('Value', 'القيمة')}</span>
+                      <input
+                        maxLength={120}
+                        value={attribute.value}
+                        onChange={(event) => onVariantAttributeChange(variant.id, attributeIndex, { value: event.target.value })}
+                        placeholder={text('e.g. Large', 'مثال: كبير')}
+                      />
+                    </label>
+                    <button type="button" className="builder-remove-button" aria-label={text('Remove attribute', 'حذف الخاصية')} onClick={() => onRemoveVariantAttribute(variant.id, attributeIndex)}>
+                      <Icon name="close" />
+                    </button>
+                  </div>
+                ))}
               </div>
             </section>
           ))}
         </div>
       )}
+      <section className="builder-group-card builder-group-entry">
+        <div className="builder-entry-heading">
+          <div>
+            <h3>{text('Add customer choices', 'إضافة خيارات للعميل')}</h3>
+            <p>{text('Reuse a saved group or create one. Pricing and selection rules stay specific to this product.', 'استخدم مجموعة محفوظة أو أنشئ مجموعة جديدة. يظل السعر وقواعد الاختيار خاصة بهذا المنتج.')}</p>
+          </div>
+        </div>
+        <div className="builder-entry-tabs" role="group" aria-label={text('Choose how to add options', 'اختر طريقة إضافة الخيارات')}>
+          <button
+            type="button"
+            className={groupEntryMode === 'library' ? 'active' : ''}
+            aria-pressed={groupEntryMode === 'library'}
+            onClick={() => setGroupEntryMode('library')}
+          >
+            {text('Use saved group', 'استخدام مجموعة محفوظة')}
+            <span>{availableLibraryGroups.length}</span>
+          </button>
+          <button
+            type="button"
+            className={groupEntryMode === 'create' ? 'active' : ''}
+            aria-pressed={groupEntryMode === 'create'}
+            onClick={() => setGroupEntryMode('create')}
+          >
+            {text('Create new group', 'إنشاء مجموعة جديدة')}
+          </button>
+        </div>
+        {groupEntryMode === 'library' ? (
+          <div className="builder-group-entry-content">
+            {availableLibraryGroups.length > 0 ? (
+              <>
+                <label className="builder-field">
+                  <span>{text('Reusable group', 'مجموعة محفوظة')}</span>
+                  <select
+                    value={selectedLibraryGroupId}
+                    onChange={(event) => onSelectedLibraryGroupChange(event.target.value)}
+                    disabled={libraryLoading || groups.length >= 30}
+                  >
+                    <option value="">{text('Choose a group', 'اختر مجموعة')}</option>
+                    {availableLibraryGroups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name} · {group.assignedProductCount} {text('products', 'منتجات')}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="builder-button primary"
+                  onClick={onAddGroupFromLibrary}
+                  disabled={!selectedLibraryGroupId || groups.length >= 30 || libraryLoading}
+                >
+                  <Icon name="plus" />
+                  {text('Add to this product', 'إضافة إلى هذا المنتج')}
+                </button>
+              </>
+            ) : (
+              <p className="builder-entry-empty" role="status">
+                {libraryLoading
+                  ? text('Loading saved groups…', 'جارٍ تحميل المجموعات المحفوظة…')
+                  : modifierLibrary.length > 0
+                    ? text('All saved groups are already added to this product.', 'تمت إضافة كل المجموعات المحفوظة إلى هذا المنتج بالفعل.')
+                    : text('No saved groups yet. Create one to reuse it across products.', 'لا توجد مجموعات محفوظة بعد. أنشئ مجموعة لإعادة استخدامها مع منتجات أخرى.')}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="builder-group-entry-content builder-create-fields">
+            <label className="builder-field">
+              <span>{text('Group name', 'اسم المجموعة')}</span>
+              <input
+                maxLength={160}
+                value={newGroupName}
+                onChange={(event) => onNewGroupNameChange(event.target.value)}
+                placeholder={text('e.g. Toppings', 'مثال: الإضافات')}
+              />
+            </label>
+            <div className="builder-field builder-new-choices">
+              <span>{text('Customer choices', 'خيارات العميل')}</span>
+              {newGroupOptions.split(/\r?\n/).map((choice, index, choices) => (
+                <div className="builder-new-choice-row" key={index}>
+                  <input
+                    aria-label={text(`Choice ${index + 1}`, `الخيار ${index + 1}`)}
+                    maxLength={160}
+                    value={choice}
+                    placeholder={text('e.g. Extra cheese', 'مثال: جبنة إضافية')}
+                    onChange={(event) => onNewGroupOptionsChange(choices.map((value, choiceIndex) => choiceIndex === index ? event.target.value : value).join('\n'))}
+                  />
+                  <button
+                    type="button"
+                    className="builder-remove-button"
+                    aria-label={text(`Remove choice ${index + 1}`, `إزالة الخيار ${index + 1}`)}
+                    disabled={choices.length === 1}
+                    onClick={() => onNewGroupOptionsChange(choices.filter((_, choiceIndex) => choiceIndex !== index).join('\n'))}
+                  >
+                    <Icon name="close" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="builder-button"
+                disabled={newGroupOptions.split(/\r?\n/).length >= 100 || creatingGroup}
+                onClick={() => onNewGroupOptionsChange(`${newGroupOptions}\n`)}
+              >
+                <Icon name="plus" />
+                {text('Add another choice', 'إضافة خيار آخر')}
+              </button>
+            </div>
+            <div className="builder-create-actions">
+              <small>
+                {text(`${newGroupOptionCount} choices`, `${newGroupOptionCount} خيارات`)}
+              </small>
+              <button
+                type="button"
+                className="builder-button primary"
+                disabled={creatingGroup || !newGroupName.trim() || newGroupOptionCount === 0 || groups.length >= 30}
+                onClick={onCreateAndAddGroup}
+              >
+                <Icon name="plus" />
+                {creatingGroup
+                  ? text('Creating…', 'جارٍ الإنشاء…')
+                  : text('Create and add to product', 'إنشاء وإضافة إلى المنتج')}
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+      <div className="builder-subsection-heading">
+        <div>
+          <h3>{text('Choices on this product', 'الخيارات على هذا المنتج')}</h3>
+          <p>{text('Adjust selection limits and prices for this product.', 'عدّل حدود الاختيار والأسعار لهذا المنتج.')}</p>
+        </div>
+        <span className="builder-count-badge">{groups.length}</span>
+      </div>
       {!groups.length && (
         <div className="builder-empty-state builder-empty-options">
-          <strong>{text('No option groups added', 'لم تتم إضافة مجموعات خيارات')}</strong>
-          <p>
-            {text(
-              'Add a group for sizes, add-ons, sauces, or other choices.',
-              'أضف مجموعة للأحجام أو الإضافات أو الصلصات أو غيرها.',
-            )}
-          </p>
-          <button type="button" className="builder-button" onClick={onAddGroup}>
-            {text('Add first group', 'إضافة أول مجموعة')}
-          </button>
+          <strong>{text('No customer choices added yet', 'لم تتم إضافة خيارات للعميل بعد')}</strong>
+          <p>{text('You can continue without add-ons. Add a group only if customers need extra choices.', 'يمكنك المتابعة بدون إضافات. أضف مجموعة فقط إذا احتاج العميل إلى خيارات إضافية.')}</p>
         </div>
       )}
       <div className="builder-groups-list">
@@ -1223,25 +1609,17 @@ function OptionsTab({
               </button>
             </header>
             <div className="builder-group-fields">
-              <label className="builder-field">
+              {group.description && <p className="builder-group-description">{group.description}</p>}
+              <label className="builder-required-choice">
+                <input
+                  type="checkbox"
+                  checked={group.minSelections > 0}
+                  onChange={(event) => onGroupChange(group.id, { minSelections: event.target.checked ? 1 : 0 })}
+                />
                 <span>
-                  {text('Group name', 'اسم المجموعة')} <i>*</i>
+                  <strong>{text('Customer must choose', 'يجب على العميل الاختيار')}</strong>
+                  <small>{text('Turn off to make this group optional.', 'أوقف هذا الخيار لجعل المجموعة اختيارية.')}</small>
                 </span>
-                <input
-                  maxLength={160}
-                  value={group.name}
-                  onChange={(event) => onGroupChange(group.id, { name: event.target.value })}
-                  placeholder={text('e.g. Choose a size', 'مثال: اختر الحجم')}
-                />
-              </label>
-              <label className="builder-field">
-                <span>{text('Customer instructions', 'تعليمات للعميل')}</span>
-                <input
-                  maxLength={1000}
-                  value={group.description}
-                  onChange={(event) => onGroupChange(group.id, { description: event.target.value })}
-                  placeholder={text('Optional short description', 'وصف مختصر اختياري')}
-                />
               </label>
               <label className="builder-field">
                 <span>{text('Choice type', 'نوع الاختيار')}</span>
@@ -1266,6 +1644,11 @@ function OptionsTab({
                   <option value="multiple">{text('Multiple choice', 'اختيارات متعددة')}</option>
                 </select>
               </label>
+              <details className="builder-advanced builder-limits-details">
+                <summary>
+                  {text('Selection limits', 'حدود الاختيار')}
+                  <span>{group.minSelections}–{group.maxSelections}</span>
+                </summary>
               <div className="builder-selection-limits">
                 <label className="builder-field">
                   <span>{text('Minimum selections', 'أقل عدد للاختيارات')}</span>
@@ -1293,6 +1676,7 @@ function OptionsTab({
                   />
                 </label>
               </div>
+              </details>
             </div>
             <div className="builder-options-heading">
               <strong>{text('Choices', 'الاختيارات')}</strong>
@@ -1302,33 +1686,8 @@ function OptionsTab({
             <div className="builder-option-list">
               {group.options.map((option, optionIndex) => (
                 <div className="builder-option-row" key={option.id}>
-                  <div className="builder-order-buttons">
-                    <button
-                      type="button"
-                      aria-label={text('Move choice up', 'تحريك الاختيار لأعلى')}
-                      disabled={optionIndex === 0}
-                      onClick={() => onMoveOption(group, optionIndex, -1)}
-                    >
-                      <Icon name="arrow-up" />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label={text('Move choice down', 'تحريك الاختيار لأسفل')}
-                      disabled={optionIndex === group.options.length - 1}
-                      onClick={() => onMoveOption(group, optionIndex, 1)}
-                    >
-                      <Icon name="arrow-down" />
-                    </button>
-                  </div>
-                  <input
-                    aria-label={text('Choice name', 'اسم الاختيار')}
-                    maxLength={160}
-                    value={option.name}
-                    onChange={(event) =>
-                      onOptionChange(group.id, option.id, { name: event.target.value })
-                    }
-                    placeholder={text('e.g. Large', 'مثال: كبير')}
-                  />
+                  <span className="builder-option-position" aria-hidden="true">{optionIndex + 1}</span>
+                  <span className="builder-option-name">{option.name}</span>
                   <div className="builder-currency-field">
                     <input
                       aria-label={text('Price adjustment in EGP', 'فرق السعر بالجنيه')}
@@ -1363,22 +1722,20 @@ function OptionsTab({
                     />
                     <span>{option.defaultSelected ? text('Yes', 'نعم') : text('No', 'لا')}</span>
                   </label>
-                  <button
-                    type="button"
-                    className="builder-remove-button"
-                    aria-label={text('Remove choice', 'حذف الاختيار')}
-                    disabled={group.options.length === 1}
-                    onClick={() => onRemoveOption(group, option.id)}
-                  >
-                    <Icon name="close" />
-                  </button>
                 </div>
               ))}
             </div>
-            <button type="button" className="builder-add-choice" onClick={() => onAddOption(group)}>
-              <Icon name="plus" />
-              {text('Add choice', 'إضافة اختيار')}
-            </button>
+            {group.options.some((option) => option.defaultSelected) && (
+              <button
+                type="button"
+                className="builder-text-button"
+                onClick={() => onGroupChange(group.id, {
+                  options: group.options.map((option) => ({ ...option, defaultSelected: false })),
+                })}
+              >
+                {text('Clear default choices', 'إلغاء الاختيارات الافتراضية')}
+              </button>
+            )}
           </section>
         ))}
       </div>
@@ -1387,6 +1744,7 @@ function OptionsTab({
 }
 
 function PreviewPublishTab({
+  onEditStep,
   name,
   description,
   basePrice,
@@ -1398,6 +1756,7 @@ function PreviewPublishTab({
   variants,
   text,
 }: {
+  onEditStep: (step: number) => void;
   name: string;
   description: string;
   basePrice: string;
@@ -1426,8 +1785,14 @@ function PreviewPublishTab({
       <div className="builder-review-card">
         <div className="builder-review-images">
           {images.slice(0, 4).map((image) => (
-            <img src={image.publicUrl} key={image.id} alt="" />
+            <img src={image.publicUrl} key={image.id} alt={name || text('Product image', 'صورة المنتج')} />
           ))}
+          {!images.length && (
+            <div className="builder-review-image-empty">
+              <Icon name="image" />
+              <span>{text('No product image', 'لا توجد صورة للمنتج')}</span>
+            </div>
+          )}
         </div>
         <div className="builder-review-copy">
           <div className="builder-review-categories">
@@ -1435,6 +1800,11 @@ function PreviewPublishTab({
               <span key={category.id}>{category.name}</span>
             ))}
           </div>
+          <span className={`builder-availability-pill ${availability}`}>
+            {availability === 'available'
+              ? text('Available for sale', 'متاح للبيع')
+              : text('Not available for sale', 'غير متاح للبيع')}
+          </span>
           <h3>{name || text('Product name', 'اسم المنتج')}</h3>
           <p>{description || text('No description added.', 'لم تتم إضافة وصف.')}</p>
           {variants.length ? (
@@ -1455,9 +1825,17 @@ function PreviewPublishTab({
           <small>{text('Sold per piece', 'يباع بالقطعة')}</small>
         </div>
       </div>
+      <div className="builder-review-actions" role="group" aria-label={text('Edit product sections', 'تعديل أقسام المنتج')}>
+        <button type="button" className="builder-button" onClick={() => onEditStep(0)}>{text('Edit name & price', 'تعديل الاسم والسعر')}</button>
+        <button type="button" className="builder-button" onClick={() => onEditStep(1)}>{text('Edit photos & categories', 'تعديل الصور والتصنيفات')}</button>
+        <button type="button" className="builder-button" onClick={() => onEditStep(2)}>{text('Edit customer choices', 'تعديل خيارات العميل')}</button>
+      </div>
       {groups.length > 0 && (
         <div className="builder-review-groups">
-          <h3>{text('Customer choices', 'اختيارات العميل')}</h3>
+          <h3>
+            {text('Customer choices', 'اختيارات العميل')}
+            <span className="builder-count-badge">{groups.length}</span>
+          </h3>
           {groups.map((group) => (
             <article key={group.id}>
               <strong>{group.name || text('Unnamed group', 'مجموعة بدون اسم')}</strong>
@@ -1477,6 +1855,14 @@ function PreviewPublishTab({
               </p>
             </article>
           ))}
+        </div>
+      )}
+      {!groups.length && (
+        <div className="builder-review-groups builder-review-empty-card">
+          <h3>{text('Customer choices', 'اختيارات العميل')}<span className="builder-count-badge">0</span></h3>
+          <p className="builder-review-empty">
+            {text('No add-ons or extra choices for this product.', 'لا توجد إضافات أو خيارات أخرى لهذا المنتج.')}
+          </p>
         </div>
       )}
       <fieldset className="builder-availability-fieldset">

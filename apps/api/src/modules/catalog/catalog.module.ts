@@ -4,6 +4,10 @@ import { CategoryController } from './category.controller.js';
 import { CategoryService } from './category.service.js';
 import { MediaController } from './media.controller.js';
 import { MediaService } from './media.service.js';
+import { ModifierGroupController } from './modifier-group.controller.js';
+import { ModifierGroupService } from './modifier-group.service.js';
+import { ProductConfigurationReportController } from './product-configuration-report.controller.js';
+import { ProductConfigurationReportService } from './product-configuration-report.service.js';
 import {
   ProductController,
   ProductQuoteController,
@@ -20,6 +24,8 @@ import { StorefrontOrdersService } from './storefront-orders.service.js';
   imports: [AuthModule],
   controllers: [
     MediaController,
+    ModifierGroupController,
+    ProductConfigurationReportController,
     CategoryController,
     ProductController,
     ProductQuoteController,
@@ -27,6 +33,13 @@ import { StorefrontOrdersService } from './storefront-orders.service.js';
     PublicStorefrontOrdersController,
     OwnerStorefrontOrdersController,
   ],
-  providers: [MediaService, CategoryService, ProductService, StorefrontOrdersService],
+  providers: [
+    MediaService,
+    CategoryService,
+    ModifierGroupService,
+    ProductConfigurationReportService,
+    ProductService,
+    StorefrontOrdersService,
+  ],
 })
 export class CatalogModule {}
