@@ -8,10 +8,12 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import type { OwnerProfile } from '@waffarly/contracts';
 import { parseRequest } from '../../../common/http/zod-validation.pipe.js';
+import { parseCursorPageQuery } from '../../../common/http/pagination.js';
 import { CurrentOwner, OwnerGuard } from '../../auth/index.js';
 import {
   attachModifierGroupSchema,
@@ -26,8 +28,8 @@ export class ProductController {
   constructor(@Inject(ProductService) private readonly products: ProductService) {}
 
   @Get()
-  async list(@CurrentOwner() owner: OwnerProfile) {
-    return this.products.list(owner.merchantId);
+  async list(@CurrentOwner() owner: OwnerProfile, @Query() query: unknown) {
+    return this.products.list(owner.merchantId, parseCursorPageQuery(query));
   }
 
   @Post()

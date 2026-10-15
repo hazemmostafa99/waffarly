@@ -11,11 +11,13 @@ import type {
   CreateMerchantRequest,
   MerchantApplicationSummary,
   MerchantSummary,
+  CursorPage,
   RejectedMerchantApplicationSummary,
   RejectMerchantApplicationRequest,
   SubmitMerchantApplicationRequest,
 } from '@waffarly/contracts';
 import { randomUUID } from 'node:crypto';
+import { assertScopedCursor, type CursorPageQuery } from '../../common/http/pagination.js';
 import { isUniqueConstraintError } from '../../infrastructure/database/prisma-errors.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { hashPassword } from '../auth/index.js';
@@ -111,12 +113,23 @@ function toApplicationSummary(
 export class MerchantService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async list(): Promise<MerchantSummary[]> {
+  async list(page: CursorPageQuery = { limit: 50 }): Promise<CursorPage<MerchantSummary>> {
+    if (page.cursor) {
+      const anchor = await this.prisma.merchant.findUnique({
+        where: { id: page.cursor },
+        select: { id: true },
+      });
+      assertScopedCursor(page.cursor, anchor !== null);
+    }
     const merchants = await this.prisma.merchant.findMany({
       include: { owner: { select: { username: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: page.limit + 1,
+      ...(page.cursor ? { cursor: { id: page.cursor }, skip: 1 } : {}),
     });
-    return merchants.map(toSummary);
+    const hasMore = merchants.length > page.limit;
+    const items = merchants.slice(0, page.limit).map(toSummary);
+    return { items, nextCursor: hasMore ? items.at(-1)?.id ?? null : null };
   }
 
   async create(input: CreateMerchantRequest): Promise<MerchantSummary> {

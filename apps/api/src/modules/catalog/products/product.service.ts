@@ -6,6 +6,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { CatalogProductModifierGroupAssignmentFields } from '@waffarly/contracts';
+import type { CursorPage } from '@waffarly/contracts';
+import { assertScopedCursor, type CursorPageQuery } from '../../../common/http/pagination.js';
 import {
   isSerializationConflict,
   isUniqueConstraintError,
@@ -35,13 +37,27 @@ import type { ProductInput, ProductPatch } from './product.types.js';
 @Injectable()
 export class ProductService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
-  async list(merchantId: string) {
+  async list(
+    merchantId: string,
+    page: CursorPageQuery = { limit: 50 },
+  ): Promise<CursorPage<ReturnType<typeof toProductResponse>>> {
+    if (page.cursor) {
+      const anchor = await this.prisma.product.findFirst({
+        where: { id: page.cursor, merchantId },
+        select: { id: true },
+      });
+      assertScopedCursor(page.cursor, anchor !== null);
+    }
     const products = await this.prisma.product.findMany({
       where: { merchantId },
       include: productInclude,
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: page.limit + 1,
+      ...(page.cursor ? { cursor: { id: page.cursor }, skip: 1 } : {}),
     });
-    return products.map(toProductResponse);
+    const hasMore = products.length > page.limit;
+    const items = products.slice(0, page.limit).map(toProductResponse);
+    return { items, nextCursor: hasMore ? items.at(-1)?.id ?? null : null };
   }
 
   async create(merchantId: string, actor: string, input: ProductInput) {

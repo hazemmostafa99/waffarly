@@ -10,6 +10,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import type {
@@ -19,6 +20,7 @@ import type {
 } from '@waffarly/contracts';
 import { z } from 'zod';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
+import { parseCursorPageQuery } from '../../common/http/pagination.js';
 import { CurrentOwner, OwnerGuard } from '../auth/index.js';
 import { StorefrontOrdersService } from './storefront-orders.service.js';
 
@@ -87,8 +89,8 @@ export class OwnerStorefrontOrdersController {
   constructor(@Inject(StorefrontOrdersService) private readonly orders: StorefrontOrdersService) {}
 
   @Get()
-  async list(@CurrentOwner() owner: OwnerProfile) {
-    return this.orders.listForOwner(owner.merchantId);
+  async list(@CurrentOwner() owner: OwnerProfile, @Query() query: unknown) {
+    return this.orders.listForOwner(owner.merchantId, parseCursorPageQuery(query));
   }
 
   @Patch(':id/status')

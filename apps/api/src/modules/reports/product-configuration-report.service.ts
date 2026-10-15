@@ -1,228 +1,272 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { ProductConfigurationReport } from '@waffarly/contracts';
-import { formatCents, toCents } from '../../common/money/money.js';
+import { formatCents } from '../../common/money/money.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
+
+type TotalsRow = {
+  orderCount: bigint;
+  totalQuantity: bigint;
+  totalRevenueCents: string;
+  linesWithoutPriceBreakdown: bigint;
+  attributeSnapshotsWithoutIds: bigint;
+  modifierSelectionsWithoutIds: bigint;
+};
+type ProductRow = {
+  productId: string;
+  productName: string;
+  variantId: string | null;
+  variantName: string | null;
+  quantity: bigint;
+  revenueCents: string;
+};
+type AttributeRow = {
+  attributeId: string | null;
+  valueId: string | null;
+  attributeName: string;
+  attributeValue: string;
+  quantity: bigint;
+  revenueCents: string;
+};
+type ModifierRow = {
+  modifierGroupId: string | null;
+  modifierOptionId: string | null;
+  groupName: string;
+  optionName: string;
+  selectedQuantity: bigint;
+  additionalRevenueCents: string;
+};
 
 @Injectable()
 export class ProductConfigurationReportService {
+  private readonly logger = new Logger(ProductConfigurationReportService.name);
+
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async get(merchantId: string, from: string, to: string): Promise<ProductConfigurationReport> {
+    const startedAt = performance.now();
     const start = new Date(`${from}T00:00:00.000Z`);
     const endExclusive = new Date(`${to}T00:00:00.000Z`);
     endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
-    const lines = await this.prisma.storefrontOrderLine.findMany({
-      where: {
-        merchantId,
-        order: {
-          is: {
-            merchantId,
-            status: 'accepted',
-            createdAt: { gte: start, lt: endExclusive },
-          },
+
+    const [totalsResult, productsResult, attributesResult, modifiersResult] = await Promise.all([
+      this.measure(() => this.prisma.$queryRaw<TotalsRow[]>`
+        SELECT
+          COUNT(DISTINCT o."id")::bigint AS "orderCount",
+          COALESCE(SUM(l."quantity"), 0)::bigint AS "totalQuantity",
+          COALESCE(TRUNC(SUM(l."lineTotal") * 100), 0)::text AS "totalRevenueCents",
+          (SELECT COUNT(*)::bigint
+           FROM "storefront_order_lines" legacy_line
+           JOIN "storefront_orders" legacy_order ON legacy_order."id" = legacy_line."orderId"
+           WHERE legacy_line."merchantId" = ${merchantId}
+             AND legacy_order."merchantId" = ${merchantId}
+             AND legacy_order."status" = 'accepted'
+             AND legacy_order."createdAt" >= ${start}
+             AND legacy_order."createdAt" < ${endExclusive}
+             AND (legacy_line."basePrice" IS NULL OR legacy_line."modifierTotal" IS NULL))
+            AS "linesWithoutPriceBreakdown",
+          (SELECT COUNT(*)::bigint
+           FROM "storefront_order_line_variant_attributes" snapshot
+           JOIN "storefront_order_lines" snapshot_line ON snapshot_line."id" = snapshot."orderLineId"
+           JOIN "storefront_orders" snapshot_order ON snapshot_order."id" = snapshot_line."orderId"
+           WHERE snapshot_line."merchantId" = ${merchantId}
+             AND snapshot_order."merchantId" = ${merchantId}
+             AND snapshot_order."status" = 'accepted'
+             AND snapshot_order."createdAt" >= ${start}
+             AND snapshot_order."createdAt" < ${endExclusive}
+             AND (snapshot."attributeId" IS NULL OR snapshot."valueId" IS NULL))
+            AS "attributeSnapshotsWithoutIds",
+          (SELECT COUNT(*)::bigint
+           FROM "storefront_order_line_selections" snapshot
+           JOIN "storefront_order_lines" snapshot_line ON snapshot_line."id" = snapshot."orderLineId"
+           JOIN "storefront_orders" snapshot_order ON snapshot_order."id" = snapshot_line."orderId"
+           WHERE snapshot_line."merchantId" = ${merchantId}
+             AND snapshot_order."merchantId" = ${merchantId}
+             AND snapshot_order."status" = 'accepted'
+             AND snapshot_order."createdAt" >= ${start}
+             AND snapshot_order."createdAt" < ${endExclusive}
+             AND (snapshot."modifierGroupId" IS NULL OR snapshot."modifierOptionId" IS NULL))
+            AS "modifierSelectionsWithoutIds"
+        FROM "storefront_order_lines" l
+        JOIN "storefront_orders" o ON o."id" = l."orderId"
+        WHERE l."merchantId" = ${merchantId}
+          AND o."merchantId" = ${merchantId}
+          AND o."status" = 'accepted'
+          AND o."createdAt" >= ${start}
+          AND o."createdAt" < ${endExclusive}
+      `),
+      this.measure(() => this.prisma.$queryRaw<ProductRow[]>`
+        SELECT l."productId" AS "productId", MAX(l."productName") AS "productName",
+          l."variantId" AS "variantId", l."variantName" AS "variantName",
+          SUM(l."quantity")::bigint AS "quantity",
+          TRUNC(SUM(l."lineTotal") * 100)::text AS "revenueCents"
+        FROM "storefront_order_lines" l
+        JOIN "storefront_orders" o ON o."id" = l."orderId"
+        WHERE l."merchantId" = ${merchantId}
+          AND o."merchantId" = ${merchantId}
+          AND o."status" = 'accepted'
+          AND o."createdAt" >= ${start}
+          AND o."createdAt" < ${endExclusive}
+        GROUP BY l."productId", l."variantId", l."variantName"
+      `),
+      this.measure(() => this.prisma.$queryRaw<AttributeRow[]>`
+        SELECT snapshot."attributeId" AS "attributeId", snapshot."valueId" AS "valueId",
+          snapshot."attributeName" AS "attributeName", snapshot."attributeValue" AS "attributeValue",
+          SUM(l."quantity")::bigint AS "quantity",
+          TRUNC(SUM(l."lineTotal") * 100)::text AS "revenueCents"
+        FROM "storefront_order_line_variant_attributes" snapshot
+        JOIN "storefront_order_lines" l ON l."id" = snapshot."orderLineId"
+        JOIN "storefront_orders" o ON o."id" = l."orderId"
+        WHERE l."merchantId" = ${merchantId}
+          AND o."merchantId" = ${merchantId}
+          AND o."status" = 'accepted'
+          AND o."createdAt" >= ${start}
+          AND o."createdAt" < ${endExclusive}
+        GROUP BY snapshot."attributeId", snapshot."valueId", snapshot."attributeName", snapshot."attributeValue"
+      `),
+      this.measure(() => this.prisma.$queryRaw<ModifierRow[]>`
+        SELECT snapshot."modifierGroupId" AS "modifierGroupId",
+          snapshot."modifierOptionId" AS "modifierOptionId",
+          snapshot."groupName" AS "groupName", snapshot."optionName" AS "optionName",
+          SUM(l."quantity")::bigint AS "selectedQuantity",
+          TRUNC(SUM(snapshot."priceAdjustment" * l."quantity") * 100)::text AS "additionalRevenueCents"
+        FROM "storefront_order_line_selections" snapshot
+        JOIN "storefront_order_lines" l ON l."id" = snapshot."orderLineId"
+        JOIN "storefront_orders" o ON o."id" = l."orderId"
+        WHERE l."merchantId" = ${merchantId}
+          AND o."merchantId" = ${merchantId}
+          AND o."status" = 'accepted'
+          AND o."createdAt" >= ${start}
+          AND o."createdAt" < ${endExclusive}
+        GROUP BY snapshot."modifierGroupId", snapshot."modifierOptionId",
+          snapshot."groupName", snapshot."optionName"
+      `),
+    ]);
+    const totalsRows = totalsResult.value;
+    const productRows = productsResult.value;
+    const attributeRows = attributesResult.value;
+    const modifierRows = modifiersResult.value;
+    const elapsedMs = Math.round((performance.now() - startedAt) * 100) / 100;
+    this.logger.log(
+      JSON.stringify({
+        event: 'product_configuration_report.query_metrics',
+        queryCount: 4,
+        elapsedMs,
+        queryMs: {
+          totals: totalsResult.durationMs,
+          products: productsResult.durationMs,
+          attributes: attributesResult.durationMs,
+          modifiers: modifiersResult.durationMs,
         },
-      },
-      select: {
-        id: true,
-        orderId: true,
-        productId: true,
-        productName: true,
-        variantId: true,
-        variantName: true,
-        basePrice: true,
-        modifierTotal: true,
-        quantity: true,
-        lineTotal: true,
-        selections: {
-          select: {
-            modifierGroupId: true,
-            modifierOptionId: true,
-            groupName: true,
-            optionName: true,
-            priceAdjustment: true,
-          },
-        },
-        variantAttributes: {
-          select: {
-            attributeId: true,
-            valueId: true,
-            attributeName: true,
-            attributeValue: true,
-            position: true,
-          },
-        },
-      },
-    });
+      }),
+    );
 
-    const orderIds = new Set<string>();
-    const productBuckets = new Map<string, ProductBucket>();
-    const attributeBuckets = new Map<string, AttributeBucket>();
-    const modifierBuckets = new Map<string, ModifierBucket>();
-    let totalQuantity = 0;
-    let totalRevenueCents = 0n;
-    let linesWithoutPriceBreakdown = 0;
-    let attributeSnapshotsWithoutIds = 0;
-    let modifierSelectionsWithoutIds = 0;
-
-    for (const line of lines) {
-      orderIds.add(line.orderId);
-      totalQuantity += line.quantity;
-      const lineRevenueCents = toCents(line.lineTotal.toString());
-      totalRevenueCents += lineRevenueCents;
-      if (line.basePrice === null || line.modifierTotal === null) linesWithoutPriceBreakdown += 1;
-
-      const product = getOrCreate(productBuckets, line.productId, () => ({
-        productId: line.productId,
-        productName: line.productName,
-        quantity: 0,
-        revenueCents: 0n,
-        variants: new Map(),
-      }));
-      product.quantity += line.quantity;
-      product.revenueCents += lineRevenueCents;
-      const variantKey = line.variantId ?? `legacy:${line.variantName ?? ''}`;
-      const variant = getOrCreate(product.variants, variantKey, () => ({
-        variantId: line.variantId,
-        variantName: line.variantName,
-        quantity: 0,
-        revenueCents: 0n,
-      }));
-      variant.quantity += line.quantity;
-      variant.revenueCents += lineRevenueCents;
-
-      for (const snapshot of line.variantAttributes) {
-        if (snapshot.attributeId === null || snapshot.valueId === null) {
-          attributeSnapshotsWithoutIds += 1;
-        }
-        const key = `${snapshot.attributeId ?? ''}\u001f${snapshot.valueId ?? ''}\u001f${snapshot.attributeName}\u001f${snapshot.attributeValue}`;
-        const attribute = getOrCreate(attributeBuckets, key, () => ({
-          attributeId: snapshot.attributeId,
-          valueId: snapshot.valueId,
-          attributeName: snapshot.attributeName,
-          attributeValue: snapshot.attributeValue,
-          quantity: 0,
+    const totals = totalsRows[0];
+    if (!totals) throw new Error('Report totals query returned no result.');
+    const products = new Map<string, {
+      productId: string;
+      productName: string;
+      quantity: bigint;
+      revenueCents: bigint;
+      variants: Map<string, {
+        variantId: string | null;
+        variantName: string | null;
+        quantity: bigint;
+        revenueCents: bigint;
+      }>;
+    }>();
+    for (const row of productRows) {
+      let product = products.get(row.productId);
+      if (!product) {
+        product = {
+          productId: row.productId,
+          productName: row.productName,
+          quantity: 0n,
           revenueCents: 0n,
-        }));
-        attribute.quantity += line.quantity;
-        attribute.revenueCents += lineRevenueCents;
+          variants: new Map(),
+        };
+        products.set(row.productId, product);
       }
-
-      for (const selection of line.selections) {
-        if (selection.modifierGroupId === null || selection.modifierOptionId === null) {
-          modifierSelectionsWithoutIds += 1;
-        }
-        const key = `${selection.modifierGroupId ?? ''}\u001f${selection.modifierOptionId ?? ''}\u001f${selection.groupName}\u001f${selection.optionName}`;
-        const modifier = getOrCreate(modifierBuckets, key, () => ({
-          modifierGroupId: selection.modifierGroupId,
-          modifierOptionId: selection.modifierOptionId,
-          groupName: selection.groupName,
-          optionName: selection.optionName,
-          selectedQuantity: 0,
-          additionalRevenueCents: 0n,
-        }));
-        modifier.selectedQuantity += line.quantity;
-        modifier.additionalRevenueCents +=
-          toCents(selection.priceAdjustment.toString()) * BigInt(line.quantity);
+      product.quantity += row.quantity;
+      product.revenueCents += BigInt(row.revenueCents);
+      const variantKey = row.variantId ?? `legacy:${row.variantName ?? ''}`;
+      const variant = product.variants.get(variantKey);
+      if (variant) {
+        variant.quantity += row.quantity;
+        variant.revenueCents += BigInt(row.revenueCents);
+      } else {
+        product.variants.set(variantKey, {
+          variantId: row.variantId,
+          variantName: row.variantName,
+          quantity: row.quantity,
+          revenueCents: BigInt(row.revenueCents),
+        });
       }
     }
 
     return {
       from,
       to,
-      orderCount: orderIds.size,
-      totalQuantity,
-      totalRevenue: formatCents(totalRevenueCents),
-      products: [...productBuckets.values()]
+      orderCount: asNumber(totals.orderCount),
+      totalQuantity: asNumber(totals.totalQuantity),
+      totalRevenue: formatCents(BigInt(totals.totalRevenueCents)),
+      products: [...products.values()]
         .sort((left, right) => left.productName.localeCompare(right.productName))
         .map((product) => ({
           productId: product.productId,
           productName: product.productName,
-          quantity: product.quantity,
+          quantity: asNumber(product.quantity),
           revenue: formatCents(product.revenueCents),
           variants: [...product.variants.values()]
             .sort((left, right) => (left.variantName ?? '').localeCompare(right.variantName ?? ''))
             .map((variant) => ({
               variantId: variant.variantId,
               variantName: variant.variantName,
-              quantity: variant.quantity,
+              quantity: asNumber(variant.quantity),
               revenue: formatCents(variant.revenueCents),
             })),
         })),
-      attributeValues: [...attributeBuckets.values()]
-        .sort(
-          (left, right) =>
-            left.attributeName.localeCompare(right.attributeName) ||
-            left.attributeValue.localeCompare(right.attributeValue),
+      attributeValues: attributeRows
+        .sort((left, right) =>
+          left.attributeName.localeCompare(right.attributeName) ||
+          left.attributeValue.localeCompare(right.attributeValue),
         )
         .map((attribute) => ({
           attributeId: attribute.attributeId,
           valueId: attribute.valueId,
           attributeName: attribute.attributeName,
           attributeValue: attribute.attributeValue,
-          quantity: attribute.quantity,
-          revenue: formatCents(attribute.revenueCents),
+          quantity: asNumber(attribute.quantity),
+          revenue: formatCents(BigInt(attribute.revenueCents)),
         })),
-      modifierOptions: [...modifierBuckets.values()]
-        .sort(
-          (left, right) =>
-            left.groupName.localeCompare(right.groupName) ||
-            left.optionName.localeCompare(right.optionName),
+      modifierOptions: modifierRows
+        .sort((left, right) =>
+          left.groupName.localeCompare(right.groupName) || left.optionName.localeCompare(right.optionName),
         )
         .map((modifier) => ({
           modifierGroupId: modifier.modifierGroupId,
           modifierOptionId: modifier.modifierOptionId,
           groupName: modifier.groupName,
           optionName: modifier.optionName,
-          selectedQuantity: modifier.selectedQuantity,
-          additionalRevenue: formatCents(modifier.additionalRevenueCents),
+          selectedQuantity: asNumber(modifier.selectedQuantity),
+          additionalRevenue: formatCents(BigInt(modifier.additionalRevenueCents)),
         })),
       legacy: {
-        linesWithoutPriceBreakdown,
-        attributeSnapshotsWithoutIds,
-        modifierSelectionsWithoutIds,
+        linesWithoutPriceBreakdown: asNumber(totals.linesWithoutPriceBreakdown),
+        attributeSnapshotsWithoutIds: asNumber(totals.attributeSnapshotsWithoutIds),
+        modifierSelectionsWithoutIds: asNumber(totals.modifierSelectionsWithoutIds),
       },
     };
   }
+
+  private async measure<T>(query: () => Promise<T>): Promise<{ value: T; durationMs: number }> {
+    const startedAt = performance.now();
+    const value = await query();
+    return { value, durationMs: Math.round((performance.now() - startedAt) * 100) / 100 };
+  }
 }
 
-type ProductBucket = {
-  productId: string;
-  productName: string;
-  quantity: number;
-  revenueCents: bigint;
-  variants: Map<string, VariantBucket>;
-};
-type VariantBucket = {
-  variantId: string | null;
-  variantName: string | null;
-  quantity: number;
-  revenueCents: bigint;
-};
-type AttributeBucket = {
-  attributeId: string | null;
-  valueId: string | null;
-  attributeName: string;
-  attributeValue: string;
-  quantity: number;
-  revenueCents: bigint;
-};
-type ModifierBucket = {
-  modifierGroupId: string | null;
-  modifierOptionId: string | null;
-  groupName: string;
-  optionName: string;
-  selectedQuantity: number;
-  additionalRevenueCents: bigint;
-};
-
-function getOrCreate<TKey, TValue>(
-  map: Map<TKey, TValue>,
-  key: TKey,
-  create: () => TValue,
-): TValue {
-  const value = map.get(key);
-  if (value !== undefined) return value;
-  const created = create();
-  map.set(key, created);
-  return created;
+function asNumber(value: bigint): number {
+  const result = Number(value);
+  if (!Number.isSafeInteger(result)) throw new Error('Report value exceeds the supported range.');
+  return result;
 }

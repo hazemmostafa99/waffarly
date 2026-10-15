@@ -1,5 +1,5 @@
-import { StorefrontAccountPreviewPage } from '../../../../features/preview/storefront-preview-pages';
+import { StorefrontAccountOverviewPage } from '../../../../features/account/storefront-account-pages';
 
 export default function AccountPage() {
-  return <StorefrontAccountPreviewPage />;
+  return <StorefrontAccountOverviewPage />;
 }

@@ -256,7 +256,11 @@ apps/storefront/src/
 |       |   |-- branches/page.tsx
 |       |   |-- about/page.tsx
 |       |   |-- login/page.tsx
-|       |   `-- account/page.tsx
+|       |   `-- account/
+|       |       |-- page.tsx
+|       |       |-- profile/page.tsx
+|       |       |-- orders/page.tsx
+|       |       `-- addresses/page.tsx
 |       |-- error.tsx
 |       |-- loading.tsx
 |       `-- not-found.tsx
@@ -268,6 +272,7 @@ apps/storefront/src/
 |   |-- cart/
 |   |-- checkout/
 |   |-- favorites/
+|   |-- account/
 |   |-- preview/
 |   `-- orders/
 |-- hooks/
@@ -343,16 +348,17 @@ Do not extract a storefront component merely to reduce line count. Extract it wh
 | 8 | `/s/[slug]/offers` | Offers design preview | UI-only sample cards/filters; no live campaigns or price changes. |
 | 9 | `/s/[slug]/branches` | Branches design preview | UI-only sample cards/selection; no actual addresses or checkout routing. |
 | 10 | `/s/[slug]/about` | About restaurant design preview | Neutral content placeholders; no invented merchant claims. |
-| 11 | `/s/[slug]/login` and `/s/[slug]/account` | Customer account design preview | UI-only forms/account shell; no authentication, customer storage, or account data. |
+| 11 | `/s/[slug]/login`, `/account`, `/account/profile`, `/account/orders`, and `/account/addresses` | Customer account design preview | UI-only account navigation and forms; no authentication, customer storage, fabricated order data, or account records. |
 
 ### UI-only preview policy for routes with API gaps
 
 The user approved implementing the complete route UI before the supporting APIs are ready. This changes presentation scope only; it does not approve backend behavior or fabricated production data.
 
 - Implement the missing order-tracking, offers, branches, about, and account/login route surfaces now, using the same responsive storefront shell, Waffarly tokens, compact sizing, and Arabic/English support.
+- The account preview includes a profile form, a My Orders page with local filter controls and an honest empty state, an addresses page with an unsaved local form, account shortcuts, and a profile icon entry in desktop/mobile navigation. These screens stay isolated in account/order feature modules; every route keeps the preview disclosure.
 - Keep any sample content in an isolated preview-only module under `features/preview/`. Never put preview records in catalog/order contracts, Zustand persistence, API responses, or production data modules.
 - Every preview-only route must show a visible, accessible disclosure near the top that explicitly says it is a design preview and is not connected to live restaurant data. Do not rely on a tooltip or filename for disclosure.
-- Branches may be selected for visual state only; they must not be saved as a branch preference or passed to checkout. Offers may be filtered/opened locally only; they must not affect prices or discounts. Order tracking must not look up, poll, or imply a real order status. Account forms must not authenticate, register, or store customer details. About-page copy must not invent merchant history, contact information, location, hours, or services.
+- Branches may be selected for visual state only; they must not be saved as a branch preference or passed to checkout. Offers may be filtered/opened locally only; they must not affect prices or discounts. Order tracking must not look up, poll, or imply a real order status. Account forms must not authenticate, register, or persist customer details. Profile/address fields remain blank, are labeled as unsaved preview input, and are cleared when the local preview form is submitted or dismissed. My Orders must not show fabricated records, identifiers, timestamps, or operational statuses; use filterable empty states until an authorized customer order-history API exists. About-page copy must not invent merchant history, contact information, location, hours, or services.
 - Use “Preview”/“Sample” content, neutral placeholders, and the supplied assets only as presentation. Do not show fabricated customer PII, order identifiers, operational timestamps, discount values, branch addresses, or claims.
 - Keep the real catalog, quotation, basket, checkout, and order-creation flows unchanged. Replace the preview module with typed API-backed data only after the related contract, authorization, validation, tests, and product rules are approved.
 - Local-only controls (such as preview filters, selected visual cards, tabs, and form field validation) are allowed when their effect is explicitly described as local preview behavior. Never display fake success for a real-world operation.

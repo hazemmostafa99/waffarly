@@ -6,6 +6,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type { CatalogCategoryFields } from '@waffarly/contracts';
+import type { CursorPage } from '@waffarly/contracts';
+import { assertScopedCursor, type CursorPageQuery } from '../../../common/http/pagination.js';
 import { PrismaService } from '../../../infrastructure/database/prisma.service.js';
 
 export type CategoryInput = CatalogCategoryFields;
@@ -15,7 +17,17 @@ type CategoryPatch = { [Key in keyof CategoryInput]?: CategoryInput[Key] | undef
 export class CategoryService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async list(merchantId: string) {
+  async list(
+    merchantId: string,
+    page: CursorPageQuery = { limit: 50 },
+  ): Promise<CursorPage<ReturnType<typeof toCategoryResponse> & { effectiveVisible: boolean }>> {
+    if (page.cursor) {
+      const anchor = await this.prisma.category.findFirst({
+        where: { id: page.cursor, merchantId },
+        select: { id: true },
+      });
+      assertScopedCursor(page.cursor, anchor !== null);
+    }
     const categories = await this.prisma.category.findMany({
       where: { merchantId },
       include: {
@@ -23,12 +35,16 @@ export class CategoryService {
         parent: { select: { id: true, name: true, availability: true, archivedAt: true } },
         _count: { select: { children: true, productLinks: true } },
       },
-      orderBy: [{ parentId: 'asc' }, { name: 'asc' }],
+      orderBy: [{ parentId: 'asc' }, { name: 'asc' }, { id: 'asc' }],
+      take: page.limit + 1,
+      ...(page.cursor ? { cursor: { id: page.cursor }, skip: 1 } : {}),
     });
-    return categories.map((category) => ({
+    const hasMore = categories.length > page.limit;
+    const items = categories.slice(0, page.limit).map((category) => ({
       ...toCategoryResponse(category),
       effectiveVisible: isEffectivelyVisible(category),
     }));
+    return { items, nextCursor: hasMore ? items.at(-1)?.id ?? null : null };
   }
 
   async create(merchantId: string, actor: string, input: CategoryInput) {

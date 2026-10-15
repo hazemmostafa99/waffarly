@@ -8,11 +8,13 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import type { OwnerProfile } from '@waffarly/contracts';
 import { z } from 'zod';
 import { parseRequest } from '../../../common/http/zod-validation.pipe.js';
+import { parseCursorPageQuery } from '../../../common/http/pagination.js';
 import { CurrentOwner, OwnerGuard } from '../../auth/index.js';
 import { CategoryService } from './category.service.js';
 
@@ -33,8 +35,8 @@ export class CategoryController {
   constructor(@Inject(CategoryService) private readonly categories: CategoryService) {}
 
   @Get()
-  async list(@CurrentOwner() owner: OwnerProfile) {
-    return this.categories.list(owner.merchantId);
+  async list(@CurrentOwner() owner: OwnerProfile, @Query() query: unknown) {
+    return this.categories.list(owner.merchantId, parseCursorPageQuery(query));
   }
 
   @Post()

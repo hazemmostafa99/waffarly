@@ -7,10 +7,12 @@ import {
 } from '@nestjs/common';
 import type {
   CreateStorefrontOrderRequest,
+  CursorPage,
   StorefrontOrderReceipt,
   StorefrontOrderStatus,
   StorefrontOrderSummary,
 } from '@waffarly/contracts';
+import { assertScopedCursor, type CursorPageQuery } from '../../common/http/pagination.js';
 import { formatCents, toCents } from '../../common/money/money.js';
 import { isSerializationConflict } from '../../infrastructure/database/prisma-errors.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
@@ -211,7 +213,17 @@ export class StorefrontOrdersService {
     }
   }
 
-  async listForOwner(merchantId: string): Promise<StorefrontOrderSummary[]> {
+  async listForOwner(
+    merchantId: string,
+    page: CursorPageQuery = { limit: 25 },
+  ): Promise<CursorPage<StorefrontOrderSummary>> {
+    if (page.cursor) {
+      const anchor = await this.prisma.storefrontOrder.findFirst({
+        where: { id: page.cursor, merchantId },
+        select: { id: true },
+      });
+      assertScopedCursor(page.cursor, anchor !== null);
+    }
     const orders = await this.prisma.storefrontOrder.findMany({
       where: { merchantId },
       include: {
@@ -223,10 +235,13 @@ export class StorefrontOrdersService {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: page.limit + 1,
+      ...(page.cursor ? { cursor: { id: page.cursor }, skip: 1 } : {}),
     });
-    return orders.map(toSummary);
+    const hasMore = orders.length > page.limit;
+    const items = orders.slice(0, page.limit).map(toSummary);
+    return { items, nextCursor: hasMore ? items.at(-1)?.id ?? null : null };
   }
 
   async updateStatus(

@@ -2,7 +2,7 @@
 
 **Status:** Backend Catalog, local-disk media, Product Builder, structured sellable variants, reusable modifiers, public storefront, checkout MVP, order snapshots/report query, and owner inbox implemented
 
-**Last updated:** 2026-10-14
+**Last updated:** 2026-10-15
 **Scope:** Shared Product Core, restaurant-first implementation, future cross-activity extensibility  
 **Sources:** [Project Overview](../../../PROJECT_OVERVIEW.md), [Restaurant MVP Scope](../../../MVP_SCOPE.md), [Technical Decisions](../../architecture/TECHNICAL_DECISIONS.md), and existing feature specifications under `docs/features/`
 
@@ -17,6 +17,7 @@ The first implementation is intended to focus on restaurants in Egypt. That deli
 The initial restaurant-first catalog and storefront checkout slice is implemented; broader commerce capabilities remain outside it:
 
 - The Catalog NestJS module exposes owner-scoped Media, Category, Product, and reusable Modifier Group APIs, a revision-tagged configuration quote, public catalog/order routes, and the accepted-order product-configuration report. Checkout re-quotes each item, snapshots names/IDs/prices, and atomically reserves tracked variant stock. Owner order routes list orders and accept/reject pending orders; rejection restores the reservation. Automatic variant-combination generation, branch pricing, a separate Inventory/Pricing domain, online payments, and POS order selection remain outside the MVP.
+- Public catalog loading returns the first 40 visible products and 100 visible categories from `GET /catalog/stores/:slug`. The independent `GET /catalog/stores/:slug/products?cursor=...` and `GET /catalog/stores/:slug/categories?cursor=...` routes continue each collection without restarting the other when it is exhausted.
 - The Prisma schema contains tenant-owned reusable modifier definitions and assignments, generic variant attributes, plus storefront order, line, and selection snapshots. Historical lines do not depend on mutable product rows; products with order history cannot be permanently deleted.
 - The Merchant Dashboard exposes the owner Catalog workspace, reusable Product Builder routes at `/products/new` and `/products/:id/edit`, and the live storefront order inbox at `/orders`.
 - The public Next.js application resolves merchant catalogs at `/s/:slug`, supports configuration/quoting, a local basket, and pickup/delivery checkout. It does not collect online payment.

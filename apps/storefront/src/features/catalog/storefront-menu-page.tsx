@@ -5,9 +5,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { BookOpen, ChevronLeft, Search, SearchX, SlidersHorizontal } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
-import type { PublicStorefrontCatalog } from '@waffarly/contracts';
+import type { CursorPage, PublicStorefrontCatalog } from '@waffarly/contracts';
 import { Input } from '@waffarly/ui';
 import { useLocale } from '@waffarly/ui';
+import { apiGetBrowser } from '../../lib/api-client';
 import { getProductStartingPrice } from '../../lib/storefront-format';
 import { storefrontCopy } from '../../lib/storefront-copy';
 import { StorefrontProductGrid } from './storefront-product-grid';
@@ -29,6 +30,9 @@ export function StorefrontMenuPage({
   const t = storefrontCopy(locale);
   const router = useRouter();
   const pathname = usePathname();
+  const [loadedCatalog, setLoadedCatalog] = useState(catalog);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreError, setLoadMoreError] = useState(false);
   const [search, setSearch] = useState(initialSearch);
   const sort = initialSort === 'price-asc' || initialSort === 'price-desc' ? initialSort : 'default';
   const sortLabel = sort === 'price-asc'
@@ -38,6 +42,43 @@ export function StorefrontMenuPage({
       : t.sort;
 
   useEffect(() => setSearch(initialSearch), [initialSearch]);
+  useEffect(() => setLoadedCatalog(catalog), [catalog.slug]);
+
+  async function loadMore() {
+    if (loadingMore || (!loadedCatalog.nextProductCursor && !loadedCatalog.nextCategoryCursor)) return;
+    setLoadingMore(true);
+    setLoadMoreError(false);
+    try {
+      const productPageRequest = loadedCatalog.nextProductCursor
+        ? apiGetBrowser<CursorPage<PublicStorefrontCatalog['products'][number]>>(
+            `catalog/stores/${encodeURIComponent(catalog.slug)}/products?cursor=${encodeURIComponent(loadedCatalog.nextProductCursor)}`,
+          )
+        : Promise.resolve<CursorPage<PublicStorefrontCatalog['products'][number]>>({
+            items: [],
+            nextCursor: null,
+          });
+      const categoryPageRequest = loadedCatalog.nextCategoryCursor
+        ? apiGetBrowser<CursorPage<PublicStorefrontCatalog['categories'][number]>>(
+            `catalog/stores/${encodeURIComponent(catalog.slug)}/categories?cursor=${encodeURIComponent(loadedCatalog.nextCategoryCursor)}`,
+          )
+        : Promise.resolve<CursorPage<PublicStorefrontCatalog['categories'][number]>>({
+            items: [],
+            nextCursor: null,
+          });
+      const [productPage, categoryPage] = await Promise.all([productPageRequest, categoryPageRequest]);
+      setLoadedCatalog((current) => ({
+        ...current,
+        categories: appendUnique(current.categories, categoryPage.items),
+        products: appendUnique(current.products, productPage.items),
+        nextCategoryCursor: categoryPage.nextCursor,
+        nextProductCursor: productPage.nextCursor,
+      }));
+    } catch {
+      setLoadMoreError(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   function updateUrl(next: { category?: string; q?: string; sort?: string }) {
     const params = new URLSearchParams();
@@ -57,7 +98,7 @@ export function StorefrontMenuPage({
   }
 
   const normalizedSearch = initialSearch.trim().toLocaleLowerCase(locale === 'ar' ? 'ar-EG' : 'en-EG');
-  const filteredProducts = catalog.products
+  const filteredProducts = loadedCatalog.products
     .filter((product) => !initialCategoryId || product.categories.some((category) => category.id === initialCategoryId))
     .filter((product) =>
       !normalizedSearch || `${product.name} ${product.description ?? ''} ${product.categories.map((category) => category.name).join(' ')}`
@@ -70,8 +111,8 @@ export function StorefrontMenuPage({
       return sort === 'price-asc' ? difference : -difference;
     });
   const number = filteredProducts.length.toLocaleString(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG-u-nu-latn');
-  const categoryImages = catalog.categories.map((category) => {
-    const matchingProduct = catalog.products.find((product) =>
+  const categoryImages = loadedCatalog.categories.map((category) => {
+    const matchingProduct = loadedCatalog.products.find((product) =>
       product.categories.some((productCategory) => productCategory.id === category.id),
     );
     const primaryImage = matchingProduct?.images.find((image) => image.isPrimary) ?? matchingProduct?.images[0];
@@ -200,13 +241,31 @@ export function StorefrontMenuPage({
                   <SearchX className="size-7" aria-hidden="true" />
                 </span>
                 <p className="mt-4 font-heading text-storefront-subsection font-extrabold text-store-ink">
-                  {catalog.products.length ? t.noResults : t.noProducts}
+                  {loadedCatalog.products.length ? t.noResults : t.noProducts}
                 </p>
               </div>
             </div>
           )}
+          {loadedCatalog.nextProductCursor || loadedCatalog.nextCategoryCursor ? (
+            <div className="mt-6 flex flex-col items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void loadMore()}
+                disabled={loadingMore}
+                className="min-h-11 rounded-full bg-store-primary px-6 text-sm font-extrabold text-white transition hover:bg-store-primary/90 disabled:cursor-wait disabled:opacity-60"
+              >
+                {loadingMore ? t.loadingMore : t.loadMore}
+              </button>
+              {loadMoreError ? <p role="alert" className="text-sm text-red-700">{t.loadMoreError}</p> : null}
+            </div>
+          ) : null}
         </section>
       </div>
     </main>
   );
+}
+
+function appendUnique<T extends { id: string }>(current: T[], next: T[]): T[] {
+  const seen = new Set(current.map((item) => item.id));
+  return [...current, ...next.filter((item) => !seen.has(item.id))];
 }

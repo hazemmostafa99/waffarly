@@ -223,6 +223,8 @@ export interface PublicStorefrontCatalog {
   template: { name: string; layout: 'menu' | 'hero' } | null;
   categories: PublicStorefrontCategory[];
   products: PublicStorefrontProduct[];
+  nextCategoryCursor: string | null;
+  nextProductCursor: string | null;
 }
 
 export interface CreateStorefrontOrderRequest {

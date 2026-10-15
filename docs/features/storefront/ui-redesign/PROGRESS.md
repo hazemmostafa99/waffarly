@@ -26,13 +26,13 @@ Strict tracking requirements:
 
 - Overall: Core catalog-to-order pages plus the API-gap route UIs are implemented. The API-gap screens are explicitly preview-only; backend integration remains blocked on approved contracts and real data.
 - Current milestone: UI-first coverage of every planned storefront route; keep API-gap integration backlog open.
-- Current slice: Responsive preview UIs for order tracking, offers, branches, about, login, and account; localized navigation/footer links.
+- Current slice: Account preview flow now includes overview, profile, My Orders, and addresses pages with profile-icon navigation. Customer APIs remain blocked.
 - Visual reference: Supplied Waffarly Bistro UI kit remains the design source; user-provided Wafarly Marketplace screenshots guide relative typography and density only.
 - Target app: `apps/storefront`.
 - Primary route namespace: `/s/[slug]`.
 - Last updated: 2026-10-15.
-- Last verified state: Uncommitted worktree; no commit created. Storefront lint, typecheck, production build, and `git diff --check` passed. The six preview routes returned HTTP 200 in 36 RTL/LTR × mobile/tablet/desktop checks with no horizontal overflow, missing preview disclosures, or page errors. Local offer filtering and login/register switching passed. Screenshots are saved for offers-mobile and branches-desktop. The actual API was unavailable; a temporary isolated catalog-shell fixture was stopped after verification.
-- Worktree note: Preserve all pre-existing workspace edits. This slice added the preview route components and route files, linked them in the shared header/footer, updated the feature contract/progress, and saved verification screenshots. Existing number-formatting behavior and unrelated dirty API/workspace files were left untouched.
+- Last verified state: Uncommitted worktree; no commit created. Storefront lint, typecheck, production build, and `git diff --check` passed. The six API-gap routes passed 36 RTL/LTR × mobile/tablet/desktop checks; the four account routes passed 24 checks at `390x844`, `768x1024`, and `1440x900` with no overflow or browser errors. Account profile/address form clearing and My Orders local filters passed. Screenshots are saved for offers-mobile, branches-desktop, account-orders-mobile, and account-profile-desktop. The real API was not used for account data; a temporary empty catalog-shell fixture was stopped after verification and the final build uses the configured `localhost:4000` API URL.
+- Worktree note: Preserve all pre-existing workspace edits. This slice added account/orders feature modules and route files, localized account links and navigation, updated the feature contract/progress, and saved verification screenshots. Existing number-formatting behavior and unrelated dirty API/workspace files were left untouched.
 
 ### 2026-10-15 - API-Gap Pages UI Scope Decision
 
@@ -41,6 +41,15 @@ Strict tracking requirements:
 - Existing backend gaps remain open integration blockers. This decision does not add endpoints, contracts, seed data, or business rules. Arabic display digits remain Western (`0-9`) in every locale; no number-formatting behavior is changed.
 - Scope recorded before implementation: add the missing route pages and reusable preview compositions, then link them from the existing shared navigation/footer. Continue with the existing responsive Waffarly palette, Cairo/Tajawal type, Tailwind, and shared shadcn primitives.
 - Status at decision time: approved before implementation; completed evidence is recorded in the following log entry.
+
+### 2026-10-15 - Account Flow UI Scope Decision
+
+- The user approved adding a profile page, a My Orders page, and supporting screens for the account flow.
+- Updated `FEATURE.md` first: `/account` becomes an overview linking to `/account/profile`, `/account/orders`, and `/account/addresses`; desktop and mobile navigation gain an account icon/entry.
+- UI-only preview rules remain in force: profile and address forms have blank, transient fields and visibly state that data is not sent or saved; local submit/dismiss clears the fields. Orders use interactive local filters with honest empty states and no invented orders, IDs, dates, or statuses. Every route retains the visible preview disclosure.
+- No customer identity, profile, order-history, address, or auth API exists in the approved storefront contract. These pages will not call unsupported endpoints, persist PII, or touch basket/checkout/order state.
+- Implementation order: update shared localized copy and header/footer navigation; create reusable account navigation/preview form UI; add account overview/profile/addresses and orders route compositions; then verify typecheck, lint, responsive RTL/LTR layout, and page interactions before recording evidence.
+- Status at decision time: approved before implementation; completion evidence will be added to the implementation log.
 
 ## Entry Gates
 
@@ -229,6 +238,11 @@ Strict tracking requirements:
 - [!] Blocked by unresolved customer identity requirements and missing public customer API.
 - [x] Build preview-only login/register form states and account dashboard shell; no authentication call, customer-data persistence, or fake success.
 - [x] Check both pages at mobile/tablet/desktop in RTL and LTR; registration view switches locally.
+- [x] Add the profile page with blank, transient, non-persisted fields and a visible preview notice.
+- [x] Add the My Orders page with local filter controls and an honest empty state; no order records or statuses are fabricated.
+- [x] Add the addresses page with an add-address preview form that clears without saving.
+- [x] Link account pages from the account overview, profile icon, mobile navigation, footer, and account sub-navigation.
+- [x] Check the account flow at mobile/tablet/desktop in RTL and LTR; profile/address fields clear after preview submission and order filters change locally.
 - [ ] Approve login/sign-up/session behavior.
 - [ ] Approve customer profile fields and order-history access rules.
 - [ ] Define authentication, authorization, privacy, and recovery contracts.
@@ -272,6 +286,8 @@ Each completed page must record evidence for all applicable checks.
 | Mobile visual comparison (`390x844`) | Passed (homepage shell) | Arabic and English homepage screenshots captured; `document.documentElement.scrollWidth` matched 390px. See `screenshots/homepage-rtl-2026-10-15-mobile.png`; catalog data is not live-verified |
 | Category card dimensions/type | Passed (runtime and screenshot) | At 390x844, 768x1024, and 1440x900: card `175x150px`, image `70x70px`, title `12px`, metadata `10px`; no document horizontal overflow |
 | Footer layout (`390x844` / `1440x900`) | Passed (homepage shell) | Arabic/English footer layout checked at 390x844, 768x1024, and 1440x900. Scoped legacy paragraph color leakage so the copyright row now renders with the intended light text token; catalog data is not live-verified |
+| Account preview pages (mobile/tablet/desktop, Arabic/English) | Passed | 24 browser checks across `/account`, `/account/profile`, `/account/orders`, and `/account/addresses`; `390x844`, `768x1024`, `1440x900`; correct direction, visible disclosure, no horizontal overflow or page errors |
+| Account preview interactions | Passed | Profile and address inputs clear after local preview submission; all three order filters switch `aria-pressed` state while retaining the honest empty state |
 | Menu visual comparison (`390x844` / `1440x900`) | Pending recheck | Prior `screenshots/menu-mobile.png` and `screenshots/menu-desktop.png` predate updated title, hero, and grid sizing |
 | Product detail visual comparison (`390x844` / `1440x900`) | Pending recheck | Prior product screenshots predate the compact title, image aspect, and card-spacing changes |
 | Tablet responsive check | Partial (homepage shell) | Arabic/English homepage shell checked at 768x1024; `document.documentElement.scrollWidth` matched 768px. Menu/product responsive checks remain pending |
@@ -409,6 +425,16 @@ Each completed page must record evidence for all applicable checks.
 - Final mobile-footer refinement: let the brand block span both mobile grid columns so the Waffarly Bistro wordmark is not truncated. Recaptured the offers page at `390x844`; the complete brand name is visible and the page still has no horizontal overflow. The desktop four-column layout is unchanged.
 - Verification passed after final code changes: `pnpm --filter @waffarly/storefront typecheck`, `pnpm --filter @waffarly/storefront lint`, `pnpm --filter @waffarly/storefront build`, and `git diff --check`. The final build was rerun without the temporary test API override; its generated runtime uses the normal `localhost:4000` API configuration. The workspace still warns that Node 20.19.0 is below the package requirement `>=24.11.0 <25`.
 - Backend integration remains pending for branches/order routing, promotions, merchant editorial/contact data, privacy-safe public tracking, and customer authentication/account APIs. All pre-existing unrelated workspace edits and number-formatting work were preserved.
+
+### 2026-10-15 - Customer Account Flow UI
+
+- Added the shared account preview shell and localized `/account`, `/account/profile`, `/account/orders`, and `/account/addresses` pages in `features/account/` and `features/orders/`. Each screen has an accessible preview disclosure and shared account sub-navigation.
+- Added a profile icon link in the desktop header, a fifth Account destination in the mobile bottom bar, plus Account and My Orders links in the footer. The account overview links to sign-in preview, profile, orders, addresses, favorites, and basket.
+- Profile and address forms start blank, carry an explicit don't-enter-real-data notice, make no request and retain no values after preview submission/dismissal. My Orders filters update local selected state; order history remains an honest empty state with no fabricated order data, IDs, dates, or statuses.
+- Browser verification used a temporary empty catalog-shell fixture on port 4001 and the production storefront on port 3000. All four account routes returned HTTP 200 for Arabic and English at `390x844`, `768x1024`, and `1440x900` (24 route/locale/viewport checks); all rendered the matching document direction and preview notice with no horizontal overflow or page errors. Profile and address form clearing, mobile header icon, five-column mobile navigation, and local order filters passed. Captures: `screenshots/account-orders-mobile.png` and `screenshots/account-profile-desktop.png`. The in-app browser integration was unavailable (`missing field sandboxPolicy`); installed Edge was used for the checks.
+- Stopped the temporary fixture and storefront servers. Rebuilt without the temporary API override; generated server chunks reference the configured `http://localhost:4000`, not the fixture. No API calls for account data, database changes, order submissions, or customer-data persistence occurred.
+- Verification passed: `pnpm --filter @waffarly/storefront typecheck`, `pnpm --filter @waffarly/storefront lint`, `pnpm --filter @waffarly/storefront build`, and `git diff --check`. Node 20.19.0 still emits the existing warning that the workspace requires Node `>=24.11.0 <25`.
+- The profile fields and address fields are presentation-only pending product/API approval. Authentication, saved profile, address persistence, and customer order history remain backend integration blockers.
 
 ## Decisions and Blockers
 

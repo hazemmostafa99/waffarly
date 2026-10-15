@@ -8,9 +8,7 @@ import type { ComponentProps } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
-  BadgeCheck,
   Clock3,
-  Compass,
   Info,
   MapPin,
   ShieldCheck,
@@ -64,7 +62,6 @@ type PreviewCopy = {
   stepThree: string;
   stepText: string;
   accountTitle: string;
-  accountIntro: string;
   loginTitle: string;
   loginIntro: string;
   signIn: string;
@@ -80,12 +77,6 @@ type PreviewCopy = {
   noAccount: string;
   haveAccount: string;
   signInLink: string;
-  accountDetails: string;
-  orderHistory: string;
-  savedAddresses: string;
-  notConnected: string;
-  browseFavorites: string;
-  viewBasket: string;
 };
 
 const copy: Record<'ar' | 'en', PreviewCopy> = {
@@ -133,7 +124,6 @@ const copy: Record<'ar' | 'en', PreviewCopy> = {
     stepThree: 'الخطوة الثالثة',
     stepText: 'سيظهر وصف الحالة هنا بعد اعتماد وربط بيانات الطلبات.',
     accountTitle: 'حسابك',
-    accountIntro: 'معاينة لتجربة الحساب. بيانات الملف والطلبات والعناوين غير متصلة بعد.',
     loginTitle: 'تسجيل الدخول',
     loginIntro: 'تصميم واجهة الحساب جاهز، وسيتم تفعيل تسجيل الدخول بعد ربط الخدمة.',
     signIn: 'دخول',
@@ -149,12 +139,6 @@ const copy: Record<'ar' | 'en', PreviewCopy> = {
     noAccount: 'ليس لديك حساب؟',
     haveAccount: 'لديك حساب بالفعل؟',
     signInLink: 'سجّل الدخول',
-    accountDetails: 'بيانات الحساب',
-    orderHistory: 'الطلبات',
-    savedAddresses: 'العناوين المحفوظة',
-    notConnected: 'ستتوفر هذه التفاصيل بعد ربط الحساب.',
-    browseFavorites: 'المفضلة',
-    viewBasket: 'سلة الطلب',
   },
   en: {
     home: 'Home',
@@ -200,7 +184,6 @@ const copy: Record<'ar' | 'en', PreviewCopy> = {
     stepThree: 'Third step',
     stepText: 'An approved order update will appear here once order data is connected.',
     accountTitle: 'Your account',
-    accountIntro: 'A preview of the account experience. Profile, order, and address data are not connected yet.',
     loginTitle: 'Sign in',
     loginIntro: 'The account interface is ready; sign-in will be enabled after its service is connected.',
     signIn: 'Sign in',
@@ -216,19 +199,12 @@ const copy: Record<'ar' | 'en', PreviewCopy> = {
     noAccount: 'New here?',
     haveAccount: 'Already have an account?',
     signInLink: 'Sign in',
-    accountDetails: 'Account details',
-    orderHistory: 'Orders',
-    savedAddresses: 'Saved addresses',
-    notConnected: 'These details will be available after account integration.',
-    browseFavorites: 'Favorites',
-    viewBasket: 'Your basket',
   },
 };
 
 function getCopy(locale: Locale): PreviewCopy {
   return copy[locale === 'ar' ? 'ar' : 'en'];
 }
-
 function useStorefrontPreviewRoutes() {
   const { slug } = useParams<{ slug: string }>();
   const home = `/s/${encodeURIComponent(slug)}`;
@@ -509,44 +485,5 @@ function Field({
       {label}
       <Input id={id} name={name} type={type} autoComplete={autoComplete} required={required} className="h-11 rounded-xl border-store-border bg-white text-start" />
     </label>
-  );
-}
-
-export function StorefrontAccountPreviewPage() {
-  const { locale } = useLocale();
-  const t = getCopy(locale);
-  const routes = useStorefrontPreviewRoutes();
-  const cards = [
-    { icon: BadgeCheck, title: t.accountDetails },
-    { icon: Clock3, title: t.orderHistory },
-    { icon: MapPin, title: t.savedAddresses },
-  ];
-
-  return (
-    <PreviewPage title={t.accountTitle} intro={t.accountIntro}>
-      <div className="grid gap-4 lg:grid-cols-[0.75fr_1.25fr]">
-        <Card className="grid content-start gap-4 rounded-[1.35rem] border-store-border bg-white p-5 shadow-[0_12px_32px_rgba(30,38,36,0.045)]">
-          <span className="grid size-14 place-items-center rounded-2xl bg-store-primary/10 text-store-primary"><Compass className="size-7" aria-hidden="true" /></span>
-          <div>
-            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">{t.accountTitle}</h2>
-            <p className="mt-1 text-storefront-support leading-5 text-store-muted">{t.notConnected}</p>
-          </div>
-          <Button asChild className="bg-store-primary text-white hover:bg-store-primary-dark"><Link href={routes.login}>{t.signIn}</Link></Button>
-          <div className="grid grid-cols-2 gap-2">
-            <Button asChild variant="outline"><Link href={routes.favorites}>{t.browseFavorites}</Link></Button>
-            <Button asChild variant="outline"><Link href={routes.cart}>{t.viewBasket}</Link></Button>
-          </div>
-        </Card>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {cards.map(({ icon: Icon, title }) => (
-            <Card key={title} className="grid min-h-44 content-start gap-3 rounded-[1.35rem] border-store-border bg-white p-4">
-              <span className="grid size-10 place-items-center rounded-xl bg-store-cream text-store-primary"><Icon className="size-5" aria-hidden="true" /></span>
-              <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">{title}</h2>
-              <p className="text-storefront-support leading-5 text-store-muted">{t.notConnected}</p>
-            </Card>
-          ))}
-        </div>
-      </div>
-    </PreviewPage>
   );
 }

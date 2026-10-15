@@ -7,6 +7,7 @@ import type { PrismaService } from '../../src/infrastructure/database/prisma.ser
 import { ProductPricingService } from '../../src/modules/catalog/pricing/product-pricing.service.js';
 import { ProductService } from '../../src/modules/catalog/products/product.service.js';
 import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
+import { ProductConfigurationReportService } from '../../src/modules/reports/product-configuration-report.service.js';
 
 config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
 
@@ -66,6 +67,7 @@ it(
           const productsPrisma = transactionClient;
           const products = new ProductService(productsPrisma);
           const productsPricing = new ProductPricingService(productsPrisma);
+          const reports = new ProductConfigurationReportService(productsPrisma);
 
           const product = await products.create(merchant.id, 'order-verification-test', {
             name: 'Verification bowl',
@@ -147,12 +149,12 @@ it(
           });
           assert.equal(reservedVariant.stockQuantity, 1);
 
-          const listed = await orders.listForOwner(merchant.id);
-          assert.equal(listed.length, 1);
-          assert.equal(listed[0]!.deliveryAddress, '12 Cairo Street');
-          assert.equal(listed[0]!.lines[0]!.productName, 'Verification bowl');
-          assert.equal(listed[0]!.lines[0]!.variantName, 'Large');
-          const attributeSnapshots = listed[0]!.lines[0]!.variantAttributes;
+          const listed = await orders.listForOwner(merchant.id, { limit: 1 });
+          assert.equal(listed.items.length, 1);
+          assert.equal(listed.items[0]!.deliveryAddress, '12 Cairo Street');
+          assert.equal(listed.items[0]!.lines[0]!.productName, 'Verification bowl');
+          assert.equal(listed.items[0]!.lines[0]!.variantName, 'Large');
+          const attributeSnapshots = listed.items[0]!.lines[0]!.variantAttributes;
           assert.deepEqual(
             attributeSnapshots.map(({ attributeName, attributeValue, position }) => ({
               attributeName,
@@ -167,7 +169,7 @@ it(
           assert.ok(
             attributeSnapshots.every((snapshot) => snapshot.attributeId && snapshot.valueId),
           );
-          assert.deepEqual(listed[0]!.lines[0]!.selections, [
+          assert.deepEqual(listed.items[0]!.lines[0]!.selections, [
             {
               groupName: 'Extras',
               optionName: 'Cheese',
@@ -198,6 +200,29 @@ it(
             ],
           });
           await orders.updateStatus(merchant.id, second.id, 'accepted');
+          const orderPageOne = await orders.listForOwner(merchant.id, { limit: 1 });
+          assert.equal(orderPageOne.items.length, 1);
+          assert.ok(orderPageOne.nextCursor);
+          const orderPageTwo = await orders.listForOwner(merchant.id, {
+            limit: 1,
+            cursor: orderPageOne.nextCursor,
+          });
+          assert.equal(orderPageTwo.items.length, 1);
+          assert.notEqual(orderPageOne.items[0]!.id, orderPageTwo.items[0]!.id);
+          assert.equal(orderPageTwo.nextCursor, null);
+          const reportDate = new Date().toISOString().slice(0, 10);
+          const report = await reports.get(merchant.id, reportDate, reportDate);
+          assert.equal(report.orderCount, 1);
+          assert.equal(report.totalQuantity, 1);
+          assert.equal(report.totalRevenue, second.total);
+          assert.equal(report.products[0]?.productId, product.id);
+          assert.equal(report.products[0]?.quantity, 1);
+          assert.equal(report.attributeValues.length, 2);
+          assert.deepEqual(report.legacy, {
+            linesWithoutPriceBreakdown: 0,
+            attributeSnapshotsWithoutIds: 0,
+            modifierSelectionsWithoutIds: 0,
+          });
           const acceptedVariant = await transaction.productVariant.findUniqueOrThrow({
             where: { id: product.variants[0]!.id },
           });
@@ -231,8 +256,8 @@ it(
               ],
             },
           );
-          const afterCatalogEdit = await orders.listForOwner(merchant.id);
-          const acceptedOrderSnapshot = afterCatalogEdit.find((order) => order.id === second.id)!
+          const afterCatalogEdit = await orders.listForOwner(merchant.id, { limit: 10 });
+          const acceptedOrderSnapshot = afterCatalogEdit.items.find((order) => order.id === second.id)!
             .lines[0]!;
           assert.equal(acceptedOrderSnapshot.variantName, 'Large');
           assert.equal(acceptedOrderSnapshot.basePrice, '100.00');

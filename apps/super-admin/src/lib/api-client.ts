@@ -22,6 +22,39 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...init.headers },
   });
+  const firstPage = await readResponse<unknown>(response);
+  if ((init.method ?? 'GET').toUpperCase() !== 'GET' || !isCursorPage(firstPage)) {
+    return firstPage as T;
+  }
+
+  const items = [...firstPage.items];
+  let cursor = firstPage.nextCursor;
+  while (cursor) {
+    const nextUrl = new URL(path.replace(/^\//, ''), `${apiBaseUrl()}/`);
+    nextUrl.searchParams.set('cursor', cursor);
+    const nextResponse = await fetch(nextUrl, {
+      ...init,
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...init.headers },
+    });
+    const page = await readResponse<unknown>(nextResponse);
+    if (!isCursorPage(page)) throw new ApiError('API returned an invalid paginated response.', 500);
+    items.push(...page.items);
+    cursor = page.nextCursor;
+  }
+  return items as T;
+}
+
+export async function apiRequestPage<T>(path: string, init: RequestInit = {}) {
+  const response = await fetch(new URL(path.replace(/^\//, ''), `${apiBaseUrl()}/`), {
+    ...init,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...init.headers },
+  });
+  return readResponse<{ items: T[]; nextCursor: string | null }>(response);
+}
+
+async function readResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as {
       message?: string | string[];
@@ -32,4 +65,15 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     throw new ApiError(message, response.status);
   }
   return (await response.json()) as T;
+}
+
+function isCursorPage(value: unknown): value is { items: unknown[]; nextCursor: string | null } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'items' in value &&
+    Array.isArray(value.items) &&
+    'nextCursor' in value &&
+    (typeof value.nextCursor === 'string' || value.nextCursor === null)
+  );
 }

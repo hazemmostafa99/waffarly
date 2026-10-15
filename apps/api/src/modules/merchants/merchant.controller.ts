@@ -7,12 +7,14 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import type { MerchantSummary } from '@waffarly/contracts';
 import { BUSINESS_ACTIVITY_KEYS } from '@waffarly/contracts';
 import { z } from 'zod';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
+import { parseCursorPageQuery } from '../../common/http/pagination.js';
 import { AdminGuard, CurrentAdmin } from '../auth/index.js';
 import { MerchantService } from './merchant.service.js';
 
@@ -37,8 +39,8 @@ export class MerchantController {
   constructor(@Inject(MerchantService) private readonly merchants: MerchantService) {}
 
   @Get()
-  list(): Promise<MerchantSummary[]> {
-    return this.merchants.list();
+  list(@Query() query: unknown) {
+    return this.merchants.list(parseCursorPageQuery(query));
   }
 
   @Post()

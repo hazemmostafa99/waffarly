@@ -1,4 +1,5 @@
 export { BUSINESS_ACTIVITY_KEYS, BUSINESS_ACTIVITY_LABELS } from './activities-modules.js';
+export type { CursorPage } from './pagination.js';
 export type {
   ActivateFirstMonthRequest,
   ApproveMerchantApplicationRequest,

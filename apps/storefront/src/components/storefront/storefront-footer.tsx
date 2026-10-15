@@ -46,7 +46,8 @@ export function StorefrontFooter({ catalog }: { catalog: PublicStorefrontCatalog
           <Link className={footerLinkClass} href={`${homeHref}/cart`}>{t.footerCart}</Link>
           <Link className={footerLinkClass} href={`${homeHref}/checkout`}>{t.footerCheckout}</Link>
           <Link className={footerLinkClass} href={`${homeHref}/login`}>{locale === 'ar' ? 'تسجيل الدخول' : 'Sign in'}</Link>
-          <Link className={footerLinkClass} href={`${homeHref}/account`}>{locale === 'ar' ? 'حسابك' : 'Account'}</Link>
+          <Link className={footerLinkClass} href={`${homeHref}/account`}>{t.account}</Link>
+          <Link className={footerLinkClass} href={`${homeHref}/account/orders`}>{t.myOrders}</Link>
         </nav>
 
         <nav aria-label={t.footerRestaurant} className="grid content-start justify-items-start gap-3 text-start">

@@ -48,6 +48,8 @@ describe('catalog owner endpoints', () => {
   let detachedModifierGroup:
     { productId: string; assignmentId: string; revision: number } | undefined;
   let publicSlug: string | undefined;
+  let publicProductCursor: string | undefined;
+  let publicCategoryCursor: string | undefined;
 
   beforeEach(async () => {
     authorized = true;
@@ -57,6 +59,8 @@ describe('catalog owner endpoints', () => {
     attachedModifierGroup = undefined;
     detachedModifierGroup = undefined;
     publicSlug = undefined;
+    publicProductCursor = undefined;
+    publicCategoryCursor = undefined;
     const module = await Test.createTestingModule({
       controllers: [
         MediaController,
@@ -169,6 +173,16 @@ describe('catalog owner endpoints', () => {
             getPublicStorefrontCatalog: async (slug: string) => {
               publicSlug = slug;
               return { slug, products: [] };
+            },
+            getPublicStorefrontProducts: async (slug: string, cursor?: string) => {
+              publicSlug = slug;
+              publicProductCursor = cursor;
+              return { items: [], nextCursor: null };
+            },
+            getPublicStorefrontCategories: async (slug: string, cursor?: string) => {
+              publicSlug = slug;
+              publicCategoryCursor = cursor;
+              return { items: [], nextCursor: null };
             },
           },
         },
@@ -415,6 +429,17 @@ describe('catalog owner endpoints', () => {
     assert.deepEqual(response.body, { slug: 'cairo-cafe', products: [] });
     assert.equal(publicSlug, 'cairo-cafe');
     await request(app.getHttpServer()).get('/catalog/stores/Not%20A%20Slug').expect(400);
+    await request(app.getHttpServer())
+      .get('/catalog/stores/cairo-cafe/products?cursor=55555555-5555-4555-8555-555555555555')
+      .expect(200);
+    assert.equal(publicProductCursor, '55555555-5555-4555-8555-555555555555');
+    await request(app.getHttpServer())
+      .get('/catalog/stores/cairo-cafe/categories?cursor=not-a-uuid')
+      .expect(400);
+    await request(app.getHttpServer())
+      .get('/catalog/stores/cairo-cafe/categories')
+      .expect(200);
+    assert.equal(publicCategoryCursor, undefined);
 
     const productId = '55555555-5555-4555-8555-555555555555';
     await request(app.getHttpServer())

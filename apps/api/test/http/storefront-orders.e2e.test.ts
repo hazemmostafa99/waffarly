@@ -28,12 +28,14 @@ describe('storefront order endpoints', () => {
   let authorized: boolean;
   let created: { slug: string; body: unknown } | undefined;
   let listedMerchantId: string | undefined;
+  let listedPage: { cursor?: string; limit: number } | undefined;
   let statusUpdate: { merchantId: string; id: string; status: string } | undefined;
 
   beforeEach(async () => {
     authorized = true;
     created = undefined;
     listedMerchantId = undefined;
+    listedPage = undefined;
     statusUpdate = undefined;
     const module = await Test.createTestingModule({
       controllers: [PublicStorefrontOrdersController, OwnerStorefrontOrdersController],
@@ -61,9 +63,13 @@ describe('storefront order endpoints', () => {
                 createdAt: '2026-10-14T10:00:00.000Z',
               };
             },
-            listForOwner: async (merchantId: string) => {
+            listForOwner: async (
+              merchantId: string,
+              page: { cursor?: string; limit: number },
+            ) => {
               listedMerchantId = merchantId;
-              return [];
+              listedPage = page;
+              return { items: [], nextCursor: null };
             },
             updateStatus: async (merchantId: string, id: string, status: string) => {
               statusUpdate = { merchantId, id, status };
@@ -126,8 +132,13 @@ describe('storefront order endpoints', () => {
 
   it('scopes owner order reads and status changes to the signed-in merchant', async () => {
     const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-    await request(app.getHttpServer()).get('/owner/orders').expect(200);
+    const cursor = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const response = await request(app.getHttpServer())
+      .get(`/owner/orders?limit=1&cursor=${cursor}`)
+      .expect(200);
     assert.equal(listedMerchantId, owner.merchantId);
+    assert.deepEqual(listedPage, { cursor, limit: 1 });
+    assert.deepEqual(response.body, { items: [], nextCursor: null });
 
     await request(app.getHttpServer())
       .patch(`/owner/orders/${id}/status`)

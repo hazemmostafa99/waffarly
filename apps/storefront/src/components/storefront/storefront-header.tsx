@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Gift, Heart, House, Menu, ShoppingBag, Sparkles } from 'lucide-react';
+import { Gift, Heart, House, Menu, ShoppingBag, Sparkles, UserRound } from 'lucide-react';
 import type { PublicStorefrontCatalog } from '@waffarly/contracts';
 import { Button, LanguageSwitcher } from '@waffarly/ui';
 import { useLocale } from '@waffarly/ui';
@@ -57,8 +57,10 @@ export function StorefrontHeader({
   const aboutHref = `${homeHref}/about`;
   const cartHref = `${homeHref}/cart`;
   const favoritesHref = `${homeHref}/favorites`;
+  const accountHref = `${homeHref}/account`;
   const isHome = pathname === homeHref;
   const isMenu = pathname === menuHref;
+  const isAccount = pathname === accountHref || pathname.startsWith(`${accountHref}/`);
 
   return (
     <>
@@ -94,7 +96,7 @@ export function StorefrontHeader({
               aria-current={pathname === offersHref ? 'page' : undefined}
               className={`text-sm font-bold transition-colors hover:text-store-accent ${pathname === offersHref ? 'text-store-accent' : 'text-store-ink'}`}
             >
-              {locale === 'ar' ? 'العروض' : 'Offers'}
+              {t.offers}
             </Link>
             <Link
               href={aboutHref}
@@ -120,6 +122,14 @@ export function StorefrontHeader({
             >
               <Heart className="size-5" aria-hidden="true" />
             </Link>
+            <Link
+              href={accountHref}
+              aria-label={t.account}
+              aria-current={isAccount ? 'page' : undefined}
+              className={`inline-flex size-11 items-center justify-center rounded-full transition ${isAccount ? 'bg-store-primary/10 text-store-primary' : 'text-store-ink hover:bg-store-page hover:text-store-primary-deep'}`}
+            >
+              <UserRound className="size-5" aria-hidden="true" />
+            </Link>
             <LanguageSwitcher className="hidden px-2 text-xs sm:flex sm:px-3" />
             <Button
               asChild
@@ -138,14 +148,15 @@ export function StorefrontHeader({
       </header>
 
       <nav
-        aria-label={locale === 'ar' ? 'تنقل الموبايل' : 'Mobile navigation'}
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-store-border bg-white/95 px-2 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-8px_28px_rgba(16,45,35,0.08)] backdrop-blur-md lg:hidden"
+        aria-label={t.mobileNavigation}
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-store-border bg-white/95 px-1 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-8px_28px_rgba(16,45,35,0.08)] backdrop-blur-md lg:hidden"
       >
         {[
           { href: homeHref, title: t.home, icon: House, active: isHome },
           { href: menuHref, title: t.menu, icon: Menu, active: isMenu },
           { href: cartHref, title: t.cart, icon: ShoppingBag, active: pathname === cartHref },
           { href: favoritesHref, title: t.favorites, icon: Heart, active: pathname === favoritesHref },
+          { href: accountHref, title: t.account, icon: UserRound, active: isAccount },
         ].map(({ href, title, icon: Icon, active }) => (
           <Link
             href={href}
