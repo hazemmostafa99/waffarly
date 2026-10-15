@@ -1,45 +1,29 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module.js';
-import { CategoryController } from './category.controller.js';
-import { CategoryService } from './category.service.js';
-import { MediaController } from './media.controller.js';
-import { MediaService } from './media.service.js';
-import { ModifierGroupController } from './modifier-group.controller.js';
-import { ModifierGroupService } from './modifier-group.service.js';
-import { ProductConfigurationReportController } from './product-configuration-report.controller.js';
-import { ProductConfigurationReportService } from './product-configuration-report.service.js';
-import {
-  ProductController,
-  ProductQuoteController,
-  PublicStorefrontController,
-} from './product.controller.js';
-import { ProductService } from './product.service.js';
-import {
-  OwnerStorefrontOrdersController,
-  PublicStorefrontOrdersController,
-} from './storefront-orders.controller.js';
-import { StorefrontOrdersService } from './storefront-orders.service.js';
-
+import { AuthModule } from '../auth/index.js';
+import { CatalogQueryService } from './catalog-query.service.js';
+import { CategoryController } from './categories/category.controller.js';
+import { CategoryService } from './categories/category.service.js';
+import { ModifierGroupController } from './modifiers/modifier-group.controller.js';
+import { ModifierGroupService } from './modifiers/modifier-group.service.js';
+import { ProductPricingService } from './pricing/product-pricing.service.js';
+import { ProductQuoteController } from './pricing/product-quote.controller.js';
+import { ProductController } from './products/product.controller.js';
+import { ProductService } from './products/product.service.js';
 @Module({
   imports: [AuthModule],
   controllers: [
-    MediaController,
-    ModifierGroupController,
-    ProductConfigurationReportController,
     CategoryController,
+    ModifierGroupController,
     ProductController,
     ProductQuoteController,
-    PublicStorefrontController,
-    PublicStorefrontOrdersController,
-    OwnerStorefrontOrdersController,
   ],
   providers: [
-    MediaService,
     CategoryService,
     ModifierGroupService,
-    ProductConfigurationReportService,
     ProductService,
-    StorefrontOrdersService,
+    ProductPricingService,
+    CatalogQueryService,
   ],
+  exports: [ProductPricingService, CatalogQueryService],
 })
 export class CatalogModule {}

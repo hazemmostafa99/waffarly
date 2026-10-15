@@ -31,7 +31,7 @@
     font-size: clamp(2.4rem, 7vw, 4.5rem);
     letter-spacing: -0.055em;
   }
-  p {
+  .storefront-shell p {
     max-width: 540px;
     color: #555d50;
     line-height: 1.65;

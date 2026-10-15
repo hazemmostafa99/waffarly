@@ -30,8 +30,8 @@ Every implementation change must follow these rules:
 9. The storefront must be responsive by design, not by shrinking the desktop page. Verify mobile, tablet, and desktop layouts.
 10. Arabic RTL is the primary visual target. LTR support must continue to work without duplicated page implementations.
 11. The API is authoritative for availability, modifier validity, prices, totals, and order creation. Never trust a client-calculated total when submitting an order.
-12. Do not hardcode prototype products, branches, offers, orders, customer accounts, or operational statuses into production flows.
-13. Do not invent an API field, business rule, checkout step, payment method, delivery promise, branch-routing rule, or order status. Record missing capabilities as blockers.
+12. Do not hardcode prototype products, branches, offers, orders, customer accounts, or operational statuses into production flows. User-approved UI-only preview fixtures are allowed only on routes without an API, must be isolated from production state, and must carry a persistent, visible `Preview / Demo` disclosure in the rendered screen.
+13. Do not invent an API field, business rule, checkout step, payment method, delivery promise, branch-routing rule, or real order status. Missing capabilities remain integration blockers. Preview interactions may change local presentation only and must never call unsupported APIs, submit real forms, alter basket/checkout/order state, or imply that a customer action succeeded.
 14. Next.js owns cacheable server-rendered public data. TanStack React Query owns client-side server state. Zustand owns client-only state. Do not duplicate the same state between them.
 15. URL parameters own shareable state such as category, search, sort, and selected product route. Do not hide shareable navigation state only in Zustand.
 16. Persisted client state must be scoped by storefront slug and versioned. Never place credentials, access tokens, customer PII, authoritative prices, or order records in Zustand persistence.
@@ -129,6 +129,10 @@ The URL owns product routes, categories, search, sort, and other shareable state
 
 Use the supplied `design-system.html`, `design-tokens.json`, and screenshots as the visual source of truth for the shared Waffarly design system:
 
+Use the user-provided Wafarly Marketplace website screenshots only as a reference for relative type scale and compact spacing/density. Do not copy its purple palette, marketplace-specific navigation, content, or page composition; preserve the Waffarly Bistro visual identity and supported storefront information architecture.
+
+The user's Waffarly Bistro footer screenshot is an explicit footer reference: use a deep-green footer surface, a compact four-column desktop composition with brand lockup and grouped navigation, and a subtle divider with a two-sided copyright row. Adapt placeholder/demo copy, link only to implemented storefront routes (including visibly disclosed UI-only preview routes), and stack the columns responsively without changing the brand palette.
+
 - Primary: `#0F705A`
 - Primary dark: `#0A5645`
 - Primary deep: `#063D31`
@@ -149,10 +153,11 @@ Use the supplied `design-system.html`, `design-tokens.json`, and screenshots as 
 - Heading font: Cairo
 - Body font: Tajawal
 - Content width: `1240px`
-- Button radius: `14px`; bold primary/accent controls use a `48px` default height.
+- Button radius: `14px`; shared default controls use a compact `44px` height and large actions use `48px`.
 - Card radius: `26px`; card shadow: `0 12px 38px rgba(30, 38, 36, 0.045)`.
 - Reference mobile viewport: `390x844`
 - Reference desktop viewport: `1440x900`
+- Compact category tiles use `175x150px` cards with centered `70x70px` circular imagery, `12px` titles, and `10px` product-count metadata. Preserve the Waffarly Bistro palette and card treatment.
 
 Rules for fidelity:
 
@@ -183,32 +188,35 @@ Typography is part of the visual implementation and must not be left to browser 
 
 ### Type scale
 
-Use this scale as the default target. Small adjustments are allowed only when screenshot comparison demonstrates that they are necessary, and the resulting value must be recorded as a named typography token rather than repeated as an arbitrary value.
+Use this compact scale as the default target. The marketplace reference demonstrates tighter typography and vertical density than the prior storefront pass. Small adjustments are allowed only when screenshot comparison demonstrates that they are necessary, and the resulting value must be recorded as a named typography token rather than repeated as an arbitrary value.
 
 | Role | Mobile | Desktop | Weight | Family | Usage |
 | --- | --- | --- | --- | --- | --- |
-| Hero display | `40px / 48px` | `72px / 80px` | 800-900 | Cairo | Homepage hero only |
-| Page title | `32px / 42px` | `48px / 58px` | 800 | Cairo | One primary `h1` per page |
-| Section title | `26px / 36px` | `36px / 46px` | 800 | Cairo | Major homepage/menu sections |
-| Subsection title | `21px / 30px` | `24px / 34px` | 700-800 | Cairo | Cards, checkout sections, summaries |
-| Product title | `18px / 27px` | `20px / 30px` | 700 | Cairo | Product cards and cart lines |
-| Price emphasis | `20px / 28px` | `24px / 32px` | 800 | Cairo | Product and order prices |
-| Body large | `18px / 31px` | `18px / 32px` | 400-500 | Tajawal | Hero and section introductions |
-| Body | `16px / 28px` | `16px / 28px` | 400-500 | Tajawal | Default reading text and fields |
-| UI label | `15px / 22px` | `15px / 22px` | 700 | Tajawal | Buttons, tabs, navigation, labels |
-| Supporting text | `14px / 22px` | `14px / 22px` | 400-500 | Tajawal | Descriptions, helper text, metadata |
-| Caption | `12px / 18px` | `12px / 18px` | 600-700 | Tajawal | Badges and short secondary metadata only |
+| Hero display | `32px / 38px` | `48px / 56px` | 800-900 | Cairo | Homepage hero only |
+| Page title | `26px / 34px` | `36px / 44px` | 800 | Cairo | One primary `h1` per page |
+| Section title | `20px / 28px` | `26px / 34px` | 800 | Cairo | Major homepage/menu sections |
+| Subsection title | `18px / 25px` | `20px / 28px` | 700-800 | Cairo | Cards, checkout sections, summaries |
+| Product title | `15px / 21px` | `16px / 23px` | 700 | Cairo | Product cards and cart lines |
+| Price emphasis | `18px / 25px` | `20px / 28px` | 800 | Cairo | Product and order prices |
+| Body large | `16px / 26px` | `17px / 28px` | 400-500 | Tajawal | Hero and section introductions |
+| Body | `14px / 22px` | `15px / 24px` | 400-500 | Tajawal | Default reading text and fields |
+| UI label | `14px / 20px` | `14px / 20px` | 700 | Tajawal | Buttons, tabs, navigation, labels |
+| Supporting text | `13px / 19px` | `13px / 19px` | 400-500 | Tajawal | Descriptions, helper text, metadata |
+| Caption | `12px / 17px` | `12px / 17px` | 600-700 | Tajawal | Badges and short secondary metadata only |
+| Category title | `12px / 17px` | `12px / 17px` | 700-800 | Cairo | Compact category tiles only |
+| Category metadata | `10px / 14px` | `10px / 14px` | 400-500 | Tajawal | Nonessential product count beneath a category title only |
 
 ### Typography rules
 
 - The root body style uses Tajawal. Heading and display components opt into Cairo through a semantic Tailwind font token.
 - Do not set all text in Cairo; the contrast between display and reading families is intentional.
-- Do not use font sizes below `12px`. Essential information, form help, prices, and actionable text must never use the caption size.
+- Do not use font sizes below `12px`, except the explicitly approved `10px` category product-count metadata token. Essential information, form help, prices, and actionable text must remain at least `12px` and must never use the category metadata size.
 - Arabic headings use normal letter spacing. Do not apply negative tracking designed for Latin text.
 - Avoid wide tracking on Arabic text. Uppercase eyebrow tracking may be used only for short Latin labels such as `WAFFARLY BISTRO`.
 - Use `font-semibold` or `font-bold` for interactive labels. Do not use color alone to make actions or headings recognizable.
 - Prefer `text-balance` for hero/page/section headings and `text-pretty` for short introductions where supported.
 - Keep paragraphs readable at roughly 45-75 characters per line. Long descriptions must use a constrained measure rather than spanning the full desktop container.
+- Keep the storefront vertically compact: reduce oversized hero heights, control padding, and card image heights while preserving comfortable touch targets (at least `44px` where practical) and readable Arabic line spacing.
 - Preserve a clear hierarchy: a card title must not visually compete with the page title, and supporting text must remain quieter without losing contrast.
 - Use logical alignment (`text-start` and `text-end`) instead of hardcoded left/right alignment.
 - Product names may clamp only in repeated cards, normally to two lines. Full names and descriptions must remain available on the product page and to assistive technology.
@@ -246,7 +254,9 @@ apps/storefront/src/
 |       |   |-- favorites/page.tsx
 |       |   |-- offers/page.tsx
 |       |   |-- branches/page.tsx
-|       |   `-- about/page.tsx
+|       |   |-- about/page.tsx
+|       |   |-- login/page.tsx
+|       |   `-- account/page.tsx
 |       |-- error.tsx
 |       |-- loading.tsx
 |       `-- not-found.tsx
@@ -258,6 +268,7 @@ apps/storefront/src/
 |   |-- cart/
 |   |-- checkout/
 |   |-- favorites/
+|   |-- preview/
 |   `-- orders/
 |-- hooks/
 |-- lib/
@@ -327,14 +338,26 @@ Do not extract a storefront component merely to reduce line count. Extract it wh
 | 3 | `/s/[slug]/products/[productId]` | Product details/customization | Catalog data plus server quote API. |
 | 4 | `/s/[slug]/cart` | Cart | Zustand persistence plus catalog reconciliation. |
 | 5 | `/s/[slug]/checkout` | Guest checkout | Existing create-order API, subject to branch gap. |
-| 6 | `/s/[slug]/order/[orderId]` | Success/tracking | Requires a safe public order lookup/tracking contract. |
+| 6 | `/s/[slug]/order/[orderId]` | Order tracking design preview | UI-only preview; no lookup, polling, or real status claim until a safe public contract exists. |
 | 7 | `/s/[slug]/favorites` | Favorites | Local Zustand state until a customer API exists. |
-| 8 | `/s/[slug]/offers` | Offers | Requires offers content/API. |
-| 9 | `/s/[slug]/branches` | Branches | Requires public branch contract and routing support. |
-| 10 | `/s/[slug]/about` | About restaurant | Requires public storefront content fields/API. |
-| 11 | `/s/[slug]/login` and account routes | Customer account | Blocked until customer auth requirements and API are approved. |
+| 8 | `/s/[slug]/offers` | Offers design preview | UI-only sample cards/filters; no live campaigns or price changes. |
+| 9 | `/s/[slug]/branches` | Branches design preview | UI-only sample cards/selection; no actual addresses or checkout routing. |
+| 10 | `/s/[slug]/about` | About restaurant design preview | Neutral content placeholders; no invented merchant claims. |
+| 11 | `/s/[slug]/login` and `/s/[slug]/account` | Customer account design preview | UI-only forms/account shell; no authentication, customer storage, or account data. |
 
-Unsupported routes may use an honest unavailable state, but must not present fictional live data.
+### UI-only preview policy for routes with API gaps
+
+The user approved implementing the complete route UI before the supporting APIs are ready. This changes presentation scope only; it does not approve backend behavior or fabricated production data.
+
+- Implement the missing order-tracking, offers, branches, about, and account/login route surfaces now, using the same responsive storefront shell, Waffarly tokens, compact sizing, and Arabic/English support.
+- Keep any sample content in an isolated preview-only module under `features/preview/`. Never put preview records in catalog/order contracts, Zustand persistence, API responses, or production data modules.
+- Every preview-only route must show a visible, accessible disclosure near the top that explicitly says it is a design preview and is not connected to live restaurant data. Do not rely on a tooltip or filename for disclosure.
+- Branches may be selected for visual state only; they must not be saved as a branch preference or passed to checkout. Offers may be filtered/opened locally only; they must not affect prices or discounts. Order tracking must not look up, poll, or imply a real order status. Account forms must not authenticate, register, or store customer details. About-page copy must not invent merchant history, contact information, location, hours, or services.
+- Use “Preview”/“Sample” content, neutral placeholders, and the supplied assets only as presentation. Do not show fabricated customer PII, order identifiers, operational timestamps, discount values, branch addresses, or claims.
+- Keep the real catalog, quotation, basket, checkout, and order-creation flows unchanged. Replace the preview module with typed API-backed data only after the related contract, authorization, validation, tests, and product rules are approved.
+- Local-only controls (such as preview filters, selected visual cards, tabs, and form field validation) are allowed when their effect is explicitly described as local preview behavior. Never display fake success for a real-world operation.
+
+This is a narrow, documented exception to rules 12–13; all other unsupported routes still require an honest unavailable state rather than fictional live data.
 
 ## Current API Coverage and Known Gaps
 
@@ -357,7 +380,7 @@ Not yet represented completely:
 - Final delivery rules, fees, service fees, payment, and expanded tracking statuses.
 - Per-item customer notes: quote/create-order contracts do not represent notes, so do not expose the prototype note field until an approved backend contract and persistence path exist.
 
-These gaps must be resolved in contracts, validation, services, database schema, tests, and UI together. Do not solve them only in frontend code.
+These gaps remain backend integration blockers and must be resolved in contracts, validation, services, database schema, tests, and UI together. Until then, only the explicitly approved, isolated UI-only preview policy above applies; do not solve gaps by fabricating frontend production behavior.
 
 ## Page Delivery Workflow
 

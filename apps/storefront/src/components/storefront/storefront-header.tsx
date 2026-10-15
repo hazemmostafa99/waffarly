@@ -29,10 +29,10 @@ function Brand({ catalog }: { catalog: PublicStorefrontCatalog }) {
         </span>
       )}
       <span className="grid min-w-0 leading-tight">
-        <span className="truncate font-heading text-lg font-extrabold text-store-primary-deep sm:text-xl">
+        <span className="truncate font-heading text-base font-extrabold text-store-primary-deep sm:text-lg">
           {catalog.merchantName}
         </span>
-        <span className="mt-1 truncate text-[11px] font-bold tracking-[0.12em] text-store-gold">
+        <span className="mt-1 truncate text-xs font-bold tracking-[0.12em] text-store-gold">
           WAFFARLY BISTRO
         </span>
       </span>
@@ -53,6 +53,8 @@ export function StorefrontHeader({
   );
   const homeHref = `/s/${catalog.slug}`;
   const menuHref = `${homeHref}/menu`;
+  const offersHref = `${homeHref}/offers`;
+  const aboutHref = `${homeHref}/about`;
   const cartHref = `${homeHref}/cart`;
   const favoritesHref = `${homeHref}/favorites`;
   const isHome = pathname === homeHref;
@@ -88,6 +90,20 @@ export function StorefrontHeader({
               {t.menu}
             </Link>
             <Link
+              href={offersHref}
+              aria-current={pathname === offersHref ? 'page' : undefined}
+              className={`text-sm font-bold transition-colors hover:text-store-accent ${pathname === offersHref ? 'text-store-accent' : 'text-store-ink'}`}
+            >
+              {locale === 'ar' ? 'العروض' : 'Offers'}
+            </Link>
+            <Link
+              href={aboutHref}
+              aria-current={pathname === aboutHref ? 'page' : undefined}
+              className={`text-sm font-bold transition-colors hover:text-store-accent ${pathname === aboutHref ? 'text-store-accent' : 'text-store-ink'}`}
+            >
+              {t.about}
+            </Link>
+            <Link
               href={favoritesHref}
               aria-current={pathname === favoritesHref ? 'page' : undefined}
               className={`text-sm font-bold transition-colors hover:text-store-accent ${pathname === favoritesHref ? 'text-store-accent' : 'text-store-ink'}`}
@@ -112,7 +128,7 @@ export function StorefrontHeader({
             >
               <Link href={cartHref} aria-label={`${t.cart} (${cartCount})`}>
                 <ShoppingBag className="size-5" aria-hidden="true" />
-                <span className="absolute -end-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-store-gold px-1 text-[11px] font-extrabold text-store-primary-deep tabular-nums">
+                <span className="absolute -end-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-store-gold px-1 text-xs font-extrabold text-store-primary-deep tabular-nums">
                   {cartCount}
                 </span>
               </Link>
@@ -140,7 +156,7 @@ export function StorefrontHeader({
             <span className="relative">
               <Icon className="size-5" aria-hidden="true" />
               {href === cartHref && cartCount > 0 && (
-                <span className="absolute -end-2 -top-2 grid size-4 place-items-center rounded-full bg-store-gold text-[9px] font-extrabold text-store-primary-deep">
+                <span className="absolute -end-2 -top-2 grid size-5 place-items-center rounded-full bg-store-gold text-xs font-extrabold text-store-primary-deep">
                   {cartCount > 9 ? '9+' : cartCount}
                 </span>
               )}

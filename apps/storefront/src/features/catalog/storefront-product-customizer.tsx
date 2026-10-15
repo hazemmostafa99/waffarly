@@ -132,7 +132,7 @@ export function StorefrontProductCustomizer({
   const optionFieldsets = (
     <>
       {product.variants.length > 0 && (
-        <fieldset className="grid gap-3 rounded-2xl border border-store-border bg-white p-4 sm:p-5">
+        <fieldset className="grid gap-3 rounded-2xl border border-store-border bg-white p-3 sm:p-4">
           <legend className="px-1 font-heading font-extrabold text-store-ink">{t.chooseVariant}</legend>
           <div className="grid gap-2">
             {product.variants.map((variant) => {
@@ -169,7 +169,7 @@ export function StorefrontProductCustomizer({
         const single = group.selectionMode === 'single';
         const selected = choices[group.id] ?? [];
         return (
-          <fieldset key={group.id} className="grid gap-3 rounded-2xl border border-store-border bg-white p-4 sm:p-5">
+          <fieldset key={group.id} className="grid gap-3 rounded-2xl border border-store-border bg-white p-3 sm:p-4">
             <legend className="px-1 font-heading font-extrabold text-store-ink">
               {group.name}{' '}
               <span className="font-body text-xs font-bold text-store-muted">{group.minSelections > 0 ? t.required : t.optional}</span>
@@ -231,13 +231,13 @@ export function StorefrontProductCustomizer({
   const quantityControl = (
     <div className="flex min-h-14 items-center justify-between gap-4 rounded-2xl bg-store-cream px-4 py-2.5">
       <span className="font-heading font-extrabold text-store-ink">{t.quantity}</span>
-      <div className="flex h-11 items-center gap-3 rounded-full border border-store-border bg-white px-2">
+      <div className="flex h-12 items-center gap-3 rounded-full border border-store-border bg-white px-2">
         <button
           type="button"
           aria-label={t.decreaseQuantity}
           disabled={quantity <= 1 || quoteMutation.isPending}
           onClick={() => { setQuantity((value) => Math.max(1, value - 1)); setWasAdded(false); }}
-          className="grid size-8 place-items-center rounded-full text-store-primary transition hover:bg-store-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent disabled:opacity-40"
+          className="grid size-11 place-items-center rounded-full text-store-primary transition hover:bg-store-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent disabled:opacity-40"
         >
           <Minus className="size-4" aria-hidden="true" />
         </button>
@@ -247,7 +247,7 @@ export function StorefrontProductCustomizer({
           aria-label={t.increaseQuantity}
           disabled={quantity >= 99 || quoteMutation.isPending}
           onClick={() => { setQuantity((value) => Math.min(99, value + 1)); setWasAdded(false); }}
-          className="grid size-8 place-items-center rounded-full text-store-primary transition hover:bg-store-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent disabled:opacity-40"
+          className="grid size-11 place-items-center rounded-full text-store-primary transition hover:bg-store-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent disabled:opacity-40"
         >
           <Plus className="size-4" aria-hidden="true" />
         </button>
@@ -265,7 +265,7 @@ export function StorefrontProductCustomizer({
       {quoteMutation.data && (
         <div className="flex items-center justify-between rounded-2xl bg-store-primary/10 px-4 py-3 text-sm text-store-primary" role="status">
           <span className="font-bold">{t.currentPrice}</span>
-          <strong className="font-heading text-lg font-extrabold text-store-primary-deep">
+          <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
             <bdi dir="auto">{formatStorefrontPrice(quoteMutation.data.totalPrice, locale)}</bdi>
           </strong>
         </div>
@@ -288,14 +288,14 @@ export function StorefrontProductCustomizer({
         variant="outline"
         disabled={!isSelectionValid || quoteMutation.isPending}
         onClick={checkPrice}
-        className="h-12 rounded-xl border-store-border bg-white font-bold text-store-primary hover:bg-store-cream"
+        className="h-11 rounded-xl border-store-border bg-white font-bold text-store-primary hover:bg-store-cream"
       >
         {quoteMutation.isPending ? t.checkingPrice : t.checkPrice}
       </Button>
       <Button
         type="submit"
         disabled={!quoteMutation.data || quoteMutation.isPending}
-        className="h-12 rounded-xl bg-store-accent font-bold text-white hover:bg-store-primary-dark"
+        className="h-11 rounded-xl bg-store-accent font-bold text-white hover:bg-store-primary-dark"
       >
         {t.addConfigured}
       </Button>
@@ -307,7 +307,7 @@ export function StorefrontProductCustomizer({
         type="button"
         disabled={!isSelectionValid || quoteMutation.isPending}
         onClick={quoteAndAddToBasket}
-        className="h-13 rounded-xl bg-store-accent font-heading text-base font-extrabold text-white shadow-sm hover:bg-store-primary-dark"
+        className="h-11 rounded-xl bg-store-accent font-heading text-sm font-extrabold text-white shadow-sm hover:bg-store-primary-dark"
       >
         {quoteMutation.isPending ? t.checkingPrice : t.addConfigured}
         {quoteMutation.isPending ? null : <Plus className="size-4" aria-hidden="true" />}
@@ -320,7 +320,7 @@ export function StorefrontProductCustomizer({
       <section aria-label={t.customize} className="grid min-w-0 gap-3 sm:gap-4">
         {optionFieldsets}
         {quoteFeedback}
-        <div className="sticky bottom-0 z-10 -mx-4 rounded-t-2xl border-t border-store-border bg-white/95 p-4 shadow-[0_-8px_24px_rgba(23,35,48,0.08)] backdrop-blur supports-[backdrop-filter]:bg-white/90 sm:static sm:mx-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-0">
+        <div className="sticky bottom-0 z-10 -mx-4 rounded-t-2xl border-t border-store-border bg-white/95 p-3 shadow-[0_-8px_24px_rgba(23,35,48,0.08)] backdrop-blur supports-[backdrop-filter]:bg-white/90 sm:static sm:mx-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-0">
           {actions}
         </div>
       </section>
@@ -334,13 +334,13 @@ export function StorefrontProductCustomizer({
       onCancel={(event) => { event.preventDefault(); onClose?.(); }}
       onClose={() => onClose?.()}
       onClick={(event) => { if (event.target === event.currentTarget) onClose?.(); }}
-      className="fixed inset-0 m-auto max-h-[min(92vh,860px)] w-[min(100%-24px,620px)] overflow-y-auto rounded-[1.6rem] border border-store-border bg-store-page p-0 text-store-ink shadow-2xl backdrop:bg-store-ink/55"
+      className="fixed inset-0 m-auto max-h-[min(88vh,760px)] w-[min(100%-24px,600px)] overflow-y-auto rounded-[1.6rem] border border-store-border bg-store-page p-0 text-store-ink shadow-2xl backdrop:bg-store-ink/55"
     >
-      <form onSubmit={addToBasket} className="grid gap-5 p-5 sm:p-7">
+      <form onSubmit={addToBasket} className="grid gap-4 p-4 sm:p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-bold text-store-accent">{t.customize}</p>
-            <h2 id={`customizer-title-${product.id}`} className="mt-1 font-heading text-2xl font-extrabold">
+            <h2 id={`customizer-title-${product.id}`} className="mt-1 font-heading text-storefront-subsection font-extrabold">
               {product.name}
             </h2>
             {product.description && <p className="mt-2 text-sm leading-6 text-store-muted">{product.description}</p>}

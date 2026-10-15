@@ -2,6 +2,13 @@ import type { Locale } from '@waffarly/ui';
 
 const messages = {
   ar: {
+    footerExplore: 'استكشف',
+    footerOrder: 'المساعدة',
+    footerRestaurant: 'المطعم',
+    footerHome: 'الرئيسية',
+    footerCart: 'سلة الطلب',
+    footerCheckout: 'إتمام الطلب',
+    footerCredit: 'واجهة مطعم من وفّرلي',
     announcement: 'مرحباً بك في مطعم {{name}} · تصفح قائمة الطعام',
     home: 'الرئيسية',
     menu: 'القائمة',
@@ -101,6 +108,13 @@ const messages = {
     viewBasket: 'عرض السلة',
   },
   en: {
+    footerExplore: 'Discover',
+    footerOrder: 'Your order',
+    footerRestaurant: 'Restaurant',
+    footerHome: 'Home',
+    footerCart: 'Basket',
+    footerCheckout: 'Checkout',
+    footerCredit: 'Restaurant storefront by Waffarly',
     announcement: 'Welcome to {{name}} · Explore the menu',
     home: 'Home',
     menu: 'Menu',

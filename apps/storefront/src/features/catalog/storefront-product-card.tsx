@@ -33,7 +33,7 @@ export function StorefrontProductCard({
   return (
     <>
       <Card className="group overflow-hidden rounded-card border-store-border bg-store-surface p-0 shadow-card transition duration-300 hover:-translate-y-1 hover:border-store-primary/30">
-        <div className="relative aspect-square overflow-hidden bg-store-cream">
+        <div className="relative aspect-[4/3] overflow-hidden bg-store-cream">
           {imageSource ? (
             <Link href={`/s/${slug}/products/${product.id}`} className="absolute inset-0">
               <Image
@@ -59,29 +59,29 @@ export function StorefrontProductCard({
             aria-label={isFavorite ? t.unfavorite : t.favorite}
             aria-pressed={isFavorite}
             onClick={() => toggleFavorite(product.id)}
-            className={`absolute start-3 top-3 grid size-10 place-items-center rounded-full border border-white/80 bg-white/95 shadow-sm transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent focus-visible:ring-offset-2 ${isFavorite ? 'text-store-gold-muted' : 'text-store-ink'}`}
+            className={`absolute start-2 top-2 grid size-11 place-items-center rounded-full border border-white/80 bg-white/95 shadow-sm transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent focus-visible:ring-offset-2 ${isFavorite ? 'text-store-gold-muted' : 'text-store-ink'}`}
           >
-            <Heart className={`size-5 ${isFavorite ? 'fill-current' : ''}`} aria-hidden="true" />
+            <Heart className={`size-4 ${isFavorite ? 'fill-current' : ''}`} aria-hidden="true" />
           </button>
         </div>
 
-        <div className="grid gap-3 p-4 sm:p-5">
-          <div className="min-h-[82px]">
-            <h3 className="line-clamp-2 font-heading text-lg font-extrabold leading-7 text-store-ink">
+        <div className="grid gap-2.5 p-3 sm:p-4">
+          <div className="min-h-[68px]">
+            <h3 className="line-clamp-2 font-heading text-storefront-product font-extrabold text-store-ink">
               <Link href={`/s/${slug}/products/${product.id}`} className="hover:text-store-accent">
                 {product.name}
               </Link>
             </h3>
             {product.description && (
-              <p className="mt-1 line-clamp-2 text-sm leading-6 text-store-muted">{product.description}</p>
+              <p className="mt-1 line-clamp-2 text-storefront-support text-store-muted">{product.description}</p>
             )}
           </div>
-          <div className="flex items-center justify-between gap-2 border-t border-store-border pt-3">
+          <div className="flex items-center justify-between gap-2 border-t border-store-border pt-2.5">
             <div className="min-w-0">
               {availableVariants.length > 0 && (
-                <span className="block text-xs font-medium text-store-muted">{t.priceFrom}</span>
+                <span className="block text-storefront-caption font-medium text-store-muted">{t.priceFrom}</span>
               )}
-              <strong className="font-heading text-lg font-extrabold text-store-primary-deep">
+              <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
                 <bdi dir="auto">{hasUnavailableVariants ? '—' : formatStorefrontPrice(displayPrice, locale)}</bdi>
               </strong>
             </div>

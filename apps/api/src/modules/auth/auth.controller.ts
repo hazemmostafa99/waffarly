@@ -1,17 +1,8 @@
-import {
-  BadRequestException,
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  Inject,
-  Post,
-  Req,
-  Res,
-} from '@nestjs/common';
-import type { Request, Response } from 'express';
+import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res } from '@nestjs/common';
 import type { OwnerProfile } from '@waffarly/contracts';
+import type { Request, Response } from 'express';
 import { z } from 'zod';
+import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { AuthService } from './auth.service.js';
 
 const loginSchema = z.object({
@@ -20,9 +11,10 @@ const loginSchema = z.object({
 });
 
 function parseLogin(body: unknown): z.infer<typeof loginSchema> {
-  const result = loginSchema.safeParse(body);
-  if (!result.success) throw new BadRequestException('Username and password are required.');
-  return result.data;
+  const result = parseRequest(loginSchema, body, {
+    message: 'Username and password are required.',
+  });
+  return result;
 }
 
 @Controller('auth')

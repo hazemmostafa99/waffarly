@@ -37,8 +37,8 @@ export function StorefrontProductPage({
   const Chevron = locale === 'ar' ? ChevronLeft : ChevronRight;
 
   return (
-    <main id="main-content" className="mx-auto min-h-[70vh] w-[calc(100%-2rem)] max-w-[1240px] pb-12 pt-4 sm:pt-6">
-      <nav aria-label={t.breadcrumbs} className="mb-5 flex min-h-8 items-center gap-2 overflow-hidden text-sm font-bold text-store-muted sm:mb-7">
+    <main id="main-content" className="mx-auto min-h-[70vh] w-[calc(100%-2rem)] max-w-[1240px] pb-10 pt-3 sm:pt-5">
+      <nav aria-label={t.breadcrumbs} className="mb-4 flex min-h-8 items-center gap-2 overflow-hidden text-storefront-support font-bold text-store-muted sm:mb-5">
         <Link href={`/s/${catalog.slug}`} className="shrink-0 transition hover:text-store-primary focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent">
           {t.home}
         </Link>
@@ -50,9 +50,9 @@ export function StorefrontProductPage({
         <span aria-current="page" className="truncate text-store-primary-deep">{product.name}</span>
       </nav>
 
-      <div className="grid min-w-0 items-start gap-5 sm:gap-7 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] lg:gap-9">
-        <section aria-label={t.productImages} className="min-w-0 lg:sticky lg:top-28">
-          <div className="relative aspect-[1.36] overflow-hidden rounded-[1.6rem] border border-store-border bg-store-cream shadow-[0_14px_42px_rgba(23,35,48,0.08)] sm:rounded-[1.9rem] lg:aspect-[1.39]">
+      <div className="grid min-w-0 items-start gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] lg:gap-7">
+        <section aria-label={t.productImages} className="min-w-0 lg:sticky lg:top-24">
+          <div className="relative aspect-[1.5] overflow-hidden rounded-[1.6rem] border border-store-border bg-store-cream shadow-[0_14px_42px_rgba(23,35,48,0.08)] sm:rounded-[1.9rem] lg:aspect-[1.5]">
             {imageUrl ? (
               <Image
                 key={imageUrl}
@@ -92,8 +92,8 @@ export function StorefrontProductPage({
           )}
         </section>
 
-        <div className="grid min-w-0 gap-4 sm:gap-5">
-          <Card className="grid gap-4 rounded-[1.6rem] border-store-border bg-white p-5 shadow-[0_10px_34px_rgba(23,35,48,0.05)] sm:gap-5 sm:rounded-[1.9rem] sm:p-7 lg:p-8">
+        <div className="grid min-w-0 gap-3 sm:gap-4">
+          <Card className="grid gap-3 rounded-[1.6rem] border-store-border bg-white p-4 shadow-[0_10px_34px_rgba(23,35,48,0.05)] sm:gap-4 sm:rounded-[1.9rem] sm:p-5 lg:p-6">
             <div className="flex flex-wrap gap-2">
               {product.categories.map((category) => (
                 <Badge key={category.id} className="border-0 bg-store-cream text-store-primary-deep">
@@ -103,27 +103,27 @@ export function StorefrontProductPage({
             </div>
 
             <header>
-              <p className="text-sm font-extrabold text-store-accent">{catalog.merchantName}</p>
-              <h1 className="mt-1.5 font-heading text-[28px] font-black leading-tight text-store-ink text-balance sm:mt-2 sm:text-4xl">
+              <p className="text-storefront-support font-extrabold text-store-accent">{catalog.merchantName}</p>
+              <h1 className="mt-1 font-heading text-storefront-page font-black text-store-ink text-balance">
                 {product.name}
               </h1>
               {product.description && (
-                <p className="mt-3 text-sm leading-7 text-store-muted sm:mt-4 sm:text-base sm:leading-8">
+                <p className="mt-2 text-storefront-body text-store-muted sm:mt-3">
                   {product.description}
                 </p>
               )}
             </header>
 
-            <div className="flex min-h-16 items-center justify-between gap-4 border-y border-store-border py-3.5 sm:py-4">
+            <div className="flex min-h-14 items-center justify-between gap-3 border-y border-store-border py-3">
               <div>
                 {unavailable ? (
                   <span className="font-bold text-store-muted">{t.unavailable}</span>
                 ) : (
                   <>
                     {product.variants.length > 0 && (
-                      <span className="mb-1 block text-xs font-medium text-store-muted sm:text-sm">{t.priceFrom}</span>
+                      <span className="mb-1 block text-storefront-caption font-medium text-store-muted">{t.priceFrom}</span>
                     )}
-                    <strong className="font-heading text-2xl font-extrabold text-store-primary-deep sm:text-[28px]">
+                    <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
                       <bdi dir="auto">{formatStorefrontPrice(getProductStartingPrice(product), locale)}</bdi>
                     </strong>
                   </>

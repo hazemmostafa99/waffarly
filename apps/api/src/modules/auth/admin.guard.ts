@@ -1,13 +1,14 @@
 import { Inject, Injectable, type CanActivate, type ExecutionContext } from '@nestjs/common';
-import type { Request } from 'express';
 import { AuthService } from './auth.service.js';
+import type { ActorRequest } from './current-actor.js';
 
 @Injectable()
 export class AdminGuard implements CanActivate {
   constructor(@Inject(AuthService) private readonly auth: AuthService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    await this.auth.requireAdmin(context.switchToHttp().getRequest<Request>());
+    const request = context.switchToHttp().getRequest<ActorRequest>();
+    request.administrator = await this.auth.requireAdmin(request);
     return true;
   }
 }

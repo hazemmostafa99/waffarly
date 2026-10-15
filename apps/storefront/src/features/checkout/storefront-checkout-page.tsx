@@ -88,19 +88,19 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
   }
 
   if (!hasHydrated) {
-    return <main id="main-content" className="mx-auto min-h-[60vh] max-w-[1100px] px-4 py-12 sm:px-8"><div className="h-96 animate-pulse rounded-3xl bg-white" /></main>;
+    return <main id="main-content" className="mx-auto min-h-[60vh] max-w-[1100px] px-4 py-10 sm:px-8"><div className="h-80 animate-pulse rounded-3xl bg-white" /></main>;
   }
 
   if (orderMutation.data) {
     const Arrow = locale === 'ar' ? ArrowLeft : ArrowRight;
     return (
-      <main id="main-content" className="mx-auto grid min-h-[70vh] max-w-[760px] content-center justify-items-center px-5 py-14 text-center">
-        <span className="grid size-20 place-items-center rounded-3xl bg-store-primary/10 text-store-primary">
-          <CheckCircle2 className="size-10" aria-hidden="true" />
+      <main id="main-content" className="mx-auto grid min-h-[70vh] max-w-[760px] content-center justify-items-center px-5 py-12 text-center">
+        <span className="grid size-16 place-items-center rounded-3xl bg-store-primary/10 text-store-primary">
+          <CheckCircle2 className="size-8" aria-hidden="true" />
         </span>
-        <h1 className="mt-6 font-heading text-3xl font-black text-store-primary-deep sm:text-4xl">{t.orderReceived}</h1>
-        <p className="mt-3 max-w-xl text-base leading-7 text-store-muted">{t.orderPending}</p>
-        <Card className="mt-7 grid w-full gap-4 rounded-3xl border-store-border bg-white p-5 text-start sm:p-7">
+        <h1 className="mt-4 font-heading text-storefront-page font-black text-store-primary-deep">{t.orderReceived}</h1>
+        <p className="mt-2 max-w-xl text-storefront-body text-store-muted">{t.orderPending}</p>
+        <Card className="mt-5 grid w-full gap-3 rounded-3xl border-store-border bg-white p-4 text-start sm:p-5">
           <div className="flex items-center justify-between gap-4">
             <span className="text-sm font-bold text-store-muted">{t.orderReference}</span>
             <strong className="font-heading text-base font-extrabold text-store-ink" dir="ltr">
@@ -109,13 +109,13 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
           </div>
           <div className="flex items-center justify-between gap-4 border-t border-store-border pt-4">
             <span className="text-sm font-bold text-store-muted">{t.orderTotal}</span>
-            <strong className="font-heading text-xl font-extrabold text-store-primary-deep">
+            <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
               <bdi dir="auto">{formatStorefrontPrice(orderMutation.data.total, locale)}</bdi>
             </strong>
           </div>
         </Card>
         <p className="mt-4 text-sm text-store-muted">{t.noPayment}</p>
-        <Button asChild className="mt-7 h-12 rounded-xl bg-store-accent px-6 font-bold hover:bg-store-primary-dark">
+        <Button asChild className="mt-5 h-11 rounded-xl bg-store-accent px-5 font-bold hover:bg-store-primary-dark">
           <Link href={`/s/${catalog.slug}`}>
             {t.home}<Arrow className="size-4" aria-hidden="true" />
           </Link>
@@ -126,27 +126,27 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
 
   if (cart.length === 0) {
     return (
-      <main id="main-content" className="mx-auto grid min-h-[65vh] max-w-[760px] content-center justify-items-center px-5 py-16 text-center">
-        <span className="grid size-20 place-items-center rounded-3xl bg-store-cream text-store-accent"><ShoppingBag className="size-9" aria-hidden="true" /></span>
-        <h1 className="mt-6 font-heading text-3xl font-black text-store-ink">{t.basketEmpty}</h1>
-        <Button asChild className="mt-7 rounded-xl bg-store-accent px-6 font-bold hover:bg-store-primary-dark"><Link href={`/s/${catalog.slug}/menu`}>{t.startShopping}</Link></Button>
+      <main id="main-content" className="mx-auto grid min-h-[65vh] max-w-[760px] content-center justify-items-center px-5 py-12 text-center">
+        <span className="grid size-16 place-items-center rounded-3xl bg-store-cream text-store-accent"><ShoppingBag className="size-8" aria-hidden="true" /></span>
+        <h1 className="mt-4 font-heading text-storefront-page font-black text-store-ink">{t.basketEmpty}</h1>
+        <Button asChild className="mt-5 rounded-xl bg-store-accent px-5 font-bold hover:bg-store-primary-dark"><Link href={`/s/${catalog.slug}/menu`}>{t.startShopping}</Link></Button>
       </main>
     );
   }
 
   const Arrow = locale === 'ar' ? ArrowLeft : ArrowRight;
   return (
-    <main id="main-content" className="mx-auto min-h-[70vh] max-w-[1100px] px-4 pb-12 pt-8 sm:px-8 sm:pt-12">
-      <header className="mb-7">
-        <p className="text-sm font-extrabold text-store-accent">{catalog.merchantName}</p>
-        <h1 className="mt-1 font-heading text-3xl font-black text-store-ink sm:text-4xl">{t.checkoutTitle}</h1>
-        <p className="mt-2 text-base leading-7 text-store-muted">{t.checkoutIntro}</p>
+    <main id="main-content" className="mx-auto min-h-[70vh] max-w-[1100px] px-4 pb-10 pt-6 sm:px-8 sm:pt-8">
+      <header className="mb-5">
+        <p className="text-storefront-support font-extrabold text-store-accent">{catalog.merchantName}</p>
+        <h1 className="mt-1 font-heading text-storefront-page font-black text-store-ink">{t.checkoutTitle}</h1>
+        <p className="mt-1 text-storefront-body text-store-muted">{t.checkoutIntro}</p>
       </header>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8">
-        <form onSubmit={submit} className="grid gap-5">
-          <Card className="grid gap-5 rounded-3xl border-store-border bg-white p-5 sm:p-7">
-            <h2 className="font-heading text-xl font-extrabold text-store-ink">{locale === 'ar' ? 'بيانات العميل' : 'Your details'}</h2>
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
+        <form onSubmit={submit} className="grid gap-4">
+          <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
+            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">{locale === 'ar' ? 'بيانات العميل' : 'Your details'}</h2>
             <label className="grid gap-2 text-sm font-bold text-store-ink">
               {t.customerName}
               <Input
@@ -179,14 +179,14 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
             </label>
           </Card>
 
-          <Card className="grid gap-5 rounded-3xl border-store-border bg-white p-5 sm:p-7">
+          <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
             <fieldset className="grid gap-3">
-              <legend className="mb-3 font-heading text-xl font-extrabold text-store-ink">{t.fulfillment}</legend>
+              <legend className="mb-2 font-heading text-storefront-subsection font-extrabold text-store-ink">{t.fulfillment}</legend>
               {([
                 { value: 'pickup', label: t.pickup },
                 { value: 'delivery', label: t.delivery },
               ] as const).map((option) => (
-                <label key={option.value} className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border px-4 transition ${fields.fulfillmentType === option.value ? 'border-store-primary bg-store-primary/5' : 'border-store-border bg-white hover:bg-store-page'}`}>
+                <label key={option.value} className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border px-4 transition ${fields.fulfillmentType === option.value ? 'border-store-primary bg-store-primary/5' : 'border-store-border bg-white hover:bg-store-page'}`}>
                   <input
                     type="radio"
                     name="fulfillment"
@@ -222,7 +222,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
             </p>
           )}
 
-          <Button type="submit" disabled={orderMutation.isPending} className="h-13 rounded-xl bg-store-accent font-heading text-base font-extrabold hover:bg-store-primary-dark">
+          <Button type="submit" disabled={orderMutation.isPending} className="h-11 rounded-xl bg-store-accent font-heading text-sm font-extrabold hover:bg-store-primary-dark">
             {orderMutation.isPending && <LoaderCircle className="size-5 animate-spin" aria-hidden="true" />}
             {orderMutation.isPending ? t.submittingOrder : t.submitOrder}
             {!orderMutation.isPending && <Arrow className="size-4" aria-hidden="true" />}
@@ -231,9 +231,9 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
         </form>
 
         <aside className="lg:sticky lg:top-28">
-          <Card className="rounded-3xl border-store-border bg-white p-5 shadow-[0_12px_36px_rgba(23,35,48,0.06)] sm:p-6">
+          <Card className="rounded-3xl border-store-border bg-white p-4 shadow-[0_12px_36px_rgba(23,35,48,0.06)] sm:p-5">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-heading text-xl font-extrabold text-store-ink">{locale === 'ar' ? 'ملخص السلة' : 'Basket summary'}</h2>
+              <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">{locale === 'ar' ? 'ملخص السلة' : 'Basket summary'}</h2>
               <span className="rounded-full bg-store-cream px-3 py-1 text-xs font-extrabold text-store-primary">
                 {cart.reduce((count, line) => count + line.quantity, 0)}
               </span>
@@ -250,7 +250,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
               })}
             </ul>
             <p className="mt-4 rounded-xl bg-store-cream px-3 py-3 text-xs leading-5 text-store-muted">{t.priceNote}</p>
-            <Button asChild variant="outline" className="mt-4 h-11 w-full rounded-xl border-store-border font-bold text-store-primary hover:bg-store-cream">
+            <Button asChild variant="outline" className="mt-3 h-11 w-full rounded-xl border-store-border font-bold text-store-primary hover:bg-store-cream">
               <Link href={`/s/${catalog.slug}/cart`}>{locale === 'ar' ? 'العودة إلى السلة' : 'Back to basket'}</Link>
             </Button>
           </Card>

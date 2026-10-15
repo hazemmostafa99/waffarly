@@ -25,7 +25,7 @@ All npm dependencies are declared with exact versions and the lockfile pins tran
 
 ## Database schema boundary
 
-The initial Prisma schema contained only `FoundationMarker`, which remains an infrastructure-only table. The approved first Super Admin slice adds `Merchant`, `OwnerAccount`, and `AuthSession` plus an additive migration. `Merchant` is the tenant boundary for this slice. No catalog, order, or full recurring-subscription schema has been added.
+The initial Prisma schema contained only `FoundationMarker`, which remains an infrastructure-only table. The schema now includes merchants, owner accounts and sessions, merchant applications, storefront designs/templates, plan and activity metadata, catalog configuration, and storefront orders with immutable line snapshots. `Merchant` is the tenant boundary; catalog relationships use compound tenant keys. Full recurring-subscription coverage remains separate work. The current API module ownership is documented in [API architecture](API_ARCHITECTURE.md).
 
 Prisma 7 requires a PostgreSQL driver adapter at runtime and stores CLI datasource configuration in `prisma.config.ts`. The API creates one `PrismaService` instance through Nest dependency injection. It does not connect eagerly at startup: the health request performs the query, so API liveness remains available if PostgreSQL is down. Nest shutdown hooks call `$disconnect()`.
 

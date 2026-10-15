@@ -21,7 +21,7 @@ export const buttonVariants = cva(
         ghost: 'bg-transparent text-waffarly-primary-deep hover:bg-waffarly-cream hover:text-waffarly-primary-deep',
         destructive: 'bg-waffarly-danger text-white hover:bg-waffarly-danger/90',
       },
-      size: { default: 'h-12 px-6 py-3', sm: 'h-10 px-4', lg: 'h-14 px-7', icon: 'size-12' },
+      size: { default: 'h-11 px-5 py-2.5', sm: 'h-10 px-3', lg: 'h-12 px-6', icon: 'size-11' },
     },
     defaultVariants: { variant: 'default', size: 'default' },
   },

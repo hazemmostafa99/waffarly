@@ -4,14 +4,14 @@ The repository is a pnpm workspace coordinated by Turborepo. Each app owns its p
 
 ```text
 apps/
-  api/                 NestJS HTTP API, health, auth, and first Super Admin slice
+  api/                 NestJS modular API for commerce and merchant operations
   storefront/          Next.js App Router public shell
   super-admin/         React + Vite merchant creation and first-month activation
   merchant-dashboard/  React + Vite owner login and merchant shell
   pos/                 Minimal React + Vite POS workspace shell
 packages/
   database/            Prisma schema, generated client, migrations, adapter
-  contracts/           Shared types for the approved first slice
+  contracts/           Framework-independent API contracts shared with frontends
   ui/                  Small shared React component package
   eslint-config/       Shared flat ESLint rules
   typescript-config/   Shared strict TypeScript configurations
@@ -28,3 +28,15 @@ scripts/               Reserved for cross-workspace automation when needed
 - App-specific modules should be added under `apps/api/src/modules/<approved-domain>/`. Put HTTP controllers, providers, and module wiring there; use `infrastructure/` only for technical adapters shared by modules.
 - Add a workspace package only when there is a real shared responsibility. Register it under `packages/*`, declare dependencies explicitly, and add its scripts and build relationships to Turborepo as needed.
 - `apps/pos` has no deployment assumption. Its independent deployment or inclusion in the merchant dashboard remains open.
+
+## API features
+
+Read [API_ARCHITECTURE.md](API_ARCHITECTURE.md) for module ownership and allowed
+dependencies, and [apps/api/AGENTS.md](../../apps/api/AGENTS.md) before implementing
+API, database, or shared-contract features. The root agent instructions link that
+guide so work outside the API directory follows the same boundaries.
+
+API modules are grouped by business feature: auth, merchants, plans, activities,
+storefront, catalog, orders, media, reports, and health. Access roles and URL
+prefixes do not determine module ownership. Tests are grouped by HTTP, unit, and
+database coverage under `apps/api/test/`.

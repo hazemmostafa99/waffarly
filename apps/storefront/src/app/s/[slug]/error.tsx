@@ -12,10 +12,10 @@ export default function StorefrontError({ reset }: { error: Error & { digest?: s
       <span className="grid size-16 place-items-center rounded-2xl bg-store-error/5 text-store-error">
         <RefreshCw className="size-7" aria-hidden="true" />
       </span>
-      <h1 className="mt-6 font-heading text-3xl font-extrabold text-store-ink">
+      <h1 className="mt-4 font-heading text-storefront-page font-extrabold text-store-ink">
         {isArabic ? 'تعذر تحميل المتجر' : 'We could not load this storefront'}
       </h1>
-      <p className="mt-3 text-base leading-7 text-store-muted">
+      <p className="mt-2 text-storefront-body text-store-muted">
         {isArabic ? 'تحقق من اتصالك وحاول مرة أخرى.' : 'Check your connection and try again.'}
       </p>
       <Button onClick={reset} className="mt-7 rounded-xl bg-store-primary px-6 font-bold hover:bg-store-primary-dark">

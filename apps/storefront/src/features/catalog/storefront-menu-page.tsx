@@ -79,20 +79,20 @@ export function StorefrontMenuPage({
   });
 
   return (
-    <main id="main-content" className="mx-auto min-h-[70vh] w-[calc(100%-2rem)] max-w-[1240px] pb-12 pt-4">
-      <nav aria-label={t.breadcrumbs} className="mb-6 flex h-6 items-center justify-start gap-2 text-sm font-bold text-store-muted lg:mb-5">
+    <main id="main-content" className="mx-auto min-h-[70vh] w-[calc(100%-2rem)] max-w-[1240px] pb-10 pt-3">
+      <nav aria-label={t.breadcrumbs} className="mb-4 flex h-6 items-center justify-start gap-2 text-storefront-support font-bold text-store-muted">
         <Link href={`/s/${catalog.slug}`} className="hover:text-store-primary">{t.home}</Link>
         <ChevronLeft className="size-4" aria-hidden="true" />
         <span aria-current="page" className="text-store-primary">{t.menu}</span>
       </nav>
 
-      <header className="grid min-h-[228px] grid-cols-[minmax(0,1fr)_112px] items-center gap-3 overflow-hidden rounded-3xl bg-store-primary/10 p-5 sm:grid-cols-[minmax(0,1fr)_176px] sm:p-6 lg:min-h-[266px] lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8 lg:rounded-[1.75rem] lg:p-8">
+      <header className="grid min-h-[200px] grid-cols-[minmax(0,1fr)_100px] items-center gap-3 overflow-hidden rounded-3xl bg-store-primary/10 p-4 sm:grid-cols-[minmax(0,1fr)_150px] sm:p-5 lg:min-h-[224px] lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-6 lg:rounded-[1.75rem] lg:p-6">
         <div className="min-w-0 -translate-y-2">
           <p className="text-sm font-extrabold text-store-accent">{t.menuHeroEyebrow}</p>
-          <h1 className="mt-1 max-w-3xl font-heading text-[32px] font-black leading-[1.22] text-store-ink text-balance lg:text-5xl">
+          <h1 className="mt-1 max-w-3xl font-heading text-storefront-page font-black text-store-ink text-balance">
             {t.menuHeroTitle}
           </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-store-muted sm:text-base sm:leading-7">
+          <p className="mt-2 max-w-2xl text-storefront-body text-store-muted">
             {t.menuIntro}
           </p>
         </div>
@@ -102,16 +102,16 @@ export function StorefrontMenuPage({
             alt=""
             fill
             priority
-            sizes="(max-width: 640px) 112px, (max-width: 1024px) 176px, 340px"
+            sizes="(max-width: 640px) 100px, (max-width: 1024px) 150px, 300px"
             className="object-cover"
             unoptimized
           />
         </div>
       </header>
 
-      <div className="mt-5 grid min-w-0 gap-5 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-8">
-        <aside className="min-w-0 lg:sticky lg:top-28 lg:h-fit lg:rounded-[1.6rem] lg:border lg:border-store-border lg:bg-white lg:p-5">
-          <h2 className="hidden font-heading text-lg font-extrabold text-store-ink lg:block">{t.menuCategories}</h2>
+      <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6">
+        <aside className="min-w-0 lg:sticky lg:top-24 lg:h-fit lg:rounded-[1.6rem] lg:border lg:border-store-border lg:bg-white lg:p-4">
+          <h2 className="hidden font-heading text-storefront-subsection font-extrabold text-store-ink lg:block">{t.menuCategories}</h2>
           <nav aria-label={t.menuCategories} className="flex min-w-0 gap-2 overflow-x-auto pb-2 lg:mt-3 lg:grid lg:overflow-visible lg:pb-0">
             <button
               type="button"
@@ -155,12 +155,12 @@ export function StorefrontMenuPage({
                   onChange={(event) => setSearch(event.currentTarget.value)}
                   placeholder={t.searchProducts}
                   aria-label={t.searchProducts}
-                  className="h-13 rounded-xl border-store-border bg-white ps-12 text-base sm:h-14"
+                  className="h-11 rounded-xl border-store-border bg-white ps-11 text-storefront-body sm:h-12"
                 />
                 <button
                   type="submit"
                   aria-label={t.searchProducts}
-                  className="absolute start-1 top-1 grid size-12 place-items-center rounded-lg text-store-muted transition hover:text-store-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent"
+                  className="absolute start-1 top-1 grid size-11 place-items-center rounded-lg text-store-muted transition hover:text-store-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent"
                 >
                   <Search className="size-5" aria-hidden="true" />
                 </button>
@@ -182,24 +182,24 @@ export function StorefrontMenuPage({
             </label>
           </div>
 
-          <header className="mb-6 mt-5 flex items-end justify-between gap-4 sm:mb-5 sm:mt-7">
+          <header className="mb-4 mt-4 flex items-end justify-between gap-4 sm:mb-4 sm:mt-5">
             <div>
-              <h2 className="font-heading text-[26px] font-extrabold leading-9 text-store-ink sm:text-3xl lg:text-4xl">
+              <h2 className="font-heading text-storefront-section font-extrabold text-store-ink">
                 {t.allProducts}
               </h2>
-              <p className="mt-1 text-sm leading-6 text-store-muted">{number} {t.productsToDisplay}</p>
+              <p className="mt-1 text-storefront-support text-store-muted">{number} {t.productsToDisplay}</p>
             </div>
           </header>
 
           {filteredProducts.length ? (
             <StorefrontProductGrid products={filteredProducts} slug={catalog.slug} layout="menu" />
           ) : (
-            <div className="grid min-h-72 place-items-center rounded-[1.6rem] border border-dashed border-store-border bg-white px-6 text-center">
+            <div className="grid min-h-64 place-items-center rounded-[1.6rem] border border-dashed border-store-border bg-white px-5 text-center">
               <div>
                 <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-store-cream text-store-accent">
                   <SearchX className="size-7" aria-hidden="true" />
                 </span>
-                <p className="mt-4 font-heading text-lg font-extrabold text-store-ink">
+                <p className="mt-4 font-heading text-storefront-subsection font-extrabold text-store-ink">
                   {catalog.products.length ? t.noResults : t.noProducts}
                 </p>
               </div>

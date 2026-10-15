@@ -11,7 +11,7 @@ export function StorefrontProductGrid({
   layout?: 'featured' | 'menu';
 }) {
   const columns = layout === 'menu'
-    ? 'grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-5'
+    ? 'grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4'
     : 'grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4';
 
   return (

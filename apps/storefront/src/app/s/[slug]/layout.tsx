@@ -53,7 +53,7 @@ export default async function StorefrontLayout({ children, params }: StorefrontL
         >
           <StorefrontHeader catalog={catalog} />
           <div className="pb-20 lg:pb-0">{children}</div>
-          <StorefrontFooter catalog={catalog} locale={locale} />
+          <StorefrontFooter catalog={catalog} />
         </div>
       </StorefrontProviders>
     </LocaleProvider>

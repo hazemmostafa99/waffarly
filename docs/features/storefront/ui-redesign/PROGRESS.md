@@ -24,15 +24,23 @@ Strict tracking requirements:
 
 ## Current Status
 
-- Overall: Core responsive catalog-to-order storefront implemented; the supplied Waffarly palette is now mapped into shared design tokens and component defaults, with visual/accessibility verification still remaining.
-- Current milestone: Shared design-system alignment and storefront visual/accessibility verification.
-- Current slice: Apply the supplied design-system colors, buttons, and cards to shared UI, the merchant design-system preview, and reusable storefront product cards.
-- Visual reference: Supplied Waffarly Bistro Arabic RTL desktop/mobile UI kit.
+- Overall: Core catalog-to-order pages plus the API-gap route UIs are implemented. The API-gap screens are explicitly preview-only; backend integration remains blocked on approved contracts and real data.
+- Current milestone: UI-first coverage of every planned storefront route; keep API-gap integration backlog open.
+- Current slice: Responsive preview UIs for order tracking, offers, branches, about, login, and account; localized navigation/footer links.
+- Visual reference: Supplied Waffarly Bistro UI kit remains the design source; user-provided Wafarly Marketplace screenshots guide relative typography and density only.
 - Target app: `apps/storefront`.
 - Primary route namespace: `/s/[slug]`.
-- Last updated: 2026-10-14.
-- Last verified state: Uncommitted worktree; no commit created. Shared UI and merchant dashboard lint/typecheck/build checks, plus storefront lint/typecheck/build, passed; palette visual comparison remains unverified.
-- Worktree note: Shared UI primitives/theme, merchant design-system preview, storefront product-card styling, and this feature documentation were changed for this slice. Other pre-existing workspace edits—including number-formatting work—were left untouched; preserve them.
+- Last updated: 2026-10-15.
+- Last verified state: Uncommitted worktree; no commit created. Storefront lint, typecheck, production build, and `git diff --check` passed. The six preview routes returned HTTP 200 in 36 RTL/LTR × mobile/tablet/desktop checks with no horizontal overflow, missing preview disclosures, or page errors. Local offer filtering and login/register switching passed. Screenshots are saved for offers-mobile and branches-desktop. The actual API was unavailable; a temporary isolated catalog-shell fixture was stopped after verification.
+- Worktree note: Preserve all pre-existing workspace edits. This slice added the preview route components and route files, linked them in the shared header/footer, updated the feature contract/progress, and saved verification screenshots. Existing number-formatting behavior and unrelated dirty API/workspace files were left untouched.
+
+### 2026-10-15 - API-Gap Pages UI Scope Decision
+
+- The user explicitly approved building every remaining storefront page now, including pages whose APIs do not exist yet, with backend integration to follow.
+- Updated `FEATURE.md` first: added a narrow, enforceable preview-only exception for tracking, offers, branches, about, and account/login. Each route must visibly disclose preview state; interactions must stay local; no preview content may affect live catalog, Zustand cart/favorites, checkout, pricing, order state, customer data, or API calls.
+- Existing backend gaps remain open integration blockers. This decision does not add endpoints, contracts, seed data, or business rules. Arabic display digits remain Western (`0-9`) in every locale; no number-formatting behavior is changed.
+- Scope recorded before implementation: add the missing route pages and reusable preview compositions, then link them from the existing shared navigation/footer. Continue with the existing responsive Waffarly palette, Cairo/Tajawal type, Tailwind, and shared shadcn primitives.
+- Status at decision time: approved before implementation; completed evidence is recorded in the following log entry.
 
 ## Entry Gates
 
@@ -56,6 +64,7 @@ Strict tracking requirements:
 - [x] Configure Cairo and Tajawal through locally hosted `next/font` assets.
 - [x] Map the shared workspace semantic colors and legacy Waffarly aliases to the supplied brand palette.
 - [x] Style shared buttons, cards, badges, borders, and focus rings with the design-system tokens.
+- [x] Provide named compact storefront type-scale tokens while preserving the Bistro font families and palette.
 - [x] Copy supplied WebP assets into the storefront public asset directory.
 - [x] Reuse the existing shared shadcn/UI primitives and update only the generic shared style defaults needed for design-system alignment.
 - [x] Use Tailwind utilities for the migrated storefront routes.
@@ -68,11 +77,19 @@ Strict tracking requirements:
 - [x] Centralize the supplied colors as shared semantic tokens: primary, dark/deep greens, gold/muted gold, cream/page/surface, text, border, and status colors.
 - [x] Prevent public catalog `accentColor` from replacing the supplied Waffarly brand palette.
 - [x] Map shared shadcn semantic colors and legacy Waffarly Tailwind aliases to the design-system tokens.
-- [x] Apply shared button variants (green primary, gold accent, cream secondary, green-tinted outline) and button/card geometry/shadows.
+- [x] Apply shared button variants (green primary, gold accent, cream secondary, green-tinted outline), compact 44px default sizing, and shared card geometry/shadows.
 - [x] Apply semantic success, warning, information, and error colors to shared status chips.
 - [x] Rebuild the merchant Design System preview around the supplied color swatches, buttons/chips, typography, product card, and inputs.
 - [x] Align the reusable storefront product card with the reference's square image, warm card surface, deep-green price, and gold add action.
-- [~] Visually compare the merchant preview and affected storefront routes against the reference at desktop and mobile widths; browser setup returned `missing field sandboxPolicy`, so no new visual comparison is claimed for this slice.
+- [~] Visually compare the merchant preview and affected storefront routes against the reference at desktop and mobile widths; homepage/footer were checked this slice, while the merchant Design System preview and non-home routes remain pending.
+
+## Compact Sizing Pass
+
+- [x] Replace the prior oversized type scale with named hero, page, section, subsection, product, price, body, supporting, and caption tokens.
+- [x] Set shared default buttons to 44px and large actions to 48px while keeping small action targets usable.
+- [x] Reduce homepage and menu hero height, section spacing, product-card image height/padding, and widen the desktop menu grid at extra-large widths.
+- [x] Apply the compact type scale and denser card/form spacing consistently to product, cart, favorites, checkout, and customizer screens without changing the Bistro colors or content structure.
+- [~] Capture and compare updated mobile, tablet, and desktop screenshots; homepage screenshots now exist at all three widths, but visual rechecks for menu, product, cart, checkout, and favorites remain pending.
 
 ## Application Shell
 
@@ -80,12 +97,12 @@ Strict tracking requirements:
 - [~] Build the announcement bar.
 - [~] Build the responsive header and desktop navigation.
 - [~] Build the mobile bottom navigation with safe-area support.
-- [~] Build the shared footer.
+- [x] Build and visually check the shared footer against the supplied deep-green, four-column RTL reference at mobile, tablet, and desktop widths.
 - [~] Implement merchant name/accent handling; logo/template configuration remains limited by current public merchant fields.
 - [~] Add route-aware active navigation.
 - [ ] Verify keyboard navigation and visible focus.
 - [x] Verify RTL and LTR shell behavior at mobile, tablet, and desktop widths; LTR/RTL smoke passed without horizontal overflow.
-- [x] Verify mobile, tablet, and desktop shell layouts; tablet received an overflow smoke check, mobile/desktop received screenshot comparison.
+- [x] Recheck mobile, tablet, and desktop homepage shell layout after compact sizing changes; LTR/RTL document width matched each viewport.
 
 ## Pages
 
@@ -98,7 +115,7 @@ Strict tracking requirements:
 - [~] Keep unsupported promotion/branch/about content out of the page rather than fabricating it.
 - [~] Add loading, empty, unavailable, error, and retry states.
 - [~] Add metadata based on merchant/catalog data.
-- [x] Verify against supplied mobile and desktop screenshots; production screenshots are recorded under `screenshots/`.
+- [x] Recompare homepage at mobile, tablet, and desktop after the compact sizing pass; RTL/LTR shell, category dimensions, locale-updating copy, and footer were visually checked. The API database was unavailable, so catalog data was not treated as live verification.
 
 ### 2. Menu - `/s/[slug]/menu`
 
@@ -108,7 +125,7 @@ Strict tracking requirements:
 - [~] Build reusable responsive product cards.
 - [~] Handle unavailable products and missing images.
 - [~] Add loading skeleton, empty catalog, no-results, API error, and retry states.
-- [x] Verify mobile and desktop layouts; screenshots and viewport measurements are recorded in the implementation log.
+- [~] Recompare mobile and desktop after the compact sizing pass; saved menu screenshots predate this slice.
 - [ ] Add route/filter interaction tests.
 
 ### 3. Product Details - `/s/[slug]/products/[productId]`
@@ -122,7 +139,7 @@ Strict tracking requirements:
 - [!] Per-item notes are blocked: quote/create-order contracts and strict request validation do not accept a line-note field.
 - [x] Add the configured item to the merchant-scoped cart.
 - [~] Handle unavailable, invalid, missing, and quote-error states.
-- [x] Verify native keyboard variant selection, RTL, mobile, tablet, and desktop behavior.
+- [~] Recheck native keyboard variant selection and responsive RTL layouts after the compact sizing pass; prior screenshots predate this slice.
 - [ ] Add modifier and quote tests.
 
 ### 4. Cart - `/s/[slug]/cart`
@@ -159,6 +176,8 @@ Strict tracking requirements:
 - [!] Ensure access cannot leak another customer's PII or order details; requires the missing lookup authorization design.
 - [~] Display an order success receipt from the immediate create-order response in checkout.
 - [!] Implement tracking only after approved public lookup/status contract exists.
+- [x] Build a clearly disclosed UI-only tracking preview with neutral milestone placeholders; never look up, poll, or display the route order ID.
+- [x] Check this preview at mobile/tablet/desktop in RTL and LTR; it returns 200 without overflow and does not expose the supplied path ID.
 - [ ] Stop polling on terminal status, route exit, or unrecoverable error.
 - [ ] Add missing, expired, unauthorized, error, and retry states.
 - [ ] Add API authorization/privacy and UI polling tests.
@@ -176,6 +195,8 @@ Strict tracking requirements:
 ### 8. Offers - `/s/[slug]/offers`
 
 - [!] Blocked by missing public offers/promotion contract and rules.
+- [x] Build responsive preview cards and locally interactive category filters, visibly labeled as sample UI; no fabricated discount values and no effect on prices/cart.
+- [x] Check this preview at mobile/tablet/desktop in RTL and LTR; mobile screenshot saved.
 - [ ] Define offer fields, eligibility, validity, ordering, and price-authority behavior.
 - [ ] Add backend, contract, and test support.
 - [ ] Implement responsive offer cards and states using real data.
@@ -184,6 +205,8 @@ Strict tracking requirements:
 ### 9. Branches - `/s/[slug]/branches`
 
 - [!] Blocked by missing public branch contract and `branchId` in order creation.
+- [x] Build responsive branch-card layout using supplied branch imagery and local-only selection; no addresses, hours, persistence, or checkout routing.
+- [x] Check this preview at mobile/tablet/desktop in RTL and LTR; desktop screenshot saved.
 - [ ] Define public branch fields, availability, hours, contact, and location behavior.
 - [ ] Add branch selection and order-routing support end to end.
 - [ ] Implement responsive branch cards and selection states.
@@ -193,6 +216,8 @@ Strict tracking requirements:
 ### 10. About - `/s/[slug]/about`
 
 - [!] Blocked by missing public merchant about/editorial fields.
+- [x] Build responsive about and information sections with explicit neutral placeholders; no merchant claims or contact/hours/location values are invented.
+- [x] Check this preview at mobile/tablet/desktop in RTL and LTR.
 - [ ] Define about, contact, social, and restaurant image fields.
 - [ ] Add API/contract support and validation.
 - [ ] Implement the supplied responsive design using real content.
@@ -202,6 +227,8 @@ Strict tracking requirements:
 ### 11. Customer Authentication and Account
 
 - [!] Blocked by unresolved customer identity requirements and missing public customer API.
+- [x] Build preview-only login/register form states and account dashboard shell; no authentication call, customer-data persistence, or fake success.
+- [x] Check both pages at mobile/tablet/desktop in RTL and LTR; registration view switches locally.
 - [ ] Approve login/sign-up/session behavior.
 - [ ] Approve customer profile fields and order-history access rules.
 - [ ] Define authentication, authorization, privacy, and recovery contracts.
@@ -226,9 +253,9 @@ Each completed page must record evidence for all applicable checks.
 
 | Check | Status | Latest evidence |
 | --- | --- | --- |
-| Storefront typecheck | Passed | `pnpm --filter @waffarly/storefront typecheck` (Node 20.19.0 emitted the package's Node >=24.11 <25 engine warning) |
-| Storefront lint | Passed | `pnpm --filter @waffarly/storefront lint` (same engine warning) |
-| Storefront production build | Passed | `pnpm --filter @waffarly/storefront build`; all current app routes compiled on 2026-10-14 (Node 20.19.0 emitted the package's Node >=24.11 <25 engine warning; sandboxed TypeScript worker needed approved escalation) |
+| Storefront typecheck | Passed | `pnpm --filter @waffarly/storefront typecheck` passed on 2026-10-15 (Node 20.19.0 emitted the package's Node >=24.11 <25 engine warning) |
+| Storefront lint | Passed | `pnpm --filter @waffarly/storefront lint` passed on 2026-10-15 (same engine warning) |
+| Storefront production build | Passed | `pnpm --filter @waffarly/storefront build` passed on 2026-10-15; all current app routes compiled (same engine warning) |
 | Contracts typecheck/build | Not run | Outside this UI slice |
 | API typecheck/lint/tests | Not run | Outside this UI slice |
 | Shared UI lint | Passed | `pnpm --filter @waffarly/ui lint`; one existing `react-refresh/only-export-components` warning in `badge.tsx` |
@@ -239,15 +266,17 @@ Each completed page must record evidence for all applicable checks.
 | Playwright primary journey | Not implemented | No primary journey test added in this slice |
 | HTTP smoke | Passed (live catalog) | Product route `/s/test-a5d13b8340d34e1fb85341be51ca4528/products/15533a31-d61a-4440-9707-63bedd525870` returned 200 from the production Next server at `localhost:3000` |
 | Runtime recovery | Passed | Fresh production product route returned 200 with no page errors or failed requests; the reported RSC module-factory error did not recur |
-| API connectivity | Passed | `GET http://localhost:4000/catalog/stores/test-a5d13b8340d34e1fb85341be51ca4528` returned 12 products and 8 categories; prior guessed slugs returned 404 |
-| Live store-route smoke | Passed | The user-provided slug resolves to a live catalog; product rendering and quote requests use the real API. No order was submitted and no API/database data was changed |
+| API connectivity | Unavailable today | Started the local API on 2026-10-15; `/health/db` returned 503 `DATABASE_UNAVAILABLE` and the catalog read returned 500. The API process was stopped; no seed or database write was made. The 2026-10-14 live catalog check previously returned 12 products and 8 categories |
+| Live store-route smoke | Previously passed; unavailable today | The 2026-10-14 user-provided slug resolved to a live catalog. Current screenshots are layout-only because today's API database check failed; no order was submitted and no API/database data was changed |
 | Live quote-to-basket flow | Passed | Changed to Brioche + extra cheddar; API quote returned `195.00` EGP and the configured item was added to local Zustand basket state |
-| Mobile visual comparison (`390x844`) | Passed | Production screenshot `screenshots/homepage-mobile.png`; Arabic RTL, hero top=139px and height=444px, matching reference geometry |
-| Menu visual comparison (`390x844` / `1440x900`) | Passed | `screenshots/menu-mobile.png` and `screenshots/menu-desktop.png`; Arabic RTL, hero measured 358x228px at mobile and 1240x266px at desktop |
-| Product detail visual comparison (`390x844` / `1440x900`) | Passed | `screenshots/product-mobile.png` and `screenshots/product-desktop.png`; Arabic RTL, live product data, supplied hero-burger photo, `scrollWidth === clientWidth` |
-| Tablet responsive check | Passed | Homepage/menu previously checked; live product detail checked at `768x1024`, RTL, keyboard variant arrow selection worked, no horizontal overflow or page errors |
-| Desktop visual comparison (`1440x900`) | Passed | Production screenshot `screenshots/homepage-desktop.png`; Arabic RTL, hero top=160px and height=496px (1px offset from reference capture) |
-| RTL smoke check | Passed | Menu rendered at `390x844`, `768x1024`, and `1440x900` with `dir=rtl`; no horizontal overflow or app page errors |
+| Mobile visual comparison (`390x844`) | Passed (homepage shell) | Arabic and English homepage screenshots captured; `document.documentElement.scrollWidth` matched 390px. See `screenshots/homepage-rtl-2026-10-15-mobile.png`; catalog data is not live-verified |
+| Category card dimensions/type | Passed (runtime and screenshot) | At 390x844, 768x1024, and 1440x900: card `175x150px`, image `70x70px`, title `12px`, metadata `10px`; no document horizontal overflow |
+| Footer layout (`390x844` / `1440x900`) | Passed (homepage shell) | Arabic/English footer layout checked at 390x844, 768x1024, and 1440x900. Scoped legacy paragraph color leakage so the copyright row now renders with the intended light text token; catalog data is not live-verified |
+| Menu visual comparison (`390x844` / `1440x900`) | Pending recheck | Prior `screenshots/menu-mobile.png` and `screenshots/menu-desktop.png` predate updated title, hero, and grid sizing |
+| Product detail visual comparison (`390x844` / `1440x900`) | Pending recheck | Prior product screenshots predate the compact title, image aspect, and card-spacing changes |
+| Tablet responsive check | Partial (homepage shell) | Arabic/English homepage shell checked at 768x1024; `document.documentElement.scrollWidth` matched 768px. Menu/product responsive checks remain pending |
+| Desktop visual comparison (`1440x900`) | Partial (homepage shell) | Arabic/English homepage and footer checked at 1440x900; `document.documentElement.scrollWidth` matched 1440px. Other routes remain pending |
+| RTL smoke check | Passed (homepage shell) | At 390x844, 768x1024, and 1440x900 `dir=rtl`, document width equaled viewport width, and homepage/footer copy updated after changing the locale |
 | LTR smoke check | Passed | Homepage at `390x844` and menu at `768x1024` rendered with `dir=ltr`; no horizontal overflow |
 | Keyboard/accessibility check | Passed (focused smoke) | Native radio arrow-key navigation moved to the next available live variant; this is not a full WCAG audit |
 
@@ -332,6 +361,55 @@ Each completed page must record evidence for all applicable checks.
 - Browser visual comparison remains pending; the in-app browser initialization returned `missing field sandboxPolicy`, so this slice is not marked visually complete.
 - The user's unrelated number-formatting edits and other dirty workspace changes were preserved; no number-formatting source was changed in this slice.
 
+### 2026-10-14 - Compact Storefront Sizing
+
+- Used the user-provided Wafarly Marketplace screenshots strictly as a scale/density reference. Kept the Waffarly Bistro colors, imagery, font families, content, RTL behavior, and page structure.
+- Replaced oversized heading/body values with named compact typography tokens in the shared Tailwind theme. Shared default buttons are now 44px high and large actions 48px high; the shared brand colors and design remain unchanged.
+- Reduced homepage/menu hero heights and padding, brought section spacing and category/product-card text down, changed storefront product imagery to a shorter 4:3 card ratio, and added a fourth menu product column only at extra-large desktop widths.
+- Reduced typography and excess padding across product details/customizer, cart, favorites, checkout, empty states, and footer while retaining 44px actions and 12px minimum supporting captions.
+- Verification passed: `pnpm --filter @waffarly/ui lint`, `pnpm --filter @waffarly/ui typecheck`, `pnpm --filter @waffarly/ui build`; `pnpm --filter @waffarly/storefront lint`, `pnpm --filter @waffarly/storefront typecheck`, and `pnpm --filter @waffarly/storefront build`; `pnpm --filter @waffarly/merchant-dashboard build`.
+- The merchant dashboard build completed with its existing >500 kB bundle advisory. Node 20.19.0 continues to emit the workspace's Node `>=24.11.0 <25` engine warning. The shared UI lint has one existing Fast Refresh warning in `badge.tsx`; there are no shared UI tests.
+- New screenshots are still needed. The provided site URL was inaccessible to the web viewer and the in-app browser failed to connect (`missing field sandboxPolicy`); the attached screenshots informed sizing, but I do not claim screenshot verification of the revised local UI.
+- Existing number-formatting edits were left untouched.
+
+### 2026-10-14 - Compact Category Tiles
+
+- Matched the homepage category tiles to the supplied sizing: `175x150px` card, `70x70px` circular image, `12px` title, and `10px` product-count metadata. Kept the row horizontally scrollable on narrow screens and retained the Waffarly Bistro palette and imagery.
+- Extracted a reusable `StorefrontCategoryCard` feature component and added named shared Tailwind tokens for its fixed dimensions and type sizes. `FEATURE.md` now records the narrow 10px exception for nonessential category counts only; number formatting and other text sizes were not changed.
+- Verification passed: `pnpm --filter @waffarly/storefront lint`, `pnpm --filter @waffarly/storefront typecheck`, and `pnpm --filter @waffarly/storefront build`. Built CSS confirms `175px` width, `150px` height, `70px` image, `12px` title, and `10px` metadata.
+- Browser screenshot comparison remains pending because the in-app browser connection again returned `missing field sandboxPolicy`; no visual screenshot verification is claimed. Node 20.19.0 continues to warn that the workspace requires Node `>=24.11.0 <25`.
+- Existing number-formatting work and other uncommitted changes were preserved.
+
+### 2026-10-14 - Reference Footer
+
+- Rebuilt the shared footer to follow the supplied deep-green four-column composition: merchant brand lockup and description, discover links, order-help links, and restaurant/home/category links, followed by a thin divider and two-sided copyright row.
+- Localized the footer headings and link labels in Arabic and English. Links point only to implemented menu, favorites, basket, checkout, home, and catalog-category routes; no unsupported offers, tracking, branches, or account pages were added.
+- Added safe-area/bottom-navigation clearance on mobile and kept the existing Waffarly deep-green/gold palette.
+- Verification passed: `pnpm --filter @waffarly/storefront lint`, `pnpm --filter @waffarly/storefront typecheck`, `pnpm --filter @waffarly/storefront build`, and `git diff --check`. Node 20.19.0 continues to warn that the workspace requires Node `>=24.11.0 <25`.
+- Rendered screenshot comparison remains pending because the in-app browser connection returns `missing field sandboxPolicy`; no visual screenshot verification is claimed.
+
+### 2026-10-15 - Responsive Homepage and Footer Verification
+
+- Rechecked the homepage shell in Arabic and English at `390x844`, `768x1024`, and `1440x900` after compact sizing. Runtime checks confirmed `dir=rtl` and `document.documentElement.scrollWidth` equal to the viewport at each size.
+- Verified the category card dimensions at all three widths: `175x150px` card, `70x70px` image, `12px` title, and `10px` metadata.
+- Compared the deep-green footer at mobile, tablet, and desktop. A legacy generic paragraph color rule overrode the footer's Tailwind white-opacity text color; scoped that old rule to `.storefront-shell p`, restoring the intended footer contrast.
+- Fixed homepage and footer locale responsiveness: both now read the shared locale state, so the language switcher updates the hero, section labels, and footer copy without reloading. Number formatting was not changed.
+- Saved Arabic responsive captures as `screenshots/homepage-rtl-2026-10-15-mobile.png`, `screenshots/homepage-rtl-2026-10-15-tablet.png`, and `screenshots/homepage-rtl-2026-10-15-desktop.png`.
+- The in-app browser connection was unavailable, so local headless Edge was used for captures. Started the local API only for a read-only check: `/health/db` returned 503 `DATABASE_UNAVAILABLE` and catalog reads returned 500. The screenshots verify layout only; the rendered catalog may be cached and is not treated as live data. No seed, order, or database mutation was performed. Temporary API and storefront servers were stopped.
+- Verification passed: `pnpm --filter @waffarly/storefront lint`, `pnpm --filter @waffarly/storefront typecheck`, and `pnpm --filter @waffarly/storefront build`. Node 20.19.0 continues to emit the existing Node `>=24.11.0 <25` engine warning.
+- Existing number-formatting work and other uncommitted workspace changes were preserved.
+
+### 2026-10-15 - API-Gap Route UI Slice
+
+- Added `/s/[slug]/offers`, `/branches`, `/about`, `/login`, `/account`, and `/order/[orderId]` using the isolated `features/preview/storefront-preview-pages.tsx` composition. Each route uses Waffarly tokens, shared shadcn-style Badge/Button/Card/Input primitives, Cairo/Tajawal fonts, responsive Tailwind utilities, and Arabic/English copy.
+- Added a prominent accessible preview disclosure on every route. Offers only filter sample placements locally and contain no prices/discounts. Branch cards use the provided branch imagery and local selection only; they contain no real location/hours and do not connect to checkout. About details remain neutral placeholders. Login/register never call auth or persist fields and explicitly warn that the form is not connected. Account data remains unpopulated. Tracking displays generic milestone placeholders only, makes no request, and never echoes the route order ID.
+- Added offers/about links to the desktop header and added offers, branches, about, login, and account links to the existing four-column footer. Existing cart/catalog/checkout state and Western-digit formatting were not changed.
+- Browser verification used an isolated temporary API-shaped catalog-shell fixture on port 4001; the real API on port 4000 was unavailable and was not modified. All six routes returned 200 in 36 checks (Arabic/English × `390x844`, `768x1024`, and `1440x900`), with correct `dir`, no horizontal overflow, a visible preview disclosure, and no browser page errors. Offer filter and register-view toggle passed. Tracking path ID was not present in visible text. Temporary storefront and fixture servers were stopped.
+- Captures: `screenshots/api-gap-offers-mobile.png` and `screenshots/api-gap-branches-desktop.png`.
+- Final mobile-footer refinement: let the brand block span both mobile grid columns so the Waffarly Bistro wordmark is not truncated. Recaptured the offers page at `390x844`; the complete brand name is visible and the page still has no horizontal overflow. The desktop four-column layout is unchanged.
+- Verification passed after final code changes: `pnpm --filter @waffarly/storefront typecheck`, `pnpm --filter @waffarly/storefront lint`, `pnpm --filter @waffarly/storefront build`, and `git diff --check`. The final build was rerun without the temporary test API override; its generated runtime uses the normal `localhost:4000` API configuration. The workspace still warns that Node 20.19.0 is below the package requirement `>=24.11.0 <25`.
+- Backend integration remains pending for branches/order routing, promotions, merchant editorial/contact data, privacy-safe public tracking, and customer authentication/account APIs. All pre-existing unrelated workspace edits and number-formatting work were preserved.
+
 ## Decisions and Blockers
 
 | Date | Area | Decision or blocker | Status |
@@ -346,6 +424,7 @@ Each completed page must record evidence for all applicable checks.
 | 2026-10-14 | Offers | Public offer data and promotion rules are absent. | Blocked |
 | 2026-10-14 | Tracking | No privacy-safe public order lookup endpoint is defined. | Blocked |
 | 2026-10-14 | Customer account | Authentication, profile, favorites sync, and history contracts are unresolved. | Blocked |
+| 2026-10-15 | API-gap route UI | User approved implementing missing storefront route UIs with isolated, visibly disclosed local preview behavior; backend gaps remain blocked and preview state cannot enter real flows. | Decided |
 | 2026-10-14 | Runtime recovery | Reinstall deps from local store, stop stale dev graph, and clear verified generated `.next/dev` cache; clean dev startup no longer reproduced module-factory error. | Resolved |
 | 2026-10-14 | Local API for dev smoke | User-provided slug `test-a5d13b8340d34e1fb85341be51ca4528` returns a public catalog at `localhost:4000`; keep read/write rules unchanged. | Resolved |
 | 2026-10-14 | Menu visual data | Live catalog now available for product `15533a31-d61a-4440-9707-63bedd525870`; continue rendering through the public catalog contract. | Verified |

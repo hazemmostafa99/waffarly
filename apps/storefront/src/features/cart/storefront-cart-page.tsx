@@ -52,13 +52,13 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
 
   if (cart.length === 0) {
     return (
-      <main id="main-content" className="mx-auto grid min-h-[65vh] max-w-[760px] content-center justify-items-center px-5 py-16 text-center">
-        <span className="grid size-20 place-items-center rounded-3xl bg-store-primary/10 text-store-primary">
-          <ShoppingBag className="size-9" aria-hidden="true" />
+      <main id="main-content" className="mx-auto grid min-h-[65vh] max-w-[760px] content-center justify-items-center px-5 py-12 text-center">
+        <span className="grid size-16 place-items-center rounded-3xl bg-store-primary/10 text-store-primary">
+          <ShoppingBag className="size-8" aria-hidden="true" />
         </span>
-        <h1 className="mt-6 font-heading text-3xl font-black text-store-ink">{t.basket}</h1>
-        <p className="mt-2 text-base text-store-muted">{t.basketEmpty}</p>
-        <Button asChild className="mt-7 rounded-xl bg-store-accent px-6 font-bold hover:bg-store-primary-dark">
+        <h1 className="mt-4 font-heading text-storefront-page font-black text-store-ink">{t.basket}</h1>
+        <p className="mt-2 text-storefront-body text-store-muted">{t.basketEmpty}</p>
+        <Button asChild className="mt-5 rounded-xl bg-store-accent px-5 font-bold hover:bg-store-primary-dark">
           <Link href={`/s/${catalog.slug}/menu`}>{t.startShopping}</Link>
         </Button>
       </main>
@@ -77,17 +77,17 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
   const Arrow = locale === 'ar' ? ArrowLeft : ArrowRight;
 
   return (
-    <main id="main-content" className="mx-auto min-h-[70vh] max-w-[1160px] px-4 pb-12 pt-8 sm:px-8 sm:pt-12">
-      <header className="mb-7">
-        <p className="text-sm font-extrabold text-store-accent">{catalog.merchantName}</p>
-        <h1 className="mt-1 font-heading text-3xl font-black text-store-ink sm:text-4xl">{t.basket}</h1>
-        <p className="mt-2 text-base text-store-muted">
+    <main id="main-content" className="mx-auto min-h-[70vh] max-w-[1160px] px-4 pb-10 pt-6 sm:px-8 sm:pt-8">
+      <header className="mb-5">
+        <p className="text-storefront-support font-extrabold text-store-accent">{catalog.merchantName}</p>
+        <h1 className="mt-1 font-heading text-storefront-page font-black text-store-ink">{t.basket}</h1>
+        <p className="mt-1 text-storefront-body text-store-muted">
           {cart.reduce((count, line) => count + line.quantity, 0).toLocaleString(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG-u-nu-latn')} {t.products}
         </p>
       </header>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_350px] lg:gap-8">
-        <section className="grid gap-4" aria-label={t.cart}>
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_330px] lg:gap-6">
+        <section className="grid gap-3" aria-label={t.cart}>
           {estimates.map(({ line, product, quote }, index) => {
             const variant = product?.variants.find((item) => item.id === line.variantId);
             const isUnavailable = !product || (line.variantId !== null && variant?.availability !== 'available');
@@ -102,7 +102,7 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
               : [];
 
             return (
-              <Card key={line.key} className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:grid-cols-[130px_minmax(0,1fr)_auto] sm:items-center sm:p-5">
+              <Card key={line.key} className="grid gap-3 rounded-3xl border-store-border bg-white p-3 sm:grid-cols-[120px_minmax(0,1fr)_auto] sm:items-center sm:p-4">
                 <div className="relative aspect-[1.3] overflow-hidden rounded-2xl bg-store-cream sm:aspect-square">
                   {image ? (
                     <Image src={image.publicUrl} alt={product?.name ?? ''} fill sizes="130px" className="object-cover" unoptimized />
@@ -111,16 +111,16 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
                   )}
                 </div>
                 <div className="min-w-0">
-                  <h2 className="font-heading text-lg font-extrabold text-store-ink">{product?.name ?? t.unavailable}</h2>
+                  <h2 className="font-heading text-storefront-product font-extrabold text-store-ink">{product?.name ?? t.unavailable}</h2>
                   {variant && (
-                    <p className="mt-1 text-sm text-store-muted">
+                    <p className="mt-1 text-storefront-support text-store-muted">
                       {variant.attributes.length
                         ? variant.attributes.map((attribute) => `${attribute.attributeName}: ${attribute.value}`).join(' · ')
                         : variant.name}
                     </p>
                   )}
                   {selectedOptions.length > 0 && (
-                    <ul className="mt-2 grid gap-1 text-xs leading-5 text-store-muted">
+                    <ul className="mt-2 grid gap-1 text-storefront-caption text-store-muted">
                       {selectedOptions.map((option) => <li key={option}>{option}</li>)}
                     </ul>
                   )}
@@ -130,12 +130,12 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
                   {quoteQueries[index]?.isError && !isUnavailable && (
                     <p className="mt-2 text-xs font-bold text-store-gold-muted" role="status">{t.priceNote}</p>
                   )}
-                  <div className="mt-4 flex items-center gap-2">
+                  <div className="mt-3 flex items-center gap-2">
                     <button
                       type="button"
                       aria-label={locale === 'ar' ? 'تقليل الكمية' : 'Decrease quantity'}
                       onClick={() => setQuantity(line.key, line.quantity - 1)}
-                      className="grid size-10 place-items-center rounded-full border border-store-border bg-white text-store-primary hover:bg-store-cream"
+                      className="grid size-11 place-items-center rounded-full border border-store-border bg-white text-store-primary hover:bg-store-cream"
                     >
                       <Minus className="size-4" aria-hidden="true" />
                     </button>
@@ -145,21 +145,21 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
                       aria-label={locale === 'ar' ? 'زيادة الكمية' : 'Increase quantity'}
                       disabled={line.quantity >= 99}
                       onClick={() => setQuantity(line.key, line.quantity + 1)}
-                      className="grid size-10 place-items-center rounded-full border border-store-border bg-white text-store-primary hover:bg-store-cream disabled:opacity-40"
+                      className="grid size-11 place-items-center rounded-full border border-store-border bg-white text-store-primary hover:bg-store-cream disabled:opacity-40"
                     >
                       <Plus className="size-4" aria-hidden="true" />
                     </button>
                     <button
                       type="button"
                       onClick={() => removeLine(line.key)}
-                      className="ms-auto inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-sm font-bold text-store-error hover:bg-store-error/5"
+                      className="ms-auto inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm font-bold text-store-error hover:bg-store-error/5"
                     >
                       <Trash2 className="size-4" aria-hidden="true" />{t.remove}
                     </button>
                   </div>
                 </div>
                 <div className="text-end sm:min-w-28">
-                  <strong className="font-heading text-lg font-extrabold text-store-primary-deep">
+                  <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
                     <bdi dir="auto">{formatStorefrontPrice(quote?.totalPrice ?? line.unitPriceSnapshot, locale)}</bdi>
                   </strong>
                   <span className="mt-1 block text-xs text-store-muted">
@@ -172,21 +172,21 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
         </section>
 
         <aside className="lg:sticky lg:top-28">
-          <Card className="rounded-3xl border-store-border bg-white p-5 shadow-[0_12px_36px_rgba(23,35,48,0.06)] sm:p-6">
-            <h2 className="font-heading text-xl font-extrabold text-store-ink">{locale === 'ar' ? 'ملخص الطلب' : 'Order summary'}</h2>
-            <div className="mt-5 flex items-center justify-between gap-3 border-b border-store-border pb-4 text-sm">
+          <Card className="rounded-3xl border-store-border bg-white p-4 shadow-[0_12px_36px_rgba(23,35,48,0.06)] sm:p-5">
+            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">{locale === 'ar' ? 'ملخص الطلب' : 'Order summary'}</h2>
+            <div className="mt-4 flex items-center justify-between gap-3 border-b border-store-border pb-3 text-storefront-support">
               <span className="text-store-muted">{t.estimatedSubtotal}</span>
-              <strong className="font-heading text-lg font-extrabold text-store-ink">
+              <strong className="font-heading text-storefront-price font-extrabold text-store-ink">
                 <bdi dir="auto">{formatStorefrontPrice(fromMinorUnits(estimatedMinorUnits), locale)}</bdi>
               </strong>
             </div>
             <p className="mt-4 rounded-xl bg-store-cream px-3 py-3 text-xs leading-5 text-store-muted">{t.priceNote}</p>
-            <Button asChild className="mt-5 h-12 w-full rounded-xl bg-store-accent font-heading font-extrabold hover:bg-store-primary-dark">
+            <Button asChild className="mt-4 h-11 w-full rounded-xl bg-store-accent font-heading font-extrabold hover:bg-store-primary-dark">
               <Link href={`/s/${catalog.slug}/checkout`}>
                 {t.checkout}<Arrow className="size-4" aria-hidden="true" />
               </Link>
             </Button>
-            <Button asChild variant="outline" className="mt-3 h-12 w-full rounded-xl border-store-border bg-white font-bold text-store-primary hover:bg-store-cream">
+            <Button asChild variant="outline" className="mt-2 h-11 w-full rounded-xl border-store-border bg-white font-bold text-store-primary hover:bg-store-cream">
               <Link href={`/s/${catalog.slug}/menu`}>{t.continueShopping}</Link>
             </Button>
           </Card>

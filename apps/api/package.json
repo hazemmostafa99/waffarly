@@ -11,10 +11,10 @@
     "catalog:seed": "tsx src/scripts/seed-catalog.ts",
     "lint": "eslint src test",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "tsx --test test/health.e2e.test.ts test/plans.e2e.test.ts test/activities-modules.e2e.test.ts test/merchant-applications.e2e.test.ts test/multi-business.e2e.test.ts test/catalog.e2e.test.ts test/storefront-orders.e2e.test.ts test/product-configuration-report.test.ts",
-    "test:catalog-db": "tsx --test test/catalog.database.test.ts test/catalog-seed.database.test.ts",
-    "test:storefront-orders-db": "tsx --test test/storefront-orders.database.test.ts",
-    "test:activities-db": "tsx --test test/activities-modules.database.test.ts"
+    "test": "tsx --test test/http/*.test.ts test/unit/*.test.ts",
+    "test:catalog-db": "tsx --test test/database/catalog.database.test.ts test/database/catalog-seed.database.test.ts",
+    "test:storefront-orders-db": "tsx --test test/database/storefront-orders.database.test.ts",
+    "test:activities-db": "tsx --test test/database/activities-modules.database.test.ts"
   },
   "dependencies": {
     "@nestjs/common": "12.1.3",
