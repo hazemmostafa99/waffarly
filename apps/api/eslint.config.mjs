@@ -9,7 +9,7 @@ const dependencies = {
   merchants: ['auth'],
   plans: ['auth'],
   activities: ['auth'],
-  catalog: ['auth'],
+  catalog: ['auth', 'inventory'],
   inventory: ['auth'],
   purchasing: ['auth', 'inventory'],
   storefront: ['auth', 'catalog'],

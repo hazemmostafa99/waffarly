@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { useLocale } from '@waffarly/ui';
 import type {
   CatalogModifierGroupFields,
@@ -7,11 +7,20 @@ import type {
   CatalogCategorySummary,
   CatalogMediaAsset,
   CatalogProductModifierGroupAssignmentFields,
+  CatalogProductInventoryConfigurationFields,
   CatalogProductSummary,
   CatalogProductVariantFields,
+  OwnerProfile,
+  ProductInventoryMode,
+  StockItem,
 } from '@waffarly/contracts';
 import { Icon } from './Icons.js';
 import { apiRequest, apiUpload } from './lib/api-client.js';
+import {
+  ProductInventoryTab,
+  type ProductInventoryComponentDraft,
+  type ProductInventoryTargetDraft,
+} from './ProductInventoryTab.js';
 
 type OptionDraft = {
   id: string;
@@ -42,18 +51,21 @@ type VariantDraft = {
   attributes: Array<{ attributeId?: string; valueId?: string; name: string; value: string }>;
 };
 
-const tabKeys = ['basic', 'details', 'options', 'preview'] as const;
+const tabKeys = ['basic', 'details', 'options', 'inventory', 'preview'] as const;
 
 function newId() {
   return crypto.randomUUID();
 }
 
 export function ProductBuilderPage() {
+  const { profile } = useOutletContext<{ profile: OwnerProfile }>();
   const { locale, errorText, formatNumber, formatDigits } = useLocale();
   const isArabic = locale === 'ar';
   const navigate = useNavigate();
   const { id: productId } = useParams<{ id: string }>();
   const isEditing = Boolean(productId);
+  const activityDefaultMode: ProductInventoryMode =
+    profile.activity === 'restaurant' ? 'RECIPE' : 'DIRECT';
   const text = (english: string, arabic: string) => formatDigits(isArabic ? arabic : english);
   const [activeTab, setActiveTab] = useState(0);
   const [name, setName] = useState('');
@@ -71,6 +83,13 @@ export function ProductBuilderPage() {
   const [primaryImageAssetId, setPrimaryImageAssetId] = useState('');
   const [groups, setGroups] = useState<GroupDraft[]>([]);
   const [variants, setVariants] = useState<VariantDraft[]>([]);
+  const [existingVariantIds, setExistingVariantIds] = useState<string[]>([]);
+  const [stockItems, setStockItems] = useState<StockItem[]>([]);
+  const [inventoryMode, setInventoryMode] = useState<ProductInventoryMode>(activityDefaultMode);
+  const [inventoryTargets, setInventoryTargets] = useState<ProductInventoryTargetDraft[]>([]);
+  const [inventoryEnabled, setInventoryEnabled] = useState(false);
+  const [inventoryWasConfigured, setInventoryWasConfigured] = useState(false);
+  const [inventoryConfigurationRequired, setInventoryConfigurationRequired] = useState(false);
   const [productMode, setProductMode] = useState<'simple' | 'variants'>('simple');
   const [loading, setLoading] = useState(true);
   const [productLoading, setProductLoading] = useState(Boolean(productId));
@@ -85,11 +104,13 @@ export function ProductBuilderPage() {
       apiRequest<CatalogCategorySummary[]>('/owner/catalog/categories'),
       apiRequest<CatalogMediaAsset[]>('/owner/catalog/media'),
       apiRequest<CatalogModifierGroupSummary[]>('/owner/catalog/modifier-groups'),
+      apiRequest<StockItem[]>('/owner/inventory/items?status=active&limit=100'),
     ])
-      .then(([nextCategories, nextMedia, nextModifierLibrary]) => {
+      .then(([nextCategories, nextMedia, nextModifierLibrary, nextStockItems]) => {
         setCategories(nextCategories.filter((category) => !category.archivedAt));
         setMedia(nextMedia);
         setModifierLibrary(nextModifierLibrary);
+        setStockItems(nextStockItems.filter((item) => !item.archivedAt));
       })
       .catch((cause: unknown) =>
         setError(
@@ -119,7 +140,13 @@ export function ProductBuilderPage() {
       setPrimaryImageAssetId('');
       setGroups([]);
       setVariants([]);
+      setExistingVariantIds([]);
       setProductMode('simple');
+      setInventoryMode(activityDefaultMode);
+      setInventoryTargets([]);
+      setInventoryEnabled(false);
+      setInventoryWasConfigured(false);
+      setInventoryConfigurationRequired(false);
       return () => {
         cancelled = true;
       };
@@ -187,7 +214,22 @@ export function ProductBuilderPage() {
               })),
             })),
         );
+        setExistingVariantIds(product.variants.map((variant) => variant.id));
         setProductMode(product.variants.length ? 'variants' : 'simple');
+        setInventoryMode(product.inventoryConfiguration?.mode ?? product.inventoryDefaultMode);
+        setInventoryTargets(
+          product.inventoryConfiguration?.targets.map((target) => ({
+            variantId: target.variantId,
+            components: target.components.map((component) => ({
+              stockItemId: component.stockItemId,
+              unitCode: component.unitCode,
+              quantity: component.quantity,
+            })),
+          })) ?? [],
+        );
+        setInventoryEnabled(product.inventoryConfiguration !== null);
+        setInventoryWasConfigured(product.inventoryConfiguration !== null);
+        setInventoryConfigurationRequired(product.inventoryConfigurationRequired);
         setRevision(product.revision);
       })
       .catch((cause: unknown) => {
@@ -212,6 +254,30 @@ export function ProductBuilderPage() {
     media.find((asset) => asset.id === primaryImageAssetId && imageAssetIds.includes(asset.id)) ??
     selectedImages[0];
   const selectedCategories = categories.filter((category) => categoryIds.includes(category.id));
+  const inventorySellables = variants.length
+    ? variants.map((variant) => ({ variantId: variant.id, name: variant.name }))
+    : [{ variantId: null, name }];
+  const displayedInventoryTargets: ProductInventoryTargetDraft[] = inventorySellables.map(
+    (sellable) =>
+      inventoryTargets.find((target) => target.variantId === sellable.variantId) ?? {
+        variantId: sellable.variantId,
+        components: [{ stockItemId: '', unitCode: '', quantity: '1' }],
+      },
+  );
+  const inventoryConfigurationComplete =
+    inventoryEnabled &&
+    displayedInventoryTargets.length > 0 &&
+    displayedInventoryTargets.every((target) => {
+      if (!target.components.length || (inventoryMode === 'DIRECT' && target.components.length !== 1)) {
+        return false;
+      }
+      return target.components.every((component) =>
+        stockItems.some((item) => item.id === component.stockItemId) &&
+        component.unitCode.length > 0 &&
+        /^(0|[1-9]\d{0,11})(?:\.\d{1,6})?$/.test(component.quantity) &&
+        Number(component.quantity) > 0,
+      );
+    });
   const defaultAdjustment = groups.reduce(
     (sum, group) =>
       sum +
@@ -222,6 +288,28 @@ export function ProductBuilderPage() {
       ),
     0,
   );
+
+  function changeInventoryTarget(
+    variantId: string | null,
+    components: ProductInventoryComponentDraft[],
+  ) {
+    setInventoryTargets((current) => {
+      const existingIndex = current.findIndex((target) => target.variantId === variantId);
+      const nextTarget = { variantId, components };
+      return existingIndex < 0
+        ? [...current, nextTarget]
+        : current.map((target, index) => (index === existingIndex ? nextTarget : target));
+    });
+  }
+
+  function changeInventoryMode(mode: ProductInventoryMode) {
+    setInventoryMode(mode);
+    if (mode === 'DIRECT') {
+      setInventoryTargets((current) =>
+        current.map((target) => ({ ...target, components: target.components.slice(0, 1) })),
+      );
+    }
+  }
 
   async function uploadImage(file: File) {
     setError('');
@@ -259,7 +347,7 @@ export function ProductBuilderPage() {
     }
   }
 
-  function validateStep(step: number): boolean {
+  function validateStep(step: number, finalSave = false): boolean {
     if (step === 0) {
       if (!name.trim()) {
         setError(text('Enter a product name.', 'أدخل اسم المنتج.'));
@@ -343,6 +431,43 @@ export function ProductBuilderPage() {
           text(
             'Check each option group: add names and options, and keep the selection limits valid.',
             'راجع كل مجموعة خيارات: أضف الأسماء والخيارات وتأكد من صحة حدود الاختيار.',
+          ),
+        );
+        return false;
+      }
+    }
+    if (step === 3) {
+      if (!finalSave) {
+        setError('');
+        return true;
+      }
+      const requireConfiguration =
+        availability === 'available' && (!isEditing || inventoryConfigurationRequired);
+      if (inventoryEnabled && !inventoryConfigurationComplete) {
+        if (requireConfiguration || inventoryWasConfigured) {
+          setError(
+            text(
+              'Complete every inventory target with a Stock Item, unit, and positive quantity.',
+              'أكمل إعداد كل وحدة بيع باختيار صنف المخزون والوحدة والكمية الموجبة.',
+            ),
+          );
+          return false;
+        }
+      }
+      if (requireConfiguration && !inventoryConfigurationComplete) {
+        setError(
+          text(
+            'Configure inventory before making this product available.',
+            'أكمل إعداد المخزون قبل إتاحة هذا المنتج.',
+          ),
+        );
+        return false;
+      }
+      if (inventoryWasConfigured && !inventoryEnabled && availability === 'available') {
+        setError(
+          text(
+            'Set the product as unavailable before removing its inventory setup.',
+            'اجعل المنتج غير متاح قبل إزالة إعداد المخزون.',
           ),
         );
         return false;
@@ -554,8 +679,8 @@ export function ProductBuilderPage() {
       setError(text('The product is not ready to save.', 'المنتج غير جاهز للحفظ.'));
       return;
     }
-    for (let step = 0; step <= 2; step += 1) {
-      if (!validateStep(step)) {
+    for (let step = 0; step <= 3; step += 1) {
+      if (!validateStep(step, step === 3)) {
         setActiveTab(step);
         return;
       }
@@ -577,7 +702,9 @@ export function ProductBuilderPage() {
       }),
     );
     const productVariants: CatalogProductVariantFields[] = variants.map((variant, position) => ({
-      id: variant.id,
+      id: !isEditing || existingVariantIds.includes(variant.id) || inventoryConfigurationComplete
+        ? variant.id
+        : undefined,
       name: variant.name.trim(),
       sku: variant.sku.trim() || undefined,
       barcode: variant.barcode.trim() || undefined,
@@ -592,6 +719,27 @@ export function ProductBuilderPage() {
         value: attribute.value.trim(),
       })),
     }));
+    const inventoryConfiguration: CatalogProductInventoryConfigurationFields | undefined =
+      inventoryConfigurationComplete
+        ? {
+            mode: inventoryMode,
+            targets: displayedInventoryTargets.map((target) => ({
+              variantId: target.variantId,
+              components: target.components.map((component) => ({
+                stockItemId: component.stockItemId,
+                unitCode: component.unitCode,
+                quantity: component.quantity,
+              })),
+            })),
+          }
+        : undefined;
+    const inventoryConfigurationField = inventoryEnabled
+      ? inventoryConfiguration
+        ? { inventoryConfiguration }
+        : {}
+      : inventoryWasConfigured
+        ? { inventoryConfiguration: null }
+        : {};
     try {
       await apiRequest<CatalogProductSummary>(
         productId ? `/owner/catalog/products/${productId}` : '/owner/catalog/products',
@@ -610,6 +758,7 @@ export function ProductBuilderPage() {
             categoryIds,
             modifierGroupAssignments,
             variants: productVariants,
+            ...inventoryConfigurationField,
           }),
         },
       );
@@ -630,6 +779,7 @@ export function ProductBuilderPage() {
     text('Basic information', 'المعلومات الأساسية'),
     text('Product details', 'تفاصيل المنتج'),
     text('Options', 'الخيارات'),
+    text('Inventory', 'المخزون'),
     text('Preview and publish', 'المعاينة والنشر'),
   ];
 
@@ -687,7 +837,7 @@ export function ProductBuilderPage() {
             onKeyDown={(event) => {
               const direction = isArabic ? -1 : 1;
               const offset = event.key === 'ArrowRight' ? direction : event.key === 'ArrowLeft' ? -direction : 0;
-              const target = event.key === 'Home' ? 0 : event.key === 'End' ? 3 : offset ? (index + offset + 4) % 4 : null;
+              const target = event.key === 'Home' ? 0 : event.key === 'End' ? tabKeys.length - 1 : offset ? (index + offset + tabKeys.length) % tabKeys.length : null;
               if (target === null) return;
               event.preventDefault();
               setError('');
@@ -706,6 +856,7 @@ export function ProductBuilderPage() {
                 text('Name & price', 'الاسم والسعر'),
                 text('Categories & photos', 'التصنيفات والصور'),
                 text('Variants & add-ons', 'المتغيرات والإضافات'),
+                text('Direct item or recipe', 'صنف مباشر أو وصفة'),
                 text('Review & save', 'المراجعة والحفظ'),
               ][index]}</small>
             </strong>
@@ -801,6 +952,22 @@ export function ProductBuilderPage() {
                 />
               )}
               {activeTab === 3 && (
+                <ProductInventoryTab
+                  enabled={inventoryEnabled}
+                  onEnabledChange={setInventoryEnabled}
+                  mode={inventoryMode}
+                  onModeChange={changeInventoryMode}
+                  defaultMode={activityDefaultMode}
+                  required={!isEditing || inventoryConfigurationRequired}
+                  availability={availability}
+                  stockItems={stockItems}
+                  targets={displayedInventoryTargets}
+                  variants={variants.map((variant) => ({ id: variant.id, name: variant.name }))}
+                  onTargetChange={changeInventoryTarget}
+                  text={text}
+                />
+              )}
+              {activeTab === 4 && (
                 <PreviewPublishTab
                   onEditStep={(step) => { if (!submitting) { setError(''); setActiveTab(step); } }}
                   name={name}
@@ -814,6 +981,8 @@ export function ProductBuilderPage() {
                   )}
                   groups={groups}
                   variants={variants}
+                  inventoryMode={inventoryMode}
+                  inventoryConfigured={inventoryConfigurationComplete || (inventoryWasConfigured && inventoryEnabled)}
                   formatNumber={formatNumber}
                   text={text}
                 />
@@ -830,16 +999,16 @@ export function ProductBuilderPage() {
                 >
                   {text('Back', 'السابق')}
                 </button>
-                {activeTab < 3 ? (
+                {activeTab < 4 ? (
                   <button
                     type="button"
                     className="builder-button primary"
                     disabled={uploading}
                     onClick={() =>
-                      validateStep(activeTab) && setActiveTab((current) => Math.min(3, current + 1))
+                      validateStep(activeTab) && setActiveTab((current) => Math.min(4, current + 1))
                     }
                   >
-                    {activeTab === 2 ? text('Review product', 'مراجعة المنتج') : `${text('Next: ', 'التالي: ')}${tabs[activeTab + 1]}`}
+                    {activeTab === 3 ? text('Review product', 'مراجعة المنتج') : `${text('Next: ', 'التالي: ')}${tabs[activeTab + 1]}`}
                     <span aria-hidden="true">{isArabic ? '←' : '→'}</span>
                   </button>
                 ) : (
@@ -1768,6 +1937,8 @@ function PreviewPublishTab({
   images,
   groups,
   variants,
+  inventoryMode,
+  inventoryConfigured,
   formatNumber,
   text,
 }: {
@@ -1781,13 +1952,15 @@ function PreviewPublishTab({
   images: CatalogMediaAsset[];
   groups: GroupDraft[];
   variants: VariantDraft[];
+  inventoryMode: ProductInventoryMode;
+  inventoryConfigured: boolean;
   formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
   text: (english: string, arabic: string) => string;
 }) {
   return (
     <div className="builder-fields">
       <div className="builder-section-heading">
-        <span>{text('04', '04')}</span>
+        <span>{text('05', '05')}</span>
         <div>
           <h2>{text('Preview and publish', 'المعاينة والنشر')}</h2>
           <p>
@@ -1845,6 +2018,17 @@ function PreviewPublishTab({
         <button type="button" className="builder-button" onClick={() => onEditStep(0)}>{text('Edit name & price', 'تعديل الاسم والسعر')}</button>
         <button type="button" className="builder-button" onClick={() => onEditStep(1)}>{text('Edit photos & categories', 'تعديل الصور والتصنيفات')}</button>
         <button type="button" className="builder-button" onClick={() => onEditStep(2)}>{text('Edit customer choices', 'تعديل خيارات العميل')}</button>
+        <button type="button" className="builder-button" onClick={() => onEditStep(3)}>{text('Edit inventory setup', 'تعديل إعداد المخزون')}</button>
+      </div>
+      <div className="builder-review-groups builder-inventory-review">
+        <h3>{text('Inventory setup', 'إعداد المخزون')}</h3>
+        <strong>
+          {inventoryConfigured
+            ? inventoryMode === 'RECIPE'
+              ? text('Recipe configured', 'تم إعداد الوصفة')
+              : text('Direct item mapping configured', 'تم إعداد الربط المباشر')
+            : text('Not configured', 'غير مُعدّ')}
+        </strong>
       </div>
       {groups.length > 0 && (
         <div className="builder-review-groups">

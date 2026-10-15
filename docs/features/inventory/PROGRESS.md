@@ -4,11 +4,11 @@
 
 - Last audited: 2026-10-15.
 - Feature contract: [FEATURE.md](FEATURE.md).
-- Delivery state: **M3 Stock Item registry, branch/warehouse scope, merchant policy, balances, reviewed opening-stock ledger, supplier directory, and purchase invoice receipt implemented and verified. Product mappings, recipes, and order consumption remain future slices.**
+- Delivery state: **M4 Product/Variant DIRECT mappings, independent base recipes, exact requirement calculation, and product readiness gates implemented. M1-M3 foundations remain verified. Order consumption and modifier effects remain future slices.**
 - Baseline branch/commit: `main` / `264fa1a263b1f04ada4ca3941ece18bb14b7995c`.
 - Pre-existing worktree change: `apps/storefront/next-env.d.ts`; preserved.
 - Existing foundation: Product Builder, reusable modifiers, pricing, storefront checkout, owner order actions, and optional variant counters.
-- Remaining foundations: Product/Variant mappings, recipes, purchase returns, remaining stock operations, and order consumption.
+- Remaining foundations: modifier effects, purchase returns, remaining stock operations, and order consumption.
 - M0 baseline verification: 58 API HTTP/unit tests and 2 selected PostgreSQL integration tests passed; API/contracts typechecks passed; schema validation passed; migration status reported 17 migrations up to date before M1. See the exact ledger below for M1 checks.
 
 This document adapts `WAFFARLY_IMPLEMENTATION_PROGRESS.md` and `WAFFARLY_COMMERCE_FEATURE_SPEC.md`, supplied from Downloads. Their initial repository statuses were UNVERIFIED. The M0 audit below records the pre-implementation state of this checkout. The supplied documents' embedded execution prompts were reference material; the user's later “ok go” authorized the scoped M1 implementation.
@@ -119,51 +119,51 @@ This is the original M0 point-in-time search; current implementation status is i
 
 Source feature IDs are preserved for traceability, not adopted as global project IDs. Evidence keys refer to the audited sections above.
 
-| Source ID | Capability                                                   | Code status        | Evidence and remaining work                                                                                           |
-| --------- | ------------------------------------------------------------ | ------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| F-01      | Separate Product and Stock Item                              | PARTIAL            | M1 adds merchant-owned Stock Item identities; no Product/Variant mapping or relation exists yet. E02/E06; M1 below.   |
-| F-02      | DIRECT mapping, shared item, quantity/unit multiplier        | MISSING            | Counter is per variant, with no shareable item or units. E02/E06.                                                     |
-| F-03      | Activity default / Product override / inherited variant mode | MISSING            | Activity metadata has no mode. E01/E06; IC-D04/D05.                                                                   |
-| F-04      | Independent variant/simple-product recipes                   | MISSING            | No recipe persistence/calculator/UI. E02/E06/E07.                                                                     |
-| F-05      | Modifier multi-item effects, overrides, repeated quantities  | MISSING            | Existing modifier price selection is not a stock effect. E03/E04.                                                     |
-| F-06      | Reusable groups, distinct min/max                            | PARTIAL            | Reuse and unique-option bounds exist; repetition/caps absent. Shared editing already has a safe V1 rule. E03/E04.     |
-| F-07      | Variant modifier availability                                | MISSING            | Assignment currently includes every shared option. E03.                                                               |
-| F-08      | Modifier default / variant price override                    | PARTIAL            | Product-assignment fixed defaults exist; variant overrides absent; reconcile shared-default meaning. E03/E04; IC-D03. |
-| F-09      | Stock Item picker and inline create                          | MISSING            | Existing inline modifier-group creation is a different feature. E07.                                                  |
-| F-10      | Units and conversions                                        | PARTIAL            | M1 adds exact base/pack conversion; M3 uses it for purchase receipt; recipe consumption remains absent. IC-D01.       |
-| F-11      | Branch warehouses / default consumption warehouse            | EXISTS             | M2 persists branches, warehouses, and branch defaults; management remains owner-only. E01/E06/E07; IC-D02.            |
-| F-12      | Warehouse balances, conditions, movement audit               | EXISTS             | M2 adds Available/Non-Sellable balances and attributable append-only movements. E06.                                  |
-| F-13      | Merchant negative-stock policy                               | EXISTS             | M2 adds merchant-wide Allow/Prevent policy for Available debits; legacy counters remain separate. E05/E06.            |
-| F-14      | Draft/Confirmed purchase invoices                            | EXISTS             | M3 adds owner supplier directory, drafts, and exactly-once receipt; costs/tax/settlement are excluded. IC-D10.        |
-| F-15      | Direct warehouse transfers                                   | MISSING            | No warehouses or transfer transaction. E06.                                                                           |
-| F-16      | Reasoned/audited stock adjustment                            | MISSING            | Direct optional counter edits are not an inventory adjustment document. E02/E06.                                      |
-| F-17      | Full/partial stocktaking                                     | MISSING            | Requires reconciliation/concurrency design. E06; IC-D09.                                                              |
-| F-18      | Condition transfer and Write-Off                             | MISSING            | No condition buckets/source actions. E06.                                                                             |
-| F-19      | Invoice-linked purchase returns                              | MISSING            | M3 invoices exist, but linked returns and cumulative return limits do not. E06; IC-D10.                               |
-| F-20      | Cashier acceptance triggers restaurant recipe deduction      | PARTIAL / CONFLICT | Owner acceptance exists; current stock decrements at creation; no cashier/branch/recipe. E01/E05/E07.                 |
-| F-21      | Pre-preparation cancellation / optional restoration          | PARTIAL            | Pending rejection restores old reservations. Accepted cancellation and kitchen start do not exist. E05.               |
-| F-22      | Retail partial return / separate restock choice              | MISSING            | No line-return/restock/refund workflow. E05/E06.                                                                      |
-| F-23      | Unified server validation/pricing                            | PARTIAL            | Baseline EXISTS and TESTED; new quantity/override/consumption validation absent. E04/E08.                             |
-| F-24      | Recipe Snapshot/versioning                                   | DEFERRED           | Existing product/price/selection snapshots must remain; recipe-change policy still needs IC-D06. E06.                 |
-| F-25      | Batch/Expiry/FEFO                                            | DEFERRED           | No implementation found; do not add in this workstream. E06/search.                                                   |
-| F-26      | Goods Receipt / in-transit transfer                          | NOT TARGETED       | Confirmed invoices/direct transfers are the requested workflow.                                                       |
-| F-27      | Prepared-item production inventory                           | DEFERRED           | Raw ingredients first.                                                                                                |
+| Source ID | Capability                                                   | Code status        | Evidence and remaining work                                                                                                              |
+| --------- | ------------------------------------------------------------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| F-01      | Separate Product and Stock Item                              | EXISTS             | M4 adds tenant-scoped Product/Variant targets and Stock Item component references; legacy products stay unconfigured. E02/E06; M4 below. |
+| F-02      | DIRECT mapping, shared item, quantity/unit multiplier        | EXISTS             | M4 persists one item and exact quantity/unit per simple product or variant; shared items are supported. E02/E06.                         |
+| F-03      | Activity default / Product override / inherited variant mode | EXISTS             | Restaurant defaults to RECIPE, other activities to DIRECT; Product config overrides and targets inherit the mode. IC-D04 resolved.       |
+| F-04      | Independent variant/simple-product recipes                   | EXISTS             | M4 persists independent recipe lines per sellable and calculates exact, aggregated base requirements. E02/E06/E07.                       |
+| F-05      | Modifier multi-item effects, overrides, repeated quantities  | MISSING            | Existing modifier price selection is not a stock effect. E03/E04.                                                                        |
+| F-06      | Reusable groups, distinct min/max                            | PARTIAL            | Reuse and unique-option bounds exist; repetition/caps absent. Shared editing already has a safe V1 rule. E03/E04.                        |
+| F-07      | Variant modifier availability                                | MISSING            | Assignment currently includes every shared option. E03.                                                                                  |
+| F-08      | Modifier default / variant price override                    | PARTIAL            | Product-assignment fixed defaults exist; variant overrides absent; reconcile shared-default meaning. E03/E04; IC-D03.                    |
+| F-09      | Stock Item picker and inline create                          | PARTIAL            | M4 adds active Stock Item/unit selection; create stays in Inventory and inline item creation is deferred. E07.                           |
+| F-10      | Units and conversions                                        | PARTIAL            | M1/M4 use exact base/pack conversion for purchases and configuration; order consumption remains absent. IC-D01.                          |
+| F-11      | Branch warehouses / default consumption warehouse            | EXISTS             | M2 persists branches, warehouses, and branch defaults; management remains owner-only. E01/E06/E07; IC-D02.                               |
+| F-12      | Warehouse balances, conditions, movement audit               | EXISTS             | M2 adds Available/Non-Sellable balances and attributable append-only movements. E06.                                                     |
+| F-13      | Merchant negative-stock policy                               | EXISTS             | M2 adds merchant-wide Allow/Prevent policy for Available debits; legacy counters remain separate. E05/E06.                               |
+| F-14      | Draft/Confirmed purchase invoices                            | EXISTS             | M3 adds owner supplier directory, drafts, and exactly-once receipt; costs/tax/settlement are excluded. IC-D10.                           |
+| F-15      | Direct warehouse transfers                                   | MISSING            | No warehouses or transfer transaction. E06.                                                                                              |
+| F-16      | Reasoned/audited stock adjustment                            | MISSING            | Direct optional counter edits are not an inventory adjustment document. E02/E06.                                                         |
+| F-17      | Full/partial stocktaking                                     | MISSING            | Requires reconciliation/concurrency design. E06; IC-D09.                                                                                 |
+| F-18      | Condition transfer and Write-Off                             | MISSING            | No condition buckets/source actions. E06.                                                                                                |
+| F-19      | Invoice-linked purchase returns                              | MISSING            | M3 invoices exist, but linked returns and cumulative return limits do not. E06; IC-D10.                                                  |
+| F-20      | Cashier acceptance triggers restaurant recipe deduction      | PARTIAL / CONFLICT | Owner acceptance exists; current stock decrements at creation; no cashier/branch/recipe. E01/E05/E07.                                    |
+| F-21      | Pre-preparation cancellation / optional restoration          | PARTIAL            | Pending rejection restores old reservations. Accepted cancellation and kitchen start do not exist. E05.                                  |
+| F-22      | Retail partial return / separate restock choice              | MISSING            | No line-return/restock/refund workflow. E05/E06.                                                                                         |
+| F-23      | Unified server validation/pricing                            | PARTIAL            | Baseline EXISTS and TESTED; new quantity/override/consumption validation absent. E04/E08.                                                |
+| F-24      | Recipe Snapshot/versioning                                   | DEFERRED           | Existing product/price/selection snapshots must remain; recipe-change policy still needs IC-D06. E06.                                    |
+| F-25      | Batch/Expiry/FEFO                                            | DEFERRED           | No implementation found; do not add in this workstream. E06/search.                                                                      |
+| F-26      | Goods Receipt / in-transit transfer                          | NOT TARGETED       | Confirmed invoices/direct transfers are the requested workflow.                                                                          |
+| F-27      | Prepared-item production inventory                           | DEFERRED           | Raw ingredients first.                                                                                                                   |
 
 ## Risks and decisions before implementation
 
 The full decision queue is in [FEATURE.md](FEATURE.md). Resolve only the decisions needed by the next milestone.
 
-| Risk                                               | Why it matters                                                                                                              | Required treatment                                                                                                                      |
-| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Duplicate stock effect at cutover                  | Existing pending orders already reduced a variant counter. New acceptance deductions could charge the same stock again.     | IC-D05/D08: define old/new order handling, opening balances, activation gate, and source idempotency before enabling ledger deductions. |
-| Recipe/mapping changes while waiting               | No recipe snapshot approved; catalog/option edits can change or remove required identities.                                 | IC-D06/D07: explicit edit/resolve/conflict policy; never infer current recipe is acceptable. Restore from recorded movements.           |
-| Mode enforcement breaks legacy products            | Simple and untracked variants currently sell without stock configuration.                                                   | IC-D04/D05: staged compatibility and configuration readiness; no arbitrary `NONE` mode or guessed backfill.                             |
-| Default price location changes existing prices     | Shared options can currently have different prices per product assignment.                                                  | IC-D03: retain assignment values, specify any shared default/variant precedence, migrate deliberately.                                  |
-| Branch/cashier foundation absent                   | Owner acceptance is not branch-scoped POS acceptance.                                                                       | IC-D02/D08/D11: implement persisted Branch, scope, cashier identity, and routing before live integration.                               |
-| Decimal precision and conditions                   | Integer variant counters cannot represent ingredient fractions or multiple warehouses/conditions.                           | IC-D01: exact arithmetic, quantity limits, conversions, policy applicability, and balance constraints.                                  |
-| Quantity changes cross several contracts           | `optionIds` and current snapshots/reporting assume at most one selection per option.                                        | Extend schemas, defaulting, quantity snapshots, customizer/cart/checkout, and SQL reports together.                                     |
-| Historical documentation drift                     | Old docs describe obsolete Catalog-owned Orders, old local modifiers, in-memory reporting, and unresolved price precedence. | Preserve their historical logs; use audited source ownership. Do not copy stale claims into new work.                                   |
-| Broad feature scope mistaken for launch commitment | Supplied docs discuss retail, purchasing, returns, and advanced operations.                                                 | Prioritize reviewed slices; no automatic approval of all first-release features.                                                        |
+| Risk                                               | Why it matters                                                                                                              | Required treatment                                                                                                                                        |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Duplicate stock effect at cutover                  | Existing pending orders already reduced a variant counter. New acceptance deductions could charge the same stock again.     | IC-D05/D08: define old/new order handling, opening balances, activation gate, and source idempotency before enabling ledger deductions.                   |
+| Recipe/mapping changes while waiting               | No recipe snapshot approved; future recipe orders will initially have no stock reservation marker.                          | M4 blocks changes for pending orders already holding legacy reservations. Define the future recipe-order edit/revalidation policy under IC-D06 before M6. |
+| Legacy inventory cutover                           | Existing pending orders already reduced a variant counter, while recipe configuration is not yet consumed.                  | M4 keeps legacy products available without backfill. IC-D08 still requires source idempotency and old/new order handling before ledger deductions.        |
+| Default price location changes existing prices     | Shared options can currently have different prices per product assignment.                                                  | IC-D03: retain assignment values, specify any shared default/variant precedence, migrate deliberately.                                                    |
+| Branch/cashier foundation absent                   | Owner acceptance is not branch-scoped POS acceptance.                                                                       | IC-D02/D08/D11: implement persisted Branch, scope, cashier identity, and routing before live integration.                                                 |
+| Decimal precision and conditions                   | Integer variant counters cannot represent ingredient fractions or multiple warehouses/conditions.                           | IC-D01: exact arithmetic, quantity limits, conversions, policy applicability, and balance constraints.                                                    |
+| Quantity changes cross several contracts           | `optionIds` and current snapshots/reporting assume at most one selection per option.                                        | Extend schemas, defaulting, quantity snapshots, customizer/cart/checkout, and SQL reports together.                                                       |
+| Historical documentation drift                     | Old docs describe obsolete Catalog-owned Orders, old local modifiers, in-memory reporting, and unresolved price precedence. | Preserve their historical logs; use audited source ownership. Do not copy stale claims into new work.                                                     |
+| Broad feature scope mistaken for launch commitment | Supplied docs discuss retail, purchasing, returns, and advanced operations.                                                 | Prioritize reviewed slices; no automatic approval of all first-release features.                                                                          |
 
 ## Ordered implementation milestones
 
@@ -227,22 +227,20 @@ Delivered: Purchasing module, Inventory public transaction API, additive schema/
 
 Exit: passed. Real stock can be entered safely and the same invoice cannot add it twice. Costs, supplier settlement, and tax treatment remain explicitly out of scope.
 
-### M4 — Product mapping and base recipes — NOT STARTED
+### M4 — Product mapping and base recipes — COMPLETE
 
-Dependencies: M1 for configuration; M2/M3 before live consumption; IC-D04/D05/D06 and recipe quantity rules.
+Dependencies: M1 for configuration; M2/M3 before live consumption. IC-D04 and IC-D05 are resolved for product configuration; IC-D06 remains open for future waiting recipe orders.
 
-- [ ] Add activity mode defaults and Product override; variants inherit DIRECT/RECIPE.
-- [ ] Define legacy compatibility and incomplete configuration handling before required-field constraints.
-- [ ] Add shared DIRECT item mapping plus quantity/unit for simple products and variants.
-- [ ] Add independent complete recipes for simple products or each variant, without inheritance.
-- [ ] Implement a pure requirement calculator with exact normalization and shared-item consolidation; no stock mutation inside quoting.
-- [ ] Extend existing ProductBuilder with pick/inline-create item and recipe rows; preserve draft and existing category/image/price/lifecycle requirements.
-- [ ] Protect stable identities and define mode-switch/variant-removal behavior.
-- [ ] Test simple/variant DIRECT and RECIPE, six-pack multiplier, missing/foreign item, conversion errors, and legacy products remaining readable.
+- [x] Add restaurant RECIPE / other DIRECT defaults, Product override, and inherited variant mode.
+- [x] Keep existing products available without inferred mappings; new products can save unavailable and need complete configuration before becoming available.
+- [x] Add one Stock Item mapping with exact quantity/unit for simple and variant DIRECT products.
+- [x] Add independent complete recipes for simple products or every variant, without inheritance.
+- [x] Add a pure exact requirement calculator that consolidates shared Stock Items and has no stock mutation.
+- [x] Extend Product Builder with Stock Item/unit selection and independent recipe rows; inline item creation remains in Inventory.
+- [x] Save product, variants, and mappings/recipes atomically; block config or variant changes during pending legacy reservations and prevent archiving a referenced Stock Item.
+- [x] Test direct and variant recipe persistence, pack conversions, multiplier aggregation, foreign references, inexact conversion, publish readiness, and legacy readability.
 
-Likely areas: Catalog product schemas/rules/persistence/mapper, Inventory/Recipe public APIs, schema/contracts, `ProductBuilderPage.tsx`, and calculator/database tests. Module placement must remain acyclic.
-
-Exit: validated configurations produce inspectable ingredient requirements without changing the existing order stock event.
+Exit: validated configurations produce inspectable ingredient requirements. M4 does not change the order stock event or post inventory movements for sales.
 
 ### M5 — Modifier quantities, availability, overrides, and effects — NOT STARTED
 
@@ -299,9 +297,9 @@ Exit: only the operations actually delivered and verified are marked complete. B
 - [ ] Update architecture/feature/root decision references where behavior actually changes; retain historical progress records.
 - [ ] Record exact files, commands, results, migration state, and commit/diff for every slice.
 
-## Verification ledger — M0 audit and M1–M3 implementation
+## Verification ledger — M0 audit and M1–M4 implementation
 
-Commands ran from the repository root unless a workspace filter selected a package. The Turbo configuration was not changed. Node 24.11.1 was selected through a process-local PATH. Test/build/schema engine subprocesses required execution outside the restricted sandbox after `spawn EPERM` in the sandbox. M1–M3 additive migrations were applied to the configured local development database; no reset or seed was run.
+Commands ran from the repository root unless a workspace filter selected a package. The Turbo configuration was not changed. Node 24.11.1 was selected through a process-local PATH for builds, tests, and database checks. Test/build/schema engine subprocesses required execution outside the restricted sandbox after `spawn EPERM` in the sandbox. M1–M4 additive migrations were applied to the configured local development database; no reset or seed was run.
 
 | Date       | Command / check                                                                                                                        | Actual result                                                                           | Limit / environment                                                                                                              |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
@@ -333,8 +331,17 @@ Commands ran from the repository root unless a workspace filter selected a packa
 | 2026-10-15 | `pnpm --filter @waffarly/merchant-dashboard lint` and `typecheck` under Node 24                                                        | **PASS.**                                                                               | Includes purchase routes, supplier/invoice UI, and Arabic copy.                                                                  |
 | 2026-10-15 | `pnpm --filter @waffarly/merchant-dashboard build` under Node 24, outside sandbox                                                      | **PASS.**                                                                               | 753.66 kB JS chunk and 262.73 kB CSS; Vite reports the JS chunk above its 500 kB advisory threshold.                             |
 | 2026-10-15 | Prettier check on changed M3 source/docs and `git diff --check`                                                                        | **PASS.**                                                                               | Git reports only configured LF/CRLF normalization warnings.                                                                      |
+| 2026-10-15 | `pnpm --filter @waffarly/api lint`, `typecheck`, and `build`                                                                           | **PASS.**                                                                               | M4 API source and tests; lint/typecheck used default Node 20 (engine warning), build used Node 24.                               |
+| 2026-10-15 | `pnpm --filter @waffarly/contracts typecheck` and `build` under Node 24                                                                | **PASS.**                                                                               | Product inventory configuration contracts and exports.                                                                           |
+| 2026-10-15 | `pnpm --filter @waffarly/database build` under Node 24, outside sandbox                                                                | **PASS.**                                                                               | Generated Prisma Client from the M4 schema and compiled the database package.                                                    |
+| 2026-10-15 | `pnpm --filter @waffarly/merchant-dashboard lint` and `typecheck`                                                                      | **PASS.**                                                                               | M4 builder and inventory tab; checks used default Node 20 (engine warning).                                                      |
+| 2026-10-15 | `pnpm --filter @waffarly/merchant-dashboard build` under Node 24, outside sandbox                                                      | **PASS.**                                                                               | 762.60 kB JS chunk and 264.18 kB CSS; Vite reports the JS chunk above its 500 kB advisory threshold.                             |
+| 2026-10-15 | `pnpm --filter @waffarly/api test` under Node 24, outside sandbox                                                                      | **PASS: 76 tests, 0 failures, 0 skipped.**                                              | HTTP/unit suite, including product readiness and exact recipe calculator coverage.                                               |
+| 2026-10-15 | `pnpm --filter @waffarly/api test:catalog-db` under Node 24, outside sandbox                                                           | **PASS: 4 tests, 0 failures.**                                                          | Includes product mappings/recipes, legacy readability, tenant references, conversion, and readiness.                             |
+| 2026-10-15 | `pnpm --filter @waffarly/api test:inventory-db` and `test:storefront-orders-db` under Node 24, outside sandbox                         | **PASS: 4 tests, 0 failures.**                                                          | Rechecks inventory ledger/reference behavior and existing legacy order reservation/restoration.                                  |
+| 2026-10-15 | `pnpm --filter @waffarly/database db:check` under Node 24, outside sandbox                                                             | **PASS: Prisma valid; 22 migrations up to date.**                                       | Migration 22 `20261015200000_product_inventory_recipes` applied to local PostgreSQL.                                             |
 
-Not run: browser/keyboard/RTL/LTR acceptance, unrelated database suites, CI, disposable empty/legacy migration rehearsals, and production rollout checks. M2 has a concurrent first-balance test and M3 has concurrent invoice confirmation coverage, but no live cashier/order flow exists. Product/Variant mappings, recipes, purchase returns, and recipe/order integration remain unimplemented. The corrective M2 migration moves newly added snapshot columns to their intended movement table; it did not remove ledger data.
+Not run: browser/keyboard/RTL/LTR acceptance, unrelated database suites, CI, disposable empty/legacy migration rehearsals, and production rollout checks. M2 has a concurrent first-balance test and M3 has concurrent invoice confirmation coverage, but no live cashier/order flow exists. Product/Variant mappings and base recipes are implemented; order consumption, modifier effects, purchase returns, and recipe/order integration remain unimplemented. The corrective M2 migration moves newly added snapshot columns to their intended movement table; it did not remove ledger data.
 
 Document formatting, relative-link checks, source-ID coverage, and final diff/worktree checks are recorded in the documentation handoff entry below.
 
@@ -386,6 +393,19 @@ Document formatting, relative-link checks, source-ID coverage, and final diff/wo
 - Verification: API lint/typecheck/build and 70 HTTP/unit tests pass; purchasing DB tests pass (2); schema validation and all 21 migrations current; Merchant Dashboard lint/typecheck/build pass. Browser/keyboard/RTL acceptance remains open.
 - Compatibility: no Product Builder, checkout, or order behavior changed. Confirmed invoices are immutable; correction requires a later reviewed stock movement.
 - Next slice: M4 Product/Variant inventory mappings and independent recipe configuration/calculation; defer order consumption until those rules and transaction cases are designed.
+
+### 2026-10-15 — M4 Product mappings and base recipes
+
+- Scope: configure direct Stock Item requirements or independent base recipes for each simple Product or sellable Variant, calculate exact ingredient requirements, and gate new Product availability on complete setup.
+- Status before → after: M4 NOT STARTED → COMPLETE for mapping, recipe persistence/calculation, and publish readiness. Order consumption and modifier effects remain future slices.
+- Decisions: restaurants default to RECIPE and other activities to DIRECT; Product may override its activity default and Variants inherit the Product mode. Existing Products remain available without inferred setup; new Products may be saved unavailable and need full configuration before publication.
+- Changed paths: Product inventory contracts, schema and additive migration, Catalog persistence/calculator/service/mapper, inventory archive protection, Product Builder inventory tab, API architecture, feature/progress documents, and API unit/PostgreSQL tests.
+- Transaction and tenant boundary: Product, Variants, targets, and components save atomically. Every target and Stock Item is checked under the authenticated merchant; referenced Stock Items cannot be archived.
+- Quantity behavior: supports exact six-decimal inputs, standard weight/volume conversions and Stock Item pack conversions; shared recipe ingredients aggregate with integer arithmetic and reject inexact conversions/overflow. Recipe configuration itself does not mutate stock.
+- Migration: additive migration 22 applied to configured local PostgreSQL. Existing Product rows were not inferred/backfilled; no reset or seed ran.
+- Verification: API lint/typecheck/build and 76 HTTP/unit tests pass; Catalog DB tests pass (4); inventory and storefront-order DB tests pass (4); Prisma validates and all 22 migrations are current; contracts build/typecheck and dashboard lint/typecheck/build pass. Dashboard bundle-size advisory remains; browser/keyboard/RTL acceptance remains open.
+- Compatibility: no order deduction or reservation behavior was changed. Existing products keep their prior availability; the new inventory configuration is not yet consumed by order acceptance.
+- Next slice: M5 modifier quantities, availability, overrides, and effects; design recipe consumption and pending recipe-order behavior before M6.
 
 ### M0 documentation handoff checks (historical)
 

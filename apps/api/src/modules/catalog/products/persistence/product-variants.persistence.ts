@@ -26,6 +26,7 @@ export async function replaceVariantsWithAttributes(
   merchantId: string,
   productId: string,
   variants: NonNullable<ProductInput['variants']>,
+  allowedNewVariantIds: ReadonlySet<string> = new Set(),
 ): Promise<void> {
   const [existingVariants, existingAttributes] = await Promise.all([
     transaction.productVariant.findMany({
@@ -42,7 +43,11 @@ export async function replaceVariantsWithAttributes(
     throw new BadRequestException('Variant IDs must be unique within a product.');
   }
   const existingIds = new Set(existingVariants.map((variant) => variant.id));
-  if (requestedIds.some((variantId) => !existingIds.has(variantId))) {
+  if (
+    requestedIds.some(
+      (variantId) => !existingIds.has(variantId) && !allowedNewVariantIds.has(variantId),
+    )
+  ) {
     throw new BadRequestException('Every existing variant ID must belong to this product.');
   }
   await persistVariantsWithAttributes(

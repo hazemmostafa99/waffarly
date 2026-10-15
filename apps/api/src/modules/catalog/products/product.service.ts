@@ -27,7 +27,12 @@ import {
   createVariantsWithAttributes,
   replaceVariantsWithAttributes,
 } from './persistence/product-variants.persistence.js';
+import { replaceProductInventoryConfiguration } from './persistence/product-inventory.persistence.js';
 import { productInclude, toProductResponse } from './product.mapper.js';
+import {
+  assertInventoryConfigurationShape,
+  inventoryConfigurationMatches,
+} from './product-inventory.rules.js';
 import {
   assertBasePrice,
   assertModifierConfigurationModes,
@@ -57,13 +62,22 @@ export class ProductService {
     });
     const hasMore = products.length > page.limit;
     const items = products.slice(0, page.limit).map(toProductResponse);
-    return { items, nextCursor: hasMore ? items.at(-1)?.id ?? null : null };
+    return { items, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null };
   }
 
   async create(merchantId: string, actor: string, input: ProductInput) {
     assertBasePrice(input.basePrice);
     assertVariants(input.variants);
     assertModifierConfigurationModes(input.modifierGroups, input.modifierGroupAssignments);
+    if (input.availability === 'available' && !input.inventoryConfiguration) {
+      throw new BadRequestException('Configure inventory before making a new product available.');
+    }
+    if (input.inventoryConfiguration) {
+      assertInventoryConfigurationShape(input.inventoryConfiguration);
+      if (input.variants?.some((variant) => !variant.id)) {
+        throw new BadRequestException('Variant IDs are required when inventory is configured.');
+      }
+    }
     await assertVariantIdentifiers(this.prisma, merchantId, input.variants);
     await assertModifierGroupAssignments(this.prisma, merchantId, input.modifierGroupAssignments);
     const primaryImageAssetId = input.primaryImageAssetId ?? input.imageAssetIds[0];
@@ -84,6 +98,7 @@ export class ProductService {
               availability: input.availability,
               createdBy: actor,
               updatedBy: actor,
+              inventoryConfigurationRequired: true,
               images: {
                 create: input.imageAssetIds.map((mediaAssetId, position) => ({
                   position,
@@ -125,6 +140,14 @@ export class ProductService {
             created.id,
             input.variants ?? [],
           );
+          if (input.inventoryConfiguration) {
+            await replaceProductInventoryConfiguration(
+              transaction,
+              merchantId,
+              created.id,
+              input.inventoryConfiguration,
+            );
+          }
           return transaction.product.findUniqueOrThrow({
             where: { id: created.id },
             include: productInclude,
@@ -150,7 +173,18 @@ export class ProductService {
   ) {
     const current = await this.prisma.product.findFirst({
       where: { id, merchantId, revision },
-      include: { images: true },
+      include: {
+        images: true,
+        inventoryConfiguration: {
+          include: {
+            targets: {
+              include: {
+                components: { select: { stockItemId: true, unitCode: true, quantity: true } },
+              },
+            },
+          },
+        },
+      },
     });
     if (!current) throw new ConflictException('Product is missing or stale.');
     const imageAssetIds = input.imageAssetIds ?? current.images.map((image) => image.mediaAssetId);
@@ -163,6 +197,58 @@ export class ProductService {
     if (input.basePrice !== undefined) assertBasePrice(input.basePrice);
     assertVariants(input.variants);
     assertModifierConfigurationModes(input.modifierGroups, input.modifierGroupAssignments);
+    if (input.inventoryConfiguration) {
+      assertInventoryConfigurationShape(input.inventoryConfiguration);
+      if (input.variants?.some((variant) => !variant.id)) {
+        throw new BadRequestException('Variant IDs are required when inventory is configured.');
+      }
+    }
+    const nextAvailability = input.availability ?? current.availability;
+    const hasConfigurationAfterUpdate =
+      input.inventoryConfiguration === undefined
+        ? current.inventoryConfiguration !== null
+        : input.inventoryConfiguration !== null;
+    if (
+      nextAvailability === 'available' &&
+      current.inventoryConfigurationRequired &&
+      !hasConfigurationAfterUpdate
+    ) {
+      throw new BadRequestException('Configure inventory before making this product available.');
+    }
+    if (
+      input.inventoryConfiguration === null &&
+      nextAvailability === 'available' &&
+      current.inventoryConfiguration
+    ) {
+      throw new BadRequestException(
+        'A configured product must stay unavailable while inventory is removed.',
+      );
+    }
+    if (
+      input.variants !== undefined &&
+      current.inventoryConfiguration &&
+      input.inventoryConfiguration === undefined
+    ) {
+      throw new BadRequestException('Update inventory targets together with the product variants.');
+    }
+    const inventoryConfigurationChanged =
+      input.inventoryConfiguration !== undefined &&
+      (input.inventoryConfiguration === null
+        ? current.inventoryConfiguration !== null
+        : !inventoryConfigurationMatches(
+            input.inventoryConfiguration,
+            current.inventoryConfiguration && {
+              mode: current.inventoryConfiguration.mode,
+              targets: current.inventoryConfiguration.targets.map((target) => ({
+                variantId: target.variantId,
+                components: target.components.map((component) => ({
+                  stockItemId: component.stockItemId,
+                  unitCode: component.unitCode,
+                  quantity: component.quantity.toFixed(6),
+                })),
+              })),
+            },
+          ));
     if (input.variants !== undefined) {
       await assertVariantIdentifiers(this.prisma, merchantId, input.variants, id);
     }
@@ -229,6 +315,25 @@ export class ProductService {
               );
             }
           }
+          if (input.inventoryConfiguration !== undefined && inventoryConfigurationChanged) {
+            const pendingReservation = await transaction.storefrontOrderLine.findFirst({
+              where: {
+                merchantId,
+                productId: id,
+                stockReserved: true,
+                order: { is: { status: 'pending' } },
+              },
+              select: { id: true },
+            });
+            if (pendingReservation) {
+              throw new ConflictException(
+                'Inventory configuration cannot change while a pending order holds a stock reservation.',
+              );
+            }
+            await transaction.productInventoryConfiguration.deleteMany({
+              where: { productId: id, merchantId },
+            });
+          }
           if (input.variants !== undefined) {
             const pendingReservation = await transaction.storefrontOrderLine.findFirst({
               where: {
@@ -244,7 +349,25 @@ export class ProductService {
                 'Variants cannot be changed while a pending order holds a stock reservation.',
               );
             }
-            await replaceVariantsWithAttributes(transaction, merchantId, id, input.variants);
+            await replaceVariantsWithAttributes(
+              transaction,
+              merchantId,
+              id,
+              input.variants,
+              new Set(
+                input.inventoryConfiguration?.targets
+                  .map((target) => target.variantId)
+                  .filter((variantId): variantId is string => variantId !== null) ?? [],
+              ),
+            );
+          }
+          if (input.inventoryConfiguration && inventoryConfigurationChanged) {
+            await replaceProductInventoryConfiguration(
+              transaction,
+              merchantId,
+              id,
+              input.inventoryConfiguration,
+            );
           }
           return transaction.product.findUniqueOrThrow({ where: { id }, include: productInclude });
         },

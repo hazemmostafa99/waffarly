@@ -102,7 +102,7 @@
 
 .builder-steps {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 14px;
   padding: 8px;
@@ -696,7 +696,9 @@
   border-radius: 8px;
   background: #fff;
   cursor: pointer;
-  transition: border-color 140ms ease, background-color 140ms ease;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease;
 }
 
 .builder-product-mode > label.selected {
@@ -1706,6 +1708,99 @@
   outline-offset: 2px;
 }
 
+.builder-inventory-enable,
+.builder-inventory-mode label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid var(--builder-border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.builder-inventory-enable input,
+.builder-inventory-mode input {
+  margin-top: 3px;
+  accent-color: var(--builder-green);
+}
+
+.builder-inventory-enable span,
+.builder-inventory-mode label span {
+  display: grid;
+  gap: 4px;
+}
+
+.builder-inventory-enable small,
+.builder-inventory-mode small {
+  color: var(--builder-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.builder-inventory-mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 16px 0;
+  padding: 0;
+  border: 0;
+}
+
+.builder-inventory-mode legend {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.builder-inventory-targets {
+  display: grid;
+  gap: 12px;
+}
+
+.builder-inventory-target {
+  display: grid;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid var(--builder-border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.builder-inventory-target-heading {
+  display: grid;
+  gap: 3px;
+}
+
+.builder-inventory-target-heading > span {
+  color: var(--builder-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.builder-inventory-target-heading h3 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.builder-inventory-component {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.3fr) minmax(110px, 0.8fr) minmax(115px, 0.8fr) auto;
+  align-items: end;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #eef2f3;
+}
+
+.builder-inventory-review {
+  display: grid;
+  gap: 8px;
+}
+
+.builder-inventory-review h3 {
+  margin: 0;
+}
+
 @media (max-width: 1000px) {
   .builder-columns {
     grid-template-columns: minmax(0, 1fr);
@@ -1754,7 +1849,12 @@
   .builder-group-entry-content,
   .builder-selection-limits,
   .builder-variant-grid,
+  .builder-inventory-component,
   .builder-product-mode {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .builder-inventory-mode {
     grid-template-columns: minmax(0, 1fr);
   }
 

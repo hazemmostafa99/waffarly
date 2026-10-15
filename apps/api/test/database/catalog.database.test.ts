@@ -63,6 +63,27 @@ it(
           };
           const references = await createFixtureReferences(merchant.id, 'one');
           const otherReferences = await createFixtureReferences(otherMerchant.id, 'two');
+          const createFixtureStockItem = async (merchantId: string, suffix: string) =>
+            transaction.stockItem.create({
+              data: {
+                merchantId,
+                creationRequest: randomUUID(),
+                creationFingerprint: randomUUID().replaceAll('-', ''),
+                name: `Verification ${suffix} item`,
+                baseUnit: 'piece',
+                createdBy: 'catalog-database-test',
+                updatedBy: 'catalog-database-test',
+              },
+            });
+          const stockItem = await createFixtureStockItem(merchant.id, 'one');
+          const otherStockItem = await createFixtureStockItem(otherMerchant.id, 'two');
+          const directConfiguration = (itemId: string, variantIds: Array<string | null>) => ({
+            mode: 'DIRECT' as const,
+            targets: variantIds.map((variantId) => ({
+              variantId,
+              components: [{ stockItemId: itemId, unitCode: 'piece', quantity: '1' }],
+            })),
+          });
           const servicePrisma = {
             product: transaction.product,
             productVariant: transaction.productVariant,
@@ -83,6 +104,7 @@ it(
             availability: 'available',
             imageAssetIds: [references.media.id],
             categoryIds: [references.category.id],
+            inventoryConfiguration: directConfiguration(stockItem.id, [null]),
             modifierGroups: [
               {
                 name: 'Size',
@@ -108,12 +130,14 @@ it(
               },
             ],
           });
+          const otherVariantIds = [randomUUID(), randomUUID()];
           const otherProduct = await service.create(otherMerchant.id, 'catalog-database-test', {
             name: 'Other merchant product',
             basePrice: '5.00',
             availability: 'available',
             imageAssetIds: [otherReferences.media.id],
             categoryIds: [otherReferences.category.id],
+            inventoryConfiguration: directConfiguration(otherStockItem.id, otherVariantIds),
             modifierGroups: [
               {
                 name: 'Other group',
@@ -133,6 +157,7 @@ it(
             ],
             variants: [
               {
+                id: otherVariantIds[0],
                 name: 'Single cup',
                 sku: 'VERIFICATION-CUP',
                 barcode: '9900000000001',
@@ -142,6 +167,7 @@ it(
                 position: 0,
               },
               {
+                id: otherVariantIds[1],
                 name: 'Out of stock cup',
                 sku: 'VERIFICATION-OOS',
                 barcode: '9900000000002',
@@ -152,14 +178,17 @@ it(
               },
             ],
           });
+          const coffeeVariantIds = [randomUUID(), randomUUID()];
           await service.create(merchant.id, 'catalog-database-test', {
             name: 'Verification coffee',
             basePrice: '6.00',
             availability: 'available',
             imageAssetIds: [references.media.id],
             categoryIds: [references.category.id],
+            inventoryConfiguration: directConfiguration(stockItem.id, coffeeVariantIds),
             variants: [
               {
+                id: coffeeVariantIds[0],
                 name: 'Regular cup',
                 sku: 'PUBLIC-VERIFICATION-CUP',
                 barcode: '9900000000099',
@@ -169,6 +198,7 @@ it(
                 position: 0,
               },
               {
+                id: coffeeVariantIds[1],
                 name: 'Out of stock cup',
                 sku: 'PUBLIC-VERIFICATION-OOS',
                 barcode: '9900000000100',
@@ -185,6 +215,7 @@ it(
             availability: 'unavailable',
             imageAssetIds: [references.media.id],
             categoryIds: [references.category.id],
+            inventoryConfiguration: directConfiguration(stockItem.id, [null]),
           });
 
           const publicCatalog = await serviceQuery.getPublicStorefrontCatalog(
@@ -243,6 +274,7 @@ it(
             availability: 'available',
             imageAssetIds: [references.media.id],
             categoryIds: [references.category.id],
+            inventoryConfiguration: directConfiguration(stockItem.id, [null]),
           });
           const attachedProduct = await service.attachModifierGroup(
             merchant.id,
@@ -377,6 +409,7 @@ it(
           assert.equal(unchangedQuote.productRevision, 1);
           assert.equal(unchangedQuote.totalPrice, '135.45');
 
+          const updatedVariantId = randomUUID();
           const updated = await service.update(
             merchant.id,
             'catalog-database-test',
@@ -386,6 +419,7 @@ it(
               basePrice: '110.00',
               variants: [
                 {
+                  id: updatedVariantId,
                   name: 'New sellable identity',
                   sku: 'VERIFICATION-NEW',
                   barcode: '9900000000003',
@@ -395,6 +429,7 @@ it(
                   position: 0,
                 },
               ],
+              inventoryConfiguration: directConfiguration(stockItem.id, [updatedVariantId]),
               modifierGroups: [
                 {
                   name: 'Size',
@@ -429,6 +464,7 @@ it(
           const updatedQuote = await servicePricing.quote(updated.id, [], updated.variants[0]!.id);
           assert.equal(updatedQuote.productRevision, 2);
           assert.equal(updatedQuote.totalPrice, '125.00');
+          const duplicateVariantId = randomUUID();
           await assert.rejects(
             service.create(merchant.id, 'catalog-database-test', {
               name: 'Duplicate variant code',
@@ -436,8 +472,10 @@ it(
               availability: 'available',
               imageAssetIds: [references.media.id],
               categoryIds: [references.category.id],
+              inventoryConfiguration: directConfiguration(stockItem.id, [duplicateVariantId]),
               variants: [
                 {
+                  id: duplicateVariantId,
                   name: 'Duplicate code',
                   sku: 'verification-new',
                   price: '20.00',

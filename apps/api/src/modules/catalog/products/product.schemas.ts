@@ -190,6 +190,34 @@ export const modifierAssignmentsSchema = z
     }
   });
 
+export const inventoryConfigurationSchema = z
+  .object({
+    mode: z.enum(['DIRECT', 'RECIPE']),
+    targets: z
+      .array(
+        z
+          .object({
+            variantId: z.string().uuid().nullable(),
+            components: z
+              .array(
+                z
+                  .object({
+                    stockItemId: z.string().uuid(),
+                    unitCode: z.string().trim().min(1).max(32),
+                    quantity: z.string().regex(/^(0|[1-9]\d{0,11})(?:\.\d{1,6})?$/),
+                  })
+                  .strict(),
+              )
+              .min(1)
+              .max(100),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(100),
+  })
+  .strict();
+
 export const productFields = {
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(1000).optional(),
@@ -206,6 +234,7 @@ export const productFields = {
   modifierGroups: modifierGroupsSchema.optional(),
   modifierGroupAssignments: modifierAssignmentsSchema.optional(),
   variants: productVariantsSchema.optional(),
+  inventoryConfiguration: inventoryConfigurationSchema.nullable().optional(),
 };
 
 export const createSchema = z.object(productFields);

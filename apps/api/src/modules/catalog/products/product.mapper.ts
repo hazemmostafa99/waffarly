@@ -1,6 +1,31 @@
 import type { Prisma } from '@waffarly/database';
 import { formatCents, toCents } from '../../../common/money/money.js';
+import { normalizeStockQuantity } from '../../inventory/index.js';
+import { defaultInventoryModeForActivity } from './product-inventory.rules.js';
 export const productInclude = {
+  merchant: { select: { activity: true } },
+  inventoryConfiguration: {
+    include: {
+      targets: {
+        orderBy: { variantId: 'asc' as const },
+        include: {
+          components: {
+            orderBy: { position: 'asc' as const },
+            include: {
+              stockItem: {
+                select: {
+                  id: true,
+                  name: true,
+                  baseUnit: true,
+                  units: { select: { code: true, name: true } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
   images: {
     orderBy: { position: 'asc' as const },
     include: {
@@ -45,6 +70,31 @@ export function toProductResponse(
     currency: 'EGP',
     sellingUnit: 'piece',
     availability: product.availability,
+    inventoryConfigurationRequired: product.inventoryConfigurationRequired ?? false,
+    inventoryDefaultMode: defaultInventoryModeForActivity(product.merchant?.activity ?? 'other'),
+    inventoryConfiguration: product.inventoryConfiguration
+      ? {
+          mode: product.inventoryConfiguration.mode as 'DIRECT' | 'RECIPE',
+          updatedAt: product.inventoryConfiguration.updatedAt.toISOString(),
+          targets: product.inventoryConfiguration.targets.map((target) => ({
+            id: target.id,
+            variantId: target.variantId,
+            components: target.components.map((component) => ({
+              id: component.id,
+              stockItemId: component.stockItemId,
+              stockItemName: component.stockItem.name,
+              stockItemBaseUnit: component.baseUnit,
+              unitCode: component.unitCode,
+              unitName:
+                component.stockItem.units.find((unit) => unit.code === component.unitCode)?.name ??
+                component.unitCode,
+              quantity: normalizeStockQuantity(component.quantity.toFixed(6)),
+              baseQuantity: normalizeStockQuantity(component.baseQuantity.toFixed(6)),
+              position: component.position,
+            })),
+          })),
+        }
+      : null,
     archivedAt: product.archivedAt?.toISOString() ?? null,
     revision: product.revision,
     images: product.images.map((image) => ({

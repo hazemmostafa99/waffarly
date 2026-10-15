@@ -181,6 +181,15 @@ export class InventoryService {
         FOR UPDATE`;
       if (locked.length !== 1) throw new NotFoundException('Stock item was not found.');
       if (archived) {
+        const productUse = await transaction.productInventoryComponent.findFirst({
+          where: { merchantId, stockItemId: id },
+          select: { id: true },
+        });
+        if (productUse) {
+          throw new ConflictException(
+            'A stock item used by a product or recipe cannot be archived.',
+          );
+        }
         const balance = await transaction.stockBalance.findFirst({
           where: { merchantId, stockItemId: id, quantity: { not: 0 } },
           select: { id: true },

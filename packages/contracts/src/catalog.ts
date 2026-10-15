@@ -1,4 +1,43 @@
 export type CatalogAvailability = 'available' | 'unavailable';
+export type ProductInventoryMode = 'DIRECT' | 'RECIPE';
+
+export interface CatalogProductInventoryComponentFields {
+  stockItemId: string;
+  unitCode: string;
+  quantity: string;
+}
+
+export interface CatalogProductInventoryTargetFields {
+  variantId: string | null;
+  components: CatalogProductInventoryComponentFields[];
+}
+
+export interface CatalogProductInventoryConfigurationFields {
+  mode: ProductInventoryMode;
+  targets: CatalogProductInventoryTargetFields[];
+}
+
+export interface CatalogProductInventoryComponent extends CatalogProductInventoryComponentFields {
+  id: string;
+  stockItemName: string;
+  stockItemBaseUnit: string;
+  unitCode: string;
+  unitName: string;
+  baseQuantity: string;
+  position: number;
+}
+
+export interface CatalogProductInventoryTarget {
+  id: string;
+  variantId: string | null;
+  components: CatalogProductInventoryComponent[];
+}
+
+export interface CatalogProductInventoryConfiguration {
+  mode: ProductInventoryMode;
+  targets: CatalogProductInventoryTarget[];
+  updatedAt: string;
+}
 
 export interface CatalogMediaAsset {
   id: string;
@@ -56,6 +95,9 @@ export interface CatalogProductSummary {
   currency: 'EGP';
   sellingUnit: 'piece';
   availability: CatalogAvailability;
+  inventoryConfigurationRequired: boolean;
+  inventoryDefaultMode: ProductInventoryMode;
+  inventoryConfiguration: CatalogProductInventoryConfiguration | null;
   archivedAt: string | null;
   revision: number;
   images: CatalogProductImage[];
@@ -354,6 +396,7 @@ export interface CatalogProductFields {
   modifierGroups?: CatalogProductModifierGroupFields[] | undefined;
   modifierGroupAssignments?: CatalogProductModifierGroupAssignmentFields[] | undefined;
   variants?: CatalogProductVariantFields[] | undefined;
+  inventoryConfiguration?: CatalogProductInventoryConfigurationFields | null | undefined;
 }
 
 export interface CatalogProductVariantFields {
@@ -365,12 +408,14 @@ export interface CatalogProductVariantFields {
   stockQuantity?: number | null | undefined;
   availability: CatalogAvailability;
   position: number;
-  attributes?: Array<{
-    attributeId?: string | undefined;
-    valueId?: string | undefined;
-    name: string;
-    value: string;
-  }> | undefined;
+  attributes?:
+    | Array<{
+        attributeId?: string | undefined;
+        valueId?: string | undefined;
+        name: string;
+        value: string;
+      }>
+    | undefined;
 }
 
 export interface CatalogProductModifierOptionFields {

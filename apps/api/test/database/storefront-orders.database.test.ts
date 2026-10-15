@@ -55,6 +55,17 @@ it(
               updatedBy: 'storefront-order-database-test',
             },
           });
+          const stockItem = await transaction.stockItem.create({
+            data: {
+              merchantId: merchant.id,
+              creationRequest: randomUUID(),
+              creationFingerprint: randomUUID().replaceAll('-', ''),
+              name: 'Verification recipe item',
+              baseUnit: 'piece',
+              createdBy: 'storefront-order-database-test',
+              updatedBy: 'storefront-order-database-test',
+            },
+          });
           const transactionClient = new Proxy(transaction, {
             get(target, property) {
               if (property === '$transaction') {
@@ -69,14 +80,26 @@ it(
           const productsPricing = new ProductPricingService(productsPrisma);
           const reports = new ProductConfigurationReportService(productsPrisma);
 
+          const variantId = randomUUID();
+          const directConfiguration = {
+            mode: 'DIRECT' as const,
+            targets: [
+              {
+                variantId,
+                components: [{ stockItemId: stockItem.id, unitCode: 'piece', quantity: '1' }],
+              },
+            ],
+          };
           const product = await products.create(merchant.id, 'order-verification-test', {
             name: 'Verification bowl',
             basePrice: '80.00',
             availability: 'available',
             imageAssetIds: [media.id],
             categoryIds: [category.id],
+            inventoryConfiguration: directConfiguration,
             variants: [
               {
+                id: variantId,
                 name: 'Large',
                 price: '100.00',
                 stockQuantity: 3,
@@ -134,6 +157,7 @@ it(
             products.update(merchant.id, 'order-verification-test', product.id, product.revision, {
               variants: [
                 {
+                  id: variantId,
                   name: 'Large',
                   price: '100.00',
                   stockQuantity: 3,
@@ -141,6 +165,7 @@ it(
                   position: 0,
                 },
               ],
+              inventoryConfiguration: directConfiguration,
             }),
             /pending order holds a stock reservation/i,
           );
@@ -254,11 +279,13 @@ it(
                   })),
                 },
               ],
+              inventoryConfiguration: directConfiguration,
             },
           );
           const afterCatalogEdit = await orders.listForOwner(merchant.id, { limit: 10 });
-          const acceptedOrderSnapshot = afterCatalogEdit.items.find((order) => order.id === second.id)!
-            .lines[0]!;
+          const acceptedOrderSnapshot = afterCatalogEdit.items.find(
+            (order) => order.id === second.id,
+          )!.lines[0]!;
           assert.equal(acceptedOrderSnapshot.variantName, 'Large');
           assert.equal(acceptedOrderSnapshot.basePrice, '100.00');
           assert.equal(acceptedOrderSnapshot.unitPrice, '100.00');

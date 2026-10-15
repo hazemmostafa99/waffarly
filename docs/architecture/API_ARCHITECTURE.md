@@ -13,7 +13,7 @@ implementation instructions live in [apps/api/AGENTS.md](../../apps/api/AGENTS.m
 | plans      | Platform monthly plan definitions                                                                          | Auth                     |
 | activities | Business activity and capability definitions/metadata                                                      | Auth                     |
 | storefront | Owner design settings, templates, public storefront composition                                            | Auth, catalog            |
-| catalog    | Products, categories, reusable modifiers, authoritative pricing                                            | Auth                     |
+| catalog    | Products, categories, reusable modifiers, authoritative pricing, and product inventory configurations      | Auth, inventory          |
 | inventory  | Merchant-owned Stock Items/units, branches/warehouses, policy, balances, and transactional movement ledger | Auth                     |
 | purchasing | Merchant-owned supplier directory and draft/confirmed purchase invoices                                    | Auth, inventory          |
 | orders     | Order submission, snapshots, stock reservation/release, owner actions                                      | Auth, catalog pricing    |

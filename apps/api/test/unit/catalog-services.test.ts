@@ -20,6 +20,20 @@ const owner: OwnerProfile = {
   firstMonthActivatedAt: new Date().toISOString(),
 };
 describe('catalog service invariants', () => {
+  it('requires complete inventory configuration before publishing a new product', async () => {
+    const service = new ProductService({} as never);
+    await assert.rejects(
+      service.create(owner.merchantId, owner.username, {
+        name: 'Burger',
+        basePrice: '75.00',
+        availability: 'available',
+        imageAssetIds: [],
+        categoryIds: [],
+      }),
+      /Configure inventory before making a new product available/i,
+    );
+  });
+
   it('quotes defaults using fixed-precision arithmetic and the current product revision', async () => {
     const product = {
       id: 'product',
@@ -329,7 +343,7 @@ describe('catalog service invariants', () => {
     const product = await service.create(owner.merchantId, owner.username, {
       name: 'Burger',
       basePrice: '75.00',
-      availability: 'available',
+      availability: 'unavailable',
       imageAssetIds: [imageId],
       categoryIds: [categoryId],
       modifierGroups: [
@@ -364,9 +378,10 @@ describe('catalog service invariants', () => {
       name: 'Burger',
       description: null,
       basePrice: '75.00',
-      availability: 'available',
+      availability: 'unavailable',
       createdBy: owner.username,
       updatedBy: owner.username,
+      inventoryConfigurationRequired: true,
       images: {
         create: [
           {
@@ -403,7 +418,7 @@ describe('catalog service invariants', () => {
       service.create(owner.merchantId, owner.username, {
         name: 'Burger',
         basePrice: '75.00',
-        availability: 'available',
+        availability: 'unavailable',
         imageAssetIds: ['11111111-1111-4111-8111-111111111111'],
         categoryIds: ['22222222-2222-4222-8222-222222222222'],
       }),
