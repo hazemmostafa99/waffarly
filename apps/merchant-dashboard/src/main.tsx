@@ -10,6 +10,7 @@ import '@waffarly/ui/dashboard-components.css';
 import './products.css';
 import './product-builder.css';
 import './categories.css';
+import './inventory.css';
 import './media.css';
 import './discounts.css';
 import './orders.css';

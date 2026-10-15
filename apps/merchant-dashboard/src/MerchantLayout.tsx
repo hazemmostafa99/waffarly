@@ -11,6 +11,7 @@ const navigation = [
   { id: 'orders', label: 'Orders', icon: 'orders' },
   { id: 'products', label: 'Products', icon: 'box' },
   { id: 'categories', label: 'Categories', icon: 'grid' },
+  { id: 'inventory', label: 'Inventory', icon: 'box' },
   { id: 'media', label: 'Media Library', icon: 'image' },
   { id: 'customers', label: 'Customers', icon: 'customers' },
   { id: 'discounts', label: 'Discounts', icon: 'discounts' },
@@ -51,6 +52,7 @@ export function MerchantLayout() {
     navigation.find(
       (item) =>
         location.pathname === `/${item.id}` ||
+        (item.id === 'inventory' && location.pathname.startsWith('/inventory/')) ||
         (item.id === 'products' && location.pathname.startsWith('/products/')) ||
         (item.id === 'dashboard' && location.pathname === '/'),
     ) ?? navigation[0];
@@ -63,9 +65,11 @@ export function MerchantLayout() {
     '/product-builder',
   ].includes(location.pathname);
   const hasCustomPageHeading =
-    !['/products', '/categories', '/media', '/discounts', '/branches'].includes(location.pathname) &&
-    !isProductBuilder;
-  const hasBreadcrumb = hasCustomPageHeading && !isCustomers && !isOrders && location.pathname !== '/settings';
+    !['/products', '/categories', '/media', '/discounts', '/branches'].includes(
+      location.pathname,
+    ) && !isProductBuilder;
+  const hasBreadcrumb =
+    hasCustomPageHeading && !isCustomers && !isOrders && location.pathname !== '/settings';
 
   return profile === undefined ? (
     <main id="main-content" tabIndex={-1} className="shell">
@@ -101,14 +105,14 @@ export function MerchantLayout() {
             <NavLink
               key={item.id}
               to={item.id === 'dashboard' ? '/' : `/${item.id}`}
-              end
+              end={item.id !== 'inventory'}
               className={({ isActive }) =>
                 `merchant-nav-item ${isActive || (item.id === 'products' && isProductBuilder) ? 'active' : ''}`
               }
               onClick={() => setMenuOpen(false)}
             >
               <Icon name={item.icon} />
-              <span>{t(item.label)}</span>
+              <span>{item.id === 'inventory' ? copy('Inventory') : t(item.label)}</span>
               {item.id === 'orders' && <small aria-hidden="true">{formatNumber(12)}</small>}
             </NavLink>
           ))}
@@ -238,36 +242,39 @@ export function MerchantLayout() {
           className={`merchant-content ${location.pathname === '/settings' ? 'merchant-content-settings' : ''}`}
         >
           {location.pathname !== '/' && hasBreadcrumb && (
-              <div className="merchant-breadcrumb">
-                {t('Home')} <span>/</span> {t(current.label)}
-              </div>
-            )}
+            <div className="merchant-breadcrumb">
+              {t('Home')} <span>/</span>{' '}
+              {current.id === 'inventory' ? copy('Inventory') : t(current.label)}
+            </div>
+          )}
           {location.pathname !== '/' && hasCustomPageHeading && (
-              <div className={`merchant-page-heading ${isCustomers ? 'merchant-customers-heading' : ''}`}>
-                <div>
-                  <h1>{t(current.label)}</h1>
-                  <p>
-                    {t(
-                      location.pathname === '/'
-                        ? "Here's what's happening with your business today."
-                        : isOrders
-                          ? 'Manage and monitor all orders from different branches and channels.'
+            <div
+              className={`merchant-page-heading ${isCustomers ? 'merchant-customers-heading' : ''}`}
+            >
+              <div>
+                <h1>{current.id === 'inventory' ? copy('Inventory') : t(current.label)}</h1>
+                <p>
+                  {t(
+                    location.pathname === '/'
+                      ? "Here's what's happening with your business today."
+                      : isOrders
+                        ? 'Manage and monitor all orders from different branches and channels.'
                         : isCustomers
                           ? 'Manage your customers and build stronger relationships with them.'
-                        : location.pathname === '/settings'
-                          ? 'Manage your store settings and tailor the customer experience to your needs.'
-                          : 'Keep your catalog accurate, organized, and ready to sell.',
-                    )}
-                  </p>
-                </div>
-                {!isCustomers && !isOrders && (
-                  <span className="merchant-account-pill">
-                    <span className="merchant-online-dot" />
-                    {profile.merchantName}
-                  </span>
-                )}
+                          : location.pathname === '/settings'
+                            ? 'Manage your store settings and tailor the customer experience to your needs.'
+                            : 'Keep your catalog accurate, organized, and ready to sell.',
+                  )}
+                </p>
               </div>
-            )}
+              {!isCustomers && !isOrders && (
+                <span className="merchant-account-pill">
+                  <span className="merchant-online-dot" />
+                  {profile.merchantName}
+                </span>
+              )}
+            </div>
+          )}
           {error && (
             <p className="error" role="alert">
               {errorText(error)}

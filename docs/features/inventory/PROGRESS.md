@@ -1,0 +1,415 @@
+# Inventory, Product Mapping & Recipes — Implementation Progress
+
+## Current state
+
+- Last audited: 2026-10-15.
+- Feature contract: [FEATURE.md](FEATURE.md).
+- Delivery state: **M3 Stock Item registry, branch/warehouse scope, merchant policy, balances, reviewed opening-stock ledger, supplier directory, and purchase invoice receipt implemented and verified. Product mappings, recipes, and order consumption remain future slices.**
+- Baseline branch/commit: `main` / `264fa1a263b1f04ada4ca3941ece18bb14b7995c`.
+- Pre-existing worktree change: `apps/storefront/next-env.d.ts`; preserved.
+- Existing foundation: Product Builder, reusable modifiers, pricing, storefront checkout, owner order actions, and optional variant counters.
+- Remaining foundations: Product/Variant mappings, recipes, purchase returns, remaining stock operations, and order consumption.
+- M0 baseline verification: 58 API HTTP/unit tests and 2 selected PostgreSQL integration tests passed; API/contracts typechecks passed; schema validation passed; migration status reported 17 migrations up to date before M1. See the exact ledger below for M1 checks.
+
+This document adapts `WAFFARLY_IMPLEMENTATION_PROGRESS.md` and `WAFFARLY_COMMERCE_FEATURE_SPEC.md`, supplied from Downloads. Their initial repository statuses were UNVERIFIED. The M0 audit below records the pre-implementation state of this checkout. The supplied documents' embedded execution prompts were reference material; the user's later “ok go” authorized the scoped M1 implementation.
+
+## Status conventions
+
+| Status                  | Meaning                                                                                                                           |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| EXISTS                  | Located in source/schema with an evidence reference. Does not by itself claim browser or production verification.                 |
+| PARTIAL                 | Reusable implementation exists, but named target behavior is absent.                                                              |
+| MISSING                 | No implementation found after inspecting the relevant schema, API modules, contracts, frontends, migrations, and scoped searches. |
+| CONFLICT                | Current behavior differs from the supplied target; preserve current behavior until an intentional transition is implemented.      |
+| NOT STARTED             | Planned milestone has no implementation changes in this workstream.                                                               |
+| IN PROGRESS             | Implementation has started but the milestone exit criteria are not all verified.                                                  |
+| DECISION NEEDED         | A named decision gates a specific future slice; it does not block this documentation deliverable.                                 |
+| TESTED                  | Only the behavior/suite explicitly executed and reported in the verification ledger.                                              |
+| DEFERRED / NOT TARGETED | Business scope, not a claim of implementation or absence.                                                                         |
+
+Keep implementation and test status separate. A baseline test pass does not make a new recipe requirement implemented. Checkboxes track work done in this workstream, not historical product approvals.
+
+## Repository map
+
+| Area            | Actual location / responsibility                                                                                                                                                                                                                                          |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace       | pnpm workspaces; `apps/api`, `apps/merchant-dashboard`, `apps/storefront`, `apps/pos`, `apps/super-admin`. Root scripts use Turbo; no Turbo commands/configuration changed in this task.                                                                                  |
+| Runtime/tooling | `.node-version`: Node 24.11.1; pnpm 10.34.5. Manifests pin NestJS 12.1.3, Prisma 7.10.0, TypeScript 5.9.3, React 19.3.0, Vite 8.3.3, Next.js 16.4.0. These are repository declarations, not independently checked latest releases.                                        |
+| Backend         | [API architecture](../../architecture/API_ARCHITECTURE.md); feature modules registered in [AppModule](../../../apps/api/src/app.module.ts).                                                                                                                               |
+| Database        | [Prisma schema](../../../packages/database/prisma/schema.prisma), [migrations](../../../packages/database/prisma/migrations), and [database scripts](../../../packages/database/package.json). PostgreSQL; generated client is package-owned.                             |
+| Contracts       | [catalog.ts](../../../packages/contracts/src/catalog.ts) and [root exports](../../../packages/contracts/src/index.ts); all frontends use `@waffarly/contracts`, not database imports.                                                                                     |
+| Merchant UI     | [routes.tsx](../../../apps/merchant-dashboard/src/routes.tsx), [ProductBuilderPage.tsx](../../../apps/merchant-dashboard/src/ProductBuilderPage.tsx), and [StorefrontOrdersPage.tsx](../../../apps/merchant-dashboard/src/StorefrontOrdersPage.tsx).                      |
+| Customer UI     | [customizer](../../../apps/storefront/src/features/catalog/storefront-product-customizer.tsx), [cart state](../../../apps/storefront/src/features/cart/storefront-store.ts), and [checkout](../../../apps/storefront/src/features/checkout/storefront-checkout-page.tsx). |
+| POS             | [POSScreen.tsx](../../../apps/pos/src/POSScreen.tsx) is a preparation screen. [Login.tsx](../../../apps/pos/src/Login.tsx) calls `/auth/pos/*`; corresponding API auth routes do not exist.                                                                               |
+| Test layout     | API `test/http`, `test/unit`, `test/database`; browser tests under root `tests/ui`. Default API tests exclude database suites.                                                                                                                                            |
+| CI              | [.github/workflows/ci.yml](../../../.github/workflows/ci.yml): Node 24, install, generate, lint/format/typecheck/test/build/validate. No PostgreSQL service or dedicated database suite is configured in this workflow.                                                   |
+
+## Audit evidence index
+
+### E01 — Tenant, authentication, activity, and access
+
+- [owner.guard.ts](../../../apps/api/src/modules/auth/owner.guard.ts), [current-actor.ts](../../../apps/api/src/modules/auth/current-actor.ts), and [auth.service.ts](../../../apps/api/src/modules/auth/auth.service.ts): owner actor carries `merchantId`; active first-month coverage is checked; sessions are opaque hashed tokens.
+- At M0, schema had Merchant, OwnerAccount, AuthSession, and platform activity/module metadata, but no persisted Branch domain. M2 later adds persisted branch/warehouse management; there is still no employee membership/role/permission or branch-scoped authorization.
+- [capability-registry.ts](../../../apps/api/src/modules/activities/capability-registry.ts) exposes `merchant-profile` and `storefront-design`; neither Inventory nor Catalog is registered as an entitled capability. Metadata is not operational authorization.
+- Result: tenant/owner foundation and owner-managed branches/warehouses EXIST; staff/branch permissions, complete entitlements, and activity inventory defaults remain MISSING.
+
+### E02 — Product and variant lifecycle
+
+- [product.service.ts](../../../apps/api/src/modules/catalog/products/product.service.ts), [product.schemas.ts](../../../apps/api/src/modules/catalog/products/product.schemas.ts), and [product.rules.ts](../../../apps/api/src/modules/catalog/products/product.rules.ts): tenant reference checks, positive price, category/image requirements, revisions, archive/restore, order-history deletion protection.
+- [product-variants.persistence.ts](../../../apps/api/src/modules/catalog/products/persistence/product-variants.persistence.ts): retained variant IDs update in place; omitted variants may be deleted; structured attribute identities are retained when submitted.
+- Variant SKU/barcode/stock are optional. Product writes include no inventory mode, mapping, units, or recipe.
+- ProductService blocks variant edits while a pending order has `stockReserved: true`. This is legacy reservation protection, not a general in-flight recipe lock.
+- Result: Product Builder foundation EXISTS; inventory-aware configuration is MISSING.
+
+### E03 — Reusable modifiers and selection identity
+
+- Schema: `ModifierGroup`, `ModifierOption`, `ProductModifierGroupAssignment`, and `ProductModifierGroupAssignmentOption` with tenant-safe relations.
+- [modifier-group.service.ts](../../../apps/api/src/modules/catalog/modifiers/modifier-group.service.ts): shared edits rejected while assigned. Editing an unused group's option list deletes/recreates those option identities; future recipe references require additional lifecycle design.
+- [product-modifiers.persistence.ts](../../../apps/api/src/modules/catalog/products/persistence/product-modifiers.persistence.ts): product-specific constraints, defaults, and prices; retained assignments preserve their IDs; every shared option must appear once in assignment configuration.
+- Legacy `modifierGroups` writes remain supported and can recreate groups/options; preferred UI uses `modifierGroupAssignments`.
+- Quote selection `groupId` is the **assignment ID**, while shared `modifierGroupId` is separate. Historical selections retain shared group/option IDs, not an assignment relation or recipe.
+- Result: reuse and distinct selection limits EXIST; quantity caps, repeated selections, variant availability/prices, and stock effects are MISSING.
+
+### E04 — Authoritative pricing
+
+- [product-pricing.service.ts](../../../apps/api/src/modules/catalog/pricing/product-pricing.service.ts) validates availability, variant membership, assignment membership, defaults, min/max, and duplicate options. Selected variant price replaces product base price; modifier adjustments come from the product assignment.
+- [money.ts](../../../apps/api/src/common/money/money.ts) uses `bigint` cents, with decimal-string HTTP values. [catalog.constants.ts](../../../apps/api/src/modules/catalog/catalog.constants.ts) caps positive base/variant prices at `9999999999.99`; existing modifier adjustments are nonnegative.
+- [quote.schemas.ts](../../../apps/api/src/modules/catalog/pricing/quote.schemas.ts) uses `optionIds`, with no per-option quantity or override context.
+- [public-storefront.controller.ts](../../../apps/api/src/modules/storefront/public-storefront.controller.ts) scopes public quotes by storefront slug. [product-quote.controller.ts](../../../apps/api/src/modules/catalog/pricing/product-quote.controller.ts) also retains a legacy unscoped quote route; do not copy that pattern into new inventory mutations.
+- Result: shared server pricing EXISTS; the supplied pricing extension is PARTIAL. Base-price precedence and EGP precision are already settled in current behavior.
+
+### E05 — Stock reservation and order transitions
+
+- [storefront-orders.service.ts](../../../apps/api/src/modules/orders/storefront-orders.service.ts): obtains quotes before the write transaction, then rechecks tenant product availability/revision inside it. It snapshots sale facts and conditionally decrements tracked `ProductVariant.stockQuantity` with sufficient-quantity predicates.
+- Creation and status operations use Serializable transactions; serialization conflicts become HTTP conflict responses. Order creation still uses legacy variant counters rather than the M2 Inventory ledger and has no inventory source-idempotency record.
+- Only `pending → accepted/rejected` exists. A repeated terminal action conflicts. Rejection restores reserved legacy variant counters in the same transaction; acceptance has no additional stock effect.
+- [storefront-orders.controller.ts](../../../apps/api/src/modules/orders/storefront-orders.controller.ts): public create and owner list/status routes; owner merchant scope, cursor paging, and positive integer line quantity 1–99. No branch routing, staff actor, cancellation/return, preparation event, or cashier deduction endpoint.
+- Result: basic order intake/actions EXIST; target restaurant stock lifecycle is PARTIAL/CONFLICT.
+
+### E06 — M0 schema baseline, history, migrations, and fixtures
+
+- At M0, the [schema](../../../packages/database/prisma/schema.prisma) contained optional integer variant counters and immutable sale/attribute/modifier snapshot models, with no Stock Item, Warehouse, Branch, Recipe, stock balance/movement, UOM, invoice/return, stocktake, or merchant inventory-policy model. M1–M3 later add Stock Items/units, locations/policy/ledger, and supplier purchase invoices. Recipes, returns, and stocktakes remain absent.
+- [variant migration](../../../packages/database/prisma/migrations/20261014090000_product_variants/migration.sql) has `stockQuantity IS NULL OR stockQuantity >= 0`; merchant Allow Negative cannot be implemented by treating this field as a ledger.
+- [configuration migration](../../../packages/database/prisma/migrations/20261014120000_reusable_product_configuration/migration.sql) preserves old product-local group IDs as **assignment IDs**, generates new shared group IDs, and preserves option IDs. Its [follow-up](../../../packages/database/prisma/migrations/20261014123502_reusable_product_configuration/migration.sql) normalizes constraints/indexes. Do not rewrite these applied migrations.
+- [catalog seed data](../../../apps/api/src/scripts/catalog-seed-data.ts) targets current catalog/variant/modifier structures. It supplies no warehouse/opening-stock or ingredient mapping evidence. No seed command was run in this audit.
+- Configured local database at M0: 17 migrations, up to date by `prisma migrate status`; this checks applied migration history, not a full database drift or deployment-readiness audit. M1–M3 later apply migrations 18–21, as recorded below.
+
+### E07 — M0 UI baseline versus prototype screens
+
+- At M0, [ProductBuilderPage.tsx](../../../apps/merchant-dashboard/src/ProductBuilderPage.tsx) provided a real API-backed simple/variant flow, reusable modifier attachment/creation, optional stock/SKU/barcode, attributes, and review, but no item picker, recipe rows, inventory mode, quantity caps, or warehouse controls. M1 adds a separate stock-item management page; Product/Recipe pickers are still absent.
+- [StorefrontOrdersPage.tsx](../../../apps/merchant-dashboard/src/StorefrontOrdersPage.tsx): real owner inbox and accept/reject. [api-client.ts](../../../apps/merchant-dashboard/src/lib/api-client.ts) flattens cursor pages for legacy array consumers; that is not a missing response conversion.
+- At M0, [BranchesPage.tsx](../../../apps/merchant-dashboard/src/BranchesPage.tsx) used a hardcoded array/local state; M2 replaces it with persisted branch/warehouse management. Other mock order screens do not supersede the routed storefront inbox.
+- Storefront customizer/cart/checkout use quote/selection contracts; options are unique IDs, with no independent option quantities. POS has no product or sale workflow.
+- Result: M1–M3 deliver owner inventory and purchase screens; branch-specific POS behavior remains MISSING. Source inspection does not establish visual/accessibility acceptance.
+
+### E08 — Tests and reporting
+
+- [catalog-services.test.ts](../../../apps/api/test/unit/catalog-services.test.ts): exact pricing/defaults/variant validation and existing service invariants.
+- [catalog.e2e.test.ts](../../../apps/api/test/http/catalog.e2e.test.ts) and [storefront-orders.e2e.test.ts](../../../apps/api/test/http/storefront-orders.e2e.test.ts): HTTP validation/guard forwarding; mostly stubbed providers, not real transaction-race tests.
+- [catalog.database.test.ts](../../../apps/api/test/database/catalog.database.test.ts): PostgreSQL reusable configuration, tenant-safe references, and catalog persistence.
+- [storefront-orders.database.test.ts](../../../apps/api/test/database/storefront-orders.database.test.ts): snapshots, tracked reservation, pending-reservation edit protection, reject restoration, acceptance, and history after catalog edits. Audit execution passed; fixtures deliberately roll back.
+- [product-configuration-report.service.ts](../../../apps/api/src/modules/reports/product-configuration-report.service.ts) uses four SQL aggregate queries for accepted orders. It is **not** an in-memory aggregation service as older architecture text suggests. Repeated option quantities will require snapshot/report updates.
+- The M0 baseline did not test concurrency, recipe arithmetic, invoices, UOM, balances, branch authorization, or inventory integration. M1–M3 add quantity, ledger, invoice, tenant, replay, and concurrency tests; recipe arithmetic and branch authorization remain unimplemented.
+
+### M0 missing-domain search scope
+
+This is the original M0 point-in-time search; current implementation status is in the feature gap matrix and delivery log. Reviewed all models in `packages/database/prisma/schema.prisma`, the migration list/relevant SQL, registered API modules, shared catalog contracts, and applicable frontend sources. Scoped `rg` searches for `recipe`, `warehouse`, `stockitem`, `stockmovement`, `purchaseinvoice`, `stocktake`, `writeoff`, `negativeStock`, and `defaultConsumption` found no implementations in the inspected API/contracts/schema/migrations/UI TypeScript/TSX/Prisma/SQL files. Existing stock behavior was found separately through `stockQuantity` / `stockReserved`. Dependencies, generated clients, build output, and `.env` values were excluded from source inspection.
+
+## Feature gap matrix
+
+Source feature IDs are preserved for traceability, not adopted as global project IDs. Evidence keys refer to the audited sections above.
+
+| Source ID | Capability                                                   | Code status        | Evidence and remaining work                                                                                           |
+| --------- | ------------------------------------------------------------ | ------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| F-01      | Separate Product and Stock Item                              | PARTIAL            | M1 adds merchant-owned Stock Item identities; no Product/Variant mapping or relation exists yet. E02/E06; M1 below.   |
+| F-02      | DIRECT mapping, shared item, quantity/unit multiplier        | MISSING            | Counter is per variant, with no shareable item or units. E02/E06.                                                     |
+| F-03      | Activity default / Product override / inherited variant mode | MISSING            | Activity metadata has no mode. E01/E06; IC-D04/D05.                                                                   |
+| F-04      | Independent variant/simple-product recipes                   | MISSING            | No recipe persistence/calculator/UI. E02/E06/E07.                                                                     |
+| F-05      | Modifier multi-item effects, overrides, repeated quantities  | MISSING            | Existing modifier price selection is not a stock effect. E03/E04.                                                     |
+| F-06      | Reusable groups, distinct min/max                            | PARTIAL            | Reuse and unique-option bounds exist; repetition/caps absent. Shared editing already has a safe V1 rule. E03/E04.     |
+| F-07      | Variant modifier availability                                | MISSING            | Assignment currently includes every shared option. E03.                                                               |
+| F-08      | Modifier default / variant price override                    | PARTIAL            | Product-assignment fixed defaults exist; variant overrides absent; reconcile shared-default meaning. E03/E04; IC-D03. |
+| F-09      | Stock Item picker and inline create                          | MISSING            | Existing inline modifier-group creation is a different feature. E07.                                                  |
+| F-10      | Units and conversions                                        | PARTIAL            | M1 adds exact base/pack conversion; M3 uses it for purchase receipt; recipe consumption remains absent. IC-D01.       |
+| F-11      | Branch warehouses / default consumption warehouse            | EXISTS             | M2 persists branches, warehouses, and branch defaults; management remains owner-only. E01/E06/E07; IC-D02.            |
+| F-12      | Warehouse balances, conditions, movement audit               | EXISTS             | M2 adds Available/Non-Sellable balances and attributable append-only movements. E06.                                  |
+| F-13      | Merchant negative-stock policy                               | EXISTS             | M2 adds merchant-wide Allow/Prevent policy for Available debits; legacy counters remain separate. E05/E06.            |
+| F-14      | Draft/Confirmed purchase invoices                            | EXISTS             | M3 adds owner supplier directory, drafts, and exactly-once receipt; costs/tax/settlement are excluded. IC-D10.        |
+| F-15      | Direct warehouse transfers                                   | MISSING            | No warehouses or transfer transaction. E06.                                                                           |
+| F-16      | Reasoned/audited stock adjustment                            | MISSING            | Direct optional counter edits are not an inventory adjustment document. E02/E06.                                      |
+| F-17      | Full/partial stocktaking                                     | MISSING            | Requires reconciliation/concurrency design. E06; IC-D09.                                                              |
+| F-18      | Condition transfer and Write-Off                             | MISSING            | No condition buckets/source actions. E06.                                                                             |
+| F-19      | Invoice-linked purchase returns                              | MISSING            | M3 invoices exist, but linked returns and cumulative return limits do not. E06; IC-D10.                               |
+| F-20      | Cashier acceptance triggers restaurant recipe deduction      | PARTIAL / CONFLICT | Owner acceptance exists; current stock decrements at creation; no cashier/branch/recipe. E01/E05/E07.                 |
+| F-21      | Pre-preparation cancellation / optional restoration          | PARTIAL            | Pending rejection restores old reservations. Accepted cancellation and kitchen start do not exist. E05.               |
+| F-22      | Retail partial return / separate restock choice              | MISSING            | No line-return/restock/refund workflow. E05/E06.                                                                      |
+| F-23      | Unified server validation/pricing                            | PARTIAL            | Baseline EXISTS and TESTED; new quantity/override/consumption validation absent. E04/E08.                             |
+| F-24      | Recipe Snapshot/versioning                                   | DEFERRED           | Existing product/price/selection snapshots must remain; recipe-change policy still needs IC-D06. E06.                 |
+| F-25      | Batch/Expiry/FEFO                                            | DEFERRED           | No implementation found; do not add in this workstream. E06/search.                                                   |
+| F-26      | Goods Receipt / in-transit transfer                          | NOT TARGETED       | Confirmed invoices/direct transfers are the requested workflow.                                                       |
+| F-27      | Prepared-item production inventory                           | DEFERRED           | Raw ingredients first.                                                                                                |
+
+## Risks and decisions before implementation
+
+The full decision queue is in [FEATURE.md](FEATURE.md). Resolve only the decisions needed by the next milestone.
+
+| Risk                                               | Why it matters                                                                                                              | Required treatment                                                                                                                      |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Duplicate stock effect at cutover                  | Existing pending orders already reduced a variant counter. New acceptance deductions could charge the same stock again.     | IC-D05/D08: define old/new order handling, opening balances, activation gate, and source idempotency before enabling ledger deductions. |
+| Recipe/mapping changes while waiting               | No recipe snapshot approved; catalog/option edits can change or remove required identities.                                 | IC-D06/D07: explicit edit/resolve/conflict policy; never infer current recipe is acceptable. Restore from recorded movements.           |
+| Mode enforcement breaks legacy products            | Simple and untracked variants currently sell without stock configuration.                                                   | IC-D04/D05: staged compatibility and configuration readiness; no arbitrary `NONE` mode or guessed backfill.                             |
+| Default price location changes existing prices     | Shared options can currently have different prices per product assignment.                                                  | IC-D03: retain assignment values, specify any shared default/variant precedence, migrate deliberately.                                  |
+| Branch/cashier foundation absent                   | Owner acceptance is not branch-scoped POS acceptance.                                                                       | IC-D02/D08/D11: implement persisted Branch, scope, cashier identity, and routing before live integration.                               |
+| Decimal precision and conditions                   | Integer variant counters cannot represent ingredient fractions or multiple warehouses/conditions.                           | IC-D01: exact arithmetic, quantity limits, conversions, policy applicability, and balance constraints.                                  |
+| Quantity changes cross several contracts           | `optionIds` and current snapshots/reporting assume at most one selection per option.                                        | Extend schemas, defaulting, quantity snapshots, customizer/cart/checkout, and SQL reports together.                                     |
+| Historical documentation drift                     | Old docs describe obsolete Catalog-owned Orders, old local modifiers, in-memory reporting, and unresolved price precedence. | Preserve their historical logs; use audited source ownership. Do not copy stale claims into new work.                                   |
+| Broad feature scope mistaken for launch commitment | Supplied docs discuss retail, purchasing, returns, and advanced operations.                                                 | Prioritize reviewed slices; no automatic approval of all first-release features.                                                        |
+
+## Ordered implementation milestones
+
+### M0 — Repository audit and planning — COMPLETE
+
+- [x] Read supplied documents, root/API instructions, project/MVP references, Product Builder docs, architecture, manifests, and test scripts.
+- [x] Record branch, baseline commit, and pre-existing worktree changes without altering them.
+- [x] Inspect tenant/auth, activity/capability, Product/Variant/Modifier, pricing, orders, schema/migrations, seed shape, frontend routes, and test coverage.
+- [x] Distinguish source-confirmed targets from existing/partial/missing/conflicting implementation.
+- [x] Verify feasible baseline checks and record actual results/limits below.
+- [x] Produce this progress report and the companion feature contract using repository conventions.
+- [x] Name incremental slices, affected areas, migration risks, dependencies, and outstanding decisions.
+
+Exit: these two documents were ready to use for the next implementation task. No inventory feature was marked delivered by M0; implementation progress is recorded below.
+
+### M1 — Stock Item registry and unit model — COMPLETE
+
+Owner-managed, tenant-safe Stock Items with exact base/pack conversions, API-backed list/create/edit/archive/restore, and a Merchant workspace establish reusable stock identities before balance mutations or checkout changes.
+
+- [x] Resolve M1 quantity precision, exact standard-unit conversion, item-specific packs, and no-rounding behavior under IC-D01. Negative-stock policy remains open.
+- [x] Add only Stock Item and item-unit tables in an additive migration; existing Products/orders have no backfill or behavior change.
+- [x] Add Inventory module, owner controller/service/schemas, cursor-paged list, revision checks, tenant scoping, and idempotent create.
+- [x] Add the localized `/inventory` item-management UI and server-side conversion preview. Creation has no opening-stock effect.
+- [x] Cover tenant isolation, invalid/incompatible/inexact conversions, idempotent retries, stale edits, pack additions, archive/restore, and exact fractional conversions.
+- [x] Validate and apply the migration to the configured local database; run API HTTP/unit regressions and the inventory DB test with rollback fixtures.
+
+Delivered paths include `packages/database/prisma/schema.prisma`, `packages/database/prisma/migrations/20261015160000_stock_item_registry/`, `packages/contracts/src/inventory.ts`, `apps/api/src/modules/inventory/`, `apps/merchant-dashboard/src/StockItemsPage.tsx`, and focused API tests.
+
+Migration: additive and applied as migration 18 to the configured local development database. No backfill or data reset was performed. Do not infer mappings from product names, SKU, or existing nullable variant counters.
+
+Exit: passed for M1 registry scope. Authenticated owners can list/manage their own identities; another tenant cannot access them; item creation creates no balance. Product/Variant pickers and recipe integration are not part of M1.
+
+### M2 — Branch/warehouse scope, policy, balances, and ledger — COMPLETE
+
+Dependencies: M1; IC-D01/D02/D11. The user confirmed one Branch to many Warehouses, one default consumption Warehouse per Branch, merchant-wide Allow Negative by default, and a reviewed opening-stock operation. This remains owner-managed; it does not establish staff RBAC.
+
+- [x] Confirm Branch/Warehouse cardinality and the per-branch default consumption Warehouse.
+- [x] Confirm merchant-wide Allow Negative default; apply the policy to Available debits only. Non-Sellable does not supply consumption.
+- [x] Confirm an attributable, reviewed opening-stock operation.
+- [x] Define the minimum persisted branch/warehouse fields, actor attribution, and safe archive/deactivation restrictions.
+- [x] Implement the merchant policy setting and Available/Non-Sellable balances with source-attributed movement records.
+- [x] Centralize stock application on the caller's transaction with source-scoped duplicate protection and deterministic insufficient-stock behavior.
+- [x] Add paged balance/history APIs and owner views; post opening quantities only after review and confirmation.
+- [x] Test concurrent first balance creation, shared-item aggregation, conditional decrements, duplicate commands/different payloads, tenant/warehouse rejection, and rollback.
+
+Delivered paths include the Inventory schema and migrations 19–20, contracts, owner APIs/services, the persisted Merchant Branches/Warehouses screen, Inventory Operations UI, API HTTP/unit/database tests, and architecture documentation.
+
+Exit: passed for M2. Stock changes have a single transactional authority, exact unit conversion, tenant-safe source attribution and replay behavior, and separate Available/Non-Sellable balances. Default policy allows negative Available balances; Prevent is enforced atomically on debits. No checkout mutation is switched. Browser/keyboard/RTL/LTR acceptance remains open.
+
+### M3 — Purchase Invoice stock entry — COMPLETE
+
+Dependencies: M2; purchasing portion of IC-D10.
+
+- [x] Finalize minimum supplier/invoice/line fields, document identity, owner permissions, and correction policy.
+- [x] Implement editable Draft and atomic confirm-once actual-quantity receipt to the chosen warehouse.
+- [x] Keep stock unchanged for Draft; no separate Goods Receipt.
+- [x] Build purchase entry/review/confirmation UI with retry/conflict handling.
+- [x] Test two simultaneous confirms, replay, different-payload key reuse, invalid/foreign references, and transaction rollback.
+
+Delivered: Purchasing module, Inventory public transaction API, additive schema/contracts, Merchant purchase screen, HTTP and PostgreSQL tests.
+
+Exit: passed. Real stock can be entered safely and the same invoice cannot add it twice. Costs, supplier settlement, and tax treatment remain explicitly out of scope.
+
+### M4 — Product mapping and base recipes — NOT STARTED
+
+Dependencies: M1 for configuration; M2/M3 before live consumption; IC-D04/D05/D06 and recipe quantity rules.
+
+- [ ] Add activity mode defaults and Product override; variants inherit DIRECT/RECIPE.
+- [ ] Define legacy compatibility and incomplete configuration handling before required-field constraints.
+- [ ] Add shared DIRECT item mapping plus quantity/unit for simple products and variants.
+- [ ] Add independent complete recipes for simple products or each variant, without inheritance.
+- [ ] Implement a pure requirement calculator with exact normalization and shared-item consolidation; no stock mutation inside quoting.
+- [ ] Extend existing ProductBuilder with pick/inline-create item and recipe rows; preserve draft and existing category/image/price/lifecycle requirements.
+- [ ] Protect stable identities and define mode-switch/variant-removal behavior.
+- [ ] Test simple/variant DIRECT and RECIPE, six-pack multiplier, missing/foreign item, conversion errors, and legacy products remaining readable.
+
+Likely areas: Catalog product schemas/rules/persistence/mapper, Inventory/Recipe public APIs, schema/contracts, `ProductBuilderPage.tsx`, and calculator/database tests. Module placement must remain acyclic.
+
+Exit: validated configurations produce inspectable ingredient requirements without changing the existing order stock event.
+
+### M5 — Modifier quantities, availability, overrides, and effects — NOT STARTED
+
+Dependencies: M4; IC-D03/D07; retain the current assigned-definition edit restriction unless deliberately changed.
+
+- [ ] Extend product assignments for per-option caps and variant group/option availability.
+- [ ] Decide effective default/variant price precedence while preserving existing per-product prices.
+- [ ] Add default and variant multi-item recipe effects using the agreed override/negative-total rules.
+- [ ] Evolve selection contracts compatibly: old selected IDs mean quantity 1; defaults and duplicate handling cannot bypass bounds.
+- [ ] Extend quotes, order quantity/price snapshots, and SQL report aggregation for repeated selections.
+- [ ] Update Merchant Builder and Storefront customizer/cart/checkout using shared contracts and re-quote behavior.
+- [ ] Test two distinct selections at quantities 3 and 2, caps, unavailable defaults, foreign IDs, multi-item effects, and effective override pricing.
+
+Exit: pricing and requirements use the same validated configuration without conflating price changes and stock changes.
+
+### M6 — Restaurant acceptance and cancellation integration — NOT STARTED
+
+Dependencies: M2–M5 and IC-D06/D08/D11. This is the highest-risk transition; the existing owner inbox is reusable, but cashier/branch/POS foundations are not yet present.
+
+- [ ] Finalize routing, staff/cashier actor scope, kitchen-start event, permitted transitions, shortages, mixed-order behavior, and retry UX.
+- [ ] Produce reviewed cutover/backfill handling for old `stockReserved` lines, nullable counters, and pending orders. Do not double-deduct.
+- [ ] Resolve waiting-order recipe/configuration changes without introducing a deferred recipe snapshot implicitly.
+- [ ] Persist acceptance, source uniqueness, deductions, and attribution atomically from the branch default warehouse.
+- [ ] Implement explicit preparation start and block restaurant cancellation afterward.
+- [ ] Implement eligible pre-preparation cancellation with authorized restore/no-restore decision and reversal of actual movements once.
+- [ ] Add POS incoming-order view and persisted reload/reconnect with shared backend commands; retain compatible owner behavior.
+- [ ] Test independent concurrent cashiers, acceptance replay, warehouse failures, shared ingredients across lines, insufficient stock, rollback, and legacy coexistence.
+
+Likely areas: Orders service/controller/contracts/schema/history, auth/Branch scope, Inventory/Consumption public APIs, POS, owner inbox, and database/browser suites.
+
+Exit: a branch-authorized restaurant order has one accepted stock effect, correct preparation gating, and auditable cancellation semantics.
+
+### M7 — Remaining stock operations and returns — NOT STARTED
+
+Implement these as separate reviewed slices after the stock foundation; they need not all wait for M6 if their own dependencies are satisfied.
+
+- [ ] Direct same-tenant warehouse transfers, including across branches; atomic balanced OUT/IN.
+- [ ] Reasoned authorized stock adjustments.
+- [ ] Condition transfers in both directions and separate permanent write-offs.
+- [ ] Full/partial stocktaking under IC-D09, with no silent overwrite of intervening movements.
+- [ ] Invoice-linked full/partial purchase returns from either condition under IC-D10.
+- [ ] Retail line-level return approval separate from restock/refund, after sale timing and rollout decisions.
+- [ ] Test each source's replay/race/rollback, scopes, cumulative return quantities, and audited physical totals.
+
+Exit: only the operations actually delivered and verified are marked complete. Batch/expiry, production, in-transit, and finance workflows remain deferred.
+
+### M8 — Acceptance, rollout, and handoff — NOT STARTED
+
+- [ ] Verify the supplied AC-01–AC-24 scenarios for the delivered slices, with no claim for deferred workflows.
+- [ ] Run API required checks, affected database suites, contracts checks, and impacted frontend checks on Node 24.11.1.
+- [ ] Test migrations on isolated empty and representative legacy fixtures, opening-balance reconciliation, and rollback/activation procedure.
+- [ ] Complete browser/keyboard/RTL/LTR acceptance for real UI; baseline source inspection is not visual verification.
+- [ ] Document operational failures, retries, permissions, compatibility, and residual decisions.
+- [ ] Update architecture/feature/root decision references where behavior actually changes; retain historical progress records.
+- [ ] Record exact files, commands, results, migration state, and commit/diff for every slice.
+
+## Verification ledger — M0 audit and M1–M3 implementation
+
+Commands ran from the repository root unless a workspace filter selected a package. The Turbo configuration was not changed. Node 24.11.1 was selected through a process-local PATH. Test/build/schema engine subprocesses required execution outside the restricted sandbox after `spawn EPERM` in the sandbox. M1–M3 additive migrations were applied to the configured local development database; no reset or seed was run.
+
+| Date       | Command / check                                                                                                                        | Actual result                                                                           | Limit / environment                                                                                                              |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-15 | `git status --short --branch`; `git rev-parse HEAD`                                                                                    | `main`, baseline commit above; one pre-existing `apps/storefront/next-env.d.ts` change. | Retained throughout. New docs are not committed.                                                                                 |
+| 2026-10-15 | `node --version`; `pnpm --version`                                                                                                     | Default shell Node `v20.19.0`; pnpm `10.34.5`.                                          | Default Node is below repo engine range.                                                                                         |
+| 2026-10-15 | `pnpm --filter @waffarly/api test` under default Node 20                                                                               | Failed before tests: Windows literal `test/http/*.test.ts` not found.                   | Environment/runner failure, not an application assertion failure.                                                                |
+| 2026-10-15 | `pnpm --filter @waffarly/api typecheck` under Node 20                                                                                  | Passed, with engine warning.                                                            | Repeated below under required Node 24.                                                                                           |
+| 2026-10-15 | `pnpm --filter @waffarly/database db:validate` under Node 20                                                                           | Passed: Prisma schema valid.                                                            | Validation only; no migration/data change.                                                                                       |
+| 2026-10-15 | Process-local PATH selects installed Node `v24.11.1`                                                                                   | Confirmed version from installed fnm runtime.                                           | `C:\Users\hazem\AppData\Roaming\fnm\node-versions\v24.11.1\installation`; no machine-wide runtime changes.                       |
+| 2026-10-15 | API default tests under Node 24, restricted sandbox                                                                                    | Blocked: child test processes hit `spawn EPERM` before assertions.                      | Retried outside sandbox, below.                                                                                                  |
+| 2026-10-15 | `pnpm --filter @waffarly/api test` under Node 24, outside sandbox                                                                      | **PASS: 64 tests, 0 failures, 0 skipped.**                                              | HTTP/unit suite, including M1 inventory tests.                                                                                   |
+| 2026-10-15 | `pnpm --filter @waffarly/api lint`, `typecheck`, and `build` under Node 24                                                             | **PASS.**                                                                               | Current API source and tests.                                                                                                    |
+| 2026-10-15 | `pnpm --filter @waffarly/contracts build`; `pnpm --filter @waffarly/database build` under Node 24                                      | **PASS.**                                                                               | Shared inventory types and generated Prisma client.                                                                              |
+| 2026-10-15 | `pnpm --filter @waffarly/database exec prisma validate --config ./prisma.config.ts`                                                    | **PASS.**                                                                               | Prisma schema validation.                                                                                                        |
+| 2026-10-15 | `pnpm --filter @waffarly/database exec prisma migrate deploy --config ./prisma.config.ts` under Node 24                                | **PASS: migration 18 applied**, including `20261015160000_stock_item_registry`.         | Configured local PostgreSQL `waffarly` database; additive migration only.                                                        |
+| 2026-10-15 | `pnpm --filter @waffarly/api exec tsx --test test/database/inventory.database.test.ts` under Node 24                                   | **PASS: 1 test, 0 failures, 0 skipped.**                                                | Exercises persistence and tenant/lifecycle invariants; all fixture writes roll back.                                             |
+| 2026-10-15 | `pnpm --filter @waffarly/merchant-dashboard typecheck` and `build` under Node 24                                                       | **PASS.**                                                                               | Production build emitted a 711 kB JS chunk (>500 kB advisory); no baseline bundle comparison was run.                            |
+| 2026-10-15 | `pnpm --filter @waffarly/api test` under Node 24, outside sandbox                                                                      | **PASS: 67 tests, 0 failures, 0 skipped.**                                              | Includes M2 HTTP/unit inventory coverage.                                                                                        |
+| 2026-10-15 | `pnpm --filter @waffarly/api exec tsx --test test/database/inventory-ledger.database.test.ts` under Node 24                            | **PASS: 3 tests, 0 failures.**                                                          | PostgreSQL inventory ledger, policy, rollback, idempotency, and concurrent balance creation fixtures.                            |
+| 2026-10-15 | `pnpm --filter @waffarly/database db:check` under Node 24                                                                              | **PASS: Prisma valid; 20 migrations up to date.**                                       | Applied migrations 19–20 to the configured local development PostgreSQL database.                                                |
+| 2026-10-15 | `pnpm --filter @waffarly/api lint`, `typecheck`, and `build` under Node 24                                                             | **PASS.**                                                                               | Includes M2 Inventory API and tests.                                                                                             |
+| 2026-10-15 | `pnpm --filter @waffarly/merchant-dashboard lint` and `typecheck` under Node 24                                                        | **PASS.**                                                                               | Full Merchant Dashboard ESLint and TypeScript checks.                                                                            |
+| 2026-10-15 | `pnpm --filter @waffarly/merchant-dashboard build` under Node 24, outside sandbox                                                      | **PASS.**                                                                               | 728 kB JS chunk and 263 kB CSS; Vite reports the JS chunk above its 500 kB advisory threshold.                                   |
+| 2026-10-15 | `pnpm --filter @waffarly/api test` under Node 24, outside sandbox                                                                      | **PASS: 70 tests, 0 failures, 0 skipped.**                                              | Includes purchasing HTTP validation and owner-tenant checks.                                                                     |
+| 2026-10-15 | `pnpm --filter @waffarly/api test:purchasing-db` under Node 24, outside sandbox                                                        | **PASS: 2 tests, 0 failures.**                                                          | PostgreSQL draft inertness, exact receipt, tenant references, idempotent replay, immutable confirm, and concurrent confirmation. |
+| 2026-10-15 | `pnpm --filter @waffarly/api exec tsx --test test/database/inventory.database.test.ts test/database/inventory-ledger.database.test.ts` | **PASS: 3 tests, 0 failures.**                                                          | Rechecked M1/M2 stock identity and ledger behavior after M3.                                                                     |
+| 2026-10-15 | `pnpm --filter @waffarly/database db:check` under Node 24, outside sandbox                                                             | **PASS: Prisma valid; 21 migrations up to date.**                                       | Migration 21 `20261015190000_purchasing_invoices` applied to local PostgreSQL.                                                   |
+| 2026-10-15 | `pnpm --filter @waffarly/api lint`, `typecheck`, and `build` under Node 24                                                             | **PASS.**                                                                               | Current M3 source and tests.                                                                                                     |
+| 2026-10-15 | `pnpm --filter @waffarly/merchant-dashboard lint` and `typecheck` under Node 24                                                        | **PASS.**                                                                               | Includes purchase routes, supplier/invoice UI, and Arabic copy.                                                                  |
+| 2026-10-15 | `pnpm --filter @waffarly/merchant-dashboard build` under Node 24, outside sandbox                                                      | **PASS.**                                                                               | 753.66 kB JS chunk and 262.73 kB CSS; Vite reports the JS chunk above its 500 kB advisory threshold.                             |
+| 2026-10-15 | Prettier check on changed M3 source/docs and `git diff --check`                                                                        | **PASS.**                                                                               | Git reports only configured LF/CRLF normalization warnings.                                                                      |
+
+Not run: browser/keyboard/RTL/LTR acceptance, unrelated database suites, CI, disposable empty/legacy migration rehearsals, and production rollout checks. M2 has a concurrent first-balance test and M3 has concurrent invoice confirmation coverage, but no live cashier/order flow exists. Product/Variant mappings, recipes, purchase returns, and recipe/order integration remain unimplemented. The corrective M2 migration moves newly added snapshot columns to their intended movement table; it did not remove ledger data.
+
+Document formatting, relative-link checks, source-ID coverage, and final diff/worktree checks are recorded in the documentation handoff entry below.
+
+## Change log
+
+### 2026-10-15 — M0 repository audit and adapted feature documents
+
+- Scope: review supplied commerce documents, inspect existing Products/Inventory/Recipes-related code, and create two repository-native planning files.
+- Files: `docs/features/inventory/FEATURE.md` and `docs/features/inventory/PROGRESS.md`.
+- Status before → after: external handoff UNVERIFIED → source-backed gap report, tested existing baseline, and proposed M1–M8 delivery plan. M1 was NOT STARTED at this historical checkpoint.
+- Reuse identified: Catalog/Product Builder, assignment-based modifiers, Catalog pricing, Orders, exact money, owner guards, tenant constraints, existing UI/contracts, SQL reports, and test organization.
+- Migration/backfill at M0: none applied or created; 17 existing migrations reported current. Staged future cutover/backfill risks documented.
+- API/behavior changes: none. Recipe-on-acceptance is a target, not today's behavior.
+- Verification: results in the ledger above; document checks below passed after final review.
+- Decisions: IC-D01–IC-D11 in the companion contract; existing price precedence/shared-edit restrictions reconciled, new unresolved semantics retained.
+- Diff reference at M0: two new uncommitted Markdown files relative to baseline commit above; no commit/PR created.
+- Next implementation task at M0: M1 Stock Item registry/unit model after resolving its focused IC-D01 design details. Do not begin by rebuilding Products or moving stock deduction globally.
+
+### 2026-10-15 — M1 Stock Item registry and exact units
+
+- Scope: implement the first owner-facing inventory slice after the user approved proceeding and confirmed exact six-decimal quantities and no-rounding conversions.
+- Files: contracts, Prisma schema/migration, Inventory API/module, Merchant `/inventory` UI/localization, API unit/HTTP/database tests, and both inventory feature documents.
+- Status before → after: M1 NOT STARTED → COMPLETE for registry and conversion preview only. Product mappings, stock balances, recipes, and order deductions remain NOT STARTED.
+- Compatibility: no edits to Product, Variant, checkout, order, or snapshot semantics; no inferred stock, balance, or recipe backfill.
+- Migration: additive migration 18 applied to local PostgreSQL; inventory DB test transaction rolled back its fixtures.
+- Verification: API lint/typecheck/build and 64 HTTP/unit tests pass; inventory DB test passes; contracts/database builds, Prisma validation, dashboard typecheck/build pass. Browser acceptance remains open.
+- Diff reference: work remains uncommitted; the user's pre-existing `apps/storefront/next-env.d.ts` change was preserved.
+- Next slice at that checkpoint: M2 branch/warehouse, balances, policy, and ledger. Product/Variant mapping and recipe design/integration require their own scoped decisions and tests.
+
+### 2026-10-15 — M2 branch/warehouse balances and opening ledger
+
+- Scope: implement the confirmed owner-managed warehouse foundation, Available/Non-Sellable balances, merchant-wide negative policy, and reviewed opening stock.
+- Files: Prisma schema/migrations, Inventory contracts/API, Branches and Warehouses UI, Inventory Operations UI/localization, tests, and architecture/feature/progress documents.
+- Status before → after: M2 NOT STARTED → COMPLETE for locations, policy, balance ledger, and opening stock only. Product mapping, recipes, purchases, and order deduction remain NOT STARTED.
+- Compatibility: no checkout/order stock behavior was changed; inventory operations do not grant employee or branch-scoped permissions.
+- Migration: additive migrations 19 and 20 applied to configured local PostgreSQL. Migration 20 corrects snapshot-column placement before M2 had ledger data; no reset/seed was run.
+- Verification: API lint/typecheck/build and 67 HTTP/unit tests pass; inventory ledger database tests pass (3); all 20 migrations report current. Merchant Dashboard lint/typecheck/build pass. Browser acceptance remains open.
+- Next slice: M3 purchase invoices, then M4 Product/Variant mappings and recipe configuration/calculation before any order-consumption integration.
+
+### 2026-10-15 — M3 suppliers and purchase invoice receipt
+
+- Scope: owner-managed supplier directory; draft purchase invoices; exact quantity receipt into a selected warehouse after explicit confirmation.
+- Status before → after: M3 NOT STARTED → COMPLETE for supplier records and purchase receipt only. Product/Variant mappings, recipes, returns, valuation, taxes, supplier payments, and order consumption remain NOT STARTED or outside this slice.
+- Decisions: user selected a supplier directory and accepted optional supplier invoice numbers unique per supplier, immutable confirmation, and reviewed movement correction later. M3 does not calculate costs/tax or settle supplier balances.
+- Changed paths: purchasing contracts/module/schema/migration, Inventory ledger public conversion API, Merchant `/inventory/purchases` UI and navigation/localization, HTTP and PostgreSQL tests, API architecture and this feature contract.
+- Transaction and tenant boundary: only the authenticated owner merchant scopes supplier, warehouse, and Stock Item references; confirmation locks the invoice and commits its immutable snapshots together with exactly converted `purchase_receipt` movements.
+- Idempotency/concurrency: supplier and invoice create requests are fingerprinted; receipt uses the Inventory request/source idempotency keys; concurrent invoice confirmation is serialized and posts one batch.
+- Migration: additive migration 21 applied to the configured local PostgreSQL database. No existing rows were rewritten and no seed/reset ran.
+- Verification: API lint/typecheck/build and 70 HTTP/unit tests pass; purchasing DB tests pass (2); schema validation and all 21 migrations current; Merchant Dashboard lint/typecheck/build pass. Browser/keyboard/RTL acceptance remains open.
+- Compatibility: no Product Builder, checkout, or order behavior changed. Confirmed invoices are immutable; correction requires a later reviewed stock movement.
+- Next slice: M4 Product/Variant inventory mappings and independent recipe configuration/calculation; defer order consumption until those rules and transaction cases are designed.
+
+### M0 documentation handoff checks (historical)
+
+- [x] `pnpm exec prettier --check docs/features/inventory/FEATURE.md docs/features/inventory/PROGRESS.md` passed after formatting only these two files.
+- [x] Validated all 62 relative local links; no missing targets. Confirmed all 27 source feature rows and 24 acceptance scenarios are represented. The coverage matcher was adjusted for Prettier's padded table cells before the successful check.
+- [x] `git diff --check` and `git diff --no-index --check -- NUL <new-file>` for each untracked document found no whitespace errors; Git emitted LF/CRLF conversion warnings only.
+- [x] Final M0 worktree review: only the two new Markdown files were added alongside the preserved `apps/storefront/next-env.d.ts` modification. No application code, contracts, schema, or migrations were edited at that checkpoint.
+
+## Future implementation log template
+
+```md
+### YYYY-MM-DD — <delivered slice>
+
+- Milestone / source feature IDs:
+- Status before → after:
+- Decisions resolved / compatibility behavior:
+- Existing code reused:
+- Changed paths:
+- Schema migration / opening balance or data backfill:
+- API and UI behavior:
+- Tenant / branch / permission / transaction boundary:
+- Idempotency and concurrency evidence:
+- Commands run + actual results + not-run checks:
+- Remaining limitations / blockers:
+- Commit / PR / diff:
+- Next action:
+```

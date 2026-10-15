@@ -10,6 +10,8 @@ const dependencies = {
   plans: ['auth'],
   activities: ['auth'],
   catalog: ['auth'],
+  inventory: ['auth'],
+  purchasing: ['auth', 'inventory'],
   storefront: ['auth', 'catalog'],
   orders: ['auth', 'catalog'],
   media: ['auth'],

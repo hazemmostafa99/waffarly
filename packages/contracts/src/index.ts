@@ -1,5 +1,53 @@
 export { BUSINESS_ACTIVITY_KEYS, BUSINESS_ACTIVITY_LABELS } from './activities-modules.js';
 export type { CursorPage } from './pagination.js';
+export { STOCK_BASE_UNITS } from './inventory.js';
+export type {
+  StockBaseUnit,
+  StockItem,
+  StockItemUnit,
+  StockItemUnitFields,
+  CreateStockItemRequest,
+  UpdateStockItemRequest,
+  StockItemRevisionRequest,
+  StockItemConversionRequest,
+  StockItemConversion,
+  StockCondition,
+  NegativeStockPolicy,
+  InventoryWarehouse,
+  InventoryBranch,
+  CreateInventoryBranchRequest,
+  UpdateInventoryBranchRequest,
+  CreateInventoryWarehouseRequest,
+  UpdateInventoryWarehouseRequest,
+  SetDefaultConsumptionWarehouseRequest,
+  InventoryPolicy,
+  UpdateInventoryPolicyRequest,
+  StockBalance,
+  StockOpeningLineRequest,
+  CreateStockOpeningRequest,
+  StockMovement,
+  StockMovementBatchResult,
+} from './inventory.js';
+export { STOCK_CONDITIONS } from './inventory.js';
+export { PURCHASE_INVOICE_STATUSES } from './purchasing.js';
+export type {
+  PurchaseInvoiceStatus,
+  PurchaseSupplierFields,
+  PurchaseSupplier,
+  CreatePurchaseSupplierRequest,
+  UpdatePurchaseSupplierRequest,
+  PurchaseSupplierRevisionRequest,
+  PurchaseInvoiceLineFields,
+  PurchaseInvoiceLine,
+  PurchaseInvoiceFields,
+  PurchaseInvoice,
+  CreatePurchaseInvoiceRequest,
+  UpdatePurchaseInvoiceRequest,
+  ConfirmPurchaseInvoiceRequest,
+  ConfirmPurchaseInvoiceResult,
+  PurchaseSupplierPage,
+  PurchaseInvoicePage,
+} from './purchasing.js';
 export type {
   ActivateFirstMonthRequest,
   ApproveMerchantApplicationRequest,

@@ -501,7 +501,7 @@ export function MerchantWorkspace({
   error: ReactNode;
   signOut: () => void;
 }) {
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
   const [view, setView] = useState<View>('dashboard');
   const [search, setSearch] = useState('');
   const [catalog, setCatalog] = useState<CatalogSnapshot | null>(null);

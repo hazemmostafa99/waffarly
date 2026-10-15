@@ -6,18 +6,20 @@ implementation instructions live in [apps/api/AGENTS.md](../../apps/api/AGENTS.m
 
 ## Ownership
 
-| Module     | Responsibility                                                        | Application dependencies |
-| ---------- | --------------------------------------------------------------------- | ------------------------ |
-| auth       | Credentials, sessions, guards, authenticated request actors           | Configuration, database  |
-| merchants  | Merchant profiles, applications, first-month activation               | Auth                     |
-| plans      | Platform monthly plan definitions                                     | Auth                     |
-| activities | Business activity and capability definitions/metadata                 | Auth                     |
-| storefront | Owner design settings, templates, public storefront composition       | Auth, catalog            |
-| catalog    | Products, categories, reusable modifiers, authoritative pricing       | Auth                     |
-| orders     | Order submission, snapshots, stock reservation/release, owner actions | Auth, catalog pricing    |
-| media      | Tenant-owned image metadata and upload orchestration                  | Auth, storage adapter    |
-| reports    | Product configuration reports from order snapshots                    | Auth                     |
-| health     | Liveness and database readiness                                       | Database                 |
+| Module     | Responsibility                                                                                             | Application dependencies |
+| ---------- | ---------------------------------------------------------------------------------------------------------- | ------------------------ |
+| auth       | Credentials, sessions, guards, authenticated request actors                                                | Configuration, database  |
+| merchants  | Merchant profiles, applications, first-month activation                                                    | Auth                     |
+| plans      | Platform monthly plan definitions                                                                          | Auth                     |
+| activities | Business activity and capability definitions/metadata                                                      | Auth                     |
+| storefront | Owner design settings, templates, public storefront composition                                            | Auth, catalog            |
+| catalog    | Products, categories, reusable modifiers, authoritative pricing                                            | Auth                     |
+| inventory  | Merchant-owned Stock Items/units, branches/warehouses, policy, balances, and transactional movement ledger | Auth                     |
+| purchasing | Merchant-owned supplier directory and draft/confirmed purchase invoices                                    | Auth, inventory          |
+| orders     | Order submission, snapshots, stock reservation/release, owner actions                                      | Auth, catalog pricing    |
+| media      | Tenant-owned image metadata and upload orchestration                                                       | Auth, storage adapter    |
+| reports    | Product configuration reports from order snapshots                                                         | Auth                     |
+| health     | Liveness and database readiness                                                                            | Database                 |
 
 Modules import other modules through their `index.ts` entry points. Each Nest
 module exports only deliberately shared providers. `AppModule` composes features;

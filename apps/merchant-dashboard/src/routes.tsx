@@ -12,6 +12,9 @@ import { BranchesPage } from './BranchesPage.js';
 import { ProductBuilderPage } from './ProductBuilderPage.js';
 import { StorefrontOrdersPage } from './StorefrontOrdersPage.js';
 import { DesignSystem } from './DesignSystem.js';
+import { StockItemsPage } from './StockItemsPage.js';
+import { InventoryOperationsPage } from './InventoryOperationsPage.js';
+import { PurchaseInvoicesPage } from './PurchaseInvoicesPage.js';
 
 export const router = createBrowserRouter([
   {
@@ -35,6 +38,9 @@ export const router = createBrowserRouter([
       { path: 'products/builder', element: <ProductBuilderPage /> },
       { path: 'product-builder', element: <ProductBuilderPage /> },
       { path: 'categories', element: <CategoriesPage /> },
+      { path: 'inventory', element: <StockItemsPage /> },
+      { path: 'inventory/operations', element: <InventoryOperationsPage /> },
+      { path: 'inventory/purchases', element: <PurchaseInvoicesPage /> },
       { path: 'media', element: <MediaPage /> },
       { path: 'orders', element: <StorefrontOrdersPage /> },
       { path: 'customers', element: <CustomersPage /> },

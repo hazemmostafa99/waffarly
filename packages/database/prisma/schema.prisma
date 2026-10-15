@@ -17,26 +17,280 @@ model FoundationMarker {
 
 // A merchant is the tenant boundary across business activities.
 model Merchant {
-  id                    String               @id @default(uuid()) @db.Uuid
-  name                  String               @db.VarChar(160)
-  storefrontSlug        String               @unique @db.VarChar(120)
-  activity              String               @default("other") @db.VarChar(32)
-  contactPhone          String               @db.VarChar(32)
-  ownerName             String               @db.VarChar(160)
-  ownerMobile           String               @db.VarChar(32)
-  firstMonthActivatedAt DateTime?            @db.Timestamptz(6)
-  firstMonthActivatedBy String?              @db.VarChar(80)
-  createdAt             DateTime             @default(now()) @db.Timestamptz(6)
-  owner                 OwnerAccount?
-  application           MerchantApplication?
-  storefront            MerchantStorefront?
-  mediaAssets           MediaAsset[]
-  categories            Category[]
-  products              Product[]
-  modifierGroups        ModifierGroup[]
-  storefrontOrders      StorefrontOrder[]
+  id                       String               @id @default(uuid()) @db.Uuid
+  name                     String               @db.VarChar(160)
+  storefrontSlug           String               @unique @db.VarChar(120)
+  activity                 String               @default("other") @db.VarChar(32)
+  contactPhone             String               @db.VarChar(32)
+  ownerName                String               @db.VarChar(160)
+  ownerMobile              String               @db.VarChar(32)
+  firstMonthActivatedAt    DateTime?            @db.Timestamptz(6)
+  firstMonthActivatedBy    String?              @db.VarChar(80)
+  createdAt                DateTime             @default(now()) @db.Timestamptz(6)
+  owner                    OwnerAccount?
+  application              MerchantApplication?
+  storefront               MerchantStorefront?
+  mediaAssets              MediaAsset[]
+  categories               Category[]
+  products                 Product[]
+  modifierGroups           ModifierGroup[]
+  storefrontOrders         StorefrontOrder[]
+  stockItems               StockItem[]
+  branches                 Branch[]
+  warehouses               Warehouse[]
+  stockBalances            StockBalance[]
+  stockMovementBatches     StockMovementBatch[]
+  purchaseSuppliers        PurchaseSupplier[]
+  purchaseInvoices         PurchaseInvoice[]
+  negativeStockPolicy      String               @default("allow") @db.VarChar(16)
+  inventoryPolicyRevision  Int                  @default(1)
+  inventoryPolicyUpdatedBy String?              @db.VarChar(80)
+  inventoryPolicyUpdatedAt DateTime?            @db.Timestamptz(6)
 
   @@map("merchants")
+}
+
+// Inventory identities only; item creation does not establish stock balances.
+model StockItem {
+  id                   String                @id @default(uuid()) @db.Uuid
+  merchantId           String                @db.Uuid
+  creationRequest      String                @db.Uuid
+  creationFingerprint  String                @db.VarChar(64)
+  name                 String                @db.VarChar(160)
+  description          String?               @db.VarChar(1000)
+  baseUnit             String                @db.VarChar(16)
+  archivedAt           DateTime?             @db.Timestamptz(6)
+  revision             Int                   @default(1)
+  createdBy            String                @db.VarChar(80)
+  updatedBy            String                @db.VarChar(80)
+  createdAt            DateTime              @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime              @updatedAt @db.Timestamptz(6)
+  merchant             Merchant              @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  units                StockItemUnit[]
+  balances             StockBalance[]
+  movements            StockMovement[]
+  purchaseInvoiceLines PurchaseInvoiceLine[]
+
+  @@unique([id, merchantId])
+  @@unique([merchantId, creationRequest])
+  @@index([merchantId, archivedAt, createdAt, id])
+  @@map("stock_items")
+}
+
+// An item-specific pack expressed directly in immutable base units.
+model StockItemUnit {
+  id           String    @id @default(uuid()) @db.Uuid
+  stockItemId  String    @db.Uuid
+  merchantId   String    @db.Uuid
+  code         String    @db.VarChar(32)
+  name         String    @db.VarChar(80)
+  baseQuantity Decimal   @db.Decimal(18, 6)
+  createdBy    String    @db.VarChar(80)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+  stockItem    StockItem @relation(fields: [stockItemId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([stockItemId, code])
+  @@unique([id, stockItemId, merchantId])
+  @@map("stock_item_units")
+}
+
+// A merchant location. Every branch has one active default consumption warehouse, enforced in the Inventory API.
+model Branch {
+  id         String      @id @default(uuid()) @db.Uuid
+  merchantId String      @db.Uuid
+  name       String      @db.VarChar(160)
+  address    String?     @db.VarChar(500)
+  archivedAt DateTime?   @db.Timestamptz(6)
+  revision   Int         @default(1)
+  createdBy  String      @db.VarChar(80)
+  updatedBy  String      @db.VarChar(80)
+  createdAt  DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime    @updatedAt @db.Timestamptz(6)
+  merchant   Merchant    @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  warehouses Warehouse[]
+
+  @@unique([id, merchantId])
+  @@unique([merchantId, name])
+  @@index([merchantId, archivedAt, createdAt, id])
+  @@map("branches")
+}
+
+// Warehouses remain distinct even when a branch currently operates one location.
+model Warehouse {
+  id                   String            @id @default(uuid()) @db.Uuid
+  merchantId           String            @db.Uuid
+  branchId             String            @db.Uuid
+  name                 String            @db.VarChar(160)
+  isDefaultConsumption Boolean           @default(false)
+  archivedAt           DateTime?         @db.Timestamptz(6)
+  revision             Int               @default(1)
+  createdBy            String            @db.VarChar(80)
+  updatedBy            String            @db.VarChar(80)
+  createdAt            DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime          @updatedAt @db.Timestamptz(6)
+  branch               Branch            @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  merchant             Merchant          @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  balances             StockBalance[]
+  movements            StockMovement[]
+  purchaseInvoices     PurchaseInvoice[]
+
+  @@unique([id, merchantId])
+  @@unique([id, branchId, merchantId])
+  @@unique([branchId, name])
+  @@index([merchantId, branchId, archivedAt, createdAt, id])
+  @@map("warehouses")
+}
+
+// Cached quantities by warehouse, Stock Item, and condition; movement and balance writes are atomic.
+model StockBalance {
+  id          String    @id @default(uuid()) @db.Uuid
+  merchantId  String    @db.Uuid
+  warehouseId String    @db.Uuid
+  stockItemId String    @db.Uuid
+  condition   String    @db.VarChar(24)
+  quantity    Decimal   @default(0) @db.Decimal(18, 6)
+  updatedBy   String    @db.VarChar(80)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(6)
+  merchant    Merchant  @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  warehouse   Warehouse @relation(fields: [warehouseId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  stockItem   StockItem @relation(fields: [stockItemId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([id, merchantId])
+  @@unique([merchantId, warehouseId, stockItemId, condition])
+  @@index([merchantId, warehouseId, createdAt, id])
+  @@map("stock_balances")
+}
+
+// One attributable, retry-safe posting containing one or more immutable movements.
+model StockMovementBatch {
+  id          String          @id @default(uuid()) @db.Uuid
+  merchantId  String          @db.Uuid
+  requestId   String          @db.Uuid
+  sourceType  String          @db.VarChar(32)
+  sourceId    String          @db.VarChar(80)
+  fingerprint String          @db.VarChar(64)
+  kind        String          @db.VarChar(32)
+  reason      String          @db.VarChar(500)
+  createdBy   String          @db.VarChar(80)
+  createdAt   DateTime        @default(now()) @db.Timestamptz(6)
+  merchant    Merchant        @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  movements   StockMovement[]
+
+  @@unique([id, merchantId])
+  @@unique([merchantId, requestId])
+  @@unique([merchantId, sourceType, sourceId])
+  @@index([merchantId, createdAt, id])
+  @@map("stock_movement_batches")
+}
+
+// Append-only signed base-unit delta; the related batch keeps user-entered unit and reason history.
+model StockMovement {
+  id              String             @id @default(uuid()) @db.Uuid
+  merchantId      String             @db.Uuid
+  batchId         String             @db.Uuid
+  warehouseId     String             @db.Uuid
+  stockItemId     String             @db.Uuid
+  warehouseName   String             @db.VarChar(160)
+  branchName      String             @db.VarChar(160)
+  stockItemName   String             @db.VarChar(160)
+  baseUnit        String             @db.VarChar(16)
+  condition       String             @db.VarChar(24)
+  unitCode        String             @db.VarChar(32)
+  enteredQuantity Decimal            @db.Decimal(18, 6)
+  baseDelta       Decimal            @db.Decimal(18, 6)
+  position        Int
+  createdBy       String             @db.VarChar(80)
+  createdAt       DateTime           @default(now()) @db.Timestamptz(6)
+  batch           StockMovementBatch @relation(fields: [batchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  warehouse       Warehouse          @relation(fields: [warehouseId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  stockItem       StockItem          @relation(fields: [stockItemId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([batchId, position])
+  @@index([merchantId, warehouseId, createdAt, id])
+  @@index([merchantId, stockItemId, createdAt, id])
+  @@map("stock_movements")
+}
+
+model PurchaseSupplier {
+  id                  String            @id @default(uuid()) @db.Uuid
+  merchantId          String            @db.Uuid
+  creationRequest     String            @db.Uuid
+  creationFingerprint String            @db.VarChar(64)
+  name                String            @db.VarChar(160)
+  nameKey             String            @db.VarChar(160)
+  contactName         String?           @db.VarChar(160)
+  phone               String?           @db.VarChar(32)
+  email               String?           @db.VarChar(254)
+  address             String?           @db.VarChar(500)
+  archivedAt          DateTime?         @db.Timestamptz(6)
+  revision            Int               @default(1)
+  createdBy           String            @db.VarChar(80)
+  updatedBy           String            @db.VarChar(80)
+  createdAt           DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime          @updatedAt @db.Timestamptz(6)
+  merchant            Merchant          @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  invoices            PurchaseInvoice[]
+
+  @@unique([id, merchantId])
+  @@unique([merchantId, creationRequest])
+  @@unique([merchantId, nameKey])
+  @@index([merchantId, archivedAt, createdAt, id])
+  @@map("purchase_suppliers")
+}
+
+model PurchaseInvoice {
+  id                       String                @id @default(uuid()) @db.Uuid
+  merchantId               String                @db.Uuid
+  supplierId               String                @db.Uuid
+  supplierName             String                @db.VarChar(160)
+  supplierInvoiceNumber    String?               @db.VarChar(100)
+  supplierInvoiceNumberKey String?               @db.VarChar(100)
+  warehouseId              String                @db.Uuid
+  warehouseName            String                @db.VarChar(160)
+  branchName               String                @db.VarChar(160)
+  creationRequest          String                @db.Uuid
+  creationFingerprint      String                @db.VarChar(64)
+  status                   String                @default("draft") @db.VarChar(16)
+  revision                 Int                   @default(1)
+  confirmedAt              DateTime?             @db.Timestamptz(6)
+  confirmedBy              String?               @db.VarChar(80)
+  createdBy                String                @db.VarChar(80)
+  updatedBy                String                @db.VarChar(80)
+  createdAt                DateTime              @default(now()) @db.Timestamptz(6)
+  updatedAt                DateTime              @updatedAt @db.Timestamptz(6)
+  merchant                 Merchant              @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  supplier                 PurchaseSupplier      @relation(fields: [supplierId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  warehouse                Warehouse             @relation(fields: [warehouseId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  lines                    PurchaseInvoiceLine[]
+
+  @@unique([id, merchantId])
+  @@unique([merchantId, creationRequest])
+  @@unique([merchantId, supplierId, supplierInvoiceNumberKey])
+  @@index([merchantId, status, createdAt, id])
+  @@index([merchantId, supplierId, createdAt, id])
+  @@map("purchase_invoices")
+}
+
+model PurchaseInvoiceLine {
+  id            String          @id @default(uuid()) @db.Uuid
+  merchantId    String          @db.Uuid
+  invoiceId     String          @db.Uuid
+  stockItemId   String          @db.Uuid
+  stockItemName String          @db.VarChar(160)
+  baseUnit      String          @db.VarChar(16)
+  unitCode      String          @db.VarChar(32)
+  unitName      String          @db.VarChar(80)
+  condition     String          @db.VarChar(24)
+  quantity      Decimal         @db.Decimal(18, 6)
+  position      Int
+  invoice       PurchaseInvoice @relation(fields: [invoiceId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  stockItem     StockItem       @relation(fields: [stockItemId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([invoiceId, position])
+  @@unique([invoiceId, stockItemId, condition])
+  @@index([merchantId, stockItemId, invoiceId])
+  @@map("purchase_invoice_lines")
 }
 
 // Public merchant applications remain separate from merchant tenants until approval.
