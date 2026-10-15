@@ -244,6 +244,8 @@ it(
               ],
             },
           });
+          assert.equal((await products.get(merchant.id, simpleProduct.id)).id, simpleProduct.id);
+          await assert.rejects(products.get(otherMerchant.id, simpleProduct.id), /not found/i);
           assert.equal(simpleProduct.inventoryConfiguration?.mode, 'DIRECT');
           assert.equal(
             simpleProduct.inventoryConfiguration?.targets[0]?.components[0]?.baseQuantity,

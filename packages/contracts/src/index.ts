@@ -1,6 +1,6 @@
 export { BUSINESS_ACTIVITY_KEYS, BUSINESS_ACTIVITY_LABELS } from './activities-modules.js';
 export type { CursorPage } from './pagination.js';
-export { STOCK_BASE_UNITS } from './inventory.js';
+export { STOCK_BASE_UNITS, STOCK_QUANTITY_PATTERN, isPositiveStockQuantity } from './inventory.js';
 export type {
   StockBaseUnit,
   StockItem,
@@ -14,6 +14,7 @@ export type {
   StockCondition,
   NegativeStockPolicy,
   InventoryWarehouse,
+  InventoryWarehouseSummary,
   InventoryBranch,
   CreateInventoryBranchRequest,
   UpdateInventoryBranchRequest,
@@ -87,6 +88,12 @@ export type {
   UpdateMonthlyPlanRequest,
 } from './plans.js';
 export type {
+  CatalogModifierEffectFields,
+  CatalogModifierOptionVariantFields,
+  CatalogModifierGroupVariantFields,
+  AcceptRecipeOrderRequest,
+  StartOrderPreparationRequest,
+  CancelRecipeOrderRequest,
   CatalogAvailability,
   CatalogCategoryFields,
   CatalogCategoryReference,

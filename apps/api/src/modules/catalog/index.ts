@@ -7,4 +7,7 @@ export { calculateInventoryRequirements } from './products/product-inventory.cal
 export type {
   InventoryRequirement,
   InventoryRequirementInput,
+  InventoryRequirementEffectInput,
 } from './products/product-inventory.calculator.js';
+
+export { ProductConsumptionService } from './products/product-consumption.service.js';

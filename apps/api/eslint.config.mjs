@@ -13,7 +13,7 @@ const dependencies = {
   inventory: ['auth'],
   purchasing: ['auth', 'inventory'],
   storefront: ['auth', 'catalog'],
-  orders: ['auth', 'catalog'],
+  orders: ['auth', 'catalog', 'inventory'],
   media: ['auth'],
   reports: ['auth'],
 };

@@ -8,13 +8,13 @@ import { CategoriesPage } from './CategoriesPage.js';
 import { CustomersPage } from './CustomersPage.js';
 import { MediaPage } from './MediaPage.js';
 import { DiscountsPage } from './DiscountsPage.js';
-import { BranchesPage } from './BranchesPage.js';
-import { ProductBuilderPage } from './ProductBuilderPage.js';
+import { BranchesPage } from './features/inventory/BranchesPage.js';
+import { ProductBuilderPage } from './features/catalog/product-builder/ProductBuilderPage.js';
 import { StorefrontOrdersPage } from './StorefrontOrdersPage.js';
 import { DesignSystem } from './DesignSystem.js';
-import { StockItemsPage } from './StockItemsPage.js';
-import { InventoryOperationsPage } from './InventoryOperationsPage.js';
-import { PurchaseInvoicesPage } from './PurchaseInvoicesPage.js';
+import { StockItemsPage } from './features/inventory/StockItemsPage.js';
+import { InventoryOperationsPage } from './features/inventory/InventoryOperationsPage.js';
+import { PurchaseInvoicesPage } from './features/purchasing/PurchaseInvoicesPage.js';
 
 export const router = createBrowserRouter([
   {

@@ -11,6 +11,13 @@ import type {
 } from '@waffarly/contracts';
 import { formatCents, toCents } from '../../../common/money/money.js';
 import { PrismaService } from '../../../infrastructure/database/prisma.service.js';
+import type { StockBaseUnit } from '@waffarly/contracts';
+import { selectedOptionQuantities } from './modifier-selections.js';
+import {
+  calculateInventoryRequirements,
+  modifierEffectRequirements,
+  type InventoryRequirementEffectInput,
+} from '../products/product-inventory.calculator.js';
 import { assertPersistedModifierGroup } from '../products/product.rules.js';
 @Injectable()
 export class ProductPricingService {
@@ -20,6 +27,7 @@ export class ProductPricingService {
     selections: CatalogProductQuoteSelection[] = [],
     variantId?: string,
     storefrontSlug?: string,
+    sellableQuantity = 1,
   ): Promise<CatalogProductQuoteResponse> {
     const merchant = storefrontSlug
       ? await this.prisma.merchant.findUnique({
@@ -35,6 +43,7 @@ export class ProductPricingService {
         availability: true,
         basePrice: true,
         revision: true,
+        inventoryConfiguration: { include: { targets: { include: { components: true } } } },
         variants: {
           orderBy: { position: 'asc' },
           select: {
@@ -57,10 +66,15 @@ export class ProductPricingService {
         modifierGroups: {
           orderBy: { position: 'asc' },
           include: {
+            variantOverrides: true,
             modifierGroup: { select: { id: true, name: true, description: true } },
             options: {
               orderBy: { option: { position: 'asc' } },
-              include: { option: { select: { id: true, name: true, position: true } } },
+              include: {
+                variantOverrides: true,
+                effects: true,
+                option: { select: { id: true, name: true, position: true } },
+              },
             },
           },
         },
@@ -85,16 +99,16 @@ export class ProductPricingService {
     ) {
       throw new ConflictException('Product variant is unavailable.');
     }
-    if (selectedVariant?.stockQuantity === 0) {
+    if (product.inventoryConfiguration?.mode !== 'RECIPE' && selectedVariant?.stockQuantity === 0) {
       throw new ConflictException('Product variant is out of stock.');
     }
 
-    const requested = new Map<string, string[]>();
+    const requested = new Map<string, Map<string, number>>();
     for (const selection of selections) {
       if (requested.has(selection.groupId)) {
         throw new BadRequestException('Each modifier group can be selected only once.');
       }
-      requested.set(selection.groupId, selection.optionIds);
+      requested.set(selection.groupId, selectedOptionQuantities(selection));
     }
 
     const productGroupIds = new Set(product.modifierGroups.map((group) => group.id));
@@ -103,41 +117,83 @@ export class ProductPricingService {
     }
 
     let modifierTotalCents = 0n;
-    const resolvedSelections = product.modifierGroups.map((group) => {
+    const effects: InventoryRequirementEffectInput[] = [];
+    const resolvedSelections = product.modifierGroups.flatMap((group) => {
       assertPersistedModifierGroup(group);
-      const submittedOptionIds = requested.get(group.id);
-      const selectedIds =
-        submittedOptionIds ??
-        group.options.filter((option) => option.defaultSelected).map((option) => option.optionId);
-      if (new Set(selectedIds).size !== selectedIds.length) {
-        throw new BadRequestException('Modifier options must be unique within a group.');
+      const submitted = requested.get(group.id);
+      const groupAvailable =
+        (group.variantOverrides ?? []).find((override) => override.variantId === variantId)
+          ?.available !== false;
+      if (!groupAvailable) {
+        if (submitted?.size)
+          throw new BadRequestException('Modifier group is unavailable for this variant.');
+        return [];
       }
-      if (selectedIds.length < group.minSelections || selectedIds.length > group.maxSelections) {
+      const overrideFor = (option: (typeof group.options)[number]) =>
+        (option.variantOverrides ?? []).find((override) => override.variantId === variantId);
+      const available = group.options.filter((option) => overrideFor(option)?.available !== false);
+      const quantities =
+        submitted ??
+        new Map(
+          available
+            .filter((option) => option.defaultSelected)
+            .map((option) => [option.optionId, 1]),
+        );
+      if (quantities.size < group.minSelections || quantities.size > group.maxSelections)
         throw new BadRequestException(
           `Select between ${group.minSelections} and ${group.maxSelections} options for ${group.modifierGroup.name}.`,
         );
-      }
-
-      const selectedIdSet = new Set(selectedIds);
-      const selectedOptions = group.options.filter((option) => selectedIdSet.has(option.optionId));
-      if (selectedOptions.length !== selectedIds.length) {
-        throw new BadRequestException('A modifier option does not belong to its selected group.');
-      }
-
-      const priceAdjustmentCents = selectedOptions.reduce(
-        (sum, option) => sum + toCents(option.priceAdjustment.toString()),
+      const selected = available.filter((option) => quantities.has(option.optionId));
+      if (selected.length !== quantities.size)
+        throw new BadRequestException(
+          'A modifier option does not belong to its selected group or is unavailable.',
+        );
+      const options = selected.map((option) => {
+        const quantity = quantities.get(option.optionId)!;
+        if (quantity > (option.maxQuantity ?? 1))
+          throw new BadRequestException('Modifier quantity exceeds its configured cap.');
+        const override = overrideFor(option);
+        const unitPriceAdjustment = formatCents(
+          toCents((override?.priceAdjustment ?? option.priceAdjustment).toString()),
+        );
+        effects.push(...modifierEffectRequirements(option, variantId ?? null, quantity));
+        return { optionId: option.optionId, quantity, unitPriceAdjustment };
+      });
+      const adjustment = options.reduce(
+        (sum, option) => sum + toCents(option.unitPriceAdjustment) * BigInt(option.quantity),
         0n,
       );
-      modifierTotalCents += priceAdjustmentCents;
-      return {
-        groupId: group.id,
-        modifierGroupId: group.modifierGroupId,
-        optionIds: selectedOptions.map((option) => option.optionId),
-        priceAdjustment: formatCents(priceAdjustmentCents),
-      };
+      modifierTotalCents += adjustment;
+      return [
+        {
+          groupId: group.id,
+          modifierGroupId: group.modifierGroupId,
+          optionIds: options.map((option) => option.optionId),
+          options,
+          priceAdjustment: formatCents(adjustment),
+        },
+      ];
     });
+    if (product.inventoryConfiguration?.mode === 'RECIPE') {
+      const target = product.inventoryConfiguration.targets.find(
+        (target) => target.variantId === (variantId ?? null),
+      );
+      if (!target) throw new ConflictException('Product recipe is incomplete.');
+      calculateInventoryRequirements(
+        target.components.map((component) => ({
+          stockItemId: component.stockItemId,
+          baseUnit: component.baseUnit as StockBaseUnit,
+          baseQuantity: component.baseQuantity.toString(),
+        })),
+        sellableQuantity,
+        effects,
+      );
+    } else if (effects.length)
+      throw new ConflictException('Ingredient effects require RECIPE mode.');
 
     const basePriceCents = toCents((selectedVariant?.price ?? product.basePrice).toString());
+    if (basePriceCents + modifierTotalCents > 999_999_999_999n)
+      throw new BadRequestException('Configured product price exceeds the supported range.');
     const variantAttributes =
       selectedVariant?.attributeSelections.map((selection) => ({
         attributeId: selection.attributeId,

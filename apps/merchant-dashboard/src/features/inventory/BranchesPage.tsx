@@ -8,8 +8,8 @@ import {
   type DataTableColumn,
 } from '@waffarly/ui';
 import type { InventoryBranch, InventoryWarehouse } from '@waffarly/contracts';
-import { DashboardDialog } from './components/DashboardDialog.js';
-import { apiRequest, apiRequestPage } from './lib/api-client.js';
+import { DashboardDialog } from '../../components/DashboardDialog.js';
+import { apiRequest, apiRequestPage } from '../../lib/api-client.js';
 import { inventoryCopy } from './inventory-copy.js';
 
 type BranchEditorState = { branch: InventoryBranch | null; key: string };

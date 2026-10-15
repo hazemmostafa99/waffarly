@@ -40,6 +40,7 @@ describe('catalog owner endpoints', () => {
   let app: INestApplication;
   let authorized: boolean;
   let createdProduct: Record<string, unknown> | undefined;
+  let readProduct: { merchantId: string; id: string } | undefined;
   let createdModifierGroup: { merchantId: string; input: unknown } | undefined;
   let quotedProduct:
     { id: string; variantId?: string; selections: unknown; storefrontSlug?: string } | undefined;
@@ -54,6 +55,7 @@ describe('catalog owner endpoints', () => {
   beforeEach(async () => {
     authorized = true;
     createdProduct = undefined;
+    readProduct = undefined;
     createdModifierGroup = undefined;
     quotedProduct = undefined;
     attachedModifierGroup = undefined;
@@ -121,6 +123,10 @@ describe('catalog owner endpoints', () => {
         {
           provide: ProductService,
           useValue: {
+            get: async (merchantId: string, id: string) => {
+              readProduct = { merchantId, id };
+              return { id };
+            },
             list: async () => [],
             attachModifierGroup: async (
               _merchantId: string,
@@ -194,6 +200,16 @@ describe('catalog owner endpoints', () => {
 
   afterEach(async () => {
     await app.close();
+  });
+
+  it('reads one product under the authenticated owner tenant', async () => {
+    const id = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    authorized = false;
+    await request(app.getHttpServer()).get(`/owner/catalog/products/${id}`).expect(401);
+    assert.equal(readProduct, undefined);
+    authorized = true;
+    await request(app.getHttpServer()).get(`/owner/catalog/products/${id}`).expect(200);
+    assert.deepEqual(readProduct, { merchantId: owner.merchantId, id });
   });
 
   it('protects catalog management with the owner session', async () => {
@@ -411,6 +427,25 @@ describe('catalog owner endpoints', () => {
       selections: [{ groupId, optionIds: [optionId] }],
     });
 
+    const quantified = [
+      { groupId, optionIds: [optionId], optionQuantities: [{ optionId, quantity: 3 }] },
+    ];
+    await request(app.getHttpServer())
+      .post(`/catalog/products/${productId}/quote`)
+      .send({ selections: quantified })
+      .expect(200);
+    assert.deepEqual(quotedProduct?.selections, quantified);
+    for (const quantity of [0, -1, 1.5, 100]) {
+      await request(app.getHttpServer())
+        .post(`/catalog/products/${productId}/quote`)
+        .send({
+          selections: [
+            { groupId, optionIds: [optionId], optionQuantities: [{ optionId, quantity }] },
+          ],
+        })
+        .expect(400);
+    }
+
     await request(app.getHttpServer())
       .post(`/catalog/products/${productId}/quote`)
       .send({ selections: [{ groupId: 'not-a-uuid', optionIds: [] }] })
@@ -436,9 +471,7 @@ describe('catalog owner endpoints', () => {
     await request(app.getHttpServer())
       .get('/catalog/stores/cairo-cafe/categories?cursor=not-a-uuid')
       .expect(400);
-    await request(app.getHttpServer())
-      .get('/catalog/stores/cairo-cafe/categories')
-      .expect(200);
+    await request(app.getHttpServer()).get('/catalog/stores/cairo-cafe/categories').expect(200);
     assert.equal(publicCategoryCursor, undefined);
 
     const productId = '55555555-5555-4555-8555-555555555555';

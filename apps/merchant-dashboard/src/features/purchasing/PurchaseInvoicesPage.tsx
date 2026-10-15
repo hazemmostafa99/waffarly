@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import {
+  CursorPageControls as PageControls,
+  type CursorPageState as PageState,
+} from '../../components/CursorPageControls.js';
+import { useEffect, useState, type FormEvent } from 'react';
 import {
   Button,
   DashboardCard,
@@ -9,65 +13,19 @@ import {
 } from '@waffarly/ui';
 import type {
   CreatePurchaseInvoiceRequest,
-  CreatePurchaseSupplierRequest,
-  InventoryBranch,
-  InventoryWarehouse,
   PurchaseInvoice,
   PurchaseSupplier,
-  StockCondition,
-  StockItem,
-  StockItemUnitFields,
 } from '@waffarly/contracts';
-import { DashboardDialog } from './components/DashboardDialog.js';
-import { apiRequest, apiRequestPage } from './lib/api-client.js';
-import { inventoryCopy } from './inventory-copy.js';
+import { DashboardDialog } from '../../components/DashboardDialog.js';
+import { apiRequest, apiRequestPage } from '../../lib/api-client.js';
+import { inventoryCopy } from '../inventory/inventory-copy.js';
 import { useNavigate } from 'react-router-dom';
+import type { SupplierFields } from './purchasing.types.js';
+import { SupplierEditor } from './SupplierEditor.js';
+import { PurchaseInvoiceEditor } from './PurchaseInvoiceEditor.js';
 
-type PageState = { cursor?: string };
 type InvoiceEditorState = { invoice: PurchaseInvoice | null; key: string };
 type SupplierEditorState = { supplier: PurchaseSupplier | null; key: string };
-type InvoiceLineDraft = {
-  key: string;
-  stockItemId: string;
-  condition: StockCondition;
-  quantity: string;
-  unitCode: string;
-};
-type SupplierFields = Pick<
-  CreatePurchaseSupplierRequest,
-  'name' | 'contactName' | 'phone' | 'email' | 'address'
->;
-
-const dimensions = {
-  piece: 'count',
-  g: 'mass',
-  kg: 'mass',
-  ml: 'volume',
-  l: 'volume',
-} as const;
-
-function unitOptions(item: StockItem | undefined): Array<{ code: string; name: string }> {
-  if (!item) return [];
-  const standards = Object.keys(dimensions).filter(
-    (unit) => dimensions[unit as keyof typeof dimensions] === dimensions[item.baseUnit],
-  );
-  const packs = item.units.map((unit: StockItemUnitFields) => ({
-    code: unit.code,
-    name: unit.name,
-  }));
-  return [...standards.map((unit) => ({ code: unit, name: unit })), ...packs];
-}
-
-function emptyLine(items: StockItem[]): InvoiceLineDraft {
-  const item = items[0];
-  return {
-    key: crypto.randomUUID(),
-    stockItemId: item?.id ?? '',
-    condition: 'available',
-    quantity: '1',
-    unitCode: item ? (unitOptions(item)[0]?.code ?? item.baseUnit) : '',
-  };
-}
 
 export function PurchaseInvoicesPage() {
   const { locale, t, errorText, formatDigits } = useLocale();
@@ -90,9 +48,6 @@ export function PurchaseInvoicesPage() {
   const [supplierHistory, setSupplierHistory] = useState<PageState[]>([]);
   const [supplierNext, setSupplierNext] = useState<string | null>(null);
   const [suppliersLoading, setSuppliersLoading] = useState(true);
-  const [supplierOptions, setSupplierOptions] = useState<PurchaseSupplier[]>([]);
-  const [items, setItems] = useState<StockItem[]>([]);
-  const [branches, setBranches] = useState<InventoryBranch[]>([]);
   const [loadError, setLoadError] = useState('');
   const [notice, setNotice] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -102,33 +57,6 @@ export function PurchaseInvoicesPage() {
   const [invoiceReview, setInvoiceReview] = useState<PurchaseInvoice | null>(null);
   const [supplierArchive, setSupplierArchive] = useState<PurchaseSupplier | null>(null);
   const [confirmRequestIds, setConfirmRequestIds] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    let current = true;
-    setLoadError('');
-    void Promise.all([
-      apiRequest<PurchaseSupplier[]>('/owner/purchasing/suppliers?status=active&limit=100'),
-      apiRequest<StockItem[]>('/owner/inventory/items?status=active&limit=100'),
-      apiRequest<InventoryBranch[]>('/owner/inventory/branches?status=active&limit=100'),
-    ])
-      .then(([activeSuppliers, activeItems, activeBranches]) => {
-        if (!current) return;
-        setSupplierOptions(activeSuppliers);
-        setItems(activeItems);
-        setBranches(activeBranches);
-      })
-      .catch((cause: unknown) => {
-        if (current)
-          setLoadError(
-            cause instanceof Error
-              ? errorText(cause.message)
-              : text('Could not load purchase invoices.'),
-          );
-      });
-    return () => {
-      current = false;
-    };
-  }, [errorText, refreshKey]);
 
   useEffect(() => {
     let current = true;
@@ -183,16 +111,6 @@ export function PurchaseInvoicesPage() {
       current = false;
     };
   }, [errorText, refreshKey, supplierPage, supplierSearch, supplierStatus]);
-
-  const warehouses = useMemo(
-    () =>
-      branches.flatMap((branch) =>
-        branch.warehouses
-          .filter((warehouse) => !warehouse.archivedAt)
-          .map((warehouse) => ({ ...warehouse, branchName: branch.name })),
-      ),
-    [branches],
-  );
 
   const invoiceColumns: DataTableColumn<PurchaseInvoice>[] = [
     {
@@ -330,7 +248,7 @@ export function PurchaseInvoicesPage() {
     setLoadError('');
     try {
       const created = !supplierEditor.supplier;
-      const supplier = await apiRequest<PurchaseSupplier>(
+      await apiRequest<PurchaseSupplier>(
         created
           ? '/owner/purchasing/suppliers'
           : `/owner/purchasing/suppliers/${supplierEditor.supplier!.id}`,
@@ -345,10 +263,6 @@ export function PurchaseInvoicesPage() {
       setSupplierSearchDraft('');
       setSupplierStatus('active');
       resetSupplierFilters();
-      setSupplierOptions((current) => {
-        const rest = current.filter((row) => row.id !== supplier.id);
-        return supplier.archivedAt ? rest : [supplier, ...rest];
-      });
       setRefreshKey((key) => key + 1);
     } catch (cause) {
       setLoadError(
@@ -364,16 +278,11 @@ export function PurchaseInvoicesPage() {
     setLoadError('');
     const archived = Boolean(supplier.archivedAt);
     try {
-      const updated = await apiRequest<PurchaseSupplier>(
+      await apiRequest<PurchaseSupplier>(
         `/owner/purchasing/suppliers/${supplier.id}/${archived ? 'restore' : 'archive'}`,
         { method: 'POST', body: JSON.stringify({ revision: supplier.revision }) },
       );
       setNotice(text(archived ? 'Supplier restored.' : 'Supplier archived.'));
-      setSupplierOptions((current) =>
-        archived
-          ? [updated, ...current.filter((row) => row.id !== updated.id)]
-          : current.filter((row) => row.id !== updated.id),
-      );
       setRefreshKey((key) => key + 1);
     } catch (cause) {
       setLoadError(
@@ -528,21 +437,6 @@ export function PurchaseInvoicesPage() {
             'Confirming posts actual received quantities to this warehouse. Confirmed invoices cannot be edited.',
           )}
         >
-          {!supplierOptions.length && (
-            <p className="inventory-note">
-              {text('Create a supplier before recording a purchase invoice.')}
-            </p>
-          )}
-          {!items.length && (
-            <p className="inventory-note">
-              {text('Create a stock item before recording a purchase invoice.')}
-            </p>
-          )}
-          {!warehouses.length && (
-            <p className="inventory-note">
-              {text('Create an active branch and warehouse before recording a purchase invoice.')}
-            </p>
-          )}
           <div className="inventory-filters">
             <form className="inventory-search" onSubmit={submitInvoiceSearch}>
               <label>
@@ -573,7 +467,6 @@ export function PurchaseInvoicesPage() {
             </label>
             <Button
               type="button"
-              disabled={!supplierOptions.length || !items.length || !warehouses.length}
               onClick={() => setInvoiceEditor({ invoice: null, key: crypto.randomUUID() })}
             >
               {text('New purchase invoice')}
@@ -673,9 +566,6 @@ export function PurchaseInvoicesPage() {
         <PurchaseInvoiceEditor
           key={invoiceEditor.key}
           invoice={invoiceEditor.invoice}
-          suppliers={supplierOptions}
-          items={items}
-          warehouses={warehouses}
           busy={busy}
           text={text}
           formatDigits={formatDigits}
@@ -777,372 +667,4 @@ export function PurchaseInvoicesPage() {
     setSupplierArchive(null);
     await changeSupplierArchive(target);
   }
-}
-
-function SupplierEditor({
-  supplier,
-  busy,
-  text,
-  onClose,
-  onSave,
-}: {
-  supplier: PurchaseSupplier | null;
-  busy: boolean;
-  text: (value: string) => string;
-  onClose: () => void;
-  onSave: (fields: SupplierFields, requestId?: string, revision?: number) => void;
-}) {
-  const [requestId] = useState(crypto.randomUUID());
-  const [name, setName] = useState(supplier?.name ?? '');
-  const [contactName, setContactName] = useState(supplier?.contactName ?? '');
-  const [phone, setPhone] = useState(supplier?.phone ?? '');
-  const [email, setEmail] = useState(supplier?.email ?? '');
-  const [address, setAddress] = useState(supplier?.address ?? '');
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    onSave({ name, contactName, phone, email, address }, requestId, supplier?.revision);
-  }
-  return (
-    <DashboardDialog
-      title={text(supplier ? 'Edit supplier' : 'Create supplier')}
-      closeLabel={text('Close')}
-      onClose={onClose}
-      busy={busy}
-    >
-      <form className="products-dialog-body inventory-editor" onSubmit={submit}>
-        <label>
-          {text('Supplier')}
-          <Input
-            required
-            maxLength={160}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-        </label>
-        <label>
-          {text('Contact name')}
-          <Input
-            maxLength={160}
-            value={contactName}
-            onChange={(event) => setContactName(event.target.value)}
-          />
-        </label>
-        <label>
-          {text('Phone')}
-          <Input maxLength={32} value={phone} onChange={(event) => setPhone(event.target.value)} />
-        </label>
-        <label>
-          {text('Email')}
-          <Input
-            type="email"
-            maxLength={254}
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-        </label>
-        <label>
-          {text('Address')}
-          <Input
-            maxLength={500}
-            value={address}
-            onChange={(event) => setAddress(event.target.value)}
-          />
-        </label>
-        <footer className="products-dialog-footer">
-          <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
-            {text('Close')}
-          </Button>
-          <Button type="submit" disabled={busy}>
-            {text('Save supplier')}
-          </Button>
-        </footer>
-      </form>
-    </DashboardDialog>
-  );
-}
-
-function PurchaseInvoiceEditor({
-  invoice,
-  suppliers,
-  items,
-  warehouses,
-  busy,
-  text,
-  formatDigits,
-  onClose,
-  onSave,
-}: {
-  invoice: PurchaseInvoice | null;
-  suppliers: PurchaseSupplier[];
-  items: StockItem[];
-  warehouses: Array<InventoryWarehouse & { branchName: string }>;
-  busy: boolean;
-  text: (value: string) => string;
-  formatDigits: (value: string) => string;
-  onClose: () => void;
-  onSave: (
-    fields: Omit<CreatePurchaseInvoiceRequest, 'requestId'>,
-    requestId: string,
-    revision?: number,
-  ) => void;
-}) {
-  const [requestId] = useState(crypto.randomUUID());
-  const [supplierId, setSupplierId] = useState(invoice?.supplierId ?? suppliers[0]?.id ?? '');
-  const [supplierInvoiceNumber, setSupplierInvoiceNumber] = useState(
-    invoice?.supplierInvoiceNumber ?? '',
-  );
-  const [warehouseId, setWarehouseId] = useState(invoice?.warehouseId ?? warehouses[0]?.id ?? '');
-  const [lines, setLines] = useState<InvoiceLineDraft[]>(
-    () =>
-      invoice?.lines.map((line) => ({
-        key: line.id,
-        stockItemId: line.stockItemId,
-        condition: line.condition,
-        quantity: line.quantity,
-        unitCode: line.unitCode,
-      })) ?? [emptyLine(items)],
-  );
-  const [formError, setFormError] = useState('');
-  function updateLine(key: string, change: Partial<InvoiceLineDraft>) {
-    setLines((current) =>
-      current.map((line) => {
-        if (line.key !== key) return line;
-        const next = { ...line, ...change };
-        if (change.stockItemId) {
-          const item = items.find((candidate) => candidate.id === change.stockItemId);
-          next.unitCode = item ? (unitOptions(item)[0]?.code ?? item.baseUnit) : '';
-        }
-        return next;
-      }),
-    );
-  }
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setFormError('');
-    if (
-      !supplierId ||
-      !warehouseId ||
-      lines.some((line) => !line.stockItemId || !line.quantity || !line.unitCode)
-    ) {
-      setFormError(text('Enter the actual received quantity before review.'));
-      return;
-    }
-    if (
-      new Set(lines.map((line) => `${line.stockItemId}:${line.condition}`)).size !== lines.length
-    ) {
-      setFormError(text('Invoice lines cannot repeat the same item and condition.'));
-      return;
-    }
-    const fields = {
-      supplierId,
-      supplierInvoiceNumber: supplierInvoiceNumber.trim() || undefined,
-      warehouseId,
-      lines: lines.map(({ stockItemId, condition, quantity, unitCode }) => ({
-        stockItemId,
-        condition,
-        quantity: quantity.trim(),
-        unitCode,
-      })),
-    };
-    onSave(fields, requestId, invoice?.revision);
-  }
-  return (
-    <DashboardDialog
-      title={text(invoice ? 'Edit draft' : 'New purchase invoice')}
-      closeLabel={text('Close')}
-      onClose={onClose}
-      busy={busy}
-    >
-      <form className="products-dialog-body inventory-editor" onSubmit={submit}>
-        <label>
-          {text('Supplier')}
-          <select
-            required
-            value={supplierId}
-            onChange={(event) => setSupplierId(event.target.value)}
-          >
-            <option value="">{text('Choose supplier')}</option>
-            {suppliers.map((supplier) => (
-              <option key={supplier.id} value={supplier.id}>
-                {formatDigits(supplier.name)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {text('Supplier invoice number')}
-          <Input
-            maxLength={100}
-            value={supplierInvoiceNumber}
-            onChange={(event) => setSupplierInvoiceNumber(event.target.value)}
-          />
-        </label>
-        <label>
-          {text('Warehouse')}
-          <select
-            required
-            value={warehouseId}
-            onChange={(event) => setWarehouseId(event.target.value)}
-          >
-            <option value="">{text('Choose warehouse')}</option>
-            {warehouses.map((warehouse) => (
-              <option key={warehouse.id} value={warehouse.id}>
-                {formatDigits(`${warehouse.branchName} · ${warehouse.name}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <h3>{text('Invoice details')}</h3>
-        {lines.map((line, index) => {
-          const item = items.find((candidate) => candidate.id === line.stockItemId);
-          return (
-            <fieldset className="inventory-opening-line" key={line.key}>
-              <legend>
-                {text('Line')} {formatDigits(String(index + 1))}
-              </legend>
-              <label>
-                {text('Stock item')}
-                <select
-                  required
-                  value={line.stockItemId}
-                  onChange={(event) => updateLine(line.key, { stockItemId: event.target.value })}
-                >
-                  <option value="">{text('Choose stock item')}</option>
-                  {items.map((candidate) => (
-                    <option key={candidate.id} value={candidate.id}>
-                      {formatDigits(`${candidate.name} (${candidate.baseUnit})`)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                {text('Stock condition')}
-                <select
-                  value={line.condition}
-                  onChange={(event) =>
-                    updateLine(line.key, { condition: event.target.value as StockCondition })
-                  }
-                >
-                  <option value="available">{text('Available')}</option>
-                  <option value="non_sellable">{text('Non-Sellable')}</option>
-                </select>
-              </label>
-              <label>
-                {text('Quantity')}
-                <Input
-                  required
-                  inputMode="decimal"
-                  value={line.quantity}
-                  onChange={(event) => updateLine(line.key, { quantity: event.target.value })}
-                />
-              </label>
-              <label>
-                {text('Unit')}
-                <select
-                  required
-                  value={line.unitCode}
-                  onChange={(event) => updateLine(line.key, { unitCode: event.target.value })}
-                >
-                  {unitOptions(item).map((option) => (
-                    <option key={option.code} value={option.code}>
-                      {formatDigits(`${option.name} (${option.code})`)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {lines.length > 1 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    setLines((current) => current.filter((candidate) => candidate.key !== line.key))
-                  }
-                >
-                  {text('Remove line')}
-                </Button>
-              )}
-            </fieldset>
-          );
-        })}
-        <div className="inventory-row-actions">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={lines.length >= 100 || !items.length}
-            onClick={() => setLines((current) => [...current, emptyLine(items)])}
-          >
-            {text('Add line')}
-          </Button>
-        </div>
-        {formError && (
-          <p className="inventory-error" role="alert">
-            {formError}
-          </p>
-        )}
-        <p className="inventory-note">
-          {text('This invoice is a draft. Saving it does not affect stock.')}
-        </p>
-        <footer className="products-dialog-footer">
-          <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
-            {text('Close')}
-          </Button>
-          <Button
-            type="submit"
-            disabled={busy || !suppliers.length || !items.length || !warehouses.length}
-          >
-            {text('Save draft')}
-          </Button>
-        </footer>
-      </form>
-    </DashboardDialog>
-  );
-}
-
-function PageControls({
-  page,
-  history,
-  next,
-  loading,
-  onChange,
-  onHistoryChange,
-  copy,
-}: {
-  page: PageState;
-  history: PageState[];
-  next: string | null;
-  loading: boolean;
-  onChange: (page: PageState) => void;
-  onHistoryChange: (history: PageState[]) => void;
-  copy: (value: string) => string;
-}) {
-  return (
-    <div className="inventory-pagination">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={loading || history.length === 0}
-        onClick={() => {
-          onHistoryChange(history.slice(0, -1));
-          onChange(history.at(-1) ?? {});
-        }}
-      >
-        {copy('Previous')}
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={loading || !next}
-        onClick={() => {
-          if (!next) return;
-          onHistoryChange([...history, page]);
-          onChange({ cursor: next });
-        }}
-      >
-        {copy('Next')}
-      </Button>
-    </div>
-  );
 }

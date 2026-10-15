@@ -5,6 +5,14 @@ const quoteSelectionSchema = z
   .object({
     groupId: z.string().uuid(),
     optionIds: z.array(z.string().uuid()).max(100),
+    optionQuantities: z
+      .array(
+        z
+          .object({ optionId: z.string().uuid(), quantity: z.number().int().min(1).max(99) })
+          .strict(),
+      )
+      .max(100)
+      .optional(),
   })
   .strict();
 const quoteSchema = z

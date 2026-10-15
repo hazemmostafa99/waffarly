@@ -15,8 +15,8 @@ import {
   type StockItemConversion,
   type StockItemUnitFields,
 } from '@waffarly/contracts';
-import { DashboardDialog } from './components/DashboardDialog.js';
-import { apiRequestPage, apiRequest } from './lib/api-client.js';
+import { DashboardDialog } from '../../components/DashboardDialog.js';
+import { apiRequestPage, apiRequest } from '../../lib/api-client.js';
 import { inventoryCopy } from './inventory-copy.js';
 
 type EditorState = { item: StockItem | null; key: string };

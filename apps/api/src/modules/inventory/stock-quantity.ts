@@ -1,8 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import type { StockBaseUnit, StockItemUnitFields } from '@waffarly/contracts';
+import { STOCK_QUANTITY_PATTERN } from '@waffarly/contracts';
 
 const SCALE = 1_000_000n;
-const MAX_SCALED = 999_999_999_999_999_999n;
+export const MAX_STOCK_QUANTITY_SCALED = 999_999_999_999_999_999n;
 const units: Record<StockBaseUnit, { dimension: string; factor: bigint }> = {
   piece: { dimension: 'count', factor: 1n },
   g: { dimension: 'mass', factor: 1n },
@@ -14,7 +15,7 @@ const units: Record<StockBaseUnit, { dimension: string; factor: bigint }> = {
 export function parseStockQuantity(value: string): bigint {
   if (typeof value !== 'string')
     throw new BadRequestException('Quantity must be a decimal string.');
-  const match = /^(0|[1-9]\d{0,11})(?:\.(\d{1,6}))?$/.exec(value);
+  const match = STOCK_QUANTITY_PATTERN.exec(value);
   if (!match) {
     throw new BadRequestException(
       'Quantity must be a decimal string with up to 12 integer and 6 fractional digits.',
@@ -62,7 +63,7 @@ export function convertToBaseQuantity(
     throw new BadRequestException('Conversion would require rounding beyond 6 decimal places.');
   }
   const result = numerator / denominator;
-  if (result > MAX_SCALED)
+  if (result > MAX_STOCK_QUANTITY_SCALED)
     throw new BadRequestException('Converted quantity exceeds the supported range.');
   return formatStockQuantity(result);
 }

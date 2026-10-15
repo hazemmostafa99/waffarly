@@ -332,3 +332,18 @@ html[dir='rtl'] .inventory-editor .products-dialog-footer {
     padding: 14px;
   }
 }
+.entity-picker {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}
+.entity-picker-pages {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: space-between;
+}
+.inventory-picker-field {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+}

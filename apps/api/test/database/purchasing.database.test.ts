@@ -208,6 +208,36 @@ it(
         /changed by another request/i,
       );
 
+      const renamedSupplier = await suppliers.update(merchant.id, actor, supplier.id, {
+        name: 'Dairy supplier renamed',
+        revision: supplier.revision,
+      });
+      assert.equal((await suppliers.get(merchant.id, supplier.id)).name, renamedSupplier.name);
+      await assert.rejects(suppliers.get(merchant.id, otherSupplier.id), /not found/i);
+      const warehousePage = await locations.listWarehouses(merchant.id, {
+        status: 'active',
+        search: 'Central',
+        limit: 1,
+      });
+      assert.equal(warehousePage.items[0]?.id, warehouse.id);
+      assert.equal(
+        (await locations.getWarehouse(merchant.id, warehouse.id)).branchName,
+        'Central branch',
+      );
+      await assert.rejects(
+        locations.getWarehouse(merchant.id, otherBranch.warehouses[0]!.id),
+        /not found/i,
+      );
+      await assert.rejects(
+        locations.listWarehouses(merchant.id, {
+          status: 'active',
+          search: '',
+          limit: 10,
+          cursor: otherBranch.warehouses[0]!.id,
+        }),
+        /cursor/i,
+      );
+
       const confirmed = await purchasing.confirmInvoice(merchant.id, actor, draft.id, {
         requestId: randomUUID(),
         revision: draft.revision,
@@ -215,6 +245,8 @@ it(
       assert.equal(confirmed.invoice.status, 'confirmed');
       assert.equal(confirmed.receipt.replayed, false);
       assert.equal(confirmed.receipt.kind, 'purchase_receipt');
+      assert.equal(confirmed.invoice.supplierName, renamedSupplier.name);
+      assert.ok(confirmed.receipt.reason.includes(renamedSupplier.name));
       assert.deepEqual(
         confirmed.receipt.movements.map((movement) => movement.baseDelta),
         ['1500', '12000'],
@@ -225,6 +257,18 @@ it(
       });
       assert.equal(replay.receipt.replayed, true);
       assert.equal(replay.receipt.id, confirmed.receipt.id);
+      // Previously confirmed rows can have a refreshed supplier snapshot but an older
+      // immutable movement reason. Retrying these historical receipts must still work.
+      await client.purchaseInvoice.update({
+        where: { id: draft.id },
+        data: { supplierName: 'Historical refreshed supplier' },
+      });
+      const historicalReplay = await purchasing.confirmInvoice(merchant.id, actor, draft.id, {
+        requestId: randomUUID(),
+        revision: draft.revision,
+      });
+      assert.equal(historicalReplay.receipt.id, confirmed.receipt.id);
+      assert.equal(historicalReplay.receipt.replayed, true);
       await assert.rejects(
         purchasing.updateInvoice(merchant.id, actor, draft.id, {
           revision: confirmed.invoice.revision,
@@ -236,7 +280,7 @@ it(
         /confirmed purchase invoices cannot be changed/i,
       );
       const archivedSupplier = await suppliers.setArchived(merchant.id, actor, supplier.id, true, {
-        revision: supplier.revision,
+        revision: renamedSupplier.revision,
       });
       assert.ok(archivedSupplier.archivedAt);
       const balances = await ledger.listBalances(merchant.id, { limit: 10, search: '' });

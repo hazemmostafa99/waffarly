@@ -1,6 +1,13 @@
 export const STOCK_BASE_UNITS = ['piece', 'g', 'kg', 'ml', 'l'] as const;
 export type StockBaseUnit = (typeof STOCK_BASE_UNITS)[number];
 
+export const STOCK_QUANTITY_PATTERN = /^(0|[1-9]\d{0,11})(?:\.(\d{1,6}))?$/;
+
+/** Transport validation only; conversion and arithmetic remain Inventory-owned. */
+export function isPositiveStockQuantity(value: string): boolean {
+  return STOCK_QUANTITY_PATTERN.test(value) && !/^0(?:\.0+)?$/.test(value);
+}
+
 export interface StockItemUnitFields {
   code: string;
   name: string;
@@ -82,6 +89,11 @@ export interface InventoryBranch {
   warehouses: InventoryWarehouse[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface InventoryWarehouseSummary extends InventoryWarehouse {
+  branchName: string;
+  branchArchivedAt: string | null;
 }
 
 export interface CreateInventoryBranchRequest {

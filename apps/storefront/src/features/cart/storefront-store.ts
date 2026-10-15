@@ -32,7 +32,12 @@ export function getCartLineKey(
   selections: CatalogProductQuoteSelection[],
 ): string {
   const normalized = selections
-    .map(({ groupId, optionIds }) => [groupId, [...optionIds].sort()])
+    .map(({ groupId, optionIds, optionQuantities }) => [
+      groupId,
+      [...optionIds]
+        .sort()
+        .map((id) => [id, optionQuantities?.find((entry) => entry.optionId === id)?.quantity ?? 1]),
+    ])
     .sort(([left], [right]) => String(left).localeCompare(String(right)));
   return JSON.stringify([productId, variantId, normalized]);
 }
@@ -53,7 +58,11 @@ export function createStorefrontStore(slug: string) {
               return {
                 cart: state.cart.map((item) =>
                   item.key === key
-                    ? { ...item, quantity: Math.min(item.quantity + line.quantity, 99), unitPriceSnapshot: line.unitPriceSnapshot }
+                    ? {
+                        ...item,
+                        quantity: Math.min(item.quantity + line.quantity, 99),
+                        unitPriceSnapshot: line.unitPriceSnapshot,
+                      }
                     : item,
                 ),
               };
@@ -62,11 +71,12 @@ export function createStorefrontStore(slug: string) {
           }),
         setCartQuantity: (key, quantity) =>
           set((state) => ({
-            cart: quantity <= 0
-              ? state.cart.filter((item) => item.key !== key)
-              : state.cart.map((item) => item.key === key
-                ? { ...item, quantity: Math.min(quantity, 99) }
-                : item),
+            cart:
+              quantity <= 0
+                ? state.cart.filter((item) => item.key !== key)
+                : state.cart.map((item) =>
+                    item.key === key ? { ...item, quantity: Math.min(quantity, 99) } : item,
+                  ),
           })),
         removeCartLine: (key) =>
           set((state) => ({ cart: state.cart.filter((item) => item.key !== key) })),
@@ -80,14 +90,24 @@ export function createStorefrontStore(slug: string) {
       }),
       {
         name: `waffarly:storefront:${slug}:v1`,
-        version: 1,
+        version: 2,
         storage: createJSONStorage<StorefrontPersistedState>(() =>
           typeof window === 'undefined'
             ? { getItem: () => null, setItem: () => undefined, removeItem: () => undefined }
             : window.localStorage,
         ),
         partialize: ({ cart, favorites }) => ({ cart, favorites }),
-        migrate: () => ({ cart: [], favorites: [] }),
+        migrate: (persisted, version) => {
+          if (version !== 1) return { cart: [], favorites: [] };
+          const state = persisted as StorefrontPersistedState;
+          return {
+            ...state,
+            cart: state.cart.map((line) => ({
+              ...line,
+              key: getCartLineKey(line.productId, line.variantId, line.selections),
+            })),
+          };
+        },
         onRehydrateStorage: () => (state) => state?.setHasHydrated(true),
       },
     ),

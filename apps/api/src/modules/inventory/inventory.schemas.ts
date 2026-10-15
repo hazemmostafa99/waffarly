@@ -1,11 +1,13 @@
-import { STOCK_BASE_UNITS, STOCK_CONDITIONS } from '@waffarly/contracts';
+import { isPositiveStockQuantity, STOCK_BASE_UNITS, STOCK_CONDITIONS } from '@waffarly/contracts';
 import { z } from 'zod';
 import { normalizeStockQuantity } from './stock-quantity.js';
 
 const quantity = z
   .string()
-  .regex(/^(0|[1-9]\d{0,11})(?:\.\d{1,6})?$/)
-  .refine((value) => !/^0(?:\.0+)?$/.test(value), 'Quantity must be greater than zero.');
+  .refine(
+    isPositiveStockQuantity,
+    'Quantity must be positive with up to 12 integer and 6 fractional digits.',
+  );
 const code = z
   .string()
   .trim()
@@ -145,9 +147,8 @@ export const createStockOpeningSchema = z
       .max(100)
       .refine(
         (lines) =>
-          new Set(
-            lines.map((line) => `${line.warehouseId}:${line.stockItemId}:${line.condition}`),
-          ).size === lines.length,
+          new Set(lines.map((line) => `${line.warehouseId}:${line.stockItemId}:${line.condition}`))
+            .size === lines.length,
         'Opening balance lines must not repeat the same item, warehouse, and condition.',
       ),
   })

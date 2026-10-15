@@ -530,6 +530,7 @@
   text-align: right;
 }
 .orders-table th {
+  position: relative;
   height: 32px;
   padding: 0 7px;
   background: #f4f7fb;
@@ -1100,4 +1101,32 @@
   .orders-action-group {
     justify-content: flex-start;
   }
+}
+
+.recipe-order-actions {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+}
+.recipe-order-actions label {
+  display: grid;
+  gap: 6px;
+}
+.recipe-order-actions input,
+.recipe-order-actions select {
+  max-width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid #d7dee6;
+  border-radius: 8px;
+}
+.orders-status-preparing {
+  color: #365da8;
+  background: #edf3ff;
+}
+.orders-status-cancelled {
+  color: #79526b;
+  background: #f7eef4;
 }

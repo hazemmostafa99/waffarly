@@ -198,6 +198,7 @@ it(
             {
               groupName: 'Extras',
               optionName: 'Cheese',
+              quantity: 1,
               priceAdjustment: '10.00',
               modifierGroupId: product.modifierGroups[0]!.modifierGroupId,
               modifierOptionId: product.modifierGroups[0]!.options[0]!.id,

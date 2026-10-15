@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createInstance } from 'i18next';
 import { I18nextProvider, initReactI18next, useTranslation } from 'react-i18next';
 import { ar } from './locales/ar.js';
@@ -82,46 +82,55 @@ export function useLocale() {
   const context = useContext(LocaleContext);
   const { t: translate } = useTranslation();
   if (!context) throw new Error('LocaleProvider is required.');
-  return {
-    ...context,
-    t: (message: LocalizedMessage, values: Record<string, unknown> = {}) => {
-      const text = typeof message === 'string' ? message : message.key;
-      const interpolation = typeof message === 'string' ? values : message.values ?? {};
-      const formattedValues = Object.fromEntries(
-        Object.entries(interpolation).map(([key, value]) => [
-          key,
-          typeof value === 'number' ? formatNumber(value, context.locale) : value,
-        ]),
-      );
-      return formatDigits(String(
-        translate(text, {
-          ...formattedValues,
-          defaultValue: text,
-        }),
-      ), context.locale);
-    },
-    errorText: (text: string) => {
-      if (context.locale === 'en') return formatDigits(text, context.locale);
-      if (ar[text]) return formatDigits(String(translate(text)), context.locale);
-      const required = text.match(/^Select the required modules for (.+)\.$/);
-      return formatDigits(String(
-        translate(
-          required
-            ? 'Select the required modules for {{name}}.'
-            : 'Please check the entered details and try again.',
-          { name: required?.[1] },
-        ),
-      ), context.locale);
-    },
-    formatDigits: (value: string | number) => formatDigits(value, context.locale),
-    formatNumber: (value: number, options?: Intl.NumberFormatOptions) =>
-      formatNumber(value, context.locale, options),
-    formatDate: (value: string, withTime = false) =>
-      new Intl.DateTimeFormat(
-        context.locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB-u-nu-latn',
-        withTime ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' },
-      ).format(new Date(value)),
-  };
+  return useMemo(
+    () => ({
+      ...context,
+      t: (message: LocalizedMessage, values: Record<string, unknown> = {}) => {
+        const text = typeof message === 'string' ? message : message.key;
+        const interpolation = typeof message === 'string' ? values : (message.values ?? {});
+        const formattedValues = Object.fromEntries(
+          Object.entries(interpolation).map(([key, value]) => [
+            key,
+            typeof value === 'number' ? formatNumber(value, context.locale) : value,
+          ]),
+        );
+        return formatDigits(
+          String(
+            translate(text, {
+              ...formattedValues,
+              defaultValue: text,
+            }),
+          ),
+          context.locale,
+        );
+      },
+      errorText: (text: string) => {
+        if (context.locale === 'en') return formatDigits(text, context.locale);
+        if (ar[text]) return formatDigits(String(translate(text)), context.locale);
+        const required = text.match(/^Select the required modules for (.+)\.$/);
+        return formatDigits(
+          String(
+            translate(
+              required
+                ? 'Select the required modules for {{name}}.'
+                : 'Please check the entered details and try again.',
+              { name: required?.[1] },
+            ),
+          ),
+          context.locale,
+        );
+      },
+      formatDigits: (value: string | number) => formatDigits(value, context.locale),
+      formatNumber: (value: number, options?: Intl.NumberFormatOptions) =>
+        formatNumber(value, context.locale, options),
+      formatDate: (value: string, withTime = false) =>
+        new Intl.DateTimeFormat(
+          context.locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB-u-nu-latn',
+          withTime ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' },
+        ).format(new Date(value)),
+    }),
+    [context, translate],
+  );
 }
 
 export function LanguageSwitcher({ className }: { className?: string }) {
@@ -130,7 +139,10 @@ export function LanguageSwitcher({ className }: { className?: string }) {
     <Button
       variant="outline"
       size="sm"
-      className={cn('border-waffarly-border bg-waffarly-surface text-waffarly-ink hover:bg-waffarly-input hover:text-waffarly-ink', className)}
+      className={cn(
+        'border-waffarly-border bg-waffarly-surface text-waffarly-ink hover:bg-waffarly-input hover:text-waffarly-ink',
+        className,
+      )}
       type="button"
       aria-label={t('Change language')}
       onClick={() => setLocale(locale === 'en' ? 'ar' : 'en')}

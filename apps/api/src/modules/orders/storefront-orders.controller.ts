@@ -22,12 +22,26 @@ import { z } from 'zod';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { parseCursorPageQuery } from '../../common/http/pagination.js';
 import { CurrentOwner, OwnerGuard } from '../auth/index.js';
+import { OrderLifecycleService } from './order-lifecycle.service.js';
+import {
+  acceptRecipeOrderSchema,
+  cancelRecipeOrderSchema,
+  startOrderPreparationSchema,
+} from './order-lifecycle.schemas.js';
 import { StorefrontOrdersService } from './storefront-orders.service.js';
 
 const orderSelectionSchema = z
   .object({
     groupId: z.string().uuid(),
     optionIds: z.array(z.string().uuid()).max(100),
+    optionQuantities: z
+      .array(
+        z
+          .object({ optionId: z.string().uuid(), quantity: z.number().int().min(1).max(99) })
+          .strict(),
+      )
+      .max(100)
+      .optional(),
   })
   .strict();
 
@@ -86,11 +100,56 @@ export class PublicStorefrontOrdersController {
 @UseGuards(OwnerGuard)
 @Controller('owner/orders')
 export class OwnerStorefrontOrdersController {
-  constructor(@Inject(StorefrontOrdersService) private readonly orders: StorefrontOrdersService) {}
+  constructor(
+    @Inject(StorefrontOrdersService) private readonly orders: StorefrontOrdersService,
+    @Inject(OrderLifecycleService) private readonly lifecycle: OrderLifecycleService,
+  ) {}
 
   @Get()
   async list(@CurrentOwner() owner: OwnerProfile, @Query() query: unknown) {
     return this.orders.listForOwner(owner.merchantId, parseCursorPageQuery(query));
+  }
+
+  @Post(':id/accept')
+  async accept(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: unknown,
+  ) {
+    return this.lifecycle.accept(
+      owner.merchantId,
+      owner.username,
+      id,
+      parseRequest(acceptRecipeOrderSchema, body),
+    );
+  }
+
+  @Post(':id/start-preparation')
+  async startPreparation(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: unknown,
+  ) {
+    return this.lifecycle.startPreparation(
+      owner.merchantId,
+      owner.username,
+      id,
+      parseRequest(startOrderPreparationSchema, body),
+    );
+  }
+
+  @Post(':id/cancel')
+  async cancel(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: unknown,
+  ) {
+    return this.lifecycle.cancel(
+      owner.merchantId,
+      owner.username,
+      id,
+      parseRequest(cancelRecipeOrderSchema, body),
+    );
   }
 
   @Patch(':id/status')

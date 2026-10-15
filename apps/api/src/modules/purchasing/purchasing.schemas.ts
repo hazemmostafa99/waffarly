@@ -1,4 +1,4 @@
-import { STOCK_CONDITIONS } from '@waffarly/contracts';
+import { isPositiveStockQuantity, STOCK_CONDITIONS } from '@waffarly/contracts';
 import { z } from 'zod';
 
 const uuid = z.string().uuid();
@@ -12,8 +12,10 @@ const unitCode = z
   .regex(/^[a-z][a-z0-9_-]{0,31}$/);
 const quantity = z
   .string()
-  .regex(/^(0|[1-9]\d{0,11})(?:\.\d{1,6})?$/)
-  .refine((value) => !/^0(?:\.0+)?$/.test(value), 'Quantity must be greater than zero.');
+  .refine(
+    isPositiveStockQuantity,
+    'Quantity must be positive with up to 12 integer and 6 fractional digits.',
+  );
 
 const supplierFields = {
   name,

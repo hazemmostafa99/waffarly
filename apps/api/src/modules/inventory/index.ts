@@ -4,6 +4,7 @@ export { InventoryLedgerService } from './inventory-ledger.service.js';
 export type { InventoryMovementBatchCommand } from './inventory-ledger.service.js';
 export {
   convertToBaseQuantity,
+  MAX_STOCK_QUANTITY_SCALED,
   formatStockQuantity,
   normalizeStockQuantity,
   parseStockQuantity,

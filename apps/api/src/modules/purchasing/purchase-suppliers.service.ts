@@ -77,6 +77,15 @@ export class PurchaseSuppliersService {
     return { items, nextCursor: rows.length > query.limit ? items.at(-1)!.id : null };
   }
 
+  async get(merchantId: string, id: string): Promise<PurchaseSupplier> {
+    const supplier = await this.prisma.purchaseSupplier.findFirst({
+      where: { merchantId, id },
+      select: fields,
+    });
+    if (!supplier) throw new NotFoundException('Supplier was not found.');
+    return toSupplier(supplier);
+  }
+
   async create(
     merchantId: string,
     actor: string,

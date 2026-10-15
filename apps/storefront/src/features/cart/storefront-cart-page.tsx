@@ -4,10 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useQueries } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Minus, Plus, ShoppingBag, Trash2, Utensils } from 'lucide-react';
-import type {
-  CatalogProductQuoteResponse,
-  PublicStorefrontCatalog,
-} from '@waffarly/contracts';
+import type { CatalogProductQuoteResponse, PublicStorefrontCatalog } from '@waffarly/contracts';
 import { Button, Card } from '@waffarly/ui';
 import { useLocale } from '@waffarly/ui';
 import { apiPost } from '../../lib/api-client';
@@ -27,7 +24,12 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
 
   const quoteQueries = useQueries({
     queries: cart.map((line) => ({
-      queryKey: storefrontQueryKeys.quote(catalog.slug, line.productId, line.variantId, line.selections),
+      queryKey: storefrontQueryKeys.quote(
+        catalog.slug,
+        line.productId,
+        line.variantId,
+        line.selections,
+      ),
       queryFn: () =>
         apiPost<CatalogProductQuoteResponse>(
           `/catalog/stores/${encodeURIComponent(catalog.slug)}/products/${encodeURIComponent(line.productId)}/quote`,
@@ -44,7 +46,11 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
 
   if (!hasHydrated) {
     return (
-      <main id="main-content" className="mx-auto min-h-[65vh] max-w-[1000px] px-4 py-12 sm:px-8" aria-label={t.cart}>
+      <main
+        id="main-content"
+        className="mx-auto min-h-[65vh] max-w-[1000px] px-4 py-12 sm:px-8"
+        aria-label={t.cart}
+      >
         <div className="h-96 animate-pulse rounded-3xl bg-white" />
       </main>
     );
@@ -52,13 +58,21 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
 
   if (cart.length === 0) {
     return (
-      <main id="main-content" className="mx-auto grid min-h-[65vh] max-w-[760px] content-center justify-items-center px-5 py-12 text-center">
+      <main
+        id="main-content"
+        className="mx-auto grid min-h-[65vh] max-w-[760px] content-center justify-items-center px-5 py-12 text-center"
+      >
         <span className="grid size-16 place-items-center rounded-3xl bg-store-primary/10 text-store-primary">
           <ShoppingBag className="size-8" aria-hidden="true" />
         </span>
-        <h1 className="mt-4 font-heading text-storefront-page font-black text-store-ink">{t.basket}</h1>
+        <h1 className="mt-4 font-heading text-storefront-page font-black text-store-ink">
+          {t.basket}
+        </h1>
         <p className="mt-2 text-storefront-body text-store-muted">{t.basketEmpty}</p>
-        <Button asChild className="mt-5 rounded-xl bg-store-accent px-5 font-bold hover:bg-store-primary-dark">
+        <Button
+          asChild
+          className="mt-5 rounded-xl bg-store-accent px-5 font-bold hover:bg-store-primary-dark"
+        >
           <Link href={`/s/${catalog.slug}/menu`}>{t.startShopping}</Link>
         </Button>
       </main>
@@ -77,12 +91,22 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
   const Arrow = locale === 'ar' ? ArrowLeft : ArrowRight;
 
   return (
-    <main id="main-content" className="mx-auto min-h-[70vh] max-w-[1160px] px-4 pb-10 pt-6 sm:px-8 sm:pt-8">
+    <main
+      id="main-content"
+      className="mx-auto min-h-[70vh] max-w-[1160px] px-4 pb-10 pt-6 sm:px-8 sm:pt-8"
+    >
       <header className="mb-5">
-        <p className="text-storefront-support font-extrabold text-store-accent">{catalog.merchantName}</p>
-        <h1 className="mt-1 font-heading text-storefront-page font-black text-store-ink">{t.basket}</h1>
+        <p className="text-storefront-support font-extrabold text-store-accent">
+          {catalog.merchantName}
+        </p>
+        <h1 className="mt-1 font-heading text-storefront-page font-black text-store-ink">
+          {t.basket}
+        </h1>
         <p className="mt-1 text-storefront-body text-store-muted">
-          {cart.reduce((count, line) => count + line.quantity, 0).toLocaleString(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG-u-nu-latn')} {t.products}
+          {cart
+            .reduce((count, line) => count + line.quantity, 0)
+            .toLocaleString(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG-u-nu-latn')}{' '}
+          {t.products}
         </p>
       </header>
 
@@ -90,45 +114,73 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
         <section className="grid gap-3" aria-label={t.cart}>
           {estimates.map(({ line, product, quote }, index) => {
             const variant = product?.variants.find((item) => item.id === line.variantId);
-            const isUnavailable = !product || (line.variantId !== null && variant?.availability !== 'available');
+            const isUnavailable =
+              !product || (line.variantId !== null && variant?.availability !== 'available');
             const image = product?.images.find((item) => item.isPrimary) ?? product?.images[0];
             const selectedOptions = product
               ? line.selections.flatMap((selection) => {
-                  const group = product.modifierGroups.find((item) => item.id === selection.groupId);
+                  const group = product.modifierGroups.find(
+                    (item) => item.id === selection.groupId,
+                  );
                   return (group?.options ?? [])
                     .filter((option) => selection.optionIds.includes(option.id))
-                    .map((option) => `${group?.name}: ${option.name}`);
+                    .map(
+                      (option) =>
+                        `${group?.name}: ${option.name} \u00d7 ${selection.optionQuantities?.find((entry) => entry.optionId === option.id)?.quantity ?? 1}`,
+                    );
                 })
               : [];
 
             return (
-              <Card key={line.key} className="grid gap-3 rounded-3xl border-store-border bg-white p-3 sm:grid-cols-[120px_minmax(0,1fr)_auto] sm:items-center sm:p-4">
+              <Card
+                key={line.key}
+                className="grid gap-3 rounded-3xl border-store-border bg-white p-3 sm:grid-cols-[120px_minmax(0,1fr)_auto] sm:items-center sm:p-4"
+              >
                 <div className="relative aspect-[1.3] overflow-hidden rounded-2xl bg-store-cream sm:aspect-square">
                   {image ? (
-                    <Image src={image.publicUrl} alt={product?.name ?? ''} fill sizes="130px" className="object-cover" unoptimized />
+                    <Image
+                      src={image.publicUrl}
+                      alt={product?.name ?? ''}
+                      fill
+                      sizes="130px"
+                      className="object-cover"
+                      unoptimized
+                    />
                   ) : (
-                    <span className="grid size-full place-items-center text-store-accent"><Utensils className="size-8" aria-hidden="true" /></span>
+                    <span className="grid size-full place-items-center text-store-accent">
+                      <Utensils className="size-8" aria-hidden="true" />
+                    </span>
                   )}
                 </div>
                 <div className="min-w-0">
-                  <h2 className="font-heading text-storefront-product font-extrabold text-store-ink">{product?.name ?? t.unavailable}</h2>
+                  <h2 className="font-heading text-storefront-product font-extrabold text-store-ink">
+                    {product?.name ?? t.unavailable}
+                  </h2>
                   {variant && (
                     <p className="mt-1 text-storefront-support text-store-muted">
                       {variant.attributes.length
-                        ? variant.attributes.map((attribute) => `${attribute.attributeName}: ${attribute.value}`).join(' · ')
+                        ? variant.attributes
+                            .map((attribute) => `${attribute.attributeName}: ${attribute.value}`)
+                            .join(' · ')
                         : variant.name}
                     </p>
                   )}
                   {selectedOptions.length > 0 && (
                     <ul className="mt-2 grid gap-1 text-storefront-caption text-store-muted">
-                      {selectedOptions.map((option) => <li key={option}>{option}</li>)}
+                      {selectedOptions.map((option) => (
+                        <li key={option}>{option}</li>
+                      ))}
                     </ul>
                   )}
                   {isUnavailable && (
-                    <p className="mt-2 text-sm font-bold text-store-error" role="alert">{t.unavailable}</p>
+                    <p className="mt-2 text-sm font-bold text-store-error" role="alert">
+                      {t.unavailable}
+                    </p>
                   )}
                   {quoteQueries[index]?.isError && !isUnavailable && (
-                    <p className="mt-2 text-xs font-bold text-store-gold-muted" role="status">{t.priceNote}</p>
+                    <p className="mt-2 text-xs font-bold text-store-gold-muted" role="status">
+                      {t.priceNote}
+                    </p>
                   )}
                   <div className="mt-3 flex items-center gap-2">
                     <button
@@ -139,7 +191,12 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
                     >
                       <Minus className="size-4" aria-hidden="true" />
                     </button>
-                    <output aria-live="polite" className="min-w-8 text-center font-bold tabular-nums">{line.quantity}</output>
+                    <output
+                      aria-live="polite"
+                      className="min-w-8 text-center font-bold tabular-nums"
+                    >
+                      {line.quantity}
+                    </output>
                     <button
                       type="button"
                       aria-label={locale === 'ar' ? 'زيادة الكمية' : 'Increase quantity'}
@@ -154,13 +211,16 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
                       onClick={() => removeLine(line.key)}
                       className="ms-auto inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm font-bold text-store-error hover:bg-store-error/5"
                     >
-                      <Trash2 className="size-4" aria-hidden="true" />{t.remove}
+                      <Trash2 className="size-4" aria-hidden="true" />
+                      {t.remove}
                     </button>
                   </div>
                 </div>
                 <div className="text-end sm:min-w-28">
                   <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
-                    <bdi dir="auto">{formatStorefrontPrice(quote?.totalPrice ?? line.unitPriceSnapshot, locale)}</bdi>
+                    <bdi dir="auto">
+                      {formatStorefrontPrice(quote?.totalPrice ?? line.unitPriceSnapshot, locale)}
+                    </bdi>
                   </strong>
                   <span className="mt-1 block text-xs text-store-muted">
                     {locale === 'ar' ? 'للقطعة' : 'per item'}
@@ -173,20 +233,34 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
 
         <aside className="lg:sticky lg:top-28">
           <Card className="rounded-3xl border-store-border bg-white p-4 shadow-[0_12px_36px_rgba(23,35,48,0.06)] sm:p-5">
-            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">{locale === 'ar' ? 'ملخص الطلب' : 'Order summary'}</h2>
+            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
+              {locale === 'ar' ? 'ملخص الطلب' : 'Order summary'}
+            </h2>
             <div className="mt-4 flex items-center justify-between gap-3 border-b border-store-border pb-3 text-storefront-support">
               <span className="text-store-muted">{t.estimatedSubtotal}</span>
               <strong className="font-heading text-storefront-price font-extrabold text-store-ink">
-                <bdi dir="auto">{formatStorefrontPrice(fromMinorUnits(estimatedMinorUnits), locale)}</bdi>
+                <bdi dir="auto">
+                  {formatStorefrontPrice(fromMinorUnits(estimatedMinorUnits), locale)}
+                </bdi>
               </strong>
             </div>
-            <p className="mt-4 rounded-xl bg-store-cream px-3 py-3 text-xs leading-5 text-store-muted">{t.priceNote}</p>
-            <Button asChild className="mt-4 h-11 w-full rounded-xl bg-store-accent font-heading font-extrabold hover:bg-store-primary-dark">
+            <p className="mt-4 rounded-xl bg-store-cream px-3 py-3 text-xs leading-5 text-store-muted">
+              {t.priceNote}
+            </p>
+            <Button
+              asChild
+              className="mt-4 h-11 w-full rounded-xl bg-store-accent font-heading font-extrabold hover:bg-store-primary-dark"
+            >
               <Link href={`/s/${catalog.slug}/checkout`}>
-                {t.checkout}<Arrow className="size-4" aria-hidden="true" />
+                {t.checkout}
+                <Arrow className="size-4" aria-hidden="true" />
               </Link>
             </Button>
-            <Button asChild variant="outline" className="mt-2 h-11 w-full rounded-xl border-store-border bg-white font-bold text-store-primary hover:bg-store-cream">
+            <Button
+              asChild
+              variant="outline"
+              className="mt-2 h-11 w-full rounded-xl border-store-border bg-white font-bold text-store-primary hover:bg-store-cream"
+            >
               <Link href={`/s/${catalog.slug}/menu`}>{t.continueShopping}</Link>
             </Button>
           </Card>

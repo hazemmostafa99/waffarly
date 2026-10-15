@@ -18,6 +18,42 @@ import { storefrontCopy } from '../../lib/storefront-copy';
 import { useStorefrontStore } from '../../providers/storefront-providers';
 import { storefrontQueryKeys } from './storefront-query-keys';
 
+function effectiveGroups(product: PublicStorefrontProduct, variantId: string) {
+  return product.modifierGroups
+    .filter(
+      (group) =>
+        group.variantOverrides?.find((override) => override.variantId === variantId)?.available !==
+        false,
+    )
+    .map((group) => ({
+      ...group,
+      options: group.options
+        .filter(
+          (option) =>
+            option.variantOverrides?.find((override) => override.variantId === variantId)
+              ?.available !== false,
+        )
+        .map((option) => ({
+          ...option,
+          priceAdjustment:
+            option.variantOverrides?.find((override) => override.variantId === variantId)
+              ?.priceAdjustment ?? option.priceAdjustment,
+        })),
+    }));
+}
+
+function defaultChoices(
+  product: PublicStorefrontProduct,
+  variantId: string,
+): Record<string, string[]> {
+  return Object.fromEntries(
+    effectiveGroups(product, variantId).map((group) => [
+      group.id,
+      group.options.filter((option) => option.defaultSelected).map((option) => option.id),
+    ]),
+  );
+}
+
 type ProductCustomizerProps = {
   product: PublicStorefrontProduct;
   slug: string;
@@ -40,24 +76,29 @@ export function StorefrontProductCustomizer({
   );
   const [quantity, setQuantity] = useState(1);
   const [wasAdded, setWasAdded] = useState(false);
+  const groups = useMemo(() => effectiveGroups(product, variantId), [product, variantId]);
   const [choices, setChoices] = useState<Record<string, string[]>>(() =>
-    Object.fromEntries(
-      product.modifierGroups.map((group) => [
-        group.id,
-        group.options.filter((option) => option.defaultSelected).map((option) => option.id),
-      ]),
-    ),
+    defaultChoices(product, variantId),
   );
+  const [optionQuantities, setOptionQuantities] = useState<Record<string, number>>({});
   const isDialog = presentation === 'dialog';
 
   const selections = useMemo<CatalogProductQuoteSelection[]>(
-    () => product.modifierGroups.map((group) => ({ groupId: group.id, optionIds: choices[group.id] ?? [] })),
-    [choices, product.modifierGroups],
+    () =>
+      groups.map((group) => ({
+        groupId: group.id,
+        optionIds: choices[group.id] ?? [],
+        optionQuantities: (choices[group.id] ?? []).map((optionId) => ({
+          optionId,
+          quantity: optionQuantities[optionId] ?? 1,
+        })),
+      })),
+    [choices, groups, optionQuantities],
   );
   const selectedVariant = product.variants.find((variant) => variant.id === variantId);
   const isSelectionValid =
     (!product.variants.length || selectedVariant?.availability === 'available') &&
-    product.modifierGroups.every((group) => {
+    groups.every((group) => {
       const count = choices[group.id]?.length ?? 0;
       return count >= group.minSelections && count <= group.maxSelections;
     });
@@ -84,7 +125,11 @@ export function StorefrontProductCustomizer({
     addCartLine({
       productId: quote.productId,
       variantId: quote.variantId,
-      selections: quote.selections.map(({ groupId, optionIds }) => ({ groupId, optionIds })),
+      selections: quote.selections.map(({ groupId, optionIds, options }) => ({
+        groupId,
+        optionIds,
+        optionQuantities: options?.map(({ optionId, quantity }) => ({ optionId, quantity })),
+      })),
       quantity: lineQuantity,
       unitPriceSnapshot: quote.totalPrice,
     });
@@ -99,8 +144,12 @@ export function StorefrontProductCustomizer({
     setChoices((current) => {
       const existing = current[groupId] ?? [];
       const next = single
-        ? checked ? [optionId] : existing.filter((id) => id !== optionId)
-        : checked ? [...existing, optionId] : existing.filter((id) => id !== optionId);
+        ? checked
+          ? [optionId]
+          : existing.filter((id) => id !== optionId)
+        : checked
+          ? [...existing, optionId]
+          : existing.filter((id) => id !== optionId);
       return { ...current, [groupId]: next };
     });
     clearQuote();
@@ -133,12 +182,16 @@ export function StorefrontProductCustomizer({
     <>
       {product.variants.length > 0 && (
         <fieldset className="grid gap-3 rounded-2xl border border-store-border bg-white p-3 sm:p-4">
-          <legend className="px-1 font-heading font-extrabold text-store-ink">{t.chooseVariant}</legend>
+          <legend className="px-1 font-heading font-extrabold text-store-ink">
+            {t.chooseVariant}
+          </legend>
           <div className="grid gap-2">
             {product.variants.map((variant) => {
               const unavailable = variant.availability !== 'available';
               const label = variant.attributes.length
-                ? variant.attributes.map((attribute) => `${attribute.attributeName}: ${attribute.value}`).join(' · ')
+                ? variant.attributes
+                    .map((attribute) => `${attribute.attributeName}: ${attribute.value}`)
+                    .join(' · ')
                 : variant.name;
               return (
                 <label
@@ -151,12 +204,21 @@ export function StorefrontProductCustomizer({
                     value={variant.id}
                     checked={variantId === variant.id}
                     disabled={unavailable || quoteMutation.isPending}
-                    onChange={() => { setVariantId(variant.id); clearQuote(); }}
+                    onChange={() => {
+                      setVariantId(variant.id);
+                      setChoices(defaultChoices(product, variant.id));
+                      setOptionQuantities({});
+                      clearQuote();
+                    }}
                     className="size-[18px] shrink-0 accent-store-primary"
                   />
                   <span className="min-w-0 flex-1 font-bold text-store-ink">{label}</span>
                   <span className="shrink-0 text-sm font-extrabold text-store-accent">
-                    {unavailable ? t.unavailable : <bdi dir="auto">{formatStorefrontPrice(variant.price, locale)}</bdi>}
+                    {unavailable ? (
+                      t.unavailable
+                    ) : (
+                      <bdi dir="auto">{formatStorefrontPrice(variant.price, locale)}</bdi>
+                    )}
                   </span>
                 </label>
               );
@@ -165,16 +227,23 @@ export function StorefrontProductCustomizer({
         </fieldset>
       )}
 
-      {product.modifierGroups.map((group) => {
+      {groups.map((group) => {
         const single = group.selectionMode === 'single';
         const selected = choices[group.id] ?? [];
         return (
-          <fieldset key={group.id} className="grid gap-3 rounded-2xl border border-store-border bg-white p-3 sm:p-4">
+          <fieldset
+            key={group.id}
+            className="grid gap-3 rounded-2xl border border-store-border bg-white p-3 sm:p-4"
+          >
             <legend className="px-1 font-heading font-extrabold text-store-ink">
               {group.name}{' '}
-              <span className="font-body text-xs font-bold text-store-muted">{group.minSelections > 0 ? t.required : t.optional}</span>
+              <span className="font-body text-xs font-bold text-store-muted">
+                {group.minSelections > 0 ? t.required : t.optional}
+              </span>
             </legend>
-            {group.description && <p className="-mt-1 text-sm leading-6 text-store-muted">{group.description}</p>}
+            {group.description && (
+              <p className="-mt-1 text-sm leading-6 text-store-muted">{group.description}</p>
+            )}
 
             <div className="grid gap-2">
               {single && group.minSelections === 0 && (
@@ -184,7 +253,10 @@ export function StorefrontProductCustomizer({
                     name={`modifier-${group.id}`}
                     checked={selected.length === 0}
                     disabled={quoteMutation.isPending}
-                    onChange={() => { setChoices((current) => ({ ...current, [group.id]: [] })); clearQuote(); }}
+                    onChange={() => {
+                      setChoices((current) => ({ ...current, [group.id]: [] }));
+                      clearQuote();
+                    }}
                     className="size-[18px] shrink-0 accent-store-primary"
                   />
                   <span className="flex-1 font-medium text-store-ink">{t.noChoice}</span>
@@ -193,26 +265,63 @@ export function StorefrontProductCustomizer({
 
               {group.options.map((option) => {
                 const checked = selected.includes(option.id);
-                const disabled = quoteMutation.isPending || (!checked && selected.length >= group.maxSelections);
+                const disabled =
+                  quoteMutation.isPending ||
+                  (!single && !checked && selected.length >= group.maxSelections);
                 const adjustment = Number(option.priceAdjustment);
                 return (
-                  <label
-                    key={option.id}
-                    className={`flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2 transition ${disabled && !checked ? 'cursor-not-allowed border-store-border bg-store-page/60 opacity-55' : 'cursor-pointer border-store-border hover:border-store-accent/60 has-[:checked]:border-store-primary has-[:checked]:bg-store-primary/5'}`}
-                  >
-                    <input
-                      type={single ? 'radio' : 'checkbox'}
-                      name={`modifier-${group.id}`}
-                      checked={checked}
-                      disabled={disabled}
-                      onChange={(event) => updateChoice(group.id, option.id, event.currentTarget.checked, single)}
-                      className="size-[18px] shrink-0 accent-store-primary"
-                    />
-                    <span className="min-w-0 flex-1 font-medium text-store-ink">{option.name}</span>
-                    <span className="shrink-0 text-sm font-bold text-store-accent">
-                      {adjustment > 0 ? '+ ' : ''}<bdi dir="auto">{formatStorefrontPrice(option.priceAdjustment, locale)}</bdi>
-                    </span>
-                  </label>
+                  <div key={option.id} className="grid gap-2">
+                    <label
+                      className={`flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2 transition ${disabled && !checked ? 'cursor-not-allowed border-store-border bg-store-page/60 opacity-55' : 'cursor-pointer border-store-border hover:border-store-accent/60 has-[:checked]:border-store-primary has-[:checked]:bg-store-primary/5'}`}
+                    >
+                      <input
+                        type={single ? 'radio' : 'checkbox'}
+                        name={`modifier-${group.id}`}
+                        checked={checked}
+                        disabled={disabled}
+                        onChange={(event) =>
+                          updateChoice(group.id, option.id, event.currentTarget.checked, single)
+                        }
+                        className="size-[18px] shrink-0 accent-store-primary"
+                      />
+                      <span className="min-w-0 flex-1 font-medium text-store-ink">
+                        {option.name}
+                      </span>
+                      <span className="shrink-0 text-sm font-bold text-store-accent">
+                        {adjustment > 0 ? '+ ' : ''}
+                        <bdi dir="auto">
+                          {formatStorefrontPrice(option.priceAdjustment, locale)}
+                        </bdi>
+                      </span>
+                    </label>
+                    {checked && (option.maxQuantity ?? 1) > 1 && (
+                      <label className="flex items-center justify-between gap-3 px-3 text-sm">
+                        <span>
+                          {option.name}: {t.quantity}
+                        </span>
+                        <input
+                          aria-label={`${option.name} ${t.quantity}`}
+                          type="number"
+                          min="1"
+                          max={option.maxQuantity}
+                          disabled={quoteMutation.isPending}
+                          value={optionQuantities[option.id] ?? 1}
+                          onChange={(event) => {
+                            const value = Number(event.target.value);
+                            setOptionQuantities((current) => ({
+                              ...current,
+                              [option.id]: Math.max(
+                                1,
+                                Math.min(option.maxQuantity ?? 1, Math.floor(value) || 1),
+                              ),
+                            }));
+                            clearQuote();
+                          }}
+                          className="w-20 rounded-lg border border-store-border p-2"
+                        />
+                      </label>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -236,17 +345,29 @@ export function StorefrontProductCustomizer({
           type="button"
           aria-label={t.decreaseQuantity}
           disabled={quantity <= 1 || quoteMutation.isPending}
-          onClick={() => { setQuantity((value) => Math.max(1, value - 1)); setWasAdded(false); }}
+          onClick={() => {
+            setQuantity((value) => Math.max(1, value - 1));
+            setWasAdded(false);
+          }}
           className="grid size-11 place-items-center rounded-full text-store-primary transition hover:bg-store-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent disabled:opacity-40"
         >
           <Minus className="size-4" aria-hidden="true" />
         </button>
-        <output className="min-w-5 text-center font-bold tabular-nums" aria-label={t.quantity} aria-live="polite">{quantity}</output>
+        <output
+          className="min-w-5 text-center font-bold tabular-nums"
+          aria-label={t.quantity}
+          aria-live="polite"
+        >
+          {quantity}
+        </output>
         <button
           type="button"
           aria-label={t.increaseQuantity}
           disabled={quantity >= 99 || quoteMutation.isPending}
-          onClick={() => { setQuantity((value) => Math.min(99, value + 1)); setWasAdded(false); }}
+          onClick={() => {
+            setQuantity((value) => Math.min(99, value + 1));
+            setWasAdded(false);
+          }}
           className="grid size-11 place-items-center rounded-full text-store-primary transition hover:bg-store-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent disabled:opacity-40"
         >
           <Plus className="size-4" aria-hidden="true" />
@@ -258,12 +379,18 @@ export function StorefrontProductCustomizer({
   const quoteFeedback = (
     <>
       {quoteMutation.isError && (
-        <p className="rounded-xl border border-store-error/20 bg-store-error/5 px-4 py-3 text-sm font-medium text-store-error" role="alert">
+        <p
+          className="rounded-xl border border-store-error/20 bg-store-error/5 px-4 py-3 text-sm font-medium text-store-error"
+          role="alert"
+        >
           {quoteMutation.error.message || t.priceError}
         </p>
       )}
       {quoteMutation.data && (
-        <div className="flex items-center justify-between rounded-2xl bg-store-primary/10 px-4 py-3 text-sm text-store-primary" role="status">
+        <div
+          className="flex items-center justify-between rounded-2xl bg-store-primary/10 px-4 py-3 text-sm text-store-primary"
+          role="status"
+        >
           <span className="font-bold">{t.currentPrice}</span>
           <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
             <bdi dir="auto">{formatStorefrontPrice(quoteMutation.data.totalPrice, locale)}</bdi>
@@ -271,9 +398,15 @@ export function StorefrontProductCustomizer({
         </div>
       )}
       {wasAdded && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-store-primary/10 px-4 py-3 text-sm text-store-primary-deep" role="status">
+        <div
+          className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-store-primary/10 px-4 py-3 text-sm text-store-primary-deep"
+          role="status"
+        >
           <span className="font-bold">{t.addedToBasket}</span>
-          <Link href={`/s/${slug}/cart`} className="font-extrabold underline underline-offset-2 focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent">
+          <Link
+            href={`/s/${slug}/cart`}
+            className="font-extrabold underline underline-offset-2 focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent"
+          >
             {t.viewBasket}
           </Link>
         </div>
@@ -331,19 +464,29 @@ export function StorefrontProductCustomizer({
     <dialog
       ref={dialogRef}
       aria-labelledby={`customizer-title-${product.id}`}
-      onCancel={(event) => { event.preventDefault(); onClose?.(); }}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose?.();
+      }}
       onClose={() => onClose?.()}
-      onClick={(event) => { if (event.target === event.currentTarget) onClose?.(); }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose?.();
+      }}
       className="fixed inset-0 m-auto max-h-[min(88vh,760px)] w-[min(100%-24px,600px)] overflow-y-auto rounded-[1.6rem] border border-store-border bg-store-page p-0 text-store-ink shadow-2xl backdrop:bg-store-ink/55"
     >
       <form onSubmit={addToBasket} className="grid gap-4 p-4 sm:p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-bold text-store-accent">{t.customize}</p>
-            <h2 id={`customizer-title-${product.id}`} className="mt-1 font-heading text-storefront-subsection font-extrabold">
+            <h2
+              id={`customizer-title-${product.id}`}
+              className="mt-1 font-heading text-storefront-subsection font-extrabold"
+            >
               {product.name}
             </h2>
-            {product.description && <p className="mt-2 text-sm leading-6 text-store-muted">{product.description}</p>}
+            {product.description && (
+              <p className="mt-2 text-sm leading-6 text-store-muted">{product.description}</p>
+            )}
           </div>
           <button
             type="button"

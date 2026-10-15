@@ -1,3 +1,4 @@
+import { CatalogQueryService } from '../../src/modules/catalog/catalog-query.service.js';
 import type { OwnerProfile } from '@waffarly/contracts';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
@@ -88,6 +89,7 @@ describe('catalog service invariants', () => {
           groupId: 'size-group',
           modifierGroupId: 'size-definition',
           optionIds: ['large'],
+          options: [{ optionId: 'large', quantity: 1, unitPriceAdjustment: '25.35' }],
           priceAdjustment: '25.35',
         },
       ],
@@ -425,4 +427,21 @@ describe('catalog service invariants', () => {
       /Every category must belong to this merchant/i,
     );
   });
+});
+
+it('keeps inventory and merchant joins out of public catalog product reads', async () => {
+  let include: Record<string, unknown> | undefined;
+  const catalog = new CatalogQueryService({
+    merchant: { findUnique: async () => ({ id: owner.merchantId }) },
+    product: {
+      findMany: async (input: { include: Record<string, unknown> }) => {
+        include = input.include;
+        return [];
+      },
+    },
+  } as never);
+  await catalog.getPublicStorefrontProducts('test-storefront');
+  assert.ok(include);
+  assert.equal('inventoryConfiguration' in include, false);
+  assert.equal('merchant' in include, false);
 });

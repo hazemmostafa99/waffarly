@@ -1,3 +1,4 @@
+import { isPositiveStockQuantity } from '@waffarly/contracts';
 import { z } from 'zod';
 import { MAX_PRODUCT_PRICE, isValidProductPrice } from '../catalog.constants.js';
 export const availability = z.enum(['available', 'unavailable']);
@@ -133,9 +134,35 @@ export const productVariantsSchema = z
     });
   });
 
+export const modifierEffectSchema = z
+  .object({
+    stockItemId: z.string().uuid(),
+    direction: z.enum(['ADD', 'REMOVE']),
+    unitCode: z.string().trim().min(1).max(32),
+    quantity: z
+      .string()
+      .refine(isPositiveStockQuantity, 'Quantity must be positive with up to 6 decimals.'),
+  })
+  .strict();
+const optionVariantSchema = z
+  .object({
+    variantId: z.string().uuid(),
+    available: z.boolean(),
+    priceAdjustment: z
+      .string()
+      .regex(/^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/)
+      .optional(),
+    effects: z.array(modifierEffectSchema).max(100).optional(),
+  })
+  .strict();
+
 export const modifierAssignmentSchema = z
   .object({
     modifierGroupId: z.string().uuid(),
+    variantOverrides: z
+      .array(z.object({ variantId: z.string().uuid(), available: z.boolean() }).strict())
+      .max(100)
+      .optional(),
     selectionMode: z.enum(['single', 'multiple']),
     minSelections: z.number().int().nonnegative(),
     maxSelections: z.number().int().positive(),
@@ -145,6 +172,9 @@ export const modifierAssignmentSchema = z
         z
           .object({
             optionId: z.string().uuid(),
+            maxQuantity: z.number().int().min(1).max(99).optional(),
+            variantOverrides: z.array(optionVariantSchema).max(100).optional(),
+            effects: z.array(modifierEffectSchema).max(100).optional(),
             priceAdjustment: z.string().regex(/^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/),
             defaultSelected: z.boolean(),
           })
@@ -204,7 +234,12 @@ export const inventoryConfigurationSchema = z
                   .object({
                     stockItemId: z.string().uuid(),
                     unitCode: z.string().trim().min(1).max(32),
-                    quantity: z.string().regex(/^(0|[1-9]\d{0,11})(?:\.\d{1,6})?$/),
+                    quantity: z
+                      .string()
+                      .refine(
+                        isPositiveStockQuantity,
+                        'Quantity must be positive with up to 6 decimals.',
+                      ),
                   })
                   .strict(),
               )

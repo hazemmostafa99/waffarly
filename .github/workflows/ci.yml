@@ -25,3 +25,47 @@ jobs:
       - run: pnpm test
       - run: pnpm build
       - run: pnpm db:validate
+
+  inventory-regressions:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: waffarly_ci
+          POSTGRES_PASSWORD: ci_test_password
+          POSTGRES_DB: waffarly
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U waffarly_ci -d waffarly"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://waffarly_ci:ci_test_password@127.0.0.1:5432/waffarly?schema=public
+      VITE_API_BASE_URL: http://127.0.0.1:4000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.11.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cp .env.example .env
+      - run: pnpm --filter @waffarly/contracts build
+      - run: pnpm --filter @waffarly/database build
+      - run: pnpm --filter @waffarly/database exec prisma migrate deploy --config ./prisma.config.ts
+      - run: pnpm --filter @waffarly/api test:catalog-db
+      - run: pnpm --filter @waffarly/api test:inventory-db
+      - run: pnpm --filter @waffarly/api test:purchasing-db
+      - run: pnpm --filter @waffarly/api test:storefront-orders-db
+      - run: pnpm --filter @waffarly/api test:activities-db
+      - run: pnpm --filter @waffarly/ui build
+      - run: pnpm --filter @waffarly/merchant-dashboard build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test --config playwright.merchant.config.ts tests/ui/merchant-inventory.spec.ts tests/ui/merchant-recipe-orders.spec.ts
+      - run: pnpm exec playwright test --config playwright.modifiers.config.ts

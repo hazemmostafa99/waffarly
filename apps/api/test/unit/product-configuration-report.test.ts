@@ -107,7 +107,7 @@ it('formats database aggregates and scopes every report query to accepted tenant
     modifierSelectionsWithoutIds: 1,
   });
   assert.ok(statements.every((sql) => sql.includes('"merchantId" = ?')));
-  assert.ok(statements.every((sql) => sql.includes('"status" = \'accepted\'')));
+  assert.ok(statements.every((sql) => sql.includes("\"status\" IN ('accepted', 'preparing')")));
   assert.ok(statements.some((sql) => sql.includes('GROUP BY')));
   assert.ok(parameters.every((values) => values[0] === 'merchant-1'));
   assert.ok(parameters.every((values) => values.some((value) => value instanceof Date)));

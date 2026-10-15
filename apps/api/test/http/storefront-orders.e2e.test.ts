@@ -10,6 +10,7 @@ import {
   OwnerStorefrontOrdersController,
   PublicStorefrontOrdersController,
 } from '../../src/modules/orders/storefront-orders.controller.js';
+import { OrderLifecycleService } from '../../src/modules/orders/order-lifecycle.service.js';
 import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
 
 const owner: OwnerProfile = {
@@ -25,6 +26,7 @@ const owner: OwnerProfile = {
 
 describe('storefront order endpoints', () => {
   let app: INestApplication;
+  let lifecycleCall: unknown;
   let authorized: boolean;
   let created: { slug: string; body: unknown } | undefined;
   let listedMerchantId: string | undefined;
@@ -33,6 +35,7 @@ describe('storefront order endpoints', () => {
 
   beforeEach(async () => {
     authorized = true;
+    lifecycleCall = undefined;
     created = undefined;
     listedMerchantId = undefined;
     listedPage = undefined;
@@ -41,6 +44,18 @@ describe('storefront order endpoints', () => {
       controllers: [PublicStorefrontOrdersController, OwnerStorefrontOrdersController],
       providers: [
         OwnerGuard,
+        {
+          provide: OrderLifecycleService,
+          useValue: Object.fromEntries(
+            ['accept', 'startPreparation', 'cancel'].map((action) => [
+              action,
+              async (merchantId: string, actor: string, orderId: string, input: unknown) => {
+                lifecycleCall = { action, merchantId, actor, orderId, input };
+                return { id: orderId };
+              },
+            ]),
+          ),
+        },
         {
           provide: AuthService,
           useValue: {
@@ -63,10 +78,7 @@ describe('storefront order endpoints', () => {
                 createdAt: '2026-10-14T10:00:00.000Z',
               };
             },
-            listForOwner: async (
-              merchantId: string,
-              page: { cursor?: string; limit: number },
-            ) => {
+            listForOwner: async (merchantId: string, page: { cursor?: string; limit: number }) => {
               listedMerchantId = merchantId;
               listedPage = page;
               return { items: [], nextCursor: null };
@@ -85,6 +97,53 @@ describe('storefront order endpoints', () => {
 
   afterEach(async () => {
     await app.close();
+  });
+
+  it('authenticates lifecycle commands and forwards the owner tenant, actor and retry key', async () => {
+    const orderId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const requestId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const branchId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+    authorized = false;
+    for (const action of ['accept', 'start-preparation', 'cancel'])
+      await request(app.getHttpServer())
+        .post(`/owner/orders/${orderId}/${action}`)
+        .send({ requestId, branchId })
+        .expect(401);
+    authorized = true;
+    await request(app.getHttpServer())
+      .post(`/owner/orders/${orderId}/accept`)
+      .send({ requestId, branchId })
+      .expect(201);
+    assert.deepEqual(lifecycleCall, {
+      action: 'accept',
+      merchantId: owner.merchantId,
+      actor: owner.username,
+      orderId,
+      input: { requestId, branchId },
+    });
+    await request(app.getHttpServer())
+      .post(`/owner/orders/${orderId}/accept`)
+      .send({ requestId })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post(`/owner/orders/${orderId}/start-preparation`)
+      .send({ requestId })
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/owner/orders/${orderId}/cancel`)
+      .send({ requestId, reason: 'Customer cancelled', restoreStock: false })
+      .expect(201);
+    assert.deepEqual(lifecycleCall, {
+      action: 'cancel',
+      merchantId: owner.merchantId,
+      actor: owner.username,
+      orderId,
+      input: { requestId, reason: 'Customer cancelled', restoreStock: false },
+    });
+    await request(app.getHttpServer())
+      .post(`/owner/orders/${orderId}/cancel`)
+      .send({ requestId, restoreStock: true })
+      .expect(400);
   });
 
   it('validates and submits a pickup order to its storefront', async () => {

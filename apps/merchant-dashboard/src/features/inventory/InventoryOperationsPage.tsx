@@ -1,3 +1,16 @@
+import {
+  loadPendingOpening,
+  loadOrCreateOpeningRequestId,
+  rotateOpeningRequestId,
+  savePendingOpening,
+  clearPendingOpening,
+} from './opening-retry.js';
+import {
+  CursorPageControls as PageControls,
+  type CursorPageState as PageState,
+} from '../../components/CursorPageControls.js';
+import { cacheStockItem, stockUnitOptions } from './stock-unit-options.js';
+import { StockItemPicker, WarehousePicker } from './components/InventoryPickers.js';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -10,17 +23,16 @@ import {
 } from '@waffarly/ui';
 import type {
   CreateStockOpeningRequest,
-  InventoryBranch,
+  InventoryWarehouseSummary,
   InventoryPolicy,
   StockBalance,
   StockCondition,
   StockItem,
-  StockItemUnitFields,
   StockMovement,
   StockMovementBatchResult,
 } from '@waffarly/contracts';
-import { DashboardDialog } from './components/DashboardDialog.js';
-import { apiRequest, apiRequestPage } from './lib/api-client.js';
+import { DashboardDialog } from '../../components/DashboardDialog.js';
+import { ApiError, apiRequest, apiRequestPage } from '../../lib/api-client.js';
 import { inventoryCopy } from './inventory-copy.js';
 
 type OpeningLineDraft = {
@@ -31,39 +43,15 @@ type OpeningLineDraft = {
   quantity: string;
   unitCode: string;
 };
-type PageState = { cursor?: string };
-const openingRequestKey = 'waffarly-opening-stock-request';
-const pendingOpeningKey = 'waffarly-opening-stock-pending';
 
-const dimensions = {
-  piece: 'count',
-  g: 'mass',
-  kg: 'mass',
-  ml: 'volume',
-  l: 'volume',
-} as const;
-
-function unitOptions(item: StockItem | undefined): Array<{ code: string; name: string }> {
-  if (!item) return [];
-  const standards = Object.keys(dimensions).filter(
-    (unit) => dimensions[unit as keyof typeof dimensions] === dimensions[item.baseUnit],
-  );
-  const packs = item.units.map((unit: StockItemUnitFields) => ({
-    code: unit.code,
-    name: unit.name,
-  }));
-  return [...standards.map((unit) => ({ code: unit, name: unit })), ...packs];
-}
-
-function emptyLine(items: StockItem[], warehouses: Array<{ id: string }>): OpeningLineDraft {
-  const item = items[0];
+function emptyLine(): OpeningLineDraft {
   return {
     key: crypto.randomUUID(),
-    warehouseId: warehouses[0]?.id ?? '',
-    stockItemId: item?.id ?? '',
+    warehouseId: '',
+    stockItemId: '',
     condition: 'available',
     quantity: '1',
-    unitCode: item ? (unitOptions(item)[0]?.code ?? item.baseUnit) : '',
+    unitCode: '',
   };
 }
 
@@ -72,7 +60,7 @@ export function InventoryOperationsPage() {
   const text = (value: string) => inventoryCopy(value, locale, t);
   const navigate = useNavigate();
   const requestId = useRef(loadOrCreateOpeningRequestId());
-  const [branches, setBranches] = useState<InventoryBranch[]>([]);
+  const [warehouseCache, setWarehouseCache] = useState<InventoryWarehouseSummary[]>([]);
   const [items, setItems] = useState<StockItem[]>([]);
   const [policy, setPolicy] = useState<InventoryPolicy | null>(null);
   const [loadError, setLoadError] = useState('');
@@ -93,88 +81,68 @@ export function InventoryOperationsPage() {
   const [movementNext, setMovementNext] = useState<string | null>(null);
   const [balancesLoading, setBalancesLoading] = useState(true);
   const [movementsLoading, setMovementsLoading] = useState(true);
-  const allWarehouses = branches.flatMap((branch) =>
-    branch.warehouses.map((warehouse) => ({ ...warehouse, branchName: branch.name })),
-  );
-  const warehouses = allWarehouses.filter((warehouse) => {
-    const branch = branches.find((candidate) => candidate.id === warehouse.branchId);
-    return !branch?.archivedAt && !warehouse.archivedAt;
-  });
-  const selectableItems = items.filter((item) => !item.archivedAt);
-  const openingWarehouses = pendingOpening ? allWarehouses : warehouses;
-  const openingItems = pendingOpening ? items : selectableItems;
+  const openingWarehouses = warehouseCache;
+  const openingItems = items;
+  function rememberWarehouse(warehouse: InventoryWarehouseSummary) {
+    setWarehouseCache((current) => [
+      ...current.filter((item) => item.id !== warehouse.id),
+      warehouse,
+    ]);
+  }
 
   useEffect(() => {
     let current = true;
     setLoadError('');
-    void Promise.all([
-      apiRequest<InventoryBranch[]>('/owner/inventory/branches?status=all&limit=100'),
-      apiRequest<StockItem[]>('/owner/inventory/items?status=all&limit=100'),
-      apiRequest<InventoryPolicy>('/owner/inventory/policy'),
-    ])
-      .then(([branchRows, itemRows, currentPolicy]) => {
+    const savedOpening = loadPendingOpening();
+    const loadReferences = async () => {
+      if (!savedOpening)
+        return { itemRows: [] as StockItem[], warehouseRows: [] as InventoryWarehouseSummary[] };
+      const [itemRows, warehouseRows] = await Promise.all([
+        Promise.all(
+          [...new Set(savedOpening.lines.map((line) => line.stockItemId))].map((id) =>
+            apiRequest<StockItem>(`/owner/inventory/items/${id}`),
+          ),
+        ),
+        Promise.all(
+          [...new Set(savedOpening.lines.map((line) => line.warehouseId))].map((id) =>
+            apiRequest<InventoryWarehouseSummary>(`/owner/inventory/warehouses/${id}`),
+          ),
+        ),
+      ]);
+      return { itemRows, warehouseRows };
+    };
+    void Promise.all([apiRequest<InventoryPolicy>('/owner/inventory/policy'), loadReferences()])
+      .then(([currentPolicy, { itemRows, warehouseRows }]) => {
         if (!current) return;
-        setBranches(branchRows);
-        setItems(itemRows);
         setPolicy(currentPolicy);
-        const savedOpening = loadPendingOpening();
-        if (
-          savedOpening &&
-          savedOpening.lines.some(
-            (line) =>
-              !itemRows.some((item) => item.id === line.stockItemId) ||
-              !branchRows.some((branch) =>
-                branch.warehouses.some((warehouse) => warehouse.id === line.warehouseId),
-              ),
-          )
-        ) {
+        if (savedOpening) {
+          setItems(itemRows);
+          setWarehouseCache(warehouseRows);
+          setPendingOpening(savedOpening);
+          setReason(savedOpening.reason);
+          setLines(savedOpening.lines.map((line) => ({ ...line, key: crypto.randomUUID() })));
+          setReviewing(true);
+        } else {
+          setLines((existing) => (existing.length ? existing : [emptyLine()]));
+        }
+      })
+      .catch((cause: unknown) => {
+        if (!current) return;
+        if (savedOpening && cause instanceof ApiError && cause.statusCode === 404) {
           clearPendingOpening();
           setPendingOpening(null);
           setReviewing(false);
           requestId.current = rotateOpeningRequestId();
           setReason('');
-          setLines([
-            emptyLine(
-              itemRows.filter((item) => !item.archivedAt),
-              branchRows.flatMap((branch) =>
-                branch.warehouses.filter(
-                  (warehouse) => !branch.archivedAt && !warehouse.archivedAt,
-                ),
-              ),
-            ),
-          ]);
+          setLines([emptyLine()]);
           setLoadError(text('Saved opening retry belongs to another merchant and was cleared.'));
-          return;
-        }
-        if (savedOpening) {
-          setPendingOpening(savedOpening);
-          setReason(savedOpening.reason);
-          setLines(savedOpening.lines.map((line) => ({ ...line, key: crypto.randomUUID() })));
-          setReviewing(true);
-          return;
-        }
-        setLines((existing) =>
-          existing.length
-            ? existing
-            : [
-                emptyLine(
-                  itemRows.filter((item) => !item.archivedAt),
-                  branchRows.flatMap((branch) =>
-                    branch.warehouses.filter(
-                      (warehouse) => !branch.archivedAt && !warehouse.archivedAt,
-                    ),
-                  ),
-                ),
-              ],
-        );
-      })
-      .catch((cause: unknown) => {
-        if (current)
+        } else {
           setLoadError(
             cause instanceof Error
               ? errorText(cause.message)
               : text('Could not load inventory operations.'),
           );
+        }
       });
     return () => {
       current = false;
@@ -300,10 +268,6 @@ export function InventoryOperationsPage() {
       previous.map((line) => {
         if (line.key !== key) return line;
         const next = { ...line, ...change };
-        if (change.stockItemId) {
-          const item = items.find((candidate) => candidate.id === change.stockItemId);
-          next.unitCode = item ? (unitOptions(item)[0]?.code ?? item.baseUnit) : '';
-        }
         return next;
       }),
     );
@@ -313,8 +277,6 @@ export function InventoryOperationsPage() {
     event.preventDefault();
     setLoadError('');
     if (
-      !warehouses.length ||
-      !selectableItems.length ||
       !reason.trim() ||
       lines.some(
         (line) => !line.warehouseId || !line.stockItemId || !line.quantity || !line.unitCode,
@@ -368,7 +330,7 @@ export function InventoryOperationsPage() {
       setPendingOpening(null);
       clearPendingOpening();
       requestId.current = rotateOpeningRequestId();
-      setLines([emptyLine(items, warehouses)]);
+      setLines([emptyLine()]);
       setBalancePage({});
       setMovementPage({});
       setBalanceHistory([]);
@@ -483,16 +445,6 @@ export function InventoryOperationsPage() {
           'Add current stock once before purchase invoices are available. Review the lines before posting; posted movements cannot be edited.',
         )}
       >
-        {!warehouses.length && (
-          <p className="inventory-note">
-            {text('Create an active branch and warehouse before entering opening stock.')}
-          </p>
-        )}
-        {!selectableItems.length && (
-          <p className="inventory-note">
-            {text('Create a stock item before entering opening stock.')}
-          </p>
-        )}
         <form className="inventory-editor" onSubmit={startReview}>
           <label>
             {text('Reason')}
@@ -508,7 +460,7 @@ export function InventoryOperationsPage() {
           </label>
           {lines.map((line, index) => {
             const selectedItem = openingItems.find((item) => item.id === line.stockItemId);
-            const options = unitOptions(selectedItem);
+            const options = stockUnitOptions(selectedItem);
             return (
               <fieldset
                 className="inventory-opening-line"
@@ -518,36 +470,35 @@ export function InventoryOperationsPage() {
                 <legend>
                   {text('Opening line')} {formatDigits(String(index + 1))}
                 </legend>
-                <label>
+                <div className="inventory-picker-field">
                   {text('Warehouse')}
-                  <select
-                    required
+                  <WarehousePicker
                     value={line.warehouseId}
-                    onChange={(event) => updateLine(line.key, { warehouseId: event.target.value })}
-                  >
-                    <option value="">{text('Choose warehouse')}</option>
-                    {openingWarehouses.map((warehouse) => (
-                      <option key={warehouse.id} value={warehouse.id}>
-                        {formatDigits(`${warehouse.branchName} · ${warehouse.name}`)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
+                    label={text('Warehouse')}
+                    disabled={Boolean(pendingOpening)}
+                    onResolve={rememberWarehouse}
+                    onSelect={(warehouse) => {
+                      if (warehouse) rememberWarehouse(warehouse);
+                      updateLine(line.key, { warehouseId: warehouse?.id ?? '' });
+                    }}
+                  />
+                </div>
+                <div className="inventory-picker-field">
                   {text('Stock item')}
-                  <select
-                    required
+                  <StockItemPicker
                     value={line.stockItemId}
-                    onChange={(event) => updateLine(line.key, { stockItemId: event.target.value })}
-                  >
-                    <option value="">{text('Choose stock item')}</option>
-                    {openingItems.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {formatDigits(`${item.name} (${item.baseUnit})`)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    label={text('Stock item')}
+                    disabled={Boolean(pendingOpening)}
+                    onResolve={(item) => setItems((current) => cacheStockItem(current, item))}
+                    onSelect={(item) => {
+                      if (item) setItems((current) => cacheStockItem(current, item));
+                      updateLine(line.key, {
+                        stockItemId: item?.id ?? '',
+                        unitCode: item?.baseUnit ?? '',
+                      });
+                    }}
+                  />
+                </div>
                 <label>
                   {text('Condition')}
                   <select
@@ -604,22 +555,12 @@ export function InventoryOperationsPage() {
             <Button
               type="button"
               variant="outline"
-              disabled={
-                Boolean(pendingOpening) ||
-                lines.length >= 100 ||
-                !selectableItems.length ||
-                !warehouses.length
-              }
-              onClick={() =>
-                setLines((previous) => [...previous, emptyLine(selectableItems, warehouses)])
-              }
+              disabled={Boolean(pendingOpening) || lines.length >= 100}
+              onClick={() => setLines((previous) => [...previous, emptyLine()])}
             >
               {text('Add line')}
             </Button>
-            <Button
-              type="submit"
-              disabled={Boolean(pendingOpening) || !selectableItems.length || !warehouses.length}
-            >
+            <Button type="submit" disabled={Boolean(pendingOpening)}>
               {text('Review opening')}
             </Button>
           </div>
@@ -700,11 +641,6 @@ export function InventoryOperationsPage() {
                 const warehouse = openingWarehouses.find(
                   (candidate) => candidate.id === line.warehouseId,
                 );
-                const branch = branches.find((candidate) =>
-                  candidate.warehouses.some(
-                    (candidateWarehouse) => candidateWarehouse.id === warehouse?.id,
-                  ),
-                );
                 return (
                   <li key={line.key}>
                     <strong>{formatDigits(item?.name ?? '')}</strong>
@@ -714,7 +650,7 @@ export function InventoryOperationsPage() {
                       )}
                     </span>
                     <small>
-                      {formatDigits(`${branch?.name ?? ''} · ${warehouse?.name ?? ''}`)}
+                      {formatDigits(`${warehouse?.branchName ?? ''} · ${warehouse?.name ?? ''}`)}
                     </small>
                   </li>
                 );
@@ -740,143 +676,4 @@ export function InventoryOperationsPage() {
       )}
     </main>
   );
-}
-
-function PageControls({
-  page,
-  history,
-  next,
-  loading,
-  onChange,
-  onHistoryChange,
-  copy,
-}: {
-  page: PageState;
-  history: PageState[];
-  next: string | null;
-  loading: boolean;
-  onChange: (page: PageState) => void;
-  onHistoryChange: (history: PageState[]) => void;
-  copy: (value: string) => string;
-}) {
-  return (
-    <div className="inventory-pagination">
-      <span>{copy('Use the page controls to browse the ledger.')}</span>
-      <div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={loading || history.length === 0}
-          onClick={() => {
-            const previous = history.at(-1);
-            onHistoryChange(history.slice(0, -1));
-            onChange(previous ?? {});
-          }}
-        >
-          {copy('Previous')}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={loading || !next}
-          onClick={() => {
-            if (!next) return;
-            onHistoryChange([...history, page]);
-            onChange({ cursor: next });
-          }}
-        >
-          {copy('Next')}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function loadPendingOpening(): CreateStockOpeningRequest | null {
-  try {
-    const value = sessionStorage.getItem(pendingOpeningKey);
-    if (!value) return null;
-    const parsed: unknown = JSON.parse(value);
-    if (
-      typeof parsed !== 'object' ||
-      parsed === null ||
-      !('requestId' in parsed) ||
-      typeof parsed.requestId !== 'string' ||
-      !('reason' in parsed) ||
-      typeof parsed.reason !== 'string' ||
-      !('lines' in parsed) ||
-      !Array.isArray(parsed.lines)
-    ) {
-      sessionStorage.removeItem(pendingOpeningKey);
-      return null;
-    }
-    const lines = parsed.lines.filter(
-      (line): line is CreateStockOpeningRequest['lines'][number] =>
-        typeof line === 'object' &&
-        line !== null &&
-        'warehouseId' in line &&
-        typeof line.warehouseId === 'string' &&
-        'stockItemId' in line &&
-        typeof line.stockItemId === 'string' &&
-        'condition' in line &&
-        (line.condition === 'available' || line.condition === 'non_sellable') &&
-        'quantity' in line &&
-        typeof line.quantity === 'string' &&
-        'unitCode' in line &&
-        typeof line.unitCode === 'string',
-    );
-    if (lines.length !== parsed.lines.length) {
-      sessionStorage.removeItem(pendingOpeningKey);
-      return null;
-    }
-    return { requestId: parsed.requestId, reason: parsed.reason, lines };
-  } catch {
-    return null;
-  }
-}
-
-function loadOrCreateOpeningRequestId(): string {
-  try {
-    const existing = sessionStorage.getItem(openingRequestKey);
-    if (
-      existing &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(existing)
-    ) {
-      return existing;
-    }
-    const created = crypto.randomUUID();
-    sessionStorage.setItem(openingRequestKey, created);
-    return created;
-  } catch {
-    return crypto.randomUUID();
-  }
-}
-
-function rotateOpeningRequestId(): string {
-  const created = crypto.randomUUID();
-  try {
-    sessionStorage.setItem(openingRequestKey, created);
-  } catch {
-    // Keep the in-memory idempotency key when storage is unavailable.
-  }
-  return created;
-}
-
-function savePendingOpening(opening: CreateStockOpeningRequest): void {
-  try {
-    sessionStorage.setItem(openingRequestKey, opening.requestId);
-    sessionStorage.setItem(pendingOpeningKey, JSON.stringify(opening));
-  } catch {
-    // The in-memory request remains stable for retries in this page session.
-  }
-}
-
-function clearPendingOpening(): void {
-  try {
-    sessionStorage.removeItem(pendingOpeningKey);
-  } catch {
-    // The server remains authoritative for request idempotency.
-  }
 }

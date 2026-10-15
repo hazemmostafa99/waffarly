@@ -108,7 +108,30 @@ export interface CatalogProductSummary {
   updatedAt: string;
 }
 
+export interface CatalogModifierEffectFields {
+  stockItemId: string;
+  direction: 'ADD' | 'REMOVE';
+  unitCode: string;
+  quantity: string;
+}
+
+export interface CatalogModifierOptionVariantFields {
+  variantId: string;
+  available: boolean;
+  priceAdjustment?: string | undefined;
+  /** Absent inherits; [] explicitly removes every default effect. */
+  effects?: CatalogModifierEffectFields[] | undefined;
+}
+
+export interface CatalogModifierGroupVariantFields {
+  variantId: string;
+  available: boolean;
+}
+
 export interface CatalogProductModifierOption {
+  maxQuantity?: number;
+  variantOverrides?: CatalogModifierOptionVariantFields[];
+  effects?: CatalogModifierEffectFields[];
   id: string;
   name: string;
   priceAdjustment: string;
@@ -117,6 +140,7 @@ export interface CatalogProductModifierOption {
 }
 
 export interface CatalogProductModifierGroup {
+  variantOverrides?: CatalogModifierGroupVariantFields[];
   /** Product-specific assignment identity used when quoting selections. */
   id: string;
   /** Shared merchant-owned modifier-group identity. */
@@ -159,6 +183,7 @@ export interface CatalogProductVariantAttributeSnapshot {
 }
 
 export interface CatalogProductModifierGroupAssignmentFields {
+  variantOverrides?: CatalogModifierGroupVariantFields[] | undefined;
   modifierGroupId: string;
   selectionMode: 'single' | 'multiple';
   minSelections: number;
@@ -166,6 +191,9 @@ export interface CatalogProductModifierGroupAssignmentFields {
   position: number;
   options: Array<{
     optionId: string;
+    maxQuantity?: number | undefined;
+    variantOverrides?: CatalogModifierOptionVariantFields[] | undefined;
+    effects?: CatalogModifierEffectFields[] | undefined;
     priceAdjustment: string;
     defaultSelected: boolean;
   }>;
@@ -205,6 +233,8 @@ export interface UpdateCatalogModifierGroupRequest {
 export interface CatalogProductQuoteSelection {
   groupId: string;
   optionIds: string[];
+  /** Optional per-ID quantities; omitted IDs mean quantity one. */
+  optionQuantities?: Array<{ optionId: string; quantity: number }> | undefined;
 }
 
 export interface CatalogProductQuoteRequest {
@@ -226,6 +256,7 @@ export interface CatalogProductQuoteResponse {
     groupId: string;
     modifierGroupId: string;
     optionIds: string[];
+    options?: Array<{ optionId: string; quantity: number; unitPriceAdjustment: string }>;
     priceAdjustment: string;
   }>;
 }
@@ -282,7 +313,20 @@ export interface CreateStorefrontOrderRequest {
   }>;
 }
 
-export type StorefrontOrderStatus = 'pending' | 'accepted' | 'rejected';
+export type StorefrontOrderStatus = 'pending' | 'accepted' | 'rejected' | 'preparing' | 'cancelled';
+
+export interface AcceptRecipeOrderRequest {
+  requestId: string;
+  branchId: string;
+}
+export interface StartOrderPreparationRequest {
+  requestId: string;
+}
+export interface CancelRecipeOrderRequest {
+  requestId: string;
+  restoreStock: boolean;
+  reason: string;
+}
 
 export interface StorefrontOrderReceipt {
   id: string;
@@ -293,6 +337,18 @@ export interface StorefrontOrderReceipt {
 }
 
 export interface StorefrontOrderSummary {
+  requiresRecipeAcceptance?: boolean;
+  inventoryLifecycle?: {
+    branchId: string | null;
+    warehouseId: string | null;
+    branchName: string | null;
+    warehouseName: string | null;
+    acceptedAt: string | null;
+    preparationStartedAt: string | null;
+    cancelledAt: string | null;
+    cancellationReason: string | null;
+    stockRestored: boolean | null;
+  };
   id: string;
   status: StorefrontOrderStatus;
   customerName: string;
@@ -315,6 +371,7 @@ export interface StorefrontOrderSummary {
     selections: Array<{
       groupName: string;
       optionName: string;
+      quantity?: number;
       modifierGroupId: string | null;
       modifierOptionId: string | null;
       priceAdjustment: string;

@@ -332,12 +332,14 @@ it(
               groupId: sizeGroup.id,
               modifierGroupId: sizeGroup.modifierGroupId,
               optionIds: [largeOption.id],
+              options: [{ optionId: largeOption.id, quantity: 1, unitPriceAdjustment: '25.35' }],
               priceAdjustment: '25.35',
             },
             {
               groupId: extrasGroup.id,
               modifierGroupId: extrasGroup.modifierGroupId,
               optionIds: [cheeseOption.id],
+              options: [{ optionId: cheeseOption.id, quantity: 1, unitPriceAdjustment: '10.10' }],
               priceAdjustment: '10.10',
             },
           ]);

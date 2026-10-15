@@ -28,6 +28,10 @@ import {
   replaceVariantsWithAttributes,
 } from './persistence/product-variants.persistence.js';
 import { replaceProductInventoryConfiguration } from './persistence/product-inventory.persistence.js';
+import {
+  replaceModifierDetails,
+  assertSavedModifierDetails,
+} from './persistence/modifier-details.persistence.js';
 import { productInclude, toProductResponse } from './product.mapper.js';
 import {
   assertInventoryConfigurationShape,
@@ -38,6 +42,7 @@ import {
   assertModifierConfigurationModes,
   assertVariants,
 } from './product.rules.js';
+import { assertPendingRecipeUnchanged } from './persistence/pending-recipe.rules.js';
 import type { ProductInput, ProductPatch } from './product.types.js';
 @Injectable()
 export class ProductService {
@@ -148,6 +153,15 @@ export class ProductService {
               input.inventoryConfiguration,
             );
           }
+          if (input.modifierGroupAssignments?.length)
+            await replaceModifierDetails(
+              transaction,
+              merchantId,
+              created.id,
+              input.modifierGroupAssignments,
+            );
+          if (input.modifierGroupAssignments?.length)
+            await assertSavedModifierDetails(transaction, merchantId, created.id);
           return transaction.product.findUniqueOrThrow({
             where: { id: created.id },
             include: productInclude,
@@ -264,6 +278,13 @@ export class ProductService {
     const product = await this.prisma
       .$transaction(
         async (transaction) => {
+          if (
+            input.variants !== undefined ||
+            input.inventoryConfiguration !== undefined ||
+            input.modifierGroupAssignments !== undefined ||
+            input.modifierGroups !== undefined
+          )
+            await assertPendingRecipeUnchanged(transaction, merchantId, id, input);
           const changed = await transaction.product.updateMany({
             where: { id, merchantId, revision },
             data: {
@@ -369,6 +390,19 @@ export class ProductService {
               input.inventoryConfiguration,
             );
           }
+          if (input.modifierGroupAssignments?.length)
+            await replaceModifierDetails(
+              transaction,
+              merchantId,
+              id,
+              input.modifierGroupAssignments,
+            );
+          if (
+            input.modifierGroupAssignments !== undefined ||
+            input.variants !== undefined ||
+            input.inventoryConfiguration !== undefined
+          )
+            await assertSavedModifierDetails(transaction, merchantId, id);
           return transaction.product.findUniqueOrThrow({ where: { id }, include: productInclude });
         },
         { isolationLevel: 'Serializable' },
@@ -393,12 +427,17 @@ export class ProductService {
     try {
       const product = await this.prisma.$transaction(
         async (transaction) => {
+          await assertPendingRecipeUnchanged(transaction, merchantId, productId, {
+            modifierGroups: [],
+          });
           const changed = await transaction.product.updateMany({
             where: { id: productId, merchantId, revision, archivedAt: null },
             data: { revision: { increment: 1 }, updatedBy: actor },
           });
           if (changed.count !== 1) throw new ConflictException('Product is missing or stale.');
           await createModifierAssignments(transaction, merchantId, productId, [assignment]);
+          await replaceModifierDetails(transaction, merchantId, productId, [assignment]);
+          await assertSavedModifierDetails(transaction, merchantId, productId);
           return transaction.product.findUniqueOrThrow({
             where: { id: productId },
             include: productInclude,
@@ -428,6 +467,9 @@ export class ProductService {
     try {
       const product = await this.prisma.$transaction(
         async (transaction) => {
+          await assertPendingRecipeUnchanged(transaction, merchantId, productId, {
+            modifierGroups: [],
+          });
           const changed = await transaction.product.updateMany({
             where: { id: productId, merchantId, revision, archivedAt: null },
             data: { revision: { increment: 1 }, updatedBy: actor },
@@ -508,7 +550,7 @@ export class ProductService {
     return { deleted: true };
   }
 
-  private async get(merchantId: string, id: string) {
+  async get(merchantId: string, id: string) {
     const product = await this.prisma.product.findFirst({
       where: { id, merchantId },
       include: productInclude,

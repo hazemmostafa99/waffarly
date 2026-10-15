@@ -181,7 +181,7 @@ it(
             requestId: randomUUID(),
             sourceType: 'verification_allow_debit',
             sourceId: randomUUID(),
-            kind: 'verification_allow_debit',
+            kind: 'adjustment' as const,
             reason: 'Verify default negative stock policy',
             movements: [
               {
@@ -199,7 +199,7 @@ it(
             requestId: randomUUID(),
             sourceType: 'verification_adjustment',
             sourceId: randomUUID(),
-            kind: 'verification_adjustment',
+            kind: 'adjustment' as const,
             reason: 'Count correction',
             movements: [
               {
@@ -334,7 +334,7 @@ it(
               requestId: randomUUID(),
               sourceType: 'verification_debit',
               sourceId: randomUUID(),
-              kind: 'verification_debit',
+              kind: 'adjustment',
               reason: 'Insufficient stock check',
               movements: [
                 {
@@ -360,7 +360,7 @@ it(
 );
 
 it(
-  'serializes concurrent first balance creation without losing increments',
+  'allows independent postings while preserving balance increments and archive safety',
   { skip: !databaseUrl },
   async () => {
     assert.ok(
@@ -412,6 +412,93 @@ it(
       const balances = await ledger.listBalances(merchant.id, { limit: 10, search: '' });
       assert.equal(balances.items.length, 1);
       assert.equal(balances.items[0]?.quantity, '3.75');
+      const secondItem = await inventory.create(merchant.id, 'inventory-concurrency-test', {
+        requestId: randomUUID(),
+        name: 'Independent item',
+        baseUnit: 'piece',
+      });
+      let release!: () => void;
+      let ready!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const posted = new Promise<void>((resolve) => {
+        ready = resolve;
+      });
+      const holding = client.$transaction(
+        async (transaction) => {
+          await ledger.postMovementBatch(transaction, merchant.id, 'inventory-concurrency-test', {
+            requestId: randomUUID(),
+            sourceType: 'concurrency_test',
+            sourceId: randomUUID(),
+            kind: 'adjustment',
+            reason: 'Hold first balance',
+            movements: [
+              {
+                warehouseId: warehouse.id,
+                stockItemId: item.id,
+                condition: 'available',
+                unitCode: 'g',
+                enteredQuantity: '1',
+                baseDelta: '1',
+              },
+            ],
+          });
+          ready();
+          await gate;
+        },
+        { timeout: 10000 },
+      );
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([posted, holding]);
+        // Same branch and warehouse, but a different balance: this must not wait
+        // for the first posting to commit.
+        await Promise.race([
+          ledger.createOpening(merchant.id, 'inventory-concurrency-test', {
+            requestId: randomUUID(),
+            reason: 'Independent opening',
+            lines: [
+              {
+                warehouseId: warehouse.id,
+                stockItemId: secondItem.id,
+                condition: 'available',
+                unitCode: 'piece',
+                quantity: '1',
+              },
+            ],
+          }),
+          new Promise<never>((_resolve, reject) => {
+            timeout = setTimeout(
+              () => reject(new Error('Independent posting was blocked by parent locks.')),
+              2000,
+            );
+          }),
+        ]);
+        await assert.rejects(
+          client.$transaction(async (transaction) => {
+            await transaction.$executeRaw`SET LOCAL lock_timeout = '100ms'`;
+            await new InventoryService(transactionPrisma(transaction)).setArchived(
+              merchant.id,
+              'inventory-concurrency-test',
+              item.id,
+              true,
+              { revision: item.revision },
+            );
+          }),
+          /lock timeout/i,
+        );
+      } finally {
+        if (timeout) clearTimeout(timeout);
+        release();
+        await holding;
+      }
+      await assert.rejects(
+        inventory.setArchived(merchant.id, 'inventory-concurrency-test', item.id, true, {
+          revision: item.revision,
+        }),
+        /non-zero stock/i,
+      );
     } finally {
       if (merchantId) {
         await client.stockMovement.deleteMany({ where: { merchantId } });

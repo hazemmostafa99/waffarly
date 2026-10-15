@@ -98,6 +98,8 @@ describe('inventory locations and ledger owner endpoints', () => {
           provide: InventoryLocationsService,
           useValue: makeStub([
             'listBranches',
+            'listWarehouses',
+            'getWarehouse',
             'getBranch',
             'createBranch',
             'updateBranch',
@@ -122,6 +124,23 @@ describe('inventory locations and ledger owner endpoints', () => {
 
   afterEach(async () => {
     await app.close();
+  });
+
+  it('authenticates warehouse lookup/detail and forwards the owner tenant', async () => {
+    await request(app.getHttpServer())
+      .get('/owner/inventory/warehouses?limit=25&status=active&search=Main')
+      .expect(200);
+    assert.equal(calls.at(-1)?.name, 'listWarehouses');
+    assert.equal(calls.at(-1)?.args[0], owner.merchantId);
+    await request(app.getHttpServer())
+      .get(`/owner/inventory/warehouses/${branch.warehouses[0]!.id}`)
+      .expect(200);
+    assert.deepEqual(calls.at(-1)?.args, [owner.merchantId, branch.warehouses[0]!.id]);
+    authorized = false;
+    await request(app.getHttpServer()).get('/owner/inventory/warehouses').expect(401);
+    await request(app.getHttpServer())
+      .get(`/owner/inventory/warehouses/${branch.warehouses[0]!.id}`)
+      .expect(401);
   });
 
   it('requires owner authentication and derives the tenant from the authenticated owner', async () => {

@@ -2,6 +2,7 @@ import type { Locale } from '@waffarly/ui';
 import { formatDigits } from '@waffarly/ui';
 
 const arabic: Record<string, string> = {
+  Cancelled: 'ملغي',
   Orders: 'الطلبات',
   'Manage and monitor all orders from different branches and channels.':
     'إدارة ومتابعة جميع الطلبات من مختلف الفروع والقنوات.',
@@ -29,10 +30,14 @@ const arabic: Record<string, string> = {
   'Loading…': 'جارٍ التحميل…',
   'Clear filters': 'مسح عوامل التصفية',
   'No storefront orders yet.': 'لا توجد طلبات من المتجر حتى الآن.',
-  'Orders could not be loaded. Please refresh and try again.': 'تعذر تحميل الطلبات. حدّث الصفحة وحاول مرة أخرى.',
-  'The order could not be updated. Please refresh and try again.': 'تعذر تحديث الطلب. حدّث الصفحة وحاول مرة أخرى.',
-  'Tracked stock remains reserved until the order is rejected.': 'يظل المخزون المتتبّع محجوزًا حتى رفض الطلب.',
-  'Reject this order? Reserved tracked stock will be returned.': 'رفض هذا الطلب؟ ستتم إعادة المخزون المحجوز.',
+  'Orders could not be loaded. Please refresh and try again.':
+    'تعذر تحميل الطلبات. حدّث الصفحة وحاول مرة أخرى.',
+  'The order could not be updated. Please refresh and try again.':
+    'تعذر تحديث الطلب. حدّث الصفحة وحاول مرة أخرى.',
+  'Tracked stock remains reserved until the order is rejected.':
+    'يظل المخزون المتتبّع محجوزًا حتى رفض الطلب.',
+  'Reject this order? Reserved tracked stock will be returned.':
+    'رفض هذا الطلب؟ ستتم إعادة المخزون المحجوز.',
   'Rejecting…': 'جارٍ الرفض…',
   'Confirm rejection': 'تأكيد الرفض',
   Cancel: 'إلغاء',
@@ -40,7 +45,8 @@ const arabic: Record<string, string> = {
   'Accepting…': 'جارٍ القبول…',
   'Accept order': 'قبول الطلب',
   'Reject order': 'رفض الطلب',
-  'This order was rejected and any reserved stock was returned.': 'تم رفض هذا الطلب وإعادة أي مخزون محجوز.',
+  'This order was rejected and any reserved stock was returned.':
+    'تم رفض هذا الطلب وإعادة أي مخزون محجوز.',
   'Order status distribution chart': 'مخطط توزيع الطلبات حسب الحالة',
   'Loading orders…': 'جارٍ تحميل الطلبات…',
   'Compared with last month': 'مقارنة بالشهر الماضي',
@@ -110,6 +116,7 @@ export function ordersCopy(
   translate: (message: string, values?: Record<string, unknown>) => string,
   values?: Record<string, unknown>,
 ) {
-  if (locale === 'ar' && !values) return formatDigits(arabic[message] ?? translate(message), locale);
+  if (locale === 'ar' && !values)
+    return formatDigits(arabic[message] ?? translate(message), locale);
   return translate(locale === 'ar' ? (arabic[message] ?? message) : message, values);
 }

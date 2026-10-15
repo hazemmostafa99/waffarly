@@ -16,6 +16,7 @@ import type {
   CreateStockOpeningRequest,
   CursorPage,
   InventoryBranch,
+  InventoryWarehouseSummary,
   InventoryPolicy,
   OwnerProfile,
   StockBalance,
@@ -62,6 +63,23 @@ export class InventoryLocationsController {
     query: InventoryBranchListQuery,
   ): Promise<CursorPage<InventoryBranch>> {
     return this.locations.listBranches(owner.merchantId, query);
+  }
+
+  @Get('warehouses')
+  listWarehouses(
+    @CurrentOwner() owner: OwnerProfile,
+    @Query(new ZodValidationPipe(listInventoryBranchesSchema, { format: 'messages' }))
+    query: InventoryBranchListQuery,
+  ): Promise<CursorPage<InventoryWarehouseSummary>> {
+    return this.locations.listWarehouses(owner.merchantId, query);
+  }
+
+  @Get('warehouses/:id')
+  getWarehouse(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<InventoryWarehouseSummary> {
+    return this.locations.getWarehouse(owner.merchantId, id);
   }
 
   @Post('branches')

@@ -32,6 +32,11 @@ export class ProductController {
     return this.products.list(owner.merchantId, parseCursorPageQuery(query));
   }
 
+  @Get(':id')
+  async get(@CurrentOwner() owner: OwnerProfile, @Param('id', new ParseUUIDPipe()) id: string) {
+    return this.products.get(owner.merchantId, id);
+  }
+
   @Post()
   async create(@CurrentOwner() owner: OwnerProfile, @Body() body: unknown) {
     const parsed = parseRequest(createSchema, body);

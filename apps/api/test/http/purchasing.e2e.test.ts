@@ -47,7 +47,7 @@ describe('purchasing owner endpoints', () => {
         {
           provide: PurchaseSuppliersService,
           useValue: Object.fromEntries(
-            ['list', 'create', 'update', 'setArchived'].map((method) => [
+            ['list', 'get', 'create', 'update', 'setArchived'].map((method) => [
               method,
               async (...args: unknown[]) => {
                 calls.push({ name: `supplier:${method}`, args });
@@ -78,6 +78,19 @@ describe('purchasing owner endpoints', () => {
 
   afterEach(async () => {
     await app.close();
+  });
+
+  it('reads a selected supplier under the authenticated owner tenant', async () => {
+    authorized = false;
+    await request(app.getHttpServer())
+      .get(`/owner/purchasing/suppliers/${supplier.id}`)
+      .expect(401);
+    assert.equal(calls.length, 0);
+    authorized = true;
+    await request(app.getHttpServer())
+      .get(`/owner/purchasing/suppliers/${supplier.id}`)
+      .expect(200);
+    assert.deepEqual(calls[0], { name: 'supplier:get', args: [owner.merchantId, supplier.id] });
   });
 
   it('requires owner authentication and scopes supplier reads to the actor merchant', async () => {

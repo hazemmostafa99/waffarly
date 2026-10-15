@@ -57,6 +57,14 @@ export class PurchasingController {
     return this.suppliers.list(owner.merchantId, query);
   }
 
+  @Get('suppliers/:id')
+  getSupplier(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<PurchaseSupplier> {
+    return this.suppliers.get(owner.merchantId, id);
+  }
+
   @Post('suppliers')
   createSupplier(
     @CurrentOwner() owner: OwnerProfile,

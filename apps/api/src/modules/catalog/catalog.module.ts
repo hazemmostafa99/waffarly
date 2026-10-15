@@ -9,6 +9,7 @@ import { ModifierGroupService } from './modifiers/modifier-group.service.js';
 import { ProductPricingService } from './pricing/product-pricing.service.js';
 import { ProductQuoteController } from './pricing/product-quote.controller.js';
 import { ProductController } from './products/product.controller.js';
+import { ProductConsumptionService } from './products/product-consumption.service.js';
 import { ProductService } from './products/product.service.js';
 @Module({
   imports: [AuthModule, InventoryModule],
@@ -23,8 +24,9 @@ import { ProductService } from './products/product.service.js';
     ModifierGroupService,
     ProductService,
     ProductPricingService,
+    ProductConsumptionService,
     CatalogQueryService,
   ],
-  exports: [ProductPricingService, CatalogQueryService],
+  exports: [ProductPricingService, ProductConsumptionService, CatalogQueryService],
 })
 export class CatalogModule {}

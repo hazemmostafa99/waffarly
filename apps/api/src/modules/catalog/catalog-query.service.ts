@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { CursorPage, PublicStorefrontCatalog } from '@waffarly/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
-import { productInclude, toProductResponse } from './products/product.mapper.js';
+import { sellableInclude, toSellableResponse } from './products/product.mapper.js';
 
 type PublicStorefrontCategory = PublicStorefrontCatalog['categories'][number];
 type PublicStorefrontProduct = PublicStorefrontCatalog['products'][number];
@@ -112,7 +112,7 @@ export class CatalogQueryService {
     });
     const hasMore = categories.length > 100;
     const items = categories.slice(0, 100);
-    return { items, nextCursor: hasMore ? items.at(-1)?.id ?? null : null };
+    return { items, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null };
   }
 
   private async listPublicProducts(
@@ -156,7 +156,7 @@ export class CatalogQueryService {
         ],
       },
       include: {
-        ...productInclude,
+        ...sellableInclude,
         categoryLinks: {
           where: { merchantId },
           include: {
@@ -180,7 +180,7 @@ export class CatalogQueryService {
     const hasMore = products.length > 40;
     const page = products.slice(0, 40);
     const items = page.map((product) => {
-      const publicProduct = toProductResponse(product);
+      const publicProduct = toSellableResponse(product);
       return {
         id: publicProduct.id,
         name: publicProduct.name,
@@ -199,7 +199,8 @@ export class CatalogQueryService {
               category.availability === 'available' &&
               category.archivedAt === null &&
               (!category.parent ||
-                (category.parent.availability === 'available' && category.parent.archivedAt === null)),
+                (category.parent.availability === 'available' &&
+                  category.parent.archivedAt === null)),
           )
           .map(({ category }) => ({ id: category.id, name: category.name })),
         modifierGroups: publicProduct.modifierGroups.map((group) => ({
@@ -222,6 +223,6 @@ export class CatalogQueryService {
       };
     });
 
-    return { items, nextCursor: hasMore ? page.at(-1)?.id ?? null : null };
+    return { items, nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null };
   }
 }

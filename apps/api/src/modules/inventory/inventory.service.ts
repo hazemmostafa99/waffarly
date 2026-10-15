@@ -181,11 +181,27 @@ export class InventoryService {
         FOR UPDATE`;
       if (locked.length !== 1) throw new NotFoundException('Stock item was not found.');
       if (archived) {
+        const cancellable = await transaction.stockMovement.findFirst({
+          where: {
+            merchantId,
+            stockItemId: id,
+            batch: { orderLinks: { some: { role: 'consumption', order: { status: 'accepted' } } } },
+          },
+          select: { id: true },
+        });
+        if (cancellable)
+          throw new ConflictException(
+            'Stock used by an order awaiting preparation cannot be archived.',
+          );
         const productUse = await transaction.productInventoryComponent.findFirst({
           where: { merchantId, stockItemId: id },
           select: { id: true },
         });
-        if (productUse) {
+        const modifierUse = await transaction.productModifierEffect.findFirst({
+          where: { merchantId, stockItemId: id },
+          select: { id: true },
+        });
+        if (productUse || modifierUse) {
           throw new ConflictException(
             'A stock item used by a product or recipe cannot be archived.',
           );

@@ -42,6 +42,13 @@ export function assertAssignmentFields(
       throw new BadRequestException('Modifier options must be unique within a group.');
     }
     optionIds.add(option.optionId);
+    if (
+      !Number.isInteger(option.maxQuantity ?? 1) ||
+      (option.maxQuantity ?? 1) < 1 ||
+      (option.maxQuantity ?? 1) > 99
+    ) {
+      throw new BadRequestException('Option quantity cap must be between 1 and 99.');
+    }
     if (!/^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(option.priceAdjustment)) {
       throw new BadRequestException('Modifier price adjustments must be non-negative EGP amounts.');
     }

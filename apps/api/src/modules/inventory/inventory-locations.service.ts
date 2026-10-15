@@ -28,6 +28,7 @@ import {
   type InventoryBranchListQuery,
 } from './inventory.schemas.js';
 
+import { getWarehouse, listWarehouses } from './locations/warehouse.queries.js';
 const branchInclude = {
   warehouses: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] },
 } satisfies Prisma.BranchInclude;
@@ -63,6 +64,14 @@ export class InventoryLocationsService {
     });
     const items = rows.slice(0, query.limit).map(toBranch);
     return { items, nextCursor: rows.length > query.limit ? items.at(-1)!.id : null };
+  }
+
+  listWarehouses(merchantId: string, input: InventoryBranchListQuery) {
+    return listWarehouses(this.prisma, merchantId, input);
+  }
+
+  getWarehouse(merchantId: string, id: string) {
+    return getWarehouse(this.prisma, merchantId, id);
   }
 
   async getBranch(merchantId: string, id: string): Promise<InventoryBranch> {
@@ -123,17 +132,17 @@ export class InventoryLocationsService {
     input: UpdateInventoryBranchRequest,
   ): Promise<InventoryBranch> {
     const parsed = parseRequest(updateInventoryBranchSchema, input);
-    const changed = await this.prisma.branch.updateMany({
-      where: { id, merchantId, revision: parsed.revision, archivedAt: null },
-      data: {
-        name: parsed.name,
-        address: parsed.address || null,
-        updatedBy: actor,
-        revision: { increment: 1 },
-      },
-    });
-    if (changed.count !== 1) await assertMutableBranch(this.prisma, merchantId, id);
     try {
+      const changed = await this.prisma.branch.updateMany({
+        where: { id, merchantId, revision: parsed.revision, archivedAt: null },
+        data: {
+          name: parsed.name,
+          address: parsed.address || null,
+          updatedBy: actor,
+          revision: { increment: 1 },
+        },
+      });
+      if (changed.count !== 1) await assertMutableBranch(this.prisma, merchantId, id);
       return await this.getBranch(merchantId, id);
     } catch (error) {
       if (isUniqueConstraintError(error)) {
@@ -162,6 +171,19 @@ export class InventoryLocationsService {
           SELECT "id" FROM "warehouses"
           WHERE "branchId" = ${id}::uuid AND "merchantId" = ${merchantId}::uuid
           ORDER BY "id" FOR UPDATE`;
+        const cancellable = await transaction.storefrontOrder.findFirst({
+          where: {
+            merchantId,
+            branchId: id,
+            status: 'accepted',
+            lines: { some: { stockHandling: 'recipe_acceptance' } },
+          },
+          select: { id: true },
+        });
+        if (cancellable)
+          throw new ConflictException(
+            'A location used by an order awaiting preparation cannot be archived.',
+          );
         const balance = await transaction.stockBalance.findFirst({
           where: { merchantId, warehouse: { branchId: id }, quantity: { not: 0 } },
           select: { id: true },
@@ -348,6 +370,19 @@ export class InventoryLocationsService {
         throw new ConflictException('Choose another default consumption warehouse first.');
       }
       if (archived) {
+        const cancellable = await transaction.storefrontOrder.findFirst({
+          where: {
+            merchantId,
+            warehouseId: warehouseId,
+            status: 'accepted',
+            lines: { some: { stockHandling: 'recipe_acceptance' } },
+          },
+          select: { id: true },
+        });
+        if (cancellable)
+          throw new ConflictException(
+            'A location used by an order awaiting preparation cannot be archived.',
+          );
         const balance = await transaction.stockBalance.findFirst({
           where: { merchantId, warehouseId, quantity: { not: 0 } },
           select: { id: true },

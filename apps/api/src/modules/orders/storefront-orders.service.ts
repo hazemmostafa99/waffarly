@@ -18,6 +18,8 @@ import { isSerializationConflict } from '../../infrastructure/database/prisma-er
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { ProductPricingService } from '../catalog/index.js';
 
+import { toReceipt, toSummary } from './order.mapper.js';
+
 const MAX_ORDER_TOTAL_CENTS = 999_999_999_999n;
 
 @Injectable()
@@ -37,7 +39,7 @@ export class StorefrontOrdersService {
     // The browser never supplies prices. Reuse the catalog quote validator for every line.
     const quotes = await Promise.all(
       input.items.map((item) =>
-        this.products.quote(item.productId, item.selections, item.variantId, slug),
+        this.products.quote(item.productId, item.selections, item.variantId, slug, item.quantity),
       ),
     );
 
@@ -71,6 +73,7 @@ export class StorefrontOrdersService {
                 name: true,
                 availability: true,
                 revision: true,
+                inventoryConfiguration: { select: { mode: true } },
                 variants: {
                   select: {
                     id: true,
@@ -124,8 +127,13 @@ export class StorefrontOrdersService {
               throw new ConflictException('A selected variant is no longer available.');
             }
 
+            const recipeHandling = product.inventoryConfiguration?.mode === 'RECIPE';
             let stockReserved = false;
-            if (variant?.stockQuantity !== null && variant?.stockQuantity !== undefined) {
+            if (
+              !recipeHandling &&
+              variant?.stockQuantity !== null &&
+              variant?.stockQuantity !== undefined
+            ) {
               const reservation = await transaction.productVariant.updateMany({
                 where: {
                   id: variant.id,
@@ -142,10 +150,19 @@ export class StorefrontOrdersService {
               stockReserved = true;
             }
 
-            const selectedOptions = new Map<string, Set<string>>(
+            const selectedOptions = new Map(
               quote.selections.map((selection) => [
                 selection.groupId,
-                new Set(selection.optionIds),
+                new Map(
+                  (
+                    selection.options ??
+                    selection.optionIds.map((optionId) => ({
+                      optionId,
+                      quantity: 1,
+                      unitPriceAdjustment: undefined,
+                    }))
+                  ).map((option) => [option.optionId, option]),
+                ),
               ]),
             );
             const selectionSnapshots = product.modifierGroups.flatMap((group) =>
@@ -156,7 +173,10 @@ export class StorefrontOrdersService {
                   modifierOptionId: option.optionId,
                   groupName: group.modifierGroup.name,
                   optionName: option.option.name,
-                  priceAdjustment: option.priceAdjustment.toString(),
+                  quantity: selectedOptions.get(group.id)!.get(option.optionId)!.quantity,
+                  priceAdjustment:
+                    selectedOptions.get(group.id)!.get(option.optionId)!.unitPriceAdjustment ??
+                    option.priceAdjustment.toString(),
                   groupPosition: group.position,
                   optionPosition: option.option.position,
                 })),
@@ -188,6 +208,7 @@ export class StorefrontOrdersService {
                 quantity: item.quantity,
                 unitPrice: formatCents(unitPriceCents),
                 lineTotal: formatCents(lineTotalCents),
+                stockHandling: recipeHandling ? 'recipe_acceptance' : 'legacy',
                 stockReserved,
                 position,
                 selections: { create: selectionSnapshots },
@@ -241,7 +262,7 @@ export class StorefrontOrdersService {
     });
     const hasMore = orders.length > page.limit;
     const items = orders.slice(0, page.limit).map(toSummary);
-    return { items, nextCursor: hasMore ? items.at(-1)?.id ?? null : null };
+    return { items, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null };
   }
 
   async updateStatus(
@@ -252,6 +273,14 @@ export class StorefrontOrdersService {
     try {
       return await this.prisma.$transaction(
         async (transaction) => {
+          if (status === 'accepted') {
+            const recipe = await transaction.storefrontOrderLine.findFirst({
+              where: { merchantId, orderId, stockHandling: 'recipe_acceptance' },
+              select: { id: true },
+            });
+            if (recipe)
+              throw new ConflictException('Recipe orders require branch-based acceptance.');
+          }
           const changed = await transaction.storefrontOrder.updateMany({
             where: { id: orderId, merchantId, status: 'pending' },
             data: { status },
@@ -307,87 +336,4 @@ export class StorefrontOrdersService {
       throw error;
     }
   }
-}
-
-function toReceipt(order: {
-  id: string;
-  status: string;
-  total: { toString(): string };
-  currency: string;
-  createdAt: Date;
-}): StorefrontOrderReceipt {
-  return {
-    id: order.id,
-    status: order.status as StorefrontOrderStatus,
-    currency: 'EGP',
-    total: formatCents(toCents(order.total.toString())),
-    createdAt: order.createdAt.toISOString(),
-  };
-}
-
-function toSummary(order: {
-  id: string;
-  status: string;
-  customerName: string;
-  customerPhone: string;
-  fulfillmentType: string;
-  deliveryAddress: string | null;
-  total: { toString(): string };
-  createdAt: Date;
-  lines: Array<{
-    id: string;
-    productName: string;
-    variantName: string | null;
-    basePrice: { toString(): string } | null;
-    modifierTotal: { toString(): string } | null;
-    quantity: number;
-    unitPrice: { toString(): string };
-    lineTotal: { toString(): string };
-    variantAttributes: Array<{
-      attributeId: string | null;
-      valueId: string | null;
-      attributeName: string;
-      attributeValue: string;
-      position: number;
-    }>;
-    selections: Array<{
-      modifierGroupId: string | null;
-      modifierOptionId: string | null;
-      groupName: string;
-      optionName: string;
-      priceAdjustment: { toString(): string };
-    }>;
-  }>;
-}): StorefrontOrderSummary {
-  return {
-    id: order.id,
-    status: order.status as StorefrontOrderStatus,
-    customerName: order.customerName,
-    customerPhone: order.customerPhone,
-    fulfillmentType: order.fulfillmentType as 'pickup' | 'delivery',
-    deliveryAddress: order.deliveryAddress,
-    currency: 'EGP',
-    total: formatCents(toCents(order.total.toString())),
-    createdAt: order.createdAt.toISOString(),
-    lines: order.lines.map((line) => ({
-      id: line.id,
-      productName: line.productName,
-      variantName: line.variantName,
-      variantAttributes: line.variantAttributes,
-      basePrice: line.basePrice ? formatCents(toCents(line.basePrice.toString())) : null,
-      modifierTotal: line.modifierTotal
-        ? formatCents(toCents(line.modifierTotal.toString()))
-        : null,
-      quantity: line.quantity,
-      unitPrice: formatCents(toCents(line.unitPrice.toString())),
-      lineTotal: formatCents(toCents(line.lineTotal.toString())),
-      selections: line.selections.map((selection) => ({
-        groupName: selection.groupName,
-        optionName: selection.optionName,
-        modifierGroupId: selection.modifierGroupId,
-        modifierOptionId: selection.modifierOptionId,
-        priceAdjustment: formatCents(toCents(selection.priceAdjustment.toString())),
-      })),
-    })),
-  };
 }

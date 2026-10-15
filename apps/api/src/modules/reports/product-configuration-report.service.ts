@@ -49,7 +49,8 @@ export class ProductConfigurationReportService {
     endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
 
     const [totalsResult, productsResult, attributesResult, modifiersResult] = await Promise.all([
-      this.measure(() => this.prisma.$queryRaw<TotalsRow[]>`
+      this.measure(
+        () => this.prisma.$queryRaw<TotalsRow[]>`
         SELECT
           COUNT(DISTINCT o."id")::bigint AS "orderCount",
           COALESCE(SUM(l."quantity"), 0)::bigint AS "totalQuantity",
@@ -90,11 +91,13 @@ export class ProductConfigurationReportService {
         JOIN "storefront_orders" o ON o."id" = l."orderId"
         WHERE l."merchantId" = ${merchantId}
           AND o."merchantId" = ${merchantId}
-          AND o."status" = 'accepted'
+          AND o."status" IN ('accepted', 'preparing')
           AND o."createdAt" >= ${start}
           AND o."createdAt" < ${endExclusive}
-      `),
-      this.measure(() => this.prisma.$queryRaw<ProductRow[]>`
+      `,
+      ),
+      this.measure(
+        () => this.prisma.$queryRaw<ProductRow[]>`
         SELECT l."productId" AS "productId", MAX(l."productName") AS "productName",
           l."variantId" AS "variantId", l."variantName" AS "variantName",
           SUM(l."quantity")::bigint AS "quantity",
@@ -103,12 +106,14 @@ export class ProductConfigurationReportService {
         JOIN "storefront_orders" o ON o."id" = l."orderId"
         WHERE l."merchantId" = ${merchantId}
           AND o."merchantId" = ${merchantId}
-          AND o."status" = 'accepted'
+          AND o."status" IN ('accepted', 'preparing')
           AND o."createdAt" >= ${start}
           AND o."createdAt" < ${endExclusive}
         GROUP BY l."productId", l."variantId", l."variantName"
-      `),
-      this.measure(() => this.prisma.$queryRaw<AttributeRow[]>`
+      `,
+      ),
+      this.measure(
+        () => this.prisma.$queryRaw<AttributeRow[]>`
         SELECT snapshot."attributeId" AS "attributeId", snapshot."valueId" AS "valueId",
           snapshot."attributeName" AS "attributeName", snapshot."attributeValue" AS "attributeValue",
           SUM(l."quantity")::bigint AS "quantity",
@@ -118,28 +123,31 @@ export class ProductConfigurationReportService {
         JOIN "storefront_orders" o ON o."id" = l."orderId"
         WHERE l."merchantId" = ${merchantId}
           AND o."merchantId" = ${merchantId}
-          AND o."status" = 'accepted'
+          AND o."status" IN ('accepted', 'preparing')
           AND o."createdAt" >= ${start}
           AND o."createdAt" < ${endExclusive}
         GROUP BY snapshot."attributeId", snapshot."valueId", snapshot."attributeName", snapshot."attributeValue"
-      `),
-      this.measure(() => this.prisma.$queryRaw<ModifierRow[]>`
+      `,
+      ),
+      this.measure(
+        () => this.prisma.$queryRaw<ModifierRow[]>`
         SELECT snapshot."modifierGroupId" AS "modifierGroupId",
           snapshot."modifierOptionId" AS "modifierOptionId",
           snapshot."groupName" AS "groupName", snapshot."optionName" AS "optionName",
-          SUM(l."quantity")::bigint AS "selectedQuantity",
-          TRUNC(SUM(snapshot."priceAdjustment" * l."quantity") * 100)::text AS "additionalRevenueCents"
+          SUM(snapshot."quantity"::bigint * l."quantity")::bigint AS "selectedQuantity",
+          TRUNC(SUM(snapshot."priceAdjustment" * snapshot."quantity" * l."quantity") * 100)::text AS "additionalRevenueCents"
         FROM "storefront_order_line_selections" snapshot
         JOIN "storefront_order_lines" l ON l."id" = snapshot."orderLineId"
         JOIN "storefront_orders" o ON o."id" = l."orderId"
         WHERE l."merchantId" = ${merchantId}
           AND o."merchantId" = ${merchantId}
-          AND o."status" = 'accepted'
+          AND o."status" IN ('accepted', 'preparing')
           AND o."createdAt" >= ${start}
           AND o."createdAt" < ${endExclusive}
         GROUP BY snapshot."modifierGroupId", snapshot."modifierOptionId",
           snapshot."groupName", snapshot."optionName"
-      `),
+      `,
+      ),
     ]);
     const totalsRows = totalsResult.value;
     const productRows = productsResult.value;
@@ -162,18 +170,24 @@ export class ProductConfigurationReportService {
 
     const totals = totalsRows[0];
     if (!totals) throw new Error('Report totals query returned no result.');
-    const products = new Map<string, {
-      productId: string;
-      productName: string;
-      quantity: bigint;
-      revenueCents: bigint;
-      variants: Map<string, {
-        variantId: string | null;
-        variantName: string | null;
+    const products = new Map<
+      string,
+      {
+        productId: string;
+        productName: string;
         quantity: bigint;
         revenueCents: bigint;
-      }>;
-    }>();
+        variants: Map<
+          string,
+          {
+            variantId: string | null;
+            variantName: string | null;
+            quantity: bigint;
+            revenueCents: bigint;
+          }
+        >;
+      }
+    >();
     for (const row of productRows) {
       let product = products.get(row.productId);
       if (!product) {
@@ -226,9 +240,10 @@ export class ProductConfigurationReportService {
             })),
         })),
       attributeValues: attributeRows
-        .sort((left, right) =>
-          left.attributeName.localeCompare(right.attributeName) ||
-          left.attributeValue.localeCompare(right.attributeValue),
+        .sort(
+          (left, right) =>
+            left.attributeName.localeCompare(right.attributeName) ||
+            left.attributeValue.localeCompare(right.attributeValue),
         )
         .map((attribute) => ({
           attributeId: attribute.attributeId,
@@ -239,8 +254,10 @@ export class ProductConfigurationReportService {
           revenue: formatCents(BigInt(attribute.revenueCents)),
         })),
       modifierOptions: modifierRows
-        .sort((left, right) =>
-          left.groupName.localeCompare(right.groupName) || left.optionName.localeCompare(right.optionName),
+        .sort(
+          (left, right) =>
+            left.groupName.localeCompare(right.groupName) ||
+            left.optionName.localeCompare(right.optionName),
         )
         .map((modifier) => ({
           modifierGroupId: modifier.modifierGroupId,

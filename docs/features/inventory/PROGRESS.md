@@ -4,9 +4,10 @@
 
 - Last audited: 2026-10-15.
 - Feature contract: [FEATURE.md](FEATURE.md).
-- Delivery state: **M4 Product/Variant DIRECT mappings, independent base recipes, exact requirement calculation, and product readiness gates implemented. M1-M3 foundations remain verified. Order consumption and modifier effects remain future slices.**
+- Delivery state: **M1-M5 implemented and hardened; M6a owner recipe acceptance/preparation/cancellation is complete. New recipes deduct at branch acceptance with safe replay/restoration. Employee branch permissions and POS remain M6b.**
 - Baseline branch/commit: `main` / `264fa1a263b1f04ada4ca3941ece18bb14b7995c`.
-- Pre-existing worktree change: `apps/storefront/next-env.d.ts`; preserved.
+- M0 pre-existing worktree change: `apps/storefront/next-env.d.ts`; preserved at that checkpoint.
+- Architecture-hardening baseline: clean worktree at `42ec842`; no unrelated changes were present when the fixes started.
 - Existing foundation: Product Builder, reusable modifiers, pricing, storefront checkout, owner order actions, and optional variant counters.
 - Remaining foundations: modifier effects, purchase returns, remaining stock operations, and order consumption.
 - M0 baseline verification: 58 API HTTP/unit tests and 2 selected PostgreSQL integration tests passed; API/contracts typechecks passed; schema validation passed; migration status reported 17 migrations up to date before M1. See the exact ledger below for M1 checks.
@@ -31,18 +32,18 @@ Keep implementation and test status separate. A baseline test pass does not make
 
 ## Repository map
 
-| Area            | Actual location / responsibility                                                                                                                                                                                                                                          |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workspace       | pnpm workspaces; `apps/api`, `apps/merchant-dashboard`, `apps/storefront`, `apps/pos`, `apps/super-admin`. Root scripts use Turbo; no Turbo commands/configuration changed in this task.                                                                                  |
-| Runtime/tooling | `.node-version`: Node 24.11.1; pnpm 10.34.5. Manifests pin NestJS 12.1.3, Prisma 7.10.0, TypeScript 5.9.3, React 19.3.0, Vite 8.3.3, Next.js 16.4.0. These are repository declarations, not independently checked latest releases.                                        |
-| Backend         | [API architecture](../../architecture/API_ARCHITECTURE.md); feature modules registered in [AppModule](../../../apps/api/src/app.module.ts).                                                                                                                               |
-| Database        | [Prisma schema](../../../packages/database/prisma/schema.prisma), [migrations](../../../packages/database/prisma/migrations), and [database scripts](../../../packages/database/package.json). PostgreSQL; generated client is package-owned.                             |
-| Contracts       | [catalog.ts](../../../packages/contracts/src/catalog.ts) and [root exports](../../../packages/contracts/src/index.ts); all frontends use `@waffarly/contracts`, not database imports.                                                                                     |
-| Merchant UI     | [routes.tsx](../../../apps/merchant-dashboard/src/routes.tsx), [ProductBuilderPage.tsx](../../../apps/merchant-dashboard/src/ProductBuilderPage.tsx), and [StorefrontOrdersPage.tsx](../../../apps/merchant-dashboard/src/StorefrontOrdersPage.tsx).                      |
-| Customer UI     | [customizer](../../../apps/storefront/src/features/catalog/storefront-product-customizer.tsx), [cart state](../../../apps/storefront/src/features/cart/storefront-store.ts), and [checkout](../../../apps/storefront/src/features/checkout/storefront-checkout-page.tsx). |
-| POS             | [POSScreen.tsx](../../../apps/pos/src/POSScreen.tsx) is a preparation screen. [Login.tsx](../../../apps/pos/src/Login.tsx) calls `/auth/pos/*`; corresponding API auth routes do not exist.                                                                               |
-| Test layout     | API `test/http`, `test/unit`, `test/database`; browser tests under root `tests/ui`. Default API tests exclude database suites.                                                                                                                                            |
-| CI              | [.github/workflows/ci.yml](../../../.github/workflows/ci.yml): Node 24, install, generate, lint/format/typecheck/test/build/validate. No PostgreSQL service or dedicated database suite is configured in this workflow.                                                   |
+| Area            | Actual location / responsibility                                                                                                                                                                                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace       | pnpm workspaces; `apps/api`, `apps/merchant-dashboard`, `apps/storefront`, `apps/pos`, `apps/super-admin`. Root scripts use Turbo; no Turbo commands/configuration changed in this task.                                                                                              |
+| Runtime/tooling | `.node-version`: Node 24.11.1; pnpm 10.34.5. Manifests pin NestJS 12.1.3, Prisma 7.10.0, TypeScript 5.9.3, React 19.3.0, Vite 8.3.3, Next.js 16.4.0. These are repository declarations, not independently checked latest releases.                                                    |
+| Backend         | [API architecture](../../architecture/API_ARCHITECTURE.md); feature modules registered in [AppModule](../../../apps/api/src/app.module.ts).                                                                                                                                           |
+| Database        | [Prisma schema](../../../packages/database/prisma/schema.prisma), [migrations](../../../packages/database/prisma/migrations), and [database scripts](../../../packages/database/package.json). PostgreSQL; generated client is package-owned.                                         |
+| Contracts       | [catalog.ts](../../../packages/contracts/src/catalog.ts) and [root exports](../../../packages/contracts/src/index.ts); all frontends use `@waffarly/contracts`, not database imports.                                                                                                 |
+| Merchant UI     | [routes.tsx](../../../apps/merchant-dashboard/src/routes.tsx), [ProductBuilderPage.tsx](../../../apps/merchant-dashboard/src/features/catalog/product-builder/ProductBuilderPage.tsx), and [StorefrontOrdersPage.tsx](../../../apps/merchant-dashboard/src/StorefrontOrdersPage.tsx). |
+| Customer UI     | [customizer](../../../apps/storefront/src/features/catalog/storefront-product-customizer.tsx), [cart state](../../../apps/storefront/src/features/cart/storefront-store.ts), and [checkout](../../../apps/storefront/src/features/checkout/storefront-checkout-page.tsx).             |
+| POS             | [POSScreen.tsx](../../../apps/pos/src/POSScreen.tsx) is a preparation screen. [Login.tsx](../../../apps/pos/src/Login.tsx) calls `/auth/pos/*`; corresponding API auth routes do not exist.                                                                                           |
+| Test layout     | API `test/http`, `test/unit`, `test/database`; browser tests under root `tests/ui`. Default API tests exclude database suites.                                                                                                                                                        |
+| CI              | [.github/workflows/ci.yml](../../../.github/workflows/ci.yml): Node 24, install, generate, lint/format/typecheck/test/build/validate. No PostgreSQL service or dedicated database suite is configured in this workflow.                                                               |
 
 ## Audit evidence index
 
@@ -96,9 +97,9 @@ Keep implementation and test status separate. A baseline test pass does not make
 
 ### E07 — M0 UI baseline versus prototype screens
 
-- At M0, [ProductBuilderPage.tsx](../../../apps/merchant-dashboard/src/ProductBuilderPage.tsx) provided a real API-backed simple/variant flow, reusable modifier attachment/creation, optional stock/SKU/barcode, attributes, and review, but no item picker, recipe rows, inventory mode, quantity caps, or warehouse controls. M1 adds a separate stock-item management page; Product/Recipe pickers are still absent.
+- At M0, [ProductBuilderPage.tsx](../../../apps/merchant-dashboard/src/features/catalog/product-builder/ProductBuilderPage.tsx) provided a real API-backed simple/variant flow, reusable modifier attachment/creation, optional stock/SKU/barcode, attributes, and review, but no item picker, recipe rows, inventory mode, quantity caps, or warehouse controls. M1 adds a separate stock-item management page; Product/Recipe pickers are still absent.
 - [StorefrontOrdersPage.tsx](../../../apps/merchant-dashboard/src/StorefrontOrdersPage.tsx): real owner inbox and accept/reject. [api-client.ts](../../../apps/merchant-dashboard/src/lib/api-client.ts) flattens cursor pages for legacy array consumers; that is not a missing response conversion.
-- At M0, [BranchesPage.tsx](../../../apps/merchant-dashboard/src/BranchesPage.tsx) used a hardcoded array/local state; M2 replaces it with persisted branch/warehouse management. Other mock order screens do not supersede the routed storefront inbox.
+- At M0, [BranchesPage.tsx](../../../apps/merchant-dashboard/src/features/inventory/BranchesPage.tsx) used a hardcoded array/local state; M2 replaces it with persisted branch/warehouse management. Other mock order screens do not supersede the routed storefront inbox.
 - Storefront customizer/cart/checkout use quote/selection contracts; options are unique IDs, with no independent option quantities. POS has no product or sale workflow.
 - Result: M1–M3 deliver owner inventory and purchase screens; branch-specific POS behavior remains MISSING. Source inspection does not establish visual/accessibility acceptance.
 
@@ -190,7 +191,7 @@ Owner-managed, tenant-safe Stock Items with exact base/pack conversions, API-bac
 - [x] Cover tenant isolation, invalid/incompatible/inexact conversions, idempotent retries, stale edits, pack additions, archive/restore, and exact fractional conversions.
 - [x] Validate and apply the migration to the configured local database; run API HTTP/unit regressions and the inventory DB test with rollback fixtures.
 
-Delivered paths include `packages/database/prisma/schema.prisma`, `packages/database/prisma/migrations/20261015160000_stock_item_registry/`, `packages/contracts/src/inventory.ts`, `apps/api/src/modules/inventory/`, `apps/merchant-dashboard/src/StockItemsPage.tsx`, and focused API tests.
+Delivered paths include `packages/database/prisma/schema.prisma`, `packages/database/prisma/migrations/20261015160000_stock_item_registry/`, `packages/contracts/src/inventory.ts`, `apps/api/src/modules/inventory/`, `apps/merchant-dashboard/src/features/inventory/StockItemsPage.tsx`, and focused API tests.
 
 Migration: additive and applied as migration 18 to the configured local development database. No backfill or data reset was performed. Do not infer mappings from product names, SKU, or existing nullable variant counters.
 
@@ -242,36 +243,131 @@ Dependencies: M1 for configuration; M2/M3 before live consumption. IC-D04 and IC
 
 Exit: validated configurations produce inspectable ingredient requirements. M4 does not change the order stock event or post inventory movements for sales.
 
-### M5 — Modifier quantities, availability, overrides, and effects — NOT STARTED
+### M5 — Modifier quantities, availability, overrides, and effects — COMPLETE
 
 Dependencies: M4; IC-D03/D07; retain the current assigned-definition edit restriction unless deliberately changed.
 
-- [ ] Extend product assignments for per-option caps and variant group/option availability.
-- [ ] Decide effective default/variant price precedence while preserving existing per-product prices.
-- [ ] Add default and variant multi-item recipe effects using the agreed override/negative-total rules.
-- [ ] Evolve selection contracts compatibly: old selected IDs mean quantity 1; defaults and duplicate handling cannot bypass bounds.
-- [ ] Extend quotes, order quantity/price snapshots, and SQL report aggregation for repeated selections.
-- [ ] Update Merchant Builder and Storefront customizer/cart/checkout using shared contracts and re-quote behavior.
-- [ ] Test two distinct selections at quantities 3 and 2, caps, unavailable defaults, foreign IDs, multi-item effects, and effective override pricing.
+#### Accepted decisions and implementation - 2026-10-15
+
+The user accepted IC-D03 and IC-D07 before implementation:
+
+- Product-assignment prices remain defaults; variant option prices take precedence.
+  No shared-library default price is introduced. Selected quantity multiplies the
+  effective price.
+- Variant effect lists replace the entire default list. Missing lists inherit;
+  explicit empty lists disable all effects. Effects are allowed only for RECIPE.
+  Final negative ingredient requirements are rejected after aggregation.
+- Unavailable default options are ignored for their variant. Saved available
+  groups must have enough available distinct options to satisfy their minimum.
+  An unavailable group is omitted from that variant's selections.
+
+Implementation extends existing Catalog ownership and transaction boundaries:
+
+- Additive migration `20261015210000_modifier_quantities_variants_effects` adds
+  normalized variant restrictions, price overrides, recipe effects, option caps,
+  and immutable order selection quantities. Compound merchant/product references
+  constrain override/effect ownership. Existing caps and snapshot quantities
+  default to one. No prices, availability, or legacy reservation flags are backfilled.
+- `pricing/modifier-selections.ts` normalizes quantities and rejects duplicate or
+  unselected metadata. `products/persistence/modifier-details.persistence.ts`
+  persists overrides/effects and checks the complete saved variant/mode state.
+  Referenced active Stock Items are locked in order against archival; unit
+  conversions reuse Inventory arithmetic. Assigned shared-definition editing stays
+  restricted, and retained assignment/variant identities remain stable.
+- Quote selections retain `optionIds` and optionally accept `optionQuantities`
+  containing `{ optionId, quantity }`. Unspecified selected IDs mean one. Quantities
+  and caps are whole numbers from 1 to 99; group bounds count distinct options.
+  Quote responses add resolved `options` with quantity and effective unit price.
+- Orders snapshot those resolved quantities/prices under the existing product
+  revision check. SQL reports multiply option quantity by line quantity exactly
+  once. Recipe requirements aggregate signed effects before rejecting negatives,
+  scale both quantities, and remain calculations without new stock movements.
+- Merchant Builder keeps override controls inside the extracted Options tab,
+  mounts ingredient pickers only when their disclosure opens, and reuses bounded
+  Stock Item selection. Storefront filters groups/options by variant, resets
+  defaults on variant changes, re-quotes quantities, and distinguishes cart lines
+  by quantities. Persisted version-one carts migrate their keys while retaining
+  favorites and quantity-one selections.
+
+- [x] Extend product assignments for per-option caps and variant group/option availability.
+- [x] Decide effective default/variant price precedence while preserving existing per-product prices.
+- [x] Add default and variant multi-item recipe effects using the agreed override/negative-total rules.
+- [x] Evolve selection contracts compatibly: old selected IDs mean quantity 1; defaults and duplicate handling cannot bypass bounds.
+- [x] Extend quotes, order quantity/price snapshots, and SQL report aggregation for repeated selections.
+- [x] Update Merchant Builder and Storefront customizer/cart/checkout using shared contracts and re-quote behavior.
+- [x] Test two distinct selections at quantities 3 and 2, caps, unavailable defaults, foreign IDs, multi-item effects, and effective override pricing.
 
 Exit: pricing and requirements use the same validated configuration without conflating price changes and stock changes.
 
-### M6 — Restaurant acceptance and cancellation integration — NOT STARTED
+### M6 - Restaurant acceptance and cancellation integration - PARTIAL
 
-Dependencies: M2–M5 and IC-D06/D08/D11. This is the highest-risk transition; the existing owner inbox is reusable, but cashier/branch/POS foundations are not yet present.
+#### M6a - Owner-managed recipe lifecycle - COMPLETE
 
-- [ ] Finalize routing, staff/cashier actor scope, kitchen-start event, permitted transitions, shortages, mixed-order behavior, and retry UX.
-- [ ] Produce reviewed cutover/backfill handling for old `stockReserved` lines, nullable counters, and pending orders. Do not double-deduct.
-- [ ] Resolve waiting-order recipe/configuration changes without introducing a deferred recipe snapshot implicitly.
-- [ ] Persist acceptance, source uniqueness, deductions, and attribution atomically from the branch default warehouse.
-- [ ] Implement explicit preparation start and block restaurant cancellation afterward.
-- [ ] Implement eligible pre-preparation cancellation with authorized restore/no-restore decision and reversal of actual movements once.
-- [ ] Add POS incoming-order view and persisted reload/reconnect with shared backend commands; retain compatible owner behavior.
-- [ ] Test independent concurrent cashiers, acceptance replay, warehouse failures, shared ingredients across lines, insufficient stock, rollback, and legacy coexistence.
+The user accepted delivery through the owner dashboard first, followed later by
+staff permissions and POS. IC-D06/IC-D08 are settled for this owner slice; IC-D11
+cashier/branch permissions remain a separate follow-up.
 
-Likely areas: Orders service/controller/contracts/schema/history, auth/Branch scope, Inventory/Consumption public APIs, POS, owner inbox, and database/browser suites.
+Accepted behavior and delivered implementation:
 
-Exit: a branch-authorized restaurant order has one accepted stock effect, correct preparation gating, and auditable cancellation semantics.
+- New configured RECIPE order lines record `recipe_acceptance`; pre-existing
+  lines default to `legacy`, and new DIRECT/unconfigured lines stay on that
+  existing path. Recipe lines do not reserve or consult variant counters; DIRECT
+  reservations and pending rejection remain unchanged. No historical order is
+  inferred from today's product mode, and no historical stock is deducted again.
+- An owner chooses an active same-tenant branch at acceptance. Its active default
+  consumption warehouse is required. Catalog calculates frozen recipe requirements
+  from saved variant/option identities and quantities. Inventory applies the
+  merchant's accepted Allow/Prevent Negative policy to Available balances.
+- Acceptance, every consumption batch, source uniqueness, and the actor's action
+  record commit in one serializable transaction. Requirements shared across lines
+  are aggregated exactly; more than 100 ingredients use bounded ledger chunks
+  within that same transaction. Order/action locks and persisted request IDs
+  prevent concurrent or repeated commands from double-deducting.
+- While new recipe orders are pending, Catalog blocks recipe/mode changes,
+  modifier consumption or selection-rule changes, assignment detach/reattach, and
+  variant identity-set changes. Price/name/metadata edits with unchanged consumption
+  remain allowed. Price and selection snapshots stay immutable. No recipe version
+  or recipe snapshot was introduced.
+- Owner preparation start records `preparing`; cancellation is prohibited
+  afterward. Before preparation, cancellation requires a reason and an explicit
+  restore/no-restore choice. Restoration reverses recorded consumption to its
+  original warehouse, even after recipes or defaults change. On mixed orders,
+  restoring also releases their original tracked DIRECT reservations. If such a
+  variant was removed or made untracked after acceptance, restoration fails
+  atomically instead of silently losing the reserved quantity.
+- Consumed Stock Items and bound locations cannot be archived while accepted
+  recipe orders await preparation. Action replays return their stored result,
+  even after a later transition, without consulting changed recipes/warehouses.
+  The UI then refreshes current order state. Uncertain browser requests survive
+  reload and retry the original payload/request ID.
+- Orders exposes owner-only `POST /owner/orders/:id/accept`,
+  `POST /owner/orders/:id/start-preparation`, and
+  `POST /owner/orders/:id/cancel`. The old status route still handles legacy
+  acceptance and pending rejection, but cannot bypass branch acceptance for a
+  new recipe order. Controllers obtain merchant/actor from OwnerGuard.
+- Owner actions render outside the horizontally scrolling table. The table's
+  screen-reader heading is positioned within its header cell so RTL mobile layout
+  does not gain an off-screen scroll area that breaks pointer hit testing.
+  Reports include accepted/preparing orders and exclude cancelled orders; the
+  dashboard also excludes cancelled value and labels both new states.
+
+- [x] Record owner scope, routing, stock policy, mixed orders, and retry behavior.
+- [x] Add an explicit cutover marker without rewriting old reservations.
+- [x] Freeze pending consumption configuration while retaining metadata edits.
+- [x] Atomically accept and deduct from the branch default warehouse.
+- [x] Persist preparation start and gate cancellation.
+- [x] Record reasoned restore/no-restore cancellation and reverse actual movements.
+- [x] Verify tenant boundaries, shortages, replay, concurrent acceptance, and legacy coexistence.
+
+#### M6b - Staff permissions and POS - NOT STARTED
+
+- [ ] Define and implement employee permissions and authorized branch assignments.
+- [ ] Add cashier/POS incoming orders, persisted reload/reconnect, and shared commands.
+- [ ] Verify independent authorized cashiers and denial outside assigned branches.
+
+Full M6 exit remains a branch-authorized cashier workflow. M6a completes only the
+owner scope explicitly accepted by the user; it does not establish cashier rights,
+POS selling, delivery dispatch, payments/refunds, or order completion.
 
 ### M7 — Remaining stock operations and returns — NOT STARTED
 
@@ -297,7 +393,7 @@ Exit: only the operations actually delivered and verified are marked complete. B
 - [ ] Update architecture/feature/root decision references where behavior actually changes; retain historical progress records.
 - [ ] Record exact files, commands, results, migration state, and commit/diff for every slice.
 
-## Verification ledger — M0 audit and M1–M4 implementation
+## Verification ledger — M0 audit and M1–M6a implementation
 
 Commands ran from the repository root unless a workspace filter selected a package. The Turbo configuration was not changed. Node 24.11.1 was selected through a process-local PATH for builds, tests, and database checks. Test/build/schema engine subprocesses required execution outside the restricted sandbox after `spawn EPERM` in the sandbox. M1–M4 additive migrations were applied to the configured local development database; no reset or seed was run.
 
@@ -341,7 +437,18 @@ Commands ran from the repository root unless a workspace filter selected a packa
 | 2026-10-15 | `pnpm --filter @waffarly/api test:inventory-db` and `test:storefront-orders-db` under Node 24, outside sandbox                         | **PASS: 4 tests, 0 failures.**                                                          | Rechecks inventory ledger/reference behavior and existing legacy order reservation/restoration.                                  |
 | 2026-10-15 | `pnpm --filter @waffarly/database db:check` under Node 24, outside sandbox                                                             | **PASS: Prisma valid; 22 migrations up to date.**                                       | Migration 22 `20261015200000_product_inventory_recipes` applied to local PostgreSQL.                                             |
 
-Not run: browser/keyboard/RTL/LTR acceptance, unrelated database suites, CI, disposable empty/legacy migration rehearsals, and production rollout checks. M2 has a concurrent first-balance test and M3 has concurrent invoice confirmation coverage, but no live cashier/order flow exists. Product/Variant mappings and base recipes are implemented; order consumption, modifier effects, purchase returns, and recipe/order integration remain unimplemented. The corrective M2 migration moves newly added snapshot columns to their intended movement table; it did not remove ledger data.
+Architecture hardening verification (2026-10-15, Node 24.11.1):
+
+| Check                                                                                                                  | Actual result                                        | Scope / limit                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| API lint, typecheck, build, and `test`                                                                                 | PASS; 86 HTTP/unit tests, no failures/skips          | Includes owner-scoped detail routes, public query shape, command direction, and branch-name conflicts.                                                                                                                                           |
+| `test:catalog-db`, `test:inventory-db`, `test:purchasing-db`, `test:storefront-orders-db`, `test:activities-db`        | PASS; 11 PostgreSQL tests                            | Includes renamed-supplier receipt replay, historical receipt reasons, disjoint simultaneous posting, same-balance increments, archive exclusion, and foreign references. Fixtures use rollback or isolated IDs with cleanup, depending on suite. |
+| Contracts and shared UI lint/typecheck/build; dashboard lint/typecheck/build                                           | PASS                                                 | Shared UI lint retains one existing Fast Refresh warning in `badge.tsx`; dashboard build retains its bundle-size advisory (762.07 kB JS).                                                                                                        |
+| `pnpm exec playwright test --config playwright.merchant.config.ts tests/ui/merchant-inventory.spec.ts --reporter=line` | PASS; 12 desktop/mobile cases                        | Mocked HTTP responses; English/Arabic RTL inventory editing, bounded search/paging, selected unit preservation, metadata-only edits, purchase drafts, opening retries, and new opening entry across a language switch.                           |
+| Scoped changed-file Prettier and `git diff --check`                                                                    | PASS                                                 | Full repository Prettier check still reports existing formatting debt in untouched files. No bulk formatting cleanup was included.                                                                                                               |
+| CI configuration                                                                                                       | PostgreSQL and merchant browser regression job added | Job is independent of existing `verify` so unrelated format failures do not suppress feature regressions. GitHub Actions execution itself was not run locally.                                                                                   |
+
+Not run: comprehensive keyboard/accessibility acceptance, unrelated UI suites, GitHub Actions execution, legacy upgrade/drift rehearsals, load benchmarks, and production rollout checks. The focused browser scenarios above passed. All 22 existing migrations and all 11 database tests also passed on a fresh disposable database under Node 24; that database was dropped afterward. No schema change or new migration was needed for hardening. Product/Variant mappings and base recipes are implemented; order consumption, modifier effects, purchase returns, and recipe/order integration remain unimplemented. Legacy catalog overview/category/media consumers still use the compatibility client's full-page draining behavior; inventory/purchasing selectors and Product detail editing no longer do.
 
 Document formatting, relative-link checks, source-ID coverage, and final diff/worktree checks are recorded in the documentation handoff entry below.
 
@@ -397,7 +504,7 @@ Document formatting, relative-link checks, source-ID coverage, and final diff/wo
 ### 2026-10-15 — M4 Product mappings and base recipes
 
 - Scope: configure direct Stock Item requirements or independent base recipes for each simple Product or sellable Variant, calculate exact ingredient requirements, and gate new Product availability on complete setup.
-- Status before → after: M4 NOT STARTED → COMPLETE for mapping, recipe persistence/calculation, and publish readiness. Order consumption and modifier effects remain future slices.
+- Status before → after: M4 NOT STARTED → COMPLETE for mapping, recipe persistence/calculation, and publish readiness. M5 and order consumption were excluded from that slice.
 - Decisions: restaurants default to RECIPE and other activities to DIRECT; Product may override its activity default and Variants inherit the Product mode. Existing Products remain available without inferred setup; new Products may be saved unavailable and need full configuration before publication.
 - Changed paths: Product inventory contracts, schema and additive migration, Catalog persistence/calculator/service/mapper, inventory archive protection, Product Builder inventory tab, API architecture, feature/progress documents, and API unit/PostgreSQL tests.
 - Transaction and tenant boundary: Product, Variants, targets, and components save atomically. Every target and Stock Item is checked under the authenticated merchant; referenced Stock Items cannot be archived.
@@ -406,6 +513,111 @@ Document formatting, relative-link checks, source-ID coverage, and final diff/wo
 - Verification: API lint/typecheck/build and 76 HTTP/unit tests pass; Catalog DB tests pass (4); inventory and storefront-order DB tests pass (4); Prisma validates and all 22 migrations are current; contracts build/typecheck and dashboard lint/typecheck/build pass. Dashboard bundle-size advisory remains; browser/keyboard/RTL acceptance remains open.
 - Compatibility: no order deduction or reservation behavior was changed. Existing products keep their prior availability; the new inventory configuration is not yet consumed by order acceptance.
 - Next slice: M5 modifier quantities, availability, overrides, and effects; design recipe consumption and pending recipe-order behavior before M6.
+
+### 2026-10-15 — M1-M4 architecture hardening
+
+- Scope: implement the approved review fixes before extending the inventory feature. M5 and M6 were not started.
+- Correctness: receipt confirmation uses one supplier snapshot and reuses historical batch reasons on retry; duplicate branch rename returns Conflict; movement kinds and credit/debit directions are validated before persistence.
+- Data access: owner-scoped Product, supplier, and warehouse detail routes support selected-identity hydration. Public sellable queries omit recipe/merchant joins. Inventory/purchasing selectors fetch bounded searchable pages and never drain entire directories.
+- Concurrency: opening references are fetched in a batch; branch/item/warehouse parent locks use ordered shared batches while balance mutations retain atomic predicates/upserts. PostgreSQL regressions prove independent postings complete while another balance is held, concurrent increments are retained, and item archival remains excluded.
+- Structure: Inventory ledger posting, query, persistence, mapping, and rules have separate files; Purchasing reference persistence/rules/mapping are extracted. Merchant Inventory, Purchasing, and Product Builder live in feature folders, with extracted tabs/editors and shared cursor/picker components.
+- Reuse: compatible unit choices and selected-item caches are shared; contracts define quantity transport validation, Inventory owns exact conversion/arithmetic and its range limit. Locale helpers retain stable identities so loading effects do not restart on every render.
+- Compatibility: Product availability/default decisions, negative-stock policy, and order reservation/deduction behavior are retained. Existing configured products can save metadata without loading their inventory picker. Historical receipts remain retryable. No schema change or new migration was needed; no reset, seed command, or migration was applied to the development database. The existing migration chain was rehearsed in disposable databases and each database was dropped afterward.
+- Verification: 86 API HTTP/unit tests, 11 database tests, and 12 browser cases pass; affected lint/typecheck/build checks pass. See the ledger above for warnings and checks not run.
+- CI: dedicated PostgreSQL/merchant regression job, independent of existing repository-wide verification; browser tests use a merchant-only Playwright configuration.
+- Remaining limits: legacy catalog overview/library pagination, representative query/throughput profiling, comprehensive keyboard acceptance, and repository-wide formatting debt. These are not evidence of production capacity or a completed order-consumption cutover.
+
+### 2026-10-15 - M5 modifier quantities, variant overrides, and recipe effects
+
+- Status: COMPLETE. IC-D03/IC-D07 were accepted before implementation; the M5
+  checklist above records the delivered behavior and ownership.
+- Compatibility: legacy selected IDs mean quantity one; historical order selection
+  quantities and existing option caps default to one. Existing product prices and
+  optional variant stock reservation/rejection behavior remain unchanged.
+  Version-one persisted carts retain favorites and migrate to quantity-aware keys.
+- API verification: lint, typecheck, build, and all **89 HTTP/unit tests pass**.
+  Coverage includes HTTP quantity validation, duplicate/unselected metadata,
+  quantities 3 and 2 as two distinct options, caps, variant pricing/availability,
+  exact signed aggregation, zero consumption, and negative-final rejection.
+- PostgreSQL verification: all **12 tests pass** across Catalog (5), Inventory (3),
+  Purchasing (2), Orders (1), and Activities (1). M5 checks real override persistence,
+  exact kg/g effects, whole-list replacement and empty overrides, foreign Stock
+  Items/variant IDs, impossible selection bounds, RECIPE-only effects, effect-only
+  item archival protection, immutable order prices/quantities, and report totals.
+- Migration: all **23 migrations** applied successfully on a disposable empty
+  PostgreSQL database before the suites ran. That database was removed afterward.
+  The new additive M5 migration was then applied successfully to the configured
+  local development database. No database reset or seed was run. An initial
+  disposable rehearsal caught a migration ordering mistake; the new migration
+  was renamed to follow M4 before its successful application anywhere persistent.
+- Frontend verification: Merchant and Storefront lint/typecheck/build pass;
+  Contracts lint/typecheck/build pass. **18 browser cases pass**: 14 Merchant
+  inventory cases and 4 Storefront modifier/cart cases across desktop/mobile.
+  They cover cap/price/empty-effect editing, quantity-aware cart identities,
+  reload, variant restrictions, and legacy-cart migration preserving favorites.
+  Browser fixtures mock API responses; PostgreSQL tests independently verify
+  authoritative calculations and snapshots. Comprehensive accessibility/RTL
+  acceptance and throughput profiling remain outside these checks.
+- CI: the existing isolated regression job runs the expanded Catalog database
+  suite and both Merchant inventory and Storefront modifier browser configurations.
+  The Storefront configuration uses a local read-only catalog fixture for SSR.
+- Remaining limits: the existing Merchant bundle-size advisory, older catalog
+  directory consumers, and repository-wide formatting debt remain. No new recipe
+  snapshot/version policy, restaurant acceptance deduction, POS behavior, or stock
+  ledger sale movement was introduced. M6 remains NOT STARTED and requires its
+  pending-order/cashier/warehouse/cutover decisions before implementation.
+
+### 2026-10-15 - M6a owner-managed recipe lifecycle
+
+- Scope/status: owner slice COMPLETE under the accepted routing, pending recipe
+  freeze, preparation gate, and explicit restoration rules. M6 remains PARTIAL;
+  staff permissions and POS are deferred to M6b by the user's decision.
+- Ownership: Orders orchestrates serializable actions and stock reversal; Catalog
+  owns frozen-selection requirement calculation and pending-configuration guards;
+  Inventory owns exact posting and negative-stock policy. Orders now imports the
+  public Inventory module. Catalog does not import Orders application code.
+- Migration: `20261015220000_recipe_order_lifecycle` adds explicit line handling,
+  routing/preparation/cancellation fields, attributable idempotent actions, and
+  linked stock batches, and extends the existing order-status check constraint.
+  All **24 migrations** and **14 database tests** passed on a disposable PostgreSQL
+  database, which was removed afterward. The verified migration was then applied
+  successfully to the configured development database. No reset or seed was run.
+- Database coverage: Orders (3), Catalog (5), Inventory (3), Purchasing (2),
+  Activities (1). New checks cover legacy recipe orders without inferred deduction,
+  tracked DIRECT lines alongside recipe lines, recipe counters at zero, missing or
+  foreign branches, metadata/price edits while consumption stays frozen, recipe
+  and selection edit rejection, actor attribution, immutable action replay after
+  later transitions, original-movement restoration after recipe edits, no-restock
+  cancellation, preparation gating, Allow/Prevent Negative policies, concurrent
+  acceptance, shared-ingredient shortages, and rollback without partial acceptance.
+- API verification: lint/typecheck/build pass; **92 HTTP/unit tests pass**. Owner
+  authorization/actor forwarding and restoration direction/condition are covered.
+- Frontend verification: Merchant lint/typecheck/build, Storefront typecheck/build,
+  Contracts lint/typecheck/build, and shared UI build/lint pass. Shared UI retains
+  its existing Fast Refresh warning; Merchant retains its bundle-size advisory.
+  **26 scoped browser cases pass**: Merchant inventory (14), owner lifecycle and
+  status dashboard regression (8), Storefront modifiers/cart (4), on desktop/mobile.
+  Lifecycle cases include Arabic interaction, a strict configured-viewport width
+  check, explicit restoration choice, and a lost reply followed by reload/replay.
+- Broadened browser check: **4 cases in `merchant-dashboard.spec.ts` fail** because
+  the legacy suite expects fixed demo totals/five demo orders and does not provide
+  the live orders API fixture. These checks are not reported as passing. The new
+  targeted dashboard test uses real response shapes and verifies preparing/cancelled
+  labels and exclusion of cancelled value. No baseline execution of the legacy
+  suite was performed before these changes. Updating its older demo expectations
+  remains outside this owner-lifecycle slice.
+- Browser debugging also corrected an explicit stock-decision accessible label
+  and a screen-reader heading escaping the table's positioned context in RTL.
+  Owner commands now sit outside the horizontal table. Intermediate failed runs
+  and overlapping test artifacts are excluded from the final scoped pass counts.
+- CI: the isolated regression job runs the expanded Orders database script and
+  owner lifecycle browser cases alongside existing inventory/modifier cases.
+  Remote GitHub Actions execution was not performed.
+- Limits: no cashier authorization, staff branch grants, POS incoming-order UI,
+  financial refund, dispatch, or completion workflow is claimed. Recipe versions
+  remain deferred. Representative load testing, comprehensive accessibility
+  acceptance, legacy dashboard fixture updates, and repository formatting debt
+  remain separate work.
 
 ### M0 documentation handoff checks (historical)
 
