@@ -60,8 +60,8 @@ export function OrderPanel({
       aria-label={t('Current order')}
       className="prototype-cart flex min-h-0 min-w-0 flex-1 flex-col border-s border-border bg-card lg:w-[370px] xl:w-[390px]"
     >
-      <div className="border-b border-border p-5">
-        <div className="mb-4 flex items-center justify-between">
+      <div className="border-b border-border p-5 max-[767px]:p-4">
+        <div className="mb-4 flex items-center justify-between max-[767px]:mb-2">
           <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
             {t('Current order')}
           </span>
@@ -69,7 +69,7 @@ export function OrderPanel({
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold">
+            <h2 className="text-xl font-semibold max-[767px]:text-lg">
               {order.fulfillment === 'dine-in'
                 ? `${t('Table')} ${String(order.table).padStart(2, '0')}`
                 : t(order.fulfillment === 'takeaway' ? 'Takeaway' : 'Delivery')}
@@ -92,7 +92,7 @@ export function OrderPanel({
         </div>
         <PreviewButton
           size="sm"
-          className="mt-3 w-full justify-start"
+          className="mt-3 w-full justify-start max-[767px]:mt-2"
           disabled={!contextEditable}
           title={
             !contextEditable
@@ -104,7 +104,7 @@ export function OrderPanel({
           <Edit3 size={14} />
           {t(contextEditable ? 'Edit order details' : 'Details locked after sending')}
         </PreviewButton>
-        <div className="mt-4 flex items-center gap-2">
+        <div className="mt-4 flex items-center gap-2 max-[767px]:mt-3">
           <StatusPill>
             {order.complete ? (
               <Check size={12} />
@@ -117,31 +117,35 @@ export function OrderPanel({
         </div>
       </div>
       <div
-        className="order-scroll min-h-48 flex-1 overflow-y-auto p-5 lg:min-h-0"
+        className="order-scroll min-h-48 flex-1 overflow-y-auto p-5 max-[767px]:min-h-40 max-[767px]:px-4 max-[767px]:py-3 lg:min-h-0"
         data-testid="order-lines"
       >
         {drafts.length > 0 && (
           <section aria-label={t('New items')}>
-            <div className="mb-3 flex items-center justify-between">
+            <div className="mb-3 flex items-center justify-between max-[767px]:mb-2">
               <h3 className="text-xs font-semibold uppercase tracking-wider">{t('New items')}</h3>
               <span className="text-[11px] text-muted-foreground">{t('Not sent yet')}</span>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-4 max-[767px]:space-y-3">
               {drafts.map((line) => {
                 const product = products.find((item) => item.id === line.productId)!;
                 return (
-                  <div key={line.id} className="rounded-xl border border-border p-3">
+                  <div
+                    key={line.id}
+                    className="rounded-xl border border-border p-3 max-[767px]:p-2"
+                    data-testid="order-draft-line"
+                  >
                     <div className="flex items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <button
                           type="button"
                           onClick={() => onEdit(line)}
-                          className="flex min-h-11 items-center gap-2 text-start text-sm font-semibold"
+                          className="flex min-h-11 items-center gap-2 text-start text-sm font-semibold max-[767px]:text-[13px]"
                         >
                           {t(product.name)}
                           <Edit3 size={12} className="shrink-0 text-muted-foreground" />
                         </button>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground max-[767px]:text-[11px]">
                           {t(line.size === 'large' ? 'Large' : 'Regular')}
                           {line.extras
                             .map(
@@ -151,14 +155,16 @@ export function OrderPanel({
                             .join('')}
                         </p>
                         {line.note && (
-                          <p className="mt-1 text-xs text-[var(--pos-note-ink)]">{line.note}</p>
+                          <p className="mt-1 text-xs text-[var(--pos-note-ink)] max-[767px]:text-[11px]">
+                            {line.note}
+                          </p>
                         )}
                       </div>
-                      <strong className="pt-3 text-sm tabular-nums">
+                      <strong className="pt-3 text-sm tabular-nums max-[767px]:pt-2 max-[767px]:text-[13px]">
                         {money(draftUnitCents(line) * line.quantity)}
                       </strong>
                     </div>
-                    <div className="mt-2 flex items-center gap-1">
+                    <div className="mt-2 flex items-center gap-1 max-[767px]:mt-1">
                       <PreviewButton
                         size="icon"
                         className="size-11"
@@ -167,11 +173,14 @@ export function OrderPanel({
                       >
                         <Minus size={14} />
                       </PreviewButton>
-                      <span className="w-8 text-center text-sm font-semibold">{line.quantity}</span>
+                      <span className="w-8 text-center text-sm font-semibold max-[767px]:text-[13px]">
+                        {line.quantity}
+                      </span>
                       <PreviewButton
                         size="icon"
                         className="size-11"
                         disabled={line.quantity >= 99}
+                        data-testid="increase-order-line"
                         aria-label={`${t('Increase quantity')}: ${t(product.name)}`}
                         onClick={() => updateLine(line.id, line.quantity + 1)}
                       >
@@ -193,8 +202,11 @@ export function OrderPanel({
           </section>
         )}
         {order.lines.length > 0 && (
-          <section className={cn(drafts.length > 0 && 'mt-6')} aria-label={t('Sent to kitchen')}>
-            <div className="mb-3 flex items-center justify-between">
+          <section
+            className={cn(drafts.length > 0 && 'mt-6 max-[767px]:mt-4')}
+            aria-label={t('Sent to kitchen')}
+          >
+            <div className="mb-3 flex items-center justify-between max-[767px]:mb-2">
               <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider">
                 <ChefHat size={14} />
                 {t('Sent to kitchen')}
@@ -203,14 +215,14 @@ export function OrderPanel({
                 {order.lines.reduce((sum, line) => sum + line.quantity, 0)} {t('items')}
               </span>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-4 max-[767px]:space-y-3">
               {order.lines.map((line) => (
-                <div key={line.id} className="flex gap-3">
+                <div key={line.id} className="flex gap-3 max-[767px]:gap-2">
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-semibold">
                     {line.quantity}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2 text-sm">
+                    <div className="flex items-start justify-between gap-2 text-sm max-[767px]:text-[13px]">
                       <span className="font-medium">
                         {t(products.find((item) => item.id === line.productId)!.name)}
                       </span>
@@ -240,8 +252,8 @@ export function OrderPanel({
           </div>
         )}
       </div>
-      <div className="space-y-3 border-t border-border bg-card p-5">
-        <div className="space-y-2 text-sm">
+      <div className="space-y-3 border-t border-border bg-card p-5 max-[767px]:space-y-2 max-[767px]:p-4">
+        <div className="space-y-2 text-sm max-[767px]:space-y-1.5 max-[767px]:text-[13px]">
           <div className="flex justify-between text-muted-foreground">
             <span>{t('Sent items')}</span>
             <span className="tabular-nums">{money(total)}</span>
@@ -259,8 +271,8 @@ export function OrderPanel({
             </div>
           )}
           <div className="flex items-center justify-between pt-2">
-            <span className="font-semibold">{t('Total to collect')}</span>
-            <strong className="text-2xl tabular-nums tracking-tight">
+            <span className="font-semibold max-[767px]:text-[13px]">{t('Total to collect')}</span>
+            <strong className="text-2xl tabular-nums tracking-tight max-[767px]:text-xl">
               {money(due + draftTotal)}
             </strong>
           </div>

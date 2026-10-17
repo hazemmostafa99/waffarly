@@ -9,6 +9,18 @@ test('isolated selling preview, theme/RTL, customization, and draft context', as
   await page.goto('/prototype');
   await expect(page.getByRole('heading', { name: 'Menu', exact: true })).toBeVisible();
   await expect(page.getByRole('complementary', { name: 'Current order' })).toBeVisible();
+  const productGrid = page.getByTestId('product-grid');
+  expect(
+    await productGrid.evaluate(
+      (element) => getComputedStyle(element).gridTemplateColumns.split(' ').length,
+    ),
+  ).toBe(4);
+  expect(
+    await productGrid
+      .locator('.product-card > div.relative')
+      .first()
+      .evaluate((element) => Math.round(element.getBoundingClientRect().height)),
+  ).toBe(96);
   await page.screenshot({ path: 'test-results/pos-prototype-light.png', fullPage: true });
   await page.getByLabel('Theme', { exact: true }).selectOption('dark');
   await expect(page.locator('.pos-theme')).toHaveAttribute('data-theme', 'dark');
@@ -36,6 +48,12 @@ test('isolated selling preview, theme/RTL, customization, and draft context', as
   await expect(page.locator('.pos-theme')).toHaveAttribute('data-theme', 'light');
   await expect(page.locator('.pos-theme')).toHaveAttribute('data-accent', 'teal');
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  expect(
+    await page
+      .getByTestId('product-grid')
+      .evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length),
+  ).toBe(5);
 });
 
 test('table rounds, split checks, partial tender and interrupted-payment recovery', async ({
@@ -114,6 +132,11 @@ test('delivery context requires actionable customer details and occupied tables 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/prototype');
   await expect(page.getByRole('heading', { name: 'Menu', exact: true })).toBeVisible();
+  expect(
+    await page
+      .getByTestId('product-grid')
+      .evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length),
+  ).toBe(1);
   await page.getByRole('main').getByRole('button', { name: 'New order', exact: true }).click();
   const picker = page.getByRole('dialog', { name: 'New order', exact: true });
   await expect(picker).toHaveClass(/pos-context-dialog/);
@@ -161,6 +184,11 @@ test('search, focus/escape, and narrow touch viewport remain usable', async ({ p
   await page.setViewportSize({ width: 820, height: 1180 });
   await page.goto('/prototype');
   await expect(page.getByRole('heading', { name: 'Menu', exact: true })).toBeVisible();
+  expect(
+    await page
+      .getByTestId('product-grid')
+      .evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length),
+  ).toBe(3);
   await page.keyboard.press('/');
   await expect(page.getByLabel('Search menu', { exact: true })).toBeFocused();
   await page.getByLabel('Search menu', { exact: true }).fill('no such menu item');
@@ -189,7 +217,15 @@ test('small Arabic touch screen, system theme, and visible order access', async 
   await expect(page.locator('.pos-theme')).toHaveAttribute('data-theme', 'dark');
   await page.getByRole('button', { name: 'Switch language', exact: true }).click();
   await page.getByRole('button', { name: 'عرض الطلب', exact: false }).click();
-  await expect(page.getByRole('complementary', { name: 'الطلب الحالي' })).toBeVisible();
+  const orderPanel = page.getByRole('complementary', { name: 'الطلب الحالي' });
+  await expect(orderPanel).toBeVisible();
+  const draftLine = orderPanel.getByTestId('order-draft-line');
+  expect(await draftLine.evaluate((element) => getComputedStyle(element).paddingTop)).toBe('8px');
+  expect(
+    await orderPanel
+      .getByTestId('increase-order-line')
+      .evaluate((element) => Math.round(element.getBoundingClientRect().height)),
+  ).toBeGreaterThanOrEqual(44);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );

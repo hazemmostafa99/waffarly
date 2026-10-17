@@ -512,7 +512,7 @@ export function Component() {
                     </PreviewButton>
                   </div>
                   <div
-                    className="category-scroll mb-6 flex gap-2 overflow-x-auto pb-1"
+                    className="category-scroll mb-4 flex gap-2 overflow-x-auto pb-1"
                     aria-label={t('Menu categories')}
                   >
                     {categories.map((item) => (
@@ -556,7 +556,10 @@ export function Component() {
                     </p>
                   )}
                   {catalogQuery.error && <p role="alert">{t('Could not load sample items.')}</p>}
-                  <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 min-[800px]:grid-cols-3 min-[1500px]:grid-cols-4">
+                  <div
+                    data-testid="product-grid"
+                    className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 min-[800px]:grid-cols-3 min-[1200px]:grid-cols-4 min-[1800px]:grid-cols-5"
+                  >
                     {visibleProducts.map((product) => {
                       const quantity = drafts
                         .filter((line) => line.productId === product.id)
@@ -578,7 +581,7 @@ export function Component() {
                           )}
                         >
                           <div
-                            className="relative h-32 p-1 text-[var(--pos-art-ink)]"
+                            className="relative h-24 p-1 text-[var(--pos-art-ink)]"
                             style={{ background: `var(--pos-${product.tone})` }}
                           >
                             <FoodArt kind={product.kind} chocolate={product.id === 'chocolate'} />
@@ -593,13 +596,15 @@ export function Component() {
                               </span>
                             )}
                           </div>
-                          <div className="p-3.5">
-                            <h3 className="text-sm font-semibold">{t(product.name)}</h3>
-                            <p className="mt-1 min-h-8 text-[11px] leading-4 text-muted-foreground">
+                          <div className="p-3">
+                            <h3 className="text-[13px] font-semibold leading-5">
+                              {t(product.name)}
+                            </h3>
+                            <p className="mt-1 min-h-7 text-[10px] leading-[14px] text-muted-foreground">
                               {t(product.description)}
                             </p>
-                            <div className="mt-3 flex items-center justify-between">
-                              <strong className="text-sm tabular-nums">
+                            <div className="mt-2 flex items-center justify-between">
+                              <strong className="text-[13px] tabular-nums">
                                 {money(product.cents)}
                               </strong>
                               <span

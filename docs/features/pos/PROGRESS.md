@@ -28,11 +28,12 @@ After every implementation slice:
 - Current milestone: M1 frontend/prototype foundation. M0 documentation/source audit complete; M2–M9 not started.
 - First-release scope: takeaway, delivery, dine-in, tables, split checks; cash/manual external-terminal tender and split tender; online with draft/request recovery.
 - Frontend stack: React/Vite, Tailwind v4, shared shadcn/ui, Zustand for client drafts/workspace, TanStack React Query for server state.
-- Design: reference-aligned cashier workspace with orange default, local merchant-accent preview, equal light/dark support, responsive order-context picker and 80mm receipt/print-to-PDF preview in development-only `/prototype`. Operator evaluation not performed.
+- Design: reference-aligned cashier workspace with orange default, local merchant-accent preview, equal light/dark support, responsive order-context picker, denser responsive catalog and 80mm receipt/print-to-PDF preview in development-only `/prototype`. Operator evaluation not performed.
 - The confirmed design refinement has been implemented in the isolated prototype. It does not add live order creation, persistent merchant settings, official receipts, physical printer integration or configured tax/fiscal behavior.
 - Existing operational baseline: branch-assigned POS employee login and incoming recipe-order accept/start-preparation queue. This must remain functional during migration.
 - Runtime verification: five prototype rule/adapter tests and five Chrome prototype journeys pass for the refinement. The employee POS browser regression passed in the earlier slice; its latest rerun fails in the concurrent Merchant Dashboard employee-creation assertion because two status elements match. See the separate evidence below; no live API/database integration is claimed.
 - Production readiness: **not established**. All M1–M9 milestones, real end-to-end validation and operational pilot remain required.
+- Latest UI slices: catalog cards are smaller with four columns on standard cashier desktops, five on extra-wide screens, three on tablets and one on narrow phones; the mobile order panel now uses tighter spacing and smaller labels while keeping 44px quantity controls.
 - Next action: review the refined UI with cashiers/operators, resolve the employee regression selector against the current Dashboard changes, then finish M1 operational session/queue query migration, tenant-scoped drafts and durable recovery. Later commercial/hardware decisions remain gated.
 
 ## Worktree and environment baseline
@@ -299,6 +300,22 @@ All commands used Node 24.11.1. The tests and browser runner first hit the Windo
 
 Screenshots are under ignored `test-results/`: `pos-prototype-light.png`, `pos-prototype-dark-orange.png`, `pos-prototype-dark.png`, `pos-prototype-context-mobile.png`, `pos-prototype-receipt-80mm.png`, and `pos-prototype-receipt-print.png`, along with the existing split, recovery, kitchen, table and viewport captures.
 
+### Catalog density refinement — 2026-10-17
+
+- The cashier catalog now uses four columns at 1200px, five at 1800px, three at 800px, two at 480px and one below 480px. Product artwork is 96px tall; product names/prices are 13px and supporting descriptions are 10px. The workspace title is 24px. Order/payment typography and cart controls were left unchanged.
+- `pnpm --filter @waffarly/pos typecheck`, `lint`, and `build`: PASS under Node 24.11.1. Build retains the existing 521.60 kB minified JS (>500 kB) advisory.
+- `pnpm exec playwright test --config playwright.pos-prototype.config.ts --reporter=list`: PASS, 5 Chrome tests. The browser spec now asserts four desktop columns/96px artwork, five extra-wide columns, three tablet columns and one phone column; the light screenshot was visually inspected.
+- `pnpm --filter @waffarly/pos exec tsx --test src/features/prototype/prototype-model.test.ts`: PASS, 5 tests. The package-level `pnpm --filter @waffarly/pos test` glob did not expand under Windows `cmd`; running the test file directly avoided that shell limitation. Initial default-sandbox build/unit invocations also returned `spawn EPERM`; reviewed reruns passed.
+- `pnpm exec prettier --write` was applied to the changed route, CSS, browser spec and UI/UX contract. No order rules, API contracts or milestone completion states changed.
+
+### Mobile order-panel density refinement — 2026-10-17
+
+- Tightened the narrow-screen order header, draft-line card, sent-item rows and total summary. The due amount and primary action remain prominent; quantity controls retain 44px hit areas.
+- `pnpm --filter @waffarly/pos typecheck`, `lint` and `build`: PASS under Node 24.11.1. The existing >500 kB JavaScript bundle advisory remains.
+- `pnpm --filter @waffarly/pos exec tsx --test src/features/prototype/prototype-model.test.ts`: PASS, 5 tests. `pnpm exec playwright test --config playwright.pos-prototype.config.ts --reporter=list`: PASS, 5 Chrome tests. The Arabic 390px journey asserts 8px line-card padding and a 44px-or-larger quantity target; updated phone screenshot was visually inspected.
+- One browser attempt timed out because the test opened a configurable product dialog and continued without completing it. The test now uses the fixture's existing draft line; the full suite passed on rerun. This was test setup, not an application failure.
+- Updated `order-panel.tsx`, the browser spec, UI_UX and this ledger. Order/payment behavior and M1–M9 status are unchanged.
+
 The print button invokes the browser print dialog, where an operator can select a thermal printer or Save as PDF. M5 still needs a tested downloadable PDF implementation and immutable per-check receipts. Printer width/driver, locale fiscal rules, configured tax/fees and operator usability evidence remain open.
 
 ## Delivery log
@@ -338,6 +355,17 @@ The print button invokes the browser print dialog, where an operator can select 
 - Updated UI_UX with shared token/component ownership, photo-capable catalog/fallbacks, synchronized fulfillment/table/customer forms, document variants, per-check/partial-tender facts, paper/theme behavior and refinement sequence. Added Merchants ownership for future tenant POS appearance settings; Orders retains document issuance/snapshots.
 - Added the pending design-refinement checklist. No app code, API contracts, schema, printer integration or current green prototype styling changed in this planning follow-up. Existing prototype/browser test evidence above was not rerun or relabeled as new verification.
 - Remaining before physical/fiscal integration: printer/OS/browser, actual printable width and operating country/tax rules. Confirmed accent/source/80mm/PDF choices must not be asked again.
+
+### 2026-10-17 — Denser cashier product catalog
+
+- User asked for smaller typography and product tiles so more menu items fit in the selling workspace.
+- Updated the development prototype to a responsive 1/2/3/4/5-column catalog, shortened artwork from 128px to 96px, reduced catalog label spacing/type and workspace title slightly, and gave category tabs some of their vertical space back. Kept order/payment controls unchanged.
+- Added browser assertions for desktop, tablet and phone catalog density; visually inspected the refreshed desktop screenshot. Updated UI_UX and this ledger. Verification and the Windows shell limitation are recorded above.
+
+### 2026-10-17 — Compact mobile order panel
+
+- User asked to shrink the mobile order panel shown in the Arabic screenshot. Tightened mobile-only header/line/summary typography and spacing while keeping quantity controls at 44px and the total/primary action clear.
+- Added a browser check for the compact draft card and touch target; visually inspected the Arabic phone screenshot. Exact verification and one corrected test-fixture timeout are recorded above.
 - Verification for this follow-up: documentation formatting, relative references and direct whitespace checks only; no runtime checks were required for these documentation changes.
 
 ### 2026-10-17 — Reference-aligned design refinement implementation

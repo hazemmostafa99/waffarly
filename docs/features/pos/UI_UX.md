@@ -48,6 +48,7 @@ At narrower tablet widths, collapse the rail before squeezing product controls. 
 - Search by name/code; scanner input routes to the same lookup without stealing focus from customer/amount inputs. Give exact barcode matches clear precedence; ambiguous or unknown codes receive explicit feedback.
 - Category tabs show the selected category and allow overflow navigation without clipped labels. Search results preserve enough category context to understand the result.
 - Product cards prioritize name and price. Images are optional supporting information, not a dependency for recognizing the product. Avoid different card heights caused by missing images or long names.
+- Keep catalog density responsive: use three columns on tablet, four on standard cashier desktops and five on extra-wide displays; keep one column on narrow phones. Use a compact 96px image tile and slightly smaller catalog labels, while preserving legible order/payment text and comfortable controls. Treat these as prototype breakpoints to validate on target registers.
 - Tapping an unconfigured simple product adds one draft unit with immediate local feedback. Required variants/modifiers open a configurator before adding. Keyboard users can reach the equivalent actions.
 - Configurator shows required choices, defaults, minimum/maximum counts, quantity, resulting quote, notes and one clear Add/Update action. Preserve choices when a validation or quote request fails.
 - Do not silently apply a different variant, substitute an unavailable choice or accept a stale quote. Explain the change and keep the editable draft.
@@ -62,6 +63,7 @@ The panel must make these facts answerable without opening a dialog: which order
 - Display fulfillment type (Takeaway / Delivery / Dine-in) prominently; table identity is required for a dining session. Do not require a customer account for a basic walk-in sale.
 - Group new unsent items separately from sent/preparing/served items. Each persisted group shows its actual state; edits to sent/paid work follow amendment rules.
 - Cart lines show quantity, product/variant, modifiers, preparation note indicator and line total. Quantity/remove/edit controls have labeled touch targets and keyboard access; no hover/swipe-only destructive action.
+- On narrow touch screens, reduce order-panel padding, line-item labels and summary spacing before reducing function. Keep quantity/action targets at least 44px and keep the due amount and primary action easy to find.
 - A simple unsent-item removal is immediate with undo. Consequential sent-item cancellation/refund uses an explicit reason/approval flow. Undo cannot reverse a completed commercial transaction locally.
 - Keep the amount due and relevant action area visible while the item list scrolls. Show subtotal, discount, configured charges/tax and paid amount without hiding fees behind an unlabeled total.
 - Show separate “Send to kitchen” and “Take payment” actions where applicable. Which action is primary depends on order state and the confirmed branch dispatch policy; UI styling must not choose POS-D06 implicitly.
