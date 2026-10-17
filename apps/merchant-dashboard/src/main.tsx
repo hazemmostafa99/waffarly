@@ -15,6 +15,7 @@ import './media.css';
 import './discounts.css';
 import './orders.css';
 import './branches.css';
+import './features/staff/employees.css';
 import '@waffarly/ui/storefront-design.css';
 
 const rootElement = document.getElementById('root');

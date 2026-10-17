@@ -12,6 +12,7 @@ import { InventoryService } from '../../src/modules/inventory/inventory.service.
 import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
 import { OrderLifecycleService } from '../../src/modules/orders/order-lifecycle.service.js';
 import { ProductConfigurationReportService } from '../../src/modules/reports/product-configuration-report.service.js';
+import { PosEmployeeService } from '../../src/modules/auth/pos-employee.service.js';
 
 config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
 const databaseUrl = process.env.DATABASE_URL;
@@ -85,6 +86,22 @@ async function fixture(tx: Prisma.TransactionClient, scoped: never) {
   });
   const branch = await tx.branch.create({
     data: { merchantId, name: 'Main', createdBy: actor, updatedBy: actor },
+  });
+  const employee = await tx.posEmployee.create({
+    data: {
+      merchantId,
+      username: 'recipe-cashier',
+      displayName: 'Recipe Cashier',
+      passwordHash: 'test-hash',
+      createdBy: actor,
+      updatedBy: actor,
+      branches: {
+        create: {
+          createdBy: actor,
+          branch: { connect: { id_merchantId: { id: branch.id, merchantId } } },
+        },
+      },
+    },
   });
   const missingDefault = await tx.branch.create({
     data: { merchantId, name: 'No default', createdBy: actor, updatedBy: actor },
@@ -225,6 +242,7 @@ async function fixture(tx: Prisma.TransactionClient, scoped: never) {
   return {
     merchantId,
     branch,
+    employee,
     missingDefault,
     warehouse,
     item,
@@ -292,6 +310,15 @@ it(
               /only available for new recipe orders/,
             );
             const order = await f.createOrder(2, true);
+            const queue = await f.orders.listForPos(f.merchantId, f.branch.id);
+            assert.deepEqual(
+              queue.items.map((item) => item.id),
+              [order.id],
+            );
+            assert.deepEqual(await f.orders.listForPos(randomUUID(), f.branch.id), {
+              items: [],
+              nextCursor: null,
+            });
             assert.equal(
               (await tx.productVariant.findUniqueOrThrow({ where: { id: f.variantId } }))
                 .stockQuantity,
@@ -402,7 +429,23 @@ it(
               'pending',
             );
             const accept = { requestId: randomUUID(), branchId: f.branch.id };
-            const accepted = await f.lifecycle.accept(f.merchantId, actor, order.id, accept);
+            const posActor = `pos:${f.employee.id}`;
+            assert.throws(() =>
+              f.lifecycle.acceptFromPos(
+                f.merchantId,
+                posActor,
+                order.id,
+                { requestId: randomUUID(), branchId: f.missingDefault.id },
+                [f.branch.id],
+              ),
+            );
+            const accepted = await f.lifecycle.acceptFromPos(
+              f.merchantId,
+              posActor,
+              order.id,
+              accept,
+              [f.branch.id],
+            );
             assert.equal(accepted.status, 'accepted');
             assert.equal(await f.balance(), '74');
             assert.equal(accepted.inventoryLifecycle?.warehouseId, f.warehouse.id);
@@ -453,21 +496,36 @@ it(
               'cancelled',
             );
             const next = await f.createOrder(1);
-            await f.lifecycle.accept(f.merchantId, actor, next.id, {
-              requestId: randomUUID(),
-              branchId: f.branch.id,
-            });
+            await f.lifecycle.acceptFromPos(
+              f.merchantId,
+              posActor,
+              next.id,
+              { requestId: randomUUID(), branchId: f.branch.id },
+              [f.branch.id],
+            );
             assert.equal(await f.balance(), '-2');
             const prepare = { requestId: randomUUID() };
-            const preparing = await f.lifecycle.startPreparation(
+            await assert.rejects(
+              f.lifecycle.startPreparationFromPos(
+                f.merchantId,
+                posActor,
+                next.id,
+                { requestId: randomUUID() },
+                [f.missingDefault.id],
+              ),
+            );
+            const preparing = await f.lifecycle.startPreparationFromPos(
               f.merchantId,
-              actor,
+              posActor,
               next.id,
               prepare,
+              [f.branch.id],
             );
             assert.equal(preparing.status, 'preparing');
             assert.deepEqual(
-              await f.lifecycle.startPreparation(f.merchantId, actor, next.id, prepare),
+              await f.lifecycle.startPreparationFromPos(f.merchantId, posActor, next.id, prepare, [
+                f.branch.id,
+              ]),
               preparing,
             );
             await assert.rejects(
@@ -499,7 +557,7 @@ it(
             assert.ok(
               (
                 await tx.storefrontOrderAction.findMany({ where: { merchantId: f.merchantId } })
-              ).every((action) => action.createdBy === actor),
+              ).some((action) => action.createdBy === posActor),
             );
             throw rollback;
           },
@@ -628,11 +686,126 @@ it(
         await client.stockMovementBatch.deleteMany({ where });
         await client.stockBalance.deleteMany({ where });
         await client.warehouse.deleteMany({ where });
+        await client.posEmployeeBranch.deleteMany({ where });
+        await client.posEmployee.deleteMany({ where });
         await client.branch.deleteMany({ where });
         await client.stockItemUnit.deleteMany({ where });
         await client.stockItem.deleteMany({ where });
         await client.merchant.delete({ where: { id: merchantId } });
       }
+      await client.$disconnect();
+    }
+  },
+);
+
+it(
+  'revokes only the employee POS sessions after password reset or deactivation',
+  { skip: !databaseUrl },
+  async () => {
+    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+    const rollback = new Error('Rollback POS employee session fixtures');
+    try {
+      await assert.rejects(
+        client.$transaction(async (tx) => {
+          const scoped = transactionServices(tx);
+          const token = randomUUID().replaceAll('-', '');
+          const merchant = await tx.merchant.create({
+            data: {
+              name: `POS employee sessions ${token}`,
+              storefrontSlug: `pos-employee-sessions-${token}`,
+              activity: 'restaurant',
+              contactPhone: '01000000000',
+              ownerName: 'POS session test',
+              ownerMobile: '01100000000',
+            },
+          });
+          const branch = await tx.branch.create({
+            data: {
+              merchantId: merchant.id,
+              name: 'Main',
+              createdBy: actor,
+              updatedBy: actor,
+            },
+          });
+          const employee = await tx.posEmployee.create({
+            data: {
+              merchantId: merchant.id,
+              username: 'cashier1',
+              displayName: 'Cashier One',
+              passwordHash: 'initial-test-hash',
+              createdBy: actor,
+              updatedBy: actor,
+              branches: {
+                create: {
+                  createdBy: actor,
+                  branch: {
+                    connect: { id_merchantId: { id: branch.id, merchantId: merchant.id } },
+                  },
+                },
+              },
+            },
+          });
+          const employees = new PosEmployeeService(scoped);
+          const createSession = (subjectKind: string, subjectId: string) =>
+            tx.authSession.create({
+              data: {
+                tokenHash: randomUUID().replaceAll('-', '').repeat(2),
+                subjectKind,
+                subjectId,
+                expiresAt: new Date(Date.now() + 60_000),
+              },
+            });
+
+          await createSession('POS', employee.id);
+          await createSession('OWNER', employee.id);
+          const afterPasswordReset = await employees.update(merchant.id, actor, employee.id, {
+            revision: 1,
+            displayName: employee.displayName,
+            active: true,
+            branchIds: [branch.id],
+            password: 'new-password-long-enough',
+          });
+          assert.equal(afterPasswordReset.revision, 2);
+          assert.equal(
+            await tx.authSession.count({ where: { subjectKind: 'POS', subjectId: employee.id } }),
+            0,
+          );
+          assert.equal(
+            await tx.authSession.count({ where: { subjectKind: 'OWNER', subjectId: employee.id } }),
+            1,
+          );
+
+          await createSession('POS', employee.id);
+          const otherEmployeeId = randomUUID();
+          await createSession('POS', otherEmployeeId);
+          const afterDeactivation = await employees.update(merchant.id, actor, employee.id, {
+            revision: 2,
+            displayName: employee.displayName,
+            active: false,
+            branchIds: [branch.id],
+          });
+          assert.equal(afterDeactivation.active, false);
+          assert.equal(
+            await tx.authSession.count({ where: { subjectKind: 'POS', subjectId: employee.id } }),
+            0,
+          );
+          assert.equal(
+            await tx.authSession.count({
+              where: { subjectKind: 'POS', subjectId: otherEmployeeId },
+            }),
+            1,
+          );
+          assert.equal(
+            await tx.authSession.count({
+              where: { subjectKind: 'OWNER', subjectId: employee.id },
+            }),
+            1,
+          );
+          throw rollback;
+        }),
+        rollback,
+      );
+    } finally {
       await client.$disconnect();
     }
   },

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
   HttpCode,
   HttpStatus,
@@ -16,12 +17,13 @@ import {
 import type {
   CreateStorefrontOrderRequest,
   OwnerProfile,
+  PosEmployeeSession,
   UpdateStorefrontOrderStatusRequest,
 } from '@waffarly/contracts';
 import { z } from 'zod';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { parseCursorPageQuery } from '../../common/http/pagination.js';
-import { CurrentOwner, OwnerGuard } from '../auth/index.js';
+import { CurrentOwner, CurrentPosEmployee, OwnerGuard, PosEmployeeGuard } from '../auth/index.js';
 import { OrderLifecycleService } from './order-lifecycle.service.js';
 import {
   acceptRecipeOrderSchema,
@@ -83,6 +85,13 @@ const createOrderSchema = z
   });
 
 const updateStatusSchema = z.object({ status: z.enum(['accepted', 'rejected']) }).strict();
+const posOrderPageSchema = z
+  .object({
+    branchId: z.string().uuid(),
+    cursor: z.string().uuid().optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(25),
+  })
+  .strict();
 
 @Controller('catalog/stores/:slug/orders')
 export class PublicStorefrontOrdersController {
@@ -163,6 +172,58 @@ export class OwnerStorefrontOrdersController {
       owner.merchantId,
       id,
       parsed.status satisfies UpdateStorefrontOrderStatusRequest['status'],
+    );
+  }
+}
+
+@UseGuards(PosEmployeeGuard)
+@Controller('pos/orders')
+export class PosStorefrontOrdersController {
+  constructor(
+    @Inject(StorefrontOrdersService) private readonly orders: StorefrontOrdersService,
+    @Inject(OrderLifecycleService) private readonly lifecycle: OrderLifecycleService,
+  ) {}
+
+  @Get()
+  list(@CurrentPosEmployee() employee: PosEmployeeSession, @Query() query: unknown) {
+    const parsed = parseRequest(posOrderPageSchema, query);
+    if (!employee.branches.some((branch) => branch.id === parsed.branchId)) {
+      throw new ForbiddenException('This employee is not assigned to the selected branch.');
+    }
+    return this.orders.listForPos(employee.merchantId, parsed.branchId, {
+      cursor: parsed.cursor,
+      limit: parsed.limit,
+    });
+  }
+
+  @Post(':id/accept')
+  accept(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: unknown,
+  ) {
+    const input = parseRequest(acceptRecipeOrderSchema, body);
+    return this.lifecycle.acceptFromPos(
+      employee.merchantId,
+      `pos:${employee.id}`,
+      id,
+      input,
+      employee.branches.map((branch) => branch.id),
+    );
+  }
+
+  @Post(':id/start-preparation')
+  startPreparation(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: unknown,
+  ) {
+    return this.lifecycle.startPreparationFromPos(
+      employee.merchantId,
+      `pos:${employee.id}`,
+      id,
+      parseRequest(startOrderPreparationSchema, body),
+      employee.branches.map((branch) => branch.id),
     );
   }
 }

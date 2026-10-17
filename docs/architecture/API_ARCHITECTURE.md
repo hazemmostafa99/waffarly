@@ -8,7 +8,7 @@ implementation instructions live in [apps/api/AGENTS.md](../../apps/api/AGENTS.m
 
 | Module     | Responsibility                                                                                             | Application dependencies |
 | ---------- | ---------------------------------------------------------------------------------------------------------- | ------------------------ |
-| auth       | Credentials, sessions, guards, authenticated request actors                                                | Configuration, database  |
+| auth       | Owner/Admin/POS employee credentials, sessions, guards, employee records, and branch assignments           | Configuration, database  |
 | merchants  | Merchant profiles, applications, first-month activation                                                    | Auth                     |
 | plans      | Platform monthly plan definitions                                                                          | Auth                     |
 | activities | Business activity and capability definitions/metadata                                                      | Auth                     |
@@ -16,7 +16,7 @@ implementation instructions live in [apps/api/AGENTS.md](../../apps/api/AGENTS.m
 | catalog    | Products, categories, reusable modifiers, authoritative pricing, and product inventory configurations      | Auth, inventory          |
 | inventory  | Merchant-owned Stock Items/units, branches/warehouses, policy, balances, and transactional movement ledger | Auth                     |
 | purchasing | Merchant-owned supplier directory and draft/confirmed purchase invoices                                    | Auth, inventory          |
-| orders     | Order submission, snapshots, legacy reservations, and owner recipe acceptance/preparation/cancellation     | Auth, catalog, inventory |
+| orders     | Order submission/snapshots, legacy reservations, and owner/cashier recipe acceptance and preparation       | Auth, catalog, inventory |
 | media      | Tenant-owned image metadata and upload orchestration                                                       | Auth, storage adapter    |
 | reports    | Product configuration reports from order snapshots                                                         | Auth                     |
 | health     | Liveness and database readiness                                                                            | Database                 |
@@ -56,8 +56,9 @@ The requirement calculator aggregates effects before rejecting negative totals;
 it does not post sales movements. Orders snapshot resolved option quantities and
 effective unit prices, and SQL reports multiply those by ordered line quantities.
 Existing variant reservation/rejection behavior remains in Orders for historical
-and DIRECT lines. M6a marks new RECIPE lines for consumption at owner acceptance;
-it does not infer historical stock handling from current catalog configuration.
+and DIRECT lines. M6a marks new RECIPE lines for consumption at owner or authorized
+employee acceptance; it does not infer historical stock handling from current
+catalog configuration.
 
 `ProductConsumptionService` exposes frozen-selection requirement calculation on
 the caller's transaction. Quote and acceptance calculations share modifier effect
@@ -76,10 +77,23 @@ Cancellation before preparation reverses the actual linked batches, rather than
 recalculating recipes or consulting a new default warehouse. Accepted orders also
 protect their consumed items and locations from archival until preparation or
 cancellation resolves their restoration eligibility. Reports include preparation
-and exclude cancellation. Cashier permissions and POS remain future M6b work.
+and exclude cancellation. `AuthModule` owns merchant-scoped POS employee credentials,
+current active branch assignments, and the owner employee directory. Employee login
+uses the merchant storefront slug with the employee username; sessions use the same
+hashed opaque-token store with a POS-specific cookie and subject kind. Disabling an
+employee or resetting a password revokes their POS sessions. The employee guard
+reloads current branch assignments on every request.
 
-Merchant UI code lives under `features/inventory`, `features/purchasing`, and
-`features/catalog/product-builder`. Product tabs and purchase editors have their
+POS order listing is cursor-paged and accepts a selected assigned branch. Pending
+new RECIPE orders are available for routing to an assigned branch; accepted and
+preparing orders are filtered to their saved branch. POS lifecycle controllers call
+the same Orders application service and exact Inventory posting used by owner
+acceptance. Employees can accept into assigned branches and start preparation for
+their routed orders. Owner-only rejection, cancellation, and stock restoration are
+not exposed to POS sessions. Walk-in sales and order completion remain separate.
+
+Merchant UI code lives under `features/inventory`, `features/purchasing`,
+`features/catalog/product-builder`, and `features/staff`. Product tabs and purchase editors have their
 own components. Inventory shares unit choices, opening retry storage, and scoped
 item/warehouse selectors; cursor controls and bounded selectors live in
 `components/`. Selected identities are hydrated through tenant-scoped detail

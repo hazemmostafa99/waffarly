@@ -2,13 +2,13 @@
 
 ## Status and scope
 
-- Document status: Repository-audited feature contract; M1-M5 delivered; M6a adds the owner-managed recipe acceptance/preparation/cancellation path. Staff/POS remain deferred to M6b.
+- Document status: Repository-audited feature contract; M1-M5 delivered; M6a adds the owner-managed recipe lifecycle; M6b adds branch-assigned employee access and the incoming recipe-order POS queue.
 - Feature area: Inventory, Catalog/Product Builder, Recipes/Consumption, Purchasing, and Orders integration.
-- Primary applications: `apps/api`, `apps/merchant-dashboard`; later integration with `apps/storefront` and `apps/pos`.
+- Primary applications: `apps/api`, `apps/merchant-dashboard`, `apps/storefront`, and `apps/pos`.
 - Supporting packages: `packages/database`, `packages/contracts`.
 - Last reviewed: 2026-10-15.
 - Companion: [PROGRESS.md](PROGRESS.md), containing repository evidence, gaps, verification, and milestones.
-- Current delivery: **M1-M5 Stock Item registry, branch/warehouse scope, policy, balances, opening stock, suppliers, purchase invoice receipt, and Product/Variant inventory configurations are implemented and verified.** Modifier quantities, variant availability/prices, and recipe effects are included. Owner-managed recipe consumption is added in M6a; staff/POS integration remains a future slice; details and limits are tracked in `PROGRESS.md`.
+- Current delivery: **M1-M5 inventory and Product/Variant configuration, M6a owner recipe lifecycle, and M6b staff branch access and incoming-order POS are implemented.** M6b API/database behavioral checks and targeted browser acceptance pass. The browser scenario uses mocked API responses; see `PROGRESS.md` for verification scope and limits.
 
 Extend the existing shared Product Core with stock identities, warehouse operations, DIRECT mappings, and independent product/variant recipes. Keep pricing and inventory calculations on the backend and reuse the existing order domain.
 
@@ -262,9 +262,40 @@ again. The owner UI preserves uncertain requests across reload and refreshes liv
 state after replay. Consumed items and bound locations remain protected from
 archival until preparation starts or cancellation resolves the order.
 
-Staff permissions, cashier branch assignments, POS order handling, and order
-completion remain M6b/future work. Owner-only delivery must not be represented as
-cashier authorization.
+Owner-facing lifecycle routes remain available, while the POS uses employee-only
+acceptance and preparation routes. Employees cannot use owner rejection,
+cancellation, or stock-restoration commands.
+
+### M6b implementation and compatibility - 2026-10-15
+
+The owner creates POS employees with a username and password, then assigns one or
+more active same-merchant branches. Employee usernames are unique inside the
+merchant. POS login uses the business/storefront slug, employee username, and
+password. Passwords are scrypt-hashed; deactivation and password reset revoke
+existing sessions, and each request reloads current active branch grants.
+
+Employees can accept new RECIPE storefront orders into an assigned branch and
+start preparation for orders routed to their assigned branches. They cannot
+reject pending orders or cancel accepted orders. Owners retain those actions,
+including the explicit restore/no-restore choice. The POS queue is limited to new
+RECIPE orders; old orders and DIRECT orders retain owner/legacy handling.
+
+Pending orders are not yet routed, so they appear to each employee's assigned
+branches. Acceptance chooses one assigned branch and deducts from that branch's
+active default warehouse using the existing serializable, idempotent Orders flow.
+After acceptance, an order appears only to employees assigned to its routed branch.
+Preparation uses the same lifecycle and does not recalculate or reprice the order.
+The POS saves each request ID and payload before sending, retries that same command
+after an uncertain reply, reloads persisted orders after reconnect, and polls for
+updates. POS does not create walk-in sales or expose inventory balances.
+
+Migration 25 adds tenant-scoped employee and branch-assignment tables with
+compound same-merchant foreign keys. The owner Employees page provisions accounts,
+assigns branches, resets passwords, and deactivates access. POS exposes the two
+granted actions only. Focused API/database behavior, session revocation after
+password reset/deactivation, uncertain-action retry after reload, and the Arabic
+RTL browser flow are verified. The browser scenario uses mocked API responses;
+live browser-to-API integration remains open.
 
 ### Returns
 
@@ -272,9 +303,9 @@ Retail sales returns can accept/reject lines and quantities independently. Accep
 
 ## Actors, contracts, and transaction safeguards
 
-Current authorization is Owner/Admin sessions with tenant-scoped owner guards. Reuse `OwnerGuard` / `CurrentOwner`; derive merchant identity from the actor. Current activity metadata and first-month activation are not staff RBAC or full commercial entitlements.
+Current authorization includes Admin, owner, and POS employee sessions. Owners use `OwnerGuard` / `CurrentOwner`; POS endpoints use `PosEmployeeGuard` / `CurrentPosEmployee`, which reloads merchant activation and active branch assignments. Employee tenant and branch identity comes from the session/account, never the order request. Employees can accept into assigned branches and start preparation on their routed branches; reject and cancel remain owner-only. Activity metadata is not a full commercial entitlement.
 
-An owner-managed registry can be designed before staff permissions. Cashier acceptance, branch stock access, and employee inventory operations cannot ship until their real authorization rules exist. Do not invent role names or bypass branch scope to complete the UI.
+The delivered employee scope covers incoming RECIPE order operations only. It does not grant stock-balance, purchasing, product, or general inventory access. Do not infer broader employee rights from a POS session.
 
 New contracts belong in `packages/contracts/src`, with root exports retained; no NestJS/Prisma dependencies. Decide paths and payloads per slice rather than treating conceptual entities as a fixed endpoint list. Required operation families are item/UOM configuration, warehouses/policy, balances/history, purchases, product mappings/recipes, consumption calculation, and later inventory operations/order actions.
 
@@ -296,26 +327,26 @@ Every mutation must scope IDs and relations by merchant; branch/warehouse access
 - **Merchant Dashboard:** extend `ProductBuilderPage.tsx`; add mode selection, DIRECT mapping, recipe ingredient rows, item/unit selection and inline creation, variant-specific controls, and a review of effective consumption. Inline item creation must preserve the product draft on failure/cancel and explain that no stock was received.
 - **Inventory workspace:** item/warehouse setup, balances/history, and M3 purchase entry/confirmation are implemented. Remaining operational actions and detailed future screens follow later slices; do not use mock operational balances.
 - **Storefront:** extend the existing customizer/cart/checkout for variant availability and repeated modifier quantity, backend re-quoting, stale configurations, and acceptance shortages. Do not expose internal recipe editing or trusted inventory totals in customer payloads.
-- **POS:** build on the existing shell only after branch/staff authorization and order routing exist. Cashier acceptance uses Orders and shared consumption/pricing, not local state as stock authority.
+- **POS:** receives persisted branch-scoped RECIPE storefront orders, selects an assigned branch for pending orders, and calls the shared Orders acceptance/preparation commands. It does not calculate pricing or stock locally, and it does not create walk-in/direct sales.
 - Follow shared UI, Arabic/English localization, RTL/LTR, loading/error/empty states, keyboard access, and revision-conflict recovery.
 
 ## Decision queue
 
 Resolve decisions when the next slice depends on them; documentation and the source audit are complete without deciding all later workflows.
 
-| Key    | Decision needed                                                                                                            | Existing fact / proposed handling                                                                                                                                                                                                                                             | Gates                                                                     |
-| ------ | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| IC-D01 | Quantity scale, conversion precision/dimensions, pack factors, policy default and condition applicability                  | M1 confirms six decimal places, exact g/kg and ml/l conversions, item packs, and no rounding; M2 sets Allow Negative default for Available debits, with Non-Sellable separate.                                                                                                | Recipe/movement integration.                                              |
-| IC-D02 | Warehouse/branch relationships, minimum Branch scope, default warehouse validity, access and deactivation                  | M2 sets one branch per warehouse and one default consumption warehouse per branch; owner-only management is implemented. Staff/branch rights and future missing-default handling remain open.                                                                                 | Staff authorization and consumption integration.                          |
-| IC-D03 | Meaning/location of modifier Default Price; shared default versus product assignment precedence; override editing          | M5 accepted: preserve product-assignment defaults; variant overrides take precedence; quantity multiplies the effective price. Shared-library prices are excluded from M5.                                                                                                    | Modifier pricing extension.                                               |
-| IC-D04 | Activity mode defaults, editor authority, future default changes                                                           | M4 resolves restaurant `RECIPE`, other activity `DIRECT`, owner Product override, and inherited variant mode. Saved modes are not rewritten if the activity default changes.                                                                                                  | Future editable activity defaults remain separate.                        |
-| IC-D05 | Legacy/null stock mapping, incomplete configuration saving/selling, mode switches and deletion                             | M4 leaves legacy products available without backfill; new products may save unavailable without setup and need complete mapping/recipe before availability. Mode remains `DIRECT` or `RECIPE`.                                                                                | Product readiness resolved; live stock cutover remains IC-D08.            |
-| IC-D06 | Recipe/configuration changes while order waits; retained identities                                                        | M6a accepted: freeze consumption configuration and selection identities for new pending recipe orders; allow price/name edits without changing consumption. No recipe snapshot.                                                                                               | Staff/POS extensions must preserve this protection.                       |
-| IC-D07 | Effect override merge/replace, empty override, negative totals, DIRECT modifier effects, restricted defaults               | M5 accepted: replace the whole list; absent inherits, empty disables; reject negative final requirements; effects only in RECIPE. Ignore unavailable defaults and validate feasible minimums.                                                                                 | Modifier consumption.                                                     |
-| IC-D08 | Stock timing, mixed orders, shortages, acceptance/preparation/cancellation                                                 | M6a accepted: new RECIPE lines deduct at owner acceptance from the selected branch default warehouse; old/DIRECT lines retain legacy reservations. Preparation start blocks cancellation; earlier cancellation explicitly restores recorded movements or keeps them deducted. | POS/direct-sale timing and broader operational workflows remain separate. |
-| IC-D09 | Stocktake concurrency and stale counts                                                                                     | No stocktake exists. Choose locking, cutoff/reconciliation, or explicit conflict/recount.                                                                                                                                                                                     | Stocktaking.                                                              |
-| IC-D10 | Purchasing fields/suppliers, return stages and cumulative quantities, restock conditions, reversal/refund responsibilities | M3 resolves the supplier directory, optional supplier invoice number, immutable quantity receipt, and excludes costs/tax/settlement. Return stages, limits, restock, and correction details remain open.                                                                      | Returns/corrections.                                                      |
-| IC-D11 | Employee permission matrix and branch/warehouse rights                                                                     | M6a owner-only management was explicitly accepted. Owners act within their tenant; employee/cashier actors and branch assignments are not implemented.                                                                                                                        | M6b staff/POS integration.                                                |
+| Key    | Decision needed                                                                                                            | Existing fact / proposed handling                                                                                                                                                                                                                                                    | Gates                                                                                                    |
+| ------ | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| IC-D01 | Quantity scale, conversion precision/dimensions, pack factors, policy default and condition applicability                  | M1 confirms six decimal places, exact g/kg and ml/l conversions, item packs, and no rounding; M2 sets Allow Negative default for Available debits, with Non-Sellable separate.                                                                                                       | Recipe/movement integration.                                                                             |
+| IC-D02 | Warehouse/branch relationships, minimum Branch scope, default warehouse validity, access and deactivation                  | M2 sets one branch per warehouse and one default consumption warehouse per branch; owners manage warehouses, and M6b employees receive explicit active-branch assignments for recipe-order acceptance/preparation. Missing-default handling remains open.                            | Staff authorization is implemented for incoming RECIPE orders; broader inventory rights remain separate. |
+| IC-D03 | Meaning/location of modifier Default Price; shared default versus product assignment precedence; override editing          | M5 accepted: preserve product-assignment defaults; variant overrides take precedence; quantity multiplies the effective price. Shared-library prices are excluded from M5.                                                                                                           | Modifier pricing extension.                                                                              |
+| IC-D04 | Activity mode defaults, editor authority, future default changes                                                           | M4 resolves restaurant `RECIPE`, other activity `DIRECT`, owner Product override, and inherited variant mode. Saved modes are not rewritten if the activity default changes.                                                                                                         | Future editable activity defaults remain separate.                                                       |
+| IC-D05 | Legacy/null stock mapping, incomplete configuration saving/selling, mode switches and deletion                             | M4 leaves legacy products available without backfill; new products may save unavailable without setup and need complete mapping/recipe before availability. Mode remains `DIRECT` or `RECIPE`.                                                                                       | Product readiness resolved; live stock cutover remains IC-D08.                                           |
+| IC-D06 | Recipe/configuration changes while order waits; retained identities                                                        | M6a accepted: freeze consumption configuration and selection identities for new pending recipe orders; allow price/name edits without changing consumption. No recipe snapshot.                                                                                                      | Staff/POS extensions must preserve this protection.                                                      |
+| IC-D07 | Effect override merge/replace, empty override, negative totals, DIRECT modifier effects, restricted defaults               | M5 accepted: replace the whole list; absent inherits, empty disables; reject negative final requirements; effects only in RECIPE. Ignore unavailable defaults and validate feasible minimums.                                                                                        | Modifier consumption.                                                                                    |
+| IC-D08 | Stock timing, mixed orders, shortages, acceptance/preparation/cancellation                                                 | M6a/M6b accepted: new RECIPE lines deduct at acceptance from the selected/assigned branch default warehouse; old/DIRECT lines retain legacy reservations. Preparation start blocks cancellation; earlier cancellation explicitly restores recorded movements or keeps them deducted. | Walk-in/direct POS sale timing and broader operational workflows remain separate.                        |
+| IC-D09 | Stocktake concurrency and stale counts                                                                                     | No stocktake exists. Choose locking, cutoff/reconciliation, or explicit conflict/recount.                                                                                                                                                                                            | Stocktaking.                                                                                             |
+| IC-D10 | Purchasing fields/suppliers, return stages and cumulative quantities, restock conditions, reversal/refund responsibilities | M3 resolves the supplier directory, optional supplier invoice number, immutable quantity receipt, and excludes costs/tax/settlement. Return stages, limits, restock, and correction details remain open.                                                                             | Returns/corrections.                                                                                     |
+| IC-D11 | Employee permission matrix and branch/warehouse rights                                                                     | M6b: owner creates merchant-scoped employees assigned to active branches. Employees may accept new RECIPE orders into assigned branches and start their preparation; rejection/cancellation/restoration remain owner-only. Login is business slug + employee username + password.    | Implemented for incoming recipe-order POS; wider staff and inventory rights remain separate.             |
 
 Broader shared-definition propagation, taxes, discounts, cost valuation, channel pricing, refunds, and launch packaging remain separate decisions. Base price precedence, EGP two-decimal arithmetic, reusable assignments, and the existing shared-edit restriction do not need to be rediscovered as OPEN.
 

@@ -4,12 +4,12 @@
 
 - Last audited: 2026-10-15.
 - Feature contract: [FEATURE.md](FEATURE.md).
-- Delivery state: **M1-M5 implemented and hardened; M6a owner recipe acceptance/preparation/cancellation is complete. New recipes deduct at branch acceptance with safe replay/restoration. Employee branch permissions and POS remain M6b.**
+- Delivery state: **M1-M5 implemented and hardened; M6a owner recipe lifecycle is complete; M6b staff branch access and the incoming recipe-order POS queue are implemented. Focused M6b API/database checks and targeted browser acceptance pass.**
 - Baseline branch/commit: `main` / `264fa1a263b1f04ada4ca3941ece18bb14b7995c`.
 - M0 pre-existing worktree change: `apps/storefront/next-env.d.ts`; preserved at that checkpoint.
 - Architecture-hardening baseline: clean worktree at `42ec842`; no unrelated changes were present when the fixes started.
 - Existing foundation: Product Builder, reusable modifiers, pricing, storefront checkout, owner order actions, and optional variant counters.
-- Remaining foundations: modifier effects, purchase returns, remaining stock operations, and order consumption.
+- Remaining foundations: purchase returns and remaining stock operations. Walk-in/direct POS sales, employee cancellation, and order completion remain separate workflows.
 - M0 baseline verification: 58 API HTTP/unit tests and 2 selected PostgreSQL integration tests passed; API/contracts typechecks passed; schema validation passed; migration status reported 17 migrations up to date before M1. See the exact ledger below for M1 checks.
 
 This document adapts `WAFFARLY_IMPLEMENTATION_PROGRESS.md` and `WAFFARLY_COMMERCE_FEATURE_SPEC.md`, supplied from Downloads. Their initial repository statuses were UNVERIFIED. The M0 audit below records the pre-implementation state of this checkout. The supplied documents' embedded execution prompts were reference material; the user's later “ok go” authorized the scoped M1 implementation.
@@ -32,18 +32,18 @@ Keep implementation and test status separate. A baseline test pass does not make
 
 ## Repository map
 
-| Area            | Actual location / responsibility                                                                                                                                                                                                                                                      |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workspace       | pnpm workspaces; `apps/api`, `apps/merchant-dashboard`, `apps/storefront`, `apps/pos`, `apps/super-admin`. Root scripts use Turbo; no Turbo commands/configuration changed in this task.                                                                                              |
-| Runtime/tooling | `.node-version`: Node 24.11.1; pnpm 10.34.5. Manifests pin NestJS 12.1.3, Prisma 7.10.0, TypeScript 5.9.3, React 19.3.0, Vite 8.3.3, Next.js 16.4.0. These are repository declarations, not independently checked latest releases.                                                    |
-| Backend         | [API architecture](../../architecture/API_ARCHITECTURE.md); feature modules registered in [AppModule](../../../apps/api/src/app.module.ts).                                                                                                                                           |
-| Database        | [Prisma schema](../../../packages/database/prisma/schema.prisma), [migrations](../../../packages/database/prisma/migrations), and [database scripts](../../../packages/database/package.json). PostgreSQL; generated client is package-owned.                                         |
-| Contracts       | [catalog.ts](../../../packages/contracts/src/catalog.ts) and [root exports](../../../packages/contracts/src/index.ts); all frontends use `@waffarly/contracts`, not database imports.                                                                                                 |
-| Merchant UI     | [routes.tsx](../../../apps/merchant-dashboard/src/routes.tsx), [ProductBuilderPage.tsx](../../../apps/merchant-dashboard/src/features/catalog/product-builder/ProductBuilderPage.tsx), and [StorefrontOrdersPage.tsx](../../../apps/merchant-dashboard/src/StorefrontOrdersPage.tsx). |
-| Customer UI     | [customizer](../../../apps/storefront/src/features/catalog/storefront-product-customizer.tsx), [cart state](../../../apps/storefront/src/features/cart/storefront-store.ts), and [checkout](../../../apps/storefront/src/features/checkout/storefront-checkout-page.tsx).             |
-| POS             | [POSScreen.tsx](../../../apps/pos/src/POSScreen.tsx) is a preparation screen. [Login.tsx](../../../apps/pos/src/Login.tsx) calls `/auth/pos/*`; corresponding API auth routes do not exist.                                                                                           |
-| Test layout     | API `test/http`, `test/unit`, `test/database`; browser tests under root `tests/ui`. Default API tests exclude database suites.                                                                                                                                                        |
-| CI              | [.github/workflows/ci.yml](../../../.github/workflows/ci.yml): Node 24, install, generate, lint/format/typecheck/test/build/validate. No PostgreSQL service or dedicated database suite is configured in this workflow.                                                               |
+| Area            | Actual location / responsibility                                                                                                                                                                                                                                                                                                                                                  |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace       | pnpm workspaces; `apps/api`, `apps/merchant-dashboard`, `apps/storefront`, `apps/pos`, `apps/super-admin`. Root scripts use Turbo; no Turbo commands/configuration changed in this task.                                                                                                                                                                                          |
+| Runtime/tooling | `.node-version`: Node 24.11.1; pnpm 10.34.5. Manifests pin NestJS 12.1.3, Prisma 7.10.0, TypeScript 5.9.3, React 19.3.0, Vite 8.3.3, Next.js 16.4.0. These are repository declarations, not independently checked latest releases.                                                                                                                                                |
+| Backend         | [API architecture](../../architecture/API_ARCHITECTURE.md); feature modules registered in [AppModule](../../../apps/api/src/app.module.ts).                                                                                                                                                                                                                                       |
+| Database        | [Prisma schema](../../../packages/database/prisma/schema.prisma), [migrations](../../../packages/database/prisma/migrations), and [database scripts](../../../packages/database/package.json). PostgreSQL; generated client is package-owned.                                                                                                                                     |
+| Contracts       | [catalog.ts](../../../packages/contracts/src/catalog.ts) and [root exports](../../../packages/contracts/src/index.ts); all frontends use `@waffarly/contracts`, not database imports.                                                                                                                                                                                             |
+| Merchant UI     | [routes.tsx](../../../apps/merchant-dashboard/src/routes.tsx), [ProductBuilderPage.tsx](../../../apps/merchant-dashboard/src/features/catalog/product-builder/ProductBuilderPage.tsx), [StorefrontOrdersPage.tsx](../../../apps/merchant-dashboard/src/StorefrontOrdersPage.tsx), and [EmployeesPage.tsx](../../../apps/merchant-dashboard/src/features/staff/EmployeesPage.tsx). |
+| Customer UI     | [customizer](../../../apps/storefront/src/features/catalog/storefront-product-customizer.tsx), [cart state](../../../apps/storefront/src/features/cart/storefront-store.ts), and [checkout](../../../apps/storefront/src/features/checkout/storefront-checkout-page.tsx).                                                                                                         |
+| POS             | [POSScreen.tsx](../../../apps/pos/src/POSScreen.tsx) receives persisted branch-scoped recipe orders and shares the Orders lifecycle API. [Login.tsx](../../../apps/pos/src/Login.tsx) authenticates merchant-scoped employees through `/auth/pos/*`.                                                                                                                              |
+| Test layout     | API `test/http`, `test/unit`, `test/database`; browser tests under root `tests/ui`. Default API tests exclude database suites.                                                                                                                                                                                                                                                    |
+| CI              | [.github/workflows/ci.yml](../../../.github/workflows/ci.yml): Node 24, install, generate, lint/format/typecheck/test/build/validate. No PostgreSQL service or dedicated database suite is configured in this workflow.                                                                                                                                                           |
 
 ## Audit evidence index
 
@@ -359,15 +359,42 @@ Accepted behavior and delivered implementation:
 - [x] Record reasoned restore/no-restore cancellation and reverse actual movements.
 - [x] Verify tenant boundaries, shortages, replay, concurrent acceptance, and legacy coexistence.
 
-#### M6b - Staff permissions and POS - NOT STARTED
+#### M6b - Staff permissions and incoming-order POS - IMPLEMENTED; FOCUSED VERIFICATION PASSED
 
-- [ ] Define and implement employee permissions and authorized branch assignments.
-- [ ] Add cashier/POS incoming orders, persisted reload/reconnect, and shared commands.
-- [ ] Verify independent authorized cashiers and denial outside assigned branches.
+- Owner-managed employee accounts use a tenant-scoped username, scrypt password
+  hash, active flag, optimistic revision, and one or more same-merchant branch
+  assignments. The login identity is storefront/business slug plus employee
+  username and password. Deactivation or password reset revokes existing POS
+  sessions; each request reloads the employee's current active branch grants.
+- Employees receive two POS permissions: accept recipe orders and start
+  preparation. Rejection, cancellation, and stock restoration remain owner-only.
+  No general staff role hierarchy or employee inventory access is introduced.
+- Pending new recipe orders appear to assigned branches so an employee can route
+  one to an assigned branch at acceptance. Accepted/preparing orders appear only
+  for the branch to which they were routed. The endpoint is cursor-paged and
+  tenant-scoped; only new RECIPE orders enter this queue.
+- POS acceptance and preparation reuse the existing serializable Orders lifecycle
+  and ledger. The API checks employee branch assignments on both actions. Requests
+  retain their idempotency IDs in session storage before sending and can be retried
+  after an uncertain reply. POS polls persisted data every 15 seconds and refreshes
+  when the tab becomes visible.
+- Owner Dashboard has an Employees screen to create accounts, assign active
+  branches, edit names, reset passwords, and deactivate accounts. Merchant and POS
+  screens support Arabic/English and responsive RTL/LTR layouts.
+- [x] Define branch assignments and the employee permission boundary.
+- [x] Add staff authentication and owner account management.
+- [x] Add branch-scoped POS order listing and shared acceptance/preparation actions.
+- [x] Verify tenant-scoped queue access, branch denial, owner-only cancellation,
+      idempotent acceptance/preparation behavior, and session revocation after
+      password reset/deactivation.
+- [x] Verify employee setup/login, uncertain acceptance retry after reload using
+      the same request ID, and Arabic RTL POS interactions in Playwright. Browser
+      API responses are mocked; live browser-to-API integration remains untested.
 
-Full M6 exit remains a branch-authorized cashier workflow. M6a completes only the
-owner scope explicitly accepted by the user; it does not establish cashier rights,
-POS selling, delivery dispatch, payments/refunds, or order completion.
+This slice completes the cashier workflow for incoming RECIPE storefront orders.
+Walk-in/direct POS sales, employee rejection/cancellation, payments/refunds,
+delivery dispatch, and order completion remain separate workflows. The additive
+employee tables are in migration 25; no seed/reset was run.
 
 ### M7 — Remaining stock operations and returns — NOT STARTED
 
@@ -393,7 +420,7 @@ Exit: only the operations actually delivered and verified are marked complete. B
 - [ ] Update architecture/feature/root decision references where behavior actually changes; retain historical progress records.
 - [ ] Record exact files, commands, results, migration state, and commit/diff for every slice.
 
-## Verification ledger — M0 audit and M1–M6a implementation
+## Verification ledger — M0 audit and M1–M6b implementation
 
 Commands ran from the repository root unless a workspace filter selected a package. The Turbo configuration was not changed. Node 24.11.1 was selected through a process-local PATH for builds, tests, and database checks. Test/build/schema engine subprocesses required execution outside the restricted sandbox after `spawn EPERM` in the sandbox. M1–M4 additive migrations were applied to the configured local development database; no reset or seed was run.
 
@@ -613,11 +640,54 @@ Document formatting, relative-link checks, source-ID coverage, and final diff/wo
 - CI: the isolated regression job runs the expanded Orders database script and
   owner lifecycle browser cases alongside existing inventory/modifier cases.
   Remote GitHub Actions execution was not performed.
-- Limits: no cashier authorization, staff branch grants, POS incoming-order UI,
-  financial refund, dispatch, or completion workflow is claimed. Recipe versions
-  remain deferred. Representative load testing, comprehensive accessibility
-  acceptance, legacy dashboard fixture updates, and repository formatting debt
-  remain separate work.
+- Limits: cashier authorization, staff branch grants, and POS incoming-order UI
+  were deferred to M6b below. Financial refund, dispatch, and completion remain
+  separate. Recipe versions remain deferred. Representative load testing,
+  comprehensive accessibility acceptance, legacy dashboard fixture updates, and
+  repository formatting debt remain separate work.
+
+### 2026-10-15 - M6b staff branch permissions and incoming-order POS
+
+- Scope/status: M6b implemented for authenticated staff processing new RECIPE
+  storefront orders. Focused API/database verification and targeted browser
+  acceptance pass.
+- Decisions: employees use business/storefront slug + tenant-unique username +
+  password; owner assigns active branches. Staff may accept into an assigned branch
+  and start preparation for routed orders. Pending rejection, accepted cancellation,
+  and stock restoration remain owner-only. Walk-in/direct sales are outside scope.
+- Changed paths: additive migration 25 and Prisma models; contracts; Auth employee
+  login/session/guard and owner employee-management endpoints; Orders branch-scoped
+  POS listing and lifecycle controllers; Merchant Employees screen; POS login,
+  branch queue, retry persistence and Arabic/English UI; architecture/feature docs.
+- Tenant/access boundary: `PosEmployee` username is unique within merchant;
+  employee-branch assignments have compound same-merchant foreign keys. POS sessions
+  are revalidated against account status, merchant activation, and current active
+  branch assignments on every request. POS mutation routes constrain acceptance
+  and preparation to those assigned branches.
+- Compatibility: existing orders and DIRECT lines keep legacy handling. Only lines
+  already marked `recipe_acceptance` enter the POS queue. POS uses existing Orders
+  transactions and Inventory ledger; no price or stock algorithm runs in the client.
+- Database: migration `20261015230000_pos_employee_branch_access` applied to the
+  configured local `waffarly` PostgreSQL database. All 25 migrations report current.
+  No reset, seed, or data backfill ran.
+- Verification: API lint/typecheck/build pass; Merchant and POS lint/typecheck/build
+  pass; Contracts lint/build and UI build pass; Prisma schema validation passes.
+  Focused M6b tests pass: 3 HTTP tests cover owner management, login normalization,
+  branch authorization, staff accept/preparation routes, and owner-only cancel; 3
+  database tests cover tenant-scoped order listing, branch assignment, idempotent
+  acceptance, preparation, concurrent stock changes, and POS session revocation
+  after password reset/deactivation. The targeted Playwright scenario
+  `tests/ui/pos-employees.spec.ts` passes against local Vite dev servers with mocked
+  API routes, covering owner employee creation/branch assignment, employee login,
+  queue rendering, uncertain acceptance retry after reload with the same request
+  ID, preparation, and Arabic RTL interactions. This verifies browser behavior;
+  API/database behavior is covered separately above. Screenshots are captured for
+  employee creation, accepted order, preparation, and Arabic RTL under Playwright's
+  ignored `test-results/` output. Merchant Vite retains the existing >500 kB JS
+  advisory.
+- Remaining validation: live browser-to-API integration and production deployment
+  acceptance were not performed. Employee POS use beyond local development still
+  needs normal release rollout and operational validation.
 
 ### M0 documentation handoff checks (historical)
 

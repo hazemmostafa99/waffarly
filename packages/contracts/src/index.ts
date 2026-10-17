@@ -142,3 +142,13 @@ export type {
   UpdateCatalogModifierGroupRequest,
   UpdateCatalogProductRequest,
 } from './catalog.js';
+export { POS_EMPLOYEE_PERMISSIONS } from './pos.js';
+export type {
+  PosEmployeePermission,
+  PosEmployeeBranch,
+  PosEmployeeSummary,
+  PosEmployeeSession,
+  PosLoginRequest,
+  CreatePosEmployeeRequest,
+  UpdatePosEmployeeRequest,
+} from './pos.js';

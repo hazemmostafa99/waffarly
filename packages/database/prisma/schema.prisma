@@ -28,6 +28,7 @@ model Merchant {
   firstMonthActivatedBy    String?              @db.VarChar(80)
   createdAt                DateTime             @default(now()) @db.Timestamptz(6)
   owner                    OwnerAccount?
+  posEmployees             PosEmployee[]
   application              MerchantApplication?
   storefront               MerchantStorefront?
   mediaAssets              MediaAsset[]
@@ -98,19 +99,20 @@ model StockItemUnit {
 
 // A merchant location. Every branch has one active default consumption warehouse, enforced in the Inventory API.
 model Branch {
-  id           String            @id @default(uuid()) @db.Uuid
-  merchantId   String            @db.Uuid
-  name         String            @db.VarChar(160)
-  address      String?           @db.VarChar(500)
-  archivedAt   DateTime?         @db.Timestamptz(6)
-  revision     Int               @default(1)
-  createdBy    String            @db.VarChar(80)
-  updatedBy    String            @db.VarChar(80)
-  createdAt    DateTime          @default(now()) @db.Timestamptz(6)
-  updatedAt    DateTime          @updatedAt @db.Timestamptz(6)
-  merchant     Merchant          @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  id           String              @id @default(uuid()) @db.Uuid
+  merchantId   String              @db.Uuid
+  name         String              @db.VarChar(160)
+  address      String?             @db.VarChar(500)
+  archivedAt   DateTime?           @db.Timestamptz(6)
+  revision     Int                 @default(1)
+  createdBy    String              @db.VarChar(80)
+  updatedBy    String              @db.VarChar(80)
+  createdAt    DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime            @updatedAt @db.Timestamptz(6)
+  merchant     Merchant            @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   warehouses   Warehouse[]
   recipeOrders StorefrontOrder[]
+  posEmployees PosEmployeeBranch[]
 
   @@unique([id, merchantId])
   @@unique([merchantId, name])
@@ -328,6 +330,42 @@ model OwnerAccount {
   merchant     Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
 
   @@map("owner_accounts")
+}
+
+// POS staff authenticate within their merchant and receive access only to assigned branches.
+model PosEmployee {
+  id           String              @id @default(uuid()) @db.Uuid
+  merchantId   String              @db.Uuid
+  username     String              @db.VarChar(80)
+  displayName  String              @db.VarChar(160)
+  passwordHash String              @db.VarChar(255)
+  active       Boolean             @default(true)
+  revision     Int                 @default(1)
+  createdBy    String              @db.VarChar(80)
+  updatedBy    String              @db.VarChar(80)
+  createdAt    DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime            @updatedAt @db.Timestamptz(6)
+  merchant     Merchant            @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  branches     PosEmployeeBranch[]
+
+  @@unique([id, merchantId])
+  @@unique([merchantId, username])
+  @@index([merchantId, active, createdAt, id])
+  @@map("pos_employees")
+}
+
+model PosEmployeeBranch {
+  employeeId String      @db.Uuid
+  merchantId String      @db.Uuid
+  branchId   String      @db.Uuid
+  createdBy  String      @db.VarChar(80)
+  createdAt  DateTime    @default(now()) @db.Timestamptz(6)
+  employee   PosEmployee @relation(fields: [employeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  branch     Branch      @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@id([employeeId, branchId])
+  @@index([merchantId, branchId, employeeId])
+  @@map("pos_employee_branches")
 }
 
 // Opaque tokens are stored only as hashes. Admin identity is configured outside the database.

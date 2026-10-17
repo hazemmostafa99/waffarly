@@ -1,7 +1,14 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { App } from './App.js';
+import { Login } from './Login.js';
+import { POSLayout } from './POSLayout.js';
+import { POSScreen } from './POSScreen.js';
 
 export const router = createBrowserRouter([
-  { path: '/', element: <App /> },
+  { path: '/login', element: <Login /> },
+  {
+    path: '/',
+    element: <POSLayout />,
+    children: [{ index: true, element: <POSScreen /> }],
+  },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);

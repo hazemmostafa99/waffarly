@@ -12,6 +12,7 @@ import type {
   StorefrontOrderStatus,
   StorefrontOrderSummary,
 } from '@waffarly/contracts';
+import type { Prisma } from '@waffarly/database';
 import { assertScopedCursor, type CursorPageQuery } from '../../common/http/pagination.js';
 import { formatCents, toCents } from '../../common/money/money.js';
 import { isSerializationConflict } from '../../infrastructure/database/prisma-errors.js';
@@ -247,6 +248,43 @@ export class StorefrontOrdersService {
     }
     const orders = await this.prisma.storefrontOrder.findMany({
       where: { merchantId },
+      include: {
+        lines: {
+          orderBy: { position: 'asc' },
+          include: {
+            selections: { orderBy: [{ groupPosition: 'asc' }, { optionPosition: 'asc' }] },
+            variantAttributes: { orderBy: { position: 'asc' } },
+          },
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: page.limit + 1,
+      ...(page.cursor ? { cursor: { id: page.cursor }, skip: 1 } : {}),
+    });
+    const hasMore = orders.length > page.limit;
+    const items = orders.slice(0, page.limit).map(toSummary);
+    return { items, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null };
+  }
+
+  async listForPos(
+    merchantId: string,
+    branchId: string,
+    page: CursorPageQuery = { limit: 25 },
+  ): Promise<CursorPage<StorefrontOrderSummary>> {
+    const where: Prisma.StorefrontOrderWhereInput = {
+      merchantId,
+      lines: { some: { stockHandling: 'recipe_acceptance' } },
+      OR: [{ status: 'pending' }, { status: { in: ['accepted', 'preparing'] }, branchId }],
+    };
+    if (page.cursor) {
+      const anchor = await this.prisma.storefrontOrder.findFirst({
+        where: { ...where, id: page.cursor },
+        select: { id: true },
+      });
+      assertScopedCursor(page.cursor, anchor !== null);
+    }
+    const orders = await this.prisma.storefrontOrder.findMany({
+      where,
       include: {
         lines: {
           orderBy: { position: 'asc' },

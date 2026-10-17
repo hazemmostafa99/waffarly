@@ -1,9 +1,10 @@
 import { Body, Controller, Get, HttpCode, Inject, Post, Req, Res } from '@nestjs/common';
-import type { OwnerProfile } from '@waffarly/contracts';
+import type { OwnerProfile, PosEmployeeSession } from '@waffarly/contracts';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { AuthService } from './auth.service.js';
+import { posLoginSchema } from './pos-employee.schemas.js';
 
 const loginSchema = z.object({
   username: z.string().trim().min(1).max(80),
@@ -70,6 +71,31 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<{ authenticated: false }> {
     await this.auth.logout(request, response, 'OWNER');
+    return { authenticated: false };
+  }
+
+  @Post('pos/login')
+  @HttpCode(200)
+  async posLogin(
+    @Body() body: unknown,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{ authenticated: true }> {
+    await this.auth.loginPos(parseRequest(posLoginSchema, body), response);
+    return { authenticated: true };
+  }
+
+  @Get('pos/me')
+  posMe(@Req() request: Request): Promise<PosEmployeeSession> {
+    return this.auth.requirePosEmployee(request);
+  }
+
+  @Post('pos/logout')
+  @HttpCode(200)
+  async posLogout(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{ authenticated: false }> {
+    await this.auth.logout(request, response, 'POS');
     return { authenticated: false };
   }
 }

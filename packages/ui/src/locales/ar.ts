@@ -1,15 +1,49 @@
 export const ar: Record<string, string> = {
-  'Business profile and storefront branding for this activity.': 'ملف المتجر وتصميم واجهته لهذا النشاط.',
+  'Waffarly · POS': 'وفّرلي · نقاط البيع',
+  'Sign in with your business code and employee account.':
+    'سجّل الدخول باستخدام معرّف المتجر وحساب الموظف.',
+  'Business code': 'معرّف المتجر',
+  'Point of Sale': 'نقطة البيع',
+  'Sign in to access the POS workspace.': 'سجّل الدخول إلى مساحة نقاط البيع.',
+  'Loading POS…': 'جارٍ تحميل نقاط البيع…',
+  'Incoming storefront orders': 'طلبات المتجر الواردة',
+  'Recipe order queue': 'قائمة طلبات الوصفات',
+  'Refreshing…': 'جارٍ التحديث…',
+  'Orders update automatically. Accepting deducts recipe stock from this branch.':
+    'تتحدّث الطلبات تلقائيًا. يؤدي قبول الطلب إلى خصم مكونات الوصفة من مخزون هذا الفرع.',
+  'Could not load orders.': 'تعذّر تحميل الطلبات.',
+  'Loading orders…': 'جارٍ تحميل الطلبات…',
+  'No incoming recipe orders for this branch.': 'لا توجد طلبات وصفات واردة لهذا الفرع.',
+  pending: 'بانتظار القبول',
+  accepted: 'مقبول',
+  preparing: 'قيد التحضير',
+  pickup: 'استلام',
+  delivery: 'توصيل',
+  'Retry saved action': 'إعادة محاولة الإجراء المحفوظ',
+  'Accept and deduct stock': 'قبول الطلب وخصم المخزون',
+  'Start preparation': 'بدء التحضير',
+  'A previous reply was uncertain. Retry the saved action before continuing.':
+    'لم يتأكد وصول الرد السابق. أعد محاولة الإجراء المحفوظ قبل المتابعة.',
+  'This browser cannot save an in-progress action for safe retry.':
+    'لا يمكن لهذا المتصفح حفظ الإجراء الجاري لإعادة محاولته بأمان.',
+  'The action could not be completed.': 'تعذّر إكمال الإجراء.',
+  'Load more orders': 'تحميل طلبات أخرى',
+  'Business profile and storefront branding for this activity.':
+    'ملف المتجر وتصميم واجهته لهذا النشاط.',
   'Merchant profile': 'ملف المتجر',
   'Storefront design & branding': 'تصميم وواجهة المتجر',
-  'An activated owner can view the business and owner contact profile.': 'يمكن للمالك الذي تم تفعيل حسابه الاطلاع على ملف المتجر وبيانات تواصل المالك.',
-  'An activated owner can select a business design, add a logo, and set an accent color.': 'يمكن للمالك الذي تم تفعيل حسابه اختيار تصميم للمتجر وإضافة شعار وتحديد لون مميز.',
-  'Modules': 'الموديولات',
+  'An activated owner can view the business and owner contact profile.':
+    'يمكن للمالك الذي تم تفعيل حسابه الاطلاع على ملف المتجر وبيانات تواصل المالك.',
+  'An activated owner can select a business design, add a logo, and set an accent color.':
+    'يمكن للمالك الذي تم تفعيل حسابه اختيار تصميم للمتجر وإضافة شعار وتحديد لون مميز.',
+  Modules: 'الموديولات',
   'Modules matrix': 'مصفوفة الموديولات',
   'Modules and platform capabilities': 'الموديولات وقدرات المنصة',
-  'Review code-supported activities and the catalog associations for each platform module.': 'استعرض الأنشطة التي تدعمها الشفرة وارتباطات الكتالوج لكل موديول في المنصة.',
+  'Review code-supported activities and the catalog associations for each platform module.':
+    'استعرض الأنشطة التي تدعمها الشفرة وارتباطات الكتالوج لكل موديول في المنصة.',
   'Compatibility is not access': 'التوافق لا يعني منح الوصول',
-  'The matrix separates platform support from saved catalog associations. Neither represents a plan entitlement, subscription state, merchant access, or user permission.': 'تفصل المصفوفة بين دعم المنصة وارتباطات الكتالوج المحفوظة. ولا يمثل أي منهما استحقاق باقة أو حالة اشتراك أو وصول المتجر أو صلاحية المستخدم.',
+  'The matrix separates platform support from saved catalog associations. Neither represents a plan entitlement, subscription state, merchant access, or user permission.':
+    'تفصل المصفوفة بين دعم المنصة وارتباطات الكتالوج المحفوظة. ولا يمثل أي منهما استحقاق باقة أو حالة اشتراك أو وصول المتجر أو صلاحية المستخدم.',
   'Could not load the modules matrix.': 'تعذر تحميل مصفوفة الموديولات.',
   'Modules matrix summary': 'ملخص موديولات المنصة',
   'Modules currently defined in code': 'الموديولات المحددة حالياً في الشفرة',
@@ -20,7 +54,8 @@ export const ar: Record<string, string> = {
   'Activity-module links currently saved': 'روابط الأنشطة والموديولات المحفوظة حالياً',
   'Module and activity compatibility matrix': 'مصفوفة توافق الموديولات والأنشطة',
   'Matrix legend': 'دليل رموز المصفوفة',
-  'Code support is immutable here; catalog association is the activity’s saved module list.': 'دعم الشفرة ثابت هنا؛ أما ارتباط الكتالوج فهو قائمة الموديولات المحفوظة للنشاط.',
+  'Code support is immutable here; catalog association is the activity’s saved module list.':
+    'دعم الشفرة ثابت هنا؛ أما ارتباط الكتالوج فهو قائمة الموديولات المحفوظة للنشاط.',
   'Showing {{visible}} of {{total}} modules': 'عرض {{visible}} من أصل {{total}} وحدة',
   'Associated in catalog': 'مرتبط في الكتالوج',
   'Supported by code': 'مدعوم في الشفرة',
@@ -29,13 +64,16 @@ export const ar: Record<string, string> = {
   'Catalog mismatch': 'تعارض في الكتالوج',
   'Platform module': 'موديول المنصة',
   Dependencies: 'الاعتماديات',
-  'Search by module name, key, description, or activity': 'ابحث باسم الوحدة أو معرّفها أو وصفها أو النشاط',
+  'Search by module name, key, description, or activity':
+    'ابحث باسم الوحدة أو معرّفها أو وصفها أو النشاط',
   'Loading modules matrix…': 'جارٍ تحميل مصفوفة الموديولات…',
   'Modules matrix data is unavailable.': 'بيانات مصفوفة الموديولات غير متاحة.',
   'No module compatibility data': 'لا توجد بيانات لتوافق الموديولات',
-  'The catalog needs both modules and business activities to build this matrix.': 'يحتاج الكتالوج إلى وحدات وأنشطة أعمال لإنشاء هذه المصفوفة.',
+  'The catalog needs both modules and business activities to build this matrix.':
+    'يحتاج الكتالوج إلى وحدات وأنشطة أعمال لإنشاء هذه المصفوفة.',
   'No modules match this search': 'لا توجد وحدات تطابق هذا البحث',
-  'Try another module name, key, description, or activity.': 'جرّب اسماً أو معرّفاً أو وصفاً أو نشاطاً آخر.',
+  'Try another module name, key, description, or activity.':
+    'جرّب اسماً أو معرّفاً أو وصفاً أو نشاطاً آخر.',
   'Clear module search': 'مسح البحث عن الموديولات',
   'Filter modules': 'تصفية الموديولات',
   'Filter by activity': 'تصفية حسب النشاط',
@@ -44,36 +82,51 @@ export const ar: Record<string, string> = {
   'Module boundaries': 'حدود الموديولات',
   'What this catalog does—and does not—define.': 'ما الذي يحدده هذا الكتالوج وما لا يحدده.',
   'Module support': 'دعم الوحدة',
-  'Each module lists the business activities supported by platform code.': 'تعرض كل وحدة أنشطة الأعمال التي تدعمها شفرة المنصة.',
+  'Each module lists the business activities supported by platform code.':
+    'تعرض كل وحدة أنشطة الأعمال التي تدعمها شفرة المنصة.',
   'Catalog association': 'ارتباط الكتالوج',
-  'Each activity stores its own list of linked module keys.': 'يحتفظ كل نشاط بقائمته الخاصة من معرّفات الموديولات المرتبطة به.',
+  'Each activity stores its own list of linked module keys.':
+    'يحتفظ كل نشاط بقائمته الخاصة من معرّفات الموديولات المرتبطة به.',
   'Not access control': 'ليست صلاحيات وصول',
-  'Neither relationship grants a plan entitlement, subscription, merchant access, or user permission.': 'لا تمنح أي من العلاقتين استحقاقاً في باقة أو اشتراكاً أو وصولاً للمتجر أو صلاحية للمستخدم.',
-  'Platform modules are defined in code; a new module needs an approved code and database change.': 'تُعرّف موديولات المنصة في الشفرة؛ وإضافة موديول جديد تتطلب تغييراً معتمداً في الشفرة وقاعدة البيانات.',
+  'Neither relationship grants a plan entitlement, subscription, merchant access, or user permission.':
+    'لا تمنح أي من العلاقتين استحقاقاً في باقة أو اشتراكاً أو وصولاً للمتجر أو صلاحية للمستخدم.',
+  'Platform modules are defined in code; a new module needs an approved code and database change.':
+    'تُعرّف موديولات المنصة في الشفرة؛ وإضافة موديول جديد تتطلب تغييراً معتمداً في الشفرة وقاعدة البيانات.',
   'Review business activities': 'مراجعة أنشطة الأعمال',
   'No modules match these filters': 'لا توجد وحدات تطابق عوامل التصفية',
-  'Try a different activity, relationship, or search phrase.': 'جرّب نشاطاً أو علاقة أو عبارة بحث مختلفة.',
+  'Try a different activity, relationship, or search phrase.':
+    'جرّب نشاطاً أو علاقة أو عبارة بحث مختلفة.',
   'Business activity catalog': 'كتالوج أنشطة الأعمال',
-  'Classify the business activity types supported by Waffarly and review their platform capabilities.': 'صنّف أنواع الأنشطة التجارية التي تدعمها وفرلي وراجع إمكانات المنصة المرتبطة بها.',
+  'Classify the business activity types supported by Waffarly and review their platform capabilities.':
+    'صنّف أنواع الأنشطة التجارية التي تدعمها وفرلي وراجع إمكانات المنصة المرتبطة بها.',
   'Business activity types': 'أنواع الأنشطة التجارية',
-  'Review platform support separately from the modules saved in each activity.': 'راجع دعم المنصة بشكل منفصل عن الموديولات المحفوظة لكل نشاط.',
+  'Review platform support separately from the modules saved in each activity.':
+    'راجع دعم المنصة بشكل منفصل عن الموديولات المحفوظة لكل نشاط.',
   'Business activity catalog table': 'جدول كتالوج الأنشطة التجارية',
   'Code-supported modules': 'الموديولات المدعومة برمجياً',
   'Catalog status': 'حالة الكتالوج',
   'No modules supported': 'لا توجد موديولات مدعومة',
   'Valid associations': 'ارتباطات سليمة',
   'Standard definition': 'التعريف المعياري',
-  'Keep business categories separate from platform features and access rules.': 'افصل بين فئات الأعمال وميزات المنصة وقواعد الوصول.',
-  'The business category selected for a merchant, such as restaurant or clothing.': 'فئة النشاط التي يحددها المتجر، مثل المطاعم أو الملابس.',
-  'An application capability that may support one or more business activities.': 'إمكانية في التطبيق قد تدعم نوعاً واحداً أو أكثر من الأنشطة التجارية.',
+  'Keep business categories separate from platform features and access rules.':
+    'افصل بين فئات الأعمال وميزات المنصة وقواعد الوصول.',
+  'The business category selected for a merchant, such as restaurant or clothing.':
+    'فئة النشاط التي يحددها المتجر، مثل المطاعم أو الملابس.',
+  'An application capability that may support one or more business activities.':
+    'إمكانية في التطبيق قد تدعم نوعاً واحداً أو أكثر من الأنشطة التجارية.',
   'Plan entitlement': 'استحقاق الباقة',
-  'A plan benefit is managed separately; activity compatibility does not assign it.': 'تُدار مزايا الباقة بشكل منفصل؛ فتوافق النشاط لا يخصصها.',
+  'A plan benefit is managed separately; activity compatibility does not assign it.':
+    'تُدار مزايا الباقة بشكل منفصل؛ فتوافق النشاط لا يخصصها.',
   'User permission': 'صلاحية المستخدم',
-  'Permissions determine what a person may do and are not inferred from activity type.': 'تحدد الصلاحيات ما يمكن للشخص فعله، ولا تُستنتج من نوع النشاط.',
-  'Adding a category does not deploy application capabilities or create database tables by itself.': 'إضافة فئة لا تنشر إمكانات التطبيق ولا تنشئ جداول قاعدة البيانات تلقائياً.',
+  'Permissions determine what a person may do and are not inferred from activity type.':
+    'تحدد الصلاحيات ما يمكن للشخص فعله، ولا تُستنتج من نوع النشاط.',
+  'Adding a category does not deploy application capabilities or create database tables by itself.':
+    'إضافة فئة لا تنشر إمكانات التطبيق ولا تنشئ جداول قاعدة البيانات تلقائياً.',
   'Review platform modules': 'مراجعة موديولات المنصة',
-  'Update the display details and saved module associations for this activity.': 'حدّث بيانات العرض وارتباطات الموديولات المحفوظة لهذا النشاط.',
-  'Only supported module links can be saved. This does not change plan entitlements or merchant access.': 'يمكن حفظ الموديولات المدعومة فقط. هذا لا يغيّر مزايا الباقة أو صلاحيات المتجر.',
+  'Update the display details and saved module associations for this activity.':
+    'حدّث بيانات العرض وارتباطات الموديولات المحفوظة لهذا النشاط.',
+  'Only supported module links can be saved. This does not change plan entitlements or merchant access.':
+    'يمكن حفظ الموديولات المدعومة فقط. هذا لا يغيّر مزايا الباقة أو صلاحيات المتجر.',
   'Review the business activity types supported by the platform and their compatible modules.':
     'استعرض أنواع أنشطة الأعمال التي تدعمها المنصة والوحدات المتوافقة معها.',
   'Activity compatibility only': 'التوافق بين الأنشطة فقط',
@@ -83,48 +136,61 @@ export const ar: Record<string, string> = {
   'Activity catalog summary': 'ملخص كتالوج الأنشطة',
   'Business activity types in the catalog': 'أنواع أنشطة الأعمال المسجلة في الكتالوج',
   'Modules listed in the compatibility catalog': 'الوحدات المدرجة في كتالوج التوافق',
-  'Activity types currently returned by the platform catalog.': 'أنواع الأنشطة التي يعرضها كتالوج المنصة حالياً.',
+  'Activity types currently returned by the platform catalog.':
+    'أنواع الأنشطة التي يعرضها كتالوج المنصة حالياً.',
   'Showing {{visible}} of {{total}}': 'عرض {{visible}} من أصل {{total}}',
   compatible: 'متوافق',
   'Search activities': 'البحث في الأنشطة',
-  'Search by activity name, key, description, or compatible module': 'ابحث باسم النشاط أو معرّفه أو وصفه أو الوحدة المتوافقة معه',
+  'Search by activity name, key, description, or compatible module':
+    'ابحث باسم النشاط أو معرّفه أو وصفه أو الوحدة المتوافقة معه',
   'Loading activity catalog…': 'جارٍ تحميل كتالوج الأنشطة…',
   'Activity catalog unavailable.': 'كتالوج الأنشطة غير متاح.',
   'No business activities configured': 'لا توجد أنشطة أعمال مُعدّة',
-  'No business activities are configured in the catalog yet.': 'لم تتم إضافة أنشطة أعمال إلى الكتالوج بعد.',
+  'No business activities are configured in the catalog yet.':
+    'لم تتم إضافة أنشطة أعمال إلى الكتالوج بعد.',
   'No activities match this search': 'لا توجد أنشطة تطابق هذا البحث',
   'Try another name, key, description, or module.': 'جرّب اسماً أو معرّفاً أو وصفاً أو وحدة أخرى.',
   'Clear activity search': 'مسح البحث عن الأنشطة',
   'Subscription access': 'الوصول والاشتراكات',
-  'The current API records first-month activation only; plan assignment, later payments, renewal, and expiry details are not available here.': 'تسجل الخدمة الحالية تفعيل الشهر الأول فقط؛ ولا تتوفر هنا بيانات تخصيص الباقات أو الدفعات اللاحقة أو التجديد أو انتهاء الاشتراك.',
+  'The current API records first-month activation only; plan assignment, later payments, renewal, and expiry details are not available here.':
+    'تسجل الخدمة الحالية تفعيل الشهر الأول فقط؛ ولا تتوفر هنا بيانات تخصيص الباقات أو الدفعات اللاحقة أو التجديد أو انتهاء الاشتراك.',
   'View monthly plans': 'عرض الباقات الشهرية',
-  'Creating a business and recording first-month access are separate. Activation requires confirmation of collection outside Waffarly.': 'إنشاء المتجر وتسجيل الوصول للشهر الأول خطوتان منفصلتان. يتطلب التفعيل تأكيد تحصيل المبلغ خارج وفرلي.',
+  'Creating a business and recording first-month access are separate. Activation requires confirmation of collection outside Waffarly.':
+    'إنشاء المتجر وتسجيل الوصول للشهر الأول خطوتان منفصلتان. يتطلب التفعيل تأكيد تحصيل المبلغ خارج وفرلي.',
   'Could not load access records.': 'تعذر تحميل سجلات الوصول.',
   'First-month access summary': 'ملخص تفعيل الشهر الأول',
   'First-month access records': 'سجلات تفعيل الشهر الأول',
-  'Filter the confirmed access fact currently available for each business.': 'صفِّ بيانات التفعيل المؤكدة والمتاحة حاليًا لكل متجر.',
+  'Filter the confirmed access fact currently available for each business.':
+    'صفِّ بيانات التفعيل المؤكدة والمتاحة حاليًا لكل متجر.',
   records: 'سجلات',
   'Search access records': 'البحث في سجلات الوصول',
-  'Search by business, owner, username, or phone': 'ابحث باسم المتجر أو المالك أو المستخدم أو رقم الهاتف',
+  'Search by business, owner, username, or phone':
+    'ابحث باسم المتجر أو المالك أو المستخدم أو رقم الهاتف',
   'Activation date': 'تاريخ التفعيل',
   'Loading access records…': 'جارٍ تحميل سجلات الوصول…',
   'Access records are unavailable.': 'سجلات الوصول غير متاحة.',
   'No access records match these filters.': 'لا توجد سجلات وصول تطابق عوامل التصفية.',
-  'Add a business and its owner account using the approved merchant setup details.': 'أضف متجرًا وحساب مالكه باستخدام بيانات الإعداد المعتمدة.',
+  'Add a business and its owner account using the approved merchant setup details.':
+    'أضف متجرًا وحساب مالكه باستخدام بيانات الإعداد المعتمدة.',
   'Back to businesses': 'العودة إلى المتاجر',
   'Business details': 'بيانات المتجر',
   'Enter the business contact information and activity.': 'أدخل بيانات التواصل ونشاط المتجر.',
   'Enter 3–32 characters.': 'أدخل من 3 إلى 32 حرفًا.',
   'Owner account': 'حساب المالك',
-  'Create the owner login. Keep the password private and share it only after verifying the owner.': 'أنشئ حساب دخول المالك. احتفظ بكلمة المرور بشكل خاص وشاركها بعد التحقق من هوية المالك فقط.',
-  'Use 3–80 letters, numbers, dots, underscores, or hyphens.': 'استخدم من 3 إلى 80 حرفًا من الحروف أو الأرقام أو النقاط أو الشرطات السفلية أو الوصلات.',
+  'Create the owner login. Keep the password private and share it only after verifying the owner.':
+    'أنشئ حساب دخول المالك. احتفظ بكلمة المرور بشكل خاص وشاركها بعد التحقق من هوية المالك فقط.',
+  'Use 3–80 letters, numbers, dots, underscores, or hyphens.':
+    'استخدم من 3 إلى 80 حرفًا من الحروف أو الأرقام أو النقاط أو الشرطات السفلية أو الوصلات.',
   'Use a password with 12–128 characters.': 'استخدم كلمة مرور من 12 إلى 128 حرفًا.',
   'Approval and access': 'الموافقة والوصول',
   'Create the business and owner account': 'إنشاء المتجر وحساب المالك',
-  'The merchant is approved when this form is submitted successfully.': 'تتم الموافقة على المتجر عند إرسال هذه الاستمارة بنجاح.',
-  'Confirm the owner’s identity before sharing account details.': 'تحقق من هوية المالك قبل مشاركة بيانات الحساب.',
+  'The merchant is approved when this form is submitted successfully.':
+    'تتم الموافقة على المتجر عند إرسال هذه الاستمارة بنجاح.',
+  'Confirm the owner’s identity before sharing account details.':
+    'تحقق من هوية المالك قبل مشاركة بيانات الحساب.',
   'Record activation separately': 'تسجيل التفعيل بشكل منفصل',
-  'Only activate after the first month was collected outside Waffarly.': 'لا تفعّل الحساب إلا بعد تحصيل مبلغ الشهر الأول خارج وفّرلي.',
+  'Only activate after the first month was collected outside Waffarly.':
+    'لا تفعّل الحساب إلا بعد تحصيل مبلغ الشهر الأول خارج وفّرلي.',
   'View registered businesses': 'عرض المتاجر المسجلة',
   'Creating business…': 'جارٍ إنشاء المتجر…',
   'The business could not be created.': 'تعذر إنشاء المتجر.',
@@ -133,13 +199,16 @@ export const ar: Record<string, string> = {
   'No merchant record matches this address.': 'لا توجد بيانات متجر تطابق هذا العنوان.',
   'Merchant record is unavailable.': 'بيانات المتجر غير متاحة.',
   'The merchant details could not be loaded.': 'تعذر تحميل تفاصيل المتجر.',
-  'Showing the last available merchant list. Refresh it to check again.': 'تُعرض آخر قائمة متاحة للمتاجر. حدّثها للتحقق مجددًا.',
+  'Showing the last available merchant list. Refresh it to check again.':
+    'تُعرض آخر قائمة متاحة للمتاجر. حدّثها للتحقق مجددًا.',
   'Created {{date}}': 'تاريخ الإضافة: {{date}}',
   'Merchant overview': 'نظرة عامة على المتجر',
   'Owner details currently available to the platform.': 'بيانات المالك المتاحة حاليًا للمنصة.',
-  'The API currently exposes first-month activation only; no plan, expiry, or renewal details are available here.': 'تعرض الخدمة حاليًا حالة تفعيل الشهر الأول فقط؛ ولا تتوفر هنا تفاصيل الباقة أو الانتهاء أو التجديد.',
+  'The API currently exposes first-month activation only; no plan, expiry, or renewal details are available here.':
+    'تعرض الخدمة حاليًا حالة تفعيل الشهر الأول فقط؛ ولا تتوفر هنا تفاصيل الباقة أو الانتهاء أو التجديد.',
   'Activation recorded': 'تاريخ تسجيل التفعيل',
-  'Activate only after confirming that the first month was collected outside Waffarly.': 'لا تفعّل إلا بعد التأكد من تحصيل مبلغ الشهر الأول خارج وفّرلي.',
+  'Activate only after confirming that the first month was collected outside Waffarly.':
+    'لا تفعّل إلا بعد التأكد من تحصيل مبلغ الشهر الأول خارج وفّرلي.',
   'Loading merchant details…': 'جارٍ تحميل تفاصيل المتجر…',
   'SUPER ADMIN': 'مدير النظام',
   'Welcome back': 'مرحبًا بعودتك',
@@ -151,11 +220,12 @@ export const ar: Record<string, string> = {
   'Platform navigation': 'التنقل في المنصة',
   'Expand sidebar': 'توسيع الشريط الجانبي',
   'Collapse sidebar': 'طيّ الشريط الجانبي',
-  'PLATFORM': 'المنصة',
+  PLATFORM: 'المنصة',
   'Good food, brighter days': 'طعام شهي، وأيام أجمل',
   'Manage the Waffarly platform from one place.': 'أدر منصة وفرلي من مكان واحد.',
   'Platform overview': 'نظرة عامة على المنصة',
-  'A clear view of businesses, applications, plans, and storefront designs.': 'نظرة واضحة على المتاجر والطلبات والباقات وتصاميم الواجهات.',
+  'A clear view of businesses, applications, plans, and storefront designs.':
+    'نظرة واضحة على المتاجر والطلبات والباقات وتصاميم الواجهات.',
   'Manage businesses': 'إدارة المتاجر',
   'Some overview data could not be loaded.': 'تعذر تحميل بعض بيانات النظرة العامة.',
   'Businesses registered on Waffarly': 'المتاجر المسجلة على وفرلي',
@@ -170,10 +240,10 @@ export const ar: Record<string, string> = {
   'Loading businesses': 'جارٍ تحميل المتاجر…',
   'No businesses yet': 'لا توجد متاجر بعد',
   'Businesses will appear here when they are created.': 'ستظهر المتاجر هنا بعد إنشائها.',
-  'Business': 'المتجر',
-  'Activity': 'النشاط',
-  'Owner': 'المالك',
-  'Access': 'الوصول',
+  Business: 'المتجر',
+  Activity: 'النشاط',
+  Owner: 'المالك',
+  Access: 'الوصول',
   'First month activated': 'تم تفعيل الشهر الأول',
   'Not activated': 'غير مفعّل',
   'Applications to review': 'طلبات بانتظار المراجعة',
@@ -190,12 +260,14 @@ export const ar: Record<string, string> = {
   'Open design library': 'فتح مكتبة التصاميم',
   'Loading platform overview…': 'جارٍ تحميل نظرة عامة على المنصة…',
   'Merchant management': 'إدارة المتاجر',
-  'Review registered businesses and their recorded first-month access status.': 'استعرض المتاجر المسجلة وحالة تفعيل الشهر الأول المسجلة لها.',
+  'Review registered businesses and their recorded first-month access status.':
+    'استعرض المتاجر المسجلة وحالة تفعيل الشهر الأول المسجلة لها.',
   'Some business data could not be loaded.': 'تعذر تحميل بعض بيانات المتاجر.',
   'Business records are unavailable.': 'بيانات المتاجر غير متاحة حاليًا.',
   'Business summary': 'ملخص المتاجر',
   'Registered businesses': 'المتاجر المسجلة',
-  'Search and filter the businesses registered on Waffarly.': 'ابحث في المتاجر المسجلة على وفرلي وصفّها حسب النشاط أو الوصول.',
+  'Search and filter the businesses registered on Waffarly.':
+    'ابحث في المتاجر المسجلة على وفرلي وصفّها حسب النشاط أو الوصول.',
   'Business contact': 'رقم تواصل المتجر',
   'Businesses awaiting first-month activation': 'متاجر بانتظار تفعيل الشهر الأول',
   'Awaiting activation': 'بانتظار التفعيل',
@@ -206,12 +278,14 @@ export const ar: Record<string, string> = {
   'Try changing your search or filters.': 'جرّب تغيير البحث أو عوامل التصفية.',
   'Clear filters': 'مسح عوامل التصفية',
   Added: 'أُضيف في',
-  'Showing {{start}}–{{end}} of {{total}} businesses': 'عرض {{start}}–{{end}} من أصل {{total}} متجرًا',
+  'Showing {{start}}–{{end}} of {{total}} businesses':
+    'عرض {{start}}–{{end}} من أصل {{total}} متجرًا',
   'Business list pages': 'صفحات قائمة المتاجر',
   Previous: 'السابق',
   Next: 'التالي',
   'Page {{page}} of {{pages}}': 'الصفحة {{page}} من {{pages}}',
-  'Review applications, create businesses, and see their access status.': 'راجع الطلبات، وأنشئ المتاجر، وتابع حالة الوصول.',
+  'Review applications, create businesses, and see their access status.':
+    'راجع الطلبات، وأنشئ المتاجر، وتابع حالة الوصول.',
   'Secure platform access': 'وصول آمن إلى المنصة',
   'Signing out…': 'جارٍ تسجيل الخروج…',
   Waffarly: 'وفّرلي',
@@ -393,18 +467,22 @@ export const ar: Record<string, string> = {
   'Set the monthly offer for your business merchants.': 'حدّد العروض الشهرية لأصحاب المتاجر.',
   'Plan definitions do not change merchant access, subscriptions, or collected payments.':
     'تعريف الباقات لا يغيّر وصول المتاجر أو اشتراكاتها أو المدفوعات المحصّلة.',
-  'Only enter the commercial details approved for this plan.': 'أدخل التفاصيل التجارية المعتمدة لهذه الباقة فقط.',
+  'Only enter the commercial details approved for this plan.':
+    'أدخل التفاصيل التجارية المعتمدة لهذه الباقة فقط.',
   'Refresh plans': 'تحديث الباقات',
   'Could not load plans.': 'تعذّر تحميل الباقات.',
   'The plan could not be saved.': 'تعذّر حفظ الباقة.',
   'The plan changed after you opened it. Your draft is preserved; reload the latest values before saving again.':
     'تغيّرت الباقة بعد فتحها. تم الاحتفاظ بتعديلاتك؛ حمّل أحدث البيانات قبل الحفظ مجددًا.',
-  'Discard your draft and load the latest plan values?': 'هل تريد تجاهل تعديلاتك الحالية وتحميل أحدث بيانات الباقة؟',
+  'Discard your draft and load the latest plan values?':
+    'هل تريد تجاهل تعديلاتك الحالية وتحميل أحدث بيانات الباقة؟',
   'Load latest values': 'تحميل أحدث البيانات',
   'Edit monthly plan': 'تعديل الباقة الشهرية',
   'Create a monthly plan': 'إنشاء باقة شهرية',
-  'Add an administrator-defined monthly offer to the plan catalog.': 'أضف عرضًا شهريًا يحدده المسؤول إلى قائمة الباقات.',
-  'Update the approved details for this monthly offer.': 'حدّث التفاصيل المعتمدة لهذا العرض الشهري.',
+  'Add an administrator-defined monthly offer to the plan catalog.':
+    'أضف عرضًا شهريًا يحدده المسؤول إلى قائمة الباقات.',
+  'Update the approved details for this monthly offer.':
+    'حدّث التفاصيل المعتمدة لهذا العرض الشهري.',
   'Back to plan catalog': 'العودة إلى قائمة الباقات',
   'Monthly offer details': 'تفاصيل العرض الشهري',
   'Plan details': 'تفاصيل الباقة',
@@ -413,10 +491,12 @@ export const ar: Record<string, string> = {
   Created: 'تاريخ الإنشاء',
   'Last updated': 'آخر تحديث',
   'Leave without saving?': 'هل تريد المغادرة دون حفظ؟',
-  'Your plan changes have not been saved. Leave and discard them?': 'لم يتم حفظ تعديلات الباقة. هل تريد المغادرة وتجاهلها؟',
+  'Your plan changes have not been saved. Leave and discard them?':
+    'لم يتم حفظ تعديلات الباقة. هل تريد المغادرة وتجاهلها؟',
   'Stay and keep editing': 'البقاء ومتابعة التعديل',
   'Discard changes': 'تجاهل التعديلات',
-  'This plan may have been removed or is no longer available.': 'ربما حُذفت هذه الباقة أو لم تعد متاحة.',
+  'This plan may have been removed or is no longer available.':
+    'ربما حُذفت هذه الباقة أو لم تعد متاحة.',
   'Loading plan details…': 'جارٍ تحميل تفاصيل الباقة…',
   'Plan name': 'اسم الباقة',
   'Monthly plan': 'باقة شهرية',
@@ -860,7 +940,8 @@ export const ar: Record<string, string> = {
   'All business activities': 'كل الأنشطة',
   'Business activities ·': 'الأنشطة التجارية ·',
   'Choose an available design for your business activity.': 'اختر تصميمًا متاحًا لنوع نشاطك.',
-  'Manage your customers and build stronger relationships with them.': 'أدر عملاءك وابنِ علاقات أقوى معهم.',
+  'Manage your customers and build stronger relationships with them.':
+    'أدر عملاءك وابنِ علاقات أقوى معهم.',
   'Customer directory': 'دليل العملاء',
   'Customer summary': 'ملخص العملاء',
   'New customers': 'عملاء جدد',
@@ -947,7 +1028,8 @@ export const ar: Record<string, string> = {
   '08:17 AM': '08:17 ص',
   'Customer prefers chicken and family-sized meals.': 'يفضل العميل الدجاج والوجبات العائلية.',
   'Usually orders during the afternoon.': 'عادةً ما يطلب خلال فترة الظهيرة.',
-  'High-value customer. Offer early access to new products.': 'عميل مهم. اقترح عليه الوصول المبكر إلى المنتجات الجديدة.',
+  'High-value customer. Offer early access to new products.':
+    'عميل مهم. اقترح عليه الوصول المبكر إلى المنتجات الجديدة.',
   'No saved notes yet.': 'لا توجد ملاحظات محفوظة بعد.',
   'Customer has not ordered in the last two weeks.': 'لم يطلب العميل خلال الأسبوعين الماضيين.',
   'Loyal customer with frequent repeat orders.': 'عميل وفيّ يكرر طلباته باستمرار.',
@@ -959,15 +1041,18 @@ export const ar: Record<string, string> = {
   'Refresh library': 'تحديث المكتبة',
   'Design library summary': 'ملخص مكتبة التصاميم',
   'All designs': 'كل التصاميم',
-  'Storefront designs currently in the library.': 'تصاميم واجهات المتاجر الموجودة في المكتبة حاليًا.',
+  'Storefront designs currently in the library.':
+    'تصاميم واجهات المتاجر الموجودة في المكتبة حاليًا.',
   'Ready for future merchant selection.': 'جاهزة للاختيار من قِبل المتاجر لاحقًا.',
   'Visible to platform administrators only.': 'ظاهرة لمسؤولي المنصة فقط.',
   'Could not load templates.': 'تعذّر تحميل التصاميم.',
   'Reload library': 'إعادة تحميل المكتبة',
   'Edit template': 'تعديل التصميم',
-  'Set the storefront presentation and its library availability.': 'حدّد شكل واجهة المتجر وحالة إتاحتها في المكتبة.',
+  'Set the storefront presentation and its library availability.':
+    'حدّد شكل واجهة المتجر وحالة إتاحتها في المكتبة.',
   'Storefront preview': 'معاينة واجهة المتجر',
-  'Availability adds the design to the merchant library; it does not publish a storefront.': 'تضيف الإتاحة التصميم إلى مكتبة المتاجر، لكنها لا تنشر واجهة متجر.',
+  'Availability adds the design to the merchant library; it does not publish a storefront.':
+    'تضيف الإتاحة التصميم إلى مكتبة المتاجر، لكنها لا تنشر واجهة متجر.',
   'Move {{name}} to drafts': 'نقل {{name}} إلى المسودات',
   'Make {{name}} available': 'إتاحة {{name}}',
   'Move to drafts': 'نقل إلى المسودات',
@@ -987,23 +1072,32 @@ export const ar: Record<string, string> = {
   Revision: 'المراجعة',
   'Updated by': 'آخر تحديث بواسطة',
   'Merchant eligibility': 'ملاءمة المتاجر',
-  'Activity scope and availability determine which merchants can newly select this design.': 'يحدد نطاق النشاط والإتاحة المتاجر التي يمكنها اختيار هذا التصميم.',
+  'Activity scope and availability determine which merchants can newly select this design.':
+    'يحدد نطاق النشاط والإتاحة المتاجر التي يمكنها اختيار هذا التصميم.',
   'Activity scope': 'نطاق النشاط',
-  'General designs match every business activity.': 'التصاميم العامة مناسبة لجميع الأنشطة التجارية.',
-  'This design is scoped to {{activity}} businesses.': 'هذا التصميم مخصص للمتاجر ذات نشاط {{activity}}.',
-  'Only available designs are offered for new merchant selections.': 'تظهر التصاميم المتاحة فقط عند اختيار تصميم جديد للمتجر.',
-  'An already-selected design may remain visible to that merchant if it is later moved to drafts.': 'قد يظل التصميم المختار سابقًا ظاهرًا للمتجر حتى بعد نقله إلى المسودات.',
-  'Review the saved preview, merchant scope, and availability settings.': 'راجع المعاينة المحفوظة ونطاق المتاجر وإعدادات الإتاحة.',
+  'General designs match every business activity.':
+    'التصاميم العامة مناسبة لجميع الأنشطة التجارية.',
+  'This design is scoped to {{activity}} businesses.':
+    'هذا التصميم مخصص للمتاجر ذات نشاط {{activity}}.',
+  'Only available designs are offered for new merchant selections.':
+    'تظهر التصاميم المتاحة فقط عند اختيار تصميم جديد للمتجر.',
+  'An already-selected design may remain visible to that merchant if it is later moved to drafts.':
+    'قد يظل التصميم المختار سابقًا ظاهرًا للمتجر حتى بعد نقله إلى المسودات.',
+  'Review the saved preview, merchant scope, and availability settings.':
+    'راجع المعاينة المحفوظة ونطاق المتاجر وإعدادات الإتاحة.',
   'Back to library': 'العودة إلى المكتبة',
   'Edit design': 'تعديل التصميم',
   'Could not update template availability.': 'تعذّر تحديث إتاحة التصميم.',
-  'Availability controls new storefront selections; it does not publish a storefront.': 'تتحكم الإتاحة في اختيار تصميم جديد لواجهة المتجر، ولا تنشر واجهة متجر.',
+  'Availability controls new storefront selections; it does not publish a storefront.':
+    'تتحكم الإتاحة في اختيار تصميم جديد لواجهة المتجر، ولا تنشر واجهة متجر.',
   'Current status': 'الحالة الحالية',
-  'Changing availability updates the library only. A merchant storefront changes only when that merchant saves its own storefront settings.': 'يغيّر تحديث الإتاحة المكتبة فقط. ولا تتغير واجهة المتجر إلا عندما يحفظ صاحبه إعداداته.',
+  'Changing availability updates the library only. A merchant storefront changes only when that merchant saves its own storefront settings.':
+    'يغيّر تحديث الإتاحة المكتبة فقط. ولا تتغير واجهة المتجر إلا عندما يحفظ صاحبه إعداداته.',
   'Loading template details…': 'جارٍ تحميل تفاصيل التصميم…',
   'Try again to load this template.': 'حاول مجددًا لتحميل هذا التصميم.',
   'This template is no longer in the library.': 'لم يعد هذا التصميم موجودًا في المكتبة.',
-  'Return to the design library to review the current templates.': 'عد إلى مكتبة التصاميم لمراجعة التصاميم الحالية.',
+  'Return to the design library to review the current templates.':
+    'عد إلى مكتبة التصاميم لمراجعة التصاميم الحالية.',
   'Template overview': 'نظرة عامة على التصميم',
   'Template eligibility and availability': 'ملاءمة التصميم وإتاحته',
 };

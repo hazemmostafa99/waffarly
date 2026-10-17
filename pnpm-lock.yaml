@@ -146,6 +146,9 @@ importers:
 
   apps/pos:
     dependencies:
+      '@waffarly/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@waffarly/ui':
         specifier: workspace:*
         version: link:../../packages/ui

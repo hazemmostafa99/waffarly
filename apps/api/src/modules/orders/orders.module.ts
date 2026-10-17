@@ -5,12 +5,17 @@ import { OrderLifecycleService } from './order-lifecycle.service.js';
 import { CatalogModule } from '../catalog/index.js';
 import {
   OwnerStorefrontOrdersController,
+  PosStorefrontOrdersController,
   PublicStorefrontOrdersController,
 } from './storefront-orders.controller.js';
 import { StorefrontOrdersService } from './storefront-orders.service.js';
 @Module({
   imports: [AuthModule, CatalogModule, InventoryModule],
-  controllers: [OwnerStorefrontOrdersController, PublicStorefrontOrdersController],
+  controllers: [
+    OwnerStorefrontOrdersController,
+    PosStorefrontOrdersController,
+    PublicStorefrontOrdersController,
+  ],
   providers: [StorefrontOrdersService, OrderLifecycleService],
 })
 export class OrdersModule {}

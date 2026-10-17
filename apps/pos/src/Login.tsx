@@ -6,7 +6,7 @@ import { apiRequest } from './lib/api-client.js';
 export function Login() {
   const { t, errorText } = useLocale();
   const navigate = useNavigate();
-  const [login, setLogin] = useState({ username: '', password: '' });
+  const [login, setLogin] = useState({ storefrontSlug: '', username: '', password: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -34,8 +34,17 @@ export function Login() {
     <main id="main-content" tabIndex={-1} className="shell narrow">
       <div className="eyebrow">{t('Waffarly · POS')}</div>
       <h1>{t('Point of Sale')}</h1>
-      <p>{t('Sign in to access the POS workspace.')}</p>
+      <p>{t('Sign in with your business code and employee account.')}</p>
       <form className="panel form" onSubmit={(event) => void signIn(event)}>
+        <label>
+          {t('Business code')}{' '}
+          <Input
+            autoComplete="organization"
+            value={login.storefrontSlug}
+            onChange={(event) => setLogin({ ...login, storefrontSlug: event.target.value })}
+            required
+          />
+        </label>
         <label>
           {t('Username')}{' '}
           <Input

@@ -1,4 +1,4 @@
-import type { BusinessActivityKey } from '@waffarly/contracts';
+import { POS_EMPLOYEE_PERMISSIONS, type BusinessActivityKey } from '@waffarly/contracts';
 import { createHash, randomBytes } from 'node:crypto';
 import {
   ForbiddenException,
@@ -8,7 +8,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import type { OwnerProfile } from '@waffarly/contracts';
+import type { OwnerProfile, PosEmployeeSession, PosLoginRequest } from '@waffarly/contracts';
 import { AppConfiguration } from '../../config/app-configuration.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { verifyPassword } from './password.js';
@@ -16,6 +16,7 @@ import { verifyPassword } from './password.js';
 const SESSION_LIFETIME_MS = 8 * 60 * 60 * 1000;
 const ADMIN_COOKIE = 'waffarly_admin_session';
 const OWNER_COOKIE = 'waffarly_owner_session';
+const POS_COOKIE = 'waffarly_pos_session';
 
 function tokenHash(token: string): string {
   return createHash('sha256').update(token).digest('hex');
@@ -64,6 +65,36 @@ export class AuthService {
     await this.startSession('OWNER', account.id, OWNER_COOKIE, response);
   }
 
+  async loginPos(input: PosLoginRequest, response: Response): Promise<void> {
+    const merchant = await this.prisma.merchant.findUnique({
+      where: { storefrontSlug: input.storefrontSlug.trim().toLowerCase() },
+      select: { id: true, firstMonthActivatedAt: true },
+    });
+    const employee = merchant
+      ? await this.prisma.posEmployee.findUnique({
+          where: {
+            merchantId_username: {
+              merchantId: merchant.id,
+              username: input.username.trim().toLowerCase(),
+            },
+          },
+        })
+      : null;
+    if (!employee || !(await verifyPassword(input.password, employee.passwordHash))) {
+      throw new UnauthorizedException('Invalid credentials.');
+    }
+    if (!employee.active) throw new UnauthorizedException('Invalid credentials.');
+    if (!merchant?.firstMonthActivatedAt) {
+      throw new ForbiddenException('Subscription is not active.');
+    }
+    const activeBranchCount = await this.prisma.posEmployeeBranch.count({
+      where: { employeeId: employee.id, merchantId: merchant.id, branch: { archivedAt: null } },
+    });
+    if (activeBranchCount === 0)
+      throw new ForbiddenException('No active branch is assigned to this account.');
+    await this.startSession('POS', employee.id, POS_COOKIE, response);
+  }
+
   async requireAdmin(request: Request): Promise<string> {
     const subjectId = await this.readSession(request, ADMIN_COOKIE, 'ADMIN');
     if (subjectId !== this.adminSessionKey() || !this.config.superAdminUsername) {
@@ -94,8 +125,42 @@ export class AuthService {
     };
   }
 
-  async logout(request: Request, response: Response, kind: 'ADMIN' | 'OWNER'): Promise<void> {
-    const name = kind === 'ADMIN' ? ADMIN_COOKIE : OWNER_COOKIE;
+  async requirePosEmployee(request: Request): Promise<PosEmployeeSession> {
+    const subjectId = await this.readSession(request, POS_COOKIE, 'POS');
+    const employee = await this.prisma.posEmployee.findUnique({
+      where: { id: subjectId },
+      include: {
+        merchant: true,
+        branches: {
+          where: { branch: { archivedAt: null } },
+          orderBy: { branch: { name: 'asc' } },
+          select: { branch: { select: { id: true, name: true } } },
+        },
+      },
+    });
+    if (!employee || !employee.active) throw new UnauthorizedException('POS session is invalid.');
+    if (!employee.merchant.firstMonthActivatedAt) {
+      throw new ForbiddenException('Subscription is not active.');
+    }
+    const branches = employee.branches.map(({ branch }) => ({ ...branch, archivedAt: null }));
+    if (branches.length === 0)
+      throw new ForbiddenException('No active branch is assigned to this account.');
+    return {
+      id: employee.id,
+      merchantId: employee.merchantId,
+      username: employee.username,
+      displayName: employee.displayName,
+      permissions: [...POS_EMPLOYEE_PERMISSIONS],
+      branches,
+    };
+  }
+
+  async logout(
+    request: Request,
+    response: Response,
+    kind: 'ADMIN' | 'OWNER' | 'POS',
+  ): Promise<void> {
+    const name = kind === 'ADMIN' ? ADMIN_COOKIE : kind === 'OWNER' ? OWNER_COOKIE : POS_COOKIE;
     const token = readCookie(request, name);
     if (token) {
       await this.prisma.authSession.deleteMany({ where: { tokenHash: tokenHash(token) } });
@@ -104,7 +169,7 @@ export class AuthService {
   }
 
   private async startSession(
-    subjectKind: 'ADMIN' | 'OWNER',
+    subjectKind: 'ADMIN' | 'OWNER' | 'POS',
     subjectId: string,
     cookieName: string,
     response: Response,
@@ -128,7 +193,7 @@ export class AuthService {
   private async readSession(
     request: Request,
     cookieName: string,
-    expectedKind: 'ADMIN' | 'OWNER',
+    expectedKind: 'ADMIN' | 'OWNER' | 'POS',
   ): Promise<string> {
     const token = readCookie(request, cookieName);
     if (!token) throw new UnauthorizedException('Sign in is required.');

@@ -1,4 +1,10 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type {
   AcceptRecipeOrderRequest,
   CancelRecipeOrderRequest,
@@ -57,6 +63,19 @@ export class OrderLifecycleService {
       input: parseRequest(acceptRecipeOrderSchema, input),
     });
   }
+
+  acceptFromPos(
+    merchantId: string,
+    actor: string,
+    orderId: string,
+    input: AcceptRecipeOrderRequest,
+    branchIds: readonly string[],
+  ) {
+    const parsed = parseRequest(acceptRecipeOrderSchema, input);
+    if (!branchIds.includes(parsed.branchId))
+      throw new ForbiddenException('This employee is not assigned to the selected branch.');
+    return this.run(merchantId, actor, orderId, { action: 'accept', input: parsed }, branchIds);
+  }
   startPreparation(
     merchantId: string,
     actor: string,
@@ -67,6 +86,22 @@ export class OrderLifecycleService {
       action: 'prepare',
       input: parseRequest(startOrderPreparationSchema, input),
     });
+  }
+
+  startPreparationFromPos(
+    merchantId: string,
+    actor: string,
+    orderId: string,
+    input: StartOrderPreparationRequest,
+    branchIds: readonly string[],
+  ) {
+    return this.run(
+      merchantId,
+      actor,
+      orderId,
+      { action: 'prepare', input: parseRequest(startOrderPreparationSchema, input) },
+      branchIds,
+    );
   }
   cancel(merchantId: string, actor: string, orderId: string, input: CancelRecipeOrderRequest) {
     return this.run(merchantId, actor, orderId, {
@@ -80,6 +115,7 @@ export class OrderLifecycleService {
     actor: string,
     orderId: string,
     command: Action,
+    branchIds?: readonly string[],
   ): Promise<StorefrontOrderSummary> {
     const fingerprint = createHash('sha256')
       .update(JSON.stringify({ orderId, ...command }))
@@ -91,6 +127,24 @@ export class OrderLifecycleService {
             Array<{ id: string }>
           >`SELECT "id" FROM "storefront_orders" WHERE "id" = ${orderId}::uuid AND "merchantId" = ${merchantId}::uuid FOR UPDATE`;
           if (locked.length !== 1) throw new NotFoundException('Order was not found.');
+          if (
+            branchIds &&
+            command.action === 'accept' &&
+            !branchIds.includes(command.input.branchId)
+          )
+            throw new ForbiddenException('This employee is not assigned to the selected branch.');
+          if (branchIds && command.action === 'prepare') {
+            const routed = await tx.storefrontOrder.findFirst({
+              where: {
+                id: orderId,
+                merchantId,
+                branchId: { in: [...branchIds] },
+                lines: { some: { stockHandling: 'recipe_acceptance' } },
+              },
+              select: { id: true },
+            });
+            if (!routed) throw new NotFoundException('Order was not found.');
+          }
           const replay = await tx.storefrontOrderAction.findUnique({
             where: { merchantId_requestId: { merchantId, requestId: command.input.requestId } },
           });
