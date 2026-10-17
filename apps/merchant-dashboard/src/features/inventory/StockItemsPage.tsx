@@ -1,13 +1,7 @@
+import { InventoryCard } from './InventoryCard.js';
 import { useEffect, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Button,
-  DashboardCard,
-  DataTable,
-  Input,
-  useLocale,
-  type DataTableColumn,
-} from '@waffarly/ui';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Button, DataTable, Input, useLocale, type DataTableColumn } from '@waffarly/ui';
 import {
   STOCK_BASE_UNITS,
   type StockBaseUnit,
@@ -17,6 +11,7 @@ import {
 } from '@waffarly/contracts';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { apiRequestPage, apiRequest } from '../../lib/api-client.js';
+import { InventoryHeader } from './InventoryHeader.js';
 import { inventoryCopy } from './inventory-copy.js';
 
 type EditorState = { item: StockItem | null; key: string };
@@ -33,6 +28,7 @@ const baseLabels: Record<StockBaseUnit, string> = {
 export function StockItemsPage() {
   const { locale, t, errorText, formatDigits } = useLocale();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const text = (value: string) => inventoryCopy(value, locale, t);
   const [items, setItems] = useState<StockItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -45,6 +41,11 @@ export function StockItemsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [notice, setNotice] = useState('');
   const [editor, setEditor] = useState<EditorState | null>(null);
+  useEffect(() => {
+    if (searchParams.get('new') !== '1') return;
+    setEditor({ item: null, key: crypto.randomUUID() });
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
   const [confirming, setConfirming] = useState<StockItem | null>(null);
 
   useEffect(() => {
@@ -177,33 +178,32 @@ export function StockItemsPage() {
   }
 
   return (
-    <main className="inventory-page">
-      <section className="inventory-intro">
-        <div>
-          <span className="inventory-eyebrow">{text('Inventory foundation')}</span>
-          <h2>{text('Shared stock identities')}</h2>
-          <p>
-            {text(
-              'Set the ingredient and product units that recipes and stock movements will share.',
-            )}
-          </p>
-        </div>
-        <div className="inventory-intro-actions">
-          <Button type="button" variant="outline" onClick={() => navigate('/inventory/purchases')}>
-            {text('Purchase invoices')}
-          </Button>
-          <Button type="button" variant="outline" onClick={() => navigate('/inventory/operations')}>
-            {text('Balances and movements')}
-          </Button>
+    <div className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+      <InventoryHeader
+        title="Stock items"
+        description="Manage the items and units you use in purchases and recipes."
+        actions={
           <Button type="button" onClick={() => setEditor({ item: null, key: crypto.randomUUID() })}>
             {text('New stock item')}
           </Button>
-        </div>
-      </section>
+        }
+      />
 
       {notice && (
         <p className="inventory-notice" role="status">
-          {notice}
+          <span>{notice}</span>
+          <span className="inventory-row-actions">
+            <Button variant="outline" size="sm" onClick={() => navigate('/inventory/opening')}>
+              {text('Add starting stock')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/inventory/purchases?new=1')}
+            >
+              {text('Record purchase')}
+            </Button>
+          </span>
         </p>
       )}
       {loadError && (
@@ -220,7 +220,7 @@ export function StockItemsPage() {
         </div>
       )}
 
-      <DashboardCard
+      <InventoryCard
         title={text('Stock item library')}
         description={text(
           'One item can be shared by products and recipes. Pack conversion factors stay fixed after saving.',
@@ -264,7 +264,29 @@ export function StockItemsPage() {
           caption={text('Stock item library')}
           loading={loading}
           loadingState={text('Loading stock items…')}
-          emptyState={text('No stock items here yet. Add a stock item to begin.')}
+          emptyState={
+            <div className="inventory-empty">
+              <h3>
+                {text(
+                  search || status === 'archived'
+                    ? 'No matching items'
+                    : 'Add your first stock item',
+                )}
+              </h3>
+              <p>
+                {text(
+                  search || status === 'archived'
+                    ? 'Try another search or clear the filters.'
+                    : 'Start with an ingredient or product, and choose how you measure it.',
+                )}
+              </p>
+              {!search && status !== 'archived' && (
+                <Button onClick={() => setEditor({ item: null, key: crypto.randomUUID() })}>
+                  {text('New stock item')}
+                </Button>
+              )}
+            </div>
+          }
         />
         <div className="inventory-pagination">
           <span>
@@ -291,7 +313,7 @@ export function StockItemsPage() {
             </Button>
           </div>
         </div>
-      </DashboardCard>
+      </InventoryCard>
 
       {editor && (
         <StockItemEditor
@@ -331,7 +353,7 @@ export function StockItemsPage() {
           </footer>
         </DashboardDialog>
       )}
-    </main>
+    </div>
   );
 }
 
@@ -355,6 +377,7 @@ function StockItemEditor({
   const [units, setUnits] = useState<StockItemUnitFields[]>(
     item?.units.map(({ code, name, baseQuantity }) => ({ code, name, baseQuantity })) ?? [],
   );
+  const [showPacks, setShowPacks] = useState(Boolean(item?.units.length));
   const [newUnit, setNewUnit] = useState<PackDraft>(emptyPack);
   const [quantity, setQuantity] = useState('1');
   const [unitCode, setUnitCode] = useState(item?.units[0]?.code ?? item?.baseUnit ?? 'piece');
@@ -391,6 +414,11 @@ function StockItemEditor({
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (Object.values(newUnit).some((value) => value.trim())) {
+      setError(text('Add the pack unit or clear its fields before saving.'));
+      setShowPacks(true);
+      return;
+    }
     setBusy(true);
     setError('');
     try {
@@ -473,7 +501,7 @@ function StockItemEditor({
           />
         </label>
         <label>
-          {text('Description')}
+          {text('Description (optional)')}
           <textarea
             rows={3}
             maxLength={1000}
@@ -482,8 +510,9 @@ function StockItemEditor({
           />
         </label>
         <label>
-          {text('Base unit')}
+          {text('Measurement unit')}
           <select
+            aria-label={text('Measurement unit')}
             value={baseUnit}
             disabled={!created}
             onChange={(event) => setBaseUnit(event.target.value as StockBaseUnit)}
@@ -496,75 +525,88 @@ function StockItemEditor({
           </select>
           {!created && <small>{text('The base unit cannot change after creation.')}</small>}
         </label>
-        <div className="inventory-pack-heading">
-          <div>
-            <h3>{text('Pack units')}</h3>
-            <p>{text('Optional. For example, one case contains 12 pieces.')}</p>
-          </div>
-          <span>{formatUnitCount(units.length, text)}</span>
-        </div>
-        {!!units.length && (
-          <ul className="inventory-saved-units">
-            {units.map((unit) => (
-              <li key={unit.code}>
-                <strong>{text(unit.name)}</strong>
-                <code>{formatUnitEquation(unit, baseUnit)}</code>
-                <small>{text('Conversion is fixed.')}</small>
-              </li>
-            ))}
-          </ul>
-        )}
-        {units.length < 20 && (
-          <div className="inventory-pack-form">
-            <label>
-              {text('Pack code')}
-              <Input
-                disabled={busy}
-                value={newUnit.code}
-                maxLength={32}
-                placeholder={text('case')}
-                onChange={(event) =>
-                  setNewUnit((previous) => ({ ...previous, code: event.target.value }))
-                }
-              />
-            </label>
-            <label>
-              {text('Pack name')}
-              <Input
-                disabled={busy}
-                value={newUnit.name}
-                maxLength={80}
-                placeholder={text('Case')}
-                onChange={(event) =>
-                  setNewUnit((previous) => ({ ...previous, name: event.target.value }))
-                }
-              />
-            </label>
-            <label>
-              {text('Base quantity per pack')}
-              <Input
-                disabled={busy}
-                value={newUnit.baseQuantity}
-                maxLength={19}
-                inputMode="decimal"
-                placeholder="12"
-                onChange={(event) =>
-                  setNewUnit((previous) => ({ ...previous, baseQuantity: event.target.value }))
-                }
-              />
-            </label>
-            <Button type="button" variant="outline" disabled={busy} onClick={addUnit}>
-              {text('Add unit')}
-            </Button>
-          </div>
-        )}
-        {units.length === 20 && (
-          <p className="inventory-muted">{text('Maximum 20 pack units reached.')}</p>
+        <button
+          type="button"
+          className="inventory-disclosure"
+          aria-expanded={showPacks}
+          onClick={() => setShowPacks(!showPacks)}
+        >
+          {text('Do you buy this item in packs?')}{' '}
+          <span aria-hidden="true">{showPacks ? '−' : '+'}</span>
+        </button>
+        {showPacks && (
+          <section className="inventory-pack-section">
+            <div className="inventory-pack-heading">
+              <div>
+                <h3>{text('Pack units')}</h3>
+                <p>{text('Optional. For example, one case contains 12 pieces.')}</p>
+              </div>
+              <span>{formatUnitCount(units.length, text)}</span>
+            </div>
+            {!!units.length && (
+              <ul className="inventory-saved-units">
+                {units.map((unit) => (
+                  <li key={unit.code}>
+                    <strong>{text(unit.name)}</strong>
+                    <code>{formatUnitEquation(unit, baseUnit)}</code>
+                    <small>{text('Conversion is fixed.')}</small>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {units.length < 20 && (
+              <div className="inventory-pack-form">
+                <label>
+                  {text('Pack code')}
+                  <Input
+                    disabled={busy}
+                    value={newUnit.code}
+                    maxLength={32}
+                    placeholder={text('case')}
+                    onChange={(event) =>
+                      setNewUnit((previous) => ({ ...previous, code: event.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  {text('Pack name')}
+                  <Input
+                    disabled={busy}
+                    value={newUnit.name}
+                    maxLength={80}
+                    placeholder={text('Case')}
+                    onChange={(event) =>
+                      setNewUnit((previous) => ({ ...previous, name: event.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  {text('Base quantity per pack')}
+                  <Input
+                    disabled={busy}
+                    value={newUnit.baseQuantity}
+                    maxLength={19}
+                    inputMode="decimal"
+                    placeholder="12"
+                    onChange={(event) =>
+                      setNewUnit((previous) => ({ ...previous, baseQuantity: event.target.value }))
+                    }
+                  />
+                </label>
+                <Button type="button" variant="outline" disabled={busy} onClick={addUnit}>
+                  {text('Add unit')}
+                </Button>
+              </div>
+            )}
+            {units.length === 20 && (
+              <p className="inventory-muted">{text('Maximum 20 pack units reached.')}</p>
+            )}
+          </section>
         )}
         {created && (
           <p className="inventory-note">
             {text(
-              'Saving this item creates its identity and units only. It will not add opening stock.',
+              'Creating an item does not add stock. Next, add starting stock or record a purchase.',
             )}
           </p>
         )}

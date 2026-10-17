@@ -12,7 +12,7 @@
   --color-card: var(--card);
   --color-card-foreground: var(--foreground);
   --color-primary: var(--primary);
-  --color-primary-foreground: #fff;
+  --color-primary-foreground: var(--primary-foreground, #fff);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--foreground);
   --color-muted: var(--secondary);
@@ -85,7 +85,8 @@
   --width-storefront-category-card: 175px;
   --height-storefront-category-card: 150px;
   --size-storefront-category-image: 70px;
-  --font-admin: Cairo, 'Noto Sans Arabic UI', 'Noto Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif;
+  --font-admin:
+    Cairo, 'Noto Sans Arabic UI', 'Noto Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif;
   --color-store-primary: var(--storefront-primary);
   --color-store-primary-dark: var(--storefront-primary-dark);
   --color-store-primary-deep: var(--storefront-primary-deep);

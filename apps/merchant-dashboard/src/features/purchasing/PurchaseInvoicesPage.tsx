@@ -1,16 +1,10 @@
+import { InventoryCard } from '../inventory/InventoryCard.js';
 import {
   CursorPageControls as PageControls,
   type CursorPageState as PageState,
 } from '../../components/CursorPageControls.js';
 import { useEffect, useState, type FormEvent } from 'react';
-import {
-  Button,
-  DashboardCard,
-  DataTable,
-  Input,
-  useLocale,
-  type DataTableColumn,
-} from '@waffarly/ui';
+import { Badge, Button, DataTable, Input, useLocale, type DataTableColumn } from '@waffarly/ui';
 import type {
   CreatePurchaseInvoiceRequest,
   PurchaseInvoice,
@@ -19,7 +13,8 @@ import type {
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { apiRequest, apiRequestPage } from '../../lib/api-client.js';
 import { inventoryCopy } from '../inventory/inventory-copy.js';
-import { useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { InventoryHeader } from '../inventory/InventoryHeader.js';
 import type { SupplierFields } from './purchasing.types.js';
 import { SupplierEditor } from './SupplierEditor.js';
 import { PurchaseInvoiceEditor } from './PurchaseInvoiceEditor.js';
@@ -29,7 +24,7 @@ type SupplierEditorState = { supplier: PurchaseSupplier | null; key: string };
 
 export function PurchaseInvoicesPage() {
   const { locale, t, errorText, formatDigits } = useLocale();
-  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const text = (value: string) => inventoryCopy(value, locale, t);
   const [tab, setTab] = useState<'invoices' | 'suppliers'>('invoices');
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
@@ -56,6 +51,11 @@ export function PurchaseInvoicesPage() {
   const [supplierEditor, setSupplierEditor] = useState<SupplierEditorState | null>(null);
   const [invoiceReview, setInvoiceReview] = useState<PurchaseInvoice | null>(null);
   const [supplierArchive, setSupplierArchive] = useState<PurchaseSupplier | null>(null);
+  useEffect(() => {
+    if (searchParams.get('new') !== '1') return;
+    setInvoiceEditor({ invoice: null, key: crypto.randomUUID() });
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
   const [confirmRequestIds, setConfirmRequestIds] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -136,7 +136,11 @@ export function PurchaseInvoicesPage() {
     {
       id: 'status',
       header: text('Status'),
-      cell: (invoice) => text(invoice.status === 'draft' ? 'Draft' : 'Confirmed'),
+      cell: (invoice) => (
+        <Badge variant={invoice.status === 'draft' ? 'warning' : 'success'}>
+          {text(invoice.status === 'draft' ? 'Draft' : 'Received')}
+        </Badge>
+      ),
     },
     {
       id: 'createdAt',
@@ -373,27 +377,19 @@ export function PurchaseInvoicesPage() {
   }
 
   return (
-    <main className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <section className="inventory-intro">
-        <div>
-          <span className="inventory-eyebrow">{text('Purchasing')}</span>
-          <h2>{text('Suppliers and purchase invoices')}</h2>
-          <p>{text('Manage suppliers and receive purchases into a selected warehouse.')}</p>
-          <small className="inventory-muted">
-            {text(
-              'This slice records received quantities only; it does not calculate costs, taxes, or supplier payments.',
-            )}
-          </small>
-        </div>
-        <div className="inventory-intro-actions">
-          <Button type="button" variant="outline" onClick={() => navigate('/inventory')}>
-            {text('Stock items')}
+    <div className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+      <InventoryHeader
+        title="Purchases"
+        description="Save a draft, review received quantities, then add them to your warehouse."
+        actions={
+          <Button
+            type="button"
+            onClick={() => setInvoiceEditor({ invoice: null, key: crypto.randomUUID() })}
+          >
+            {text('New purchase invoice')}
           </Button>
-          <Button type="button" variant="outline" onClick={() => navigate('/inventory/operations')}>
-            {text('Balances and movements')}
-          </Button>
-        </div>
-      </section>
+        }
+      />
 
       {notice && (
         <p className="inventory-notice" role="status">
@@ -431,7 +427,7 @@ export function PurchaseInvoicesPage() {
       </div>
 
       {tab === 'invoices' ? (
-        <DashboardCard
+        <InventoryCard
           title={text('Purchase invoices')}
           description={text(
             'Confirming posts actual received quantities to this warehouse. Confirmed invoices cannot be edited.',
@@ -465,12 +461,6 @@ export function PurchaseInvoicesPage() {
                 <option value="confirmed">{text('Confirmed')}</option>
               </select>
             </label>
-            <Button
-              type="button"
-              onClick={() => setInvoiceEditor({ invoice: null, key: crypto.randomUUID() })}
-            >
-              {text('New purchase invoice')}
-            </Button>
           </div>
           <DataTable
             columns={invoiceColumns}
@@ -490,9 +480,9 @@ export function PurchaseInvoicesPage() {
             onHistoryChange={setInvoiceHistory}
             copy={text}
           />
-        </DashboardCard>
+        </InventoryCard>
       ) : (
-        <DashboardCard
+        <InventoryCard
           title={text('Suppliers')}
           description={text('Maintain an owner-managed supplier directory for purchase records.')}
         >
@@ -549,7 +539,7 @@ export function PurchaseInvoicesPage() {
             onHistoryChange={setSupplierHistory}
             copy={text}
           />
-        </DashboardCard>
+        </InventoryCard>
       )}
 
       {supplierEditor && (
@@ -567,6 +557,7 @@ export function PurchaseInvoicesPage() {
           key={invoiceEditor.key}
           invoice={invoiceEditor.invoice}
           busy={busy}
+          error={loadError}
           text={text}
           formatDigits={formatDigits}
           onClose={() => !busy && setInvoiceEditor(null)}
@@ -581,6 +572,22 @@ export function PurchaseInvoicesPage() {
           busy={busy}
         >
           <div className="products-dialog-body inventory-review">
+            {loadError && (
+              <p className="inventory-error" role="alert">
+                {loadError}
+              </p>
+            )}
+            <ol className="inventory-flow" aria-label={text('Purchase progress')}>
+              <li>{text('Supplier and warehouse')}</li>
+              <li>{text('Items and quantities')}</li>
+              <li aria-current="step">{text('Review and receive')}</li>
+            </ol>
+            {invoiceReview.status === 'draft' && (
+              <p className="inventory-note">
+                {text('Receiving this purchase adds the quantities below to:')}{' '}
+                <strong>{formatDigits(invoiceReview.warehouseName)}</strong>
+              </p>
+            )}
             <p>
               <strong>{text('Supplier')}:</strong> {formatDigits(invoiceReview.supplierName)}
             </p>
@@ -658,7 +665,7 @@ export function PurchaseInvoicesPage() {
           </footer>
         </DashboardDialog>
       )}
-    </main>
+    </div>
   );
 
   async function confirmSupplierArchive() {

@@ -699,6 +699,60 @@ it(
 );
 
 it(
+  'creates a POS employee with tenant-scoped branch assignments',
+  { skip: !databaseUrl },
+  async () => {
+    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+    const rollback = new Error('Rollback POS employee creation fixture');
+    try {
+      await assert.rejects(
+        client.$transaction(async (tx) => {
+          const token = randomUUID().replaceAll('-', '');
+          const merchant = await tx.merchant.create({
+            data: {
+              name: `POS employee create ${token}`,
+              storefrontSlug: `pos-employee-create-${token}`,
+              activity: 'restaurant',
+              contactPhone: '01000000000',
+              ownerName: 'POS employee test',
+              ownerMobile: '01100000000',
+            },
+          });
+          const branch = await tx.branch.create({
+            data: {
+              merchantId: merchant.id,
+              name: 'Main',
+              createdBy: actor,
+              updatedBy: actor,
+            },
+          });
+          const employees = new PosEmployeeService(transactionServices(tx));
+          const created = await employees.create(merchant.id, actor, {
+            username: 'cashier-create-test',
+            displayName: 'Cashier Create Test',
+            password: 'new-password-long-enough',
+            branchIds: [branch.id],
+          });
+
+          assert.equal(created.branches.length, 1);
+          assert.equal(created.branches[0]?.id, branch.id);
+          assert.equal(
+            await tx.posEmployeeBranch.count({
+              where: { merchantId: merchant.id, branchId: branch.id },
+            }),
+            1,
+          );
+          throw rollback;
+        }),
+        rollback,
+      );
+    } finally {
+      await client.$disconnect();
+    }
+  },
+);
+
+it(
   'revokes only the employee POS sessions after password reset or deactivation',
   { skip: !databaseUrl },
   async () => {

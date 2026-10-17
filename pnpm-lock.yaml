@@ -146,12 +146,18 @@ importers:
 
   apps/pos:
     dependencies:
+      '@tanstack/react-query':
+        specifier: 5.104.2
+        version: 5.104.2(react@19.3.0)
       '@waffarly/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
       '@waffarly/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      lucide-react:
+        specifier: 1.57.0
+        version: 1.57.0(@types/react@19.2.10)(react@19.3.0)
       react:
         specifier: 19.3.0
         version: 19.3.0
@@ -161,6 +167,9 @@ importers:
       react-router-dom:
         specifier: ^7.18.4
         version: 7.18.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      zustand:
+        specifier: 5.0.15
+        version: 5.0.15(@types/react@19.2.10)(react@19.3.0)(use-sync-external-store@1.7.0(react@19.3.0))
     devDependencies:
       '@types/react':
         specifier: 19.2.10
@@ -174,6 +183,9 @@ importers:
       '@waffarly/typescript-config':
         specifier: workspace:*
         version: link:../../packages/typescript-config
+      tsx:
+        specifier: 4.20.6
+        version: 4.20.6
       typescript:
         specifier: 5.9.3
         version: 5.9.3

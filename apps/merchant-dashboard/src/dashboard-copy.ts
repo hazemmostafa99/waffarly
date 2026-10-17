@@ -1,6 +1,7 @@
 import { formatDigits } from '@waffarly/ui';
 
 const arabic: Record<string, string> = {
+  Inventory: 'المخزون',
   'Welcome, {{name}}!': 'مرحباً {{name}}!',
   "Here's an overview of your business today.": 'إليك نظرة سريعة على أداء مطعمك اليوم.',
   'Compared to last week': 'مقارنة بالأسبوع الماضي',
@@ -54,7 +55,8 @@ const arabic: Record<string, string> = {
   'Out for delivery': 'قيد التوصيل',
   Cancelled: 'تم الإلغاء',
   'No matching orders.': 'لا توجد طلبات مطابقة.',
-  'Live storefront reporting from the latest 100 orders.': 'بيانات المتجر الإلكتروني المباشرة من أحدث ١٠٠ طلب.',
+  'Live storefront reporting from the latest 100 orders.':
+    'بيانات المتجر الإلكتروني المباشرة من أحدث ١٠٠ طلب.',
   'Storefront orders only': 'طلبات المتجر الإلكتروني فقط',
   'Last 7 days': 'آخر ٧ أيام',
   'Last 30 days': 'آخر ٣٠ يوماً',
@@ -62,7 +64,8 @@ const arabic: Record<string, string> = {
   'Loading…': 'جارٍ التحميل…',
   'Loading orders…': 'جارٍ تحميل الطلبات…',
   'Selected period · latest 100 orders': 'الفترة المحددة · أحدث ١٠٠ طلب',
-  'Could not load dashboard orders. Please refresh and try again.': 'تعذر تحميل طلبات لوحة التحكم. حدّث الصفحة وحاول مرة أخرى.',
+  'Could not load dashboard orders. Please refresh and try again.':
+    'تعذر تحميل طلبات لوحة التحكم. حدّث الصفحة وحاول مرة أخرى.',
   'Dashboard data is unavailable.': 'بيانات لوحة التحكم غير متاحة.',
   'Order value and order count over time': 'قيمة الطلبات وعددها بمرور الوقت',
   'Order value': 'قيمة الطلبات',

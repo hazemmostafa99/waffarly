@@ -4,6 +4,63 @@ export function inventoryCopy(
   translate: (text: string) => string,
 ) {
   const arabic: Record<string, string> = {
+    'Inventory navigation': 'التنقل في المخزون',
+    'Stock overview': 'نظرة عامة على المخزون',
+    Items: 'الأصناف',
+    Purchases: 'المشتريات',
+    'Setup and settings': 'الإعداد والتجهيز',
+    'Inventory settings': 'إعدادات المخزون',
+    'Manage the items and units you use in purchases and recipes.':
+      'أدر الأصناف والوحدات المستخدمة في المشتريات والوصفات.',
+    'See what is in stock and record incoming purchases.':
+      'تابع الكميات الموجودة وسجّل المشتريات الواردة.',
+    'Follow every stock change, its reason, and who recorded it.':
+      'تابع كل تغيير في المخزون وسببه والمسؤول عن تسجيله.',
+    'Enter the quantities already in your warehouse before you start recording purchases.':
+      'أدخل الكميات الموجودة بالفعل في المستودع قبل بدء تسجيل المشتريات.',
+    'Choose how stock availability works for your business.':
+      'اختر قواعد توفر المخزون المناسبة لنشاطك.',
+    'Add item': 'إضافة صنف',
+    'Add items': 'إضافة الأصناف',
+    'Record purchase': 'تسجيل شراء',
+    'Add starting stock': 'إضافة الرصيد الافتتاحي',
+    'Description (optional)': 'الوصف (اختياري)',
+    'Measurement unit': 'وحدة القياس',
+    'Do you buy this item in packs?': 'هل تشتري هذا الصنف في عبوات؟',
+    'Creating an item does not add stock. Next, add starting stock or record a purchase.':
+      'إنشاء الصنف لا يضيف كميات للمخزون. أضف رصيدًا افتتاحيًا أو سجّل عملية شراء بعد الحفظ.',
+    'Enter your starting quantities, then review before posting. Use purchase invoices for new deliveries.':
+      'أدخل الكميات الافتتاحية وراجعها قبل الترحيل. استخدم فواتير الشراء للشحنات الجديدة.',
+    'Filter by warehouse': 'تصفية حسب المستودع',
+    'Clear filters': 'مسح الفلاتر',
+    'No matching stock': 'لا توجد أرصدة مطابقة',
+    'Start tracking your stock': 'ابدأ متابعة مخزونك',
+    'Try another search or clear the filters.': 'جرّب بحثًا آخر أو امسح الفلاتر.',
+    'Create a warehouse, add your items, then enter your starting quantities.':
+      'أنشئ مستودعًا، وأضف الأصناف، ثم أدخل الكميات الافتتاحية.',
+    'Create warehouse': 'إنشاء مستودع',
+    'Purchase receipt': 'استلام مشتريات',
+    'Save a draft, review received quantities, then add them to your warehouse.':
+      'احفظ مسودة، وراجع الكميات المستلمة، ثم أضفها إلى المستودع.',
+    Received: 'تم الاستلام',
+    'Supplier and warehouse': 'المورد والمستودع',
+    'Items and quantities': 'الأصناف والكميات',
+    'Review and receive': 'المراجعة والاستلام',
+    'Purchase progress': 'خطوات تسجيل الشراء',
+    'Receiving this purchase adds the quantities below to:':
+      'استلام هذه المشتريات يضيف الكميات التالية إلى:',
+    'Choose a supplier and warehouse to continue.': 'اختر المورد والمستودع للمتابعة.',
+    'Continue to items': 'متابعة إلى الأصناف',
+    Back: 'رجوع',
+    'All warehouses': 'كل المستودعات',
+    'Stock items': 'أصناف المخزون',
+    'No matching items': 'لا توجد أصناف مطابقة',
+    'Add your first stock item': 'أضف أول صنف للمخزون',
+    'Start with an ingredient or product, and choose how you measure it.':
+      'ابدأ بمكون أو منتج، واختر وحدة قياسه.',
+    'Add the pack unit or clear its fields before saving.':
+      'أضف وحدة العبوة أو امسح حقولها قبل الحفظ.',
+
     Inventory: 'المخزون',
     'Inventory foundation': 'أساس المخزون',
     'Shared stock identities': 'أصناف مخزون مشتركة',

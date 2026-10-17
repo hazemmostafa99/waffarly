@@ -10,6 +10,7 @@ import type {
   StockCondition,
   StockItem,
 } from '@waffarly/contracts';
+import { isPositiveStockQuantity } from '@waffarly/contracts';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import type { InvoiceLineDraft } from './purchasing.types.js';
 function emptyLine(): InvoiceLineDraft {
@@ -25,6 +26,7 @@ function emptyLine(): InvoiceLineDraft {
 export function PurchaseInvoiceEditor({
   invoice,
   busy,
+  error,
   text,
   formatDigits,
   onClose,
@@ -32,6 +34,7 @@ export function PurchaseInvoiceEditor({
 }: {
   invoice: PurchaseInvoice | null;
   busy: boolean;
+  error: string;
   text: (value: string) => string;
   formatDigits: (value: string) => string;
   onClose: () => void;
@@ -41,6 +44,7 @@ export function PurchaseInvoiceEditor({
     revision?: number,
   ) => void;
 }) {
+  const [step, setStep] = useState(1);
   const [requestId] = useState(crypto.randomUUID());
   const [supplierId, setSupplierId] = useState(invoice?.supplierId ?? '');
   const [items, setItems] = useState<StockItem[]>([]);
@@ -74,7 +78,10 @@ export function PurchaseInvoiceEditor({
     if (
       !supplierId ||
       !warehouseId ||
-      lines.some((line) => !line.stockItemId || !line.quantity || !line.unitCode)
+      lines.some(
+        (line) =>
+          !line.stockItemId || !isPositiveStockQuantity(line.quantity.trim()) || !line.unitCode,
+      )
     ) {
       setFormError(text('Enter the actual received quantity before review.'));
       return;
@@ -105,121 +112,141 @@ export function PurchaseInvoiceEditor({
       onClose={onClose}
       busy={busy}
     >
-      <form className="products-dialog-body inventory-editor" onSubmit={submit}>
-        <div className="inventory-picker-field">
-          {text('Supplier')}
-          <PagedEntitySelect<PurchaseSupplier>
-            path="/owner/purchasing/suppliers"
-            value={supplierId}
-            label={text('Supplier')}
-            onSelect={(supplier) => setSupplierId(supplier?.id ?? '')}
-            disabled={busy}
-          />
-        </div>
-        <label>
-          {text('Supplier invoice number')}
-          <Input
-            maxLength={100}
-            value={supplierInvoiceNumber}
-            onChange={(event) => setSupplierInvoiceNumber(event.target.value)}
-          />
-        </label>
-        <div className="inventory-picker-field">
-          {text('Warehouse')}
-          <WarehousePicker
-            value={warehouseId}
-            label={text('Warehouse')}
-            onSelect={(warehouse) => setWarehouseId(warehouse?.id ?? '')}
-            disabled={busy}
-          />
-        </div>
-        <h3>{text('Invoice details')}</h3>
-        {lines.map((line, index) => {
-          const item = items.find((candidate) => candidate.id === line.stockItemId);
-          return (
-            <fieldset className="inventory-opening-line" key={line.key}>
-              <legend>
-                {text('Line')} {formatDigits(String(index + 1))}
-              </legend>
-              <div className="inventory-picker-field">
-                {text('Stock item')}
-                <StockItemPicker
-                  value={line.stockItemId}
-                  label={text('Stock item')}
-                  onResolve={(item) => setItems((current) => cacheStockItem(current, item))}
-                  onSelect={(item) => {
-                    if (item) setItems((current) => cacheStockItem(current, item));
-                    updateLine(line.key, {
-                      stockItemId: item?.id ?? '',
-                      unitCode: item?.baseUnit ?? '',
-                    });
-                  }}
-                  disabled={busy}
-                />
-              </div>
-              <label>
-                {text('Stock condition')}
-                <select
-                  value={line.condition}
-                  onChange={(event) =>
-                    updateLine(line.key, { condition: event.target.value as StockCondition })
-                  }
-                >
-                  <option value="available">{text('Available')}</option>
-                  <option value="non_sellable">{text('Non-Sellable')}</option>
-                </select>
-              </label>
-              <label>
-                {text('Quantity')}
-                <Input
-                  required
-                  inputMode="decimal"
-                  value={line.quantity}
-                  onChange={(event) => updateLine(line.key, { quantity: event.target.value })}
-                />
-              </label>
-              <label>
-                {text('Unit')}
-                <select
-                  required
-                  value={line.unitCode}
-                  onChange={(event) => updateLine(line.key, { unitCode: event.target.value })}
-                >
-                  {stockUnitOptions(item).map((option) => (
-                    <option key={option.code} value={option.code}>
-                      {formatDigits(`${option.name} (${option.code})`)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {lines.length > 1 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    setLines((current) => current.filter((candidate) => candidate.key !== line.key))
-                  }
-                >
-                  {text('Remove line')}
-                </Button>
-              )}
-            </fieldset>
-          );
-        })}
-        <div className="inventory-row-actions">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={lines.length >= 100 || busy}
-            onClick={() => setLines((current) => [...current, emptyLine()])}
-          >
-            {text('Add line')}
-          </Button>
-        </div>
-        {formError && (
+      <form
+        className="products-dialog-body inventory-editor"
+        onSubmit={(event) => {
+          if (step === 1) {
+            event.preventDefault();
+            return;
+          }
+          submit(event);
+        }}
+      >
+        <ol className="inventory-flow" aria-label={text('Purchase progress')}>
+          <li aria-current={step === 1 ? 'step' : undefined}>{text('Supplier and warehouse')}</li>
+          <li aria-current={step === 2 ? 'step' : undefined}>{text('Items and quantities')}</li>
+          <li>{text('Review and receive')}</li>
+        </ol>
+        <fieldset className="inventory-form-section" hidden={step !== 1} disabled={busy}>
+          <div className="inventory-picker-field">
+            {text('Supplier')}
+            <PagedEntitySelect<PurchaseSupplier>
+              path="/owner/purchasing/suppliers"
+              value={supplierId}
+              label={text('Supplier')}
+              onSelect={(supplier) => setSupplierId(supplier?.id ?? '')}
+              disabled={busy}
+            />
+          </div>
+          <label>
+            {text('Supplier invoice number')}
+            <Input
+              maxLength={100}
+              value={supplierInvoiceNumber}
+              onChange={(event) => setSupplierInvoiceNumber(event.target.value)}
+            />
+          </label>
+          <div className="inventory-picker-field">
+            {text('Warehouse')}
+            <WarehousePicker
+              value={warehouseId}
+              label={text('Warehouse')}
+              onSelect={(warehouse) => setWarehouseId(warehouse?.id ?? '')}
+              disabled={busy}
+            />
+          </div>
+        </fieldset>
+        <fieldset className="inventory-form-section" hidden={step !== 2} disabled={busy}>
+          <legend>{text('Items and quantities')}</legend>
+          {lines.map((line, index) => {
+            const item = items.find((candidate) => candidate.id === line.stockItemId);
+            return (
+              <fieldset className="inventory-opening-line" key={line.key}>
+                <legend>
+                  {text('Line')} {formatDigits(String(index + 1))}
+                </legend>
+                <div className="inventory-picker-field">
+                  {text('Stock item')}
+                  <StockItemPicker
+                    value={line.stockItemId}
+                    label={text('Stock item')}
+                    onResolve={(item) => setItems((current) => cacheStockItem(current, item))}
+                    onSelect={(item) => {
+                      if (item) setItems((current) => cacheStockItem(current, item));
+                      updateLine(line.key, {
+                        stockItemId: item?.id ?? '',
+                        unitCode: item?.baseUnit ?? '',
+                      });
+                    }}
+                    disabled={busy}
+                  />
+                </div>
+                <label>
+                  {text('Stock condition')}
+                  <select
+                    value={line.condition}
+                    onChange={(event) =>
+                      updateLine(line.key, { condition: event.target.value as StockCondition })
+                    }
+                  >
+                    <option value="available">{text('Available')}</option>
+                    <option value="non_sellable">{text('Non-Sellable')}</option>
+                  </select>
+                </label>
+                <label>
+                  {text('Quantity')}
+                  <Input
+                    required
+                    inputMode="decimal"
+                    value={line.quantity}
+                    onChange={(event) => updateLine(line.key, { quantity: event.target.value })}
+                  />
+                </label>
+                <label>
+                  {text('Unit')}
+                  <select
+                    required
+                    value={line.unitCode}
+                    onChange={(event) => updateLine(line.key, { unitCode: event.target.value })}
+                  >
+                    {stockUnitOptions(item).map((option) => (
+                      <option key={option.code} value={option.code}>
+                        {formatDigits(`${option.name} (${option.code})`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {lines.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setLines((current) =>
+                        current.filter((candidate) => candidate.key !== line.key),
+                      )
+                    }
+                  >
+                    {text('Remove line')}
+                  </Button>
+                )}
+              </fieldset>
+            );
+          })}
+          <div className="inventory-row-actions">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={lines.length >= 100 || busy}
+              onClick={() => setLines((current) => [...current, emptyLine()])}
+            >
+              {text('Add line')}
+            </Button>
+          </div>
+        </fieldset>
+        {(formError || error) && (
           <p className="inventory-error" role="alert">
-            {formError}
+            {formError || error}
           </p>
         )}
         <p className="inventory-note">
@@ -229,9 +256,33 @@ export function PurchaseInvoiceEditor({
           <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
             {text('Close')}
           </Button>
-          <Button type="submit" disabled={busy}>
-            {text('Save draft')}
-          </Button>
+          {step === 2 && (
+            <Button type="button" variant="outline" disabled={busy} onClick={() => setStep(1)}>
+              {text('Back')}
+            </Button>
+          )}
+          {step === 1 ? (
+            <Button
+              key="continue"
+              type="button"
+              disabled={busy}
+              onClick={(event) => {
+                event.preventDefault();
+                if (!supplierId || !warehouseId) {
+                  setFormError(text('Choose a supplier and warehouse to continue.'));
+                  return;
+                }
+                setFormError('');
+                setStep(2);
+              }}
+            >
+              {text('Continue to items')}
+            </Button>
+          ) : (
+            <Button key="save-draft" type="submit" disabled={busy}>
+              {text(busy ? 'Saving…' : 'Save draft')}
+            </Button>
+          )}
         </footer>
       </form>
     </DashboardDialog>

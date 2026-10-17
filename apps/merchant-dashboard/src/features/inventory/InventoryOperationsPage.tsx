@@ -1,3 +1,4 @@
+import { InventoryCard } from './InventoryCard.js';
 import {
   loadPendingOpening,
   loadOrCreateOpeningRequestId,
@@ -13,14 +14,7 @@ import { cacheStockItem, stockUnitOptions } from './stock-unit-options.js';
 import { StockItemPicker, WarehousePicker } from './components/InventoryPickers.js';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Button,
-  DashboardCard,
-  DataTable,
-  Input,
-  useLocale,
-  type DataTableColumn,
-} from '@waffarly/ui';
+import { Badge, Button, DataTable, Input, useLocale, type DataTableColumn } from '@waffarly/ui';
 import type {
   CreateStockOpeningRequest,
   InventoryWarehouseSummary,
@@ -33,6 +27,7 @@ import type {
 } from '@waffarly/contracts';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { ApiError, apiRequest, apiRequestPage } from '../../lib/api-client.js';
+import { InventoryHeader } from './InventoryHeader.js';
 import { inventoryCopy } from './inventory-copy.js';
 
 type OpeningLineDraft = {
@@ -55,7 +50,11 @@ function emptyLine(): OpeningLineDraft {
   };
 }
 
-export function InventoryOperationsPage() {
+export function InventoryOperationsPage({
+  view = 'overview',
+}: {
+  view?: 'overview' | 'history' | 'opening' | 'settings';
+}) {
   const { locale, t, errorText, formatDigits } = useLocale();
   const text = (value: string) => inventoryCopy(value, locale, t);
   const navigate = useNavigate();
@@ -71,6 +70,10 @@ export function InventoryOperationsPage() {
   const [reason, setReason] = useState('');
   const [lines, setLines] = useState<OpeningLineDraft[]>([]);
   const [reviewing, setReviewing] = useState(false);
+  const [searchDraft, setSearchDraft] = useState('');
+  const [search, setSearch] = useState('');
+  const [warehouseId, setWarehouseId] = useState('');
+  const [condition, setCondition] = useState('');
   const [balances, setBalances] = useState<StockBalance[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [balancePage, setBalancePage] = useState<PageState>({});
@@ -92,8 +95,9 @@ export function InventoryOperationsPage() {
 
   useEffect(() => {
     let current = true;
+    if (view !== 'opening' && view !== 'settings') return;
     setLoadError('');
-    const savedOpening = loadPendingOpening();
+    const savedOpening = view === 'opening' ? loadPendingOpening() : null;
     const loadReferences = async () => {
       if (!savedOpening)
         return { itemRows: [] as StockItem[], warehouseRows: [] as InventoryWarehouseSummary[] };
@@ -147,12 +151,16 @@ export function InventoryOperationsPage() {
     return () => {
       current = false;
     };
-  }, [errorText, refreshKey]);
+  }, [errorText, refreshKey, view]);
 
   useEffect(() => {
     let current = true;
+    if (view !== 'overview') return;
     setBalancesLoading(true);
     const query = new URLSearchParams({ limit: '25' });
+    if (search) query.set('search', search);
+    if (warehouseId) query.set('warehouseId', warehouseId);
+    if (condition) query.set('condition', condition);
     if (balancePage.cursor) query.set('cursor', balancePage.cursor);
     void apiRequestPage<StockBalance>(`/owner/inventory/balances?${query.toString()}`)
       .then((page) => {
@@ -173,12 +181,14 @@ export function InventoryOperationsPage() {
     return () => {
       current = false;
     };
-  }, [balancePage, errorText, refreshKey]);
+  }, [balancePage, errorText, refreshKey, search, warehouseId, condition, view]);
 
   useEffect(() => {
     let current = true;
+    if (view !== 'history') return;
     setMovementsLoading(true);
     const query = new URLSearchParams({ limit: '25' });
+    if (warehouseId) query.set('warehouseId', warehouseId);
     if (movementPage.cursor) query.set('cursor', movementPage.cursor);
     void apiRequestPage<StockMovement>(`/owner/inventory/movements?${query.toString()}`)
       .then((page) => {
@@ -201,7 +211,7 @@ export function InventoryOperationsPage() {
     return () => {
       current = false;
     };
-  }, [movementPage, errorText, refreshKey]);
+  }, [movementPage, errorText, refreshKey, warehouseId, view]);
 
   const balanceColumns: DataTableColumn<StockBalance>[] = [
     {
@@ -219,12 +229,20 @@ export function InventoryOperationsPage() {
     {
       id: 'condition',
       header: text('Condition'),
-      cell: (row) => text(row.condition === 'available' ? 'Available' : 'Non-Sellable'),
+      cell: (row) => (
+        <Badge variant={row.condition === 'available' ? 'success' : 'warning'}>
+          {text(row.condition === 'available' ? 'Available' : 'Non-Sellable')}
+        </Badge>
+      ),
     },
     {
       id: 'quantity',
       header: text('Quantity'),
-      cell: (row) => <span dir="ltr">{formatDigits(`${row.quantity} ${row.baseUnit}`)}</span>,
+      cell: (row) => (
+        <span className="inventory-quantity" dir="ltr">
+          {formatDigits(`${row.quantity} ${row.baseUnit}`)}
+        </span>
+      ),
     },
     {
       id: 'updatedAt',
@@ -253,7 +271,20 @@ export function InventoryOperationsPage() {
     {
       id: 'movement',
       header: text('Movement'),
-      cell: (row) => text(row.kind === 'opening_balance' ? 'Opening balance' : row.kind),
+      cell: (row) => (
+        <div className="inventory-table-name">
+          <strong>
+            {text(
+              row.kind === 'opening_balance'
+                ? 'Opening balance'
+                : row.kind === 'purchase_receipt'
+                  ? 'Purchase receipt'
+                  : row.kind.replaceAll('_', ' '),
+            )}
+          </strong>
+          <small>{formatDigits(row.reason)}</small>
+        </div>
+      ),
     },
     {
       id: 'delta',
@@ -373,29 +404,41 @@ export function InventoryOperationsPage() {
   }
 
   return (
-    <main className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <section className="inventory-intro">
-        <div>
-          <span className="inventory-eyebrow">{text('Inventory operations')}</span>
-          <h2>{text('Balances and movements')}</h2>
-          <p>
-            {text(
-              'Review stock by warehouse and record opening quantities with an attributable reason.',
-            )}
-          </p>
-        </div>
-        <div className="inventory-row-actions">
-          <Button type="button" variant="outline" onClick={() => navigate('/inventory')}>
-            {text('Stock items')}
-          </Button>
-          <Button type="button" variant="outline" onClick={() => navigate('/inventory/purchases')}>
-            {text('Purchase invoices')}
-          </Button>
-          <Button type="button" variant="outline" onClick={() => navigate('/branches')}>
-            {text('Branches and warehouses')}
-          </Button>
-        </div>
-      </section>
+    <div className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+      <InventoryHeader
+        title={
+          view === 'overview'
+            ? 'Stock overview'
+            : view === 'history'
+              ? 'Movement history'
+              : view === 'opening'
+                ? 'Opening stock'
+                : 'Inventory settings'
+        }
+        description={
+          view === 'overview'
+            ? 'See what is in stock and record incoming purchases.'
+            : view === 'history'
+              ? 'Follow every stock change, its reason, and who recorded it.'
+              : view === 'opening'
+                ? 'Enter the quantities already in your warehouse before you start recording purchases.'
+                : 'Choose how stock availability works for your business.'
+        }
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/inventory/items?new=1')}
+            >
+              {text('Add item')}
+            </Button>
+            <Button type="button" onClick={() => navigate('/inventory/purchases?new=1')}>
+              {text('Record purchase')}
+            </Button>
+          </>
+        }
+      />
       {notice && (
         <p className="inventory-notice" role="status">
           {notice}
@@ -410,214 +453,339 @@ export function InventoryOperationsPage() {
         </div>
       )}
 
-      <DashboardCard
-        title={text('Negative stock policy')}
-        description={text(
-          'This policy affects Available stock debits. Non-Sellable stock remains separate from sale and recipe consumption.',
-        )}
-      >
-        <div className="inventory-pack-heading">
-          <p>
-            {text(
-              policy?.negativeStockPolicy === 'allow'
-                ? 'Negative Available balances are allowed.'
-                : 'Available balances cannot go below zero.',
-            )}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!policy || busy}
-            onClick={() => void updateNegativePolicy()}
-          >
-            {text(
-              policy?.negativeStockPolicy === 'allow'
-                ? 'Prevent negative stock'
-                : 'Allow negative stock',
-            )}
-          </Button>
-        </div>
-      </DashboardCard>
-
-      <DashboardCard
-        title={text('Opening stock')}
-        description={text(
-          'Add current stock once before purchase invoices are available. Review the lines before posting; posted movements cannot be edited.',
-        )}
-      >
-        <form className="inventory-editor" onSubmit={startReview}>
-          <label>
-            {text('Reason')}
-            <Input
-              required
-              minLength={3}
-              maxLength={500}
-              value={reason}
-              disabled={Boolean(pendingOpening)}
-              onChange={(event) => setReason(event.target.value)}
-              placeholder={text('Opening count after stocktake')}
-            />
-          </label>
-          {lines.map((line, index) => {
-            const selectedItem = openingItems.find((item) => item.id === line.stockItemId);
-            const options = stockUnitOptions(selectedItem);
-            return (
-              <fieldset
-                className="inventory-opening-line"
-                key={line.key}
-                disabled={Boolean(pendingOpening)}
-              >
-                <legend>
-                  {text('Opening line')} {formatDigits(String(index + 1))}
-                </legend>
-                <div className="inventory-picker-field">
-                  {text('Warehouse')}
-                  <WarehousePicker
-                    value={line.warehouseId}
-                    label={text('Warehouse')}
-                    disabled={Boolean(pendingOpening)}
-                    onResolve={rememberWarehouse}
-                    onSelect={(warehouse) => {
-                      if (warehouse) rememberWarehouse(warehouse);
-                      updateLine(line.key, { warehouseId: warehouse?.id ?? '' });
-                    }}
-                  />
-                </div>
-                <div className="inventory-picker-field">
-                  {text('Stock item')}
-                  <StockItemPicker
-                    value={line.stockItemId}
-                    label={text('Stock item')}
-                    disabled={Boolean(pendingOpening)}
-                    onResolve={(item) => setItems((current) => cacheStockItem(current, item))}
-                    onSelect={(item) => {
-                      if (item) setItems((current) => cacheStockItem(current, item));
-                      updateLine(line.key, {
-                        stockItemId: item?.id ?? '',
-                        unitCode: item?.baseUnit ?? '',
-                      });
-                    }}
-                  />
-                </div>
-                <label>
-                  {text('Condition')}
-                  <select
-                    value={line.condition}
-                    onChange={(event) =>
-                      updateLine(line.key, { condition: event.target.value as StockCondition })
-                    }
-                  >
-                    <option value="available">{text('Available')}</option>
-                    <option value="non_sellable">{text('Non-Sellable')}</option>
-                  </select>
-                </label>
-                <label>
-                  {text('Quantity')}
-                  <Input
-                    required
-                    inputMode="decimal"
-                    value={line.quantity}
-                    onChange={(event) => updateLine(line.key, { quantity: event.target.value })}
-                  />
-                </label>
-                <label>
-                  {text('Unit')}
-                  <select
-                    required
-                    value={line.unitCode}
-                    onChange={(event) => updateLine(line.key, { unitCode: event.target.value })}
-                  >
-                    {options.map((option) => (
-                      <option key={option.code} value={option.code}>
-                        {formatDigits(`${option.name} (${option.code})`)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {lines.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      setLines((previous) =>
-                        previous.filter((candidate) => candidate.key !== line.key),
-                      )
-                    }
-                  >
-                    {text('Remove line')}
-                  </Button>
-                )}
-              </fieldset>
-            );
-          })}
-          <div className="inventory-row-actions">
+      {view === 'settings' && (
+        <InventoryCard
+          title={text('Negative stock policy')}
+          description={text(
+            'This policy affects Available stock debits. Non-Sellable stock remains separate from sale and recipe consumption.',
+          )}
+        >
+          <div className="inventory-pack-heading">
+            <p>
+              {text(
+                policy?.negativeStockPolicy === 'allow'
+                  ? 'Negative Available balances are allowed.'
+                  : 'Available balances cannot go below zero.',
+              )}
+            </p>
             <Button
               type="button"
               variant="outline"
-              disabled={Boolean(pendingOpening) || lines.length >= 100}
-              onClick={() => setLines((previous) => [...previous, emptyLine()])}
+              disabled={!policy || busy}
+              onClick={() => void updateNegativePolicy()}
             >
-              {text('Add line')}
-            </Button>
-            <Button type="submit" disabled={Boolean(pendingOpening)}>
-              {text('Review opening')}
+              {text(
+                policy?.negativeStockPolicy === 'allow'
+                  ? 'Prevent negative stock'
+                  : 'Allow negative stock',
+              )}
             </Button>
           </div>
-        </form>
-      </DashboardCard>
+        </InventoryCard>
+      )}
 
-      <DashboardCard
-        title={text('Current balances')}
-        description={text(
-          'Quantities are shown in each stock item’s base unit, separated by condition.',
-        )}
-      >
-        <DataTable
-          columns={balanceColumns}
-          rows={balances}
-          rowKey={(row) => row.id}
-          caption={text('Current balances')}
-          loading={balancesLoading}
-          loadingState={text('Loading balances…')}
-          emptyState={text('No stock balances have been posted yet.')}
-        />
-        <PageControls
-          page={balancePage}
-          history={balanceHistory}
-          next={balanceNext}
-          loading={balancesLoading}
-          onChange={setBalancePage}
-          onHistoryChange={setBalanceHistory}
-          copy={text}
-        />
-      </DashboardCard>
+      {view === 'opening' && (
+        <InventoryCard
+          title={text('Opening stock')}
+          description={text(
+            'Enter your starting quantities, then review before posting. Use purchase invoices for new deliveries.',
+          )}
+        >
+          <form className="inventory-editor" onSubmit={startReview}>
+            <label>
+              {text('Reason')}
+              <Input
+                required
+                minLength={3}
+                maxLength={500}
+                value={reason}
+                disabled={Boolean(pendingOpening)}
+                onChange={(event) => setReason(event.target.value)}
+                placeholder={text('Opening count after stocktake')}
+              />
+            </label>
+            {lines.map((line, index) => {
+              const selectedItem = openingItems.find((item) => item.id === line.stockItemId);
+              const options = stockUnitOptions(selectedItem);
+              return (
+                <fieldset
+                  className="inventory-opening-line"
+                  key={line.key}
+                  disabled={Boolean(pendingOpening)}
+                >
+                  <legend>
+                    {text('Opening line')} {formatDigits(String(index + 1))}
+                  </legend>
+                  <div className="inventory-picker-field">
+                    {text('Warehouse')}
+                    <WarehousePicker
+                      value={line.warehouseId}
+                      label={text('Warehouse')}
+                      disabled={Boolean(pendingOpening)}
+                      onResolve={rememberWarehouse}
+                      onSelect={(warehouse) => {
+                        if (warehouse) rememberWarehouse(warehouse);
+                        updateLine(line.key, { warehouseId: warehouse?.id ?? '' });
+                      }}
+                    />
+                  </div>
+                  <div className="inventory-picker-field">
+                    {text('Stock item')}
+                    <StockItemPicker
+                      value={line.stockItemId}
+                      label={text('Stock item')}
+                      disabled={Boolean(pendingOpening)}
+                      onResolve={(item) => setItems((current) => cacheStockItem(current, item))}
+                      onSelect={(item) => {
+                        if (item) setItems((current) => cacheStockItem(current, item));
+                        updateLine(line.key, {
+                          stockItemId: item?.id ?? '',
+                          unitCode: item?.baseUnit ?? '',
+                        });
+                      }}
+                    />
+                  </div>
+                  <label>
+                    {text('Condition')}
+                    <select
+                      value={line.condition}
+                      onChange={(event) =>
+                        updateLine(line.key, { condition: event.target.value as StockCondition })
+                      }
+                    >
+                      <option value="available">{text('Available')}</option>
+                      <option value="non_sellable">{text('Non-Sellable')}</option>
+                    </select>
+                  </label>
+                  <label>
+                    {text('Quantity')}
+                    <Input
+                      required
+                      inputMode="decimal"
+                      value={line.quantity}
+                      onChange={(event) => updateLine(line.key, { quantity: event.target.value })}
+                    />
+                  </label>
+                  <label>
+                    {text('Unit')}
+                    <select
+                      required
+                      value={line.unitCode}
+                      onChange={(event) => updateLine(line.key, { unitCode: event.target.value })}
+                    >
+                      {options.map((option) => (
+                        <option key={option.code} value={option.code}>
+                          {formatDigits(`${option.name} (${option.code})`)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {lines.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setLines((previous) =>
+                          previous.filter((candidate) => candidate.key !== line.key),
+                        )
+                      }
+                    >
+                      {text('Remove line')}
+                    </Button>
+                  )}
+                </fieldset>
+              );
+            })}
+            <div className="inventory-row-actions">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={Boolean(pendingOpening) || lines.length >= 100}
+                onClick={() => setLines((previous) => [...previous, emptyLine()])}
+              >
+                {text('Add line')}
+              </Button>
+              <Button type="submit" disabled={Boolean(pendingOpening)}>
+                {text('Review opening')}
+              </Button>
+            </div>
+          </form>
+        </InventoryCard>
+      )}
 
-      <DashboardCard
-        title={text('Movement history')}
-        description={text(
-          'Each posted change includes its source, reason, actor, location, and quantity snapshot.',
-        )}
-      >
-        <DataTable
-          columns={movementColumns}
-          rows={movements}
-          rowKey={(row) => row.id}
-          caption={text('Movement history')}
-          loading={movementsLoading}
-          loadingState={text('Loading movement history…')}
-          emptyState={text('No stock movements have been posted yet.')}
-        />
-        <PageControls
-          page={movementPage}
-          history={movementHistory}
-          next={movementNext}
-          loading={movementsLoading}
-          onChange={setMovementPage}
-          onHistoryChange={setMovementHistory}
-          copy={text}
-        />
-      </DashboardCard>
+      {(view === 'overview' || view === 'history') && (
+        <div className="inventory-filters inventory-overview-filters">
+          {view === 'overview' && (
+            <form
+              className="inventory-search"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setSearch(searchDraft.trim());
+                setBalancePage({});
+                setBalanceHistory([]);
+              }}
+            >
+              <label htmlFor="stock-search">{text('Search stock items')}</label>
+              <div>
+                <Input
+                  id="stock-search"
+                  type="search"
+                  value={searchDraft}
+                  maxLength={160}
+                  placeholder={text('Search by item name')}
+                  onChange={(event) => setSearchDraft(event.target.value)}
+                />
+                <Button type="submit" variant="outline">
+                  {text('Search')}
+                </Button>
+              </div>
+            </form>
+          )}
+          <div className="inventory-picker-field">
+            <span>{text('Filter by warehouse')}</span>
+            <WarehousePicker
+              value={warehouseId}
+              label={text('Filter by warehouse')}
+              required={false}
+              emptyLabel={text('All warehouses')}
+              onSelect={(warehouse) => {
+                setWarehouseId(warehouse?.id ?? '');
+                setBalancePage({});
+                setBalanceHistory([]);
+                setMovementPage({});
+                setMovementHistory([]);
+              }}
+            />
+          </div>
+          {view === 'overview' && (
+            <label className="inventory-filter-status">
+              {text('Condition')}
+              <select
+                value={condition}
+                onChange={(event) => {
+                  setCondition(event.target.value);
+                  setBalancePage({});
+                  setBalanceHistory([]);
+                }}
+              >
+                <option value="">{text('All')}</option>
+                <option value="available">{text('Available')}</option>
+                <option value="non_sellable">{text('Non-Sellable')}</option>
+              </select>
+            </label>
+          )}
+          {(warehouseId || search || condition || searchDraft) && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setSearch('');
+                setSearchDraft('');
+                setWarehouseId('');
+                setCondition('');
+                setBalancePage({});
+                setBalanceHistory([]);
+                setMovementPage({});
+                setMovementHistory([]);
+              }}
+            >
+              {text('Clear filters')}
+            </Button>
+          )}
+        </div>
+      )}
+      {view === 'overview' && (
+        <InventoryCard
+          title={text('Current balances')}
+          description={text(
+            'Quantities are shown in each stock item’s base unit, separated by condition.',
+          )}
+        >
+          <DataTable
+            columns={balanceColumns}
+            rows={balances}
+            rowKey={(row) => row.id}
+            caption={text('Current balances')}
+            loading={balancesLoading}
+            loadingState={text('Loading balances…')}
+            emptyState={
+              <div className="inventory-empty">
+                <h3>
+                  {text(
+                    search || warehouseId || condition
+                      ? 'No matching stock'
+                      : 'Start tracking your stock',
+                  )}
+                </h3>
+                <p>
+                  {text(
+                    search || warehouseId || condition
+                      ? 'Try another search or clear the filters.'
+                      : 'Create a warehouse, add your items, then enter your starting quantities.',
+                  )}
+                </p>
+                {!search && !warehouseId && !condition && (
+                  <ol className="inventory-setup-steps">
+                    <li>
+                      <Button variant="outline" onClick={() => navigate('/branches')}>
+                        {text('Create warehouse')}
+                      </Button>
+                    </li>
+                    <li>
+                      <Button variant="outline" onClick={() => navigate('/inventory/items')}>
+                        {text('Add items')}
+                      </Button>
+                    </li>
+                    <li>
+                      <Button onClick={() => navigate('/inventory/opening')}>
+                        {text('Add starting stock')}
+                      </Button>
+                    </li>
+                  </ol>
+                )}
+              </div>
+            }
+          />
+          <PageControls
+            page={balancePage}
+            history={balanceHistory}
+            next={balanceNext}
+            loading={balancesLoading}
+            onChange={setBalancePage}
+            onHistoryChange={setBalanceHistory}
+            copy={text}
+          />
+        </InventoryCard>
+      )}
+
+      {view === 'history' && (
+        <InventoryCard
+          title={text('Movement history')}
+          description={text(
+            'Each posted change includes its source, reason, actor, location, and quantity snapshot.',
+          )}
+        >
+          <DataTable
+            columns={movementColumns}
+            rows={movements}
+            rowKey={(row) => row.id}
+            caption={text('Movement history')}
+            loading={movementsLoading}
+            loadingState={text('Loading movement history…')}
+            emptyState={text('No stock movements have been posted yet.')}
+          />
+          <PageControls
+            page={movementPage}
+            history={movementHistory}
+            next={movementNext}
+            loading={movementsLoading}
+            onChange={setMovementPage}
+            onHistoryChange={setMovementHistory}
+            copy={text}
+          />
+        </InventoryCard>
+      )}
 
       {reviewing && (
         <DashboardDialog
@@ -674,6 +842,6 @@ export function InventoryOperationsPage() {
           </footer>
         </DashboardDialog>
       )}
-    </main>
+    </div>
   );
 }

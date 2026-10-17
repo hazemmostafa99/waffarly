@@ -1,0 +1,107 @@
+/* Scoped semantic themes: other Waffarly applications keep their existing theme. */
+.pos-theme {
+  color-scheme: light;
+  --background: #f6f7f8;
+  --foreground: #202b2a;
+  --muted-foreground: #687471;
+  --card: #ffffff;
+  --secondary: #edf0ee;
+  --accent: #e8f1ec;
+  --primary: #bf4c0d;
+  --primary-foreground: #ffffff;
+  --border: #e4e9e5;
+  --ring: #bf4c0d;
+  --destructive: #b33c43;
+  --success: #247453;
+  --warning: #9a6717;
+  --info: #426d9a;
+  --pos-rail: #ffffff;
+  --pos-active: #fff0e7;
+  --pos-active-ink: #8e3608;
+  --pos-note: #fff6e4;
+  --pos-note-ink: #876121;
+  --pos-lilac: #eee7f6;
+  --pos-mint: #e4efeb;
+  --pos-peach: #f7e9df;
+  --pos-rose: #f4e5e9;
+  --pos-sky: #e7edf5;
+  --pos-art-ink: #495449;
+}
+.pos-theme[data-theme='dark'] {
+  color-scheme: dark;
+  --background: #171c1b;
+  --foreground: #e8eee9;
+  --muted-foreground: #a1b0a8;
+  --card: #202725;
+  --secondary: #2b3430;
+  --accent: #2c3e33;
+  --primary: #ff995e;
+  --primary-foreground: #251107;
+  --border: #354039;
+  --ring: #ff995e;
+  --destructive: #f19598;
+  --success: #8acaa5;
+  --warning: #ebc47e;
+  --info: #a0c3ec;
+  --pos-rail: #1c2220;
+  --pos-active: #4a2c1d;
+  --pos-active-ink: #ffd1b4;
+  --pos-note: #383224;
+  --pos-note-ink: #e5c98f;
+  --pos-lilac: #40384c;
+  --pos-mint: #2d433a;
+  --pos-peach: #4a3b2e;
+  --pos-rose: #48313c;
+  --pos-sky: #303d4d;
+  --pos-art-ink: #d2dfd0;
+}
+
+/* Merchant POS accents only; each theme keeps a readable foreground pair. */
+.pos-theme[data-accent='plum'] {
+  --primary: #7939a4;
+  --primary-foreground: #ffffff;
+  --ring: #7939a4;
+  --accent: #f3e9fb;
+  --pos-active: #f3e9fb;
+  --pos-active-ink: #552476;
+}
+.pos-theme[data-theme='dark'][data-accent='plum'] {
+  --primary: #cf9dec;
+  --primary-foreground: #24112f;
+  --ring: #cf9dec;
+  --accent: #382744;
+  --pos-active: #382744;
+  --pos-active-ink: #ebd2fa;
+}
+.pos-theme[data-accent='teal'] {
+  --primary: #0d766c;
+  --primary-foreground: #ffffff;
+  --ring: #0d766c;
+  --accent: #e3f4f1;
+  --pos-active: #e3f4f1;
+  --pos-active-ink: #07534c;
+}
+.pos-theme[data-theme='dark'][data-accent='teal'] {
+  --primary: #5ed2c4;
+  --primary-foreground: #092421;
+  --ring: #5ed2c4;
+  --accent: #203d39;
+  --pos-active: #203d39;
+  --pos-active-ink: #bbf1e9;
+}
+.pos-theme[data-accent='blue'] {
+  --primary: #285fc1;
+  --primary-foreground: #ffffff;
+  --ring: #285fc1;
+  --accent: #e9f0ff;
+  --pos-active: #e9f0ff;
+  --pos-active-ink: #1d458d;
+}
+.pos-theme[data-theme='dark'][data-accent='blue'] {
+  --primary: #84abff;
+  --primary-foreground: #101b33;
+  --ring: #84abff;
+  --accent: #263550;
+  --pos-active: #263550;
+  --pos-active-ink: #d0e0ff;
+}

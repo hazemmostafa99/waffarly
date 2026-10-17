@@ -1,5 +1,5 @@
 import { useEffect, useEffectEvent, useState } from 'react';
-import { Button, useLocale } from '@waffarly/ui';
+import { Button, Input, useLocale } from '@waffarly/ui';
 import type { OwnerProfile } from '@waffarly/contracts';
 import { useOutletContext } from 'react-router-dom';
 import { lookupPage, lookupSelection } from '../lib/entity-lookup.js';
@@ -14,6 +14,7 @@ export function PagedEntitySelect<T extends { id: string; name: string }>({
   optionLabel = (item) => item.name,
   disabled = false,
   required = true,
+  emptyLabel,
 }: {
   path: string;
   value: string;
@@ -23,6 +24,7 @@ export function PagedEntitySelect<T extends { id: string; name: string }>({
   optionLabel?: (item: T) => string;
   disabled?: boolean;
   required?: boolean;
+  emptyLabel?: string | undefined;
 }) {
   const { locale, errorText } = useLocale();
   const { profile } = useOutletContext<{ profile: OwnerProfile }>();
@@ -91,7 +93,7 @@ export function PagedEntitySelect<T extends { id: string; name: string }>({
       : items;
   return (
     <div className="entity-picker" role="group" aria-label={label}>
-      <input
+      <Input
         aria-label={`${label}: ${text('Search', 'بحث')}`}
         type="search"
         maxLength={160}
@@ -115,7 +117,7 @@ export function PagedEntitySelect<T extends { id: string; name: string }>({
         }}
       >
         <option value="">
-          {loading ? text('Loading…', 'جارٍ التحميل…') : text('Choose…', 'اختر…')}
+          {loading ? text('Loading…', 'جارٍ التحميل…') : (emptyLabel ?? text('Choose…', 'اختر…'))}
         </option>
         {options.map((item) => (
           <option key={item.id} value={item.id}>
@@ -123,28 +125,30 @@ export function PagedEntitySelect<T extends { id: string; name: string }>({
           </option>
         ))}
       </select>
-      <div className="entity-picker-pages">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disabled || loading || !cursors.length}
-          onClick={() => setCursors((current) => current.slice(0, -1))}
-        >
-          {text('Previous', 'السابق')}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={disabled || loading || !next}
-          onClick={() => {
-            if (next) setCursors((current) => [...current, next]);
-          }}
-        >
-          {text('Next', 'التالي')}
-        </Button>
-      </div>
+      {(next || cursors.length > 0) && (
+        <div className="entity-picker-pages">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={disabled || loading || !cursors.length}
+            onClick={() => setCursors((current) => current.slice(0, -1))}
+          >
+            {text('Previous', 'السابق')}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={disabled || loading || !next}
+            onClick={() => {
+              if (next) setCursors((current) => [...current, next]);
+            }}
+          >
+            {text('Next', 'التالي')}
+          </Button>
+        </div>
+      )}
       {!loading && !items.length && !error && (
         <small>{text('No matching options.', 'لا توجد نتائج مطابقة.')}</small>
       )}

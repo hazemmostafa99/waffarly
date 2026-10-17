@@ -66,9 +66,11 @@ export function MerchantLayout() {
     '/product-builder',
   ].includes(location.pathname);
   const hasCustomPageHeading =
-    !['/products', '/categories', '/media', '/discounts', '/branches'].includes(
+    !['/products', '/categories', '/media', '/discounts', '/branches', '/employees'].includes(
       location.pathname,
-    ) && !isProductBuilder;
+    ) &&
+    !isProductBuilder &&
+    !location.pathname.startsWith('/inventory');
   const hasBreadcrumb =
     hasCustomPageHeading && !isCustomers && !isOrders && location.pathname !== '/settings';
 

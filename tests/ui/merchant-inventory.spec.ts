@@ -330,6 +330,7 @@ test('purchase editors use bounded lookups and preserve the selected invoice fie
   await dialog.getByRole('combobox', { name: 'Supplier', exact: true }).selectOption(supplierId);
   await expect(dialog.getByRole('combobox', { name: 'Warehouse', exact: true })).toBeEnabled();
   await dialog.getByRole('combobox', { name: 'Warehouse', exact: true }).selectOption(warehouseId);
+  await dialog.getByRole('button', { name: 'Continue to items', exact: true }).click();
   await expect(dialog.getByRole('combobox', { name: 'Stock item', exact: true })).toBeEnabled();
   await dialog.getByRole('combobox', { name: 'Stock item', exact: true }).selectOption(otherId);
   await dialog.getByLabel('Quantity', { exact: true }).fill('1.25');
@@ -387,7 +388,7 @@ test('opening-stock retry hydrates only saved references and keeps the original 
       });
     return route.fulfill({ json: { items: [], nextCursor: null } });
   });
-  await page.goto('http://127.0.0.1:5274/inventory/operations');
+  await page.goto('http://127.0.0.1:5274/inventory/opening');
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('Selected flour');
   await expect(dialog).toContainText('Central');
@@ -423,7 +424,7 @@ test('new opening selections survive a language change and post the reviewed qua
       });
     return route.fulfill({ json: { items: [], nextCursor: null } });
   });
-  await page.goto('http://127.0.0.1:5274/inventory/operations');
+  await page.goto('http://127.0.0.1:5274/inventory/opening');
   await expect(page.getByRole('combobox', { name: 'Warehouse', exact: true })).toBeEnabled();
   await page.getByRole('combobox', { name: 'Warehouse', exact: true }).selectOption(warehouseId);
   await expect(page.getByRole('combobox', { name: 'Stock item', exact: true })).toBeEnabled();
@@ -449,4 +450,289 @@ test('new opening selections survive a language change and post the reviewed qua
         unitCode: 'g',
       },
     ]);
+});
+
+for (const locale of ['en', 'ar']) {
+  test(`inventory opens on stock and filters reset pagination (${locale})`, async ({
+    page,
+  }, testInfo) => {
+    await authenticate(page, locale);
+    const balanceRequests: URL[] = [];
+    const otherRequests: string[] = [];
+    await page.route('**/owner/inventory/**', (route) => {
+      const url = new URL(route.request().url());
+      if (url.pathname.endsWith('/balances')) {
+        balanceRequests.push(url);
+        return route.fulfill({
+          json: {
+            items: [
+              {
+                id: productId,
+                warehouseId,
+                warehouseName: 'Main',
+                branchId: merchantId,
+                branchName: 'Central',
+                stockItemId: selectedId,
+                stockItemName: 'Selected flour',
+                baseUnit: 'g',
+                condition: 'available',
+                quantity: '25000',
+                updatedAt: '2026-10-17T10:00:00Z',
+              },
+            ],
+            nextCursor: url.searchParams.has('cursor') ? null : nextCursor,
+          },
+        });
+      }
+      otherRequests.push(url.pathname);
+      return route.fulfill({
+        json: url.search ? { items: [warehouse], nextCursor: null } : warehouse,
+      });
+    });
+    await page.route('**/owner/catalog/**', (route) => route.fulfill({ json: [] }));
+    await page.goto('http://127.0.0.1:5274/products');
+    await expect(page.locator('.products-heading h1')).toBeVisible();
+    const productsStyle = await page.evaluate(() => {
+      const css = (selector: string) => getComputedStyle(document.querySelector(selector)!);
+      return {
+        headingFont: css('.products-heading h1').fontFamily,
+        headingSize: css('.products-heading h1').fontSize,
+        headingColor: css('.products-heading h1').color,
+        background: css('.merchant-layout').backgroundColor,
+        cardRadius: css('.products-table-card').borderRadius,
+        cardPadding: css('.products-table-card').padding,
+        cardHeadingSize: css('.products-table-card .wf-card-heading h2').fontSize,
+        buttonBackground: css('.products-heading .products-button.primary').backgroundColor,
+        buttonShadow: css('.products-heading .products-button.primary').boxShadow,
+      };
+    });
+    await page.screenshot({
+      path: testInfo.outputPath(`products-reference-${locale}.png`),
+      fullPage: true,
+    });
+    await page.goto('http://127.0.0.1:5274/inventory');
+    await expect(
+      page.getByRole('heading', {
+        name: locale === 'ar' ? 'نظرة عامة على المخزون' : 'Stock overview',
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(page.getByText('Selected flour', { exact: true })).toBeVisible();
+    await expect(page.locator('.inventory-intro h1')).toHaveCSS(
+      'font-family',
+      productsStyle.headingFont,
+    );
+    await expect(page.locator('.inventory-intro h1')).toHaveCSS(
+      'font-size',
+      productsStyle.headingSize,
+    );
+    await expect(page.locator('.inventory-intro h1')).toHaveCSS(
+      'color',
+      productsStyle.headingColor,
+    );
+    await expect(page.locator('.merchant-layout')).toHaveCSS(
+      'background-color',
+      productsStyle.background,
+    );
+    await expect(page.locator('.inventory-card')).toHaveCSS(
+      'border-radius',
+      productsStyle.cardRadius,
+    );
+    await expect(page.locator('.inventory-card')).toHaveCSS('padding', productsStyle.cardPadding);
+    await expect(page.locator('.inventory-card .wf-card-heading h2')).toHaveCSS(
+      'font-size',
+      productsStyle.cardHeadingSize,
+    );
+    await expect(page.locator('.inventory-intro-actions .bg-gradient-to-br')).toHaveCSS(
+      'background-color',
+      productsStyle.buttonBackground,
+    );
+    await expect(page.locator('.inventory-intro-actions .bg-gradient-to-br')).toHaveCSS(
+      'box-shadow',
+      productsStyle.buttonShadow,
+    );
+    await expect(page.locator('#stock-search')).toHaveCSS('background-color', 'rgb(245, 248, 251)');
+    await expect(page.locator('#stock-search')).toHaveCSS('height', '36px');
+    expect(otherRequests.some((path) => /policy|movements/.test(path))).toBe(false);
+    await page
+      .getByRole('button', { name: locale === 'ar' ? 'التالي' : 'Next', exact: true })
+      .last()
+      .click();
+    await expect.poll(() => balanceRequests.at(-1)?.searchParams.get('cursor')).toBe(nextCursor);
+    await page.locator('#stock-search').fill('flour');
+    await page
+      .getByRole('button', { name: locale === 'ar' ? 'بحث' : 'Search', exact: true })
+      .click();
+    await expect.poll(() => balanceRequests.at(-1)?.searchParams.get('search')).toBe('flour');
+    expect(balanceRequests.at(-1)!.searchParams.has('cursor')).toBe(false);
+    const warehouseFilter = page.getByRole('combobox', {
+      name: locale === 'ar' ? 'تصفية حسب المستودع' : 'Filter by warehouse',
+      exact: true,
+    });
+    await expect(warehouseFilter).toBeEnabled();
+    await warehouseFilter.selectOption(warehouseId);
+    await expect
+      .poll(() => balanceRequests.at(-1)?.searchParams.get('warehouseId'))
+      .toBe(warehouseId);
+    await page
+      .getByRole('button', { name: locale === 'ar' ? 'مسح الفلاتر' : 'Clear filters', exact: true })
+      .click();
+    await expect.poll(() => balanceRequests.at(-1)?.searchParams.has('warehouseId')).toBe(false);
+    expect(balanceRequests.at(-1)!.searchParams.has('search')).toBe(false);
+    await expect(warehouseFilter).toHaveValue('');
+    await expect(
+      page.getByRole('link', {
+        name: locale === 'ar' ? 'نظرة عامة على المخزون' : 'Stock overview',
+        exact: true,
+      }),
+    ).toHaveAttribute('aria-current', 'page');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      await page.evaluate(() => innerWidth),
+    );
+    await page.screenshot({ path: testInfo.outputPath(`inventory-${locale}.png`), fullPage: true });
+  });
+
+  test(`item creation keeps packs optional and adds no stock (${locale})`, async ({ page }) => {
+    await authenticate(page, locale);
+    let saved: Record<string, unknown> | undefined;
+    const writes: string[] = [];
+    await page.route('**/owner/inventory/**', (route) => {
+      if (route.request().method() !== 'GET') {
+        writes.push(new URL(route.request().url()).pathname);
+        saved = route.request().postDataJSON();
+        return route.fulfill({ json: { ...selectedItem, ...saved } });
+      }
+      return route.fulfill({ json: { items: [], nextCursor: null } });
+    });
+    await page.goto('http://127.0.0.1:5274/inventory/items?new=1');
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    const disclosure = dialog.getByRole('button', {
+      name: locale === 'ar' ? 'هل تشتري هذا الصنف في عبوات؟' : 'Do you buy this item in packs?',
+    });
+    await expect(disclosure).toHaveAttribute('aria-expanded', 'false');
+    await disclosure.click();
+    await expect(disclosure).toHaveAttribute('aria-expanded', 'true');
+    await disclosure.click();
+    await dialog
+      .getByLabel(locale === 'ar' ? 'اسم الصنف' : 'Item name', { exact: true })
+      .fill('New flour');
+    await dialog
+      .getByLabel(locale === 'ar' ? 'وحدة القياس' : 'Measurement unit', { exact: true })
+      .selectOption('kg');
+    await dialog
+      .getByRole('button', {
+        name: locale === 'ar' ? 'إنشاء صنف مخزون' : 'Create stock item',
+        exact: true,
+      })
+      .click();
+    await expect.poll(() => saved).toMatchObject({ name: 'New flour', baseUnit: 'kg', units: [] });
+    expect(writes).toEqual(['/owner/inventory/items']);
+    await expect(dialog).toHaveCount(0);
+    await expect(
+      page.getByRole('button', {
+        name: locale === 'ar' ? 'إضافة الرصيد الافتتاحي' : 'Add starting stock',
+        exact: true,
+      }),
+    ).toBeVisible();
+  });
+}
+
+test('empty inventory guides setup and keeps history separate', async ({ page }) => {
+  await authenticate(page);
+  await page.route('**/owner/inventory/**', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.goto('http://127.0.0.1:5274/inventory');
+  await expect(page.getByRole('heading', { name: 'Start tracking your stock' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Create warehouse', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Movement history', exact: true }).click();
+  await expect(page.getByRole('table', { name: 'Movement history', exact: true })).toBeVisible();
+  await expect(page.getByRole('table', { name: 'Current balances', exact: true })).toHaveCount(0);
+});
+
+test('purchase review receives stock only after explicit confirmation and preserves retry identity', async ({
+  page,
+}, testInfo) => {
+  await authenticate(page);
+  let draft: Record<string, unknown> | undefined;
+  const confirmations: Record<string, unknown>[] = [];
+  const invoice = {
+    id: productId,
+    revision: 1,
+    status: 'draft',
+    supplierId,
+    supplierName: 'Supplier',
+    warehouseId,
+    warehouseName: 'Main',
+    branchName: 'Central',
+    supplierInvoiceNumber: 'INV-42',
+    createdAt: '2026-10-17T10:00:00Z',
+    lines: [
+      {
+        id: selectedId,
+        stockItemId: otherId,
+        stockItemName: 'Olive ingredient',
+        quantity: '1.25',
+        unitCode: 'g',
+        unitName: 'Gram',
+        baseUnit: 'g',
+        condition: 'available',
+      },
+    ],
+  };
+  await page.route('**/owner/**', (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.includes('/auth/')) return route.fallback();
+    if (url.pathname.endsWith('/confirm')) {
+      confirmations.push(route.request().postDataJSON());
+      return confirmations.length === 1
+        ? route.fulfill({ status: 503, json: { message: 'Please retry receiving.' } })
+        : route.fulfill({
+            json: { invoice: { ...invoice, status: 'confirmed' }, receipt: { replayed: false } },
+          });
+    }
+    if (route.request().method() === 'POST') {
+      draft = route.request().postDataJSON();
+      return route.fulfill({ json: invoice });
+    }
+    if (url.pathname.includes('/invoices'))
+      return route.fulfill({ json: { items: [], nextCursor: null } });
+    const item = url.pathname.includes('/suppliers')
+      ? { id: supplierId, name: 'Supplier' }
+      : url.pathname.includes('/warehouses')
+        ? warehouse
+        : otherItem;
+    return route.fulfill({ json: url.search ? { items: [item], nextCursor: null } : item });
+  });
+  await page.goto('http://127.0.0.1:5274/inventory/purchases?new=1');
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Continue to items', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Choose a supplier and warehouse');
+  await dialog.getByRole('combobox', { name: 'Supplier', exact: true }).selectOption(supplierId);
+  await dialog.getByRole('combobox', { name: 'Warehouse', exact: true }).selectOption(warehouseId);
+  await dialog.getByLabel('Supplier invoice number', { exact: true }).fill('INV-42');
+  await dialog.getByRole('button', { name: 'Continue to items', exact: true }).click();
+  await dialog.getByRole('combobox', { name: 'Stock item', exact: true }).selectOption(otherId);
+  await dialog.getByLabel('Quantity', { exact: true }).fill('1.25');
+  await dialog.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(dialog.getByLabel('Supplier invoice number', { exact: true })).toHaveValue('INV-42');
+  await dialog.getByRole('button', { name: 'Continue to items', exact: true }).click();
+  await expect(dialog.getByLabel('Quantity', { exact: true })).toHaveValue('1.25');
+  await dialog.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await expect(dialog).toContainText('Receiving this purchase adds the quantities below to:');
+  expect(draft).toMatchObject({
+    supplierId,
+    warehouseId,
+    supplierInvoiceNumber: 'INV-42',
+    lines: [{ quantity: '1.25', unitCode: 'g' }],
+  });
+  expect(confirmations).toHaveLength(0);
+  await page.screenshot({ path: testInfo.outputPath('purchase-review.png'), fullPage: true });
+  await dialog.getByRole('button', { name: 'Confirm receipt', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Please retry receiving.');
+  await dialog.getByRole('button', { name: 'Confirm receipt', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(confirmations).toHaveLength(2);
+  expect(confirmations[1]).toEqual(confirmations[0]);
 });

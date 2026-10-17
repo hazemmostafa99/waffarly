@@ -33,12 +33,16 @@ export function WarehousePicker({
   onSelect,
   onResolve,
   disabled = false,
+  required = true,
+  emptyLabel,
 }: {
   value: string;
   label: string;
   onSelect: (warehouse: InventoryWarehouseSummary | null) => void;
   onResolve?: (warehouse: InventoryWarehouseSummary) => void;
   disabled?: boolean;
+  required?: boolean;
+  emptyLabel?: string;
 }) {
   return (
     <PagedEntitySelect<InventoryWarehouseSummary>
@@ -48,6 +52,8 @@ export function WarehousePicker({
       onSelect={onSelect}
       onResolve={onResolve}
       disabled={disabled}
+      required={required}
+      emptyLabel={emptyLabel}
       optionLabel={(warehouse) => `${warehouse.branchName} · ${warehouse.name}`}
     />
   );

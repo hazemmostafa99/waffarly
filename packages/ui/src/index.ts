@@ -1,4 +1,7 @@
 export { Button } from './button.js';
+export { Dialog } from './dialog.js';
+export { Popover } from './popover.js';
+export type { PopoverTriggerProps } from './popover.js';
 export type { ButtonProps } from './button.js';
 export { buttonVariants } from './button.js';
 export { Badge, badgeVariants } from './badge.js';

@@ -11,6 +11,7 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
+        solid: 'bg-primary text-primary-foreground shadow-none hover:bg-primary/90',
         default:
           'bg-gradient-to-br from-waffarly-primary to-waffarly-primary-deep text-white shadow-button hover:from-waffarly-primary-dark hover:to-waffarly-primary-deep hover:shadow-md',
         accent:
@@ -18,7 +19,8 @@ export const buttonVariants = cva(
         secondary: 'bg-waffarly-cream text-waffarly-primary-deep hover:bg-waffarly-gold-light',
         outline:
           'border border-waffarly-outline bg-waffarly-surface text-waffarly-primary-deep hover:bg-waffarly-cream hover:text-waffarly-primary-deep',
-        ghost: 'bg-transparent text-waffarly-primary-deep hover:bg-waffarly-cream hover:text-waffarly-primary-deep',
+        ghost:
+          'bg-transparent text-waffarly-primary-deep hover:bg-waffarly-cream hover:text-waffarly-primary-deep',
         destructive: 'bg-waffarly-danger text-white hover:bg-waffarly-danger/90',
       },
       size: { default: 'h-11 px-5 py-2.5', sm: 'h-10 px-3', lg: 'h-12 px-6', icon: 'size-11' },

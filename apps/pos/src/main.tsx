@@ -2,7 +2,7 @@ import '@waffarly/ui/theme.css';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
-import { LocaleProvider, WorkspaceChrome } from '@waffarly/ui';
+import { AppProviders } from './app/providers.js';
 import { router } from './routes.js';
 import './style.css';
 
@@ -14,10 +14,8 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <React.StrictMode>
-    <LocaleProvider>
-      <WorkspaceChrome>
-        <RouterProvider router={router} />
-      </WorkspaceChrome>
-    </LocaleProvider>
+    <AppProviders>
+      <RouterProvider router={router} />
+    </AppProviders>
   </React.StrictMode>,
 );

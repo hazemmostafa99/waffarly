@@ -9,6 +9,7 @@
     "start": "node dist/src/main.js",
     "admin:hash-password": "tsx src/scripts/hash-password.ts",
     "catalog:seed": "tsx src/scripts/seed-catalog.ts",
+    "inventory:seed-demo": "tsx src/scripts/seed-arabic-inventory-demo.ts",
     "lint": "eslint src test",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsx --test test/http/*.test.ts test/unit/*.test.ts",

@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { CursorPage, InventoryBranch, PosEmployeeSummary } from '@waffarly/contracts';
-import { Button, Input, useLocale } from '@waffarly/ui';
+import { DashboardCard, DataTable, Input, useLocale, type DataTableColumn } from '@waffarly/ui';
+import { Icon } from '../../Icons.js';
+import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { PagedEntitySelect } from '../../components/PagedEntitySelect.js';
 import { ApiError, apiRequest, apiRequestPage } from '../../lib/api-client.js';
 
@@ -87,15 +89,18 @@ export function EmployeesPage() {
   }
 
   function closeEditor() {
+    if (busy) return;
     setEditorOpen(false);
     setEditing(null);
     setDraft(emptyDraft());
     setBranchPicker('');
+    setError('');
   }
 
   function addBranch(branch: Pick<InventoryBranch, 'id' | 'name'> | null) {
     setBranchPicker('');
     if (!branch || draft.branches.some((candidate) => candidate.id === branch.id)) return;
+    setError('');
     setDraft((current) => ({
       ...current,
       branches: [...current.branches, { ...branch, archivedAt: null }],
@@ -104,6 +109,7 @@ export function EmployeesPage() {
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (busy) return;
     setError('');
     setNotice('');
     if (draft.active && !draft.branches.some((branch) => !branch.archivedAt)) {
@@ -165,160 +171,124 @@ export function EmployeesPage() {
     }
   }
 
+  const columns: DataTableColumn<PosEmployeeSummary>[] = [
+    {
+      id: 'employee',
+      header: text('Employee', 'الموظف'),
+      cell: (employee) => (
+        <div className="products-identity">
+          <span className="products-thumb-empty">
+            <Icon name="customers" />
+          </span>
+          <div>
+            <strong>{employee.displayName}</strong>
+            <small dir="ltr">@{employee.username}</small>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: 'branches',
+      header: text('Assigned branches', 'الفروع المعيّنة'),
+      cell: (employee) => (
+        <div className="employee-table-branches">
+          {employee.branches.length ? (
+            employee.branches.map((branch) => (
+              <span
+                key={branch.id}
+                className={`products-pill ${branch.archivedAt ? 'cream' : 'blue'}`}
+              >
+                {branch.name}
+                {branch.archivedAt ? ` · ${text('Archived', 'مؤرشف')}` : ''}
+              </span>
+            ))
+          ) : (
+            <span className="employee-muted">
+              {text('No branches assigned', 'لم يتم تعيين فروع')}
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: 'status',
+      header: text('Status', 'الحالة'),
+      cell: (employee) => (
+        <span className={`products-pill ${employee.active ? 'mint' : 'cream'}`}>
+          {employee.active ? text('Active', 'نشط') : text('Inactive', 'غير نشط')}
+        </span>
+      ),
+    },
+    {
+      id: 'actions',
+      header: text('Actions', 'الإجراءات'),
+      cell: (employee) => (
+        <button
+          className="products-button employee-edit-button"
+          type="button"
+          onClick={() => startEdit(employee)}
+        >
+          <Icon name="edit" />
+          {text('Edit', 'تعديل')}
+        </button>
+      ),
+    },
+  ];
+
   return (
     <section className="employee-workspace">
-      <div className="employee-heading-row">
+      <header className="products-heading employee-heading-row">
         <div>
-          <span className="eyebrow">{text('POS access', 'صلاحيات POS')}</span>
+          <h1>{text('Employees', 'الموظفون')}</h1>
           <p>
             {text(
-              'Employees can accept recipe orders and start preparation at assigned branches. Owners keep order rejection and cancellation.',
-              'يمكن للموظفين قبول طلبات الوصفات وبدء التحضير في الفروع المعيّنة لهم. يظل رفض الطلبات وإلغاؤها من صلاحيات المالك.',
+              'Manage employee accounts and branch access.',
+              'إدارة حسابات الموظفين وصلاحيات الوصول إلى الفروع.',
             )}
           </p>
         </div>
-        <Button type="button" onClick={startCreate}>
-          {text('Add employee', 'إضافة موظف')}
-        </Button>
-      </div>
+        <div className="products-heading-actions">
+          <button className="products-button primary" type="button" onClick={startCreate}>
+            <Icon name="plus" />
+            {text('Add employee', 'إضافة موظف')}
+          </button>
+        </div>
+      </header>
 
-      {error && (
-        <p className="employee-message employee-error" role="alert">
-          {error}
-        </p>
+      {error && !editorOpen && (
+        <div className="products-error employee-load-error" role="alert">
+          <span>{error}</span>
+          <button
+            className="products-button"
+            type="button"
+            disabled={loading}
+            onClick={() => setRefresh((value) => value + 1)}
+          >
+            {text('Retry', 'إعادة المحاولة')}
+          </button>
+        </div>
       )}
       {notice && (
-        <p className="employee-message" role="status">
+        <p className="products-notice" role="status">
           {notice}
         </p>
       )}
 
-      {editorOpen ? (
-        <form className="employee-editor" onSubmit={(event) => void save(event)}>
-          <div className="employee-editor-title">
-            <h2>
-              {editing
-                ? text('Edit employee', 'تعديل الموظف')
-                : text('New POS employee', 'موظف POS جديد')}
-            </h2>
-            <Button type="button" variant="ghost" onClick={closeEditor}>
-              {text('Close', 'إغلاق')}
-            </Button>
-          </div>
-          <div className="employee-form-grid">
-            <label>
-              {text('Employee name', 'اسم الموظف')}
-              <Input
-                required
-                minLength={2}
-                maxLength={160}
-                value={draft.displayName}
-                onChange={(event) => setDraft({ ...draft, displayName: event.target.value })}
-              />
-            </label>
-            <label>
-              {text('Username', 'اسم المستخدم')}
-              <Input
-                required
-                minLength={3}
-                maxLength={80}
-                disabled={Boolean(editing)}
-                autoComplete="username"
-                value={draft.username}
-                onChange={(event) =>
-                  setDraft({ ...draft, username: event.target.value.toLowerCase() })
-                }
-              />
-            </label>
-            <label>
-              {editing
-                ? text('New password (optional)', 'كلمة مرور جديدة (اختياري)')
-                : text('Password (12 characters minimum)', 'كلمة المرور (12 حرفًا على الأقل)')}
-              <Input
-                type="password"
-                required={!editing}
-                minLength={12}
-                maxLength={200}
-                autoComplete="new-password"
-                value={draft.password}
-                onChange={(event) => setDraft({ ...draft, password: event.target.value })}
-              />
-            </label>
-            {editing && (
-              <label className="employee-active-toggle">
-                <input
-                  type="checkbox"
-                  checked={draft.active}
-                  onChange={(event) => setDraft({ ...draft, active: event.target.checked })}
-                />
-                {text('Account active', 'الحساب نشط')}
-              </label>
-            )}
-          </div>
-          <fieldset className="employee-branches">
-            <legend>{text('Assigned branches', 'الفروع المعيّنة')}</legend>
-            <div className="employee-branch-picker">
-              <PagedEntitySelect<Pick<InventoryBranch, 'id' | 'name'>>
-                key={branchPicker}
-                path="/owner/inventory/branches"
-                value={branchPicker}
-                label={text('Add an active branch', 'إضافة فرع نشط')}
-                required={false}
-                onSelect={addBranch}
-              />
-            </div>
-            {draft.branches.length ? (
-              <ul className="employee-branch-list">
-                {draft.branches.map((branch) => (
-                  <li key={branch.id}>
-                    <span>
-                      {branch.name}
-                      {branch.archivedAt ? ` · ${text('Archived', 'مؤرشف')}` : ''}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setDraft((current) => ({
-                          ...current,
-                          branches: current.branches.filter((item) => item.id !== branch.id),
-                        }))
-                      }
-                    >
-                      {text('Remove', 'إزالة')}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>
-                {text('Choose at least one active branch.', 'اختر فرعًا نشطًا واحدًا على الأقل.')}
-              </p>
-            )}
-          </fieldset>
-          <div className="employee-form-actions">
-            <Button type="submit" disabled={busy}>
-              {busy ? text('Saving…', 'جارٍ الحفظ…') : text('Save employee', 'حفظ الموظف')}
-            </Button>
-            {editing && (
-              <Button type="button" variant="outline" onClick={closeEditor}>
-                {text('Cancel edit', 'إلغاء التعديل')}
-              </Button>
-            )}
-          </div>
-        </form>
-      ) : null}
-
-      <div className="employee-list-toolbar">
-        <h2>{text('Employees', 'الموظفون')}</h2>
-        <Input
-          aria-label={text('Search employees', 'ابحث عن موظفين')}
-          placeholder={text('Search by name or username', 'البحث بالاسم أو اسم المستخدم')}
-          value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
-            setHistory([]);
-          }}
-        />
+      <div className="products-filters employee-list-toolbar">
+        <label className="products-search">
+          <Icon name="search" />
+          <input
+            aria-label={text('Search employees', 'ابحث عن موظفين')}
+            placeholder={text('Search by name or username', 'البحث بالاسم أو اسم المستخدم')}
+            value={search}
+            maxLength={160}
+            type="search"
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setHistory([]);
+            }}
+          />
+        </label>
         <select
           aria-label={text('Employee status', 'حالة الموظف')}
           value={status}
@@ -332,61 +302,199 @@ export function EmployeesPage() {
           <option value="inactive">{text('Inactive', 'غير نشط')}</option>
         </select>
       </div>
-      {loading ? (
-        <p>{text('Loading employees…', 'جارٍ تحميل الموظفين…')}</p>
-      ) : page.items.length === 0 ? (
-        <p>{text('No employees on this page.', 'لا يوجد موظفون في هذه الصفحة.')}</p>
-      ) : (
-        <div className="employee-list">
-          {page.items.map((employee) => (
-            <article className="employee-card" key={employee.id}>
-              <div>
-                <h3>{employee.displayName}</h3>
-                <span>@{employee.username}</span>
-                <p>
-                  {employee.branches
-                    .map(
-                      (branch) =>
-                        `${branch.name}${branch.archivedAt ? ` (${text('Archived', 'مؤرشف')})` : ''}`,
+
+      <DashboardCard
+        className="employee-table-card"
+        title={text('Employee list', 'قائمة الموظفين')}
+        description={text(
+          'Employees can accept recipe orders and start preparation at assigned branches. Owners keep order rejection and cancellation.',
+          'يمكن للموظفين قبول طلبات الوصفات وبدء التحضير في الفروع المعيّنة لهم. يظل رفض الطلبات وإلغاؤها من صلاحيات المالك.',
+        )}
+      >
+        <DataTable
+          columns={columns}
+          rows={page.items}
+          rowKey={(employee) => employee.id}
+          caption={text('Employee list', 'قائمة الموظفين')}
+          loading={loading}
+          loadingState={text('Loading employees…', 'جارٍ تحميل الموظفين…')}
+          emptyState={
+            <div className="employee-empty">
+              <strong>
+                {search || status !== 'all'
+                  ? text('No matching employees', 'لا يوجد موظفون مطابقون')
+                  : text('No employees yet', 'لا يوجد موظفون بعد')}
+              </strong>
+              <p>
+                {search || status !== 'all'
+                  ? text(
+                      'Try another search or change the status filter.',
+                      'جرّب بحثًا آخر أو غيّر فلتر الحالة.',
                     )
-                    .join(' · ')}
-                </p>
-                <small>
-                  {employee.active
-                    ? text(
-                        'Active · accepts and starts preparation',
-                        'نشط · يقبل الطلبات ويبدأ التحضير',
-                      )
-                    : text('Inactive', 'غير نشط')}
-                </small>
-              </div>
-              <Button variant="outline" type="button" onClick={() => startEdit(employee)}>
-                {text('Edit', 'تعديل')}
-              </Button>
-            </article>
-          ))}
+                  : text(
+                      'Add your first employee and assign their branches to get started.',
+                      'أضف أول موظف وعيّن الفروع المسموح له بالوصول إليها.',
+                    )}
+              </p>
+            </div>
+          }
+        />
+        <div className="employee-pagination">
+          <span>
+            {text('Employees on this page:', 'الموظفون في هذه الصفحة:')} {page.items.length}
+          </span>
+          <div>
+            <button
+              className="products-button"
+              type="button"
+              disabled={!history.length || loading}
+              onClick={() => setHistory((current) => current.slice(0, -1))}
+            >
+              {text('Previous', 'السابق')}
+            </button>
+            <button
+              className="products-button"
+              type="button"
+              disabled={!page.nextCursor || loading}
+              onClick={() => {
+                if (page.nextCursor) setHistory((current) => [...current, page.nextCursor!]);
+              }}
+            >
+              {text('Next', 'التالي')}
+            </button>
+          </div>
         </div>
+      </DashboardCard>
+
+      {editorOpen && (
+        <DashboardDialog
+          title={
+            editing
+              ? text('Edit employee', 'تعديل الموظف')
+              : text('New POS employee', 'موظف POS جديد')
+          }
+          closeLabel={text('Close', 'إغلاق')}
+          onClose={closeEditor}
+          busy={busy}
+        >
+          <form className="employee-editor" onSubmit={(event) => void save(event)}>
+            {error && (
+              <p className="employee-message employee-error" role="alert">
+                {error}
+              </p>
+            )}
+            <fieldset className="employee-editor-fields" disabled={busy}>
+              <div className="employee-form-grid">
+                <label>
+                  {text('Employee name', 'اسم الموظف')}
+                  <Input
+                    autoFocus
+                    required
+                    minLength={2}
+                    maxLength={160}
+                    value={draft.displayName}
+                    onChange={(event) => setDraft({ ...draft, displayName: event.target.value })}
+                  />
+                </label>
+                <label>
+                  {text('Username', 'اسم المستخدم')}
+                  <Input
+                    required
+                    minLength={3}
+                    maxLength={80}
+                    disabled={Boolean(editing)}
+                    autoComplete="username"
+                    value={draft.username}
+                    onChange={(event) =>
+                      setDraft({ ...draft, username: event.target.value.toLowerCase() })
+                    }
+                  />
+                </label>
+                <label>
+                  {editing
+                    ? text('New password (optional)', 'كلمة مرور جديدة (اختياري)')
+                    : text('Password (12 characters minimum)', 'كلمة المرور (12 حرفًا على الأقل)')}
+                  <Input
+                    type="password"
+                    required={!editing}
+                    minLength={12}
+                    maxLength={200}
+                    autoComplete="new-password"
+                    value={draft.password}
+                    onChange={(event) => setDraft({ ...draft, password: event.target.value })}
+                  />
+                </label>
+                {editing && (
+                  <label className="employee-active-toggle">
+                    <input
+                      type="checkbox"
+                      checked={draft.active}
+                      onChange={(event) => setDraft({ ...draft, active: event.target.checked })}
+                    />
+                    {text('Account active', 'الحساب نشط')}
+                  </label>
+                )}
+              </div>
+              <fieldset className="employee-branches">
+                <legend>{text('Assigned branches', 'الفروع المعيّنة')}</legend>
+                <div className="employee-branch-picker">
+                  <PagedEntitySelect<Pick<InventoryBranch, 'id' | 'name'>>
+                    key={branchPicker}
+                    path="/owner/inventory/branches"
+                    value={branchPicker}
+                    label={text('Add an active branch', 'إضافة فرع نشط')}
+                    required={false}
+                    onSelect={addBranch}
+                  />
+                </div>
+                {draft.branches.length ? (
+                  <ul className="employee-branch-list">
+                    {draft.branches.map((branch) => (
+                      <li key={branch.id}>
+                        <span>
+                          {branch.name}
+                          {branch.archivedAt ? ` · ${text('Archived', 'مؤرشف')}` : ''}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDraft((current) => ({
+                              ...current,
+                              branches: current.branches.filter((item) => item.id !== branch.id),
+                            }))
+                          }
+                        >
+                          {text('Remove', 'إزالة')}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p>
+                    {text(
+                      'Choose at least one active branch.',
+                      'اختر فرعًا نشطًا واحدًا على الأقل.',
+                    )}
+                  </p>
+                )}
+              </fieldset>
+            </fieldset>
+            <footer className="employee-form-actions">
+              <button
+                className="products-button"
+                type="button"
+                disabled={busy}
+                onClick={closeEditor}
+              >
+                {text('Cancel', 'إلغاء')}
+              </button>
+              <button className="products-button primary" type="submit" disabled={busy}>
+                {busy ? text('Saving…', 'جارٍ الحفظ…') : text('Save employee', 'حفظ الموظف')}
+              </button>
+            </footer>
+          </form>
+        </DashboardDialog>
       )}
-      <div className="employee-pagination">
-        <Button
-          variant="outline"
-          type="button"
-          disabled={!history.length || loading}
-          onClick={() => setHistory((current) => current.slice(0, -1))}
-        >
-          {text('Previous', 'السابق')}
-        </Button>
-        <Button
-          variant="outline"
-          type="button"
-          disabled={!page.nextCursor || loading}
-          onClick={() => {
-            if (page.nextCursor) setHistory((current) => [...current, page.nextCursor!]);
-          }}
-        >
-          {text('Next', 'التالي')}
-        </Button>
-      </div>
     </section>
   );
 }

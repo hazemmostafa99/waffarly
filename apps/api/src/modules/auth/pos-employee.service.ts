@@ -82,9 +82,8 @@ export class PosEmployeeService {
             updatedBy: actor,
             branches: {
               create: parsed.branchIds.map((branchId) => ({
-                merchantId,
-                branchId,
                 createdBy: actor,
+                branch: { connect: { id_merchantId: { id: branchId, merchantId } } },
               })),
             },
           },
