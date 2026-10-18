@@ -2,8 +2,8 @@
 
 ## Status and authority
 
-- Last reviewed: 2026-10-17.
-- Status: M1 partially implemented; an isolated interactive design prototype is available in development at `/prototype`. Live selling/payments/dining remain planned; the existing incoming recipe-order queue is preserved.
+- Last reviewed: 2026-10-18.
+- Status: M1 and M2 remain partial; M3 is in progress; M4 dining sessions and split checks are implemented and verified within their defined scope; M5 is in progress. The live POS supports authenticated catalog search, server quotes, configurable cart lines, persisted drafts, online sale creation with stock-safe handling, table sessions, rounds, table moves, item/equal/custom split checks and a cash/terminal checkout UI. M5 records partial tenders and net cash drawer effects transactionally, and the POS client now recovers exact pending payments across navigation/reload through explicit cashier replay. Ordinary receipt issuance/PDF and a dedicated kitchen display remain unfinished. ETA fiscal integration is deferred by the user's latest direction.
 - Companion execution ledger: [PROGRESS.md](PROGRESS.md). Read both before each implementation slice.
 - UI/UX companion: [UI_UX.md](UI_UX.md). Follow its workspace, interaction, dual-theme and usability requirements for frontend slices.
 - Applications: `apps/pos`, `apps/api`, and owner configuration/reporting in `apps/merchant-dashboard`; preserve storefront compatibility.
@@ -13,23 +13,36 @@
 
 Use these labels: **EXISTING** means observed in source; **CONFIRMED** records an explicit user choice; **TARGET** is the proposed implementation contract; **OPEN** needs a decision before its affected slice; **DEFERRED** is outside the first release. Update decisions before changing dependent behavior. Later explicit user instructions take precedence over this document.
 
+### Current implementation update — 2026-10-18
+
+- `apps/pos` uses React Query for session, queue, catalog and quote state, and Zustand for merchant/employee/device-scoped drafts and exact command envelopes, with branch identity stored on branch-specific operations. Existing accept/prepare retry IDs are preserved. The production cashier has a compact searchable product grid, product configuration, quantities/notes, multiple drafts and dine-in/takeaway/delivery context.
+- `GET /pos/catalog` is implemented in Catalog and derives merchant scope from the authenticated POS employee. `POST /pos/orders/quote` also uses Catalog's authoritative pricing. `POST /pos/orders` is owned by Orders: it requires the assigned `sell` grant and an open register shift, rechecks product revisions, persists immutable priced lines with POS shift/operator attribution, and replays only an exact request fingerprint.
+- POS stock handling follows POS-D08: DIRECT requirements post once at sale confirmation; recipe requirements are snapshotted per order and post once at kitchen acceptance; products without explicit mappings retain legacy variant reservation. Additive migrations preserve storefront and historical-order behavior. Owner storefront reads/status actions exclude POS orders; POS kitchen reads include them.
+- Orders owns branch-scoped POS dining tables, open table sessions, added rounds, same-branch moves to available tables, and revisioned/idempotent split-check allocation. Every new POS sale starts with one unpaid check; dine-in sales also attach to the active table session. Check tender commands are order/check locked and replay-safe; payment rows and net cash journal entries commit together. `GET /pos/orders/:id/payment-state` returns tenant/branch-scoped check balances and tender history for the cashier UI. The POS saves an exact payment envelope before sending the write, surfaces it across authenticated POS routes and requires an explicit same-command retry after recovery; it never auto-replays a financial write. Recovery is scoped to the same merchant, employee and browser device, with branch identity retained in the command. Ordinary customer receipt issuance remains M5 work; ETA fiscal integration is out of current scope.
+- The POS uses the shared English/Arabic language switcher; the dining and split-check controls have Arabic copy and follow the shared RTL document direction.
+- Migration `20261017170000_pos_existing_order_checks` backfills one unpaid whole check for each historical positive-total POS order. It intentionally leaves old table/session facts unset because that history was not captured. The migration has been applied only to the configured local PostgreSQL database; production rollout remains pending.
+- The Shifts module supports owner register setup and assigned cashier/supervisor shift opening with an exact opening float. A locked register row serializes openings; the database enforces one active shift per register. Shift close/reconciliation, cash movements and commercial supervisor approvals remain later work.
+- The development-only `/prototype` remains isolated from the production API; its sample checkout/receipt interactions do not stand in for the live cashier, tender or official-document workflows. See [PROGRESS.md](PROGRESS.md) for exact verification and limitations.
+
 ## Confirmed launch decisions
 
-| ID      | Decision                                                                                                              | Consequence                                                                                          |
-| ------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| POS-D01 | CONFIRMED: takeaway, delivery, dine-in, tables, and bill splitting are required in the first release.                 | Dining and split checks are release requirements, not follow-up enhancements.                        |
-| POS-D02 | CONFIRMED: cash plus manually recorded payments on an external terminal; support multiple tender methods on one bill. | No payment-provider integration or automatic terminal verification in the first release.             |
-| POS-D03 | CONFIRMED: online operation with saved drafts and recovery after reconnection.                                        | No offline sale confirmation, stock posting, or settlement.                                          |
-| POS-D04 | CONFIRMED: Tailwind CSS, shadcn/ui, Zustand, and TanStack React Query.                                                | Shared UI primitives; explicit separation of client state and server state.                          |
-| POS-D13 | CONFIRMED, 2026-10-17: light and dark themes have equal support across POS and kitchen screens.                       | Complete semantic theme tokens, preserved workspace state on switch and verification in both themes. |
+| ID      | Decision                                                                                                                                                                                                                                                         | Consequence                                                                                                                                                                   |
+| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POS-D01 | CONFIRMED: takeaway, delivery, dine-in, tables, and bill splitting are required in the first release.                                                                                                                                                            | Dining and split checks are release requirements, not follow-up enhancements.                                                                                                 |
+| POS-D02 | CONFIRMED: cash plus manually recorded payments on an external terminal; support multiple tender methods on one bill.                                                                                                                                            | No payment-provider integration or automatic terminal verification in the first release.                                                                                      |
+| POS-D03 | CONFIRMED: online operation with saved drafts and recovery after reconnection.                                                                                                                                                                                   | No offline sale confirmation, stock posting, or settlement.                                                                                                                   |
+| POS-D04 | CONFIRMED: Tailwind CSS, shadcn/ui, Zustand, and TanStack React Query.                                                                                                                                                                                           | Shared UI primitives; explicit separation of client state and server state.                                                                                                   |
+| POS-D07 | CONFIRMED, 2026-10-17: one shift per register with individually attributed operators; cashier and supervisor roles. Supervisors approve discounts, voids, and refunds; numeric thresholds are unset.                                                             | Existing staff grants remain unchanged; new role capabilities require explicit owner assignment.                                                                              |
+| POS-D08 | CONFIRMED, 2026-10-17: recipe stock is deducted at kitchen acceptance; every new pending order freezes its ingredient requirements; pending recipe edits are allowed; products without explicit stock mapping retain legacy variant reservations until migrated. | Snapshot requirements at order creation, post RECIPE consumption once at acceptance, post DIRECT consumption at POS confirmation, and retain unsnapshotted legacy safeguards. |
+| POS-D13 | CONFIRMED, 2026-10-17: light and dark themes have equal support across POS and kitchen screens.                                                                                                                                                                  | Complete semantic theme tokens, preserved workspace state on switch and verification in both themes.                                                                          |
 
 Additional confirmed design decisions, 2026-10-17:
 
 - **POS-D14:** merchant-configurable POS accent, orange by default. Preserve equal light/dark support and keep POS appearance scoped; changing this setting does not rebrand other applications.
 - **POS-D15:** the supplied screenshots are the design reference. Define missing tokens/components in this repository; no external design-system source/code is currently supplied.
-- **POS-D16:** first receipt target is **80mm thermal plus printable/downloadable PDF**. POS-D10 remains partially open for the printer/OS/browser, physical printable width, scanner/drawer needs, terminal policy and PDF implementation. POS-D09 still needs country/fiscal rules.
+- **POS-D16:** first receipt target is **80mm thermal plus printable/downloadable PDF**. The user has deferred official Egyptian Tax Authority integration; ordinary POS receipts must not claim fiscal status. POS-D10 remains partially open for printer/OS/browser, physical printable width, scanner/drawer needs, terminal policy and PDF implementation.
 
-Target split modes are by selected items/quantities, equal shares, and custom amounts; details and correction policy are POS-D05 below. Hardware models were not supplied. No tax regime, rate, service-charge percentage, or electronic-invoice integration has been selected.
+Target split modes are by selected items/quantities, equal shares, and custom amounts; details and correction policy are POS-D05 below. Hardware models were not supplied. No tax rate or service-charge percentage has been configured. No ETA adapter has been implemented; fiscal issuance is deferred and ordinary receipt/PDF output is not a tax invoice or eReceipt.
 
 ## Outcome and release boundary
 
@@ -47,7 +60,9 @@ First release includes:
 
 Deferred: direct payment-gateway/terminal integration, full offline selling, loyalty, gift cards, customer credit/accounts receivable, advanced promotions, reservations, graphical floor-plan editing, driver dispatch/routing, marketplace connectors, full accounting, and jurisdiction-specific fiscal integration. Required legal/fiscal integration must be resolved before launch in a jurisdiction that requires it; deferral is not permission to launch without it.
 
-## Repository baseline — EXISTING, 2026-10-17
+## Repository baseline — EXISTING snapshot before M1 implementation, 2026-10-17
+
+The table below records the pre-implementation audit, not the current source state. Current POS implementation changes are summarized above and evidenced in [PROGRESS.md](PROGRESS.md).
 
 | Area         | Observed implementation                                                                                                    | Limit                                                                                                                                                    |
 | ------------ | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -232,7 +247,7 @@ These are conceptual entities, not final Prisma names. Finalize exact fields, in
 | Owner                          | Entities and facts                                                                                                                                                                |
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Orders                         | Existing order aggregate extended with source, branch, operational number, revision, fulfillment details and attributable events; immutable line revisions and preparation notes. |
-| Orders / Dining                | DiningTable, DiningSession, table assignment; one active session per occupied table; a session owns one running order/check group for the initial release.                        |
+| Orders / Dining                | PosDiningTable, PosDiningSession, table assignment; one active session per occupied table; a session groups multiple order rounds and their checks.                               |
 | Orders / Billing               | Bill/Check and item or monetary allocations; multiple checks belong to one order, not duplicate sales.                                                                            |
 | Orders / Kitchen               | KitchenStation, Ticket, TicketLine, immutable amendment/cancellation events, actor/time and order revision.                                                                       |
 | Payments                       | PaymentAttempt, successful Payment, bill/line allocation, Refund and refund allocation linked to original successful payment.                                                     |
@@ -269,11 +284,11 @@ Whole-order cancellation cannot hide completed/served portions. For partial fulf
 
 - Takeaway customer identity is optional unless operational policy requires it; delivery needs contact/address and a defined fee policy. Dine-in links a table session. Do not invent placeholder phone numbers to satisfy the current storefront schema: add a channel-specific contract.
 - Suspended local carts are not accepted kitchen orders. Active dining sessions and rounds are server-persisted and visible to authorized staff on another device.
-- Add rounds as immutable new line revisions under the same session/order; send only the new work and post only the new stock delta. Prior paid/prepared lines cannot be silently edited.
-- Table occupancy is database-enforced under simultaneous assignment. Moving a session locks origin/destination in a stable order, requires an available same-branch destination, and preserves its bills and kitchen history. Multi-table joining and merging independent paid orders are deferred unless explicitly required.
-- Split by items/quantities: allocate original sale-line quantities, modifiers included, without creating new stock-bearing orders. Proposed first-release quantity unit is the existing whole-item quantity; monetary shares handle splitting the cost of one item.
-- Split by equal/custom amounts: allocate exact cents; deterministic remainder distribution; no duplicated tax/discount/fee amounts. Validate conservation: allocated checks plus any explicitly unallocated balance equal the order amount. Settlement requires zero unallocated balance.
-- First release proposes one split basis per order at a time; mixed item/amount allocation and changing a paid split require an explicit later policy. Unpaid checks may be reorganized at the current revision; settled allocations are immutable and corrected through approved adjustments/refunds.
+- Add each new dine-in round as a separate POS order attached to the active session; snapshot and post only the new round's lines and stock delta. Prior paid/prepared lines cannot be silently edited.
+- Table occupancy is database-enforced under simultaneous assignment. Moving a session locks origin/destination in stable order, requires an available active table at the same branch, and preserves its orders/checks. Table merging is deferred.
+- Split by items/quantities: allocate every original sale-line quantity exactly once, including its selected modifiers, without creating stock-bearing orders. Quantities stay whole integers; an order line may be divided across checks by whole units.
+- Split by equal/custom amounts: allocate exact cents, with deterministic remainder distribution for equal shares. The checks must sum to the full order total; tax, discounts and fees cannot be duplicated. One split basis applies per order at a time.
+- Unpaid checks may be reorganized at the current order revision. Once a check is settled, its allocation is immutable; corrections use the later approved adjustment/refund policy. POS-D05 confirms split modes and quantities, table moves/merge scope, and the shift-close block; paid correction authorization remains under POS-D11/M7.
 - Split bill and split tender are different: one check may be paid with cash plus external terminal; multiple checks still reference the same order. Payment/refund caps include all checks and previous actions.
 - Session closure requires fulfilled or explicitly cancelled work and all balances/refunds resolved; a busy table does not become free merely because one check was paid. Authorized early table release, if desired, needs a separate recorded policy.
 
@@ -295,8 +310,8 @@ Payment attempt target: pending, succeeded, failed, or reconciliation-required. 
 - Kitchen line progress supports queued/preparing/ready/cancelled, station completion and whole-order readiness. Avoid duplicate tickets on retry. Record acknowledgement of amendments/cancellations; never silently remove already displayed work.
 - Dispatch timing is branch policy pending POS-D06: confirmed versus paid orders. Acceptance/stock posting and kitchen dispatch must have one unambiguous event per line; prepayment policy must not prevent configured dine-in rounds.
 - New DIRECT stock integration uses Catalog's mapping and Inventory's ledger. Preserve legacy tracked-variant reservations until an explicit cutover marks a line's handler. Never consult current product mode to guess historical posting.
-- Recipe handling initially preserves the current acceptance deduction point. Any later timing change needs its own decision, migration and regression coverage. Freeze the accepted line's requirements so later preparation, cancellation, amendments or refunds do not recalculate old recipes.
-- Snapshotting pending recipe requirements versus retaining today's pending-edit protection is an explicit M3 migration decision. Do not remove those protections until replacement behavior is verified.
+- Recipe handling deducts stock at kitchen acceptance. New orders freeze ingredient requirements at creation, so later recipe edits cannot change pending work. Existing pending orders without snapshots retain their configuration lock and use the compatibility calculation until resolved.
+- DIRECT stock is consumed at POS order confirmation. Unmapped legacy variants retain the existing reservation/release path until explicitly migrated. Each order line has exactly one stock handler; never debit both variant reservation stock and the inventory ledger.
 - Stock shortage follows the merchant's configured policy. Failure leaves no partial order acceptance, tender allocation or stock movement. Void/return of DIRECT goods and recipe waste use distinct handling.
 
 ### Sale documents, shifts and reporting
@@ -304,10 +319,10 @@ Payment attempt target: pending, succeeded, failed, or reconciliation-required. 
 - A pre-payment bill is labeled as a bill; a payment acknowledgement is distinguishable from a final sale receipt. Final documents freeze commercial facts and settled allocations. For split checks, issue a document per settled check and a clearly labeled order summary; reports must not count both as revenue.
 - Support thermal print layout and downloadable PDF, plus searchable/reprintable history after reload. Browser printing is the initial adapter candidate, subject to hardware confirmation; silent printing, drawer pulses and physical success acknowledgement are not promised by browser print completion.
 - Keep number issuance/snapshot creation in the sale transaction; rendering and printer I/O happen after commit. A printer failure never creates another sale. Reprints retain the original number and are audited as copies.
-- Shift target: open -> closing -> closed. Enforce one open shift per register; confirm shared-drawer versus employee ownership before implementation. Opening float, cash sale, refund, paid-in, paid-out and cash drops have distinct signed journal entries/reasons.
+- Shift target: open -> closing -> closed. Enforce one open shift per register. Each command records its actual employee actor even when multiple operators use that register shift. Opening float, cash sale, refund, paid-in, paid-out and cash drops have distinct signed journal entries/reasons.
 - Closing records a blind declared count, expected cash, variance, actor and approval where needed. Cash received minus change is net cash tender. Exclude external-terminal payments from drawer cash, report them separately, and show refunds occurring in later shifts correctly.
 - A close locks the shift against new tenders, resolves pending attempts, computes a consistent journal snapshot and persists it. No ordinary posting into a closed shift; late corrections are linked entries in an open shift under approval.
-- Proposed unpaid-table policy, to confirm in POS-D07: open dining orders survive shift close and can be settled in a subsequent authorized shift. Outstanding balances remain visible separately from drawer cash; prior payments keep their original shift attribution.
+- A shift cannot close while any order check assigned to it remains unpaid or partially paid. M8 must enforce this against the payment ledger; open balances stay separate from drawer cash. Each payment retains its original shift attribution.
 - Reports use successful payments/documents and explicit adjustments, not the existing accepted/preparing-order totals alone. Distinguish sales, collected money, refunds, outstanding balances, waste and cash variance. Aggregate in scoped SQL with bounded detail queries.
 
 ## Transactions, transport and recovery
@@ -324,18 +339,20 @@ No printer, PDF renderer, network provider, or notification I/O inside a databas
 
 Route names are targets to finalize with contracts; retain existing routes during migration.
 
-| Family                            | Owner / behavior                                                                                |
-| --------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `/auth/pos/*`                     | Existing Auth login/session; extend effective permissions.                                      |
-| `/pos/catalog/*`, `/pos/quotes`   | Catalog-owned scoped sellable reads and authoritative quotes.                                   |
-| `/pos/registers`, `/pos/shifts/*` | Shifts-owned assignment, open, cash movements, count/close.                                     |
-| `/pos/orders/*`                   | Orders list/detail/create, confirm/rounds/amendments, lifecycle and history.                    |
-| `/pos/orders/:id/bills/*`         | Orders split/check commands; payment/refund workflows coordinate Payments.                      |
-| `/pos/dining/*`                   | Orders-owned table/session reads, assignment/move/close.                                        |
-| `/pos/kitchen/*`                  | Orders-owned station projections and ticket progress.                                           |
-| `/pos/sales-documents/*`          | Orders-owned issued document reads, PDF/print data and reprint audit.                           |
-| `/owner/pos-settings/*`           | Owning module controllers for register/table/station/policy setup; no duplicate business logic. |
-| `/owner/reports/pos/*`            | Reports-owned scoped aggregates/export.                                                         |
+| Family                            | Owner / behavior                                                                                                                 |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `/auth/pos/*`                     | Existing Auth login/session; extend effective permissions.                                                                       |
+| `GET /pos/catalog`, `/pos/quotes` | `GET /pos/catalog` is implemented as a tenant-scoped, employee-authenticated sellable read; authoritative quotes remain planned. |
+| `/pos/registers`, `/pos/shifts/*` | Shifts-owned assignment, open, cash movements, count/close.                                                                      |
+| `/pos/orders/*`                   | Orders list/detail/create, confirm/rounds/amendments, lifecycle and history.                                                     |
+| `/pos/orders/:id/split-checks`    | Orders allocates one POS order into whole-item, equal-cent or custom-cent checks with revision/idempotency checks.               |
+| `/pos/dining/*`                   | Orders-owned table occupancy and open-session reads; same-branch move to an available table.                                     |
+| `/pos/kitchen/*`                  | Orders-owned station projections and ticket progress.                                                                            |
+| `/pos/sales-documents/*`          | Orders-owned issued document reads, PDF/print data and reprint audit.                                                            |
+| `/owner/pos/registers`            | Implemented Shifts-owned, branch-scoped register list/create/update; assignment is enforced in POS shift reads/commands.         |
+| `/owner/pos/tables`               | Orders-owned, branch-scoped dining table list/create/update; occupied tables cannot be edited or deactivated.                    |
+| `/owner/pos-settings/*`           | Planned Shifts/Orders-owned station, appearance and approved policy setup; no duplicate business logic.                          |
+| `/owner/reports/pos/*`            | Reports-owned scoped aggregates/export.                                                                                          |
 
 Each mutation contract documents request ID, target revision if editable, actor/grants, bounded payload, response and allowed transitions. Lists use bounded cursor pagination and explicit filters. Shared contracts expose decimal strings and framework-independent values only; preserve root exports. Keep existing error shapes compatible while adding stable error codes for invalid input, forbidden action, stale revision, shortage, payment conflict and reconciliation-required outcomes. Do not encode business decisions by matching English error text.
 
@@ -370,18 +387,15 @@ Every row is required for the complete first release unless explicitly marked de
 
 ## Open decisions and implementation defaults
 
-These do not block writing the plan or independent foundation work. Resolve each before its dependent slice; do not repeatedly ask for already confirmed D01–D04 or D13–D16. A TARGET default is a proposal, not a user answer. POS-D16 settles 80mm/PDF output; the remaining POS-D10 hardware/adapter details stay open.
+These do not block writing the plan or independent foundation work. Resolve each OPEN decision before its dependent slice; do not repeatedly ask for confirmed D01–D05, D07, or D13–D16. POS-D05 is confirmed for split modes, whole quantities, session moves, deferred table merge and the shift-close block. Paid-check correction authorization remains under POS-D11/M7. POS-D16 settles 80mm/PDF output; the remaining POS-D10 hardware/adapter details stay open.
 
-| ID      | OPEN decision                                                                                                                        | Proposed default / dependency                                                                                                                              |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| POS-D05 | Exact bill split/correction rules, shared-item quantities, and moving/merging tables                                                 | Target item/equal/custom split with whole-item quantities and one basis per order; move sessions, defer joining/merging. Resolve before M4.                |
-| POS-D06 | Kitchen dispatch and payment-before-handover policy per fulfillment type; station setup                                              | Confirmed rounds dispatch for dine-in; configurable prepayment for takeaway/delivery. Resolve before M6 and final tender/fulfillment integration.          |
-| POS-D07 | Shared drawer vs employee-owned shift; role presets, discount/approval thresholds                                                    | One open shift per register, individually attributable authorized operators; no implicit shared credentials. Resolve before M2.                            |
-| POS-D08 | DIRECT/legacy stock cutover and pending recipe snapshot policy                                                                       | Preserve explicit legacy handling; new mapped sales use ledger; preserve recipe acceptance timing. Resolve before M3 migrations.                           |
-| POS-D09 | Operating country, tax-inclusive/exclusive policy, charges/delivery fees, invoice identity/numbering and required fiscal integration | No invented rates; explicit disabled configuration pending decision. Resolve before M5 financial/document rules and launch.                                |
-| POS-D10 | Remaining printer/OS/browser, physical printable width, PDF adapter, drawer/scanner needs and terminal reference policy              | 80mm thermal + printable/downloadable PDF confirmed under D16. Browser print is a candidate; physical device/adapter acceptance remains open before M5/M9. |
-| POS-D11 | Cancellation/refund permissions, prepared-item waste, physical-return eligibility, no-receipt returns, correction policy             | Reason plus privilege/approval; original-sale-linked refunds; no automatic ingredient restoration. Resolve before M7.                                      |
-| POS-D12 | Deployment topology, register/device provisioning, business-day timezone, retention, expected load and performance budget            | Keep POS as existing app; merchant/branch timezone and realistic peak-load fixtures must be explicit. Resolve before M9.                                   |
+| ID      | OPEN decision                                                                                                             | Proposed default / dependency                                                                                                                                         |
+| ------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POS-D06 | Kitchen dispatch and payment-before-handover policy per fulfillment type; station setup                                   | Confirmed rounds dispatch for dine-in; configurable prepayment for takeaway/delivery. Resolve before M6 and final tender/fulfillment integration.                     |
+| POS-D09 | DEFERRED by user, 2026-10-17: no ETA fiscal integration in current scope                                                  | Build ordinary POS receipt output only; do not claim it is a tax invoice/eReceipt. Revisit ETA only if the user changes scope or a launch requirement is established. |
+| POS-D10 | Remaining printer/OS/browser, physical printable width, PDF adapter, drawer/scanner needs and terminal reference policy   | 80mm thermal + printable/downloadable PDF confirmed under D16. Browser print is a candidate; physical device/adapter acceptance remains open before M5/M9.            |
+| POS-D11 | Cancellation/refund permissions, prepared-item waste, physical-return eligibility, no-receipt returns, correction policy  | Reason plus privilege/approval; original-sale-linked refunds; no automatic ingredient restoration. Resolve before M7.                                                 |
+| POS-D12 | Deployment topology, register/device provisioning, business-day timezone, retention, expected load and performance budget | Keep POS as existing app; merchant/branch timezone and realistic peak-load fixtures must be explicit. Resolve before M9.                                              |
 
 ## Verification and release gates
 

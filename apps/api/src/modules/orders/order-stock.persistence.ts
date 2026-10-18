@@ -28,6 +28,46 @@ export async function resolveConsumptionWarehouse(
   return warehouse;
 }
 
+export async function freezeLineStockRequirements(
+  tx: Prisma.TransactionClient,
+  merchantId: string,
+  orderLineId: string,
+  requirements: InventoryRequirement[],
+) {
+  const itemIds = [...new Set(requirements.map((requirement) => requirement.stockItemId))];
+  const items = itemIds.length
+    ? await tx.stockItem.findMany({
+        where: { merchantId, id: { in: itemIds }, archivedAt: null },
+        select: { id: true, name: true, baseUnit: true },
+      })
+    : [];
+  if (items.length !== itemIds.length)
+    throw new ConflictException('A stock item in the saved order requirement is unavailable.');
+  const itemById = new Map(items.map((item) => [item.id, item]));
+
+  await tx.storefrontOrderLine.update({
+    where: { id_merchantId: { id: orderLineId, merchantId } },
+    data: { stockRequirementsFrozenAt: new Date() },
+  });
+  if (requirements.length === 0) return;
+  await tx.storefrontOrderLineStockRequirement.createMany({
+    data: requirements.map((requirement, position) => {
+      const item = itemById.get(requirement.stockItemId)!;
+      if (item.baseUnit !== requirement.baseUnit)
+        throw new ConflictException('A stock item base unit changed while the order was quoted.');
+      return {
+        orderLineId,
+        merchantId,
+        stockItemId: item.id,
+        stockItemName: item.name,
+        baseUnit: requirement.baseUnit,
+        quantity: requirement.quantity,
+        position,
+      };
+    }),
+  });
+}
+
 async function postBatches(
   tx: Prisma.TransactionClient,
   ledger: InventoryLedgerService,
@@ -35,17 +75,25 @@ async function postBatches(
   actor: string,
   orderId: string,
   role: 'consumption' | 'restoration',
+  sourceType: string,
+  kind: 'recipe_consumption' | 'sale_consumption' | 'recipe_restoration' | 'sale_restoration',
   reason: string,
   movements: InventoryMovementBatchCommand['movements'],
 ) {
+  const last = await tx.storefrontOrderStockBatch.findFirst({
+    where: { merchantId, orderId, role },
+    orderBy: { position: 'desc' },
+    select: { position: true },
+  });
+  const firstPosition = (last?.position ?? -1) + 1;
   // Keep the ledger's bounded batch size while posting every chunk in the same order transaction.
   for (let offset = 0; offset < movements.length; offset += 100) {
-    const position = offset / 100;
+    const position = firstPosition + offset / 100;
     const result = await ledger.postMovementBatch(tx, merchantId, actor, {
       requestId: randomUUID(),
-      sourceType: role === 'consumption' ? 'recipe_order' : 'recipe_cancel',
+      sourceType,
       sourceId: `${orderId}:${position}`,
-      kind: role === 'consumption' ? 'recipe_consumption' : 'recipe_restoration',
+      kind,
       reason,
       movements: movements.slice(offset, offset + 100),
     });
@@ -53,6 +101,21 @@ async function postBatches(
       data: { merchantId, orderId, batchId: result.id, role, position },
     });
   }
+}
+
+function toLedgerMovements(
+  warehouseId: string,
+  requirements: InventoryRequirement[],
+  sign: 'debit' | 'credit',
+): InventoryMovementBatchCommand['movements'] {
+  return requirements.map((requirement) => ({
+    warehouseId,
+    stockItemId: requirement.stockItemId,
+    condition: 'available',
+    unitCode: requirement.baseUnit,
+    enteredQuantity: requirement.quantity,
+    baseDelta: sign === 'debit' ? `-${requirement.quantity}` : requirement.quantity,
+  }));
 }
 
 export async function consumeOrderRequirements(
@@ -71,15 +134,33 @@ export async function consumeOrderRequirements(
     actor,
     orderId,
     'consumption',
+    'recipe_order',
+    'recipe_consumption',
     `Recipe consumption for order ${orderId}`,
-    requirements.map((requirement) => ({
-      warehouseId,
-      stockItemId: requirement.stockItemId,
-      condition: 'available',
-      unitCode: requirement.baseUnit,
-      enteredQuantity: requirement.quantity,
-      baseDelta: `-${requirement.quantity}`,
-    })),
+    toLedgerMovements(warehouseId, requirements, 'debit'),
+  );
+}
+
+export async function consumeDirectOrderRequirements(
+  tx: Prisma.TransactionClient,
+  ledger: InventoryLedgerService,
+  merchantId: string,
+  actor: string,
+  orderId: string,
+  warehouseId: string,
+  requirements: InventoryRequirement[],
+) {
+  await postBatches(
+    tx,
+    ledger,
+    merchantId,
+    actor,
+    orderId,
+    'consumption',
+    'pos_sale',
+    'sale_consumption',
+    `POS direct-stock sale ${orderId}`,
+    toLedgerMovements(warehouseId, requirements, 'debit'),
   );
 }
 
@@ -96,11 +177,16 @@ export async function restoreOrderConsumption(
     include: { batch: { include: { movements: { orderBy: { position: 'asc' } } } } },
     orderBy: { position: 'asc' },
   });
-  const movements = sources.flatMap((source) =>
-    source.batch.movements.map((movement) => {
+  const grouped = new Map<
+    'sale_restoration' | 'recipe_restoration',
+    InventoryMovementBatchCommand['movements']
+  >();
+  for (const source of sources) {
+    const kind = source.batch.kind === 'sale_consumption' ? 'sale_restoration' : 'recipe_restoration';
+    const movements = source.batch.movements.map((movement) => {
       const delta = movement.baseDelta.toFixed(6);
       if (!delta.startsWith('-') || movement.condition !== 'available')
-        throw new ConflictException('Recorded recipe consumption cannot be restored safely.');
+        throw new ConflictException('Recorded stock consumption cannot be restored safely.');
       const quantity = delta.slice(1);
       return {
         warehouseId: movement.warehouseId,
@@ -110,7 +196,21 @@ export async function restoreOrderConsumption(
         enteredQuantity: quantity,
         baseDelta: quantity,
       };
-    }),
-  );
-  await postBatches(tx, ledger, merchantId, actor, orderId, 'restoration', reason, movements);
+    });
+    grouped.set(kind, [...(grouped.get(kind) ?? []), ...movements]);
+  }
+  for (const [kind, movements] of grouped) {
+    await postBatches(
+      tx,
+      ledger,
+      merchantId,
+      actor,
+      orderId,
+      'restoration',
+      kind === 'sale_restoration' ? 'pos_sale_cancel' : 'recipe_cancel',
+      kind,
+      reason,
+      movements,
+    );
+  }
 }

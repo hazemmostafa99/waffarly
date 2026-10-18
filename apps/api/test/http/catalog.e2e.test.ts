@@ -1,6 +1,6 @@
 import { UnauthorizedException, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import type { OwnerProfile } from '@waffarly/contracts';
+import type { OwnerProfile, PosEmployeeSession } from '@waffarly/contracts';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -12,7 +12,9 @@ import { configureHttpApplication } from '../../src/configure-http-application.j
 import { LocalMediaStorage } from '../../src/infrastructure/storage/local-media-storage.js';
 import { AuthService } from '../../src/modules/auth/auth.service.js';
 import { OwnerGuard } from '../../src/modules/auth/owner.guard.js';
+import { PosEmployeeGuard } from '../../src/modules/auth/pos-employee.guard.js';
 import { CatalogQueryService } from '../../src/modules/catalog/catalog-query.service.js';
+import { PosCatalogController } from '../../src/modules/catalog/pos-catalog.controller.js';
 import { CategoryController } from '../../src/modules/catalog/categories/category.controller.js';
 import { CategoryService } from '../../src/modules/catalog/categories/category.service.js';
 import { ModifierGroupController } from '../../src/modules/catalog/modifiers/modifier-group.controller.js';
@@ -36,6 +38,22 @@ const owner: OwnerProfile = {
   firstMonthActivatedAt: new Date().toISOString(),
 };
 
+const posEmployee: PosEmployeeSession = {
+  id: '22222222-2222-4222-8222-222222222222',
+  merchantId: owner.merchantId,
+  username: 'cashier',
+  displayName: 'Cashier',
+  role: null,
+  permissions: ['accept_recipe_orders', 'start_preparation'],
+  branches: [
+    {
+      id: '33333333-3333-4333-8333-333333333333',
+      name: 'Central',
+      archivedAt: null,
+    },
+  ],
+};
+
 describe('catalog owner endpoints', () => {
   let app: INestApplication;
   let authorized: boolean;
@@ -51,6 +69,9 @@ describe('catalog owner endpoints', () => {
   let publicSlug: string | undefined;
   let publicProductCursor: string | undefined;
   let publicCategoryCursor: string | undefined;
+  let posEmployeeAuthorized: boolean;
+  let posCatalogRead:
+    { merchantId: string; productCursor?: string; categoryCursor?: string } | undefined;
 
   beforeEach(async () => {
     authorized = true;
@@ -63,6 +84,8 @@ describe('catalog owner endpoints', () => {
     publicSlug = undefined;
     publicProductCursor = undefined;
     publicCategoryCursor = undefined;
+    posEmployeeAuthorized = true;
+    posCatalogRead = undefined;
     const module = await Test.createTestingModule({
       controllers: [
         MediaController,
@@ -70,16 +93,22 @@ describe('catalog owner endpoints', () => {
         CategoryController,
         ProductController,
         ProductQuoteController,
+        PosCatalogController,
         PublicStorefrontController,
       ],
       providers: [
         OwnerGuard,
+        PosEmployeeGuard,
         {
           provide: AuthService,
           useValue: {
             requireOwner: async () => {
               if (!authorized) throw new UnauthorizedException();
               return owner;
+            },
+            requirePosEmployee: async () => {
+              if (!posEmployeeAuthorized) throw new UnauthorizedException();
+              return posEmployee;
             },
           },
         },
@@ -189,6 +218,21 @@ describe('catalog owner endpoints', () => {
               publicSlug = slug;
               publicCategoryCursor = cursor;
               return { items: [], nextCursor: null };
+            },
+            getPosSellableCatalog: async (
+              merchantId: string,
+              productCursor?: string,
+              categoryCursor?: string,
+            ) => {
+              posCatalogRead = {
+                merchantId,
+                ...(productCursor ? { productCursor } : {}),
+                ...(categoryCursor ? { categoryCursor } : {}),
+              };
+              return {
+                categories: { items: [], nextCursor: null },
+                products: { items: [], nextCursor: null },
+              };
             },
           },
         },
@@ -454,6 +498,35 @@ describe('catalog owner endpoints', () => {
       .post(`/catalog/products/${productId}/quote`)
       .send({ variantId: 'not-a-uuid' })
       .expect(400);
+  });
+
+  it('serves the POS sellable catalog only to an authenticated employee and derives its tenant from the session', async () => {
+    const productCursor = '55555555-5555-4555-8555-555555555555';
+    const categoryCursor = '66666666-6666-4666-8666-666666666666';
+    posEmployeeAuthorized = false;
+    await request(app.getHttpServer()).get('/pos/catalog').expect(401);
+    assert.equal(posCatalogRead, undefined);
+
+    posEmployeeAuthorized = true;
+    const response = await request(app.getHttpServer())
+      .get(`/pos/catalog?productCursor=${productCursor}&categoryCursor=${categoryCursor}`)
+      .expect(200);
+    assert.deepEqual(response.body, {
+      categories: { items: [], nextCursor: null },
+      products: { items: [], nextCursor: null },
+    });
+    assert.deepEqual(posCatalogRead, {
+      merchantId: owner.merchantId,
+      productCursor,
+      categoryCursor,
+    });
+
+    await request(app.getHttpServer()).get('/pos/catalog?productCursor=invalid').expect(400);
+    assert.deepEqual(posCatalogRead, {
+      merchantId: owner.merchantId,
+      productCursor,
+      categoryCursor,
+    });
   });
 
   it('exposes public storefront catalogs without requiring an owner session', async () => {

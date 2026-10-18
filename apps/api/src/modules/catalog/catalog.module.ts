@@ -9,6 +9,7 @@ import { ModifierGroupService } from './modifiers/modifier-group.service.js';
 import { ProductPricingService } from './pricing/product-pricing.service.js';
 import { ProductQuoteController } from './pricing/product-quote.controller.js';
 import { ProductController } from './products/product.controller.js';
+import { PosCatalogController } from './pos-catalog.controller.js';
 import { ProductConsumptionService } from './products/product-consumption.service.js';
 import { ProductService } from './products/product.service.js';
 @Module({
@@ -17,6 +18,7 @@ import { ProductService } from './products/product.service.js';
     CategoryController,
     ModifierGroupController,
     ProductController,
+    PosCatalogController,
     ProductQuoteController,
   ],
   providers: [

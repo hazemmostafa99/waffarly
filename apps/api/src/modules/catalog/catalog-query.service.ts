@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { CursorPage, PublicStorefrontCatalog } from '@waffarly/contracts';
+import type { CursorPage, PosSellableCatalog, PublicStorefrontCatalog } from '@waffarly/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { sellableInclude, toSellableResponse } from './products/product.mapper.js';
 
@@ -34,6 +34,18 @@ export class CatalogQueryService {
       products: productPage.items,
       nextProductCursor: productPage.nextCursor,
     };
+  }
+
+  async getPosSellableCatalog(
+    merchantId: string,
+    productCursor?: string,
+    categoryCursor?: string,
+  ): Promise<PosSellableCatalog> {
+    const [categories, products] = await Promise.all([
+      this.listPublicCategories(merchantId, categoryCursor),
+      this.listPublicProducts(merchantId, productCursor),
+    ]);
+    return { categories, products };
   }
 
   async getPublicStorefrontCategories(

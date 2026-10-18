@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { POS_EMPLOYEE_ROLES } from '@waffarly/contracts';
 
 const uuid = z.string().uuid();
 const username = z
@@ -36,6 +37,7 @@ export const createPosEmployeeSchema = z
     username,
     displayName: z.string().trim().min(2).max(160),
     password: z.string().min(12).max(200),
+    role: z.enum(POS_EMPLOYEE_ROLES).nullable().optional(),
     branchIds,
   })
   .strict();
@@ -45,6 +47,7 @@ export const updatePosEmployeeSchema = z
     revision: z.number().int().positive().max(2_147_483_646),
     displayName: z.string().trim().min(2).max(160),
     active: z.boolean(),
+    role: z.enum(POS_EMPLOYEE_ROLES).nullable().optional(),
     branchIds,
     password: z.string().min(12).max(200).optional(),
   })

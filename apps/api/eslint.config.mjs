@@ -13,9 +13,11 @@ const dependencies = {
   inventory: ['auth'],
   purchasing: ['auth', 'inventory'],
   storefront: ['auth', 'catalog'],
-  orders: ['auth', 'catalog', 'inventory'],
+  orders: ['auth', 'catalog', 'inventory', 'shifts', 'payments'],
   media: ['auth'],
   reports: ['auth'],
+  shifts: ['auth'],
+  payments: ['auth', 'shifts'],
 };
 
 const boundaries = {

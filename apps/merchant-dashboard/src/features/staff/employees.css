@@ -133,6 +133,13 @@
 .employee-editor input:disabled {
   color: var(--dashboard-muted);
 }
+.employee-role-help {
+  max-width: none;
+  margin: -6px 0 0;
+  color: var(--dashboard-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
 .employee-active-toggle {
   display: flex !important;
   align-items: center;
@@ -244,7 +251,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
   .employee-table-card .wf-data-table {
-    min-width: 560px;
+    min-width: 680px;
   }
   .employee-workspace .products-button {
     min-height: 40px;

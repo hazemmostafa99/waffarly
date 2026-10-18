@@ -19,6 +19,7 @@ export default defineConfig({
     command: 'node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5275 --strictPort',
     cwd: './apps/pos',
     url: 'http://127.0.0.1:5275',
+    env: { ...process.env, NODE_ENV: 'development' },
     reuseExistingServer: !process.env.CI,
   },
 });

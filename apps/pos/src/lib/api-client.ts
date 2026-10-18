@@ -31,6 +31,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
       : (body?.message ?? `API request failed with status ${response.status}.`);
     throw new ApiError(message, response.status);
   }
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 

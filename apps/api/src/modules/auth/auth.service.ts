@@ -1,4 +1,8 @@
-import { POS_EMPLOYEE_PERMISSIONS, type BusinessActivityKey } from '@waffarly/contracts';
+import {
+  isPosEmployeeRole,
+  resolvePosEmployeePermissions,
+  type BusinessActivityKey,
+} from '@waffarly/contracts';
 import { createHash, randomBytes } from 'node:crypto';
 import {
   ForbiddenException,
@@ -150,7 +154,11 @@ export class AuthService {
       merchantId: employee.merchantId,
       username: employee.username,
       displayName: employee.displayName,
-      permissions: [...POS_EMPLOYEE_PERMISSIONS],
+      role: isPosEmployeeRole(employee.role) ? employee.role : null,
+      permissions: resolvePosEmployeePermissions(
+        isPosEmployeeRole(employee.role) ? employee.role : null,
+        employee.permissions,
+      ),
       branches,
     };
   }

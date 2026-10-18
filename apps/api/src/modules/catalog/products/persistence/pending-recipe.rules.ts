@@ -53,6 +53,7 @@ export async function assertPendingRecipeUnchanged(
       merchantId,
       productId,
       stockHandling: 'recipe_acceptance',
+      stockRequirementsFrozenAt: null,
       order: { is: { status: 'pending' } },
     },
     select: { id: true },

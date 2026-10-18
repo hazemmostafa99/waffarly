@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('isolated selling preview, theme/RTL, customization, and draft context', async ({ page }) => {
   const liveRequests: string[] = [];
-  await page.route('**/auth/**', (route) => {
+  await page.route('**/auth/pos/**', (route) => {
     liveRequests.push(route.request().url());
     return route.abort();
   });
@@ -220,12 +220,27 @@ test('small Arabic touch screen, system theme, and visible order access', async 
   const orderPanel = page.getByRole('complementary', { name: 'الطلب الحالي' });
   await expect(orderPanel).toBeVisible();
   const draftLine = orderPanel.getByTestId('order-draft-line');
-  expect(await draftLine.evaluate((element) => getComputedStyle(element).paddingTop)).toBe('8px');
+  expect(await draftLine.evaluate((element) => getComputedStyle(element).paddingTop)).toBe('0px');
+  expect(
+    await draftLine.evaluate((element) => Math.round(element.getBoundingClientRect().height)),
+  ).toBeLessThanOrEqual(68);
+  expect(
+    await orderPanel
+      .getByTestId('order-line-control-surface')
+      .first()
+      .evaluate((element) => Math.round(element.getBoundingClientRect().height)),
+  ).toBe(28);
   expect(
     await orderPanel
       .getByTestId('increase-order-line')
       .evaluate((element) => Math.round(element.getBoundingClientRect().height)),
   ).toBeGreaterThanOrEqual(44);
+  expect(
+    await orderPanel
+      .getByTestId('order-sent-line-row')
+      .first()
+      .evaluate((element) => Math.round(element.getBoundingClientRect().height)),
+  ).toBeLessThanOrEqual(28);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );

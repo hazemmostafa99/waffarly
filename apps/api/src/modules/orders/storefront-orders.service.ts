@@ -4,6 +4,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import type {
   CreateStorefrontOrderRequest,
@@ -17,18 +18,28 @@ import { assertScopedCursor, type CursorPageQuery } from '../../common/http/pagi
 import { formatCents, toCents } from '../../common/money/money.js';
 import { isSerializationConflict } from '../../infrastructure/database/prisma-errors.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
-import { ProductPricingService } from '../catalog/index.js';
+import { ProductConsumptionService, ProductPricingService } from '../catalog/index.js';
+import { InventoryLedgerService } from '../inventory/index.js';
 
 import { toReceipt, toSummary } from './order.mapper.js';
+import { freezeLineStockRequirements, restoreOrderConsumption } from './order-stock.persistence.js';
 
 const MAX_ORDER_TOTAL_CENTS = 999_999_999_999n;
 
 @Injectable()
 export class StorefrontOrdersService {
+  private readonly consumption: ProductConsumptionService;
+  private readonly ledger: InventoryLedgerService;
+
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(ProductPricingService) private readonly products: ProductPricingService,
-  ) {}
+    @Optional() @Inject(ProductConsumptionService) consumption?: ProductConsumptionService,
+    @Optional() @Inject(InventoryLedgerService) ledger?: InventoryLedgerService,
+  ) {
+    this.consumption = consumption ?? new ProductConsumptionService();
+    this.ledger = ledger ?? new InventoryLedgerService(prisma);
+  }
 
   async create(slug: string, input: CreateStorefrontOrderRequest): Promise<StorefrontOrderReceipt> {
     const merchant = await this.prisma.merchant.findUnique({
@@ -197,13 +208,14 @@ export class StorefrontOrdersService {
               throw new BadRequestException('The order total is too large.');
             }
 
-            await transaction.storefrontOrderLine.create({
+            const savedLine = await transaction.storefrontOrderLine.create({
               data: {
                 order: { connect: { id_merchantId: { id: order.id, merchantId: merchant.id } } },
                 productId: product.id,
                 variantId: variant?.id ?? null,
                 productName: product.name,
                 variantName: variant?.name ?? null,
+                note: null,
                 basePrice: quote.basePrice,
                 modifierTotal: quote.modifierTotal,
                 quantity: item.quantity,
@@ -215,7 +227,28 @@ export class StorefrontOrdersService {
                 selections: { create: selectionSnapshots },
                 variantAttributes: { create: variantAttributeSnapshots },
               },
+              select: { id: true },
             });
+            if (recipeHandling) {
+              const requirements = await this.consumption.requirements(transaction, merchant.id, [
+                {
+                  productId: product.id,
+                  variantId: variant?.id ?? null,
+                  quantity: item.quantity,
+                  selections: selectionSnapshots.map((selection) => ({
+                    modifierGroupId: selection.modifierGroupId,
+                    modifierOptionId: selection.modifierOptionId,
+                    quantity: selection.quantity,
+                  })),
+                },
+              ]);
+              await freezeLineStockRequirements(
+                transaction,
+                merchant.id,
+                savedLine.id,
+                requirements,
+              );
+            }
           }
 
           const saved = await transaction.storefrontOrder.update({
@@ -239,15 +272,16 @@ export class StorefrontOrdersService {
     merchantId: string,
     page: CursorPageQuery = { limit: 25 },
   ): Promise<CursorPage<StorefrontOrderSummary>> {
+    const where = { merchantId, source: 'storefront' } satisfies Prisma.StorefrontOrderWhereInput;
     if (page.cursor) {
       const anchor = await this.prisma.storefrontOrder.findFirst({
-        where: { id: page.cursor, merchantId },
+        where: { ...where, id: page.cursor },
         select: { id: true },
       });
       assertScopedCursor(page.cursor, anchor !== null);
     }
     const orders = await this.prisma.storefrontOrder.findMany({
-      where: { merchantId },
+      where,
       include: {
         lines: {
           orderBy: { position: 'asc' },
@@ -320,12 +354,12 @@ export class StorefrontOrdersService {
               throw new ConflictException('Recipe orders require branch-based acceptance.');
           }
           const changed = await transaction.storefrontOrder.updateMany({
-            where: { id: orderId, merchantId, status: 'pending' },
+            where: { id: orderId, merchantId, source: 'storefront', status: 'pending' },
             data: { status },
           });
           if (changed.count !== 1) {
             const exists = await transaction.storefrontOrder.findFirst({
-              where: { id: orderId, merchantId },
+              where: { id: orderId, merchantId, source: 'storefront' },
               select: { id: true },
             });
             if (!exists) throw new NotFoundException('Order was not found.');
@@ -333,6 +367,14 @@ export class StorefrontOrdersService {
           }
 
           if (status === 'rejected') {
+            await restoreOrderConsumption(
+              transaction,
+              this.ledger,
+              merchantId,
+              'owner:order-rejection',
+              orderId,
+              'Rejected order stock reversal',
+            );
             const reservedLines = await transaction.storefrontOrderLine.findMany({
               where: { orderId, merchantId, stockReserved: true, variantId: { not: null } },
               select: { variantId: true, quantity: true },

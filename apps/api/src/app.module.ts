@@ -13,6 +13,7 @@ import { PlansModule } from './modules/plans/index.js';
 import { PurchasingModule } from './modules/purchasing/index.js';
 import { ReportsModule } from './modules/reports/index.js';
 import { StorefrontModule } from './modules/storefront/index.js';
+import { ShiftsModule } from './modules/shifts/index.js';
 @Module({
   imports: [
     ConfigurationModule,
@@ -29,6 +30,7 @@ import { StorefrontModule } from './modules/storefront/index.js';
     PurchasingModule,
     MediaModule,
     ReportsModule,
+    ShiftsModule,
   ],
 })
 export class AppModule {}

@@ -9,6 +9,7 @@ import type {
   CatalogProductQuoteResponse,
   CatalogProductQuoteSelection,
 } from '@waffarly/contracts';
+import type { Prisma } from '@waffarly/database';
 import { formatCents, toCents } from '../../../common/money/money.js';
 import { PrismaService } from '../../../infrastructure/database/prisma.service.js';
 import type { StockBaseUnit } from '@waffarly/contracts';
@@ -36,8 +37,26 @@ export class ProductPricingService {
         })
       : null;
     if (storefrontSlug && !merchant) throw new NotFoundException('Storefront was not found.');
-    const product = await this.prisma.product.findFirst({
-      where: { id, archivedAt: null, ...(merchant ? { merchantId: merchant.id } : {}) },
+    return this.quoteForMerchant(
+      merchant?.id ?? null,
+      id,
+      selections,
+      variantId,
+      sellableQuantity,
+    );
+  }
+
+  async quoteForMerchant(
+    merchantId: string | null,
+    id: string,
+    selections: CatalogProductQuoteSelection[] = [],
+    variantId?: string,
+    sellableQuantity = 1,
+    transaction?: Prisma.TransactionClient,
+  ): Promise<CatalogProductQuoteResponse> {
+    const db = transaction ?? this.prisma;
+    const product = await db.product.findFirst({
+      where: { id, archivedAt: null, ...(merchantId ? { merchantId } : {}) },
       select: {
         id: true,
         availability: true,

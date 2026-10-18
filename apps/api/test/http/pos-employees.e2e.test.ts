@@ -13,6 +13,7 @@ import { PosEmployeesController } from '../../src/modules/auth/pos-employees.con
 import { OrderLifecycleService } from '../../src/modules/orders/order-lifecycle.service.js';
 import { PosStorefrontOrdersController } from '../../src/modules/orders/storefront-orders.controller.js';
 import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
+import { PosOrdersService } from '../../src/modules/orders/pos-orders.service.js';
 
 const merchantId = '11111111-1111-4111-8111-111111111111';
 const employeeId = '22222222-2222-4222-8222-222222222222';
@@ -37,6 +38,7 @@ const employee: PosEmployeeSession = {
   merchantId,
   username: 'cashier1',
   displayName: 'Cashier One',
+  role: null,
   permissions: ['accept_recipe_orders', 'start_preparation'],
   branches: [{ id: branchId, name: 'Main', archivedAt: null }],
 };
@@ -96,6 +98,19 @@ describe('POS employee endpoints', () => {
             listForPos: async (...args: unknown[]) => {
               calls.push({ service: 'orders', method: 'listForPos', args });
               return { items: [], nextCursor: null };
+            },
+          },
+        },
+        {
+          provide: PosOrdersService,
+          useValue: {
+            quote: async (...args: unknown[]) => {
+              calls.push({ service: 'posSales', method: 'quote', args });
+              return { items: [], currency: 'EGP', subtotal: '0.00', total: '0.00' };
+            },
+            create: async (...args: unknown[]) => {
+              calls.push({ service: 'posSales', method: 'create', args });
+              return { id: orderId };
             },
           },
         },
@@ -174,6 +189,38 @@ describe('POS employee endpoints', () => {
       service: 'orders',
       method: 'listForPos',
       args: [merchantId, branchId, { cursor: undefined, limit: 10 }],
+    });
+  });
+
+  it('requires a POS session before dispatching quote and sale commands', async () => {
+    const lineId = '77777777-7777-4777-8777-777777777777';
+    const productId = '88888888-8888-4888-8888-888888888888';
+    const registerId = '99999999-9999-4999-8999-999999999999';
+    const quote = {
+      items: [{ lineId, productId, selections: [], quantity: 1 }],
+    };
+    employeeAuthorized = false;
+    await request(app.getHttpServer()).post('/pos/orders/quote').send(quote).expect(401);
+    employeeAuthorized = true;
+
+    await request(app.getHttpServer()).post('/pos/orders/quote').send(quote).expect(200);
+    assert.deepEqual(calls.at(-1), {
+      service: 'posSales',
+      method: 'quote',
+      args: [employee, quote],
+    });
+
+    const sale = {
+      requestId,
+      registerId,
+      fulfillmentType: 'takeaway',
+      items: [{ ...quote.items[0], expectedProductRevision: 4 }],
+    };
+    await request(app.getHttpServer()).post('/pos/orders').send(sale).expect(201);
+    assert.deepEqual(calls.at(-1), {
+      service: 'posSales',
+      method: 'create',
+      args: [employee, sale],
     });
   });
 

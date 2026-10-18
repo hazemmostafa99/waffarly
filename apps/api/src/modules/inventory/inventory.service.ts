@@ -181,6 +181,21 @@ export class InventoryService {
         FOR UPDATE`;
       if (locked.length !== 1) throw new NotFoundException('Stock item was not found.');
       if (archived) {
+        const pendingSnapshot = await transaction.storefrontOrderLineStockRequirement.findFirst({
+          where: {
+            merchantId,
+            stockItemId: id,
+            orderLine: {
+              is: {
+                stockHandling: 'recipe_acceptance',
+                order: { is: { status: 'pending' } },
+              },
+            },
+          },
+          select: { id: true },
+        });
+        if (pendingSnapshot)
+          throw new ConflictException('A stock item required by a pending recipe order cannot be archived.');
         const cancellable = await transaction.stockMovement.findFirst({
           where: {
             merchantId,

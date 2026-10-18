@@ -69,7 +69,7 @@ export function OrderPanel({
         </div>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold max-[767px]:text-lg">
+            <h2 className="text-xl font-semibold max-[767px]:text-base">
               {order.fulfillment === 'dine-in'
                 ? `${t('Table')} ${String(order.table).padStart(2, '0')}`
                 : t(order.fulfillment === 'takeaway' ? 'Takeaway' : 'Delivery')}
@@ -86,34 +86,47 @@ export function OrderPanel({
               </p>
             )}
           </div>
-          <PreviewButton size="icon" aria-label={t('New order')} onClick={onNew}>
-            <Plus size={18} />
+          <PreviewButton
+            size="icon"
+            aria-label={t('New order')}
+            onClick={onNew}
+            className="max-[767px]:border-transparent max-[767px]:bg-transparent max-[767px]:p-0 max-[767px]:shadow-none"
+          >
+            <span className="flex size-8 items-center justify-center rounded-md max-[767px]:border max-[767px]:border-border max-[767px]:bg-card">
+              <Plus size={15} />
+            </span>
           </PreviewButton>
         </div>
-        <PreviewButton
-          size="sm"
-          className="mt-3 w-full justify-start max-[767px]:mt-2"
-          disabled={!contextEditable}
-          title={
-            !contextEditable
-              ? t('Order details lock after items are sent or payment begins.')
-              : undefined
-          }
-          onClick={onEditContext}
-        >
-          <Edit3 size={14} />
-          {t(contextEditable ? 'Edit order details' : 'Details locked after sending')}
-        </PreviewButton>
-        <div className="mt-4 flex items-center gap-2 max-[767px]:mt-3">
-          <StatusPill>
-            {order.complete ? (
-              <Check size={12} />
-            ) : (
-              <span className="size-1.5 rounded-full bg-current" />
-            )}
-            {t(order.complete ? 'Completed' : 'Open order')}
-          </StatusPill>
-          <span className="text-xs text-muted-foreground">{t('Sample session')}</span>
+        <div className="mt-3 flex items-center justify-between gap-2 max-[767px]:mt-2">
+          <PreviewButton
+            size="sm"
+            className="h-9 min-w-0 max-w-[160px] justify-start px-3 max-[767px]:h-8 max-[767px]:max-w-[46%] max-[767px]:gap-1.5 max-[767px]:px-2 max-[767px]:text-[11px]"
+            disabled={!contextEditable}
+            title={
+              !contextEditable
+                ? t('Order details lock after items are sent or payment begins.')
+                : undefined
+            }
+            onClick={onEditContext}
+          >
+            <Edit3 size={12} />
+            <span className="truncate">
+              {t(contextEditable ? 'Edit order details' : 'Details locked after sending')}
+            </span>
+          </PreviewButton>
+          <div className="flex shrink-0 items-center gap-2 max-[767px]:gap-1">
+            <StatusPill>
+              {order.complete ? (
+                <Check size={12} />
+              ) : (
+                <span className="size-1.5 rounded-full bg-current" />
+              )}
+              {t(order.complete ? 'Completed' : 'Open order')}
+            </StatusPill>
+            <span className="hidden truncate text-xs text-muted-foreground max-[767px]:text-[10px] sm:inline">
+              {t('Sample session')}
+            </span>
+          </div>
         </div>
       </div>
       <div
@@ -132,68 +145,86 @@ export function OrderPanel({
                 return (
                   <div
                     key={line.id}
-                    className="rounded-xl border border-border p-3 max-[767px]:p-2"
+                    className="rounded-xl border border-border px-1.5"
                     data-testid="order-draft-line"
                   >
-                    <div className="flex items-start gap-2">
+                    <div className="flex min-w-0 items-center gap-2 max-[767px]:gap-1">
                       <div className="min-w-0 flex-1">
                         <button
                           type="button"
                           onClick={() => onEdit(line)}
-                          className="flex min-h-11 items-center gap-2 text-start text-sm font-semibold max-[767px]:text-[13px]"
+                          className="flex min-h-11 min-w-0 items-center gap-2 text-start text-sm font-semibold max-[767px]:min-h-8 max-[767px]:gap-1 max-[767px]:text-[11px]"
                         >
-                          {t(product.name)}
-                          <Edit3 size={12} className="shrink-0 text-muted-foreground" />
+                          <span className="truncate">{t(product.name)}</span>
+                          <Edit3
+                            size={12}
+                            className="shrink-0 text-muted-foreground max-[767px]:hidden"
+                          />
                         </button>
-                        <p className="text-xs text-muted-foreground max-[767px]:text-[11px]">
-                          {t(line.size === 'large' ? 'Large' : 'Regular')}
-                          {line.extras
-                            .map(
-                              (id) =>
-                                ` · ${t(extras.find((extra) => extra.id === id)?.name ?? '')}`,
-                            )
-                            .join('')}
-                        </p>
+                        <div className="flex min-w-0 items-center justify-between gap-1 text-xs text-muted-foreground max-[767px]:text-[10px]">
+                          <p className="truncate">
+                            {t(line.size === 'large' ? 'Large' : 'Regular')}
+                            {line.extras
+                              .map(
+                                (id) =>
+                                  ` · ${t(extras.find((extra) => extra.id === id)?.name ?? '')}`,
+                              )
+                              .join('')}
+                          </p>
+                          <strong className="shrink-0 text-sm tabular-nums text-foreground max-[767px]:text-[10px]">
+                            {money(draftUnitCents(line) * line.quantity)}
+                          </strong>
+                        </div>
                         {line.note && (
-                          <p className="mt-1 text-xs text-[var(--pos-note-ink)] max-[767px]:text-[11px]">
+                          <p className="mt-1 truncate text-xs text-[var(--pos-note-ink)] max-[767px]:text-[10px]">
                             {line.note}
                           </p>
                         )}
                       </div>
-                      <strong className="pt-3 text-sm tabular-nums max-[767px]:pt-2 max-[767px]:text-[13px]">
-                        {money(draftUnitCents(line) * line.quantity)}
-                      </strong>
-                    </div>
-                    <div className="mt-2 flex items-center gap-1 max-[767px]:mt-1">
-                      <PreviewButton
-                        size="icon"
-                        className="size-11"
-                        aria-label={`${t('Decrease quantity')}: ${t(product.name)}`}
-                        onClick={() => updateLine(line.id, line.quantity - 1)}
+                      <div
+                        className="flex shrink-0 items-center gap-1 max-[767px]:gap-0"
+                        data-testid="order-line-controls"
                       >
-                        <Minus size={14} />
-                      </PreviewButton>
-                      <span className="w-8 text-center text-sm font-semibold max-[767px]:text-[13px]">
-                        {line.quantity}
-                      </span>
-                      <PreviewButton
-                        size="icon"
-                        className="size-11"
-                        disabled={line.quantity >= 99}
-                        data-testid="increase-order-line"
-                        aria-label={`${t('Increase quantity')}: ${t(product.name)}`}
-                        onClick={() => updateLine(line.id, line.quantity + 1)}
-                      >
-                        <Plus size={14} />
-                      </PreviewButton>
-                      <button
-                        type="button"
-                        aria-label={`${t('Remove item')}: ${t(product.name)}`}
-                        onClick={() => updateLine(line.id, 0)}
-                        className="ms-auto flex size-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-destructive"
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                        <PreviewButton
+                          size="icon"
+                          className="size-7 max-[767px]:size-11 max-[767px]:min-h-11 max-[767px]:min-w-11 max-[767px]:border-transparent max-[767px]:bg-transparent max-[767px]:p-0 max-[767px]:shadow-none"
+                          aria-label={`${t('Decrease quantity')}: ${t(product.name)}`}
+                          onClick={() => updateLine(line.id, line.quantity - 1)}
+                        >
+                          <span
+                            data-testid="order-line-control-surface"
+                            className="flex size-7 items-center justify-center rounded-md max-[767px]:border max-[767px]:border-border max-[767px]:bg-card"
+                          >
+                            <Minus size={14} />
+                          </span>
+                        </PreviewButton>
+                        <span className="w-4 text-center text-sm font-semibold max-[767px]:w-5 max-[767px]:text-[11px]">
+                          {line.quantity}
+                        </span>
+                        <PreviewButton
+                          size="icon"
+                          className="size-8 max-[767px]:size-11 max-[767px]:min-h-11 max-[767px]:min-w-11 max-[767px]:border-transparent max-[767px]:bg-transparent max-[767px]:p-0 max-[767px]:shadow-none"
+                          disabled={line.quantity >= 99}
+                          data-testid="increase-order-line"
+                          aria-label={`${t('Increase quantity')}: ${t(product.name)}`}
+                          onClick={() => updateLine(line.id, line.quantity + 1)}
+                        >
+                          <span
+                            data-testid="order-line-control-surface"
+                            className="flex size-7 items-center justify-center rounded-md max-[767px]:border max-[767px]:border-border max-[767px]:bg-card"
+                          >
+                            <Plus size={14} />
+                          </span>
+                        </PreviewButton>
+                        <button
+                          type="button"
+                          aria-label={`${t('Remove item')}: ${t(product.name)}`}
+                          onClick={() => updateLine(line.id, 0)}
+                          className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-destructive max-[767px]:size-11 max-[767px]:min-h-11 max-[767px]:min-w-11"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -217,28 +248,35 @@ export function OrderPanel({
             </div>
             <div className="space-y-4 max-[767px]:space-y-3">
               {order.lines.map((line) => (
-                <div key={line.id} className="flex gap-3 max-[767px]:gap-2">
-                  <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-semibold">
-                    {line.quantity}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2 text-sm max-[767px]:text-[13px]">
-                      <span className="font-medium">
+                <div key={line.id} data-testid="order-sent-line">
+                  <div
+                    className="flex items-center gap-2 max-[767px]:gap-1"
+                    data-testid="order-sent-line-row"
+                  >
+                    <span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-semibold max-[767px]:size-6 max-[767px]:text-[10px]">
+                      {line.quantity}
+                    </span>
+                    <div className="flex min-w-0 flex-1 items-center gap-2 max-[767px]:gap-1">
+                      <span className="min-w-0 flex-1 truncate text-[13px] font-medium max-[767px]:text-[11px]">
                         {t(products.find((item) => item.id === line.productId)!.name)}
                       </span>
-                      <span className="tabular-nums">{money(line.quantity * line.unitCents)}</span>
-                    </div>
-                    <div className="mt-1 text-[11px] text-muted-foreground">
-                      {t(
-                        line.stage === 'queued'
-                          ? 'Queued'
-                          : line.stage === 'preparing'
-                            ? 'Preparing'
-                            : 'Ready',
-                      )}
-                      {line.note && ` · ${line.note}`}
+                      <span className="shrink-0 text-[11px] text-muted-foreground max-[767px]:text-[10px]">
+                        {t(
+                          line.stage === 'queued'
+                            ? 'Queued'
+                            : line.stage === 'preparing'
+                              ? 'Preparing'
+                              : 'Ready',
+                        )}
+                      </span>
+                      <span className="shrink-0 text-[11px] tabular-nums max-[767px]:text-[10px]">
+                        {money(line.quantity * line.unitCents)}
+                      </span>
                     </div>
                   </div>
+                  {line.note && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">{line.note}</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -283,7 +321,7 @@ export function OrderPanel({
         {drafts.length > 0 ? (
           <PreviewButton
             variant="solid"
-            className="h-12 w-full"
+            className="h-11 w-full max-[767px]:text-[12px]"
             disabled={busy || order.complete}
             onClick={onSend}
           >
@@ -294,7 +332,7 @@ export function OrderPanel({
         ) : (
           <PreviewButton
             variant="solid"
-            className="h-12 w-full"
+            className="h-11 w-full max-[767px]:text-[12px]"
             disabled={!order.bills.length || busy}
             onClick={onCheckout}
           >
@@ -305,6 +343,8 @@ export function OrderPanel({
         )}
         <div className="grid grid-cols-2 gap-2">
           <PreviewButton
+            size="sm"
+            className="h-9 max-[767px]:text-[11px]"
             disabled={!order.lines.length || !!order.payments.length || !!drafts.length || busy}
             onClick={onSplit}
           >
@@ -312,6 +352,8 @@ export function OrderPanel({
             {t('Split bill')}
           </PreviewButton>
           <PreviewButton
+            size="sm"
+            className="h-9 max-[767px]:text-[11px]"
             disabled={!order.bills.length || !!drafts.length || busy}
             onClick={onCheckout}
           >

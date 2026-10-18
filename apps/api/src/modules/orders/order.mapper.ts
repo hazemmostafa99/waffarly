@@ -32,8 +32,8 @@ export function toSummary(order: {
   stockRestored?: boolean | null;
   id: string;
   status: string;
-  customerName: string;
-  customerPhone: string;
+    customerName: string | null;
+    customerPhone: string | null;
   fulfillmentType: string;
   deliveryAddress: string | null;
   total: { toString(): string };
@@ -48,6 +48,7 @@ export function toSummary(order: {
     quantity: number;
     unitPrice: { toString(): string };
     lineTotal: { toString(): string };
+    note?: string | null;
     variantAttributes: Array<{
       attributeId: string | null;
       valueId: string | null;
@@ -86,7 +87,7 @@ export function toSummary(order: {
     status: order.status as StorefrontOrderStatus,
     customerName: order.customerName,
     customerPhone: order.customerPhone,
-    fulfillmentType: order.fulfillmentType as 'pickup' | 'delivery',
+    fulfillmentType: order.fulfillmentType as 'pickup' | 'delivery' | 'dine_in' | 'takeaway',
     deliveryAddress: order.deliveryAddress,
     currency: 'EGP',
     total: formatCents(toCents(order.total.toString())),
@@ -103,6 +104,7 @@ export function toSummary(order: {
       quantity: line.quantity,
       unitPrice: formatCents(toCents(line.unitPrice.toString())),
       lineTotal: formatCents(toCents(line.lineTotal.toString())),
+      ...(line.note !== undefined ? { note: line.note } : {}),
       selections: line.selections.map((selection) => ({
         groupName: selection.groupName,
         optionName: selection.optionName,

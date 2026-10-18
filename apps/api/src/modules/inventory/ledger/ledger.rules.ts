@@ -11,6 +11,7 @@ export const INVENTORY_MOVEMENT_KINDS = [
   'opening_balance',
   'purchase_receipt',
   'sale_consumption',
+  'sale_restoration',
   'recipe_consumption',
   'recipe_restoration',
   'adjustment',
@@ -56,7 +57,12 @@ export const postingSchema = z
   .superRefine((batch, context) => {
     batch.movements.forEach((movement, index) => {
       if (
-        ['sale_consumption', 'recipe_consumption', 'recipe_restoration'].includes(batch.kind) &&
+        [
+          'sale_consumption',
+          'sale_restoration',
+          'recipe_consumption',
+          'recipe_restoration',
+        ].includes(batch.kind) &&
         movement.condition !== 'available'
       ) {
         context.addIssue({
@@ -76,13 +82,15 @@ export const postingSchema = z
         });
       }
       if (
-        ['opening_balance', 'purchase_receipt', 'recipe_restoration'].includes(batch.kind) &&
+        ['opening_balance', 'purchase_receipt', 'recipe_restoration', 'sale_restoration'].includes(
+          batch.kind,
+        ) &&
         movement.baseDelta.startsWith('-')
       ) {
         context.addIssue({
           code: 'custom',
           path: ['movements', index, 'baseDelta'],
-          message: 'Opening balances and purchase receipts can only add stock.',
+          message: 'Opening balances, receipts and restorations can only add stock.',
         });
       }
     });

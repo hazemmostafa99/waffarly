@@ -17,6 +17,8 @@ const navigation = [
   { id: 'discounts', label: 'Discounts', icon: 'discounts' },
   { id: 'branches', label: 'Branches', icon: 'branches' },
   { id: 'employees', label: 'Employees', icon: 'customers' },
+  { id: 'pos-registers', label: 'POS Registers', icon: 'orders' },
+  { id: 'pos-tables', label: 'POS Tables', icon: 'grid' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
 ] as const;
 
@@ -66,9 +68,16 @@ export function MerchantLayout() {
     '/product-builder',
   ].includes(location.pathname);
   const hasCustomPageHeading =
-    !['/products', '/categories', '/media', '/discounts', '/branches', '/employees'].includes(
-      location.pathname,
-    ) &&
+    ![
+      '/products',
+      '/categories',
+      '/media',
+      '/discounts',
+      '/branches',
+      '/employees',
+      '/pos-registers',
+      '/pos-tables',
+    ].includes(location.pathname) &&
     !isProductBuilder &&
     !location.pathname.startsWith('/inventory');
   const hasBreadcrumb =

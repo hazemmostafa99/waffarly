@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "tsx --test src/features/prototype/*.test.ts"
+    "test": "tsx --test src/features/prototype/prototype-model.test.ts src/features/payments/payment-form-model.test.ts src/app/pos-workspace-store.test.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "5.104.2",

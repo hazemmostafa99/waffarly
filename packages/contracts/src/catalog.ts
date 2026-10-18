@@ -1,3 +1,5 @@
+import type { CursorPage } from './pagination.js';
+
 export type CatalogAvailability = 'available' | 'unavailable';
 export type ProductInventoryMode = 'DIRECT' | 'RECIPE';
 
@@ -300,6 +302,12 @@ export interface PublicStorefrontCatalog {
   nextProductCursor: string | null;
 }
 
+/** Merchant-scoped, read-only catalog projection for authenticated POS employees. */
+export interface PosSellableCatalog {
+  categories: CursorPage<PublicStorefrontCategory>;
+  products: CursorPage<PublicStorefrontProduct>;
+}
+
 export interface CreateStorefrontOrderRequest {
   customerName: string;
   customerPhone: string;
@@ -351,9 +359,9 @@ export interface StorefrontOrderSummary {
   };
   id: string;
   status: StorefrontOrderStatus;
-  customerName: string;
-  customerPhone: string;
-  fulfillmentType: 'pickup' | 'delivery';
+  customerName: string | null;
+  customerPhone: string | null;
+  fulfillmentType: 'pickup' | 'delivery' | 'dine_in' | 'takeaway';
   deliveryAddress: string | null;
   currency: 'EGP';
   total: string;
@@ -368,6 +376,7 @@ export interface StorefrontOrderSummary {
     quantity: number;
     unitPrice: string;
     lineTotal: string;
+    note?: string | null;
     selections: Array<{
       groupName: string;
       optionName: string;

@@ -16,6 +16,8 @@ import { StockItemsPage } from './features/inventory/StockItemsPage.js';
 import { InventoryOperationsPage } from './features/inventory/InventoryOperationsPage.js';
 import { PurchaseInvoicesPage } from './features/purchasing/PurchaseInvoicesPage.js';
 import { EmployeesPage } from './features/staff/EmployeesPage.js';
+import { RegistersPage } from './features/pos/RegistersPage.js';
+import { TablesPage } from './features/pos/TablesPage.js';
 
 export const router = createBrowserRouter([
   {
@@ -52,6 +54,8 @@ export const router = createBrowserRouter([
       { path: 'discounts', element: <DiscountsPage /> },
       { path: 'branches', element: <BranchesPage /> },
       { path: 'employees', element: <EmployeesPage /> },
+      { path: 'pos-registers', element: <RegistersPage /> },
+      { path: 'pos-tables', element: <TablesPage /> },
       { path: 'settings', element: <SettingsRoute /> },
       { path: '*', element: <Navigate to="/" replace /> },
     ],

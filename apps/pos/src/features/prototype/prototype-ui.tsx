@@ -5,7 +5,7 @@ export function PreviewButton({ className, variant = 'outline', ...props }: Butt
     <Button
       variant={variant}
       className={cn(
-        'rounded-lg font-semibold',
+        'rounded-md',
         variant === 'outline' &&
           'border-border bg-card text-foreground hover:bg-secondary hover:text-foreground',
         className,

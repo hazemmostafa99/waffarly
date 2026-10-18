@@ -1,5 +1,11 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { CursorPage, PosEmployeeSummary } from '@waffarly/contracts';
+import {
+  POS_LEGACY_EMPLOYEE_PERMISSIONS,
+  isPosEmployeeRole,
+  resolvePosEmployeePermissions,
+  type CursorPage,
+  type PosEmployeeSummary,
+} from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { assertScopedCursor } from '../../common/http/pagination.js';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
@@ -78,6 +84,8 @@ export class PosEmployeeService {
             username: parsed.username,
             displayName: parsed.displayName,
             passwordHash,
+            role: parsed.role ?? null,
+            permissions: [...POS_LEGACY_EMPLOYEE_PERMISSIONS],
             createdBy: actor,
             updatedBy: actor,
             branches: {
@@ -115,6 +123,7 @@ export class PosEmployeeService {
         data: {
           displayName: parsed.displayName,
           active: parsed.active,
+          ...(parsed.role !== undefined ? { role: parsed.role } : {}),
           revision: { increment: 1 },
           updatedBy: actor,
           ...(passwordHash ? { passwordHash } : {}),
@@ -172,6 +181,8 @@ function toEmployeeSummary(employee: {
   id: string;
   username: string;
   displayName: string;
+  role: string | null;
+  permissions: string[];
   active: boolean;
   revision: number;
   createdAt: Date;
@@ -187,6 +198,11 @@ function toEmployeeSummary(employee: {
     id: employee.id,
     username: employee.username,
     displayName: employee.displayName,
+    role: isPosEmployeeRole(employee.role) ? employee.role : null,
+    permissions: resolvePosEmployeePermissions(
+      isPosEmployeeRole(employee.role) ? employee.role : null,
+      employee.permissions,
+    ),
     active: employee.active,
     revision: employee.revision,
     branchIds: branches.map((branch) => branch.id),

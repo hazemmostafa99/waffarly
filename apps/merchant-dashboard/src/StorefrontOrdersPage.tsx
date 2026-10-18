@@ -93,7 +93,7 @@ export function StorefrontOrdersPage() {
             line.variantName ?? '',
             ...line.selections.map((selection) => `${selection.groupName} ${selection.optionName}`),
           ]),
-        ].map((value) => value.toLocaleLowerCase());
+        ].map((value) => (value ?? '').toLocaleLowerCase());
         return terms.every((term) => searchable.some((value) => value.includes(term)));
       }),
     [dateRange, fulfillment, orders, status, terms],
@@ -393,8 +393,10 @@ export function StorefrontOrdersPage() {
                               </strong>
                             </td>
                             <td>
-                              <strong>{order.customerName}</strong>
-                              <small dir="ltr">{formatDigits(order.customerPhone)}</small>
+                              <strong>{order.customerName ?? copy('Walk-in customer')}</strong>
+                              {order.customerPhone && (
+                                <small dir="ltr">{formatDigits(order.customerPhone)}</small>
+                              )}
                             </td>
                             <td>
                               <span className="orders-fulfillment">
@@ -456,9 +458,13 @@ export function StorefrontOrdersPage() {
                                           : copy('Pickup')}
                                       </span>
                                     </div>
-                                    <a href={`tel:${order.customerPhone}`} dir="ltr">
-                                      {formatDigits(order.customerPhone)}
-                                    </a>
+                                    {order.customerPhone ? (
+                                      <a href={`tel:${order.customerPhone}`} dir="ltr">
+                                        {formatDigits(order.customerPhone)}
+                                      </a>
+                                    ) : (
+                                      <span>{order.customerName ?? copy('Walk-in customer')}</span>
+                                    )}
                                   </div>
                                   <div className="orders-expanded-lines">
                                     {order.lines.map((line) => (

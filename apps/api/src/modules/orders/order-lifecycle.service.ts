@@ -19,7 +19,7 @@ import {
   isUniqueConstraintError,
 } from '../../infrastructure/database/prisma-errors.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
-import { ProductConsumptionService } from '../catalog/index.js';
+import { calculateInventoryRequirements, ProductConsumptionService } from '../catalog/index.js';
 import { InventoryLedgerService } from '../inventory/index.js';
 import { toSummary } from './order.mapper.js';
 import {
@@ -41,6 +41,7 @@ const orderInclude = {
         orderBy: [{ groupPosition: 'asc' as const }, { optionPosition: 'asc' as const }],
       },
       variantAttributes: { orderBy: { position: 'asc' as const } },
+      stockRequirements: { orderBy: { position: 'asc' as const } },
     },
   },
 };
@@ -167,12 +168,48 @@ export class OrderLifecycleService {
           if (command.action === 'accept') {
             if (order.status !== 'pending')
               throw new ConflictException('Only pending orders can be accepted.');
+            if (order.source === 'pos' && order.branchId !== command.input.branchId)
+              throw new ConflictException('A POS order must be accepted at its assigned branch.');
             const warehouse = await resolveConsumptionWarehouse(
               tx,
               merchantId,
               command.input.branchId,
             );
-            const requirements = await this.consumption.requirements(tx, merchantId, recipeLines);
+            const snapshotted = recipeLines.filter((line) => line.stockRequirementsFrozenAt);
+            const legacy = recipeLines.filter((line) => !line.stockRequirementsFrozenAt);
+            const legacyRequirements = legacy.length
+              ? await this.consumption.requirements(
+                  tx,
+                  merchantId,
+                  legacy.map((line) => ({
+                    productId: line.productId,
+                    variantId: line.variantId,
+                    quantity: line.quantity,
+                    selections: line.selections.map((selection) => ({
+                      modifierGroupId: selection.modifierGroupId,
+                      modifierOptionId: selection.modifierOptionId,
+                      quantity: selection.quantity,
+                    })),
+                  })),
+                )
+              : [];
+            const requirements = calculateInventoryRequirements(
+              [
+                ...legacyRequirements.map((requirement) => ({
+                  stockItemId: requirement.stockItemId,
+                  baseUnit: requirement.baseUnit,
+                  baseQuantity: requirement.quantity,
+                })),
+                ...snapshotted.flatMap((line) =>
+                  (line.stockRequirements ?? []).map((requirement) => ({
+                    stockItemId: requirement.stockItemId,
+                    baseUnit: requirement.baseUnit as (typeof legacyRequirements)[number]['baseUnit'],
+                    baseQuantity: requirement.quantity.toString(),
+                  })),
+                ),
+              ],
+              1,
+            );
             await consumeOrderRequirements(
               tx,
               this.ledger,

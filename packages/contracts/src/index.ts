@@ -1,5 +1,13 @@
 export { BUSINESS_ACTIVITY_KEYS, BUSINESS_ACTIVITY_LABELS } from './activities-modules.js';
 export type { CursorPage } from './pagination.js';
+export type {
+  PosRegisterSummary,
+  PosRegisterOption,
+  PosShiftSummary,
+  CreatePosRegisterRequest,
+  UpdatePosRegisterRequest,
+  OpenPosShiftRequest,
+} from './shifts.js';
 export { STOCK_BASE_UNITS, STOCK_QUANTITY_PATTERN, isPositiveStockQuantity } from './inventory.js';
 export type {
   StockBaseUnit,
@@ -127,6 +135,7 @@ export type {
   PublicStorefrontCatalog,
   PublicStorefrontCategory,
   PublicStorefrontProduct,
+  PosSellableCatalog,
   ProductConfigurationReport,
   CreateStorefrontOrderRequest,
   StorefrontOrderStatus,
@@ -142,8 +151,43 @@ export type {
   UpdateCatalogModifierGroupRequest,
   UpdateCatalogProductRequest,
 } from './catalog.js';
-export { POS_EMPLOYEE_PERMISSIONS } from './pos.js';
+export {
+  POS_EMPLOYEE_PERMISSIONS,
+  POS_EMPLOYEE_ROLES,
+  POS_EMPLOYEE_ROLE_PERMISSIONS,
+  POS_LEGACY_EMPLOYEE_PERMISSIONS,
+  isPosEmployeeRole,
+  resolvePosEmployeePermissions,
+} from './pos.js';
 export type {
+  PosOrderQuoteRequest,
+  PosOrderQuoteResponse,
+  CreatePosOrderRequest,
+  CreatePosOrderResponse,
+} from './pos-orders.js';
+export type {
+  PosCheckTender,
+  PosPaymentSummary,
+  PosTenderMethod,
+  PosOrderPaymentStateResponse,
+  RecordPosCheckPaymentRequest,
+  RecordPosCheckPaymentResponse,
+} from './pos-payments.js';
+export type {
+  PosDiningTableSummary,
+  PosDiningTableOption,
+  PosDiningTablesPage,
+  PosDiningSessionSummary,
+  PosOrderCheckSummary,
+  PosOrderCheckSplitMethod,
+  CreatePosDiningTableRequest,
+  UpdatePosDiningTableRequest,
+  MovePosDiningSessionRequest,
+  SplitPosOrderChecksRequest,
+  SplitPosOrderChecksResponse,
+} from './pos-dining.js';
+export type {
+  PosEmployeeRole,
   PosEmployeePermission,
   PosEmployeeBranch,
   PosEmployeeSummary,

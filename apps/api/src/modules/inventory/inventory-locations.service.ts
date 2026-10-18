@@ -373,9 +373,29 @@ export class InventoryLocationsService {
         const cancellable = await transaction.storefrontOrder.findFirst({
           where: {
             merchantId,
-            warehouseId: warehouseId,
-            status: 'accepted',
-            lines: { some: { stockHandling: 'recipe_acceptance' } },
+            OR: [
+              {
+                status: 'accepted',
+                lines: { some: { stockHandling: 'recipe_acceptance' } },
+                stockBatches: {
+                  some: {
+                    role: 'consumption',
+                    batch: { is: { movements: { some: { warehouseId } } } },
+                  },
+                },
+              },
+              {
+                source: 'pos',
+                status: { in: ['pending', 'accepted'] },
+                stockBatches: {
+                  some: {
+                    role: 'consumption',
+                    batch: { is: { movements: { some: { warehouseId } } } },
+                  },
+                },
+                lines: { some: { stockHandling: 'direct_sale' } },
+              },
+            ],
           },
           select: { id: true },
         });

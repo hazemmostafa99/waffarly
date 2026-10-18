@@ -4,9 +4,9 @@
 
 - Date: 2026-10-17.
 - Companion requirements: [FEATURE.md](FEATURE.md); execution evidence: [PROGRESS.md](PROGRESS.md).
-- Status: design contract with an implemented, isolated development prototype at `/prototype`. Automated browser checks cover core prototype journeys; real-operator usability trials and production workflows remain open. See Progress for exact evidence.
+- Status: design contract with an isolated development prototype and a live cashier checkout dialog. Automated browser checks cover split tenders, retrying the same command after an interrupted response and narrow-screen checkout visibility; real-operator usability trials and other production workflows remain open. See Progress for exact evidence.
 - References: the original CosyPOS screenshot and the later orange-accent POS, order-context picker and bakery receipt screenshots. The user confirmed that the screenshots are the source reference; define missing tokens/components in this repository.
-- CONFIRMED refinement: merchant-configurable POS accent, orange by default; first receipt target is 80mm thermal plus printable/downloadable PDF. The isolated prototype now previews the accent and print layout; merchant settings, official receipts, direct PDF generation and hardware support remain open implementation work.
+- CONFIRMED refinement: merchant-configurable POS accent, orange by default; first receipt target is 80mm thermal plus printable/downloadable PDF for an ordinary POS receipt. The isolated prototype previews the accent and print layout; merchant settings, immutable receipt issuance, direct PDF generation and hardware support remain open. ETA fiscal integration is deferred by the user.
 - CONFIRMED: light and dark themes have equal support. Neither is a secondary release or a kitchen-only theme.
 - Confirmed operating scope: takeaway, delivery, dine-in/tables/split checks; cash/manual external-terminal payments and split tender; online operation with saved drafts/recovery.
 - Stack: Tailwind v4 and shared shadcn/ui, React Query for server facts, Zustand for client drafts/workspace. Follow Feature's architecture and existing localization conventions.
@@ -63,7 +63,7 @@ The panel must make these facts answerable without opening a dialog: which order
 - Display fulfillment type (Takeaway / Delivery / Dine-in) prominently; table identity is required for a dining session. Do not require a customer account for a basic walk-in sale.
 - Group new unsent items separately from sent/preparing/served items. Each persisted group shows its actual state; edits to sent/paid work follow amendment rules.
 - Cart lines show quantity, product/variant, modifiers, preparation note indicator and line total. Quantity/remove/edit controls have labeled touch targets and keyboard access; no hover/swipe-only destructive action.
-- On narrow touch screens, reduce order-panel padding, line-item labels and summary spacing before reducing function. Keep quantity/action targets at least 44px and keep the due amount and primary action easy to find.
+- On narrow touch screens, show new and sent order items as compact horizontal rows. Group product/variant and price opposite quantity/remove controls. Reduce visible button surfaces, labels and summary spacing, while keeping quantity/remove hit areas and the main confirmation target at least 44px. Secondary actions may use smaller controls, remain separated and keep accessible names.
 - A simple unsent-item removal is immediate with undo. Consequential sent-item cancellation/refund uses an explicit reason/approval flow. Undo cannot reverse a completed commercial transaction locally.
 - Keep the amount due and relevant action area visible while the item list scrolls. Show subtotal, discount, configured charges/tax and paid amount without hiding fees behind an unlabeled total.
 - Show separate “Send to kitchen” and “Take payment” actions where applicable. Which action is primary depends on order state and the confirmed branch dispatch policy; UI styling must not choose POS-D06 implicitly.
@@ -101,6 +101,7 @@ Use a focused checkout sheet/dialog on wide screens and a full view on narrow sc
 - Split tender shows each proposed/recorded payment and the remaining amount. Distinguish partial collection from full settlement in the final action label and success state.
 - External-terminal entry shows amount/reference fields and asks for explicit operator confirmation according to the approved terminal policy. Never collect card credentials.
 - An uncertain recording gets an inline persistent state: “Checking payment result” / “Payment result needs checking,” with the appropriate reconciliation action. Do not encourage a second payment while the first result is unknown.
+  - Keep unresolved payment recovery visible from every authenticated POS route. After reload, fetch the latest server balance and require the cashier to explicitly replay the exact saved command ID; never automatically resubmit a financial write on reconnect.
 - On success, show the committed paid amount/change and receipt actions. New sale is a deliberate, fast next action. Receipt printer failure stays recoverable on the completed sale.
 - Errors stay next to the relevant field/action and preserve entries; do not use disappearing toast messages as the only financial feedback.
 
@@ -141,7 +142,7 @@ Use shared semantic CSS variables in `@waffarly/ui`; map them to Tailwind utilit
 ## Typography, density and interaction rules
 
 - Prototype with a readable 14–16px interface base, larger order identity/totals, tabular monetary figures and stable alignment. Validate the chosen Arabic/Latin fonts with real long labels; do not solve overflow by shrinking critical text.
-- Use a consistent small spacing scale and modest corner radii. Product cards and tables may be dense; action targets remain at least the Feature's proposed 44px minimum and do not overlap.
+- Use a consistent small spacing scale and modest corner radii. Product cards and tables may be dense; primary, quantity and destructive hit targets remain at least the Feature's proposed 44px minimum and do not overlap. Secondary mobile actions can use smaller controls with clear labels and spacing.
 - One obvious primary action per focused step; secondary actions remain discoverable. Financial/state-changing actions state their effect. Contextual shortcuts must not conflict with browser, scanner or text-entry behavior.
 - Support search focus, product selection/configuration, cart editing and checkout by keyboard. Enter in a search/input must not accidentally settle a bill; Escape must not discard committed work or close an unresolved operation without recovery access.
 - shadcn/Radix dialogs keep focus, have readable labels/descriptions, return focus to the origin, and offer keyboard dismissal where safe. Validation focuses the first actionable issue.

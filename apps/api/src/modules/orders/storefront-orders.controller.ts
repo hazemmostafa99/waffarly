@@ -31,6 +31,7 @@ import {
   startOrderPreparationSchema,
 } from './order-lifecycle.schemas.js';
 import { StorefrontOrdersService } from './storefront-orders.service.js';
+import { PosOrdersService } from './pos-orders.service.js';
 
 const orderSelectionSchema = z
   .object({
@@ -182,7 +183,39 @@ export class PosStorefrontOrdersController {
   constructor(
     @Inject(StorefrontOrdersService) private readonly orders: StorefrontOrdersService,
     @Inject(OrderLifecycleService) private readonly lifecycle: OrderLifecycleService,
+    @Inject(PosOrdersService) private readonly posOrders: PosOrdersService,
   ) {}
+
+  @Post('quote')
+  @HttpCode(HttpStatus.OK)
+  quote(@CurrentPosEmployee() employee: PosEmployeeSession, @Body() body: unknown) {
+    return this.posOrders.quote(employee, body);
+  }
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  create(@CurrentPosEmployee() employee: PosEmployeeSession, @Body() body: unknown) {
+    return this.posOrders.create(employee, body);
+  }
+
+  @Get(':id/payment-state')
+  paymentState(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    return this.posOrders.paymentState(employee, id);
+  }
+
+  @Post(':id/checks/:checkId/payments')
+  @HttpCode(HttpStatus.CREATED)
+  recordCheckPayment(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('checkId', new ParseUUIDPipe()) checkId: string,
+    @Body() body: unknown,
+  ) {
+    return this.posOrders.recordCheckPayment(employee, id, checkId, body);
+  }
 
   @Get()
   list(@CurrentPosEmployee() employee: PosEmployeeSession, @Query() query: unknown) {

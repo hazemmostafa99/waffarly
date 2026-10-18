@@ -1,33 +1,42 @@
 import { useLocale, Input, Button, PasswordInput } from '@waffarly/ui';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiRequest } from './lib/api-client.js';
+import { ApiError, apiRequest } from './lib/api-client.js';
+import { getPosSession, posSessionKey } from './features/auth/pos-session.api.js';
 
 export function Login() {
   const { t, errorText } = useLocale();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [login, setLogin] = useState({ storefrontSlug: '', username: '', password: '' });
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  const sessionQuery = useQuery({
+    queryKey: posSessionKey,
+    queryFn: ({ signal }) => getPosSession(signal),
+    retry: false,
+    staleTime: 30_000,
+  });
+  const loginMutation = useMutation({
+    mutationFn: async (credentials: typeof login) => {
+      await apiRequest('/auth/pos/login', {
+        method: 'POST',
+        body: JSON.stringify(credentials),
+      });
+      return getPosSession();
+    },
+    onSuccess: (session) => {
+      queryClient.setQueryData(posSessionKey, session);
+      navigate('/', { replace: true });
+    },
+  });
 
   useEffect(() => {
-    void apiRequest('/auth/pos/me')
-      .then(() => navigate('/'))
-      .catch(() => {});
-  }, [navigate]);
+    if (sessionQuery.data) navigate('/', { replace: true });
+  }, [navigate, sessionQuery.data]);
 
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
-    setError('');
-    try {
-      await apiRequest('/auth/pos/login', { method: 'POST', body: JSON.stringify(login) });
-      navigate('/');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Sign in failed.');
-    } finally {
-      setBusy(false);
-    }
+    await loginMutation.mutateAsync(login).catch(() => {});
   }
 
   return (
@@ -64,13 +73,21 @@ export function Login() {
             required
           />
         </label>
-        <Button type="submit" disabled={busy}>
-          {busy ? t('Signing in…') : t('Sign in')}{' '}
+        <Button type="submit" disabled={loginMutation.isPending || sessionQuery.isLoading}>
+          {loginMutation.isPending ? t('Signing in…') : t('Sign in')}{' '}
         </Button>
       </form>
-      {error && (
+      {(loginMutation.error ||
+        (sessionQuery.error instanceof Error &&
+          !(sessionQuery.error instanceof ApiError && sessionQuery.error.statusCode === 401))) && (
         <p className="error" role="alert">
-          {errorText(error)}
+          {errorText(
+            loginMutation.error instanceof Error
+              ? loginMutation.error.message
+              : sessionQuery.error instanceof Error
+                ? sessionQuery.error.message
+                : t('Sign in failed.'),
+          )}
         </p>
       )}
     </main>

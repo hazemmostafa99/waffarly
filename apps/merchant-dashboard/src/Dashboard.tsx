@@ -173,7 +173,7 @@ export function Dashboard() {
             order.customerName,
             order.customerPhone,
             ...order.lines.map((line) => line.productName),
-          ].some((value) => value.toLocaleLowerCase().includes(term)),
+          ].some((value) => value?.toLocaleLowerCase().includes(term)),
         )
       : orders;
     return filtered.slice(0, 5);
@@ -199,7 +199,9 @@ export function Dashboard() {
     return {
       orderValue,
       orders: periodOrders.length,
-      customers: new Set(nonRejected.map((order) => order.customerPhone)).size,
+      customers: new Set(
+        nonRejected.map((order) => order.customerPhone).filter((phone): phone is string => Boolean(phone)),
+      ).size,
       average: nonRejected.length ? orderValue / nonRejected.length : 0,
     };
   }, [periodOrders]);

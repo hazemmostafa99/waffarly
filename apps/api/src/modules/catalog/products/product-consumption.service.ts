@@ -21,7 +21,12 @@ export interface RecipeOrderLine {
 @Injectable()
 export class ProductConsumptionService {
   /** Read frozen configuration on the caller's transaction; prices/visibility may change independently. */
-  async requirements(tx: Prisma.TransactionClient, merchantId: string, lines: RecipeOrderLine[]) {
+  async requirements(
+    tx: Prisma.TransactionClient,
+    merchantId: string,
+    lines: RecipeOrderLine[],
+    mode: 'RECIPE' | 'DIRECT' = 'RECIPE',
+  ) {
     const products = await tx.product.findMany({
       where: { merchantId, id: { in: [...new Set(lines.map((line) => line.productId))] } },
       include: {
@@ -36,8 +41,12 @@ export class ProductConsumptionService {
       const target = product?.inventoryConfiguration?.targets.find(
         (target) => target.variantId === line.variantId,
       );
-      if (product?.inventoryConfiguration?.mode !== 'RECIPE' || !target)
-        throw new ConflictException('The saved order recipe is no longer configured.');
+      if (product?.inventoryConfiguration?.mode !== mode || !target)
+        throw new ConflictException(
+          mode === 'RECIPE'
+            ? 'The saved order recipe is no longer configured.'
+            : 'The saved direct-stock mapping is no longer configured.',
+        );
       const effects: InventoryRequirementEffectInput[] = [];
       const seen = new Set<string>();
       for (const selection of line.selections) {

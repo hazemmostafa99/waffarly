@@ -1,5 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import type { CursorPage, InventoryBranch, PosEmployeeSummary } from '@waffarly/contracts';
+import type {
+  CursorPage,
+  InventoryBranch,
+  PosEmployeeRole,
+  PosEmployeeSummary,
+} from '@waffarly/contracts';
 import { DashboardCard, DataTable, Input, useLocale, type DataTableColumn } from '@waffarly/ui';
 import { Icon } from '../../Icons.js';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
@@ -12,11 +17,19 @@ type Draft = {
   displayName: string;
   password: string;
   active: boolean;
+  role: PosEmployeeRole | null;
   branches: BranchChoice[];
 };
 
 function emptyDraft(): Draft {
-  return { username: '', displayName: '', password: '', active: true, branches: [] };
+  return {
+    username: '',
+    displayName: '',
+    password: '',
+    active: true,
+    role: 'cashier',
+    branches: [],
+  };
 }
 
 export function EmployeesPage() {
@@ -81,6 +94,7 @@ export function EmployeesPage() {
       displayName: employee.displayName,
       password: '',
       active: employee.active,
+      role: employee.role,
       branches: employee.branches,
     });
     setBranchPicker('');
@@ -123,6 +137,7 @@ export function EmployeesPage() {
             revision: editing.revision,
             displayName: draft.displayName,
             active: draft.active,
+            role: draft.role,
             branchIds: draft.branches
               .filter((branch) => !branch.archivedAt)
               .map((branch) => branch.id),
@@ -132,6 +147,7 @@ export function EmployeesPage() {
             username: draft.username,
             displayName: draft.displayName,
             password: draft.password,
+            role: draft.role,
             branchIds: draft.branches
               .filter((branch) => !branch.archivedAt)
               .map((branch) => branch.id),
@@ -185,6 +201,19 @@ export function EmployeesPage() {
             <small dir="ltr">@{employee.username}</small>
           </div>
         </div>
+      ),
+    },
+    {
+      id: 'role',
+      header: text('POS role', 'دور POS'),
+      cell: (employee) => (
+        <span className={`products-pill ${employee.role ? 'blue' : 'cream'}`}>
+          {employee.role
+            ? employee.role === 'supervisor'
+              ? text('Supervisor', 'مشرف')
+              : text('Cashier', 'كاشير')
+            : text('Legacy access', 'الصلاحيات الحالية')}
+        </span>
       ),
     },
     {
@@ -424,6 +453,31 @@ export function EmployeesPage() {
                     onChange={(event) => setDraft({ ...draft, password: event.target.value })}
                   />
                 </label>
+                <label>
+                  {text('POS role', 'دور POS')}
+                  <select
+                    value={draft.role ?? ''}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        role: event.target.value ? (event.target.value as PosEmployeeRole) : null,
+                      })
+                    }
+                  >
+                    <option value="">
+                      {text('Existing permissions only', 'الصلاحيات الحالية فقط')}
+                    </option>
+                    <option value="cashier">
+                      {text('Cashier — sales and shift opening', 'كاشير — البيع وفتح الوردية')}
+                    </option>
+                    <option value="supervisor">
+                      {text(
+                        'Supervisor — cashier plus approvals',
+                        'مشرف — كاشير مع صلاحيات الموافقة',
+                      )}
+                    </option>
+                  </select>
+                </label>
                 {editing && (
                   <label className="employee-active-toggle">
                     <input
@@ -435,6 +489,12 @@ export function EmployeesPage() {
                   </label>
                 )}
               </div>
+              <p className="employee-role-help">
+                {text(
+                  'Existing permissions are preserved. Cashiers can sell and open register shifts. Supervisors also approve discounts, voids, and refunds; no numeric limits are configured yet.',
+                  'تظل الصلاحيات الحالية كما هي. يستطيع الكاشير البيع وفتح الوردية. ويستطيع المشرف اعتماد الخصومات والإلغاءات والاسترجاعات؛ لم تُحدد حدود رقمية بعد.',
+                )}
+              </p>
               <fieldset className="employee-branches">
                 <legend>{text('Assigned branches', 'الفروع المعيّنة')}</legend>
                 <div className="employee-branch-picker">
