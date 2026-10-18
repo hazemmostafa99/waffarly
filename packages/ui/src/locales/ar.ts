@@ -1217,6 +1217,8 @@ export const ar: Record<string, string> = {
   'Receipt details could not be loaded.': 'تعذر تحميل تفاصيل الإيصال.',
   'Back to checkout': 'الرجوع للتحصيل',
   'Print / Save PDF': 'طباعة / حفظ PDF',
+  'Could not open the print dialog. Your receipt is saved; try again or find it in receipt history.':
+    'تعذر فتح نافذة الطباعة. الإيصال محفوظ؛ حاول مرة أخرى أو افتحه من سجل الإيصالات.',
   'Choose a printer or Save as PDF in the print dialog.':
     'اختر الطابعة أو حفظ PDF من نافذة الطباعة.',
   'Thank you for your visit.': 'شكرًا لزيارتكم.',

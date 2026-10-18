@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import type { PosReceipt } from '@waffarly/contracts';
 import { Button, useLocale } from '@waffarly/ui';
 import { ArrowLeft, Printer } from 'lucide-react';
@@ -84,6 +85,7 @@ function ReceiptDocument({
   backLabel: string;
   onBack: () => void;
 }) {
+  const [printError, setPrintError] = useState(false);
   const dateLocale = document.documentElement.lang || undefined;
   const issuedAt = new Intl.DateTimeFormat(dateLocale, {
     dateStyle: 'medium',
@@ -95,6 +97,16 @@ function ReceiptDocument({
       : receipt.fulfillmentType === 'delivery'
         ? t('Delivery')
         : t('Takeaway');
+
+  function openPrintDialog() {
+    setPrintError(false);
+    try {
+      if (typeof window.print !== 'function') throw new Error('Print is unavailable.');
+      window.print();
+    } catch {
+      setPrintError(true);
+    }
+  }
 
   return (
     <div className="pos-receipt-screen">
@@ -220,11 +232,21 @@ function ReceiptDocument({
           <ArrowLeft size={16} aria-hidden="true" />
           {backLabel}
         </Button>
-        <Button type="button" onClick={() => window.print()}>
+        <Button type="button" onClick={openPrintDialog}>
           <Printer size={16} aria-hidden="true" />
           {t('Print / Save PDF')}
         </Button>
       </div>
+      {printError && (
+        <p
+          className="m-0 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm"
+          role="alert"
+        >
+          {t(
+            'Could not open the print dialog. Your receipt is saved; try again or find it in receipt history.',
+          )}
+        </p>
+      )}
       <p className="pos-receipt-pdf-hint">
         {t('Choose a printer or Save as PDF in the print dialog.')}
       </p>

@@ -376,6 +376,41 @@ test('cashier can open the saved receipt and print or save it as a PDF', async (
   await expect(page.getByText('Test coffee')).toBeVisible();
 });
 
+test('a failed print dialog keeps the saved receipt and does not collect payment again', async ({
+  page,
+}) => {
+  const { paymentRequests } = await openCheckout(page);
+  await page.evaluate(() => {
+    window.print = () => {
+      throw new Error('The print dialog is unavailable.');
+    };
+  });
+  await page
+    .getByRole('dialog', { name: 'Take payment' })
+    .getByRole('button', { name: 'Settle check' })
+    .click();
+
+  const receipt = page.getByRole('dialog', { name: 'POS receipt' });
+  await expect(receipt.getByText('POS-AB12CD34EF56AB78').first()).toBeVisible();
+  await receipt.getByRole('button', { name: 'Print / Save PDF' }).click();
+  await expect(receipt.getByRole('alert')).toContainText('Your receipt is saved');
+  await expect(receipt.getByText('Test coffee')).toBeVisible();
+  expect(paymentRequests).toHaveLength(1);
+
+  await receipt.getByRole('button', { name: 'Back to checkout' }).click();
+  await page
+    .getByRole('dialog', { name: 'Take payment' })
+    .getByRole('button', { name: 'Done' })
+    .click();
+  await page.getByRole('link', { name: 'Receipts' }).click();
+  await page.reload();
+  const savedReceipt = page.getByRole('article').filter({ hasText: 'POS-AB12CD34EF56AB78' });
+  await expect(savedReceipt).toBeVisible();
+  await savedReceipt.getByRole('button', { name: 'View / print receipt' }).click();
+  await expect(page.getByText('Test coffee')).toBeVisible();
+  expect(paymentRequests).toHaveLength(1);
+});
+
 test('cashier recovers a committed payment after navigating and reloading', async ({ page }) => {
   const { paymentRequests, processedPaymentCount } = await openCheckout(page, true);
   const dialog = page.getByRole('dialog', { name: 'Take payment' });

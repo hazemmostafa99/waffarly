@@ -17,6 +17,7 @@
     "test:inventory-db": "tsx --test test/database/inventory.database.test.ts test/database/inventory-ledger.database.test.ts",
     "test:purchasing-db": "tsx --test test/database/purchasing.database.test.ts",
     "test:storefront-orders-db": "tsx --test test/database/storefront-orders.database.test.ts test/database/recipe-order-lifecycle.database.test.ts",
+    "test:pos-db": "tsx --test --test-isolation=none test/database/pos-dining.database.test.ts",
     "test:activities-db": "tsx --test test/database/activities-modules.database.test.ts"
   },
   "dependencies": {

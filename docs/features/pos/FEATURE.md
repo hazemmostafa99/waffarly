@@ -24,6 +24,17 @@ Use these labels: **EXISTING** means observed in source; **CONFIRMED** records a
 - The Shifts module supports owner register setup and assigned cashier/supervisor shift opening with an exact opening float. A locked register row serializes openings; the database enforces one active shift per register. Shift close/reconciliation, cash movements and commercial supervisor approvals remain later work.
 - The development-only `/prototype` remains isolated from the production API; its sample checkout/receipt interactions do not stand in for live cashier, tender or receipt records. See [PROGRESS.md](PROGRESS.md) for exact verification and limitations.
 
+## Step-by-step implementation and test handoff
+
+Implement and review one bounded POS substep at a time. When a substep is complete, update this file and [PROGRESS.md](PROGRESS.md), then give the operator a handoff before starting dependent work. Each handoff must include:
+
+1. The changes made, in the order an operator will encounter them.
+2. Exact automated commands/results, test counts, and whether each check used unit fixtures, HTTP stubs, intercepted browser responses, or a real local database/browser.
+3. A numbered manual test with prerequisites, UI actions, and observable pass conditions; include the expected record/payment effect where applicable.
+4. Remaining limits and any hardware, live-integration, or operator checks that were not run.
+
+Stop after delivering that handoff. Wait for the operator’s test results and resolve any reported issue before beginning the next dependent substep. Never describe mocked or local-only evidence as live production acceptance.
+
 ## Confirmed launch decisions
 
 | ID      | Decision                                                                                                                                                                                                                                                         | Consequence                                                                                                                                                                   |
@@ -398,6 +409,21 @@ These do not block writing the plan or independent foundation work. Resolve each
 | POS-D12 | Deployment topology, register/device provisioning, business-day timezone, retention, expected load and performance budget | Keep POS as existing app; merchant/branch timezone and realistic peak-load fixtures must be explicit. Resolve before M9.                                                                                             |
 
 ## Verification and release gates
+
+### M5.5 cashier handoff — tender concurrency and print-failure isolation
+
+Run automated race/rollback checks only against the configured local test database, never production:
+
+1. From the repository root run `pnpm --filter @waffarly/api build`, then `pnpm --filter @waffarly/api test:pos-db`. The PostgreSQL test must prove that two simultaneous copies of one exact payment command return the same recorded result and create one payment/journal effect; two different commands competing to collect 0.75 EGP each against a 1.00 EGP balance produce one success, one conflict, and a remaining 0.25 EGP; and a simulated cash-journal failure rolls back payment, journal, order-revision and check-settlement writes together.
+2. Run `pnpm exec playwright test --config playwright.pos-dining.config.ts --reporter=list`. The receipt-output failure case must show an accessible error while keeping the settled receipt visible, reopening it from history after reload, and sending no second payment command. Record that this suite intercepts HTTP and is not a live browser-to-API/database test.
+
+Before the next dependent POS step, manually verify in a local development environment with a test cashier, test register/shift and migrated test database:
+
+1. Create a small EGP test order and settle it using cash plus a manually recorded terminal tender. Confirm that the receipt appears once, shows the item, total and both tender methods, and remains available in Receipts after leaving the checkout and reloading the page.
+2. On the saved receipt page, open browser developer tools and temporarily run `window.print = () => { throw new Error('blocked'); };`. Click **Print / Save PDF**. Confirm an inline error explains that the receipt is saved, the receipt contents remain visible, and the Network panel shows no new `POST .../payments` request.
+3. Return to Receipts, reload, reopen the same receipt, and confirm its receipt number and totals are unchanged. Reload the page to restore the browser’s normal print function, choose **Print / Save PDF**, select **Save as PDF**, and verify the output is 80mm wide with no on-screen action buttons.
+
+Pass means payment/journal state is unchanged by print failure, no racing tender exceeds the balance, and the same receipt can be reopened and printed without another collection. Do not use a production order or real customer payment for these checks. Physical-printer/driver acceptance is still a separate M9 task.
 
 Required scenarios (track individually in Progress):
 

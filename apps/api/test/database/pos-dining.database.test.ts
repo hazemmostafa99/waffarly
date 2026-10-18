@@ -322,12 +322,12 @@ it(
         revision: itemSplit.revision,
         tenders: [{ method: 'cash' as const, amount: '0.50', receivedAmount: '1.00' }],
       };
-      const cashPayment = await posOrders.recordCheckPayment(
-        employee,
-        roundOrderId,
-        payableCheck.id,
-        cashPaymentRequest,
-      );
+      const duplicateCashPayments = await Promise.all([
+        posOrders.recordCheckPayment(employee, roundOrderId, payableCheck.id, cashPaymentRequest),
+        posOrders.recordCheckPayment(employee, roundOrderId, payableCheck.id, cashPaymentRequest),
+      ]);
+      const cashPayment = duplicateCashPayments[0];
+      assert.deepEqual(duplicateCashPayments[1], cashPayment);
       assert.equal(cashPayment.check.paidAmount, '0.50');
       assert.equal(cashPayment.check.balanceDue, '0.50');
       assert.equal(cashPayment.check.status, 'open');
@@ -448,6 +448,98 @@ it(
           checkCount: 2,
         }),
         (error: unknown) => error instanceof ConflictException,
+      );
+
+      const competingCheck = await prisma.posOrderCheck.findFirstOrThrow({
+        where: { orderId: roundOrderId, position: 1 },
+      });
+      const competingRequests = [
+        {
+          requestId: randomUUID(),
+          revision: terminalPayment.orderRevision,
+          tenders: [{ method: 'cash' as const, amount: '0.75', receivedAmount: '0.75' }],
+        },
+        {
+          requestId: randomUUID(),
+          revision: terminalPayment.orderRevision,
+          tenders: [{ method: 'cash' as const, amount: '0.75', receivedAmount: '0.75' }],
+        },
+      ];
+      const competingPayments = await Promise.allSettled(
+        competingRequests.map((request) =>
+          posOrders.recordCheckPayment(employee, roundOrderId, competingCheck.id, request),
+        ),
+      );
+      assert.equal(competingPayments.filter((result) => result.status === 'fulfilled').length, 1);
+      const losingPayment = competingPayments.find((result) => result.status === 'rejected');
+      assert.ok(
+        losingPayment?.status === 'rejected' && losingPayment.reason instanceof ConflictException,
+      );
+      const winningPaymentIndex = competingPayments.findIndex(
+        (result) => result.status === 'fulfilled',
+      );
+      const winningPayment = competingPayments[winningPaymentIndex];
+      assert.ok(winningPayment?.status === 'fulfilled');
+      assert.deepEqual(
+        await posOrders.recordCheckPayment(
+          employee,
+          roundOrderId,
+          competingCheck.id,
+          competingRequests[winningPaymentIndex]!,
+        ),
+        winningPayment.value,
+      );
+      const competingCheckState = (
+        await posOrders.paymentState(employee, roundOrderId)
+      ).checks.find((check) => check.id === competingCheck.id);
+      assert.equal(competingCheckState?.paidAmount, '0.75');
+      assert.equal(competingCheckState?.balanceDue, '0.25');
+      const competingPaymentTotal = await prisma.posOrderPayment.aggregate({
+        where: { orderId: roundOrderId, checkId: competingCheck.id },
+        _sum: { amount: true },
+      });
+      assert.equal(competingPaymentTotal._sum.amount?.toFixed(2), '0.75');
+      assert.equal(await prisma.posShiftCashMovement.count({ where: { shiftId: shift.id } }), 2);
+
+      const failingShifts = Object.create(shifts) as ShiftsService;
+      failingShifts.recordCashSale = async (tx, input) => {
+        await shifts.recordCashSale(tx, input);
+        throw new Error('Injected cash journal failure for rollback verification.');
+      };
+      const rollbackPayments = new PaymentsService(failingShifts);
+      const rollbackOrders = new PosOrdersService(
+        prisma as unknown as PrismaService,
+        {} as never,
+        {} as never,
+        {} as never,
+        failingShifts,
+        dining,
+        rollbackPayments,
+      );
+      const takeawayCheck = await prisma.posOrderCheck.findFirstOrThrow({
+        where: { orderId: takeawayOrder.id, position: 0 },
+      });
+      await assert.rejects(
+        rollbackOrders.recordCheckPayment(employee, takeawayOrder.id, takeawayCheck.id, {
+          requestId: randomUUID(),
+          revision: 1,
+          tenders: [{ method: 'cash', amount: '1.00', receivedAmount: '1.00' }],
+        }),
+        (error: unknown) =>
+          error instanceof Error &&
+          error.message === 'Injected cash journal failure for rollback verification.',
+      );
+      assert.equal(await prisma.posOrderPayment.count({ where: { orderId: takeawayOrder.id } }), 0);
+      assert.equal(await prisma.posShiftCashMovement.count({ where: { shiftId: shift.id } }), 2);
+      const rolledBackCheck = await prisma.posOrderCheck.findUniqueOrThrow({
+        where: { id: takeawayCheck.id },
+      });
+      assert.equal(rolledBackCheck.revision, 1);
+      assert.equal(rolledBackCheck.settledAt, null);
+      assert.equal(
+        (await prisma.storefrontOrder.findUniqueOrThrow({ where: { id: takeawayOrder.id } }))
+          .revision,
+        1,
       );
 
       await assert.rejects(
