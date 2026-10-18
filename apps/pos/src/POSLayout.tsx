@@ -100,6 +100,7 @@ export function POSLayout() {
         </NavLink>
         <NavLink to="/catalog">{t('New sale')}</NavLink>
         {employee.permissions.includes('sell') && <NavLink to="/dining">{t('Tables')}</NavLink>}
+        {employee.permissions.includes('sell') && <NavLink to="/receipts">{t('Receipts')}</NavLink>}
         {employee.permissions.includes('open_register_shift') && (
           <NavLink to="/shift">{t('Register shift')}</NavLink>
         )}

@@ -206,6 +206,15 @@ export class PosStorefrontOrdersController {
     return this.posOrders.paymentState(employee, id);
   }
 
+  @Get(':id/checks/:checkId/receipt')
+  checkReceipt(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('checkId', new ParseUUIDPipe()) checkId: string,
+  ) {
+    return this.posOrders.getCheckReceipt(employee, id, checkId);
+  }
+
   @Post(':id/checks/:checkId/payments')
   @HttpCode(HttpStatus.CREATED)
   recordCheckPayment(

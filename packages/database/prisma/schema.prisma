@@ -48,6 +48,7 @@ model Merchant {
   posDiningTables          PosDiningTable[]
   posDiningSessions        PosDiningSession[]
   posOrderChecks           PosOrderCheck[]
+  posCheckReceipts         PosCheckReceipt[]
   posOrderPayments         PosOrderPayment[]
   posShiftCashMovements    PosShiftCashMovement[]
   negativeStockPolicy      String                 @default("allow") @db.VarChar(16)
@@ -366,6 +367,7 @@ model PosEmployee {
   posOrders            StorefrontOrder[]
   posPayments          PosOrderPayment[]
   cashMovements        PosShiftCashMovement[]
+  issuedReceipts       PosCheckReceipt[]
 
   @@unique([id, merchantId])
   @@unique([merchantId, username])
@@ -917,6 +919,7 @@ model StorefrontOrder {
   stockBatches           StorefrontOrderStockBatch[]
   checks                 PosOrderCheck[]
   payments               PosOrderPayment[]
+  receipts               PosCheckReceipt[]
 
   @@unique([id, merchantId])
   @@unique([id, posShiftId, merchantId])
@@ -975,11 +978,35 @@ model PosOrderCheck {
   merchant    Merchant            @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   allocations PosOrderCheckLine[]
   payments    PosOrderPayment[]
+  receipt     PosCheckReceipt?
 
   @@unique([id, orderId, merchantId])
   @@unique([orderId, position])
   @@index([merchantId, orderId, position])
   @@map("pos_order_checks")
+}
+
+// One immutable customer receipt is issued when a POS check is fully settled.
+model PosCheckReceipt {
+  id                  String          @id @db.Uuid
+  merchantId          String          @db.Uuid
+  orderId             String          @db.Uuid
+  checkId             String          @db.Uuid
+  createdByEmployeeId String          @db.Uuid
+  receiptNumber       String          @db.VarChar(32)
+  issuedAt            DateTime        @db.Timestamptz(6)
+  snapshot            Json
+  merchant            Merchant        @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  order               StorefrontOrder @relation(fields: [orderId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  check               PosOrderCheck   @relation(fields: [checkId, orderId, merchantId], references: [id, orderId, merchantId], onDelete: Restrict)
+  createdBy           PosEmployee     @relation(fields: [createdByEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([merchantId, receiptNumber])
+  @@unique([checkId])
+  @@unique([checkId, orderId, merchantId])
+  @@index([merchantId, orderId, issuedAt])
+  @@index([merchantId, issuedAt, id])
+  @@map("pos_check_receipts")
 }
 
 // Immutable cashier tenders; change is recorded separately from the amount applied to the check.

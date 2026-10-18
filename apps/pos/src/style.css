@@ -259,6 +259,7 @@
 
 .pos-primary-nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin: 16px 0 20px;
   border-bottom: 1px solid var(--border);

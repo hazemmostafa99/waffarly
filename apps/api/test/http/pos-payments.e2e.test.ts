@@ -8,6 +8,7 @@ import { AuthService } from '../../src/modules/auth/auth.service.js';
 import { PosEmployeeGuard } from '../../src/modules/auth/pos-employee.guard.js';
 import { PosOrdersService } from '../../src/modules/orders/pos-orders.service.js';
 import { PosStorefrontOrdersController } from '../../src/modules/orders/storefront-orders.controller.js';
+import { PosReceiptsController } from '../../src/modules/orders/pos-receipts.controller.js';
 import { OrderLifecycleService } from '../../src/modules/orders/order-lifecycle.service.js';
 import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
 
@@ -33,13 +34,17 @@ describe('POS payment endpoint', () => {
   let authorized: boolean;
   const calls: unknown[][] = [];
   const stateCalls: unknown[][] = [];
+  const receiptCalls: unknown[][] = [];
+  const receiptListCalls: unknown[][] = [];
 
   beforeEach(async () => {
     authorized = true;
     calls.length = 0;
     stateCalls.length = 0;
+    receiptCalls.length = 0;
+    receiptListCalls.length = 0;
     const module = await Test.createTestingModule({
-      controllers: [PosStorefrontOrdersController],
+      controllers: [PosStorefrontOrdersController, PosReceiptsController],
       providers: [
         PosEmployeeGuard,
         {
@@ -81,6 +86,52 @@ describe('POS payment endpoint', () => {
                     payments: [],
                   },
                 ],
+              };
+            },
+            getCheckReceipt: async (...args: unknown[]) => {
+              receiptCalls.push(args);
+              return {
+                version: 1,
+                id: 'receipt-id',
+                receiptNumber: 'POS-AB12CD34EF56AB78',
+                issuedAt: '2026-10-18T10:00:00.000Z',
+                merchantName: 'Test Merchant',
+                branchName: 'Main',
+                orderId,
+                orderReference: 'ORD-44444444',
+                orderCreatedAt: '2026-10-18T09:50:00.000Z',
+                fulfillmentType: 'takeaway',
+                tableCode: null,
+                cashierName: 'Cashier',
+                registerName: 'Front counter',
+                currency: 'EGP',
+                checkNumber: 1,
+                splitMethod: 'whole',
+                amount: '8.50',
+                items: [],
+                payments: [],
+                paidAmount: '8.50',
+                cashReceivedAmount: '8.50',
+                changeAmount: '0.00',
+              };
+            },
+            listReceipts: async (...args: unknown[]) => {
+              receiptListCalls.push(args);
+              return {
+                items: [
+                  {
+                    id: 'receipt-id',
+                    receiptNumber: 'POS-AB12CD34EF56AB78',
+                    issuedAt: '2026-10-18T10:00:00.000Z',
+                    orderId,
+                    checkId,
+                    orderReference: 'ORD-44444444',
+                    checkNumber: 1,
+                    amount: '8.50',
+                    currency: 'EGP',
+                  },
+                ],
+                nextCursor: null,
               };
             },
           },
@@ -125,5 +176,37 @@ describe('POS payment endpoint', () => {
         assert.equal(body.checks[0].balanceDue, '8.50');
       });
     assert.deepEqual(stateCalls, [[employee, orderId]]);
+  });
+
+  it('requires an employee and loads the immutable receipt for a settled check', async () => {
+    authorized = false;
+    await request(app.getHttpServer())
+      .get(`/pos/orders/${orderId}/checks/${checkId}/receipt`)
+      .expect(401);
+
+    authorized = true;
+    await request(app.getHttpServer())
+      .get(`/pos/orders/${orderId}/checks/${checkId}/receipt`)
+      .expect(200)
+      .expect(({ body }) => {
+        assert.equal(body.receiptNumber, 'POS-AB12CD34EF56AB78');
+        assert.equal(body.amount, '8.50');
+      });
+    assert.deepEqual(receiptCalls, [[employee, orderId, checkId]]);
+  });
+
+  it('requires an employee and lists recent receipts for the selected branch', async () => {
+    authorized = false;
+    await request(app.getHttpServer()).get(`/pos/receipts?branchId=${branchId}`).expect(401);
+
+    authorized = true;
+    await request(app.getHttpServer())
+      .get(`/pos/receipts?branchId=${branchId}&limit=10`)
+      .expect(200)
+      .expect(({ body }) => {
+        assert.equal(body.items[0].receiptNumber, 'POS-AB12CD34EF56AB78');
+        assert.equal(body.nextCursor, null);
+      });
+    assert.deepEqual(receiptListCalls, [[employee, { branchId, limit: 10 }]]);
   });
 });

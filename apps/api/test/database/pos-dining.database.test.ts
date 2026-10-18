@@ -1,4 +1,4 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
 import type { PosEmployeeSession } from '@waffarly/contracts';
 import { config } from 'dotenv';
@@ -332,6 +332,7 @@ it(
       assert.equal(cashPayment.check.balanceDue, '0.50');
       assert.equal(cashPayment.check.status, 'open');
       assert.equal(cashPayment.payments[0]?.changeAmount, '0.50');
+      assert.equal(cashPayment.receipt, null);
       const partialPaymentState = await posOrders.paymentState(employee, roundOrderId);
       assert.equal(partialPaymentState.checks[0]?.paidAmount, '0.50');
       assert.equal(partialPaymentState.checks[0]?.balanceDue, '0.50');
@@ -355,23 +356,82 @@ it(
         ),
         cashPayment,
       );
+      const terminalPaymentRequest = {
+        requestId: randomUUID(),
+        revision: cashPayment.orderRevision,
+        tenders: [{ method: 'terminal' as const, amount: '0.50', terminalReference: 'AUTH-1942' }],
+      };
       const terminalPayment = await posOrders.recordCheckPayment(
         employee,
         roundOrderId,
         payableCheck.id,
-        {
-          requestId: randomUUID(),
-          revision: cashPayment.orderRevision,
-          tenders: [{ method: 'terminal', amount: '0.50', terminalReference: 'AUTH-1942' }],
-        },
+        terminalPaymentRequest,
       );
       assert.equal(terminalPayment.check.status, 'settled');
       assert.equal(terminalPayment.check.balanceDue, '0.00');
       assert.ok(terminalPayment.check.settledAt);
+      assert.equal(terminalPayment.receipt?.amount, '1.00');
+      assert.equal(terminalPayment.receipt?.items[0]?.name, 'Two shareable items');
+      assert.equal(terminalPayment.receipt?.items[0]?.quantity, 1);
+      assert.equal(terminalPayment.receipt?.paidAmount, '1.00');
       const settledPaymentState = await posOrders.paymentState(employee, roundOrderId);
       assert.equal(settledPaymentState.checks[0]?.status, 'settled');
       assert.equal(settledPaymentState.checks[0]?.balanceDue, '0.00');
       assert.equal(settledPaymentState.checks[0]?.payments.length, 2);
+      assert.equal(
+        settledPaymentState.checks[0]?.receipt?.receiptNumber,
+        terminalPayment.receipt?.receiptNumber,
+      );
+      assert.deepEqual(
+        await posOrders.getCheckReceipt(employee, roundOrderId, payableCheck.id),
+        terminalPayment.receipt,
+      );
+      assert.deepEqual(
+        await posOrders.recordCheckPayment(
+          employee,
+          roundOrderId,
+          payableCheck.id,
+          terminalPaymentRequest,
+        ),
+        terminalPayment,
+      );
+      assert.equal(await prisma.posCheckReceipt.count({ where: { orderId: roundOrderId } }), 1);
+      await assert.rejects(
+        posOrders.getCheckReceipt(otherBranchSession, roundOrderId, payableCheck.id),
+        (error: unknown) => error instanceof NotFoundException,
+      );
+      await prisma.storefrontOrderLine.updateMany({
+        where: { orderId: roundOrderId },
+        data: { productName: 'Updated catalog name' },
+      });
+      await prisma.merchant.update({
+        where: { id: merchant.id },
+        data: { name: 'Updated merchant name' },
+      });
+      const reprintedReceipt = await posOrders.getCheckReceipt(
+        employee,
+        roundOrderId,
+        payableCheck.id,
+      );
+      assert.equal(reprintedReceipt.merchantName, merchant.name);
+      assert.equal(reprintedReceipt.items[0]?.name, 'Two shareable items');
+      const receiptHistory = await posOrders.listReceipts(employee, {
+        branchId: branch.id,
+        limit: 1,
+      });
+      assert.equal(receiptHistory.items[0]?.id, terminalPayment.receipt?.id);
+      assert.equal(receiptHistory.items[0]?.checkId, payableCheck.id);
+      assert.deepEqual(
+        await posOrders.listReceipts(otherBranchSession, {
+          branchId: otherBranch.id,
+          limit: 25,
+        }),
+        { items: [], nextCursor: null },
+      );
+      await assert.rejects(
+        posOrders.listReceipts(otherBranchSession, { branchId: branch.id, limit: 25 }),
+        (error: unknown) => error instanceof ForbiddenException,
+      );
       assert.equal(await prisma.posOrderPayment.count({ where: { orderId: roundOrderId } }), 2);
       assert.equal(await prisma.posShiftCashMovement.count({ where: { shiftId: shift.id } }), 1);
       assert.equal(
@@ -455,6 +515,7 @@ it(
       try {
         for (const merchantId of merchantIds) {
           await prisma.$transaction(async (tx) => {
+            await tx.posCheckReceipt.deleteMany({ where: { merchantId } });
             await tx.posShiftCashMovement.deleteMany({ where: { merchantId } });
             await tx.posOrderPayment.deleteMany({ where: { merchantId } });
             await tx.storefrontOrderAction.deleteMany({ where: { merchantId } });

@@ -25,6 +25,7 @@ function paymentState() {
         revision: 1,
         status: 'open',
         settledAt: null,
+        receipt: null,
         payments: [],
       },
     ],
@@ -148,6 +149,29 @@ async function openCheckout(page: Page, interruptFirstPayment = false, mobile = 
   await page.route(`**/pos/orders/${orderId}/payment-state`, (route) =>
     route.fulfill({ json: orderState }),
   );
+  await page.route(`**/pos/orders/${orderId}/checks/${checkId}/receipt`, (route) =>
+    route.fulfill({ json: receiptDocument() }),
+  );
+  await page.route('**/pos/receipts?**', (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          {
+            id: receiptDocument().id,
+            receiptNumber: receiptDocument().receiptNumber,
+            issuedAt: receiptDocument().issuedAt,
+            orderId,
+            checkId,
+            orderReference: receiptDocument().orderReference,
+            checkNumber: 1,
+            amount: '34.86',
+            currency: 'EGP',
+          },
+        ],
+        nextCursor: null,
+      },
+    }),
+  );
   await page.route(`**/pos/orders/${orderId}/checks/${checkId}/payments`, async (route) => {
     postCount += 1;
     const request = route.request().postDataJSON() as Record<string, unknown>;
@@ -177,6 +201,10 @@ async function openCheckout(page: Page, interruptFirstPayment = false, mobile = 
     orderState.checks[0]!.balanceDue = due;
     orderState.checks[0]!.status = due === '0.00' ? 'settled' : 'open';
     orderState.checks[0]!.settledAt = due === '0.00' ? '2026-10-17T08:01:00.000Z' : null;
+    const receipt = due === '0.00' ? receiptDocument() : null;
+    orderState.checks[0]!.receipt = receipt
+      ? { id: receipt.id, receiptNumber: receipt.receiptNumber, issuedAt: receipt.issuedAt }
+      : null;
     orderState.checks[0]!.revision += 1;
     orderState.checks[0]!.payments.push(...payments);
     const response = {
@@ -190,8 +218,10 @@ async function openCheckout(page: Page, interruptFirstPayment = false, mobile = 
         revision: orderState.checks[0]!.revision,
         status: due === '0.00' ? 'settled' : 'open',
         settledAt: due === '0.00' ? '2026-10-17T08:01:00.000Z' : null,
+        receipt: orderState.checks[0]!.receipt,
       },
       payments,
+      receipt,
     };
     processedPayments.set(body.requestId, response);
     if (interruptFirstPayment && postCount === 1) {
@@ -210,6 +240,42 @@ async function openCheckout(page: Page, interruptFirstPayment = false, mobile = 
   return {
     paymentRequests,
     processedPaymentCount: () => orderState.checks[0]!.payments.length,
+  };
+}
+
+function receiptDocument() {
+  return {
+    version: 1,
+    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    receiptNumber: 'POS-AB12CD34EF56AB78',
+    issuedAt: '2026-10-17T08:01:00.000Z',
+    merchantName: 'Waffarly Cafe',
+    branchName: 'Main branch',
+    orderId,
+    orderReference: 'ORD-55555555',
+    orderCreatedAt: '2026-10-17T08:00:00.000Z',
+    fulfillmentType: 'takeaway',
+    tableCode: null,
+    cashierName: 'Cashier',
+    registerName: 'Front register',
+    currency: 'EGP',
+    checkNumber: 1,
+    splitMethod: 'whole',
+    amount: '34.86',
+    items: [
+      {
+        name: 'Test coffee',
+        variantName: null,
+        selections: [],
+        quantity: 1,
+        unitPrice: '34.86',
+        total: '34.86',
+      },
+    ],
+    payments: [{ method: 'cash', amount: '34.86', receivedAmount: '35.00', changeAmount: '0.14' }],
+    paidAmount: '34.86',
+    cashReceivedAmount: '35.00',
+    changeAmount: '0.14',
   };
 }
 
@@ -247,11 +313,67 @@ test('cashier retries an uncertain payment with the exact same command ID', asyn
   await dialog.getByRole('button', { name: 'Settle check' }).click();
   await expect(dialog.getByRole('alert')).toContainText('Retry this exact payment');
   await dialog.getByRole('button', { name: 'Retry the same payment' }).click();
-  await expect(dialog.getByRole('status').filter({ hasText: 'Payment recorded' })).toBeVisible();
+  const receipt = page.getByRole('dialog', { name: 'POS receipt' });
+  await expect(receipt.getByText('Waffarly Cafe')).toBeVisible();
+  await expect(receipt.getByText('POS-AB12CD34EF56AB78').first()).toBeVisible();
   expect(paymentRequests).toHaveLength(2);
   expect(paymentRequests[1]!.requestId).toBe(paymentRequests[0]!.requestId);
   expect(paymentRequests[1]!.tenders).toEqual(paymentRequests[0]!.tenders);
   expect(processedPaymentCount()).toBe(1);
+});
+
+test('cashier can open the saved receipt and print or save it as a PDF', async ({ page }) => {
+  const { paymentRequests } = await openCheckout(page);
+  await page.evaluate(() => {
+    window.print = () => {
+      document.body.dataset.printRequested = 'true';
+    };
+  });
+  await page
+    .getByRole('dialog', { name: 'Take payment' })
+    .getByRole('button', { name: 'Settle check' })
+    .click();
+
+  const receipt = page.getByRole('dialog', { name: 'POS receipt' });
+  await expect(receipt.getByText('Waffarly Cafe')).toBeVisible();
+  await expect(receipt.getByText('POS-AB12CD34EF56AB78').first()).toBeVisible();
+  await expect(receipt.getByText('Test coffee')).toBeVisible();
+  await expect(receipt.getByText('EGP 0.14')).toBeVisible();
+  await receipt.getByRole('button', { name: 'Print / Save PDF' }).click();
+  await expect.poll(() => page.locator('body').getAttribute('data-print-requested')).toBe('true');
+  await page.emulateMedia({ media: 'print' });
+  const printLayout = await page.locator('.pos-receipt-document').evaluate((document) => ({
+    styles: Array.from(document.ownerDocument.styleSheets)
+      .flatMap((sheet) => {
+        try {
+          return Array.from(sheet.cssRules).map((rule) => rule.cssText);
+        } catch {
+          return [];
+        }
+      })
+      .join('\n'),
+    actionsDisplay: getComputedStyle(
+      document.parentElement!.querySelector('.pos-receipt-screen-actions')!,
+    ).display,
+  }));
+  expect(printLayout.styles).toContain('80mm');
+  expect(printLayout.styles).toContain('76mm');
+  expect(printLayout.actionsDisplay).toBe('none');
+  await page.emulateMedia({ media: 'screen' });
+  expect(paymentRequests).toHaveLength(1);
+
+  await receipt.getByRole('button', { name: 'Back to checkout' }).click();
+  await page
+    .getByRole('dialog', { name: 'Take payment' })
+    .getByRole('button', { name: 'Done' })
+    .click();
+  await page.getByRole('link', { name: 'Receipts' }).click();
+  await expect(page.getByRole('heading', { name: 'Receipts' })).toBeVisible();
+  await page.reload();
+  const savedReceipt = page.getByRole('article').filter({ hasText: 'POS-AB12CD34EF56AB78' });
+  await expect(savedReceipt).toBeVisible();
+  await savedReceipt.getByRole('button', { name: 'View / print receipt' }).click();
+  await expect(page.getByText('Test coffee')).toBeVisible();
 });
 
 test('cashier recovers a committed payment after navigating and reloading', async ({ page }) => {
@@ -288,9 +410,9 @@ test('cashier recovers a committed payment after navigating and reloading', asyn
   );
   await page.screenshot({ path: 'test-results/pos-payment-recovery-mobile.png' });
   await recoveredDialog.getByRole('button', { name: 'التحقق من النتيجة المحفوظة' }).click();
-  await expect(
-    recoveredDialog.getByRole('status').filter({ hasText: 'تم تسجيل الدفع' }),
-  ).toBeVisible();
+  const recoveredReceipt = page.getByRole('dialog', { name: 'إيصال نقاط البيع' });
+  await expect(recoveredReceipt.getByText('Waffarly Cafe')).toBeVisible();
+  await expect(recoveredReceipt.getByText('Test coffee')).toBeVisible();
   await expect(arabicRecoveryNotice).toHaveCount(0);
   expect(paymentRequests).toHaveLength(2);
   expect(paymentRequests[1]!.requestId).toBe(paymentRequests[0]!.requestId);

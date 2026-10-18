@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Inject,
+  InternalServerErrorException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -11,13 +12,16 @@ import type {
   PosEmployeeSession,
   PosOrderPaymentStateResponse,
   PosPaymentSummary,
+  PosReceipt,
+  PosReceiptHistoryPage,
   RecordPosCheckPaymentResponse,
   PosOrderQuoteRequest,
   PosOrderQuoteResponse,
 } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { formatCents, toCents } from '../../common/money/money.js';
+import { assertScopedCursor, type CursorPageQuery } from '../../common/http/pagination.js';
 import {
   isSerializationConflict,
   isUniqueConstraintError,
@@ -32,6 +36,7 @@ import { InventoryLedgerService } from '../inventory/index.js';
 import { ShiftsService } from '../shifts/index.js';
 import { parseRecordPosCheckPaymentRequest, PaymentsService } from '../payments/index.js';
 import { PosDiningService } from './pos-dining.service.js';
+import { buildPosReceiptSnapshot } from './pos-receipt.mapper.js';
 import { toSummary } from './order.mapper.js';
 import {
   consumeDirectOrderRequirements,
@@ -44,6 +49,22 @@ const MAX_ORDER_TOTAL_CENTS = 999_999_999_999n;
 const orderSummaryInclude = {
   lines: {
     orderBy: { position: 'asc' as const },
+    include: {
+      selections: {
+        orderBy: [{ groupPosition: 'asc' as const }, { optionPosition: 'asc' as const }],
+      },
+      variantAttributes: { orderBy: { position: 'asc' as const } },
+    },
+  },
+} satisfies Prisma.StorefrontOrderInclude;
+
+const posReceiptOrderInclude = {
+  merchant: { select: { name: true } },
+  branch: { select: { name: true } },
+  posShift: { include: { register: { select: { name: true } } } },
+  diningSession: { include: { table: { select: { code: true } } } },
+  lines: {
+    orderBy: [{ position: 'asc' as const }, { id: 'asc' as const }],
     include: {
       selections: {
         orderBy: [{ groupPosition: 'asc' as const }, { optionPosition: 'asc' as const }],
@@ -454,6 +475,9 @@ export class PosOrdersService {
             data: { revision: { increment: 1 }, settledAt },
             select: { id: true, amount: true, revision: true, settledAt: true },
           });
+          const receipt = settledAt
+            ? await this.issueSettledCheckReceipt(tx, employee, orderId, checkId, settledAt)
+            : null;
           const response: RecordPosCheckPaymentResponse = {
             orderId,
             orderRevision: request.revision + 1,
@@ -465,8 +489,16 @@ export class PosOrdersService {
               revision: updatedCheck.revision,
               status: settledAt ? 'settled' : 'open',
               settledAt: updatedCheck.settledAt?.toISOString() ?? null,
+              receipt: receipt
+                ? {
+                    id: receipt.id,
+                    receiptNumber: receipt.receiptNumber,
+                    issuedAt: receipt.issuedAt,
+                  }
+                : null,
             },
             payments: tenderResult.payments,
+            receipt,
           };
           await tx.storefrontOrderAction.create({
             data: {
@@ -521,7 +553,10 @@ export class PosOrdersService {
         status: true,
         checks: {
           orderBy: { position: 'asc' },
-          include: { payments: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] } },
+          include: {
+            payments: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] },
+            receipt: { select: { id: true, receiptNumber: true, issuedAt: true } },
+          },
         },
       },
     });
@@ -547,6 +582,13 @@ export class PosOrdersService {
           revision: check.revision,
           status: check.settledAt ? ('settled' as const) : ('open' as const),
           settledAt: check.settledAt?.toISOString() ?? null,
+          receipt: check.receipt
+            ? {
+                id: check.receipt.id,
+                receiptNumber: check.receipt.receiptNumber,
+                issuedAt: check.receipt.issuedAt.toISOString(),
+              }
+            : null,
           payments: check.payments.map((payment) => ({
             id: payment.id,
             position: payment.position,
@@ -561,6 +603,187 @@ export class PosOrdersService {
         };
       }),
     };
+  }
+
+  async getCheckReceipt(
+    employee: PosEmployeeSession,
+    orderId: string,
+    checkId: string,
+  ): Promise<PosReceipt> {
+    this.requireSellPermission(employee);
+    const order = await this.prisma.storefrontOrder.findFirst({
+      where: {
+        id: orderId,
+        merchantId: employee.merchantId,
+        source: 'pos',
+        branchId: { in: employee.branches.map((branch) => branch.id) },
+      },
+      select: {
+        checks: {
+          where: { id: checkId, merchantId: employee.merchantId },
+          select: { receipt: { select: { snapshot: true } } },
+        },
+      },
+    });
+    const snapshot = order?.checks[0]?.receipt?.snapshot;
+    if (!snapshot) throw new NotFoundException('The POS receipt was not found.');
+    return parseStoredPosReceipt(snapshot);
+  }
+
+  async listReceipts(
+    employee: PosEmployeeSession,
+    input: CursorPageQuery & { branchId: string },
+  ): Promise<PosReceiptHistoryPage> {
+    this.requireSellPermission(employee);
+    if (!employee.branches.some((branch) => branch.id === input.branchId)) {
+      throw new ForbiddenException('This employee is not assigned to the selected branch.');
+    }
+    const scopedReceiptWhere: Prisma.PosCheckReceiptWhereInput = {
+      merchantId: employee.merchantId,
+      order: { is: { source: 'pos', branchId: input.branchId } },
+    };
+    const anchor = input.cursor
+      ? await this.prisma.posCheckReceipt.findFirst({
+          where: { ...scopedReceiptWhere, id: input.cursor },
+          select: { id: true },
+        })
+      : null;
+    if (input.cursor) assertScopedCursor(input.cursor, anchor !== null);
+    const receipts = await this.prisma.posCheckReceipt.findMany({
+      where: scopedReceiptWhere,
+      select: {
+        id: true,
+        receiptNumber: true,
+        issuedAt: true,
+        orderId: true,
+        checkId: true,
+        snapshot: true,
+      },
+      orderBy: [{ issuedAt: 'desc' }, { id: 'desc' }],
+      take: input.limit + 1,
+      ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+    });
+    const hasMore = receipts.length > input.limit;
+    const items = receipts.slice(0, input.limit).map((row) => {
+      const snapshot = parseStoredPosReceipt(row.snapshot);
+      return {
+        id: row.id,
+        receiptNumber: row.receiptNumber,
+        issuedAt: row.issuedAt.toISOString(),
+        orderId: row.orderId,
+        checkId: row.checkId,
+        orderReference: snapshot.orderReference,
+        checkNumber: snapshot.checkNumber,
+        amount: snapshot.amount,
+        currency: snapshot.currency,
+      };
+    });
+    return {
+      items,
+      nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null,
+    };
+  }
+
+  private async issueSettledCheckReceipt(
+    tx: Prisma.TransactionClient,
+    employee: PosEmployeeSession,
+    orderId: string,
+    checkId: string,
+    issuedAt: Date,
+  ): Promise<PosReceipt> {
+    const check = await tx.posOrderCheck.findFirst({
+      where: { id: checkId, orderId, merchantId: employee.merchantId },
+      include: {
+        order: { include: posReceiptOrderInclude },
+        allocations: {
+          include: {
+            orderLine: {
+              include: {
+                selections: {
+                  orderBy: [{ groupPosition: 'asc' }, { optionPosition: 'asc' }],
+                },
+                variantAttributes: { orderBy: { position: 'asc' } },
+              },
+            },
+          },
+        },
+        payments: { orderBy: [{ createdAt: 'asc' }, { position: 'asc' }] },
+      },
+    });
+    if (!check) throw new NotFoundException('The check was not found.');
+    const receiptId = randomUUID();
+    const receiptNumber = `POS-${receiptId.replaceAll('-', '').slice(0, 16).toUpperCase()}`;
+    const toItem = (line: (typeof check.order.lines)[number], quantity: number, total: string) => ({
+      name: line.productName,
+      variantName:
+        [
+          line.variantName,
+          ...line.variantAttributes.map(
+            (attribute) => `${attribute.attributeName}: ${attribute.attributeValue}`,
+          ),
+        ]
+          .filter((value): value is string => Boolean(value))
+          .join(' · ') || null,
+      selections: line.selections.map(
+        (selection) =>
+          `${selection.groupName}: ${selection.optionName}${selection.quantity > 1 ? ` ×${selection.quantity}` : ''}`,
+      ),
+      quantity,
+      unitPrice: line.unitPrice.toString(),
+      total,
+    });
+    const items =
+      check.splitMethod === 'whole'
+        ? check.order.lines.map((line) => toItem(line, line.quantity, line.lineTotal.toString()))
+        : check.splitMethod === 'items'
+          ? [...check.allocations]
+              .sort((left, right) => left.orderLine.position - right.orderLine.position)
+              .map((allocation) =>
+                toItem(allocation.orderLine, allocation.quantity, allocation.amount.toString()),
+              )
+          : [];
+    const splitMethod = ['whole', 'items', 'equal', 'custom'].includes(check.splitMethod)
+      ? (check.splitMethod as PosReceipt['splitMethod'])
+      : null;
+    if (!splitMethod)
+      throw new InternalServerErrorException('The POS check split method is invalid.');
+    const receipt = buildPosReceiptSnapshot({
+      id: receiptId,
+      receiptNumber,
+      issuedAt,
+      merchantName: check.order.merchant.name,
+      branchName: check.order.branch?.name ?? null,
+      orderId: check.order.id,
+      orderCreatedAt: check.order.createdAt,
+      fulfillmentType: check.order.fulfillmentType as PosReceipt['fulfillmentType'],
+      tableCode: check.order.diningSession?.table.code ?? null,
+      cashierName: employee.displayName,
+      registerName: check.order.posShift?.register.name ?? null,
+      currency: check.order.currency,
+      checkNumber: check.position + 1,
+      splitMethod,
+      amount: check.amount.toString(),
+      items,
+      payments: check.payments.map((payment) => ({
+        method: payment.method as 'cash' | 'terminal',
+        amount: payment.amount.toString(),
+        receivedAmount: payment.receivedAmount.toString(),
+        changeAmount: payment.changeAmount.toString(),
+      })),
+    });
+    await tx.posCheckReceipt.create({
+      data: {
+        id: receipt.id,
+        merchantId: employee.merchantId,
+        orderId,
+        checkId,
+        createdByEmployeeId: employee.id,
+        receiptNumber: receipt.receiptNumber,
+        issuedAt,
+        snapshot: receipt as unknown as Prisma.InputJsonValue,
+      },
+    });
+    return receipt;
   }
 
   private async quoteItems(
@@ -627,6 +850,25 @@ function replayPosPayment(
     throw new ConflictException('The request ID was already used for a different POS action.');
   }
   return previous.result as RecordPosCheckPaymentResponse;
+}
+
+function parseStoredPosReceipt(value: Prisma.JsonValue): PosReceipt {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new InternalServerErrorException('The POS receipt snapshot is invalid.');
+  }
+  const receipt = value as unknown as PosReceipt;
+  if (
+    receipt.version !== 1 ||
+    typeof receipt.id !== 'string' ||
+    typeof receipt.receiptNumber !== 'string' ||
+    typeof receipt.issuedAt !== 'string' ||
+    typeof receipt.amount !== 'string' ||
+    !Array.isArray(receipt.items) ||
+    !Array.isArray(receipt.payments)
+  ) {
+    throw new InternalServerErrorException('The POS receipt snapshot is invalid.');
+  }
+  return receipt;
 }
 
 function quoteSelectionsForRequirements(

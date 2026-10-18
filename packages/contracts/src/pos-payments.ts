@@ -1,3 +1,5 @@
+import type { PosReceipt, PosReceiptSummary } from './pos-receipts.js';
+
 export type PosTenderMethod = 'cash' | 'terminal';
 
 export type PosCheckTender =
@@ -33,8 +35,10 @@ export interface RecordPosCheckPaymentResponse {
     revision: number;
     status: 'open' | 'settled';
     settledAt: string | null;
+    receipt?: PosReceiptSummary | null;
   };
   payments: PosPaymentSummary[];
+  receipt?: PosReceipt | null;
 }
 
 export interface PosOrderPaymentStateResponse {
@@ -52,6 +56,7 @@ export interface PosOrderPaymentStateResponse {
     revision: number;
     status: 'open' | 'settled';
     settledAt: string | null;
+    receipt: PosReceiptSummary | null;
     payments: PosPaymentSummary[];
   }>;
 }

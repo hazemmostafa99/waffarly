@@ -18,6 +18,7 @@ import {
   OwnerPosDiningTablesController,
 } from './pos-dining.controller.js';
 import { PosDiningService } from './pos-dining.service.js';
+import { PosReceiptsController } from './pos-receipts.controller.js';
 @Module({
   imports: [AuthModule, CatalogModule, InventoryModule, ShiftsModule, PaymentsModule],
   controllers: [
@@ -27,6 +28,7 @@ import { PosDiningService } from './pos-dining.service.js';
     OwnerPosDiningTablesController,
     PosDiningController,
     PosDiningOrdersController,
+    PosReceiptsController,
   ],
   providers: [StorefrontOrdersService, OrderLifecycleService, PosOrdersService, PosDiningService],
 })

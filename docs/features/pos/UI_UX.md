@@ -4,9 +4,9 @@
 
 - Date: 2026-10-17.
 - Companion requirements: [FEATURE.md](FEATURE.md); execution evidence: [PROGRESS.md](PROGRESS.md).
-- Status: design contract with an isolated development prototype and a live cashier checkout dialog. Automated browser checks cover split tenders, retrying the same command after an interrupted response and narrow-screen checkout visibility; real-operator usability trials and other production workflows remain open. See Progress for exact evidence.
+- Status: design contract with an isolated development prototype, live cashier checkout and saved receipt history/reprint. Automated browser checks cover split tenders, retrying the same command after an interrupted response, narrow-screen checkout and printing/reopening a saved receipt; real-operator usability trials and physical hardware acceptance remain open. See Progress for exact evidence.
 - References: the original CosyPOS screenshot and the later orange-accent POS, order-context picker and bakery receipt screenshots. The user confirmed that the screenshots are the source reference; define missing tokens/components in this repository.
-- CONFIRMED refinement: merchant-configurable POS accent, orange by default; first receipt target is 80mm thermal plus printable/downloadable PDF for an ordinary POS receipt. The isolated prototype previews the accent and print layout; merchant settings, immutable receipt issuance, direct PDF generation and hardware support remain open. ETA fiscal integration is deferred by the user.
+- CONFIRMED refinement: merchant-configurable POS accent, orange by default; first receipt target is 80mm thermal plus printable/downloadable PDF for an ordinary POS receipt. The live POS now saves immutable settled-check receipts and offers branch-scoped reprint from the receipt history. The print layout targets 80mm and the browser print dialog can save to PDF; merchant settings, direct one-click PDF generation and physical printer support remain open. ETA fiscal integration is deferred by the user.
 - CONFIRMED: light and dark themes have equal support. Neither is a secondary release or a kitchen-only theme.
 - Confirmed operating scope: takeaway, delivery, dine-in/tables/split checks; cash/manual external-terminal payments and split tender; online operation with saved drafts/recovery.
 - Stack: Tailwind v4 and shared shadcn/ui, React Query for server facts, Zustand for client drafts/workspace. Follow Feature's architecture and existing localization conventions.
@@ -193,7 +193,7 @@ The in-memory adapter resets sample orders/payments on reload; only local theme 
 
 ## Reference alignment and missing-component plan — 2026-10-17
 
-Status: implemented for isolated development preview; production settings/issuance remain TARGET. Confirmed choices: define the system from the screenshots, merchant-configurable accent with orange POS default, and 80mm receipt plus printable/downloadable PDF. Equal light/dark and Arabic/RTL support remain required. Printer model, operating country and fiscal rules remain unresolved under POS-D09/D10; they do not block independent UI design.
+Status: the isolated preview and live cashier receipt action/history are implemented; production accent settings and physical printer acceptance remain TARGET. Confirmed choices: define the system from the screenshots, merchant-configurable accent with orange POS default, and 80mm receipt plus printable/downloadable PDF. Equal light/dark and Arabic/RTL support remain required. The browser print dialog offers Save as PDF; direct one-click file generation and printer models remain open under POS-D10. ETA fiscal issuance is deferred under POS-D09.
 
 ### 1. Extend the shared design system
 

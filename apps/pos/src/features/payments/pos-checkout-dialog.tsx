@@ -8,6 +8,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { usePosWorkspaceStore, type PendingPosPayment } from '../../app/pos-workspace-store.js';
 import { ApiError } from '../../lib/api-client.js';
+import { PosReceiptView } from '../receipts/pos-receipt-view.js';
 import {
   formatMoneyCents,
   parseMoneyCents,
@@ -54,6 +55,7 @@ export function PosCheckoutDialog({
   const [recoveredPayment, setRecoveredPayment] = useState(Boolean(initialPayment));
   const [submissionError, setSubmissionError] = useState('');
   const [paymentSaved, setPaymentSaved] = useState(false);
+  const [receiptCheckId, setReceiptCheckId] = useState<string | null>(null);
   const [online, setOnline] = useState(() => navigator.onLine);
 
   useEffect(() => {
@@ -130,6 +132,7 @@ export function PosCheckoutDialog({
             ),
       );
       setPaymentSaved(true);
+      setReceiptCheckId(response.receipt ? response.check.id : null);
       queryClient.setQueryData<PosOrderPaymentStateResponse>(queryKey, (current) =>
         current ? mergePaymentResult(current, response, command.checkId) : current,
       );
@@ -147,6 +150,7 @@ export function PosCheckoutDialog({
           : [],
       );
       await queryClient.invalidateQueries({ queryKey: ['pos', 'payments', merchantId] });
+      await queryClient.invalidateQueries({ queryKey: ['pos', 'receipts', merchantId] });
       await queryClient.invalidateQueries({ queryKey: ['pos', merchantId, 'dining'] });
       await queryClient.invalidateQueries({ queryKey });
     },
@@ -246,12 +250,23 @@ export function PosCheckoutDialog({
       onOpenChange={(open) => {
         if (!open) close();
       }}
-      title={t('Take payment')}
-      description={t('Review the check balance and record cash or a confirmed terminal payment.')}
+      title={t(receiptCheckId ? 'POS receipt' : 'Take payment')}
+      description={t(
+        receiptCheckId
+          ? 'Review, print, or save this settled check receipt.'
+          : 'Review the check balance and record cash or a confirmed terminal payment.',
+      )}
       closeLabel={t('Close')}
       className="flex w-[min(620px,calc(100%-20px))] max-h-[calc(100dvh-20px)] flex-col overflow-hidden rounded-xl sm:rounded-2xl"
     >
-      {paymentStateQuery.isLoading ? (
+      {receiptCheckId ? (
+        <PosReceiptView
+          merchantId={merchantId}
+          orderId={orderId}
+          checkId={receiptCheckId}
+          onBack={() => setReceiptCheckId(null)}
+        />
+      ) : paymentStateQuery.isLoading ? (
         <div className="p-6 text-sm text-muted-foreground" role="status">
           {t('Loading payment details...')}
         </div>
@@ -368,6 +383,16 @@ export function PosCheckoutDialog({
                     })}
                   </span>
                 </div>
+                {activeCheck.receipt && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-1 w-full"
+                    onClick={() => setReceiptCheckId(activeCheck.id)}
+                  >
+                    {t('View / print receipt')} · {activeCheck.receipt.receiptNumber}
+                  </Button>
+                )}
               </section>
             )}
 
@@ -655,6 +680,7 @@ function mergePaymentResult(
         revision: response.check.revision,
         status: response.check.status,
         settledAt: response.check.settledAt,
+        receipt: response.check.receipt ?? check.receipt,
         payments: [
           ...check.payments,
           ...response.payments.filter((payment) => !knownIds.has(payment.id)),

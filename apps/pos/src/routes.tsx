@@ -7,6 +7,7 @@ import { POSScreen } from './POSScreen.js';
 import { POSCatalogScreen } from './features/catalog/pos-catalog-screen.js';
 import { PosShiftScreen } from './features/shifts/pos-shift-screen.js';
 import { PosDiningScreen } from './features/dining/pos-dining-screen.js';
+import { PosReceiptsScreen } from './features/receipts/pos-receipts-screen.js';
 
 export const router = createBrowserRouter([
   ...(import.meta.env.DEV
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
           { index: true, element: <POSScreen /> },
           { path: 'catalog', element: <POSCatalogScreen /> },
           { path: 'dining', element: <PosDiningScreen /> },
+          { path: 'receipts', element: <PosReceiptsScreen /> },
           { path: 'shift', element: <PosShiftScreen /> },
         ],
       },

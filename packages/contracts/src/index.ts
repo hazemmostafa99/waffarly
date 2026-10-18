@@ -174,6 +174,15 @@ export type {
   RecordPosCheckPaymentResponse,
 } from './pos-payments.js';
 export type {
+  PosReceipt,
+  PosReceiptLine,
+  PosReceiptPayment,
+  PosReceiptHistoryItem,
+  PosReceiptHistoryPage,
+  PosReceiptSplitMethod,
+  PosReceiptSummary,
+} from './pos-receipts.js';
+export type {
   PosDiningTableSummary,
   PosDiningTableOption,
   PosDiningTablesPage,
