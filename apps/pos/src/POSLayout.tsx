@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, useLocale } from '@waffarly/ui';
+import { useLocale } from '@waffarly/ui';
 import { useEffect } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { usePosWorkspaceStore } from './app/pos-workspace-store.js';
 import { ApiError } from './lib/api-client.js';
 import {
@@ -10,6 +10,8 @@ import {
   signOutPosEmployee,
 } from './features/auth/pos-session.api.js';
 import { PosPaymentRecoveryNotice } from './features/payments/pos-payment-recovery-notice.js';
+import { PosWorkspaceFrame } from './features/workspace/pos-workspace-frame.js';
+import { PosButton } from './components/pos-button.js';
 
 export function POSLayout() {
   const { t, errorText } = useLocale();
@@ -25,6 +27,7 @@ export function POSLayout() {
   const signOutMutation = useMutation({ mutationFn: signOutPosEmployee });
   const employee = sessionQuery.data;
   const hydrateWorkspace = usePosWorkspaceStore((state) => state.hydrate);
+  const workspace = usePosWorkspaceStore((state) => state.workspace);
 
   useEffect(() => {
     if (sessionQuery.error instanceof ApiError && sessionQuery.error.statusCode === 401) {
@@ -52,7 +55,11 @@ export function POSLayout() {
 
   if (sessionQuery.isLoading && !sessionQuery.data) {
     return (
-      <main id="main-content" tabIndex={-1} className="shell pos-shell">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="flex min-h-dvh items-center justify-center bg-background p-5 text-sm text-muted-foreground"
+      >
         {t('Loading POS…')}
       </main>
     );
@@ -60,54 +67,47 @@ export function POSLayout() {
 
   if (sessionQuery.isError && !sessionQuery.data) {
     return (
-      <main id="main-content" tabIndex={-1} className="shell pos-shell">
-        <p className="pos-error" role="alert">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-background p-5 text-foreground"
+      >
+        <p
+          className="max-w-xl rounded-lg border border-destructive/30 bg-card p-3 text-sm text-destructive"
+          role="alert"
+        >
           {errorText(
             sessionQuery.error instanceof Error
               ? sessionQuery.error.message
               : t('Could not verify the POS session.'),
           )}
         </p>
-        <Button type="button" onClick={() => void sessionQuery.refetch()}>
+        <PosButton type="button" variant="solid" onClick={() => void sessionQuery.refetch()}>
           {t('Retry')}
-        </Button>
+        </PosButton>
       </main>
     );
   }
 
   if (!employee) return null;
 
+  const branch =
+    employee.branches.find((item) => item.id === workspace?.selectedBranchId) ??
+    employee.branches[0];
+
   return (
-    <main id="main-content" tabIndex={-1} className="shell pos-shell pos-app-shell">
-      <header className="topbar">
-        <div>
-          <div className="eyebrow">{t('Waffarly · POS')}</div>
-          <h1>{t('POS Workspace')}</h1>
-          <p>{employee.displayName}</p>
-        </div>
-        <Button
-          variant="outline"
-          type="button"
-          onClick={() => void signOut()}
-          disabled={signOutMutation.isPending}
-        >
-          {signOutMutation.isPending ? t('Signing out…') : t('Sign out')}
-        </Button>
-      </header>
-      <nav className="pos-primary-nav" aria-label={t('POS workspace')}>
-        <NavLink to="/" end>
-          {t('Incoming orders')}
-        </NavLink>
-        <NavLink to="/catalog">{t('New sale')}</NavLink>
-        {employee.permissions.includes('sell') && <NavLink to="/dining">{t('Tables')}</NavLink>}
-        {employee.permissions.includes('sell') && <NavLink to="/receipts">{t('Receipts')}</NavLink>}
-        {employee.permissions.includes('open_register_shift') && (
-          <NavLink to="/shift">{t('Register shift')}</NavLink>
-        )}
-      </nav>
-      <PosPaymentRecoveryNotice employee={employee} />
+    <PosWorkspaceFrame
+      employee={employee}
+      branchName={branch?.name ?? ''}
+      signingOut={signOutMutation.isPending}
+      onSignOut={() => void signOut()}
+    >
+      {employee.permissions.includes('sell') && <PosPaymentRecoveryNotice employee={employee} />}
       {sessionQuery.error && (
-        <p className="pos-offline-note" role="status">
+        <p
+          className="m-0 max-w-none rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm text-foreground"
+          role="status"
+        >
           {errorText(
             sessionQuery.error instanceof Error
               ? sessionQuery.error.message
@@ -116,6 +116,6 @@ export function POSLayout() {
         </p>
       )}
       <Outlet context={{ employee }} />
-    </main>
+    </PosWorkspaceFrame>
   );
 }

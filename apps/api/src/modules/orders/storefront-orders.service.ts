@@ -308,7 +308,10 @@ export class StorefrontOrdersService {
     const where: Prisma.StorefrontOrderWhereInput = {
       merchantId,
       lines: { some: { stockHandling: 'recipe_acceptance' } },
-      OR: [{ status: 'pending' }, { status: { in: ['accepted', 'preparing'] }, branchId }],
+      OR: [
+        { status: 'pending', OR: [{ source: 'storefront', branchId: null }, { branchId }] },
+        { status: { in: ['accepted', 'preparing'] }, branchId },
+      ],
     };
     if (page.cursor) {
       const anchor = await this.prisma.storefrontOrder.findFirst({

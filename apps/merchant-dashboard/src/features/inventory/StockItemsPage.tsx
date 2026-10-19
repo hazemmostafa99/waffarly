@@ -1,6 +1,6 @@
 import { InventoryCard } from './InventoryCard.js';
 import { useEffect, useState, type FormEvent } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button, DataTable, Input, useLocale, type DataTableColumn } from '@waffarly/ui';
 import {
   STOCK_BASE_UNITS,
@@ -38,6 +38,7 @@ export function StockItemsPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [itemsLoadError, setItemsLoadError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const [notice, setNotice] = useState('');
   const [editor, setEditor] = useState<EditorState | null>(null);
@@ -51,7 +52,7 @@ export function StockItemsPage() {
   useEffect(() => {
     let current = true;
     setLoading(true);
-    setLoadError('');
+    setItemsLoadError('');
     const query = new URLSearchParams({ limit: '25', status });
     if (search) query.set('search', search);
     const cursor = history.at(-1);
@@ -63,10 +64,12 @@ export function StockItemsPage() {
         setNextCursor(page.nextCursor);
       })
       .catch((cause: unknown) => {
-        if (current)
-          setLoadError(
-            cause instanceof Error ? cause.message : text('Could not load stock items.'),
-          );
+        if (!current) return;
+        setItemsLoadError(
+          cause instanceof Error ? cause.message : text('Could not load stock items.'),
+        );
+        setItems([]);
+        setNextCursor(null);
       })
       .finally(() => {
         if (current) setLoading(false);
@@ -82,7 +85,9 @@ export function StockItemsPage() {
       header: text('Stock item'),
       cell: (item) => (
         <div className="inventory-table-name">
-          <strong>{formatDigits(item.name)}</strong>
+          <Link className="inventory-detail-link" to={`/inventory/items/${item.id}`}>
+            {formatDigits(item.name)}
+          </Link>
           {item.description && <small>{formatDigits(item.description)}</small>}
         </div>
       ),
@@ -98,7 +103,9 @@ export function StockItemsPage() {
               <span key={unit.id} title={`1 ${unit.code} = ${unit.baseQuantity} ${item.baseUnit}`}>
                 {formatDigits(unit.name)}{' '}
                 <small>
-                  {formatDigits(`1 ${unit.code} = ${unit.baseQuantity} ${item.baseUnit}`)}
+                  <bdi dir="ltr">
+                    {formatDigits(`1 ${unit.code} = ${unit.baseQuantity} ${item.baseUnit}`)}
+                  </bdi>
                 </small>
               </span>
             ))}
@@ -199,7 +206,7 @@ export function StockItemsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate('/inventory/purchases?new=1')}
+              onClick={() => navigate('/inventory/purchases/new')}
             >
               {text('Record purchase')}
             </Button>
@@ -209,13 +216,8 @@ export function StockItemsPage() {
       {loadError && (
         <div className="inventory-error" role="alert">
           <span>{errorText(loadError)}</span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setRefreshKey((key) => key + 1)}
-          >
-            {text('Retry')}
+          <Button type="button" variant="ghost" size="sm" onClick={() => setLoadError('')}>
+            {text('Close')}
           </Button>
         </div>
       )}
@@ -226,6 +228,27 @@ export function StockItemsPage() {
           'One item can be shared by products and recipes. Pack conversion factors stay fixed after saving.',
         )}
       >
+        {itemsLoadError && (
+          <div className="inventory-error" role="alert">
+            <span>{errorText(itemsLoadError)}</span>
+            <span className="inventory-error-actions">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setItemsLoadError('');
+                  setRefreshKey((key) => key + 1);
+                }}
+              >
+                {text('Retry')}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setItemsLoadError('')}>
+                {text('Close')}
+              </Button>
+            </span>
+          </div>
+        )}
         <div className="inventory-filters">
           <form className="inventory-search" onSubmit={applySearch}>
             <label htmlFor="inventory-search">{text('Search stock items')}</label>
@@ -256,6 +279,21 @@ export function StockItemsPage() {
               <option value="all">{text('All items')}</option>
             </select>
           </label>
+          {(searchDraft || search || status !== 'active') && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setSearch('');
+                setSearchDraft('');
+                setStatus('active');
+                setHistory([]);
+                setNextCursor(null);
+              }}
+            >
+              {text('Clear filters')}
+            </Button>
+          )}
         </div>
         <DataTable
           columns={columns}
@@ -265,32 +303,39 @@ export function StockItemsPage() {
           loading={loading}
           loadingState={text('Loading stock items…')}
           emptyState={
-            <div className="inventory-empty">
-              <h3>
-                {text(
-                  search || status === 'archived'
-                    ? 'No matching items'
-                    : 'Add your first stock item',
+            itemsLoadError ? (
+              <div className="inventory-empty">
+                <h3>{text('Could not load stock items.')}</h3>
+                <p>{text('Retry loading the list to see your stock items.')}</p>
+              </div>
+            ) : (
+              <div className="inventory-empty">
+                <h3>
+                  {text(
+                    search || status === 'archived'
+                      ? 'No matching items'
+                      : 'Add your first stock item',
+                  )}
+                </h3>
+                <p>
+                  {text(
+                    search || status === 'archived'
+                      ? 'Try another search or clear the filters.'
+                      : 'Start with an ingredient or product, and choose how you measure it.',
+                  )}
+                </p>
+                {!search && status !== 'archived' && (
+                  <Button onClick={() => setEditor({ item: null, key: crypto.randomUUID() })}>
+                    {text('New stock item')}
+                  </Button>
                 )}
-              </h3>
-              <p>
-                {text(
-                  search || status === 'archived'
-                    ? 'Try another search or clear the filters.'
-                    : 'Start with an ingredient or product, and choose how you measure it.',
-                )}
-              </p>
-              {!search && status !== 'archived' && (
-                <Button onClick={() => setEditor({ item: null, key: crypto.randomUUID() })}>
-                  {text('New stock item')}
-                </Button>
-              )}
-            </div>
+              </div>
+            )
           }
         />
         <div className="inventory-pagination">
           <span>
-            {formatDigits(`${items.length} ${items.length === 1 ? 'item' : 'items'} on this page`)}
+            {formatDigits(String(items.length))} {text('Items on this page')}
           </span>
           <div>
             <Button

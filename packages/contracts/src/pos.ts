@@ -3,7 +3,16 @@ export const POS_LEGACY_EMPLOYEE_PERMISSIONS = [
   'start_preparation',
 ] as const;
 
-export const POS_EMPLOYEE_ROLES = ['cashier', 'supervisor'] as const;
+// Ownership belongs to OwnerAccount and is deliberately not assignable to employees.
+export const POS_EMPLOYEE_ROLES = [
+  'branch_manager',
+  'cashier',
+  'inventory_officer',
+  'accountant',
+  'customer_service',
+  'kitchen',
+  'supervisor',
+] as const;
 export type PosEmployeeRole = (typeof POS_EMPLOYEE_ROLES)[number];
 
 export function isPosEmployeeRole(value: string | null): value is PosEmployeeRole {
@@ -11,7 +20,20 @@ export function isPosEmployeeRole(value: string | null): value is PosEmployeeRol
 }
 
 export const POS_EMPLOYEE_ROLE_PERMISSIONS = {
+  branch_manager: [
+    'view_orders',
+    'accept_recipe_orders',
+    'start_preparation',
+    'open_register_shift',
+    'sell',
+    'view_receipts',
+    'view_inventory',
+  ],
   cashier: ['open_register_shift', 'sell'],
+  inventory_officer: ['view_inventory'],
+  accountant: ['view_receipts'],
+  customer_service: ['view_orders'],
+  kitchen: ['view_orders', 'accept_recipe_orders', 'start_preparation'],
   supervisor: [
     'open_register_shift',
     'sell',
@@ -28,6 +50,9 @@ export const POS_EMPLOYEE_PERMISSIONS = [
   'approve_discounts',
   'approve_voids',
   'approve_refunds',
+  'view_orders',
+  'view_receipts',
+  'view_inventory',
 ] as const;
 
 export type PosEmployeePermission = (typeof POS_EMPLOYEE_PERMISSIONS)[number];
@@ -38,7 +63,10 @@ export function resolvePosEmployeePermissions(
 ): PosEmployeePermission[] {
   const knownPermissions = new Set<string>(POS_EMPLOYEE_PERMISSIONS);
   const resolved = new Set<PosEmployeePermission>();
-  for (const permission of savedPermissions) {
+  // Preserve legacy grants only for existing role types. New presets are exact,
+  // so moving a cashier to accounting cannot retain sales or kitchen access.
+  const legacyGrants = role === null || role === 'cashier' || role === 'supervisor';
+  for (const permission of legacyGrants ? savedPermissions : []) {
     if (knownPermissions.has(permission)) resolved.add(permission as PosEmployeePermission);
   }
   if (role) {
@@ -47,6 +75,27 @@ export function resolvePosEmployeePermissions(
     }
   }
   return [...resolved].sort();
+}
+
+/** Read access implied by historical operational grants remains compatible. */
+export function hasPosEmployeePermission(
+  employee: Pick<PosEmployeeSession, 'permissions'>,
+  permission: PosEmployeePermission,
+): boolean {
+  if (employee.permissions.includes(permission)) return true;
+  if (permission === 'view_orders') {
+    return employee.permissions.some((value) =>
+      ['accept_recipe_orders', 'start_preparation', 'sell'].includes(value),
+    );
+  }
+  return permission === 'view_receipts' && employee.permissions.includes('sell');
+}
+
+export function posEmployeeHome(employee: Pick<PosEmployeeSession, 'permissions'>): string {
+  if (hasPosEmployeePermission(employee, 'view_orders')) return '/';
+  if (hasPosEmployeePermission(employee, 'view_inventory')) return '/inventory';
+  if (hasPosEmployeePermission(employee, 'view_receipts')) return '/receipts';
+  return '/access';
 }
 
 export interface PosEmployeeBranch {
@@ -61,6 +110,8 @@ export interface PosEmployeeSummary {
   displayName: string;
   role: PosEmployeeRole | null;
   permissions: PosEmployeePermission[];
+  /** Stored grants before the role preset; used by the owner's permission preview. */
+  savedPermissions?: PosEmployeePermission[];
   active: boolean;
   revision: number;
   branchIds: string[];

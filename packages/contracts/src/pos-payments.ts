@@ -1,4 +1,6 @@
 import type { PosReceipt, PosReceiptSummary } from './pos-receipts.js';
+import type { StorefrontOrderSummary } from './catalog.js';
+import type { PosOrderCheckSummary } from './pos-dining.js';
 
 export type PosTenderMethod = 'cash' | 'terminal';
 
@@ -42,12 +44,16 @@ export interface RecordPosCheckPaymentResponse {
 }
 
 export interface PosOrderPaymentStateResponse {
+  /** Additive checkout context; older deployments may omit it. */
+  context?: { order: StorefrontOrderSummary; tableCode: string | null };
   orderId: string;
   revision: number;
   total: string;
   currency: 'EGP';
   status: string;
   checks: Array<{
+    splitMethod?: PosOrderCheckSummary['splitMethod'];
+    allocations?: PosOrderCheckSummary['allocations'];
     id: string;
     position: number;
     amount: string;

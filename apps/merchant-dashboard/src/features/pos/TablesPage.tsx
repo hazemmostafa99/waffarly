@@ -8,6 +8,7 @@ import {
   useLocale,
   type DataTableColumn,
 } from '@waffarly/ui';
+import { Icon } from '../../Icons.js';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { PagedEntitySelect } from '../../components/PagedEntitySelect.js';
 import { ApiError, apiRequest, apiRequestPage } from '../../lib/api-client.js';
@@ -148,7 +149,12 @@ export function TablesPage() {
     {
       id: 'code',
       header: text('Table', 'الترابيزة'),
-      cell: (table) => <strong>{formatDigits(table.code)}</strong>,
+      cell: (table) => (
+        <div className="pos-table-name">
+          <strong>{formatDigits(table.code)}</strong>
+          <small>{text('Dining table', 'ترابيزة صالة')}</small>
+        </div>
+      ),
     },
     {
       id: 'branch',
@@ -158,20 +164,32 @@ export function TablesPage() {
     {
       id: 'capacity',
       header: text('Seats', 'المقاعد'),
-      cell: (table) => formatDigits(String(table.capacity)),
+      cell: (table) => (
+        <span className="pos-table-capacity">
+          {formatDigits(String(table.capacity))} {text('seats', 'مقاعد')}
+        </span>
+      ),
     },
     {
       id: 'status',
       header: text('Status', 'الحالة'),
-      cell: (table) => (table.active ? text('Active', 'نشطة') : text('Inactive', 'متوقفة')),
+      cell: (table) => (
+        <span className={`products-pill ${table.active ? 'mint' : 'cream'}`}>
+          {table.active ? text('Active', 'نشطة') : text('Inactive', 'متوقفة')}
+        </span>
+      ),
     },
     {
       id: 'actions',
       header: text('Actions', 'الإجراءات'),
       cell: (table) => (
-        <Button type="button" size="sm" variant="outline" onClick={() => startEdit(table)}>
+        <button
+          className="products-button pos-table-edit-button"
+          type="button"
+          onClick={() => startEdit(table)}
+        >
           {text('Edit', 'تعديل')}
-        </Button>
+        </button>
       ),
     },
   ];
@@ -180,7 +198,7 @@ export function TablesPage() {
     <section className="pos-tables-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <header className="products-heading pos-tables-heading">
         <div>
-          <h1>{text('POS tables', 'ترابيزات نقطة البيع')}</h1>
+          <h1>{text('POS tables', 'ترابيزات POS')}</h1>
           <p>
             {text(
               'Configure table codes and seat counts per branch. Occupied tables are protected from edits.',
@@ -188,9 +206,10 @@ export function TablesPage() {
             )}
           </p>
         </div>
-        <Button type="button" onClick={startCreate}>
+        <button className="products-button primary" type="button" onClick={startCreate}>
+          <Icon name="plus" />
           {text('Add table', 'إضافة ترابيزة')}
-        </Button>
+        </button>
       </header>
 
       {error && !editorOpen && (
@@ -212,44 +231,44 @@ export function TablesPage() {
         </p>
       )}
 
+      <div className="products-filters pos-tables-filters">
+        <label className="pos-tables-branch-filter">
+          <span>{text('Branch', 'الفرع')}</span>
+          <PagedEntitySelect<InventoryBranch>
+            path="/owner/inventory/branches"
+            value={branchId}
+            label={text('Filter by branch', 'تصفية حسب الفرع')}
+            emptyLabel={text('All branches', 'كل الفروع')}
+            required={false}
+            onSelect={(branch) => {
+              setBranchId(branch?.id ?? '');
+              setHistory([]);
+            }}
+          />
+        </label>
+        <label className="pos-tables-status-filter">
+          <span>{text('Status', 'الحالة')}</span>
+          <select
+            value={status}
+            onChange={(event) => {
+              setStatus(event.target.value as typeof status);
+              setHistory([]);
+            }}
+          >
+            <option value="active">{text('Active', 'نشطة')}</option>
+            <option value="inactive">{text('Inactive', 'متوقفة')}</option>
+            <option value="all">{text('All', 'الكل')}</option>
+          </select>
+        </label>
+      </div>
+
       <DashboardCard
         className="pos-tables-card"
         title={text('Dining table directory', 'قائمة ترابيزات الصالة')}
         description={text(
-          'Every table belongs to one branch. An occupied table can receive another round, but it cannot be renamed or deactivated.',
-          'كل ترابيزة تابعة لفرع واحد. يمكن إضافة جولة جديدة للترابيزة المشغولة، لكن لا يمكن تغييرها أو إيقافها.',
+          'Every table belongs to one branch. Occupied tables cannot be renamed or deactivated.',
+          'كل ترابيزة تابعة لفرع واحد. لا يمكن تغيير بيانات الترابيزة المشغولة أو إيقافها.',
         )}
-        action={
-          <div className="pos-tables-filters">
-            <label>
-              <span>{text('Branch', 'الفرع')}</span>
-              <PagedEntitySelect<InventoryBranch>
-                path="/owner/inventory/branches"
-                value={branchId}
-                label={text('Filter by branch', 'تصفية حسب الفرع')}
-                emptyLabel={text('All branches', 'كل الفروع')}
-                onSelect={(branch) => {
-                  setBranchId(branch?.id ?? '');
-                  setHistory([]);
-                }}
-              />
-            </label>
-            <label>
-              <span>{text('Status', 'الحالة')}</span>
-              <select
-                value={status}
-                onChange={(event) => {
-                  setStatus(event.target.value as typeof status);
-                  setHistory([]);
-                }}
-              >
-                <option value="active">{text('Active', 'نشطة')}</option>
-                <option value="inactive">{text('Inactive', 'متوقفة')}</option>
-                <option value="all">{text('All', 'الكل')}</option>
-              </select>
-            </label>
-          </div>
-        }
       >
         <DataTable
           columns={columns}
@@ -260,11 +279,11 @@ export function TablesPage() {
           loadingState={text('Loading tables...', 'جارٍ تحميل الترابيزات...')}
           emptyState={
             <div className="pos-tables-empty">
-              <strong>{text('No tables found.', 'لا توجد ترابيزات.')}</strong>
+              <strong>{text('No dining tables found.', 'لا توجد ترابيزات صالة.')}</strong>
               <p>
                 {text(
-                  'Add tables here before opening dine-in orders from the POS.',
-                  'أضف الترابيزات هنا قبل استقبال طلبات الصالة من نقطة البيع.',
+                  'Add your branch tables here before opening dine-in orders from the POS.',
+                  'أضف ترابيزات الفرع هنا قبل استقبال طلبات الصالة من شاشة البيع.',
                 )}
               </p>
             </div>
@@ -280,8 +299,7 @@ export function TablesPage() {
           <div>
             <Button
               type="button"
-              size="sm"
-              variant="outline"
+              className="products-button pos-tables-pagination-button"
               disabled={loading || history.length === 0}
               onClick={() => setHistory((current) => current.slice(0, -1))}
             >
@@ -289,8 +307,7 @@ export function TablesPage() {
             </Button>
             <Button
               type="button"
-              size="sm"
-              variant="outline"
+              className="products-button pos-tables-pagination-button"
               disabled={loading || !page.nextCursor}
               onClick={() => setHistory((current) => [...current, page.nextCursor ?? undefined])}
             >
@@ -318,7 +335,7 @@ export function TablesPage() {
               </p>
             )}
             {!editing ? (
-              <label className="pos-table-field">
+              <label className="pos-table-field pos-table-branch-field">
                 {text('Branch', 'الفرع')}
                 <PagedEntitySelect<InventoryBranch>
                   path="/owner/inventory/branches"
@@ -386,13 +403,17 @@ export function TablesPage() {
             <footer className="pos-table-actions">
               <Button
                 type="button"
-                variant="outline"
+                className="products-button"
                 disabled={busy}
                 onClick={() => setEditorOpen(false)}
               >
                 {text('Cancel', 'إلغاء')}
               </Button>
-              <Button type="submit" disabled={busy || (!editing && !draft.branchId)}>
+              <Button
+                type="submit"
+                className="products-button primary"
+                disabled={busy || (!editing && !draft.branchId)}
+              >
                 {busy ? text('Saving...', 'جارٍ الحفظ...') : text('Save table', 'حفظ الترابيزة')}
               </Button>
             </footer>

@@ -8,6 +8,7 @@ import {
   useLocale,
   type DataTableColumn,
 } from '@waffarly/ui';
+import { Icon } from '../../Icons.js';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { PagedEntitySelect } from '../../components/PagedEntitySelect.js';
 import { ApiError, apiRequest, apiRequestPage } from '../../lib/api-client.js';
@@ -18,10 +19,11 @@ type RegisterDraft = { name: string; active: boolean; branchId: string; branchNa
 const emptyDraft = (): RegisterDraft => ({ name: '', active: true, branchId: '', branchName: '' });
 
 export function RegistersPage() {
-  const { locale, errorText } = useLocale();
+  const { locale, errorText, formatNumber } = useLocale();
   const text = (en: string, ar: string) => (locale === 'ar' ? ar : en);
   const [page, setPage] = useState<CursorPage<PosRegisterSummary>>({ items: [], nextCursor: null });
   const [history, setHistory] = useState<Array<string | undefined>>([]);
+  const [branchId, setBranchId] = useState('');
   const [status, setStatus] = useState<'active' | 'inactive' | 'all'>('active');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -37,6 +39,7 @@ export function RegistersPage() {
     setLoading(true);
     setError('');
     const query = new URLSearchParams({ limit: '25', status });
+    if (branchId) query.set('branchId', branchId);
     const cursor = history.at(-1);
     if (cursor) query.set('cursor', cursor);
     void apiRequestPage<PosRegisterSummary>(`/owner/pos/registers?${query.toString()}`)
@@ -48,7 +51,7 @@ export function RegistersPage() {
           setError(
             cause instanceof Error
               ? errorText(cause.message)
-              : text('Could not load POS registers.', 'تعذر تحميل أجهزة نقطة البيع.'),
+              : text('Could not load POS registers.', 'تعذر تحميل نقاط البيع.'),
           );
         }
       })
@@ -58,7 +61,7 @@ export function RegistersPage() {
     return () => {
       current = false;
     };
-  }, [errorText, history, refresh, status]);
+  }, [branchId, errorText, history, refresh, status]);
 
   function startCreate() {
     setEditing(null);
@@ -104,10 +107,10 @@ export function RegistersPage() {
       setDraft(emptyDraft());
       setNotice(
         editing
-          ? text('Register settings saved.', 'تم حفظ إعدادات الجهاز.')
+          ? text('Register settings saved.', 'تم حفظ إعدادات نقطة البيع.')
           : text(
               `Register created at ${saved.branchName}.`,
-              `تم إنشاء الجهاز في ${saved.branchName}.`,
+              `تم إنشاء نقطة البيع في ${saved.branchName}.`,
             ),
       );
       setHistory([]);
@@ -116,7 +119,7 @@ export function RegistersPage() {
       setError(
         cause instanceof ApiError || cause instanceof Error
           ? errorText(cause.message)
-          : text('Could not save this register.', 'تعذر حفظ جهاز نقطة البيع.'),
+          : text('Could not save this register.', 'تعذر حفظ نقطة البيع.'),
       );
     } finally {
       setBusy(false);
@@ -126,11 +129,11 @@ export function RegistersPage() {
   const columns: DataTableColumn<PosRegisterSummary>[] = [
     {
       id: 'register',
-      header: text('Register', 'الجهاز'),
+      header: text('Register', 'نقطة البيع'),
       cell: (register) => (
         <div className="register-name-cell">
           <strong>{register.name}</strong>
-          <small>{text('POS register', 'جهاز نقطة البيع')}</small>
+          <small>{text('Cashier station', 'نقطة كاشير')}</small>
         </div>
       ),
     },
@@ -148,9 +151,13 @@ export function RegistersPage() {
       id: 'actions',
       header: text('Actions', 'الإجراءات'),
       cell: (register) => (
-        <Button type="button" variant="outline" size="sm" onClick={() => startEdit(register)}>
+        <button
+          className="products-button register-edit-button"
+          type="button"
+          onClick={() => startEdit(register)}
+        >
           {text('Edit', 'تعديل')}
-        </Button>
+        </button>
       ),
     },
   ];
@@ -159,17 +166,18 @@ export function RegistersPage() {
     <section className="register-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <header className="products-heading register-heading">
         <div>
-          <h1>{text('POS registers', 'أجهزة نقطة البيع')}</h1>
+          <h1>{text('POS registers', 'نقاط البيع')}</h1>
           <p>
             {text(
-              'Set up one register per cashier station. Each register can have one open shift at a time.',
-              'أنشئ جهازًا لكل نقطة بيع. يمكن فتح وردية واحدة فقط على الجهاز في الوقت نفسه.',
+              'Set up a cashier station for each counter or cash drawer. Each station can have one open shift at a time.',
+              'أنشئ نقطة بيع لكل كاشير أو درج نقدية في الفرع. يمكن فتح وردية واحدة فقط لكل نقطة في الوقت نفسه.',
             )}
           </p>
         </div>
-        <Button type="button" onClick={startCreate}>
-          {text('Add register', 'إضافة جهاز')}
-        </Button>
+        <button className="products-button primary" type="button" onClick={startCreate}>
+          <Icon name="plus" />
+          {text('Add register', 'إضافة نقطة بيع')}
+        </button>
       </header>
 
       {error && !editorOpen && (
@@ -191,44 +199,59 @@ export function RegistersPage() {
         </p>
       )}
 
+      <div className="products-filters register-filters">
+        <label className="register-branch-filter">
+          <span>{text('Branch', 'الفرع')}</span>
+          <PagedEntitySelect<InventoryBranch>
+            path="/owner/inventory/branches"
+            value={branchId}
+            label={text('Filter by branch', 'تصفية حسب الفرع')}
+            emptyLabel={text('All branches', 'كل الفروع')}
+            required={false}
+            onSelect={(branch) => {
+              setBranchId(branch?.id ?? '');
+              setHistory([]);
+            }}
+          />
+        </label>
+        <label className="register-status-filter">
+          <span>{text('Status', 'الحالة')}</span>
+          <select
+            value={status}
+            onChange={(event) => {
+              setStatus(event.target.value as typeof status);
+              setHistory([]);
+            }}
+          >
+            <option value="active">{text('Active', 'نشطة')}</option>
+            <option value="inactive">{text('Inactive', 'متوقفة')}</option>
+            <option value="all">{text('All registers', 'كل النقاط')}</option>
+          </select>
+        </label>
+      </div>
+
       <DashboardCard
         className="register-table-card"
-        title={text('Register directory', 'قائمة الأجهزة')}
+        title={text('Register directory', 'قائمة نقاط البيع')}
         description={text(
-          'Registers are scoped to a branch and managed by the merchant owner.',
-          'كل جهاز مرتبط بفرع ويديره مالك النشاط.',
+          'Each register belongs to one branch and keeps its sales grouped by cashier shift.',
+          'كل نقطة بيع مرتبطة بفرع، وتتجمع مبيعاتها حسب وردية الكاشير.',
         )}
-        action={
-          <label className="register-status-filter">
-            <span>{text('Status', 'الحالة')}</span>
-            <select
-              value={status}
-              onChange={(event) => {
-                setStatus(event.target.value as typeof status);
-                setHistory([]);
-              }}
-            >
-              <option value="active">{text('Active', 'نشط')}</option>
-              <option value="inactive">{text('Inactive', 'متوقف')}</option>
-              <option value="all">{text('All registers', 'كل الأجهزة')}</option>
-            </select>
-          </label>
-        }
       >
         <DataTable
           columns={columns}
           rows={page.items}
           rowKey={(register) => register.id}
-          caption={text('POS register directory', 'قائمة أجهزة نقطة البيع')}
+          caption={text('POS register directory', 'قائمة نقاط البيع')}
           loading={loading}
-          loadingState={text('Loading registers...', 'جارٍ تحميل الأجهزة...')}
+          loadingState={text('Loading registers...', 'جارٍ تحميل نقاط البيع...')}
           emptyState={
             <div className="register-empty">
-              <strong>{text('No registers on this page.', 'لا توجد أجهزة في هذه الصفحة.')}</strong>
+              <strong>{text('No registers found.', 'لا توجد نقاط بيع.')}</strong>
               <p>
                 {text(
-                  'Create a register for a branch, then cashiers can open shifts from the POS.',
-                  'أنشئ جهازًا للفرع ليتمكن الكاشير من فتح وردية من نقطة البيع.',
+                  'Add a cashier station to a branch. Cashiers can then open a shift from the POS.',
+                  'أضف نقطة بيع للفرع، وبعدها يقدر الكاشير يفتح وردية من شاشة البيع.',
                 )}
               </p>
             </div>
@@ -237,15 +260,14 @@ export function RegistersPage() {
         <div className="register-pagination">
           <span>
             {text(
-              `${page.items.length} registers on this page`,
-              `${page.items.length} جهاز في هذه الصفحة`,
+              `${formatNumber(page.items.length)} registers on this page`,
+              `${formatNumber(page.items.length)} نقطة بيع في هذه الصفحة`,
             )}
           </span>
           <div>
             <Button
               type="button"
-              variant="outline"
-              size="sm"
+              className="products-button register-pagination-button"
               disabled={loading || history.length === 0}
               onClick={() => setHistory((current) => current.slice(0, -1))}
             >
@@ -253,8 +275,7 @@ export function RegistersPage() {
             </Button>
             <Button
               type="button"
-              variant="outline"
-              size="sm"
+              className="products-button register-pagination-button"
               disabled={loading || !page.nextCursor}
               onClick={() => setHistory((current) => [...current, page.nextCursor ?? undefined])}
             >
@@ -268,8 +289,8 @@ export function RegistersPage() {
         <DashboardDialog
           title={
             editing
-              ? text('Edit POS register', 'تعديل جهاز نقطة البيع')
-              : text('Add POS register', 'إضافة جهاز نقطة البيع')
+              ? text('Edit POS register', 'تعديل نقطة البيع')
+              : text('Add POS register', 'إضافة نقطة بيع')
           }
           closeLabel={text('Close', 'إغلاق')}
           busy={busy}
@@ -284,7 +305,7 @@ export function RegistersPage() {
               </p>
             )}
             {!editing && (
-              <label className="register-field">
+              <label className="register-field register-branch-field">
                 {text('Branch', 'الفرع')}
                 <PagedEntitySelect<InventoryBranch>
                   path="/owner/inventory/branches"
@@ -309,14 +330,14 @@ export function RegistersPage() {
               </p>
             )}
             <label className="register-field">
-              {text('Register name', 'اسم الجهاز')}
+              {text('Register name', 'اسم نقطة البيع')}
               <Input
                 value={draft.name}
                 maxLength={80}
                 required
                 autoFocus
                 disabled={busy}
-                placeholder={text('e.g. Front counter', 'مثال: الكاشير الأمامي')}
+                placeholder={text('e.g. Front counter', 'مثال: كاشير المدخل')}
                 onChange={(event) => setDraft((value) => ({ ...value, name: event.target.value }))}
               />
             </label>
@@ -330,20 +351,26 @@ export function RegistersPage() {
                     setDraft((value) => ({ ...value, active: event.target.checked }))
                   }
                 />
-                <span>{text('Register is active', 'الجهاز نشط')}</span>
+                <span>{text('Register is active', 'نقطة البيع نشطة')}</span>
               </label>
             )}
             <footer className="register-form-actions">
               <Button
                 type="button"
-                variant="outline"
+                className="products-button"
                 disabled={busy}
                 onClick={() => setEditorOpen(false)}
               >
                 {text('Cancel', 'إلغاء')}
               </Button>
-              <Button type="submit" disabled={busy || (!editing && !draft.branchId)}>
-                {busy ? text('Saving...', 'جارٍ الحفظ...') : text('Save register', 'حفظ الجهاز')}
+              <Button
+                type="submit"
+                className="products-button primary"
+                disabled={busy || (!editing && !draft.branchId)}
+              >
+                {busy
+                  ? text('Saving...', 'جارٍ الحفظ...')
+                  : text('Save register', 'حفظ نقطة البيع')}
               </Button>
             </footer>
           </form>

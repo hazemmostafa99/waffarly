@@ -1,19 +1,7 @@
-import { Button, cn, type ButtonProps } from '@waffarly/ui';
+import { cn } from '@waffarly/ui';
+import { PosButton } from '../../components/pos-button.js';
 
-export function PreviewButton({ className, variant = 'outline', ...props }: ButtonProps) {
-  return (
-    <Button
-      variant={variant}
-      className={cn(
-        'rounded-md',
-        variant === 'outline' &&
-          'border-border bg-card text-foreground hover:bg-secondary hover:text-foreground',
-        className,
-      )}
-      {...props}
-    />
-  );
-}
+export { PosButton as PreviewButton };
 export function StatusPill({
   children,
   warning = false,

@@ -14,6 +14,11 @@ export interface PosTenderPreview {
   balanceAfterCents: bigint;
 }
 
+export type PosTenderFieldErrors = Record<
+  string,
+  Partial<Record<'amount' | 'receivedAmount', string>>
+>;
+
 export function parseMoneyCents(value: string): bigint | null {
   const match = /^(0|[1-9]\d{0,9})(?:\.(\d{1,2}))?$/.exec(value.trim());
   if (!match) return null;
@@ -31,13 +36,14 @@ export function formatMoneyCents(value: bigint): string {
 export function previewPosTenders(
   drafts: PosTenderDraft[],
   balanceDue: string,
-): { preview: PosTenderPreview | null; error: string | null } {
+): { preview: PosTenderPreview | null; error: string | null; fieldErrors: PosTenderFieldErrors } {
+  const fieldErrors: PosTenderFieldErrors = {};
   const dueCents = parseMoneyCents(balanceDue);
   if (dueCents === null || dueCents <= 0n) {
-    return { preview: null, error: 'This check has no remaining balance.' };
+    return { preview: null, error: 'This check has no remaining balance.', fieldErrors };
   }
   if (drafts.length === 0 || drafts.length > 4) {
-    return { preview: null, error: 'Add between one and four payment methods.' };
+    return { preview: null, error: 'Add between one and four payment methods.', fieldErrors };
   }
 
   let appliedCents = 0n;
@@ -46,13 +52,15 @@ export function previewPosTenders(
   for (const draft of drafts) {
     const amountCents = parseMoneyCents(draft.amount);
     if (amountCents === null || amountCents <= 0n) {
-      return { preview: null, error: 'Enter a positive amount with up to two decimal places.' };
+      fieldErrors[draft.id] = { amount: 'Enter a positive amount with up to two decimal places.' };
+      continue;
     }
     appliedCents += amountCents;
     if (draft.method === 'cash') {
       const receivedCents = parseMoneyCents(draft.receivedAmount);
       if (receivedCents === null || receivedCents < amountCents) {
-        return { preview: null, error: 'Cash received must cover the payment amount.' };
+        fieldErrors[draft.id] = { receivedAmount: 'Cash received must cover the payment amount.' };
+        continue;
       }
       changeCents += receivedCents - amountCents;
       tenders.push({
@@ -64,8 +72,16 @@ export function previewPosTenders(
       tenders.push({ method: 'terminal', amount: formatMoneyCents(amountCents) });
     }
   }
+  const firstFieldError = Object.values(fieldErrors)[0];
+  if (firstFieldError) {
+    return {
+      preview: null,
+      error: firstFieldError.amount ?? firstFieldError.receivedAmount ?? null,
+      fieldErrors,
+    };
+  }
   if (appliedCents > dueCents) {
-    return { preview: null, error: 'Payment cannot exceed the remaining balance.' };
+    return { preview: null, error: 'Payment cannot exceed the remaining balance.', fieldErrors };
   }
   return {
     preview: {
@@ -75,5 +91,6 @@ export function previewPosTenders(
       balanceAfterCents: dueCents - appliedCents,
     },
     error: null,
+    fieldErrors,
   };
 }

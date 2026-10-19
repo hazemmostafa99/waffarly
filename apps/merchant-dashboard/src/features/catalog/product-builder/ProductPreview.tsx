@@ -1,3 +1,4 @@
+import { CustomerChoicesPreview } from './CustomerChoicesPreview.js';
 import { Icon } from '../../../Icons.js';
 import type { GroupDraft, VariantDraft } from './product-builder.types.js';
 
@@ -9,7 +10,6 @@ export function ProductPreview({
   categoryName,
   groups,
   variants,
-  total,
   formatNumber,
   text,
 }: {
@@ -20,14 +20,20 @@ export function ProductPreview({
   categoryName?: string | undefined;
   groups: GroupDraft[];
   variants: VariantDraft[];
-  total: number;
   formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
   text: (english: string, arabic: string) => string;
 }) {
+  const availableVariants = variants.filter((variant) => variant.availability === 'available');
+  const pricedVariants = availableVariants.length ? availableVariants : variants;
+  const variantPrices = pricedVariants
+    .map((variant) => Number(variant.price))
+    .filter((price) => Number.isFinite(price) && price > 0);
+  const validBasePrice =
+    /^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(basePrice) && Number(basePrice) > 0;
   return (
     <aside className="product-preview-card" aria-label={text('Product preview', 'معاينة المنتج')}>
       <div className="preview-card-heading">
-        <span>{text('Live preview', 'معاينة مباشرة')}</span>
+        <span>{text('Customer preview', 'معاينة العميل')}</span>
         <Icon name="eye" />
       </div>
       <div className="preview-image-wrap">
@@ -48,64 +54,43 @@ export function ProductPreview({
             text('Your product description will appear here.', 'سيظهر وصف المنتج هنا.')}
         </p>
         <strong className="preview-base-price">
-          {variants.length ? text('From ', 'ابتداءً من ') : ''}EGP{' '}
-          {variants.length
-            ? formatNumber(Math.min(...variants.map((variant) => Number(variant.price || 0))), {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })
-            : formatNumber(Number(basePrice || 0), {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-        </strong>
-      </div>
-      {!!variants.length && (
-        <div className="preview-selected-options">
-          <h3>{text('Variants', 'المتغيرات')}</h3>
-          {variants.map((variant) => (
-            <div className="preview-option-row" key={variant.id}>
-              <span>{variant.name || text('Variant', 'متغير')}</span>
-              <span dir="ltr">
-                EGP{' '}
-                {formatNumber(Number(variant.price || 0), {
+          {variants.length ? (
+            variantPrices.length ? (
+              <>
+                {text('From ', 'ابتداءً من ')}EGP{' '}
+                {formatNumber(Math.min(...variantPrices), {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
+              </>
+            ) : (
+              <span className="preview-price-empty">
+                {text('Enter variant prices', 'أدخل أسعار الأحجام')}
               </span>
-            </div>
-          ))}
-        </div>
-      )}
-      {!!groups.length && (
-        <div className="preview-selected-options">
-          <h3>{text('Options', 'الخيارات')}</h3>
-          {groups.map((group) => (
-            <div className="preview-option-row" key={group.id}>
-              <span>{group.name || text('Option group', 'مجموعة خيارات')}</span>
-              <span>
-                {group.options
-                  .filter((option) => option.defaultSelected)
-                  .map((option) => option.name || text('Choice', 'اختيار'))
-                  .join('، ') ||
-                  (group.minSelections
-                    ? text('Customer choice required', 'يتطلب اختيار العميل')
-                    : text('Optional', 'اختياري'))}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="preview-total">
-        <span>{text('Starting total', 'الإجمالي المبدئي')}</span>
-        <strong dir="ltr">
-          EGP {formatNumber(total, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            )
+          ) : validBasePrice ? (
+            <>
+              EGP{' '}
+              {formatNumber(Number(basePrice), {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </>
+          ) : (
+            <span className="preview-price-empty">{text('Enter a price', 'أدخل السعر')}</span>
+          )}
         </strong>
       </div>
+      <CustomerChoicesPreview
+        groups={groups}
+        variants={variants}
+        basePrice={basePrice}
+        text={text}
+      />
       <p className="preview-note">
         {text(
-          'Price includes the selected defaults; customer choices may change it.',
-          'يشمل السعر الاختيارات الافتراضية وقد يتغير حسب اختيارات العميل.',
+          'Try the choices and prices before saving your product.',
+          'جرّب الاختيارات والأسعار قبل حفظ المنتج.',
         )}
       </p>
     </aside>

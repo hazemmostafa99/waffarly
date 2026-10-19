@@ -1,6 +1,8 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   POS_LEGACY_EMPLOYEE_PERMISSIONS,
+  POS_EMPLOYEE_PERMISSIONS,
+  type PosEmployeePermission,
   isPosEmployeeRole,
   resolvePosEmployeePermissions,
   type CursorPage,
@@ -44,6 +46,7 @@ export class PosEmployeeService {
     }
     const where: Prisma.PosEmployeeWhereInput = {
       merchantId,
+      ...(query.role ? { role: query.role } : {}),
       ...(query.status === 'active'
         ? { active: true }
         : query.status === 'inactive'
@@ -85,7 +88,10 @@ export class PosEmployeeService {
             displayName: parsed.displayName,
             passwordHash,
             role: parsed.role ?? null,
-            permissions: [...POS_LEGACY_EMPLOYEE_PERMISSIONS],
+            permissions:
+              !parsed.role || parsed.role === 'cashier' || parsed.role === 'supervisor'
+                ? [...POS_LEGACY_EMPLOYEE_PERMISSIONS]
+                : [],
             createdBy: actor,
             updatedBy: actor,
             branches: {
@@ -199,6 +205,9 @@ function toEmployeeSummary(employee: {
     username: employee.username,
     displayName: employee.displayName,
     role: isPosEmployeeRole(employee.role) ? employee.role : null,
+    savedPermissions: employee.permissions.filter((value): value is PosEmployeePermission =>
+      (POS_EMPLOYEE_PERMISSIONS as readonly string[]).includes(value),
+    ),
     permissions: resolvePosEmployeePermissions(
       isPosEmployeeRole(employee.role) ? employee.role : null,
       employee.permissions,

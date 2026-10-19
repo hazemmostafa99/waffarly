@@ -23,3 +23,14 @@ export function cacheStockItem(items: StockItem[], item: StockItem): StockItem[]
     ? items.map((current) => (current.id === item.id ? item : current))
     : [...items, item];
 }
+
+export function stockUnitLabel(code: string, locale: string, fallback = code): string {
+  const labels: Record<string, [string, string]> = {
+    piece: ['piece', 'قطعة'],
+    g: ['gram', 'جرام'],
+    kg: ['kilogram', 'كيلوجرام'],
+    ml: ['millilitre', 'ملليلتر'],
+    l: ['litre', 'لتر'],
+  };
+  return labels[code]?.[locale === 'ar' ? 1 : 0] ?? fallback;
+}

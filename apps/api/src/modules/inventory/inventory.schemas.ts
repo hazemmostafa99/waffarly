@@ -1,4 +1,9 @@
-import { isPositiveStockQuantity, STOCK_BASE_UNITS, STOCK_CONDITIONS } from '@waffarly/contracts';
+import {
+  isNonNegativeStockQuantity,
+  isPositiveStockQuantity,
+  STOCK_BASE_UNITS,
+  STOCK_CONDITIONS,
+} from '@waffarly/contracts';
 import { z } from 'zod';
 import { normalizeStockQuantity } from './stock-quantity.js';
 
@@ -126,6 +131,31 @@ export const listStockMovementsSchema = z
   })
   .strict();
 export type StockMovementListQuery = z.infer<typeof listStockMovementsSchema>;
+
+export const listInventoryHealthSchema = z
+  .object({
+    cursor: uuid.optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(25),
+    branchId: uuid.optional(),
+    warehouseId: uuid.optional(),
+    stockItemId: uuid.optional(),
+    search: z.string().trim().max(160).default(''),
+  })
+  .strict();
+export type InventoryHealthListQuery = z.infer<typeof listInventoryHealthSchema>;
+
+export const updateInventoryReorderThresholdSchema = z
+  .object({
+    revision: revision.nullable(),
+    minimumAvailableQuantity: z
+      .string()
+      .refine(
+        isNonNegativeStockQuantity,
+        'Quantity must be a non-negative decimal with up to 12 integer and 6 fractional digits.',
+      ),
+  })
+  .strict();
+export const deleteInventoryReorderThresholdSchema = z.object({ revision }).strict();
 
 export const createStockOpeningSchema = z
   .object({

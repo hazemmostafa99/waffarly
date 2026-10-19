@@ -8,6 +8,10 @@ export function isPositiveStockQuantity(value: string): boolean {
   return STOCK_QUANTITY_PATTERN.test(value) && !/^0(?:\.0+)?$/.test(value);
 }
 
+export function isNonNegativeStockQuantity(value: string): boolean {
+  return STOCK_QUANTITY_PATTERN.test(value);
+}
+
 export interface StockItemUnitFields {
   code: string;
   name: string;
@@ -191,4 +195,53 @@ export interface StockMovementBatchResult {
   createdAt: string;
   replayed: boolean;
   movements: StockMovement[];
+}
+
+export interface InventoryReorderThreshold {
+  id: string;
+  warehouseId: string;
+  stockItemId: string;
+  minimumAvailableQuantity: string;
+  revision: number;
+  updatedAt: string;
+}
+
+export interface UpdateInventoryReorderThresholdRequest {
+  /** Null creates a threshold only when one does not already exist. */
+  revision: number | null;
+  minimumAvailableQuantity: string;
+}
+
+export interface ClearInventoryReorderThresholdResult {
+  cleared: true;
+}
+
+export type InventoryStockHealthState = 'low' | 'healthy';
+
+export interface InventoryStockHealth {
+  thresholdId: string;
+  warehouseId: string;
+  warehouseName: string;
+  branchId: string;
+  branchName: string;
+  stockItemId: string;
+  stockItemName: string;
+  baseUnit: StockBaseUnit;
+  minimumAvailableQuantity: string;
+  availableQuantity: string;
+  state: InventoryStockHealthState;
+  revision: number;
+  updatedAt: string;
+}
+
+export interface InventoryHealthSummary {
+  configuredItemLocations: number;
+  lowStockItemLocations: number;
+  healthyItemLocations: number;
+}
+
+export interface InventoryHealthPage {
+  items: InventoryStockHealth[];
+  nextCursor: string | null;
+  summary: InventoryHealthSummary;
 }

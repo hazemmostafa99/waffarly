@@ -17,16 +17,16 @@ model FoundationMarker {
 
 // A merchant is the tenant boundary across business activities.
 model Merchant {
-  id                       String                 @id @default(uuid()) @db.Uuid
-  name                     String                 @db.VarChar(160)
-  storefrontSlug           String                 @unique @db.VarChar(120)
-  activity                 String                 @default("other") @db.VarChar(32)
-  contactPhone             String                 @db.VarChar(32)
-  ownerName                String                 @db.VarChar(160)
-  ownerMobile              String                 @db.VarChar(32)
-  firstMonthActivatedAt    DateTime?              @db.Timestamptz(6)
-  firstMonthActivatedBy    String?                @db.VarChar(80)
-  createdAt                DateTime               @default(now()) @db.Timestamptz(6)
+  id                       String                  @id @default(uuid()) @db.Uuid
+  name                     String                  @db.VarChar(160)
+  storefrontSlug           String                  @unique @db.VarChar(120)
+  activity                 String                  @default("other") @db.VarChar(32)
+  contactPhone             String                  @db.VarChar(32)
+  ownerName                String                  @db.VarChar(160)
+  ownerMobile              String                  @db.VarChar(32)
+  firstMonthActivatedAt    DateTime?               @db.Timestamptz(6)
+  firstMonthActivatedBy    String?                 @db.VarChar(80)
+  createdAt                DateTime                @default(now()) @db.Timestamptz(6)
   owner                    OwnerAccount?
   posEmployees             PosEmployee[]
   application              MerchantApplication?
@@ -40,6 +40,7 @@ model Merchant {
   branches                 Branch[]
   warehouses               Warehouse[]
   stockBalances            StockBalance[]
+  stockReorderThresholds   StockReorderThreshold[]
   stockMovementBatches     StockMovementBatch[]
   purchaseSuppliers        PurchaseSupplier[]
   purchaseInvoices         PurchaseInvoice[]
@@ -51,10 +52,10 @@ model Merchant {
   posCheckReceipts         PosCheckReceipt[]
   posOrderPayments         PosOrderPayment[]
   posShiftCashMovements    PosShiftCashMovement[]
-  negativeStockPolicy      String                 @default("allow") @db.VarChar(16)
-  inventoryPolicyRevision  Int                    @default(1)
-  inventoryPolicyUpdatedBy String?                @db.VarChar(80)
-  inventoryPolicyUpdatedAt DateTime?              @db.Timestamptz(6)
+  negativeStockPolicy      String                  @default("allow") @db.VarChar(16)
+  inventoryPolicyRevision  Int                     @default(1)
+  inventoryPolicyUpdatedBy String?                 @db.VarChar(80)
+  inventoryPolicyUpdatedAt DateTime?               @db.Timestamptz(6)
 
   @@map("merchants")
 }
@@ -77,6 +78,7 @@ model StockItem {
   merchant              Merchant                              @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   units                 StockItemUnit[]
   balances              StockBalance[]
+  reorderThresholds     StockReorderThreshold[]
   movements             StockMovement[]
   purchaseInvoiceLines  PurchaseInvoiceLine[]
   productComponents     ProductInventoryComponent[]
@@ -135,20 +137,21 @@ model Branch {
 
 // Warehouses remain distinct even when a branch currently operates one location.
 model Warehouse {
-  id                   String            @id @default(uuid()) @db.Uuid
-  merchantId           String            @db.Uuid
-  branchId             String            @db.Uuid
-  name                 String            @db.VarChar(160)
-  isDefaultConsumption Boolean           @default(false)
-  archivedAt           DateTime?         @db.Timestamptz(6)
-  revision             Int               @default(1)
-  createdBy            String            @db.VarChar(80)
-  updatedBy            String            @db.VarChar(80)
-  createdAt            DateTime          @default(now()) @db.Timestamptz(6)
-  updatedAt            DateTime          @updatedAt @db.Timestamptz(6)
-  branch               Branch            @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
-  merchant             Merchant          @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  id                   String                  @id @default(uuid()) @db.Uuid
+  merchantId           String                  @db.Uuid
+  branchId             String                  @db.Uuid
+  name                 String                  @db.VarChar(160)
+  isDefaultConsumption Boolean                 @default(false)
+  archivedAt           DateTime?               @db.Timestamptz(6)
+  revision             Int                     @default(1)
+  createdBy            String                  @db.VarChar(80)
+  updatedBy            String                  @db.VarChar(80)
+  createdAt            DateTime                @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime                @updatedAt @db.Timestamptz(6)
+  branch               Branch                  @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  merchant             Merchant                @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   balances             StockBalance[]
+  reorderThresholds    StockReorderThreshold[]
   movements            StockMovement[]
   purchaseInvoices     PurchaseInvoice[]
   recipeOrders         StorefrontOrder[]
@@ -179,6 +182,28 @@ model StockBalance {
   @@unique([merchantId, warehouseId, stockItemId, condition])
   @@index([merchantId, warehouseId, createdAt, id])
   @@map("stock_balances")
+}
+
+// A reorder point is configured for one item in one warehouse, in that item's base unit.
+model StockReorderThreshold {
+  id                       String    @id @default(uuid()) @db.Uuid
+  merchantId               String    @db.Uuid
+  warehouseId              String    @db.Uuid
+  stockItemId              String    @db.Uuid
+  minimumAvailableQuantity Decimal   @db.Decimal(18, 6)
+  revision                 Int       @default(1)
+  createdBy                String    @db.VarChar(80)
+  updatedBy                String    @db.VarChar(80)
+  createdAt                DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt                DateTime  @updatedAt @db.Timestamptz(6)
+  merchant                 Merchant  @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  warehouse                Warehouse @relation(fields: [warehouseId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  stockItem                StockItem @relation(fields: [stockItemId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([id, merchantId])
+  @@unique([merchantId, warehouseId, stockItemId])
+  @@index([merchantId, warehouseId, createdAt, id])
+  @@map("stock_reorder_thresholds")
 }
 
 // One attributable, retry-safe posting containing one or more immutable movements.

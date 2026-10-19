@@ -29,15 +29,16 @@ export function InventoryHeader({
         <div>
           {[
             ['/inventory', 'Stock overview', 'box'],
+            ['/inventory/health', 'Stock health', 'box'],
             ['/inventory/items', 'Items', 'layers'],
             ['/inventory/purchases', 'Purchases', 'file'],
             ['/inventory/history', 'Movement history', 'orders'],
           ].map(([to, label, icon]) => (
             <NavLink
               key={to}
-              className={`products-button ${pathname === to ? 'primary' : ''}`}
+              className={`products-button ${pathname === to || (to === '/inventory/purchases' && pathname.startsWith('/inventory/purchases/')) || (to === '/inventory/items' && pathname.startsWith('/inventory/items/')) || (to === '/inventory/history' && pathname.startsWith('/inventory/movements/')) ? 'primary' : ''}`}
               to={to!}
-              end
+              end={to !== '/inventory/purchases'}
             >
               <Icon name={icon!} />
               {text(label!)}

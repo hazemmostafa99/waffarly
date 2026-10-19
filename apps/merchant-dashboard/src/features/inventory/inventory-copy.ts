@@ -4,6 +4,35 @@ export function inventoryCopy(
   translate: (text: string) => string,
 ) {
   const arabic: Record<string, string> = {
+    'Items on this page': 'أصناف في هذه الصفحة',
+    'Filter by item': 'تصفية حسب الصنف',
+    'Movement type': 'نوع الحركة',
+    'Sale consumption': 'استهلاك بيع',
+    'Sale restoration': 'استرجاع مخزون بيع',
+    'Recipe consumption': 'استهلاك وصفة',
+    'Recipe restoration': 'استرجاع مكونات وصفة',
+    Adjustment: 'تسوية مخزون',
+    'Other movement': 'حركة أخرى',
+    Optional: 'اختياري',
+    'Save and review': 'حفظ ومراجعة',
+    'Save a draft to continue later, or save and review before receiving stock.':
+      'احفظ مسودة للمتابعة لاحقًا، أو احفظ وراجع قبل استلام المخزون.',
+    'No matching purchases': 'لا توجد مشتريات مطابقة',
+    'No matching suppliers': 'لا يوجد موردون مطابقون',
+    'Record a delivery from a supplier, then review it before adding stock.':
+      'سجّل شحنة من مورد، ثم راجعها قبل إضافة الكميات إلى المخزون.',
+    'Add supplier contact details to start recording deliveries.':
+      'أضف بيانات التواصل مع المورد لبدء تسجيل الشحنات.',
+    'Choose your stock policy': 'اختر سياسة المخزون',
+    'Save policy': 'حفظ السياسة',
+    'Stock consumption can continue below zero. Negative balances need follow-up.':
+      'يمكن متابعة استهلاك المخزون دون الصفر. تحتاج الأرصدة السالبة إلى متابعة.',
+    'Stock consumption is blocked when the available quantity is insufficient.':
+      'يُمنع استهلاك المخزون عندما تكون الكمية المتاحة غير كافية.',
+    'This policy applies to all branches and warehouses. Non-sellable stock is never used for sales or recipes.':
+      'تسري هذه السياسة على جميع الفروع والمستودعات. لا يُستخدم المخزون غير القابل للبيع في المبيعات أو الوصفات.',
+    'Opening entries add to existing balances. They do not replace stock counts.':
+      'تُضاف القيود الافتتاحية إلى الأرصدة الحالية، ولا تستبدل الكميات المسجلة.',
     'Inventory navigation': 'التنقل في المخزون',
     'Stock overview': 'نظرة عامة على المخزون',
     Items: 'الأصناف',
@@ -50,6 +79,44 @@ export function inventoryCopy(
     'Receiving this purchase adds the quantities below to:':
       'استلام هذه المشتريات يضيف الكميات التالية إلى:',
     'Choose a supplier and warehouse to continue.': 'اختر المورد والمستودع للمتابعة.',
+    'Choose a supplier.': 'اختر المورد.',
+    'Choose a warehouse.': 'اختر المستودع.',
+    'Choose a stock item.': 'اختر صنف المخزون.',
+    'Choose a unit.': 'اختر الوحدة.',
+    'Enter a quantity greater than zero.': 'أدخل كمية أكبر من صفر.',
+    'Back to purchases': 'العودة إلى المشتريات',
+    'Purchase invoice details': 'بيانات فاتورة الشراء',
+    'New purchase details': 'بيانات الشراء الجديد',
+    'Enter the supplier, destination warehouse, and quantities actually received.':
+      'أدخل المورد والمستودع المستلم والكميات التي وصلت فعليًا.',
+    'Your unsaved purchase was restored in this browser.':
+      'تمت استعادة بيانات الشراء غير المحفوظة من هذا المتصفح.',
+    'Discard recovered changes': 'تجاهل البيانات المستعادة',
+    'Loading draft': 'جارٍ تحميل المسودة',
+    'Loading purchase invoice…': 'جارٍ تحميل فاتورة الشراء…',
+    'Draft unavailable': 'المسودة غير متاحة',
+    'Could not load the draft.': 'تعذر تحميل المسودة.',
+    'Confirmed invoice': 'فاتورة مؤكدة',
+    'Confirmed invoices cannot be edited. Use a reviewed stock movement to correct the received quantity.':
+      'لا يمكن تعديل الفواتير المؤكدة. استخدم حركة مخزون تمت مراجعتها لتصحيح الكمية المستلمة.',
+    'Loading inventory setup…': 'جارٍ تحميل إعداد المخزون…',
+    'Could not check your inventory setup.': 'تعذر التحقق من إعداد المخزون.',
+    'Reload setup': 'إعادة تحميل الإعداد',
+    'Set up a branch and warehouse': 'أعدّ فرعًا ومستودعًا',
+    'Your stock items are ready. Add an active branch and warehouse before entering stock or receiving purchases.':
+      'أصناف المخزون جاهزة. أضف فرعًا ومستودعًا نشطين قبل إدخال الرصيد أو استلام المشتريات.',
+    'Add a branch and warehouse first. Then create stock items and enter the quantities you already have.':
+      'أضف فرعًا ومستودعًا أولًا، ثم أنشئ أصناف المخزون وأدخل الكميات الموجودة لديك.',
+    'Set up branch and warehouse': 'إعداد فرع ومستودع',
+    'Add stock items': 'إضافة أصناف المخزون',
+    'Your warehouse is ready': 'المستودع جاهز',
+    'Add your first stock item before recording a balance or purchase.':
+      'أضف أول صنف للمخزون قبل تسجيل رصيد أو عملية شراء.',
+    'Add first stock item': 'إضافة أول صنف للمخزون',
+    'Your only active warehouse will be preselected:': 'سيتم تحديد مستودعك النشط الوحيد تلقائيًا:',
+    'Choose the destination warehouse when you enter starting stock.':
+      'اختر المستودع المستلم عند إدخال الرصيد الافتتاحي.',
+    'Reload data': 'إعادة تحميل البيانات',
     'Continue to items': 'متابعة إلى الأصناف',
     Back: 'رجوع',
     'All warehouses': 'كل المستودعات',
@@ -118,6 +185,7 @@ export function inventoryCopy(
     'Check the pack code, name, positive conversion, and 20-unit limit.':
       'تحقق من رمز العبوة واسمها ومعامل التحويل الموجب وحدّ الوحدات البالغ 20.',
     'Could not load stock items.': 'تعذر تحميل أصناف المخزون.',
+    'Retry loading the list to see your stock items.': 'أعد تحميل القائمة لعرض أصناف المخزون.',
     'Could not update the stock item.': 'تعذر تحديث صنف المخزون.',
     'Could not save the stock item.': 'تعذر حفظ صنف المخزون.',
     'Could not convert this quantity.': 'تعذر تحويل هذه الكمية.',
@@ -167,6 +235,8 @@ export function inventoryCopy(
     'Archiving requires all balances in this location to be zero. The default warehouse must be changed first.':
       'يجب أن تكون جميع الأرصدة في هذا الموقع صفرًا قبل الأرشفة، ويجب تغيير المخزن الافتراضي أولًا.',
     'Could not load branches.': 'تعذر تحميل الفروع.',
+    'Retry loading the list to see your branches and warehouses.':
+      'أعد تحميل القائمة لعرض الفروع والمخازن.',
     'Could not update the warehouse.': 'تعذر تحديث المخزن.',
     'Could not update this location.': 'تعذر تحديث هذا الموقع.',
     'Could not save this location.': 'تعذر حفظ هذا الموقع.',
@@ -328,6 +398,81 @@ export function inventoryCopy(
     'Invoice confirmed.': 'تم تأكيد الفاتورة.',
     'Create the supplier directory entry first.': 'أنشئ المورد في الدليل أولًا.',
     'This supplier invoice number is already recorded.': 'رقم فاتورة المورد مسجل بالفعل.',
+    'Could not load the purchase invoice.': 'تعذر تحميل فاتورة الشراء.',
+    'Stock health': 'حالة المخزون',
+    'Review configured reorder points against Available stock at each warehouse.':
+      'راجع حدود إعادة الطلب مقابل المخزون المتاح في كل مستودع.',
+    'Review this item by location and update its reorder points.':
+      'راجع الصنف حسب الموقع وحدّث حدود إعادة طلبه.',
+    'Add reorder point': 'إضافة حد إعادة طلب',
+    'Back to stock item': 'العودة إلى صنف المخزون',
+    'Back to items': 'العودة إلى الأصناف',
+    'Could not load stock health.': 'تعذر تحميل حالة المخزون.',
+    'Stock health summary': 'ملخص حالة المخزون',
+    'Counts cover all configured item and warehouse pairs in this filter, not just this page.':
+      'تشمل الأعداد كل أزواج الأصناف والمستودعات المعدّة ضمن هذا الفلتر، وليس هذه الصفحة فقط.',
+    'Low stock': 'مخزون منخفض',
+    Healthy: 'سليم',
+    'Low stock item locations': 'مواقع الأصناف ذات المخزون المنخفض',
+    'Healthy item locations': 'مواقع الأصناف ذات المخزون السليم',
+    'Configured item locations': 'مواقع الأصناف المعدّة للمتابعة',
+    'Health uses Available stock only. Non-Sellable quantities are excluded, and thresholds use the item base unit.':
+      'تعتمد الحالة على المخزون المتاح فقط، وتُستبعد الكميات غير الصالحة للبيع. تستخدم الحدود وحدة الصنف الأساسية.',
+    'Reorder points': 'حدود إعادة الطلب',
+    'A reorder point is configured per stock item and warehouse.':
+      'يُضبط حد إعادة الطلب لكل صنف ومستودع.',
+    'Search stock health': 'البحث في حالة المخزون',
+    'Search by item or location': 'ابحث باسم الصنف أو الموقع',
+    'Available / reorder point': 'المتاح / حد إعادة الطلب',
+    'Edit threshold': 'تعديل الحد',
+    'No reorder points for this item': 'لا توجد حدود إعادة طلب لهذا الصنف',
+    'No reorder points configured': 'لم تُضبط حدود إعادة الطلب بعد',
+    'Add a reorder point for a stock item and warehouse to start monitoring low stock.':
+      'أضف حدًا لصنف ومستودع لبدء متابعة انخفاض المخزون.',
+    'Edit reorder point': 'تعديل حد إعادة الطلب',
+    'Minimum Available quantity': 'الحد الأدنى للكمية المتاحة',
+    'Enter the item base unit.': 'أدخل الكمية بوحدة الصنف الأساسية.',
+    'When Available stock is at or below this amount, the location is marked low stock. A zero threshold alerts at zero or below.':
+      'يُصنّف الموقع كمخزون منخفض عندما تبلغ الكمية المتاحة هذا الحد أو تقل عنه. ينبه الحد الصفري عند وصول المخزون إلى الصفر أو أقل.',
+    'Clear threshold': 'إزالة الحد',
+    'Save threshold': 'حفظ الحد',
+    'Enter a location, stock item, and non-negative threshold.':
+      'أدخل موقعًا وصنف مخزون وحدًا غير سالب.',
+    'Could not save the reorder threshold.': 'تعذر حفظ حد إعادة الطلب.',
+    'Could not clear the reorder threshold.': 'تعذر إزالة حد إعادة الطلب.',
+    'Stock item details': 'تفاصيل صنف المخزون',
+    'Review this stock item across warehouses and its latest movement history.':
+      'راجع الصنف في المستودعات وسجل أحدث حركاته.',
+    'Manage reorder points': 'إدارة حدود إعادة الطلب',
+    'Only configured location thresholds are counted.': 'تُحتسب المواقع التي ضُبط لها حد فقط.',
+    'Thresholds compare Available stock in this base unit.':
+      'تقارن الحدود المخزون المتاح بوحدة الصنف الأساسية.',
+    'Current stock by location': 'المخزون الحالي حسب الموقع',
+    'Balances are separated by stock condition and warehouse.':
+      'تُعرض الأرصدة منفصلة حسب حالة المخزون والمستودع.',
+    'Loading stock balances…': 'جارٍ تحميل أرصدة المخزون…',
+    'No stock balance has been posted for this item yet.': 'لم يُسجل رصيد لهذا الصنف بعد.',
+    'Recent movements': 'أحدث الحركات',
+    'Open a movement to see its source, reason, and full posting details.':
+      'افتح الحركة لعرض مصدرها وسببها وتفاصيل تسجيلها.',
+    'View movement history': 'عرض سجل الحركات',
+    'View movement': 'عرض الحركة',
+    'Could not load stock item details.': 'تعذر تحميل تفاصيل صنف المخزون.',
+    'Movement details': 'تفاصيل الحركة',
+    'Review the immutable quantity change and follow its recorded source.':
+      'راجع تغيير الكمية المسجل ومصدره.',
+    'Back to movement history': 'العودة إلى سجل الحركات',
+    'Loading movement details…': 'جارٍ تحميل تفاصيل الحركة…',
+    'Could not load movement details.': 'تعذر تحميل تفاصيل الحركة.',
+    'Movement was not found.': 'لم يتم العثور على الحركة.',
+    Location: 'الموقع',
+    'Entered quantity': 'الكمية المدخلة',
+    Source: 'المصدر',
+    'View purchase invoice': 'عرض فاتورة الشراء',
+    'View related order': 'عرض الطلب المرتبط',
+    'Related recipe order': 'طلب الوصفة المرتبط',
+    'Source reference': 'مرجع المصدر',
+    'Movement batch': 'دفعة الحركة',
   };
   return locale === 'ar' ? (arabic[message] ?? translate(message)) : translate(message);
 }

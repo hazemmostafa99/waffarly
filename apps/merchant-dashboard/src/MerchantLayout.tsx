@@ -83,6 +83,16 @@ export function MerchantLayout() {
   const hasBreadcrumb =
     hasCustomPageHeading && !isCustomers && !isOrders && location.pathname !== '/settings';
 
+  function navigationLabel(item: (typeof navigation)[number]): string {
+    if (item.id === 'inventory') return copy('Inventory');
+    if (locale === 'ar') {
+      if (item.id === 'pos-registers') return 'نقاط البيع';
+      if (item.id === 'pos-tables') return 'ترابيزات POS';
+      if (item.id === 'employees') return 'الموظفون';
+    }
+    return t(item.label);
+  }
+
   return profile === undefined ? (
     <main id="main-content" tabIndex={-1} className="shell">
       {t('Loading Merchant Dashboard…')}
@@ -124,13 +134,7 @@ export function MerchantLayout() {
               onClick={() => setMenuOpen(false)}
             >
               <Icon name={item.icon} />
-              <span>
-                {item.id === 'inventory'
-                  ? copy('Inventory')
-                  : item.id === 'employees' && locale === 'ar'
-                    ? 'الموظفون'
-                    : t(item.label)}
-              </span>
+              <span>{navigationLabel(item)}</span>
               {item.id === 'orders' && <small aria-hidden="true">{formatNumber(12)}</small>}
             </NavLink>
           ))}
@@ -261,12 +265,7 @@ export function MerchantLayout() {
         >
           {location.pathname !== '/' && hasBreadcrumb && (
             <div className="merchant-breadcrumb">
-              {t('Home')} <span>/</span>{' '}
-              {current.id === 'inventory'
-                ? copy('Inventory')
-                : current.id === 'employees' && locale === 'ar'
-                  ? 'الموظفون'
-                  : t(current.label)}
+              {t('Home')} <span>/</span> {navigationLabel(current)}
             </div>
           )}
           {location.pathname !== '/' && hasCustomPageHeading && (
@@ -274,13 +273,7 @@ export function MerchantLayout() {
               className={`merchant-page-heading ${isCustomers ? 'merchant-customers-heading' : ''}`}
             >
               <div>
-                <h1>
-                  {current.id === 'inventory'
-                    ? copy('Inventory')
-                    : current.id === 'employees' && locale === 'ar'
-                      ? 'الموظفون'
-                      : t(current.label)}
-                </h1>
+                <h1>{navigationLabel(current)}</h1>
                 <p>
                   {t(
                     location.pathname === '/'

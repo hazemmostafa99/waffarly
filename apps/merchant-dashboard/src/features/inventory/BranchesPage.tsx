@@ -11,6 +11,7 @@ import type { InventoryBranch, InventoryWarehouse } from '@waffarly/contracts';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { apiRequest, apiRequestPage } from '../../lib/api-client.js';
 import { inventoryCopy } from './inventory-copy.js';
+import { InventoryHeader } from './InventoryHeader.js';
 
 type BranchEditorState = { branch: InventoryBranch | null; key: string };
 type WarehouseEditorState = {
@@ -33,6 +34,7 @@ export function BranchesPage() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [listError, setListError] = useState('');
   const [notice, setNotice] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const [branchEditor, setBranchEditor] = useState<BranchEditorState | null>(null);
@@ -43,7 +45,7 @@ export function BranchesPage() {
   useEffect(() => {
     let current = true;
     setLoading(true);
-    setLoadError('');
+    setListError('');
     const query = new URLSearchParams({ limit: '50', status });
     if (search) query.set('search', search);
     const cursor = history.at(-1);
@@ -60,10 +62,12 @@ export function BranchesPage() {
         );
       })
       .catch((cause: unknown) => {
-        if (current)
-          setLoadError(
-            cause instanceof Error ? errorText(cause.message) : text('Could not load branches.'),
-          );
+        if (!current) return;
+        setListError(
+          cause instanceof Error ? errorText(cause.message) : text('Could not load branches.'),
+        );
+        setBranches([]);
+        setNextCursor(null);
       })
       .finally(() => {
         if (current) setLoading(false);
@@ -203,23 +207,18 @@ export function BranchesPage() {
 
   return (
     <main className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <section className="inventory-intro">
-        <div>
-          <span className="inventory-eyebrow">{text('Inventory foundation')}</span>
-          <h2>{text('Branches and warehouses')}</h2>
-          <p>
-            {text(
-              'Each branch can hold multiple warehouses and has one default consumption warehouse.',
-            )}
-          </p>
-        </div>
-        <Button
-          type="button"
-          onClick={() => setBranchEditor({ branch: null, key: crypto.randomUUID() })}
-        >
-          {text('Add branch')}
-        </Button>
-      </section>
+      <InventoryHeader
+        title="Branches and warehouses"
+        description="Each branch can hold multiple warehouses and has one default consumption warehouse."
+        actions={
+          <Button
+            type="button"
+            onClick={() => setBranchEditor({ branch: null, key: crypto.randomUUID() })}
+          >
+            {text('Add branch')}
+          </Button>
+        }
+      />
 
       {notice && (
         <p className="inventory-notice" role="status">
@@ -229,6 +228,9 @@ export function BranchesPage() {
       {loadError && (
         <div className="inventory-error" role="alert">
           {loadError}
+          <Button type="button" variant="ghost" size="sm" onClick={() => setLoadError('')}>
+            {text('Close')}
+          </Button>
         </div>
       )}
 
@@ -236,6 +238,27 @@ export function BranchesPage() {
         title={text('Branch directory')}
         description={text('Manage branch addresses and stock warehouses.')}
       >
+        {listError && (
+          <div className="inventory-error" role="alert">
+            <span>{listError}</span>
+            <span className="inventory-error-actions">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setListError('');
+                  setRefreshKey((key) => key + 1);
+                }}
+              >
+                {text('Retry')}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setListError('')}>
+                {text('Close')}
+              </Button>
+            </span>
+          </div>
+        )}
         <div className="inventory-filters">
           <form className="inventory-search" onSubmit={applySearch}>
             <label htmlFor="branch-search">{text('Search branches')}</label>
@@ -274,7 +297,16 @@ export function BranchesPage() {
           caption={text('Branch directory')}
           loading={loading}
           loadingState={text('Loading branches…')}
-          emptyState={text('No branches yet. Add a branch to begin.')}
+          emptyState={
+            listError ? (
+              <div className="inventory-empty">
+                <h3>{text('Could not load branches.')}</h3>
+                <p>{text('Retry loading the list to see your branches and warehouses.')}</p>
+              </div>
+            ) : (
+              text('No branches yet. Add a branch to begin.')
+            )
+          }
         />
         <div className="inventory-pagination">
           <span>{formatDigits(`${branches.length} ${text('branches on this page')}`)}</span>

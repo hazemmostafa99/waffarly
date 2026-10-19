@@ -32,6 +32,185 @@ class MemoryStorage {
   }
 }
 
+test('new drafts reuse only truly blank records; cleanup and deletion protect pending sales and other branches', () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const localStorage = new MemoryStorage();
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { localStorage, sessionStorage: new MemoryStorage() },
+  });
+  const merchant = 'switcher-merchant';
+  const employee = 'switcher-employee';
+  try {
+    const store = usePosWorkspaceStore.getState();
+    store.hydrate(merchant, employee);
+    store.selectBranch(merchant, employee, 'branch');
+    const first = store.startDraft(merchant, employee);
+    assert.equal(store.startDraft(merchant, employee), first);
+    const blank = usePosWorkspaceStore.getState().workspace!.drafts[first]!;
+    for (const details of [
+      { customerName: 'Guest' },
+      { customerPhone: '010' },
+      { deliveryAddress: 'Address' },
+      { tableId: 'table' },
+      { fulfillment: 'delivery' as const },
+      { lines: [{ id: 'line', productId: 'product', quantity: 1, selections: [], note: 'note' }] },
+    ]) {
+      store.saveDraft(merchant, employee, { ...blank, ...details });
+      const next = store.startDraft(merchant, employee);
+      assert.notEqual(next, first);
+      store.removeDraft(merchant, employee, next);
+      store.selectDraft(merchant, employee, first);
+    }
+    store.saveDraft(merchant, employee, { ...blank, customerName: 'Guest' });
+    const blankId = store.startDraft(merchant, employee);
+    store.saveDraft(merchant, employee, { ...blank, id: 'old-blank' });
+    store.saveDraft(merchant, employee, { ...blank, id: 'pending' });
+    const pending = {
+      requestId: 'saved-sale',
+      payload: {
+        requestId: 'saved-sale',
+        registerId: 'register',
+        fulfillmentType: 'takeaway' as const,
+        items: [
+          {
+            lineId: 'line',
+            productId: 'product',
+            quantity: 1,
+            expectedProductRevision: 1,
+            selections: [],
+          },
+        ],
+      },
+    };
+    store.savePendingSale(merchant, employee, 'pending', pending);
+    assert.throws(() => store.removeDraft(merchant, employee, 'pending'), /Resolve the saved sale/);
+    store.selectBranch(merchant, employee, 'other');
+    const otherId = store.startDraft(merchant, employee);
+    store.selectBranch(merchant, employee, 'branch');
+    store.selectDraft(merchant, employee, blankId);
+    store.discardEmptyDrafts(merchant, employee);
+    const workspace = usePosWorkspaceStore.getState().workspace!;
+    assert.ok(workspace.drafts[first]);
+    assert.ok(workspace.drafts[blankId]);
+    assert.ok(workspace.drafts.pending);
+    assert.ok(workspace.drafts[otherId]);
+    assert.equal(workspace.drafts['old-blank'], undefined);
+    assert.throws(() => store.removeDraft(merchant, employee, otherId), /selected branch/);
+    store.selectDraft(merchant, employee, first);
+    const deviceId = localStorage.getItem('waffarly:pos:device:v1')!;
+    assert.equal(
+      readPosWorkspace(merchant, employee, deviceId, localStorage, null).selectedDraftId,
+      first,
+    );
+    localStorage.setItem = () => {
+      throw new Error('Storage full');
+    };
+    assert.throws(() => store.removeDraft(merchant, employee, first));
+    assert.ok(usePosWorkspaceStore.getState().workspace?.drafts[first]);
+    assert.deepEqual(usePosWorkspaceStore.getState().workspace?.pendingSales.pending, pending);
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
+    usePosWorkspaceStore.setState({
+      activeScope: null,
+      workspace: null,
+      hydratedScope: null,
+      persistenceError: null,
+    });
+  }
+});
+
+test('confirmed sale references replace drafts atomically, survive reload and stay actor/branch/device scoped', () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const localStorage = new MemoryStorage();
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { localStorage, sessionStorage: new MemoryStorage() },
+  });
+  const merchantId = 'reference-merchant';
+  const employeeId = 'reference-employee';
+  const draft: PosOrderDraft = {
+    id: 'draft',
+    branchId: 'branch',
+    createdAt: '2026-10-17T08:00:00.000Z',
+    updatedAt: '2026-10-17T08:00:00.000Z',
+    fulfillment: 'takeaway',
+    lines: [],
+  };
+  const order = { id: 'confirmed', createdAt: draft.createdAt };
+  const pending = {
+    requestId: 'sale',
+    payload: {
+      requestId: 'sale',
+      registerId: 'register',
+      fulfillmentType: 'takeaway' as const,
+      items: [],
+    },
+  };
+  try {
+    const store = usePosWorkspaceStore.getState();
+    store.hydrate(merchantId, employeeId);
+    store.selectBranch(merchantId, employeeId, draft.branchId);
+    store.saveDraft(merchantId, employeeId, draft);
+    store.savePendingSale(merchantId, employeeId, draft.id, pending);
+    assert.throws(
+      () => store.completeSale(merchantId, employeeId, draft.id, 'wrong-request', order),
+      /does not match/,
+    );
+    const write = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = () => {
+      throw new Error('full');
+    };
+    assert.throws(() => store.completeSale(merchantId, employeeId, draft.id, 'sale', order));
+    assert.deepEqual(usePosWorkspaceStore.getState().workspace?.drafts[draft.id], draft);
+    assert.deepEqual(usePosWorkspaceStore.getState().workspace?.pendingSales[draft.id], pending);
+    assert.deepEqual(usePosWorkspaceStore.getState().workspace?.confirmedOrders, {});
+    localStorage.setItem = write;
+    store.completeSale(merchantId, employeeId, draft.id, 'sale', order);
+    const deviceId = localStorage.getItem('waffarly:pos:device:v1')!;
+    const restored = readPosWorkspace(merchantId, employeeId, deviceId, localStorage, null);
+    assert.deepEqual(restored.drafts, {});
+    assert.deepEqual(restored.pendingSales, {});
+    assert.equal(restored.selectedConfirmedOrderId, order.id);
+    store.selectBranch(merchantId, employeeId, draft.branchId);
+    assert.equal(usePosWorkspaceStore.getState().workspace?.selectedConfirmedOrderId, order.id);
+    assert.deepEqual(restored.confirmedOrders[order.id], {
+      orderId: order.id,
+      branchId: draft.branchId,
+      createdAt: order.createdAt,
+    });
+    for (const [merchant, employee, device] of [
+      [merchantId, 'another-employee', deviceId],
+      ['another-merchant', employeeId, deviceId],
+      [merchantId, employeeId, 'another-device'],
+    ]) {
+      assert.deepEqual(
+        readPosWorkspace(merchant!, employee!, device!, localStorage, null).confirmedOrders,
+        {},
+      );
+    }
+    store.selectBranch(merchantId, employeeId, 'another-branch');
+    assert.equal(usePosWorkspaceStore.getState().workspace?.selectedConfirmedOrderId, null);
+    assert.throws(
+      () => store.selectConfirmedOrder(merchantId, employeeId, order.id),
+      /another branch/,
+    );
+    store.selectBranch(merchantId, employeeId, draft.branchId);
+    store.selectConfirmedOrder(merchantId, employeeId, order.id);
+    assert.equal(usePosWorkspaceStore.getState().workspace?.selectedConfirmedOrderId, order.id);
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
+    usePosWorkspaceStore.setState({
+      activeScope: null,
+      workspace: null,
+      hydratedScope: null,
+      persistenceError: null,
+    });
+  }
+});
+
 test('workspace persistence is tenant, employee, branch and device scoped and migrates uncertain actions', () => {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
   const localStorage = new MemoryStorage();
@@ -246,7 +425,11 @@ test('payment recovery persists the exact branch-scoped command and restores it 
     assert.ok(deviceId);
     const storageKey = posWorkspaceStorageKey(merchantId, employeeId, deviceId);
     const persisted = JSON.parse(localStorage.getItem(storageKey)!) as { version: number };
-    assert.equal(persisted.version, 3);
+    assert.equal(persisted.version, 5);
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({ ...JSON.parse(localStorage.getItem(storageKey)!), version: 3 }),
+    );
 
     usePosWorkspaceStore.setState({
       activeScope: null,
@@ -304,7 +487,7 @@ test('payment recovery persists the exact branch-scoped command and restores it 
   }
 });
 
-test('version 1 and 2 POS workspaces migrate without dropping existing drafts or actions', () => {
+test('version 1 through 4 POS workspaces migrate without dropping existing drafts or actions', () => {
   const merchantId = 'merchant-v2';
   const employeeId = 'employee-v2';
   const deviceId = 'device-v2';
@@ -320,13 +503,15 @@ test('version 1 and 2 POS workspaces migrate without dropping existing drafts or
     pendingSales: {},
   };
   const storageKey = posWorkspaceStorageKey(merchantId, employeeId, deviceId);
-  for (const version of [1, 2]) {
+  for (const version of [1, 2, 3, 4]) {
     localStorage.setItem(storageKey, JSON.stringify({ version, workspace }));
     const migrated = readPosWorkspace(merchantId, employeeId, deviceId, localStorage, null);
     assert.equal(migrated.selectedBranchId, 'branch-v2');
     assert.deepEqual(migrated.drafts, workspace.drafts);
     assert.deepEqual(migrated.pendingActions, workspace.pendingActions);
     assert.deepEqual(migrated.pendingPayments, {});
+    assert.deepEqual(migrated.confirmedOrders, {});
+    assert.equal(migrated.selectedConfirmedOrderId, null);
   }
 
   localStorage.setItem(

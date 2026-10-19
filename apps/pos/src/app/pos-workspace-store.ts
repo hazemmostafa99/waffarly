@@ -22,6 +22,7 @@ export interface PosOrderDraft {
   branchId: string;
   createdAt: string;
   updatedAt: string;
+  lastOpenedAt?: string;
   fulfillment: 'dine-in' | 'takeaway' | 'delivery';
   customerName?: string;
   customerPhone?: string;
@@ -48,6 +49,13 @@ export interface PendingPosPayment {
   request: RecordPosCheckPaymentRequest;
 }
 
+export interface PosConfirmedOrderReference {
+  orderId: string;
+  branchId: string;
+  createdAt: string;
+  lastOpenedAt?: string;
+}
+
 export interface PosWorkspaceData {
   merchantId: string;
   employeeId: string;
@@ -58,6 +66,9 @@ export interface PosWorkspaceData {
   pendingShiftOpen: PendingPosShiftOpen | null;
   pendingSales: Record<string, PendingPosSale>;
   pendingPayments: Record<string, PendingPosPayment>;
+  confirmedOrders: Record<string, PosConfirmedOrderReference>;
+  selectedConfirmedOrderId: string | null;
+  selectedDraftId: string | null;
 }
 
 interface StorageLike {
@@ -77,6 +88,17 @@ interface WorkspaceState {
   selectBranch: (merchantId: string, employeeId: string, branchId: string) => void;
   saveDraft: (merchantId: string, employeeId: string, draft: PosOrderDraft) => void;
   removeDraft: (merchantId: string, employeeId: string, draftId: string) => void;
+  selectDraft: (merchantId: string, employeeId: string, draftId: string) => void;
+  startDraft: (merchantId: string, employeeId: string) => string;
+  discardEmptyDrafts: (merchantId: string, employeeId: string) => void;
+  completeSale: (
+    merchantId: string,
+    employeeId: string,
+    draftId: string,
+    requestId: string,
+    order: { id: string; createdAt: string },
+  ) => void;
+  selectConfirmedOrder: (merchantId: string, employeeId: string, orderId: string | null) => void;
   savePendingAction: (
     merchantId: string,
     employeeId: string,
@@ -116,7 +138,7 @@ interface WorkspaceState {
   ) => boolean;
 }
 
-const STORAGE_VERSION = 3;
+const STORAGE_VERSION = 5;
 const STORAGE_PREFIX = 'waffarly:pos:workspace:v1:';
 const DEVICE_ID_KEY = 'waffarly:pos:device:v1';
 
@@ -147,6 +169,9 @@ function emptyWorkspace(
     pendingShiftOpen: null,
     pendingSales: {},
     pendingPayments: {},
+    confirmedOrders: {},
+    selectedConfirmedOrderId: null,
+    selectedDraftId: null,
   };
 }
 
@@ -274,7 +299,7 @@ function parseWorkspace(
       workspace?: unknown;
     };
     if (
-      (parsed.version !== 1 && parsed.version !== 2 && parsed.version !== STORAGE_VERSION) ||
+      ![1, 2, 3, 4, STORAGE_VERSION].includes(parsed.version as number) ||
       !parsed.workspace ||
       typeof parsed.workspace !== 'object'
     )
@@ -307,6 +332,21 @@ function parseWorkspace(
         if (isPendingPosPayment(payment)) pendingPayments[orderId] = payment;
       }
     }
+    const confirmedOrders: Record<string, PosConfirmedOrderReference> = {};
+    if (value.confirmedOrders && typeof value.confirmedOrders === 'object') {
+      for (const [id, reference] of Object.entries(value.confirmedOrders)) {
+        if (!reference || typeof reference !== 'object') continue;
+        const ref = reference as Record<string, unknown>;
+        if (
+          ref.orderId === id &&
+          typeof ref.branchId === 'string' &&
+          ref.branchId.length > 0 &&
+          typeof ref.createdAt === 'string' &&
+          Number.isFinite(Date.parse(ref.createdAt))
+        )
+          confirmedOrders[id] = ref as unknown as PosConfirmedOrderReference;
+      }
+    }
     return {
       ...emptyWorkspace(merchantId, employeeId, deviceId),
       selectedBranchId: typeof value.selectedBranchId === 'string' ? value.selectedBranchId : null,
@@ -315,6 +355,16 @@ function parseWorkspace(
       pendingShiftOpen: isPendingShiftOpen(value.pendingShiftOpen) ? value.pendingShiftOpen : null,
       pendingSales,
       pendingPayments,
+      confirmedOrders,
+      selectedDraftId:
+        typeof value.selectedDraftId === 'string' && Object.hasOwn(drafts, value.selectedDraftId)
+          ? value.selectedDraftId
+          : null,
+      selectedConfirmedOrderId:
+        typeof value.selectedConfirmedOrderId === 'string' &&
+        confirmedOrders[value.selectedConfirmedOrderId]
+          ? value.selectedConfirmedOrderId
+          : null,
     };
   } catch {
     return null;
@@ -387,6 +437,17 @@ function commitWorkspace(
   set({ workspace, persistenceError: null });
 }
 
+export function isBlankPosDraft(draft: PosOrderDraft): boolean {
+  return (
+    draft.fulfillment === 'takeaway' &&
+    draft.lines.length === 0 &&
+    !draft.customerName?.trim() &&
+    !draft.customerPhone?.trim() &&
+    !draft.deliveryAddress?.trim() &&
+    !draft.tableId
+  );
+}
+
 export const usePosWorkspaceStore = create<WorkspaceState>((set, get) => ({
   activeScope: null,
   workspace: null,
@@ -435,8 +496,17 @@ export const usePosWorkspaceStore = create<WorkspaceState>((set, get) => ({
   selectBranch: (merchantId, employeeId, branchId) => {
     const current = get().workspace;
     if (!current || current.merchantId !== merchantId || current.employeeId !== employeeId) return;
+    if (current.selectedBranchId === branchId) return;
     try {
-      commitWorkspace({ ...current, selectedBranchId: branchId }, set);
+      commitWorkspace(
+        {
+          ...current,
+          selectedBranchId: branchId,
+          selectedConfirmedOrderId: null,
+          selectedDraftId: null,
+        },
+        set,
+      );
     } catch {
       set({
         persistenceError: 'Could not save this POS workspace. Check browser storage settings.',
@@ -452,12 +522,157 @@ export const usePosWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }
     commitWorkspace({ ...current, drafts: { ...current.drafts, [draft.id]: draft } }, set);
   },
+  selectDraft: (merchantId, employeeId, draftId) => {
+    const current = get().workspace;
+    if (!current || current.merchantId !== merchantId || current.employeeId !== employeeId)
+      throw new Error('The POS workspace changed.');
+    const draft = current.drafts[draftId];
+    if (!draft || draft.branchId !== current.selectedBranchId)
+      throw new Error('A POS draft must remain with its selected branch.');
+    if (current.selectedDraftId === draftId && !current.selectedConfirmedOrderId) return;
+    commitWorkspace(
+      {
+        ...current,
+        selectedDraftId: draftId,
+        selectedConfirmedOrderId: null,
+        drafts: {
+          ...current.drafts,
+          [draftId]: { ...draft, lastOpenedAt: new Date().toISOString() },
+        },
+      },
+      set,
+    );
+  },
+  startDraft: (merchantId, employeeId) => {
+    const current = get().workspace;
+    if (
+      !current ||
+      current.merchantId !== merchantId ||
+      current.employeeId !== employeeId ||
+      !current.selectedBranchId
+    )
+      throw new Error('The POS workspace changed.');
+    const reusable = Object.values(current.drafts)
+      .filter(
+        (draft) =>
+          draft.branchId === current.selectedBranchId &&
+          isBlankPosDraft(draft) &&
+          !current.pendingSales[draft.id],
+      )
+      .sort(
+        (a, b) =>
+          Number(b.id === current.selectedDraftId) - Number(a.id === current.selectedDraftId) ||
+          b.updatedAt.localeCompare(a.updatedAt),
+      )[0];
+    if (reusable) {
+      get().selectDraft(merchantId, employeeId, reusable.id);
+      return reusable.id;
+    }
+    const now = new Date().toISOString();
+    const draft: PosOrderDraft = {
+      id: crypto.randomUUID(),
+      branchId: current.selectedBranchId,
+      createdAt: now,
+      updatedAt: now,
+      lastOpenedAt: now,
+      fulfillment: 'takeaway',
+      lines: [],
+    };
+    commitWorkspace(
+      {
+        ...current,
+        selectedDraftId: draft.id,
+        selectedConfirmedOrderId: null,
+        drafts: { ...current.drafts, [draft.id]: draft },
+      },
+      set,
+    );
+    return draft.id;
+  },
+  discardEmptyDrafts: (merchantId, employeeId) => {
+    const current = get().workspace;
+    if (!current || current.merchantId !== merchantId || current.employeeId !== employeeId)
+      throw new Error('The POS workspace changed.');
+    const drafts = Object.fromEntries(
+      Object.entries(current.drafts).filter(
+        ([id, draft]) =>
+          draft.branchId !== current.selectedBranchId ||
+          id === current.selectedDraftId ||
+          !isBlankPosDraft(draft) ||
+          Boolean(current.pendingSales[id]),
+      ),
+    );
+    commitWorkspace({ ...current, drafts }, set);
+  },
+  completeSale: (merchantId, employeeId, draftId, requestId, order) => {
+    const current = get().workspace;
+    if (!current || current.merchantId !== merchantId || current.employeeId !== employeeId)
+      throw new Error(
+        'The POS workspace changed. Reopen the saved sale with its original cashier.',
+      );
+    const draft = current.drafts[draftId];
+    if (!draft || current.pendingSales[draftId]?.requestId !== requestId)
+      throw new Error('The saved sale request does not match this order.');
+    const drafts = { ...current.drafts };
+    const pendingSales = { ...current.pendingSales };
+    delete drafts[draftId];
+    delete pendingSales[draftId];
+    // One durable write: the original retry is retained if saving the server reference fails.
+    commitWorkspace(
+      {
+        ...current,
+        drafts,
+        pendingSales,
+        confirmedOrders: {
+          ...current.confirmedOrders,
+          [order.id]: { orderId: order.id, branchId: draft.branchId, createdAt: order.createdAt },
+        },
+        selectedConfirmedOrderId: draft.branchId === current.selectedBranchId ? order.id : null,
+        selectedDraftId: current.selectedDraftId === draftId ? null : current.selectedDraftId,
+      },
+      set,
+    );
+  },
+  selectConfirmedOrder: (merchantId, employeeId, orderId) => {
+    const current = get().workspace;
+    if (!current || current.merchantId !== merchantId || current.employeeId !== employeeId) return;
+    if (orderId && current.confirmedOrders[orderId]?.branchId !== current.selectedBranchId)
+      throw new Error('The confirmed order belongs to another branch.');
+    commitWorkspace(
+      {
+        ...current,
+        selectedConfirmedOrderId: orderId,
+        confirmedOrders: orderId
+          ? {
+              ...current.confirmedOrders,
+              [orderId]: {
+                ...current.confirmedOrders[orderId]!,
+                lastOpenedAt: new Date().toISOString(),
+              },
+            }
+          : current.confirmedOrders,
+      },
+      set,
+    );
+  },
   removeDraft: (merchantId, employeeId, draftId) => {
     const current = get().workspace;
     if (!current || current.merchantId !== merchantId || current.employeeId !== employeeId) return;
+    const draft = current.drafts[draftId];
+    if (!draft || draft.branchId !== current.selectedBranchId)
+      throw new Error('A POS draft must remain with its selected branch.');
+    if (current.pendingSales[draftId])
+      throw new Error('Resolve the saved sale request before deleting this draft.');
     const drafts = { ...current.drafts };
     delete drafts[draftId];
-    commitWorkspace({ ...current, drafts }, set);
+    commitWorkspace(
+      {
+        ...current,
+        drafts,
+        selectedDraftId: current.selectedDraftId === draftId ? null : current.selectedDraftId,
+      },
+      set,
+    );
   },
   savePendingAction: (merchantId, employeeId, orderId, action) => {
     const current = get().workspace;

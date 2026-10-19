@@ -8,7 +8,12 @@ export type {
   UpdatePosRegisterRequest,
   OpenPosShiftRequest,
 } from './shifts.js';
-export { STOCK_BASE_UNITS, STOCK_QUANTITY_PATTERN, isPositiveStockQuantity } from './inventory.js';
+export {
+  STOCK_BASE_UNITS,
+  STOCK_QUANTITY_PATTERN,
+  isPositiveStockQuantity,
+  isNonNegativeStockQuantity,
+} from './inventory.js';
 export type {
   StockBaseUnit,
   StockItem,
@@ -36,6 +41,13 @@ export type {
   CreateStockOpeningRequest,
   StockMovement,
   StockMovementBatchResult,
+  InventoryReorderThreshold,
+  UpdateInventoryReorderThresholdRequest,
+  ClearInventoryReorderThresholdResult,
+  InventoryStockHealthState,
+  InventoryStockHealth,
+  InventoryHealthSummary,
+  InventoryHealthPage,
 } from './inventory.js';
 export { STOCK_CONDITIONS } from './inventory.js';
 export { PURCHASE_INVOICE_STATUSES } from './purchasing.js';
@@ -158,6 +170,8 @@ export {
   POS_LEGACY_EMPLOYEE_PERMISSIONS,
   isPosEmployeeRole,
   resolvePosEmployeePermissions,
+  hasPosEmployeePermission,
+  posEmployeeHome,
 } from './pos.js';
 export type {
   PosOrderQuoteRequest,

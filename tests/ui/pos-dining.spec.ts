@@ -61,6 +61,12 @@ test('cashier moves a table session and splits whole quantities from the dining 
   };
   let moved = false;
   let splitRequest: Record<string, unknown> | null = null;
+  const tableReadRequests: string[] = [];
+  const sessionReadRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/pos/dining/tables?')) tableReadRequests.push(request.url());
+    if (request.url().includes('/pos/dining/sessions?')) sessionReadRequests.push(request.url());
+  });
   await page.route('**/auth/pos/me', (route) => route.fulfill({ json: employee }));
   await page.route('**/pos/dining/tables?**', (route) =>
     route.fulfill({
@@ -194,7 +200,24 @@ test('cashier moves a table session and splits whole quantities from the dining 
 
   await page.goto('/dining');
   await expect(page.getByRole('heading', { name: 'Tables & open sessions' })).toBeVisible();
+  await expect(page.getByText('2 tables', { exact: true })).toBeVisible();
+  await expect(page.getByText('1 Occupied', { exact: true })).toBeVisible();
+  await expect(page.getByText('1 Free', { exact: true })).toBeVisible();
   await expect(page.getByText('Table #01', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Start order: Table #02' })).toBeVisible();
+  const refreshButton = page.getByRole('button', { name: 'Refresh' });
+  const refreshBounds = await refreshButton.boundingBox();
+  const tableMapBounds = await page.getByRole('heading', { name: 'Table map' }).boundingBox();
+  expect(refreshBounds?.y).toBeLessThan(tableMapBounds?.y ?? 0);
+  const tableReadsBeforeRefresh = tableReadRequests.length;
+  const sessionReadsBeforeRefresh = sessionReadRequests.length;
+  await refreshButton.click();
+  await expect.poll(() => tableReadRequests.length).toBeGreaterThan(tableReadsBeforeRefresh);
+  await expect.poll(() => sessionReadRequests.length).toBeGreaterThan(sessionReadsBeforeRefresh);
+  await page.screenshot({
+    path: `test-results/pos-dining-tables-${test.info().project.name}.png`,
+    fullPage: true,
+  });
   await page.getByLabel('Move session to an available table').selectOption(secondTableId);
   await page.getByRole('button', { name: 'Move', exact: true }).click();
   await expect(page.getByText('Table #02', { exact: true })).toBeVisible();
@@ -207,7 +230,7 @@ test('cashier moves a table session and splits whole quantities from the dining 
     await dialog
       .getByRole('button', { name: 'Save split', exact: true })
       .evaluate((button) => getComputedStyle(button).backgroundColor),
-  ).toBe('rgb(194, 65, 12)');
+  ).toBe('rgb(255, 153, 94)');
   await page.screenshot({ path: 'test-results/pos-dining-split.png', fullPage: true });
   await dialog.getByRole('button', { name: 'Save split', exact: true }).click();
   await expect(dialog).not.toBeVisible();
@@ -228,4 +251,42 @@ test('cashier moves a table session and splits whole quantities from the dining 
   await expect(page.getByRole('link', { name: 'ترابيزات' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'تقسيم الحساب', exact: true })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await page.screenshot({
+    path: `test-results/pos-dining-rtl-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+});
+
+test('dining keeps an empty branch clear without inventing tables or sessions', async ({
+  page,
+}) => {
+  await page.route('**/auth/pos/me', (route) =>
+    route.fulfill({
+      json: {
+        id: employeeId,
+        merchantId,
+        username: 'cashier',
+        displayName: 'Cashier',
+        role: 'cashier',
+        permissions: ['sell', 'open_register_shift'],
+        branches: [{ id: branchId, name: 'Main branch', archivedAt: null }],
+      },
+    }),
+  );
+  await page.route('**/pos/dining/tables?**', (route) => route.fulfill({ json: [] }));
+  await page.route('**/pos/dining/sessions?**', (route) => route.fulfill({ json: [] }));
+
+  await page.goto('/dining');
+  await expect(page.getByText('No active tables are configured.', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText('There are no open dining sessions at this branch.', { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('link', { name: /Start order|Add round/ })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await page.screenshot({
+    path: `test-results/pos-dining-empty-${test.info().project.name}.png`,
+    fullPage: true,
+  });
 });

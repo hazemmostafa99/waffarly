@@ -35,6 +35,21 @@ export function normalizeStockQuantity(value: string): string {
   return formatStockQuantity(parseStockQuantity(value));
 }
 
+export function normalizeNonNegativeStockQuantity(value: string): string {
+  if (typeof value !== 'string')
+    throw new BadRequestException('Quantity must be a decimal string.');
+  const match = STOCK_QUANTITY_PATTERN.exec(value);
+  if (!match) {
+    throw new BadRequestException(
+      'Quantity must be a non-negative decimal string with up to 12 integer and 6 fractional digits.',
+    );
+  }
+  const scaled = BigInt(match[1]!) * SCALE + BigInt((match[2] ?? '').padEnd(6, '0'));
+  if (scaled > MAX_STOCK_QUANTITY_SCALED)
+    throw new BadRequestException('Quantity exceeds the supported range.');
+  return formatStockQuantity(scaled);
+}
+
 export function convertToBaseQuantity(
   quantity: string,
   unitCode: string,

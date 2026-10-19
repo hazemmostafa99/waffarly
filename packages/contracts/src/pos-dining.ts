@@ -62,7 +62,7 @@ export interface PosDiningSessionSummary {
   }>;
 }
 
-export interface PosDiningTablesPage extends CursorPage<PosDiningTableSummary> {}
+export type PosDiningTablesPage = CursorPage<PosDiningTableSummary>;
 
 export interface CreatePosDiningTableRequest {
   branchId: string;

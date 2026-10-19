@@ -45,6 +45,16 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   return items as T;
 }
 
+/** Read a single response envelope without draining cursor pages. */
+export async function apiRequestSingle<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(new URL(path.replace(/^\//, ''), `${apiBaseUrl()}/`), {
+    ...init,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...init.headers },
+  });
+  return readResponse<T>(response);
+}
+
 export async function apiRequestPage<T>(path: string, init: RequestInit = {}) {
   const response = await fetch(new URL(path.replace(/^\//, ''), `${apiBaseUrl()}/`), {
     ...init,

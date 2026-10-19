@@ -190,6 +190,50 @@ it(
         createSession(tables[2]!.id, '5.00'),
       ]);
       const roundOrderId = await createSession(tables[0]!.id, '2.00', true);
+      const restoredOrder = await posOrders.detail(employee, roundOrderId);
+      assert.equal(restoredOrder.total, '2.00');
+      assert.equal(restoredOrder.lines[0]?.productName, 'Two shareable items');
+      assert.equal(restoredOrder.lines[0]?.quantity, 2);
+      await assert.rejects(
+        posOrders.detail({ ...employee, merchantId: randomUUID() }, roundOrderId),
+        NotFoundException,
+      );
+      await assert.rejects(
+        posOrders.detail(
+          {
+            ...employee,
+            branches: [{ id: otherBranch.id, name: otherBranch.name, archivedAt: null }],
+          },
+          roundOrderId,
+        ),
+        NotFoundException,
+      );
+      await assert.rejects(
+        posOrders.detail(
+          {
+            ...employee,
+            branches: [{ id: branch.id, name: branch.name, archivedAt: new Date().toISOString() }],
+          },
+          roundOrderId,
+        ),
+        NotFoundException,
+      );
+      await assert.rejects(
+        posOrders.detail({ ...employee, permissions: [] }, roundOrderId),
+        ForbiddenException,
+      );
+      const storefrontOnlyOrder = await prisma.storefrontOrder.create({
+        data: {
+          merchantId: merchant.id,
+          branchId: branch.id,
+          source: 'storefront',
+          status: 'pending',
+          currency: 'EGP',
+          total: '1.00',
+          fulfillmentType: 'pickup',
+        },
+      });
+      await assert.rejects(posOrders.detail(employee, storefrontOnlyOrder.id), NotFoundException);
       const takeawayOrder = await prisma.storefrontOrder.create({
         data: {
           merchantId: merchant.id,
@@ -334,9 +378,36 @@ it(
       assert.equal(cashPayment.payments[0]?.changeAmount, '0.50');
       assert.equal(cashPayment.receipt, null);
       const partialPaymentState = await posOrders.paymentState(employee, roundOrderId);
+      assert.equal(partialPaymentState.context?.order.id, roundOrderId);
+      assert.equal(partialPaymentState.context?.order.lines[0]?.productName, 'Two shareable items');
+      assert.equal(partialPaymentState.context?.tableCode, tables[0]!.code);
+      assert.equal(partialPaymentState.checks[0]?.splitMethod, 'items');
+      assert.equal(partialPaymentState.checks[0]?.allocations?.[0]?.quantity, 1);
+      assert.equal(partialPaymentState.checks[0]?.allocations?.[0]?.amount, '1.00');
       assert.equal(partialPaymentState.checks[0]?.paidAmount, '0.50');
       assert.equal(partialPaymentState.checks[0]?.balanceDue, '0.50');
       assert.equal(partialPaymentState.checks[0]?.payments[0]?.method, 'cash');
+      await assert.rejects(
+        posOrders.paymentState(
+          {
+            ...employee,
+            branches: employee.branches.map((branch) => ({
+              ...branch,
+              archivedAt: new Date().toISOString(),
+            })),
+          },
+          roundOrderId,
+        ),
+        NotFoundException,
+      );
+      await assert.rejects(
+        posOrders.paymentState({ ...employee, merchantId: randomUUID() }, roundOrderId),
+        NotFoundException,
+      );
+      await assert.rejects(
+        posOrders.paymentState({ ...employee, permissions: [] }, roundOrderId),
+        ForbiddenException,
+      );
       await assert.rejects(
         posOrders.paymentState(
           {
@@ -421,6 +492,23 @@ it(
       });
       assert.equal(receiptHistory.items[0]?.id, terminalPayment.receipt?.id);
       assert.equal(receiptHistory.items[0]?.checkId, payableCheck.id);
+      const accountant: PosEmployeeSession = {
+        ...employee,
+        role: 'accountant',
+        permissions: ['view_receipts'],
+      };
+      assert.equal(
+        (await posOrders.listReceipts(accountant, { branchId: branch.id, limit: 1 })).items[0]?.id,
+        terminalPayment.receipt?.id,
+      );
+      assert.equal(
+        (await posOrders.getCheckReceipt(accountant, roundOrderId, payableCheck.id)).merchantName,
+        merchant.name,
+      );
+      await assert.rejects(
+        posOrders.quote(accountant, {}),
+        (error: unknown) => error instanceof ForbiddenException,
+      );
       assert.deepEqual(
         await posOrders.listReceipts(otherBranchSession, {
           branchId: otherBranch.id,

@@ -1,164 +1,3 @@
-.pos-receipt-screen {
-  display: grid;
-  justify-items: center;
-  gap: 1rem;
-  overflow: auto;
-  padding: 1.25rem;
-}
-
-.pos-receipt-document {
-  box-sizing: border-box;
-  width: min(100%, 25rem);
-  padding: 1.5rem;
-  color: #171717;
-  background: #fff;
-  border: 1px solid #e5e5e5;
-  border-radius: 0.65rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 0.75rem;
-  line-height: 1.45;
-}
-
-.pos-receipt-header {
-  display: grid;
-  justify-items: center;
-  gap: 0.15rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px dashed #a3a3a3;
-  text-align: center;
-}
-
-.pos-receipt-header h2,
-.pos-receipt-header p,
-.pos-receipt-header strong,
-.pos-receipt-footer p {
-  margin: 0;
-}
-
-.pos-receipt-header h2 {
-  font-size: 0.95rem;
-}
-
-.pos-receipt-header strong {
-  margin-top: 0.5rem;
-}
-
-.pos-receipt-meta {
-  display: grid;
-  gap: 0.2rem;
-  padding: 0.75rem 0;
-  margin: 0;
-  border-bottom: 1px dashed #a3a3a3;
-}
-
-.pos-receipt-meta > div,
-.pos-receipt-totals > div,
-.pos-receipt-payments > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.pos-receipt-meta dt {
-  color: #525252;
-}
-
-.pos-receipt-meta dd {
-  margin: 0;
-  text-align: end;
-}
-
-.pos-receipt-items {
-  padding: 0.75rem 0;
-  border-bottom: 1px dashed #a3a3a3;
-}
-
-.pos-receipt-table-head,
-.pos-receipt-line {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 2.25rem auto;
-  gap: 0.4rem;
-  align-items: start;
-}
-
-.pos-receipt-table-head {
-  padding-bottom: 0.4rem;
-  color: #525252;
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.pos-receipt-line + .pos-receipt-line {
-  margin-top: 0.65rem;
-}
-
-.pos-receipt-item-name {
-  display: grid;
-  gap: 0.1rem;
-}
-
-.pos-receipt-item-name small {
-  color: #525252;
-  font-size: 0.65rem;
-}
-
-.pos-receipt-qty,
-.pos-receipt-amount {
-  text-align: end;
-  font-variant-numeric: tabular-nums;
-}
-
-.pos-receipt-totals {
-  display: grid;
-  gap: 0.35rem;
-  padding: 0.75rem 0;
-  border-bottom: 1px dashed #a3a3a3;
-}
-
-.pos-receipt-grand-total {
-  padding-top: 0.45rem;
-  border-top: 1px solid #737373;
-  font-size: 0.9rem;
-}
-
-.pos-receipt-payments {
-  display: grid;
-  gap: 0.35rem;
-  padding-top: 0.75rem;
-}
-
-.pos-receipt-payments > strong {
-  margin-bottom: 0.15rem;
-}
-
-.pos-receipt-footer {
-  display: grid;
-  justify-items: center;
-  gap: 0.65rem;
-  padding-top: 1rem;
-  color: #525252;
-  text-align: center;
-}
-
-.pos-receipt-footer small {
-  font-size: 0.6rem;
-}
-
-.pos-receipt-screen-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.pos-receipt-pdf-hint {
-  margin: 0;
-  color: var(--muted-foreground);
-  font-size: 0.75rem;
-  text-align: center;
-}
-
 @media print {
   @page {
     size: 80mm auto;
@@ -187,6 +26,7 @@
   .pos-receipt-document {
     position: fixed !important;
     inset: 0 auto auto 0 !important;
+    box-sizing: border-box !important;
     width: 76mm !important;
     max-width: none !important;
     padding: 3mm !important;
@@ -196,6 +36,7 @@
     box-shadow: none !important;
     color: #171717 !important;
     background: #fff !important;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
     font-size: 9pt !important;
   }
 

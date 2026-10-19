@@ -28,6 +28,7 @@ export const listPosEmployeesSchema = z
     limit: z.coerce.number().int().min(1).max(100).default(25),
     search: z.string().trim().max(160).default(''),
     status: z.enum(['active', 'inactive', 'all']).default('all'),
+    role: z.enum(POS_EMPLOYEE_ROLES).optional(),
   })
   .strict();
 export type PosEmployeeListQuery = z.infer<typeof listPosEmployeesSchema>;

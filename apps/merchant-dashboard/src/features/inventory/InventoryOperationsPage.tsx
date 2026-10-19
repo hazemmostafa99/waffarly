@@ -13,12 +13,13 @@ import {
 import { cacheStockItem, stockUnitOptions } from './stock-unit-options.js';
 import { StockItemPicker, WarehousePicker } from './components/InventoryPickers.js';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Badge, Button, DataTable, Input, useLocale, type DataTableColumn } from '@waffarly/ui';
 import type {
   CreateStockOpeningRequest,
   InventoryWarehouseSummary,
   InventoryPolicy,
+  InventoryHealthPage as HealthPageData,
   StockBalance,
   StockCondition,
   StockItem,
@@ -26,7 +27,7 @@ import type {
   StockMovementBatchResult,
 } from '@waffarly/contracts';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
-import { ApiError, apiRequest, apiRequestPage } from '../../lib/api-client.js';
+import { ApiError, apiRequest, apiRequestPage, apiRequestSingle } from '../../lib/api-client.js';
 import { InventoryHeader } from './InventoryHeader.js';
 import { inventoryCopy } from './inventory-copy.js';
 
@@ -50,6 +51,16 @@ function emptyLine(): OpeningLineDraft {
   };
 }
 
+const movementLabels: Record<string, string> = {
+  opening_balance: 'Opening balance',
+  purchase_receipt: 'Purchase receipt',
+  sale_consumption: 'Sale consumption',
+  sale_restoration: 'Sale restoration',
+  recipe_consumption: 'Recipe consumption',
+  recipe_restoration: 'Recipe restoration',
+  adjustment: 'Adjustment',
+};
+
 export function InventoryOperationsPage({
   view = 'overview',
 }: {
@@ -58,10 +69,18 @@ export function InventoryOperationsPage({
   const { locale, t, errorText, formatDigits } = useLocale();
   const text = (value: string) => inventoryCopy(value, locale, t);
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const routeState = location.state as { inventorySetupWarehouseId?: unknown } | null;
+  const preferredWarehouseId =
+    typeof routeState?.inventorySetupWarehouseId === 'string'
+      ? routeState.inventorySetupWarehouseId
+      : '';
   const requestId = useRef(loadOrCreateOpeningRequestId());
   const [warehouseCache, setWarehouseCache] = useState<InventoryWarehouseSummary[]>([]);
   const [items, setItems] = useState<StockItem[]>([]);
   const [policy, setPolicy] = useState<InventoryPolicy | null>(null);
+  const [policyChoice, setPolicyChoice] = useState<'allow' | 'prevent'>('allow');
   const [loadError, setLoadError] = useState('');
   const [notice, setNotice] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -74,6 +93,8 @@ export function InventoryOperationsPage({
   const [search, setSearch] = useState('');
   const [warehouseId, setWarehouseId] = useState('');
   const [condition, setCondition] = useState('');
+  const [movementItemId, setMovementItemId] = useState(searchParams.get('stockItemId') ?? '');
+  const [movementKind, setMovementKind] = useState('');
   const [balances, setBalances] = useState<StockBalance[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [balancePage, setBalancePage] = useState<PageState>({});
@@ -84,6 +105,18 @@ export function InventoryOperationsPage({
   const [movementNext, setMovementNext] = useState<string | null>(null);
   const [balancesLoading, setBalancesLoading] = useState(true);
   const [movementsLoading, setMovementsLoading] = useState(true);
+  const [balanceListError, setBalanceListError] = useState('');
+  const [movementListError, setMovementListError] = useState('');
+  const [setup, setSetup] = useState<{
+    warehouse: InventoryWarehouseSummary | null;
+    hasItems: boolean;
+    onlyOneWarehouse: boolean;
+  } | null>(null);
+  const [setupLoading, setSetupLoading] = useState(true);
+  const [setupError, setSetupError] = useState('');
+  const [healthSummary, setHealthSummary] = useState<HealthPageData['summary'] | null>(null);
+  const [healthSummaryLoading, setHealthSummaryLoading] = useState(true);
+  const [healthSummaryError, setHealthSummaryError] = useState('');
   const openingWarehouses = warehouseCache;
   const openingItems = items;
   function rememberWarehouse(warehouse: InventoryWarehouseSummary) {
@@ -119,6 +152,7 @@ export function InventoryOperationsPage({
       .then(([currentPolicy, { itemRows, warehouseRows }]) => {
         if (!current) return;
         setPolicy(currentPolicy);
+        setPolicyChoice(currentPolicy.negativeStockPolicy);
         if (savedOpening) {
           setItems(itemRows);
           setWarehouseCache(warehouseRows);
@@ -127,7 +161,9 @@ export function InventoryOperationsPage({
           setLines(savedOpening.lines.map((line) => ({ ...line, key: crypto.randomUUID() })));
           setReviewing(true);
         } else {
-          setLines((existing) => (existing.length ? existing : [emptyLine()]));
+          setLines((existing) =>
+            existing.length ? existing : [{ ...emptyLine(), warehouseId: preferredWarehouseId }],
+          );
         }
       })
       .catch((cause: unknown) => {
@@ -151,12 +187,75 @@ export function InventoryOperationsPage({
     return () => {
       current = false;
     };
+  }, [errorText, preferredWarehouseId, refreshKey, view]);
+
+  useEffect(() => {
+    let current = true;
+    if (view !== 'overview') return;
+    setSetupLoading(true);
+    setSetupError('');
+    const warehouseQuery = new URLSearchParams({ limit: '2', status: 'active' });
+    const itemQuery = new URLSearchParams({ limit: '1', status: 'active' });
+    void Promise.all([
+      apiRequestPage<InventoryWarehouseSummary>(
+        `/owner/inventory/warehouses?${warehouseQuery.toString()}`,
+      ),
+      apiRequestPage<StockItem>(`/owner/inventory/items?${itemQuery.toString()}`),
+    ])
+      .then(([warehousePage, itemPage]) => {
+        if (!current) return;
+        setSetup({
+          warehouse: warehousePage.items[0] ?? null,
+          hasItems: itemPage.items.length > 0,
+          onlyOneWarehouse: warehousePage.items.length === 1 && !warehousePage.nextCursor,
+        });
+      })
+      .catch((cause: unknown) => {
+        if (current)
+          setSetupError(
+            cause instanceof Error
+              ? errorText(cause.message)
+              : text('Could not check your inventory setup.'),
+          );
+      })
+      .finally(() => {
+        if (current) setSetupLoading(false);
+      });
+    return () => {
+      current = false;
+    };
   }, [errorText, refreshKey, view]);
 
   useEffect(() => {
     let current = true;
     if (view !== 'overview') return;
+    setHealthSummaryLoading(true);
+    setHealthSummaryError('');
+    void apiRequestSingle<HealthPageData>('/owner/inventory/health?limit=1')
+      .then((health) => {
+        if (current) setHealthSummary(health.summary);
+      })
+      .catch((cause: unknown) => {
+        if (!current) return;
+        setHealthSummaryError(
+          cause instanceof Error
+            ? errorText(cause.message)
+            : inventoryCopy('Could not load stock health.', locale, t),
+        );
+      })
+      .finally(() => {
+        if (current) setHealthSummaryLoading(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, [errorText, locale, refreshKey, t, view]);
+
+  useEffect(() => {
+    let current = true;
+    if (view !== 'overview') return;
     setBalancesLoading(true);
+    setBalanceListError('');
     const query = new URLSearchParams({ limit: '25' });
     if (search) query.set('search', search);
     if (warehouseId) query.set('warehouseId', warehouseId);
@@ -170,10 +269,12 @@ export function InventoryOperationsPage({
         }
       })
       .catch((cause: unknown) => {
-        if (current)
-          setLoadError(
-            cause instanceof Error ? errorText(cause.message) : text('Could not load balances.'),
-          );
+        if (!current) return;
+        setBalanceListError(
+          cause instanceof Error ? errorText(cause.message) : text('Could not load balances.'),
+        );
+        setBalances([]);
+        setBalanceNext(null);
       })
       .finally(() => {
         if (current) setBalancesLoading(false);
@@ -187,8 +288,12 @@ export function InventoryOperationsPage({
     let current = true;
     if (view !== 'history') return;
     setMovementsLoading(true);
+    setMovementListError('');
     const query = new URLSearchParams({ limit: '25' });
     if (warehouseId) query.set('warehouseId', warehouseId);
+    if (movementItemId) query.set('stockItemId', movementItemId);
+    if (movementKind) query.set('kind', movementKind);
+    if (condition) query.set('condition', condition);
     if (movementPage.cursor) query.set('cursor', movementPage.cursor);
     void apiRequestPage<StockMovement>(`/owner/inventory/movements?${query.toString()}`)
       .then((page) => {
@@ -198,12 +303,14 @@ export function InventoryOperationsPage({
         }
       })
       .catch((cause: unknown) => {
-        if (current)
-          setLoadError(
-            cause instanceof Error
-              ? errorText(cause.message)
-              : text('Could not load movement history.'),
-          );
+        if (!current) return;
+        setMovementListError(
+          cause instanceof Error
+            ? errorText(cause.message)
+            : text('Could not load movement history.'),
+        );
+        setMovements([]);
+        setMovementNext(null);
       })
       .finally(() => {
         if (current) setMovementsLoading(false);
@@ -211,7 +318,16 @@ export function InventoryOperationsPage({
     return () => {
       current = false;
     };
-  }, [movementPage, errorText, refreshKey, warehouseId, view]);
+  }, [
+    movementPage,
+    errorText,
+    refreshKey,
+    warehouseId,
+    movementItemId,
+    movementKind,
+    condition,
+    view,
+  ]);
 
   const balanceColumns: DataTableColumn<StockBalance>[] = [
     {
@@ -273,15 +389,7 @@ export function InventoryOperationsPage({
       header: text('Movement'),
       cell: (row) => (
         <div className="inventory-table-name">
-          <strong>
-            {text(
-              row.kind === 'opening_balance'
-                ? 'Opening balance'
-                : row.kind === 'purchase_receipt'
-                  ? 'Purchase receipt'
-                  : row.kind.replaceAll('_', ' '),
-            )}
-          </strong>
+          <strong>{text(movementLabels[row.kind] ?? 'Other movement')}</strong>
           <small>{formatDigits(row.reason)}</small>
         </div>
       ),
@@ -289,9 +397,24 @@ export function InventoryOperationsPage({
     {
       id: 'delta',
       header: text('Change'),
-      cell: (row) => <span dir="ltr">{formatDigits(`${row.baseDelta} ${row.baseUnit}`)}</span>,
+      cell: (row) => (
+        <span className="inventory-quantity" dir="ltr">
+          {formatDigits(
+            `${row.baseDelta.startsWith('-') ? '' : '+'}${row.baseDelta} ${row.baseUnit}`,
+          )}
+        </span>
+      ),
     },
     { id: 'actor', header: text('Recorded by'), cell: (row) => formatDigits(row.actor) },
+    {
+      id: 'detail',
+      header: text('Details'),
+      cell: (row) => (
+        <Link className="inventory-detail-link" to={`/inventory/movements/${row.id}`}>
+          {text('View movement')}
+        </Link>
+      ),
+    },
   ];
 
   function updateLine(key: string, change: Partial<OpeningLineDraft>) {
@@ -379,7 +502,7 @@ export function InventoryOperationsPage({
   }
 
   async function updateNegativePolicy() {
-    if (!policy || busy) return;
+    if (!policy || busy || policyChoice === policy.negativeStockPolicy) return;
     setBusy(true);
     setLoadError('');
     try {
@@ -387,7 +510,7 @@ export function InventoryOperationsPage({
         method: 'PATCH',
         body: JSON.stringify({
           revision: policy.revision,
-          negativeStockPolicy: policy.negativeStockPolicy === 'allow' ? 'prevent' : 'allow',
+          negativeStockPolicy: policyChoice,
         }),
       });
       setPolicy(updated);
@@ -402,6 +525,8 @@ export function InventoryOperationsPage({
       setBusy(false);
     }
   }
+
+  const hasOverviewFilters = Boolean(search || searchDraft || warehouseId || condition);
 
   return (
     <div className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
@@ -433,7 +558,7 @@ export function InventoryOperationsPage({
             >
               {text('Add item')}
             </Button>
-            <Button type="button" onClick={() => navigate('/inventory/purchases?new=1')}>
+            <Button type="button" onClick={() => navigate('/inventory/purchases/new')}>
               {text('Record purchase')}
             </Button>
           </>
@@ -447,9 +572,22 @@ export function InventoryOperationsPage({
       {loadError && (
         <div className="inventory-error" role="alert">
           <span>{loadError}</span>
-          <Button type="button" variant="ghost" size="sm" onClick={() => setLoadError('')}>
-            {text('Close')}
-          </Button>
+          <span className="inventory-error-actions">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setLoadError('');
+                setRefreshKey((key) => key + 1);
+              }}
+            >
+              {text('Reload data')}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setLoadError('')}>
+              {text('Close')}
+            </Button>
+          </span>
         </div>
       )}
 
@@ -460,27 +598,92 @@ export function InventoryOperationsPage({
             'This policy affects Available stock debits. Non-Sellable stock remains separate from sale and recipe consumption.',
           )}
         >
-          <div className="inventory-pack-heading">
-            <p>
-              {text(
-                policy?.negativeStockPolicy === 'allow'
-                  ? 'Negative Available balances are allowed.'
-                  : 'Available balances cannot go below zero.',
-              )}
-            </p>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!policy || busy}
-              onClick={() => void updateNegativePolicy()}
-            >
-              {text(
-                policy?.negativeStockPolicy === 'allow'
-                  ? 'Prevent negative stock'
-                  : 'Allow negative stock',
-              )}
+          <fieldset className="inventory-policy-options" disabled={!policy || busy}>
+            <legend>{text('Choose your stock policy')}</legend>
+            {(['allow', 'prevent'] as const).map((choice) => (
+              <label key={choice}>
+                <input
+                  type="radio"
+                  name="negative-stock-policy"
+                  value={choice}
+                  checked={policyChoice === choice}
+                  onChange={() => setPolicyChoice(choice)}
+                />
+                <span>
+                  <strong>
+                    {text(choice === 'allow' ? 'Allow negative stock' : 'Prevent negative stock')}
+                  </strong>
+                  <small>
+                    {text(
+                      choice === 'allow'
+                        ? 'Stock consumption can continue below zero. Negative balances need follow-up.'
+                        : 'Stock consumption is blocked when the available quantity is insufficient.',
+                    )}
+                  </small>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          <p className="inventory-note">
+            {text(
+              'This policy applies to all branches and warehouses. Non-sellable stock is never used for sales or recipes.',
+            )}
+          </p>
+          <Button
+            type="button"
+            disabled={!policy || busy || policyChoice === policy.negativeStockPolicy}
+            onClick={() => void updateNegativePolicy()}
+          >
+            {text(busy ? 'Saving…' : 'Save policy')}
+          </Button>
+        </InventoryCard>
+      )}
+
+      {view === 'overview' && (
+        <InventoryCard
+          title={text('Stock health summary')}
+          description={text(
+            'Counts cover configured item and warehouse pairs across the selected merchant scope.',
+          )}
+          action={
+            <Button type="button" variant="outline" onClick={() => navigate('/inventory/health')}>
+              {text('View stock health')}
             </Button>
-          </div>
+          }
+        >
+          {healthSummaryError ? (
+            <div className="inventory-error" role="alert">
+              <span>{healthSummaryError}</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setRefreshKey((key) => key + 1)}
+              >
+                {text('Retry')}
+              </Button>
+            </div>
+          ) : healthSummaryLoading ? (
+            <p role="status">{text('Loading stock health…')}</p>
+          ) : (
+            <div className="inventory-health-summary" aria-live="polite">
+              <div>
+                <strong>{formatDigits(String(healthSummary?.lowStockItemLocations ?? 0))}</strong>
+                <span>{text('Low stock item locations')}</span>
+              </div>
+              <div>
+                <strong>{formatDigits(String(healthSummary?.healthyItemLocations ?? 0))}</strong>
+                <span>{text('Healthy item locations')}</span>
+              </div>
+              <div>
+                <strong>{formatDigits(String(healthSummary?.configuredItemLocations ?? 0))}</strong>
+                <span>{text('Configured item locations')}</span>
+              </div>
+            </div>
+          )}
+          <p className="inventory-note">
+            {text('Health uses Available stock only. Non-Sellable quantities are excluded.')}
+          </p>
         </InventoryCard>
       )}
 
@@ -492,6 +695,9 @@ export function InventoryOperationsPage({
           )}
         >
           <form className="inventory-editor" onSubmit={startReview}>
+            <p className="inventory-note">
+              {text('Opening entries add to existing balances. They do not replace stock counts.')}
+            </p>
             <label>
               {text('Reason')}
               <Input
@@ -532,6 +738,7 @@ export function InventoryOperationsPage({
                   <div className="inventory-picker-field">
                     {text('Stock item')}
                     <StockItemPicker
+                      allowCreate
                       value={line.stockItemId}
                       label={text('Stock item')}
                       disabled={Boolean(pendingOpening)}
@@ -658,7 +865,41 @@ export function InventoryOperationsPage({
               }}
             />
           </div>
-          {view === 'overview' && (
+          {view === 'history' && (
+            <>
+              <div className="inventory-picker-field">
+                <span>{text('Filter by item')}</span>
+                <StockItemPicker
+                  value={movementItemId}
+                  label={text('Filter by item')}
+                  onSelect={(item) => {
+                    setMovementItemId(item?.id ?? '');
+                    setMovementPage({});
+                    setMovementHistory([]);
+                  }}
+                />
+              </div>
+              <label className="inventory-filter-status">
+                {text('Movement type')}
+                <select
+                  value={movementKind}
+                  onChange={(event) => {
+                    setMovementKind(event.target.value);
+                    setMovementPage({});
+                    setMovementHistory([]);
+                  }}
+                >
+                  <option value="">{text('All')}</option>
+                  {Object.entries(movementLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {text(label)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
+          {
             <label className="inventory-filter-status">
               {text('Condition')}
               <select
@@ -667,6 +908,8 @@ export function InventoryOperationsPage({
                   setCondition(event.target.value);
                   setBalancePage({});
                   setBalanceHistory([]);
+                  setMovementPage({});
+                  setMovementHistory([]);
                 }}
               >
                 <option value="">{text('All')}</option>
@@ -674,8 +917,13 @@ export function InventoryOperationsPage({
                 <option value="non_sellable">{text('Non-Sellable')}</option>
               </select>
             </label>
-          )}
-          {(warehouseId || search || condition || searchDraft) && (
+          }
+          {(warehouseId ||
+            search ||
+            condition ||
+            searchDraft ||
+            movementItemId ||
+            movementKind) && (
             <Button
               type="button"
               variant="ghost"
@@ -684,6 +932,8 @@ export function InventoryOperationsPage({
                 setSearchDraft('');
                 setWarehouseId('');
                 setCondition('');
+                setMovementItemId('');
+                setMovementKind('');
                 setBalancePage({});
                 setBalanceHistory([]);
                 setMovementPage({});
@@ -707,42 +957,119 @@ export function InventoryOperationsPage({
             rows={balances}
             rowKey={(row) => row.id}
             caption={text('Current balances')}
-            loading={balancesLoading}
-            loadingState={text('Loading balances…')}
+            loading={balancesLoading || (!hasOverviewFilters && setupLoading)}
+            loadingState={text('Loading inventory setup…')}
             emptyState={
               <div className="inventory-empty">
-                <h3>
-                  {text(
-                    search || warehouseId || condition
-                      ? 'No matching stock'
-                      : 'Start tracking your stock',
-                  )}
-                </h3>
-                <p>
-                  {text(
-                    search || warehouseId || condition
-                      ? 'Try another search or clear the filters.'
-                      : 'Create a warehouse, add your items, then enter your starting quantities.',
-                  )}
-                </p>
-                {!search && !warehouseId && !condition && (
-                  <ol className="inventory-setup-steps">
-                    <li>
-                      <Button variant="outline" onClick={() => navigate('/branches')}>
-                        {text('Create warehouse')}
+                {balanceListError ? (
+                  <>
+                    <h3>{text('Could not load balances.')}</h3>
+                    <p>{balanceListError}</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setRefreshKey((key) => key + 1)}
+                    >
+                      {text('Retry')}
+                    </Button>
+                  </>
+                ) : hasOverviewFilters ? (
+                  <>
+                    <h3>{text('No matching stock')}</h3>
+                    <p>{text('Try another search or clear the filters.')}</p>
+                  </>
+                ) : setupError ? (
+                  <>
+                    <h3>{text('Could not check your inventory setup.')}</h3>
+                    <p>{setupError}</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setSetupError('');
+                        setRefreshKey((key) => key + 1);
+                      }}
+                    >
+                      {text('Reload setup')}
+                    </Button>
+                  </>
+                ) : !setup?.warehouse ? (
+                  <>
+                    <h3>{text('Set up a branch and warehouse')}</h3>
+                    <p>
+                      {text(
+                        setup?.hasItems
+                          ? 'Your stock items are ready. Add an active branch and warehouse before entering stock or receiving purchases.'
+                          : 'Add a branch and warehouse first. Then create stock items and enter the quantities you already have.',
+                      )}
+                    </p>
+                    <div className="inventory-empty-actions">
+                      <Button type="button" onClick={() => navigate('/branches')}>
+                        {text('Set up branch and warehouse')}
                       </Button>
-                    </li>
-                    <li>
-                      <Button variant="outline" onClick={() => navigate('/inventory/items')}>
-                        {text('Add items')}
-                      </Button>
-                    </li>
-                    <li>
-                      <Button onClick={() => navigate('/inventory/opening')}>
+                      {!setup?.hasItems && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => navigate('/inventory/items')}
+                        >
+                          {text('Add stock items')}
+                        </Button>
+                      )}
+                    </div>
+                  </>
+                ) : !setup.hasItems ? (
+                  <>
+                    <h3>{text('Your warehouse is ready')}</h3>
+                    <p>
+                      {text('Add your first stock item before recording a balance or purchase.')}{' '}
+                      <strong>
+                        {formatDigits(`${setup.warehouse.branchName} · ${setup.warehouse.name}`)}
+                      </strong>
+                    </p>
+                    <Button type="button" onClick={() => navigate('/inventory/items')}>
+                      {text('Add first stock item')}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <h3>{text('Start tracking your stock')}</h3>
+                    <p>
+                      {setup.onlyOneWarehouse ? (
+                        <>
+                          {text('Your only active warehouse will be preselected:')}{' '}
+                          <strong>
+                            {formatDigits(
+                              `${setup.warehouse.branchName} · ${setup.warehouse.name}`,
+                            )}
+                          </strong>
+                        </>
+                      ) : (
+                        text('Choose the destination warehouse when you enter starting stock.')
+                      )}
+                    </p>
+                    <div className="inventory-empty-actions">
+                      <Button
+                        type="button"
+                        onClick={() =>
+                          navigate('/inventory/opening', {
+                            state: setup.onlyOneWarehouse
+                              ? { inventorySetupWarehouseId: setup.warehouse?.id }
+                              : undefined,
+                          })
+                        }
+                      >
                         {text('Add starting stock')}
                       </Button>
-                    </li>
-                  </ol>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => navigate('/inventory/purchases/new')}
+                      >
+                        {text('Record purchase')}
+                      </Button>
+                    </div>
+                  </>
                 )}
               </div>
             }
@@ -773,7 +1100,23 @@ export function InventoryOperationsPage({
             caption={text('Movement history')}
             loading={movementsLoading}
             loadingState={text('Loading movement history…')}
-            emptyState={text('No stock movements have been posted yet.')}
+            emptyState={
+              movementListError ? (
+                <div className="inventory-empty">
+                  <h3>{text('Could not load movement history.')}</h3>
+                  <p>{movementListError}</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setRefreshKey((key) => key + 1)}
+                  >
+                    {text('Retry')}
+                  </Button>
+                </div>
+              ) : (
+                text('No stock movements have been posted yet.')
+              )
+            }
           />
           <PageControls
             page={movementPage}

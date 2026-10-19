@@ -2,7 +2,7 @@ import { RecipeOrderActions } from './features/orders/RecipeOrderActions.js';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import type { StorefrontOrderStatus, StorefrontOrderSummary } from '@waffarly/contracts';
 import { useLocale } from '@waffarly/ui';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { Icon } from './Icons.js';
 import { apiRequest } from './lib/api-client.js';
 import { ordersCopy } from './orders-copy.js';
@@ -35,6 +35,8 @@ export function StorefrontOrdersPage() {
   const copy = (message: string, values?: Record<string, unknown>) =>
     ordersCopy(message, locale, t, values);
   const { search: globalSearch } = useOutletContext<{ search: string }>();
+  const [searchParams] = useSearchParams();
+  const linkedOrderId = searchParams.get('orderId');
   const [orders, setOrders] = useState<StorefrontOrderSummary[]>([]);
   const [dateRange, setDateRange] = useState<DateRange>('all');
   const [fulfillment, setFulfillment] = useState<FulfillmentFilter>('all');
@@ -70,6 +72,15 @@ export function StorefrontOrdersPage() {
       current = false;
     };
   }, [refreshKey]);
+
+  useEffect(() => {
+    if (loading || !linkedOrderId || !orders.some((order) => order.id === linkedOrderId)) return;
+    setDateRange('all');
+    setFulfillment('all');
+    setStatus('all');
+    setQuery('');
+    setSelectedId(linkedOrderId);
+  }, [linkedOrderId, loading, orders]);
 
   const terms = useMemo(
     () => [globalSearch, query].map((value) => value.trim().toLocaleLowerCase()).filter(Boolean),

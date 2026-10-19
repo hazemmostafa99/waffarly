@@ -738,9 +738,25 @@ it(
             const created = await posOrders.create(cashier, refreshedPayload);
             const replayed = await posOrders.create(cashier, refreshedPayload);
             assert.equal(replayed.id, created.id);
+            const unassignedBranch = await tx.branch.create({
+              data: {
+                merchantId: f.merchantId,
+                name: 'Other recipe branch',
+                createdBy: actor,
+                updatedBy: actor,
+              },
+            });
+            assert.equal(
+              (await f.orders.listForPos(f.merchantId, unassignedBranch.id)).items.some(
+                (order) => order.id === created.id,
+              ),
+              false,
+            );
             assert.equal(await f.balance(), '0');
             assert.equal(
-              (await f.orders.listForOwner(f.merchantId)).items.some((order) => order.id === created.id),
+              (await f.orders.listForOwner(f.merchantId)).items.some(
+                (order) => order.id === created.id,
+              ),
               false,
             );
             assert.equal(
@@ -750,9 +766,9 @@ it(
               true,
             );
             assert.equal(
-              (await tx.stockMovementBatch.count({
+              await tx.stockMovementBatch.count({
                 where: { merchantId: f.merchantId, sourceType: 'pos_sale' },
-              })),
+              }),
               1,
             );
             assert.equal(
@@ -770,10 +786,7 @@ it(
             const savedRecipeLine = saved.lines.find((line) => line.productId === f.recipe.id);
             assert.ok(savedRecipeLine?.stockRequirementsFrozenAt);
             assert.equal(savedRecipeLine?.note, 'No onions');
-            assert.equal(
-              savedRecipeLine?.stockRequirements[0]?.quantity.toString(),
-              '26',
-            );
+            assert.equal(savedRecipeLine?.stockRequirements[0]?.quantity.toString(), '26');
 
             const backupWarehouse = await tx.warehouse.create({
               data: {
@@ -807,12 +820,10 @@ it(
               where: { id: f.branch.id },
               select: { revision: true },
             });
-            await locations.setDefaultConsumptionWarehouse(
-              f.merchantId,
-              actor,
-              f.branch.id,
-              { warehouseId: backupWarehouse.id, revision: currentBranch.revision },
-            );
+            await locations.setDefaultConsumptionWarehouse(f.merchantId, actor, f.branch.id, {
+              warehouseId: backupWarehouse.id,
+              revision: currentBranch.revision,
+            });
             const originalWarehouse = await tx.warehouse.findUniqueOrThrow({
               where: { id: f.warehouse.id },
               select: { revision: true },

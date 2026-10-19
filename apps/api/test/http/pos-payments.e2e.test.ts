@@ -34,6 +34,7 @@ describe('POS payment endpoint', () => {
   let authorized: boolean;
   const calls: unknown[][] = [];
   const stateCalls: unknown[][] = [];
+  const detailCalls: unknown[][] = [];
   const receiptCalls: unknown[][] = [];
   const receiptListCalls: unknown[][] = [];
 
@@ -41,6 +42,7 @@ describe('POS payment endpoint', () => {
     authorized = true;
     calls.length = 0;
     stateCalls.length = 0;
+    detailCalls.length = 0;
     receiptCalls.length = 0;
     receiptListCalls.length = 0;
     const module = await Test.createTestingModule({
@@ -61,6 +63,10 @@ describe('POS payment endpoint', () => {
         {
           provide: PosOrdersService,
           useValue: {
+            detail: async (...args: unknown[]) => {
+              detailCalls.push(args);
+              return { id: orderId, total: '8.50', lines: [] };
+            },
             recordCheckPayment: async (...args: unknown[]) => {
               calls.push(args);
               return { orderId, check: { id: checkId, balanceDue: '0.00' }, payments: [] };
@@ -176,6 +182,19 @@ describe('POS payment endpoint', () => {
         assert.equal(body.checks[0].balanceDue, '8.50');
       });
     assert.deepEqual(stateCalls, [[employee, orderId]]);
+  });
+
+  it('authenticates and validates a committed order detail read', async () => {
+    authorized = false;
+    await request(app.getHttpServer()).get(`/pos/orders/${orderId}`).expect(401);
+    authorized = true;
+    await request(app.getHttpServer()).get('/pos/orders/not-a-uuid').expect(400);
+    await request(app.getHttpServer())
+      .get(`/pos/orders/${orderId}`)
+      .expect(200)
+      .expect(({ body }) => assert.equal(body.id, orderId));
+    assert.deepEqual(detailCalls, [[employee, orderId]]);
+    assert.equal(calls.length, 0);
   });
 
   it('requires an employee and loads the immutable receipt for a settled check', async () => {

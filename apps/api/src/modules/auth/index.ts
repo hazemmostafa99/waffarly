@@ -5,3 +5,4 @@ export { CurrentAdmin, CurrentOwner, CurrentPosEmployee } from './current-actor.
 export { OwnerGuard } from './owner.guard.js';
 export { PosEmployeeGuard } from './pos-employee.guard.js';
 export { hashPassword } from './password.js';
+export { requireEmployeePermission, requireEmployeeBranch } from './employee-permissions.js';

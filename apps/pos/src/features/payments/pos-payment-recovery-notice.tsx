@@ -1,7 +1,8 @@
 import type { PosEmployeeSession } from '@waffarly/contracts';
-import { Button, useLocale } from '@waffarly/ui';
+import { useLocale } from '@waffarly/ui';
 import { useState } from 'react';
 import { usePosWorkspaceStore, type PendingPosPayment } from '../../app/pos-workspace-store.js';
+import { PosButton } from '../../components/pos-button.js';
 import { PosCheckoutDialog } from './pos-checkout-dialog.js';
 
 interface RecoveryTarget {
@@ -53,13 +54,14 @@ export function PosPaymentRecoveryNotice({ employee }: { employee: PosEmployeeSe
                     })}
                   </span>
                 </span>
-                <Button
+                <PosButton
                   type="button"
                   size="sm"
+                  variant="solid"
                   onClick={() => setRecoveryTarget({ orderId, branchId: pending.branchId })}
                 >
                   {t('Check saved result')}
-                </Button>
+                </PosButton>
               </li>
             ))}
           </ul>

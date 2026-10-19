@@ -61,6 +61,8 @@ jobs:
       - run: pnpm --filter @waffarly/database exec prisma migrate deploy --config ./prisma.config.ts
       - run: pnpm --filter @waffarly/api test:catalog-db
       - run: pnpm --filter @waffarly/api test:inventory-db
+      - run: pnpm --filter @waffarly/api test:employees-db
+      - run: pnpm --filter @waffarly/api test:pos-db
       - run: pnpm --filter @waffarly/api test:purchasing-db
       - run: pnpm --filter @waffarly/api test:storefront-orders-db
       - run: pnpm --filter @waffarly/api test:activities-db
@@ -69,3 +71,4 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm exec playwright test --config playwright.merchant.config.ts tests/ui/merchant-inventory.spec.ts tests/ui/merchant-recipe-orders.spec.ts
       - run: pnpm exec playwright test --config playwright.modifiers.config.ts
+      - run: pnpm exec playwright test --config playwright.employee-roles.config.ts

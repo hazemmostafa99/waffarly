@@ -40,7 +40,8 @@ import {
   updateOrderContext,
 } from './prototype-api.js';
 import { draftLine, type DemoOrder, type DraftLine, type OrderContext } from './prototype-model.js';
-import { usePrototypeStore, type PosAccent } from './prototype.store.js';
+import { usePosAppearanceStore, type PosAccent } from '../../app/pos-appearance-store.js';
+import { usePrototypeStore } from './prototype.store.js';
 import { FoodArt } from './food-art.js';
 import { CheckoutDialog, ConfigureDialog, SplitDialog } from './prototype-dialogs.js';
 import { OrderPanel } from './order-panel.js';
@@ -79,10 +80,10 @@ export function Component() {
       },
       { replace: true },
     );
-  const theme = usePrototypeStore((state) => state.theme);
-  const setTheme = usePrototypeStore((state) => state.setTheme);
-  const accent = usePrototypeStore((state) => state.accent);
-  const setAccent = usePrototypeStore((state) => state.setAccent);
+  const theme = usePosAppearanceStore((state) => state.theme);
+  const setTheme = usePosAppearanceStore((state) => state.setTheme);
+  const accent = usePosAppearanceStore((state) => state.accent);
+  const setAccent = usePosAppearanceStore((state) => state.setAccent);
   const activeId = usePrototypeStore((state) => state.orderId);
   const selectOrder = usePrototypeStore((state) => state.selectOrder);
   const drafts = usePrototypeStore((state) => state.drafts[state.orderId] ?? emptyDrafts);

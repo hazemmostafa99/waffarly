@@ -9,6 +9,7 @@ import { OwnerGuard } from '../../src/modules/auth/owner.guard.js';
 import { InventoryLedgerService } from '../../src/modules/inventory/inventory-ledger.service.js';
 import { InventoryLocationsController } from '../../src/modules/inventory/inventory-locations.controller.js';
 import { InventoryLocationsService } from '../../src/modules/inventory/inventory-locations.service.js';
+import { InventoryVisibilityService } from '../../src/modules/inventory/inventory-visibility.service.js';
 
 const owner: OwnerProfile = {
   username: 'inventory-location-owner',
@@ -77,6 +78,17 @@ describe('inventory locations and ledger owner endpoints', () => {
             ) {
               return { items: [], nextCursor: null };
             }
+            if (method === 'listHealth') {
+              return {
+                items: [],
+                nextCursor: null,
+                summary: {
+                  configuredItemLocations: 0,
+                  lowStockItemLocations: 0,
+                  healthyItemLocations: 0,
+                },
+              };
+            }
             return branch;
           },
         ]),
@@ -115,6 +127,10 @@ describe('inventory locations and ledger owner endpoints', () => {
         {
           provide: InventoryLedgerService,
           useValue: makeStub(['createOpening', 'listBalances', 'listMovements']),
+        },
+        {
+          provide: InventoryVisibilityService,
+          useValue: makeStub(['getMovement', 'listHealth', 'saveThreshold', 'deleteThreshold']),
         },
       ],
     }).compile();
@@ -215,5 +231,52 @@ describe('inventory locations and ledger owner endpoints', () => {
     assert.equal(calls[0]?.args[0], owner.merchantId);
     assert.equal(calls[0]?.args[1], owner.username);
     assert.deepEqual(calls[0]?.args[2], valid);
+  });
+
+  it('scopes movement details and health reads to the authenticated owner', async () => {
+    const movementId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+    await request(app.getHttpServer()).get(`/owner/inventory/movements/${movementId}`).expect(200);
+    assert.deepEqual(calls.at(-1)?.args, [owner.merchantId, movementId]);
+
+    await request(app.getHttpServer())
+      .get('/owner/inventory/health?limit=10&search=flour')
+      .expect(200);
+    assert.equal(calls.at(-1)?.name, 'listHealth');
+    assert.equal(calls.at(-1)?.args[0], owner.merchantId);
+    assert.deepEqual(calls.at(-1)?.args[1], { limit: 10, search: 'flour' });
+
+    await request(app.getHttpServer()).get('/owner/inventory/health?limit=101').expect(400);
+    await request(app.getHttpServer()).get('/owner/inventory/movements/not-a-uuid').expect(400);
+
+    authorized = false;
+    await request(app.getHttpServer()).get('/owner/inventory/health').expect(401);
+    await request(app.getHttpServer()).get(`/owner/inventory/movements/${movementId}`).expect(401);
+  });
+
+  it('validates revisioned, non-negative reorder thresholds and forwards owner attribution', async () => {
+    const warehouseId = branch.warehouses[0]!.id;
+    const stockItemId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+    const payload = { revision: null, minimumAvailableQuantity: '0' };
+    await request(app.getHttpServer())
+      .patch(`/owner/inventory/warehouses/${warehouseId}/items/${stockItemId}/reorder-threshold`)
+      .send({ ...payload, minimumAvailableQuantity: '-1' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .patch(`/owner/inventory/warehouses/${warehouseId}/items/${stockItemId}/reorder-threshold`)
+      .send({ ...payload, minimumAvailableQuantity: 0 })
+      .expect(400);
+    assert.equal(calls.length, 0);
+
+    await request(app.getHttpServer())
+      .patch(`/owner/inventory/warehouses/${warehouseId}/items/${stockItemId}/reorder-threshold`)
+      .send(payload)
+      .expect(200);
+    assert.deepEqual(calls.at(-1)?.args, [
+      owner.merchantId,
+      owner.username,
+      warehouseId,
+      stockItemId,
+      payload,
+    ]);
   });
 });

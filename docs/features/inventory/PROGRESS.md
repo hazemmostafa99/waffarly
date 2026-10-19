@@ -696,6 +696,46 @@ Document formatting, relative-link checks, source-ID coverage, and final diff/wo
 - [x] `git diff --check` and `git diff --no-index --check -- NUL <new-file>` for each untracked document found no whitespace errors; Git emitted LF/CRLF conversion warnings only.
 - [x] Final M0 worktree review: only the two new Markdown files were added alongside the preserved `apps/storefront/next-env.d.ts` modification. No application code, contracts, schema, or migrations were edited at that checkpoint.
 
+### 2026-10-19 — Inventory visibility
+
+- Status: Visibility slice delivered; operations and purchasing expansion remain open.
+- Decisions: A reorder threshold belongs to one active Stock Item/warehouse pair
+  and is entered in the item's base unit. Health compares only Available stock;
+  missing balances count as zero. Counts cover configured pairs in the selected
+  filter scope, not just the displayed cursor page. Health does not add unlike
+  units or post movements.
+- Changed paths: Inventory contracts, Prisma schema and additive migration
+  `20261019090000_inventory_visibility`, Inventory visibility service/controller,
+  HTTP and database tests, Merchant Dashboard detail/health routes and source links,
+  Arabic copy, inventory UI documentation, and architecture notes.
+- API/UI behavior: Added tenant-scoped movement detail and health reads, cursor
+  pagination, full-scope summary aggregation, optimistic reorder-point save/clear,
+  stock item detail with balances/history, movement source links, and health access
+  from overview/item pages.
+- Tenant/concurrency boundary: Owner merchant ID comes only from the authenticated
+  session. Threshold references are protected by compound tenant relations; active
+  branch/warehouse/item rows are locked before creation. Revision checks reject
+  stale updates; duplicate same-value retries are idempotent.
+- Migration: Applied the additive migration to the configured local `waffarly`
+  database. `prisma migrate status` reports all 37 migrations current. No reset,
+  seed, or backfill ran.
+- Verification: Node 24.11.1 API lint/typecheck/build passed; API HTTP/unit suite
+  passed (140); Inventory database suite passed (4); Merchant Dashboard lint,
+  typecheck, and build passed; Contracts build and Prisma validation passed. All
+  14 focused visibility/overview browser cases passed on desktop/mobile in
+  Arabic/English, including the 8 new details/health cases.
+- Broader browser status: A full 46-case inventory run completed with 26 passing
+  and 20 failing. Failures were in existing catalog-builder and purchase/editor
+  expectations. Two inventory assertions were refreshed for the health summary
+  card and current branch/warehouse empty state; all 6 desktop/mobile/locale cases
+  for those assertions passed in the focused rerun. Unrelated catalog and
+  purchase/editor failures were not rerun after those updates.
+  Browser tests use mocked API responses. Contracts lint also reports the existing
+  `no-empty-object-type` error in `packages/contracts/src/pos-dining.ts`.
+- Remaining work: Atomic transfers, reviewed adjustments, condition changes,
+  write-offs, stocktakes, supplier returns, and inventory quantity reports remain
+  separate slices.
+
 ## Future implementation log template
 
 ```md

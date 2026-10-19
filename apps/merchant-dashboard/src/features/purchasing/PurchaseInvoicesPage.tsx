@@ -7,26 +7,44 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Badge, Button, DataTable, Input, useLocale, type DataTableColumn } from '@waffarly/ui';
 import type {
   CreatePurchaseInvoiceRequest,
+  OwnerProfile,
   PurchaseInvoice,
   PurchaseSupplier,
 } from '@waffarly/contracts';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { apiRequest, apiRequestPage } from '../../lib/api-client.js';
 import { inventoryCopy } from '../inventory/inventory-copy.js';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import { InventoryHeader } from '../inventory/InventoryHeader.js';
 import type { SupplierFields } from './purchasing.types.js';
 import { SupplierEditor } from './SupplierEditor.js';
 import { PurchaseInvoiceEditor } from './PurchaseInvoiceEditor.js';
 
-type InvoiceEditorState = { invoice: PurchaseInvoice | null; key: string };
 type SupplierEditorState = { supplier: PurchaseSupplier | null; key: string };
 
 export function PurchaseInvoicesPage() {
   const { locale, t, errorText, formatDigits } = useLocale();
+  const { profile } = useOutletContext<{ profile: OwnerProfile }>();
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const text = (value: string) => inventoryCopy(value, locale, t);
-  const [tab, setTab] = useState<'invoices' | 'suppliers'>('invoices');
+  const normalizedPath = pathname.replace(/\/$/, '');
+  const isNewInvoiceRoute = normalizedPath === '/inventory/purchases/new';
+  const editRouteMatch = normalizedPath.match(/^\/inventory\/purchases\/([^/]+)\/edit$/);
+  const sourceInvoiceMatch = normalizedPath.match(/^\/inventory\/purchases\/([^/]+)$/);
+  const editorInvoiceId = editRouteMatch?.[1] ?? null;
+  const sourceInvoiceId = sourceInvoiceMatch?.[1] ?? null;
+  const isInvoiceEditor = isNewInvoiceRoute || editorInvoiceId !== null;
+  const tab = searchParams.get('tab') === 'suppliers' ? 'suppliers' : 'invoices';
+  function setTab(value: 'invoices' | 'suppliers') {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if (value === 'suppliers') next.set('tab', value);
+      else next.delete('tab');
+      return next;
+    });
+  }
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
   const [invoiceStatus, setInvoiceStatus] = useState<'all' | 'draft' | 'confirmed'>('all');
   const [invoiceSearchDraft, setInvoiceSearchDraft] = useState('');
@@ -44,23 +62,83 @@ export function PurchaseInvoicesPage() {
   const [supplierNext, setSupplierNext] = useState<string | null>(null);
   const [suppliersLoading, setSuppliersLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [invoiceListError, setInvoiceListError] = useState('');
+  const [supplierListError, setSupplierListError] = useState('');
   const [notice, setNotice] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [invoiceEditor, setInvoiceEditor] = useState<InvoiceEditorState | null>(null);
+  const [fetchedEditorInvoice, setFetchedEditorInvoice] = useState<PurchaseInvoice | null>(null);
+  const [editorInvoiceLoading, setEditorInvoiceLoading] = useState(false);
+  const [editorInvoiceError, setEditorInvoiceError] = useState('');
   const [supplierEditor, setSupplierEditor] = useState<SupplierEditorState | null>(null);
   const [invoiceReview, setInvoiceReview] = useState<PurchaseInvoice | null>(null);
   const [supplierArchive, setSupplierArchive] = useState<PurchaseSupplier | null>(null);
   useEffect(() => {
+    if (!sourceInvoiceId) return;
+    let current = true;
+    void apiRequest<PurchaseInvoice>(`/owner/purchasing/invoices/${sourceInvoiceId}`)
+      .then((invoice) => current && setInvoiceReview(invoice))
+      .catch((cause: unknown) => {
+        if (current)
+          setLoadError(
+            cause instanceof Error
+              ? errorText(cause.message)
+              : inventoryCopy('Could not load the purchase invoice.', locale, t),
+          );
+      });
+    return () => {
+      current = false;
+    };
+  }, [errorText, locale, sourceInvoiceId, t]);
+  useEffect(() => {
     if (searchParams.get('new') !== '1') return;
-    setInvoiceEditor({ invoice: null, key: crypto.randomUUID() });
-    setSearchParams({}, { replace: true });
-  }, [searchParams, setSearchParams]);
+    navigate('/inventory/purchases/new', { replace: true });
+  }, [navigate, searchParams]);
   const [confirmRequestIds, setConfirmRequestIds] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!editorInvoiceId) {
+      setFetchedEditorInvoice(null);
+      setEditorInvoiceLoading(false);
+      setEditorInvoiceError('');
+      return;
+    }
+    const cachedInvoice = invoices.find((invoice) => invoice.id === editorInvoiceId);
+    if (cachedInvoice) {
+      setFetchedEditorInvoice(cachedInvoice);
+      setEditorInvoiceLoading(false);
+      setEditorInvoiceError('');
+      return;
+    }
+    let current = true;
+    setEditorInvoiceLoading(true);
+    setEditorInvoiceError('');
+    void apiRequest<PurchaseInvoice>(`/owner/purchasing/invoices/${editorInvoiceId}`)
+      .then((invoice) => {
+        if (current) setFetchedEditorInvoice(invoice);
+      })
+      .catch((cause: unknown) => {
+        if (current)
+          setEditorInvoiceError(
+            cause instanceof Error ? errorText(cause.message) : text('Could not load the draft.'),
+          );
+      })
+      .finally(() => {
+        if (current) setEditorInvoiceLoading(false);
+      });
+    return () => {
+      current = false;
+    };
+  }, [editorInvoiceId, errorText, invoices]);
+  const editorInvoice = editorInvoiceId
+    ? (invoices.find((invoice) => invoice.id === editorInvoiceId) ??
+      (fetchedEditorInvoice?.id === editorInvoiceId ? fetchedEditorInvoice : null))
+    : null;
 
   useEffect(() => {
     let current = true;
     setInvoicesLoading(true);
+    setInvoiceListError('');
     const query = new URLSearchParams({ limit: '25', status: invoiceStatus });
     if (invoiceSearch) query.set('search', invoiceSearch);
     if (invoicePage.cursor) query.set('cursor', invoicePage.cursor);
@@ -71,12 +149,15 @@ export function PurchaseInvoicesPage() {
         setInvoiceNext(page.nextCursor);
       })
       .catch((cause: unknown) => {
-        if (current)
-          setLoadError(
+        if (current) {
+          setInvoiceListError(
             cause instanceof Error
               ? errorText(cause.message)
               : text('Could not load purchase invoices.'),
           );
+          setInvoices([]);
+          setInvoiceNext(null);
+        }
       })
       .finally(() => {
         if (current) setInvoicesLoading(false);
@@ -89,6 +170,7 @@ export function PurchaseInvoicesPage() {
   useEffect(() => {
     let current = true;
     setSuppliersLoading(true);
+    setSupplierListError('');
     const query = new URLSearchParams({ limit: '25', status: supplierStatus });
     if (supplierSearch) query.set('search', supplierSearch);
     if (supplierPage.cursor) query.set('cursor', supplierPage.cursor);
@@ -99,10 +181,13 @@ export function PurchaseInvoicesPage() {
         setSupplierNext(page.nextCursor);
       })
       .catch((cause: unknown) => {
-        if (current)
-          setLoadError(
+        if (current) {
+          setSupplierListError(
             cause instanceof Error ? errorText(cause.message) : text('Could not load suppliers.'),
           );
+          setSuppliers([]);
+          setSupplierNext(null);
+        }
       })
       .finally(() => {
         if (current) setSuppliersLoading(false);
@@ -158,7 +243,10 @@ export function PurchaseInvoicesPage() {
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => setInvoiceEditor({ invoice, key: invoice.id })}
+              onClick={() => {
+                setLoadError('');
+                navigate(`/inventory/purchases/${invoice.id}/edit`);
+              }}
             >
               {text('Edit draft')}
             </Button>
@@ -301,12 +389,13 @@ export function PurchaseInvoicesPage() {
     fields: Omit<CreatePurchaseInvoiceRequest, 'requestId'>,
     requestId: string,
     revision?: number,
+    reviewAfterSave = true,
   ) {
-    if (!invoiceEditor || busy) return;
+    if (!isInvoiceEditor || busy) return;
     setBusy(true);
     setLoadError('');
     try {
-      const existing = invoiceEditor.invoice;
+      const existing = editorInvoice;
       const invoice = await apiRequest<PurchaseInvoice>(
         existing ? `/owner/purchasing/invoices/${existing.id}` : '/owner/purchasing/invoices',
         {
@@ -314,7 +403,13 @@ export function PurchaseInvoicesPage() {
           body: JSON.stringify(existing ? { ...fields, revision } : { ...fields, requestId }),
         },
       );
-      setInvoiceEditor(null);
+      try {
+        window.localStorage.removeItem(
+          `waffarly:purchase-invoice:${profile.merchantId}:${existing?.id ?? 'new'}`,
+        );
+      } catch {
+        // Storage can be unavailable in private browsing; the saved invoice is still safe.
+      }
       setNotice(
         text(existing ? 'Purchase invoice updated.' : 'Draft saved. Stock was not changed.'),
       );
@@ -323,7 +418,8 @@ export function PurchaseInvoicesPage() {
       setInvoiceSearchDraft('');
       resetInvoiceFilters();
       setRefreshKey((key) => key + 1);
-      setInvoiceReview(invoice.status === 'draft' ? invoice : null);
+      setInvoiceReview(reviewAfterSave && invoice.status === 'draft' ? invoice : null);
+      navigate('/inventory/purchases', { replace: true });
     } catch (cause) {
       setLoadError(
         cause instanceof Error
@@ -376,6 +472,68 @@ export function PurchaseInvoicesPage() {
     }
   }
 
+  if (isInvoiceEditor) {
+    return (
+      <div className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+        <InventoryHeader
+          title={
+            editorInvoiceId
+              ? editorInvoice?.status === 'confirmed'
+                ? 'Confirmed invoice'
+                : 'Edit draft'
+              : 'New purchase invoice'
+          }
+          description="Save a draft, review received quantities, then add them to your warehouse."
+          actions={
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={() => navigate('/inventory/purchases')}
+            >
+              {text('Back to purchases')}
+            </Button>
+          }
+        />
+        {editorInvoiceId && !editorInvoice && (editorInvoiceLoading || !editorInvoiceError) && (
+          <InventoryCard title={text('Loading draft')}>
+            <p role="status">{text('Loading purchase invoice…')}</p>
+          </InventoryCard>
+        )}
+        {editorInvoiceId && !editorInvoice && editorInvoiceError && !editorInvoiceLoading && (
+          <InventoryCard title={text('Draft unavailable')}>
+            <p role="alert">{editorInvoiceError || text('Could not load the draft.')}</p>
+          </InventoryCard>
+        )}
+        {editorInvoice?.status === 'confirmed' && (
+          <InventoryCard title={text('Confirmed invoice')}>
+            <p>
+              {text(
+                'Confirmed invoices cannot be edited. Use a reviewed stock movement to correct the received quantity.',
+              )}
+            </p>
+          </InventoryCard>
+        )}
+        {(!editorInvoiceId || editorInvoice?.status === 'draft') &&
+          (!editorInvoiceId || Boolean(editorInvoice)) && (
+            <PurchaseInvoiceEditor
+              key={editorInvoice?.id ?? 'new'}
+              invoice={editorInvoice}
+              busy={busy}
+              error={loadError}
+              text={text}
+              formatDigits={formatDigits}
+              draftStorageKey={`waffarly:purchase-invoice:${profile.merchantId}:${editorInvoice?.id ?? 'new'}`}
+              onClose={() => !busy && navigate('/inventory/purchases')}
+              onSave={(fields, requestId, revision, reviewAfterSave) =>
+                void saveInvoice(fields, requestId, revision, reviewAfterSave)
+              }
+            />
+          )}
+      </div>
+    );
+  }
+
   return (
     <div className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <InventoryHeader
@@ -384,9 +542,14 @@ export function PurchaseInvoicesPage() {
         actions={
           <Button
             type="button"
-            onClick={() => setInvoiceEditor({ invoice: null, key: crypto.randomUUID() })}
+            onClick={() => {
+              setLoadError('');
+              if (tab === 'suppliers')
+                setSupplierEditor({ supplier: null, key: crypto.randomUUID() });
+              else navigate('/inventory/purchases/new');
+            }}
           >
-            {text('New purchase invoice')}
+            {text(tab === 'suppliers' ? 'Add supplier' : 'New purchase invoice')}
           </Button>
         }
       />
@@ -433,6 +596,32 @@ export function PurchaseInvoicesPage() {
             'Confirming posts actual received quantities to this warehouse. Confirmed invoices cannot be edited.',
           )}
         >
+          {invoiceListError && (
+            <div className="inventory-error" role="alert">
+              <span>{invoiceListError}</span>
+              <span className="inventory-error-actions">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setInvoiceListError('');
+                    setRefreshKey((key) => key + 1);
+                  }}
+                >
+                  {text('Retry')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setInvoiceListError('')}
+                >
+                  {text('Close')}
+                </Button>
+              </span>
+            </div>
+          )}
           <div className="inventory-filters">
             <form className="inventory-search" onSubmit={submitInvoiceSearch}>
               <label>
@@ -461,6 +650,20 @@ export function PurchaseInvoicesPage() {
                 <option value="confirmed">{text('Confirmed')}</option>
               </select>
             </label>
+            {(invoiceSearchDraft || invoiceSearch || invoiceStatus !== 'all') && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setInvoiceSearch('');
+                  setInvoiceSearchDraft('');
+                  setInvoiceStatus('all');
+                  resetInvoiceFilters();
+                }}
+              >
+                {text('Clear filters')}
+              </Button>
+            )}
           </div>
           <DataTable
             columns={invoiceColumns}
@@ -469,7 +672,37 @@ export function PurchaseInvoicesPage() {
             caption={text('Purchase invoices')}
             loading={invoicesLoading}
             loadingState={text('Loading purchase invoices…')}
-            emptyState={text('No purchase invoices yet.')}
+            emptyState={
+              <div className="inventory-empty">
+                <h3>
+                  {text(
+                    invoiceListError
+                      ? 'Could not load purchase invoices.'
+                      : invoiceSearch || invoiceStatus !== 'all'
+                        ? 'No matching purchases'
+                        : 'No purchase invoices yet.',
+                  )}
+                </h3>
+                <p>
+                  {invoiceListError ||
+                    text(
+                      invoiceSearch || invoiceStatus !== 'all'
+                        ? 'Try another search or clear the filters.'
+                        : 'Record a delivery from a supplier, then review it before adding stock.',
+                    )}
+                </p>
+                {!invoiceListError && !invoiceSearch && invoiceStatus === 'all' && (
+                  <Button
+                    onClick={() => {
+                      setLoadError('');
+                      navigate('/inventory/purchases/new');
+                    }}
+                  >
+                    {text('Record purchase')}
+                  </Button>
+                )}
+              </div>
+            }
           />
           <PageControls
             page={invoicePage}
@@ -486,6 +719,32 @@ export function PurchaseInvoicesPage() {
           title={text('Suppliers')}
           description={text('Maintain an owner-managed supplier directory for purchase records.')}
         >
+          {supplierListError && (
+            <div className="inventory-error" role="alert">
+              <span>{supplierListError}</span>
+              <span className="inventory-error-actions">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSupplierListError('');
+                    setRefreshKey((key) => key + 1);
+                  }}
+                >
+                  {text('Retry')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSupplierListError('')}
+                >
+                  {text('Close')}
+                </Button>
+              </span>
+            </div>
+          )}
           <div className="inventory-filters">
             <form className="inventory-search" onSubmit={submitSupplierSearch}>
               <label>
@@ -514,12 +773,20 @@ export function PurchaseInvoicesPage() {
                 <option value="all">{text('All')}</option>
               </select>
             </label>
-            <Button
-              type="button"
-              onClick={() => setSupplierEditor({ supplier: null, key: crypto.randomUUID() })}
-            >
-              {text('Add supplier')}
-            </Button>
+            {(supplierSearchDraft || supplierSearch || supplierStatus !== 'active') && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setSupplierSearch('');
+                  setSupplierSearchDraft('');
+                  setSupplierStatus('active');
+                  resetSupplierFilters();
+                }}
+              >
+                {text('Clear filters')}
+              </Button>
+            )}
           </div>
           <DataTable
             columns={supplierColumns}
@@ -528,7 +795,27 @@ export function PurchaseInvoicesPage() {
             caption={text('Suppliers')}
             loading={suppliersLoading}
             loadingState={text('Loading suppliers…')}
-            emptyState={text('No suppliers yet.')}
+            emptyState={
+              <div className="inventory-empty">
+                <h3>
+                  {text(
+                    supplierListError
+                      ? 'Could not load suppliers.'
+                      : supplierSearch || supplierStatus !== 'active'
+                        ? 'No matching suppliers'
+                        : 'No suppliers yet.',
+                  )}
+                </h3>
+                <p>
+                  {supplierListError ||
+                    text(
+                      supplierSearch || supplierStatus !== 'active'
+                        ? 'Try another search or clear the filters.'
+                        : 'Add supplier contact details to start recording deliveries.',
+                    )}
+                </p>
+              </div>
+            }
           />
           <PageControls
             page={supplierPage}
@@ -547,29 +834,23 @@ export function PurchaseInvoicesPage() {
           key={supplierEditor.key}
           supplier={supplierEditor.supplier}
           busy={busy}
+          error={loadError}
           text={text}
           onClose={() => !busy && setSupplierEditor(null)}
           onSave={(fields, requestId, revision) => void saveSupplier(fields, requestId, revision)}
-        />
-      )}
-      {invoiceEditor && (
-        <PurchaseInvoiceEditor
-          key={invoiceEditor.key}
-          invoice={invoiceEditor.invoice}
-          busy={busy}
-          error={loadError}
-          text={text}
-          formatDigits={formatDigits}
-          onClose={() => !busy && setInvoiceEditor(null)}
-          onSave={(fields, requestId, revision) => void saveInvoice(fields, requestId, revision)}
         />
       )}
       {invoiceReview && (
         <DashboardDialog
           title={text('Review supplier invoice')}
           closeLabel={text('Close')}
-          onClose={() => !busy && setInvoiceReview(null)}
+          onClose={() => {
+            if (busy) return;
+            if (sourceInvoiceId) navigate('/inventory/purchases', { replace: true });
+            else setInvoiceReview(null);
+          }}
           busy={busy}
+          wide
         >
           <div className="products-dialog-body inventory-review">
             {loadError && (
@@ -577,11 +858,13 @@ export function PurchaseInvoicesPage() {
                 {loadError}
               </p>
             )}
-            <ol className="inventory-flow" aria-label={text('Purchase progress')}>
-              <li>{text('Supplier and warehouse')}</li>
-              <li>{text('Items and quantities')}</li>
-              <li aria-current="step">{text('Review and receive')}</li>
-            </ol>
+            {invoiceReview.status === 'draft' && (
+              <ol className="inventory-flow" aria-label={text('Purchase progress')}>
+                <li>{text('Supplier and warehouse')}</li>
+                <li>{text('Items and quantities')}</li>
+                <li aria-current="step">{text('Review and receive')}</li>
+              </ol>
+            )}
             {invoiceReview.status === 'draft' && (
               <p className="inventory-note">
                 {text('Receiving this purchase adds the quantities below to:')}{' '}
@@ -631,6 +914,18 @@ export function PurchaseInvoicesPage() {
               </Button>
               <Button type="button" disabled={busy} onClick={() => void confirmInvoice()}>
                 {text(busy ? 'Posting…' : 'Confirm receipt')}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  setLoadError('');
+                  setInvoiceReview(null);
+                  navigate(`/inventory/purchases/${invoiceReview.id}/edit`);
+                }}
+              >
+                {text('Edit draft')}
               </Button>
             </footer>
           )}

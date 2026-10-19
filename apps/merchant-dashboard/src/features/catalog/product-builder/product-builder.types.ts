@@ -13,6 +13,16 @@ export type OptionDraft = {
   defaultSelected: boolean;
 };
 
+export type ChoiceGroupDraft = {
+  variantOverrides?: CatalogModifierGroupVariantFields[] | undefined;
+  name: string;
+  selectionMode: 'single' | 'multiple';
+  required: boolean;
+  minSelections: number;
+  maxSelections: number;
+  options: OptionDraft[];
+};
+
 export type GroupDraft = {
   variantOverrides?: CatalogModifierGroupVariantFields[] | undefined;
   id: string;

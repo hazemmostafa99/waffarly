@@ -9,7 +9,7 @@
   margin-bottom: 8px;
 }
 .employee-list-toolbar {
-  grid-template-columns: minmax(0, 1fr) 180px;
+  grid-template-columns: minmax(0, 1fr) 200px 180px;
   margin-bottom: 0;
 }
 .employee-list-toolbar select:last-child {

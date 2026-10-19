@@ -14,10 +14,11 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsx --test test/http/*.test.ts test/unit/*.test.ts",
     "test:catalog-db": "tsx --test test/database/catalog.database.test.ts test/database/catalog-seed.database.test.ts test/database/pagination.database.test.ts test/database/product-inventory.database.test.ts test/database/modifier-effects.database.test.ts",
-    "test:inventory-db": "tsx --test test/database/inventory.database.test.ts test/database/inventory-ledger.database.test.ts",
+    "test:inventory-db": "tsx --test test/database/inventory.database.test.ts test/database/inventory-ledger.database.test.ts test/database/inventory-visibility.database.test.ts",
     "test:purchasing-db": "tsx --test test/database/purchasing.database.test.ts",
     "test:storefront-orders-db": "tsx --test test/database/storefront-orders.database.test.ts test/database/recipe-order-lifecycle.database.test.ts",
     "test:pos-db": "tsx --test --test-isolation=none test/database/pos-dining.database.test.ts",
+    "test:employees-db": "tsx --test --test-isolation=none test/database/employee-roles.database.test.ts",
     "test:activities-db": "tsx --test test/database/activities-modules.database.test.ts"
   },
   "dependencies": {

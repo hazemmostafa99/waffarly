@@ -11,26 +11,32 @@
 
 .register-heading p {
   max-width: 720px;
+  line-height: 1.7;
 }
 
-.register-table-card .wf-card-heading {
+.products-filters.register-filters {
+  grid-template-columns: minmax(220px, 1fr) minmax(160px, 220px);
   align-items: end;
+  margin-bottom: 0;
 }
 
+.register-branch-filter,
 .register-status-filter,
 .register-field {
   display: grid;
-  gap: 6px;
-  min-width: 180px;
+  gap: 7px;
+  min-width: 0;
   color: var(--dashboard-muted);
   font-size: 11px;
   font-weight: 600;
 }
 
-.register-status-filter select,
+.register-filters select,
+.register-filters .entity-picker select,
 .register-editor input:not([type='checkbox']) {
-  min-height: 36px;
-  padding: 7px 10px;
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
   border: 1px solid var(--dashboard-border);
   border-radius: 7px;
   background: white;
@@ -39,15 +45,62 @@
   font-size: 12px;
 }
 
-.register-name-cell {
+.register-filters .entity-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.register-filters .entity-picker > :is(small, div[role='alert'], .entity-picker-pages) {
+  grid-column: 1 / -1;
+}
+
+.register-filters .entity-picker input {
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 7px;
+  background: #f5f8fb;
+  color: var(--dashboard-ink);
+  font: inherit;
+  font-size: 12px;
+}
+
+.register-filters .entity-picker input:focus,
+.register-filters select:focus,
+.register-editor input:focus {
+  outline: 2px solid #087858;
+  outline-offset: 1px;
+}
+
+.register-table-card .wf-card-heading {
+  align-items: start;
+}
+
+.register-table-card .wf-card-heading p {
+  max-width: 680px;
+  line-height: 1.6;
+}
+
+.register-name-cell,
+.pos-table-name {
   display: grid;
   gap: 3px;
 }
 
 .register-name-cell small,
-.register-branch-summary span {
+.register-branch-summary span,
+.pos-table-name small {
   color: var(--dashboard-muted);
   font-size: 10px;
+}
+
+.register-edit-button,
+.register-pagination-button {
+  min-height: 32px;
+  padding: 6px 12px;
+  font-size: 11px;
 }
 
 .register-pagination {
@@ -69,25 +122,29 @@
 }
 
 .register-empty {
-  padding: 8px;
+  padding: 12px;
   text-align: start;
   white-space: normal;
 }
 
 .register-empty strong {
   color: var(--dashboard-ink);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .register-empty p {
   max-width: 560px;
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   color: var(--dashboard-muted);
   font-size: 11px;
-  line-height: 1.5;
+  line-height: 1.6;
 }
 
 .register-message {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   max-width: none;
   margin: 0;
   padding: 11px 13px;
@@ -102,8 +159,16 @@
 
 .register-editor {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   min-width: 0;
+}
+
+.register-editor > .register-message,
+.register-editor > .register-branch-field,
+.register-editor > .register-branch-summary,
+.register-form-actions {
+  grid-column: 1 / -1;
 }
 
 .register-editor .register-field input {
@@ -116,8 +181,8 @@
 }
 
 .register-editor .entity-picker select {
-  min-height: 36px;
-  padding: 7px 10px;
+  min-height: 38px;
+  padding: 8px 10px;
   border: 1px solid var(--dashboard-border);
   border-radius: 7px;
   background: white;
@@ -135,6 +200,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  align-self: end;
+  min-height: 38px;
   color: var(--dashboard-ink);
   font-size: 12px;
 }
@@ -151,6 +218,16 @@
   margin: 0;
 }
 
+.register-form-actions .products-button {
+  min-height: 36px;
+  padding: 8px 15px;
+}
+
+.register-page button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
 @media (max-width: 760px) {
   .register-heading {
     align-items: start;
@@ -158,8 +235,12 @@
   }
 
   .register-heading > button {
-    min-height: 40px;
     width: 100%;
+    min-height: 40px;
+  }
+
+  .products-filters.register-filters {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .register-table-card .wf-data-table {
@@ -172,5 +253,25 @@
 
   .register-pagination > div {
     margin-inline-start: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .register-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .register-editor > .register-field,
+  .register-active-toggle,
+  .register-form-actions {
+    grid-column: 1;
+  }
+
+  .register-form-actions {
+    flex-wrap: wrap;
+  }
+
+  .register-form-actions .products-button {
+    flex: 1;
   }
 }

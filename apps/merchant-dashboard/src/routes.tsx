@@ -18,6 +18,11 @@ import { PurchaseInvoicesPage } from './features/purchasing/PurchaseInvoicesPage
 import { EmployeesPage } from './features/staff/EmployeesPage.js';
 import { RegistersPage } from './features/pos/RegistersPage.js';
 import { TablesPage } from './features/pos/TablesPage.js';
+import {
+  InventoryHealthPage,
+  StockItemDetailPage,
+  StockMovementDetailPage,
+} from './features/inventory/InventoryVisibilityPages.js';
 
 export const router = createBrowserRouter([
   {
@@ -42,12 +47,15 @@ export const router = createBrowserRouter([
       { path: 'product-builder', element: <ProductBuilderPage /> },
       { path: 'categories', element: <CategoriesPage /> },
       { path: 'inventory', element: <InventoryOperationsPage view="overview" /> },
+      { path: 'inventory/health', element: <InventoryHealthPage /> },
+      { path: 'inventory/items/:itemId', element: <StockItemDetailPage /> },
       { path: 'inventory/items', element: <StockItemsPage /> },
+      { path: 'inventory/movements/:movementId', element: <StockMovementDetailPage /> },
       { path: 'inventory/history', element: <InventoryOperationsPage view="history" /> },
       { path: 'inventory/opening', element: <InventoryOperationsPage view="opening" /> },
       { path: 'inventory/settings', element: <InventoryOperationsPage view="settings" /> },
       { path: 'inventory/operations', element: <Navigate to="/inventory" replace /> },
-      { path: 'inventory/purchases', element: <PurchaseInvoicesPage /> },
+      { path: 'inventory/purchases/*', element: <PurchaseInvoicesPage /> },
       { path: 'media', element: <MediaPage /> },
       { path: 'orders', element: <StorefrontOrdersPage /> },
       { path: 'customers', element: <CustomersPage /> },

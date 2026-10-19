@@ -1,10 +1,19 @@
 # API architecture
 
+Employee role presets and the available branch-scoped employee workflows are
+documented in [Employee roles](../features/employees/FEATURE.md). Auth owns the
+permission foundation; Inventory owns employee stock reads and Orders owns queue
+and receipt access. Employee roles do not bypass owner authentication.
+
 The API is a NestJS modular monolith. Organize behavior by business feature;
 admin, owner, and public controllers belong to the feature they expose. Feature
 implementation instructions live in [apps/api/AGENTS.md](../../apps/api/AGENTS.md).
 
+Orders also exposes authenticated `GET /pos/orders/:id` for the selling workspace's confirmed-order recovery. It returns the existing immutable-line order-summary projection, requiring sell permission and filtering by the actor's merchant, POS source and assigned active branch. The frontend keeps only merchant/employee/device-scoped order references in Zustand (workspace version 5, with selected-draft identity and recent-use timestamps); React Query reads current order/payment facts. This is same-browser recovery, not a global unpaid-order index. Local confirmation atomically replaces its pending sale/draft with a reference, retaining the original retry envelope if that local write fails. No schema migration or dependency boundary changed.
+
 ## Ownership
+
+The Orders-owned payment-state response includes optional checkout `context` (the existing frozen order summary and current dining table code) plus check `splitMethod` and `allocations` using the existing check-summary allocation shape. Its tenant/POS/sell filters also exclude archived assigned branches. Context and balances are returned together from the scoped order read; no new persistence schema or write behavior is introduced. POS uses allocations for item checks, while equal/custom checks show full-order items only as reference. Optional metadata preserves compatibility with older responses, which receive an explicit unavailable-context message. Roll out contracts/API before the new UI for complete details.
 
 | Module     | Responsibility                                                                                                                                         | Application dependencies                   |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
@@ -124,6 +133,16 @@ reads are shared per merchant without keeping a full-directory cache.
 `infrastructure/` owns Prisma and storage adapters. Shared technical code must not
 depend on feature modules. The database package owns schema/client/migrations;
 contracts own framework-independent HTTP types. Neither contains API use cases.
+
+Inventory visibility remains inside the Inventory module. `InventoryVisibilityService`
+provides tenant-scoped movement detail, the bounded `GET /owner/inventory/health`
+view, and revisioned per-warehouse reorder-threshold updates/removals. Health rows
+and aggregate counts include active configured item/warehouse pairs only, compare
+Available balances against thresholds in the Stock Item base unit, and treat a
+missing balance as zero. Summary counts apply the selected filters across the full
+result scope, independently of the cursor page. The additive
+`StockReorderThreshold` table uses compound merchant/location/item references and
+does not create stock ledger entries.
 
 ## Compatibility and verification
 

@@ -44,3 +44,29 @@ test('rejects invalid cash and overpayment before sending the financial command'
     'Payment cannot exceed the remaining balance.',
   );
 });
+
+test('identifies every invalid tender field without producing a sendable payment preview', () => {
+  const result = previewPosTenders(
+    [
+      { id: 'cash', method: 'cash', amount: '20.00', receivedAmount: '19.99' },
+      { id: 'terminal', method: 'terminal', amount: '1.009', receivedAmount: '' },
+    ],
+    '34.86',
+  );
+  assert.equal(result.preview, null);
+  assert.deepEqual(result.fieldErrors, {
+    cash: { receivedAmount: 'Cash received must cover the payment amount.' },
+    terminal: { amount: 'Enter a positive amount with up to two decimal places.' },
+  });
+  const corrected = previewPosTenders(
+    [
+      { id: 'cash', method: 'cash', amount: '20.00', receivedAmount: '25.00' },
+      { id: 'terminal', method: 'terminal', amount: '14.86', receivedAmount: '' },
+    ],
+    '34.86',
+  );
+  assert.deepEqual(corrected.fieldErrors, {});
+  assert.equal(corrected.preview?.appliedCents, 3486n);
+  assert.equal(corrected.preview?.changeCents, 500n);
+  assert.equal(corrected.preview?.balanceAfterCents, 0n);
+});

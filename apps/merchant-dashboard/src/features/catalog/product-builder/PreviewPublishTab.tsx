@@ -3,7 +3,6 @@ import type {
   CatalogMediaAsset,
   ProductInventoryMode,
 } from '@waffarly/contracts';
-import { Icon } from '../../../Icons.js';
 import type { GroupDraft, VariantDraft } from './product-builder.types.js';
 
 export function PreviewPublishTab({
@@ -11,6 +10,7 @@ export function PreviewPublishTab({
   name,
   description,
   basePrice,
+  productMode,
   availability,
   onAvailabilityChange,
   categories,
@@ -19,6 +19,7 @@ export function PreviewPublishTab({
   variants,
   inventoryMode,
   inventoryConfigured,
+  inventoryRequired,
   formatNumber,
   text,
 }: {
@@ -26,6 +27,7 @@ export function PreviewPublishTab({
   name: string;
   description: string;
   basePrice: string;
+  productMode: 'simple' | 'variants';
   availability: 'available' | 'unavailable';
   onAvailabilityChange: (value: 'available' | 'unavailable') => void;
   categories: CatalogCategorySummary[];
@@ -34,195 +36,224 @@ export function PreviewPublishTab({
   variants: VariantDraft[];
   inventoryMode: ProductInventoryMode;
   inventoryConfigured: boolean;
+  inventoryRequired: boolean;
   formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
   text: (english: string, arabic: string) => string;
 }) {
+  const validPrice = /^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(basePrice) && Number(basePrice) > 0;
+  const basicReady = Boolean(name.trim() && validPrice);
+  const detailsReady = categories.length > 0 && images.length > 0;
+  const informationReady = basicReady && detailsReady;
+  const inventoryReady =
+    inventoryConfigured || !inventoryRequired || availability === 'unavailable';
+  const readyCount = [informationReady, inventoryReady].filter(Boolean).length;
+  const priceText = (value: string) =>
+    'EGP ' +
+    formatNumber(Number(value || 0), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const priceSummary = (value: string) =>
+    /^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(value) && Number(value) > 0
+      ? priceText(value)
+      : text('Price not entered', 'لم يتم إدخال السعر');
+  const status = (ready: boolean, optional = false) => (
+    <span
+      className={
+        'review-status' + (ready ? ' is-ready' : optional ? ' is-optional' : ' is-missing')
+      }
+    >
+      {ready
+        ? text('Complete', 'مكتمل')
+        : optional
+          ? text('Optional', 'اختياري')
+          : text('Needs attention', 'يحتاج إكمال')}
+    </span>
+  );
   return (
-    <div className="builder-fields">
+    <div className="builder-fields product-review-step">
       <div className="builder-section-heading">
-        <span>{text('05', '05')}</span>
+        <span>{text('04', '04')}</span>
         <div>
-          <h2>{text('Preview and publish', 'المعاينة والنشر')}</h2>
+          <h2>{text('Review and publish', 'المراجعة والنشر')}</h2>
           <p>
             {text(
-              'Review the product details and choose whether it is available for sale.',
-              'راجع تفاصيل المنتج واختر ما إذا كان متاحاً للبيع.',
+              'Check the essentials, then choose how customers can buy this product.',
+              'راجع التفاصيل الأساسية ثم حدد ما إذا كان المنتج متاحًا للعملاء.',
             )}
           </p>
         </div>
       </div>
-      <div className="builder-review-card">
-        <div className="builder-review-images">
-          {images.slice(0, 4).map((image) => (
-            <img
-              src={image.publicUrl}
-              key={image.id}
-              alt={name || text('Product image', 'صورة المنتج')}
-            />
-          ))}
-          {!images.length && (
-            <div className="builder-review-image-empty">
-              <Icon name="image" />
-              <span>{text('No product image', 'لا توجد صورة للمنتج')}</span>
-            </div>
-          )}
-        </div>
-        <div className="builder-review-copy">
-          <div className="builder-review-categories">
-            {categories.map((category) => (
-              <span key={category.id}>{category.name}</span>
-            ))}
-          </div>
-          <span className={`builder-availability-pill ${availability}`}>
-            {availability === 'available'
-              ? text('Available for sale', 'متاح للبيع')
-              : text('Not available for sale', 'غير متاح للبيع')}
+      <div className={'review-readiness-banner' + (readyCount === 2 ? ' is-ready' : '')}>
+        <div>
+          <strong>
+            {readyCount === 2
+              ? text('Ready to save', 'جاهز للحفظ')
+              : text('A few details need your attention', 'بعض التفاصيل تحتاج إلى إكمال')}
+          </strong>
+          <span>
+            {text(
+              String(readyCount) + ' of 2 required sections complete',
+              'اكتمل ' + readyCount + ' من قسمين مطلوبين',
+            )}
           </span>
-          <h3>{name || text('Product name', 'اسم المنتج')}</h3>
-          <p>{description || text('No description added.', 'لم تتم إضافة وصف.')}</p>
-          {variants.length ? (
-            <div className="builder-review-variants">
-              <strong>{text('Variant prices', 'أسعار المتغيرات')}</strong>
-              {variants.map((variant) => (
-                <span key={variant.id}>
-                  {variant.name || text('Unnamed variant', 'متغير بلا اسم')} —{' '}
-                  <b dir="ltr">
-                    EGP{' '}
-                    {formatNumber(Number(variant.price || 0), {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </b>
-                  {variant.stockQuantity !== '' &&
-                    ` · ${text('Stock', 'المخزون')}: ${text(variant.stockQuantity, variant.stockQuantity)}`}
-                </span>
+        </div>
+        {readyCount !== 2 && (
+          <span className="review-required-note">
+            {text(
+              'Choose “Unavailable” to save without inventory setup.',
+              'اختر «غير متاح» للحفظ دون إعداد المخزون.',
+            )}
+          </span>
+        )}
+      </div>
+
+      <section className="product-review-section">
+        <div className="product-review-section-heading">
+          <div>
+            <span className="review-section-number">01</span>
+            <div>
+              <h3>{text('Product information', 'معلومات المنتج')}</h3>
+              <p>
+                {text(
+                  'Name, price, category and photos customers see.',
+                  'الاسم والسعر والتصنيف والصور التي يراها العميل.',
+                )}
+              </p>
+            </div>
+          </div>
+          {status(informationReady)}
+          <button type="button" className="builder-button" onClick={() => onEditStep(0)}>
+            {text('Edit', 'تعديل')}
+          </button>
+        </div>
+        <div className="product-review-section-content">
+          <strong>{name || text('Name not entered', 'لم يُكتب اسم المنتج')}</strong>
+          {productMode === 'variants' ? (
+            <span>
+              {text('Size prices', 'أسعار الأحجام')} ·{' '}
+              {variants.length
+                ? variants
+                    .map((variant) => variant.name + ' — ' + priceSummary(variant.price))
+                    .join(' · ')
+                : text('No sizes added', 'لم تتم إضافة أحجام')}
+            </span>
+          ) : (
+            <span>{priceSummary(basePrice)}</span>
+          )}
+          {description && <small>{description}</small>}
+          {categories.length ? (
+            <div className="builder-review-categories">
+              {categories.map((category) => (
+                <span key={category.id}>{category.name}</span>
               ))}
             </div>
           ) : (
-            <strong dir="ltr">
-              EGP{' '}
-              {formatNumber(Number(basePrice || 0), {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </strong>
+            <span>{text('No category selected', 'لم يتم اختيار تصنيف')}</span>
           )}
-          <small>{text('Sold per piece', 'يباع بالقطعة')}</small>
+          <span>{text(String(images.length) + ' photos', String(images.length) + ' صور')}</span>
+          <div className="review-photo-strip">
+            {images.slice(0, 5).map((image) => (
+              <img key={image.id} src={image.publicUrl} alt="" />
+            ))}
+            {images.length > 5 && <span>+{images.length - 5}</span>}
+          </div>
         </div>
-      </div>
-      <div
-        className="builder-review-actions"
-        role="group"
-        aria-label={text('Edit product sections', 'تعديل أقسام المنتج')}
-      >
-        <button type="button" className="builder-button" onClick={() => onEditStep(0)}>
-          {text('Edit name & price', 'تعديل الاسم والسعر')}
-        </button>
-        <button type="button" className="builder-button" onClick={() => onEditStep(1)}>
-          {text('Edit photos & categories', 'تعديل الصور والتصنيفات')}
-        </button>
-        <button type="button" className="builder-button" onClick={() => onEditStep(2)}>
-          {text('Edit customer choices', 'تعديل خيارات العميل')}
-        </button>
-        <button type="button" className="builder-button" onClick={() => onEditStep(3)}>
-          {text('Edit inventory setup', 'تعديل إعداد المخزون')}
-        </button>
-      </div>
-      <div className="builder-review-groups builder-inventory-review">
-        <h3>{text('Inventory setup', 'إعداد المخزون')}</h3>
-        <strong>
-          {inventoryConfigured
-            ? inventoryMode === 'RECIPE'
-              ? text('Recipe configured', 'تم إعداد الوصفة')
-              : text('Direct item mapping configured', 'تم إعداد الربط المباشر')
-            : text('Not configured', 'غير مُعدّ')}
-        </strong>
-      </div>
-      {groups.length > 0 && (
-        <div className="builder-review-groups">
-          <h3>
-            {text('Customer choices', 'اختيارات العميل')}
-            <span className="builder-count-badge">
-              {text(String(groups.length), String(groups.length))}
-            </span>
-          </h3>
-          {groups.map((group) => (
-            <article key={group.id}>
-              <strong>{group.name || text('Unnamed group', 'مجموعة بدون اسم')}</strong>
-              <small>
-                {text(String(group.minSelections), String(group.minSelections))}–
-                {text(String(group.maxSelections), String(group.maxSelections))}{' '}
-                {text('choices', 'اختيارات')} ·{' '}
-                {group.selectionMode === 'single'
-                  ? text('Single choice', 'اختيار واحد')
-                  : text('Multiple choice', 'اختيارات متعددة')}
-              </small>
+      </section>
+
+      <section className="product-review-section">
+        <div className="product-review-section-heading">
+          <div>
+            <span className="review-section-number">02</span>
+            <div>
+              <h3>{text('Sizes and customer choices', 'الأحجام وخيارات العميل')}</h3>
+              <p>{text('Extra choices are optional.', 'الخيارات الإضافية اختيارية.')}</p>
+            </div>
+          </div>
+          {status(true, true)}
+          <button type="button" className="builder-button" onClick={() => onEditStep(1)}>
+            {text('Edit', 'تعديل')}
+          </button>
+        </div>
+        <div className="product-review-section-content">
+          <span>
+            {variants.length
+              ? text(String(variants.length) + ' sizes', String(variants.length) + ' أحجام')
+              : text('One product size', 'منتج بدون أحجام')}
+          </span>
+          <span>
+            {groups.length
+              ? text(
+                  String(groups.length) + ' choice groups',
+                  String(groups.length) + ' مجموعات خيارات',
+                )
+              : text('No extra choices', 'لا توجد خيارات إضافية')}
+          </span>
+        </div>
+      </section>
+
+      <section className="product-review-section">
+        <div className="product-review-section-heading">
+          <div>
+            <span className="review-section-number">03</span>
+            <div>
+              <h3>{text('Inventory', 'المخزون')}</h3>
               <p>
-                {group.options
-                  .map(
-                    (option) =>
-                      `${option.name || text('Unnamed choice', 'اختيار بدون اسم')} (+ EGP ${formatNumber(Number(option.priceAdjustment || 0), { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
-                  )
-                  .join(' · ')}
+                {text('What is used from stock per sale.', 'ما يُستهلك من المخزون لكل عملية بيع.')}
               </p>
-            </article>
-          ))}
+            </div>
+          </div>
+          {status(inventoryConfigured, !inventoryRequired || availability === 'unavailable')}
+          <button type="button" className="builder-button" onClick={() => onEditStep(2)}>
+            {text('Edit', 'تعديل')}
+          </button>
         </div>
-      )}
-      {!groups.length && (
-        <div className="builder-review-groups builder-review-empty-card">
-          <h3>
-            {text('Customer choices', 'اختيارات العميل')}
-            <span className="builder-count-badge">{text('0', '0')}</span>
-          </h3>
-          <p className="builder-review-empty">
-            {text(
-              'No add-ons or extra choices for this product.',
-              'لا توجد إضافات أو خيارات أخرى لهذا المنتج.',
-            )}
-          </p>
+        <div className="product-review-section-content">
+          <span>
+            {inventoryConfigured
+              ? inventoryMode === 'RECIPE'
+                ? text('Recipe is set up', 'تم إعداد الوصفة')
+                : text('Ready-made item is linked', 'تم ربط الصنف الجاهز')
+              : !inventoryRequired
+                ? text(
+                    'Inventory setup is optional for this product.',
+                    'إعداد المخزون اختياري لهذا المنتج.',
+                  )
+                : text('Inventory is not set up', 'لم يتم إعداد المخزون')}
+          </span>
         </div>
-      )}
-      <fieldset className="builder-availability-fieldset">
+      </section>
+
+      <fieldset className="builder-availability-fieldset review-availability">
         <legend>{text('Sales availability', 'حالة توفر المنتج')}</legend>
-        <label
-          className={`builder-availability-choice ${availability === 'available' ? 'selected' : ''}`}
-        >
-          <input
-            type="radio"
-            name="availability"
-            checked={availability === 'available'}
-            onChange={() => onAvailabilityChange('available')}
-          />
-          <span>
-            <strong>{text('Available', 'متاح للبيع')}</strong>
-            <small>
-              {text(
-                'Customers can order this product after creation.',
-                'يمكن للعملاء طلب المنتج بعد إنشائه.',
-              )}
-            </small>
-          </span>
-        </label>
-        <label
-          className={`builder-availability-choice ${availability === 'unavailable' ? 'selected' : ''}`}
-        >
-          <input
-            type="radio"
-            name="availability"
-            checked={availability === 'unavailable'}
-            onChange={() => onAvailabilityChange('unavailable')}
-          />
-          <span>
-            <strong>{text('Unavailable', 'غير متاح للبيع')}</strong>
-            <small>
-              {text(
-                'Keep it in your catalog without accepting orders.',
-                'احتفظ به في الكتالوج دون قبول الطلبات.',
-              )}
-            </small>
-          </span>
-        </label>
+        {(['available', 'unavailable'] as const).map((value) => (
+          <label
+            key={value}
+            className={'builder-availability-choice' + (availability === value ? ' selected' : '')}
+          >
+            <input
+              type="radio"
+              name="availability"
+              checked={availability === value}
+              onChange={() => onAvailabilityChange(value)}
+            />
+            <span>
+              <strong>
+                {value === 'available'
+                  ? text('Publish and make available', 'نشر وإتاحة للبيع')
+                  : text('Save as unavailable', 'حفظ كغير متاح')}
+              </strong>
+              <small>
+                {value === 'available'
+                  ? text(
+                      'Customers can order this product once it is created.',
+                      'يمكن للعملاء طلب المنتج بعد إنشائه.',
+                    )
+                  : text(
+                      'Keep it in the catalog without accepting orders.',
+                      'احتفظ به في الكتالوج دون قبول الطلبات.',
+                    )}
+              </small>
+            </span>
+          </label>
+        ))}
       </fieldset>
     </div>
   );

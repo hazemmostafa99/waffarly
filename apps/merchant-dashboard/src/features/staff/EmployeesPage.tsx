@@ -1,4 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import {
+  POS_EMPLOYEE_ROLES,
+  resolvePosEmployeePermissions,
+  hasPosEmployeePermission,
+} from '@waffarly/contracts';
 import type {
   CursorPage,
   InventoryBranch,
@@ -10,6 +15,7 @@ import { Icon } from '../../Icons.js';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { PagedEntitySelect } from '../../components/PagedEntitySelect.js';
 import { ApiError, apiRequest, apiRequestPage } from '../../lib/api-client.js';
+import { employeePermissionLabels, employeeRoleLabels } from './employee-role-copy.js';
 
 type BranchChoice = { id: string; name: string; archivedAt: string | null };
 type Draft = {
@@ -39,6 +45,7 @@ export function EmployeesPage() {
   const [history, setHistory] = useState<Array<string | undefined>>([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [roleFilter, setRoleFilter] = useState<PosEmployeeRole | ''>('');
   const [editing, setEditing] = useState<PosEmployeeSummary | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
@@ -48,12 +55,31 @@ export function EmployeesPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [refresh, setRefresh] = useState(0);
+  const previewPermissions = resolvePosEmployeePermissions(
+    draft.role,
+    editing?.savedPermissions ??
+      (editing
+        ? editing.permissions.filter(
+            (permission) =>
+              permission === 'accept_recipe_orders' || permission === 'start_preparation',
+          )
+        : draft.role === 'cashier' || draft.role === 'supervisor' || draft.role === null
+          ? ['accept_recipe_orders', 'start_preparation']
+          : []),
+  );
+  const preview = { permissions: previewPermissions };
+  const visiblePermissions = [...previewPermissions];
+  for (const permission of ['view_orders', 'view_receipts'] as const) {
+    if (hasPosEmployeePermission(preview, permission) && !visiblePermissions.includes(permission))
+      visiblePermissions.push(permission);
+  }
 
   useEffect(() => {
     let current = true;
     setLoading(true);
     setError('');
     const query = new URLSearchParams({ limit: '25', status });
+    if (roleFilter) query.set('role', roleFilter);
     if (search.trim()) query.set('search', search.trim());
     const cursor = history.at(-1);
     if (cursor) query.set('cursor', cursor);
@@ -75,7 +101,7 @@ export function EmployeesPage() {
     return () => {
       current = false;
     };
-  }, [errorText, history, refresh, search, status]);
+  }, [errorText, history, refresh, search, status, roleFilter]);
 
   function startCreate() {
     setEditing(null);
@@ -205,13 +231,11 @@ export function EmployeesPage() {
     },
     {
       id: 'role',
-      header: text('POS role', 'دور POS'),
+      header: text('Role', 'الدور'),
       cell: (employee) => (
         <span className={`products-pill ${employee.role ? 'blue' : 'cream'}`}>
           {employee.role
-            ? employee.role === 'supervisor'
-              ? text('Supervisor', 'مشرف')
-              : text('Cashier', 'كاشير')
+            ? text(...employeeRoleLabels[employee.role])
             : text('Legacy access', 'الصلاحيات الحالية')}
         </span>
       ),
@@ -319,6 +343,21 @@ export function EmployeesPage() {
           />
         </label>
         <select
+          aria-label={text('Employee role', 'دور الموظف')}
+          value={roleFilter}
+          onChange={(event) => {
+            setRoleFilter(event.target.value as PosEmployeeRole | '');
+            setHistory([]);
+          }}
+        >
+          <option value="">{text('All roles', 'كل الأدوار')}</option>
+          {POS_EMPLOYEE_ROLES.map((role) => (
+            <option key={role} value={role}>
+              {text(...employeeRoleLabels[role])}
+            </option>
+          ))}
+        </select>
+        <select
           aria-label={text('Employee status', 'حالة الموظف')}
           value={status}
           onChange={(event) => {
@@ -336,8 +375,8 @@ export function EmployeesPage() {
         className="employee-table-card"
         title={text('Employee list', 'قائمة الموظفين')}
         description={text(
-          'Employees can accept recipe orders and start preparation at assigned branches. Owners keep order rejection and cancellation.',
-          'يمكن للموظفين قبول طلبات الوصفات وبدء التحضير في الفروع المعيّنة لهم. يظل رفض الطلبات وإلغاؤها من صلاحيات المالك.',
+          'Each employee can use only the actions allowed by their role in their assigned branches.',
+          'يستخدم كل موظف الإجراءات المسموح بها لدوره داخل الفروع المعيّنة له فقط.',
         )}
       >
         <DataTable
@@ -350,12 +389,12 @@ export function EmployeesPage() {
           emptyState={
             <div className="employee-empty">
               <strong>
-                {search || status !== 'all'
+                {search || status !== 'all' || roleFilter
                   ? text('No matching employees', 'لا يوجد موظفون مطابقون')
                   : text('No employees yet', 'لا يوجد موظفون بعد')}
               </strong>
               <p>
-                {search || status !== 'all'
+                {search || status !== 'all' || roleFilter
                   ? text(
                       'Try another search or change the status filter.',
                       'جرّب بحثًا آخر أو غيّر فلتر الحالة.',
@@ -454,8 +493,9 @@ export function EmployeesPage() {
                   />
                 </label>
                 <label>
-                  {text('POS role', 'دور POS')}
+                  {text('Role', 'الدور')}
                   <select
+                    aria-label={text('Role', 'الدور')}
                     value={draft.role ?? ''}
                     onChange={(event) =>
                       setDraft({
@@ -467,14 +507,13 @@ export function EmployeesPage() {
                     <option value="">
                       {text('Existing permissions only', 'الصلاحيات الحالية فقط')}
                     </option>
-                    <option value="cashier">
-                      {text('Cashier — sales and shift opening', 'كاشير — البيع وفتح الوردية')}
-                    </option>
-                    <option value="supervisor">
-                      {text(
-                        'Supervisor — cashier plus approvals',
-                        'مشرف — كاشير مع صلاحيات الموافقة',
-                      )}
+                    {POS_EMPLOYEE_ROLES.map((role) => (
+                      <option key={role} value={role}>
+                        {text(...employeeRoleLabels[role])}
+                      </option>
+                    ))}
+                    <option disabled>
+                      {text('Account owner — owner account only', 'مالك الحساب — حساب المالك فقط')}
                     </option>
                   </select>
                 </label>
@@ -489,12 +528,26 @@ export function EmployeesPage() {
                   </label>
                 )}
               </div>
-              <p className="employee-role-help">
-                {text(
-                  'Existing permissions are preserved. Cashiers can sell and open register shifts. Supervisors also approve discounts, voids, and refunds; no numeric limits are configured yet.',
-                  'تظل الصلاحيات الحالية كما هي. يستطيع الكاشير البيع وفتح الوردية. ويستطيع المشرف اعتماد الخصومات والإلغاءات والاسترجاعات؛ لم تُحدد حدود رقمية بعد.',
-                )}
-              </p>
+              <div className="employee-role-help" aria-live="polite">
+                <strong>{text('Permissions for this role', 'صلاحيات هذا الدور')}</strong>
+                <ul>
+                  {visiblePermissions.map((permission) => (
+                    <li key={permission}>{text(...employeePermissionLabels[permission])}</li>
+                  ))}
+                </ul>
+                <p>
+                  {text(
+                    'Access applies only to the assigned active branches below. Employees sign in through the employee/POS workspace.',
+                    'يقتصر الوصول على الفروع النشطة المعيّنة أدناه. يسجل الموظف دخوله من مساحة الموظفين / نقاط البيع.',
+                  )}
+                </p>
+                <p>
+                  {text(
+                    'Stock changes, refunds, employee management, settings and account ownership remain owner-controlled. Accountants currently have read-only receipt access; inventory officers have read-only stock balances.',
+                    'تظل تعديلات المخزون والاسترجاعات وإدارة الموظفين والإعدادات وملكية الحساب تحت تحكم المالك. المتاح للمحاسب حاليًا هو عرض الإيصالات، ولمسؤول المخزون عرض الأرصدة فقط.',
+                  )}
+                </p>
+              </div>
               <fieldset className="employee-branches">
                 <legend>{text('Assigned branches', 'الفروع المعيّنة')}</legend>
                 <div className="employee-branch-picker">

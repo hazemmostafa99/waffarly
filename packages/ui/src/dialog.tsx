@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from 'react';
 import { cn } from './utils.js';
 
 /** Controlled native modal: browser focus containment, Escape and focus restoration. */
@@ -10,6 +10,7 @@ export function Dialog({
   closeLabel,
   children,
   className,
+  style,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -18,6 +19,7 @@ export function Dialog({
   closeLabel: string;
   children: ReactNode;
   className?: string;
+  style?: CSSProperties;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const id = useId();
@@ -41,6 +43,7 @@ export function Dialog({
     <dialog
       ref={dialog}
       data-slot="dialog"
+      style={style}
       aria-labelledby={`${id}-title`}
       aria-describedby={description ? `${id}-description` : undefined}
       onCancel={(event) => {

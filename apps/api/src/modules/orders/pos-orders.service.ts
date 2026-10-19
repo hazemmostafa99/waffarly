@@ -17,6 +17,7 @@ import type {
   RecordPosCheckPaymentResponse,
   PosOrderQuoteRequest,
   PosOrderQuoteResponse,
+  StorefrontOrderSummary,
 } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { createHash, randomUUID } from 'node:crypto';
@@ -34,6 +35,7 @@ import {
 } from '../catalog/index.js';
 import { InventoryLedgerService } from '../inventory/index.js';
 import { ShiftsService } from '../shifts/index.js';
+import { requireEmployeePermission } from '../auth/index.js';
 import { parseRecordPosCheckPaymentRequest, PaymentsService } from '../payments/index.js';
 import { PosDiningService } from './pos-dining.service.js';
 import { buildPosReceiptSnapshot } from './pos-receipt.mapper.js';
@@ -533,6 +535,25 @@ export class PosOrdersService {
     }
   }
 
+  async detail(employee: PosEmployeeSession, orderId: string): Promise<StorefrontOrderSummary> {
+    this.requireSellPermission(employee);
+    const order = await this.prisma.storefrontOrder.findFirst({
+      where: {
+        id: orderId,
+        merchantId: employee.merchantId,
+        source: 'pos',
+        branchId: {
+          in: employee.branches
+            .filter((branch) => branch.archivedAt === null)
+            .map((branch) => branch.id),
+        },
+      },
+      include: orderSummaryInclude,
+    });
+    if (!order) throw new NotFoundException('The POS order was not found.');
+    return toSummary(order);
+  }
+
   async paymentState(
     employee: PosEmployeeSession,
     orderId: string,
@@ -543,17 +564,23 @@ export class PosOrdersService {
         id: orderId,
         merchantId: employee.merchantId,
         source: 'pos',
-        branchId: { in: employee.branches.map((branch) => branch.id) },
+        branchId: {
+          in: employee.branches
+            .filter((branch) => branch.archivedAt === null)
+            .map((branch) => branch.id),
+        },
       },
-      select: {
-        id: true,
-        revision: true,
-        total: true,
-        currency: true,
-        status: true,
+      include: {
+        ...orderSummaryInclude,
+        diningSession: { select: { table: { select: { code: true } } } },
         checks: {
           orderBy: { position: 'asc' },
           include: {
+            allocations: {
+              include: {
+                orderLine: { select: { productName: true, variantName: true, position: true } },
+              },
+            },
             payments: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] },
             receipt: { select: { id: true, receiptNumber: true, issuedAt: true } },
           },
@@ -562,6 +589,7 @@ export class PosOrdersService {
     });
     if (!order) throw new NotFoundException('The POS order was not found.');
     return {
+      context: { order: toSummary(order), tableCode: order.diningSession?.table.code ?? null },
       orderId: order.id,
       revision: order.revision,
       total: formatCents(toCents(order.total.toString())),
@@ -574,6 +602,16 @@ export class PosOrdersService {
           0n,
         );
         return {
+          splitMethod: check.splitMethod as 'whole' | 'items' | 'equal' | 'custom',
+          allocations: [...check.allocations]
+            .sort((a, b) => a.orderLine.position - b.orderLine.position)
+            .map((line) => ({
+              orderLineId: line.orderLineId,
+              productName: line.orderLine.productName,
+              variantName: line.orderLine.variantName,
+              quantity: line.quantity,
+              amount: formatCents(toCents(line.amount.toString())),
+            })),
           id: check.id,
           position: check.position,
           amount: formatCents(amountCents),
@@ -610,7 +648,7 @@ export class PosOrdersService {
     orderId: string,
     checkId: string,
   ): Promise<PosReceipt> {
-    this.requireSellPermission(employee);
+    requireEmployeePermission(employee, 'view_receipts');
     const order = await this.prisma.storefrontOrder.findFirst({
       where: {
         id: orderId,
@@ -634,7 +672,7 @@ export class PosOrdersService {
     employee: PosEmployeeSession,
     input: CursorPageQuery & { branchId: string },
   ): Promise<PosReceiptHistoryPage> {
-    this.requireSellPermission(employee);
+    requireEmployeePermission(employee, 'view_receipts');
     if (!employee.branches.some((branch) => branch.id === input.branchId)) {
       throw new ForbiddenException('This employee is not assigned to the selected branch.');
     }

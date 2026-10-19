@@ -176,7 +176,7 @@ test('owner configures a cashier and register, then the cashier can open a shift
   await ownerPage
     .getByRole('combobox', { name: 'Add an active branch', exact: true })
     .selectOption(branchId);
-  await ownerPage.getByRole('combobox', { name: 'POS role', exact: true }).selectOption('cashier');
+  await ownerPage.getByRole('combobox', { name: 'Role', exact: true }).selectOption('cashier');
   await ownerPage.getByRole('button', { name: 'Save employee', exact: true }).click();
   await expect(ownerPage.getByText('Employee account created.', { exact: true })).toBeVisible();
   await expect(ownerPage.getByText('@amira1', { exact: true })).toBeVisible();
@@ -315,23 +315,21 @@ test('owner configures a cashier and register, then the cashier can open a shift
   await posPage.getByLabel('Username', { exact: true }).fill('amira1');
   await posPage.getByLabel('Password', { exact: true }).fill('browser-test-password');
   await posPage.getByRole('button', { name: 'Sign in', exact: true }).click();
-  await expect(posPage.getByRole('heading', { name: 'Recipe order queue' })).toBeVisible();
+  await expect(posPage.getByRole('heading', { name: 'Incoming orders' })).toBeVisible();
   expect(loginPayload).toEqual({
     storefrontSlug: 'browser-test-restaurant',
     username: 'amira1',
     password: 'browser-test-password',
   });
 
-  await posPage.getByRole('link', { name: 'Catalog', exact: true }).click();
-  await expect(
-    posPage.getByRole('heading', { name: 'Product catalog', exact: true }),
-  ).toBeVisible();
+  await posPage.getByRole('link', { name: 'New sale', exact: true }).click();
+  await expect(posPage.getByRole('heading', { name: 'New order', exact: true })).toBeVisible();
   await expect(
     posPage.getByRole('heading', { name: 'Fresh sourdough', exact: true }),
   ).toBeVisible();
   expect(catalogRequested).toBe(true);
   await posPage.getByRole('link', { name: 'Incoming orders', exact: true }).click();
-  await expect(posPage.getByRole('heading', { name: 'Recipe order queue' })).toBeVisible();
+  await expect(posPage.getByRole('heading', { name: 'Incoming orders' })).toBeVisible();
 
   await posPage.getByRole('button', { name: 'Accept and deduct stock', exact: true }).click();
   await expect(posPage.getByRole('alert')).toContainText('Temporary gateway failure.');
@@ -341,7 +339,7 @@ test('owner configures a cashier and register, then the cashier can open a shift
   expect(acceptPayloads).toHaveLength(1);
 
   await posPage.reload();
-  await expect(posPage.locator('.pos-status-accepted')).toContainText('accepted');
+  await expect(posPage.getByText('accepted', { exact: true })).toBeVisible();
   await expect(
     posPage.getByRole('button', { name: 'Retry saved action', exact: true }),
   ).toBeVisible();
@@ -375,7 +373,7 @@ test('owner configures a cashier and register, then the cashier can open a shift
   await posPage.screenshot({ path: testInfo.outputPath('pos-order-accepted.png'), fullPage: true });
 
   await posPage.getByRole('button', { name: 'Start preparation', exact: true }).click();
-  await expect(posPage.locator('.pos-status-preparing')).toContainText('preparing');
+  await expect(posPage.getByText('preparing', { exact: true })).toBeVisible();
   expect(preparationPayload).toMatchObject({ requestId: expect.any(String) });
   await expect(posPage.getByRole('button', { name: 'Cancel', exact: true })).toHaveCount(0);
   await posPage.screenshot({
@@ -389,19 +387,18 @@ test('owner configures a cashier and register, then the cashier can open a shift
   ).toBeVisible();
   await posPage.getByLabel('Opening cash float (EGP)', { exact: true }).fill('125.5');
   await posPage.getByRole('button', { name: 'Open shift', exact: true }).click();
-  await expect(
-    posPage.getByRole('heading', { name: 'Register shift is open', exact: true }),
-  ).toBeVisible();
+  await expect(posPage.getByText('Register shift is open', { exact: true })).toBeVisible();
   expect(openShiftPayload).toMatchObject({
     registerId,
     requestId: expect.any(String),
     openingFloat: '125.5',
   });
-  await expect(posPage.getByText('Amira Hassan', { exact: false })).toBeVisible();
+  await expect(posPage.getByText('Opened by Amira Hassan', { exact: false })).toBeVisible();
 
   await posPage.getByRole('button', { name: 'Change language', exact: true }).click();
-  await expect(posPage.getByRole('heading', { name: 'قائمة طلبات الوصفات' })).toBeVisible();
-  await expect(posPage.locator('.pos-status-preparing')).toContainText('قيد التحضير');
+  await posPage.getByRole('link', { name: 'الطلبات الواردة', exact: true }).click();
+  await expect(posPage.getByRole('heading', { name: 'الطلبات الواردة' })).toBeVisible();
+  await expect(posPage.getByText('قيد التحضير', { exact: true })).toBeVisible();
   await expect(posPage.locator('html')).toHaveAttribute('dir', 'rtl');
   await posPage.screenshot({ path: testInfo.outputPath('pos-arabic-rtl.png'), fullPage: true });
 

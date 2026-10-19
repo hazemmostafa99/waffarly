@@ -19,9 +19,6 @@ const CreateMerchantPage = lazy(() =>
 const MerchantDetailsPage = lazy(() =>
   import('./features/merchants/MerchantDetailsPage.js').then(({ MerchantDetailsPage: page }) => ({ default: page })),
 );
-const BusinessesCompatibilityPage = lazy(() =>
-  import('./components/AdminRoutePages.js').then(({ BusinessesCompatibilityPage: page }) => ({ default: page })),
-);
 const PlansPage = lazy(() =>
   import('./features/plans/PlansPage.js').then(({ PlansPage: page }) => ({ default: page })),
 );
@@ -65,8 +62,7 @@ export const router = createBrowserRouter([
     path: '/',
     element: <AppLayout />,
     children: [
-      // Keep the existing root URL available while the new dashboard becomes the post-login start page.
-      { index: true, element: routeElement(BusinessesCompatibilityPage) },
+      { index: true, element: routeElement(DashboardPage) },
       { path: 'dashboard', element: routeElement(DashboardPage) },
       { path: 'merchants/new', element: routeElement(CreateMerchantPage) },
       { path: 'merchants', element: routeElement(MerchantsPage) },

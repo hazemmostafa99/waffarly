@@ -25,6 +25,13 @@ export function createPosOrder(request: CreatePosOrderRequest): Promise<CreatePo
   return apiRequest('/pos/orders', { method: 'POST', body: JSON.stringify(request) });
 }
 
+export const posOrderDetailKey = (merchantId: string, employeeId: string, orderId: string) =>
+  ['pos', 'orders', 'detail', merchantId, employeeId, orderId] as const;
+
+export function getPosOrder(orderId: string, signal: AbortSignal): Promise<StorefrontOrderSummary> {
+  return apiRequest(`/pos/orders/${encodeURIComponent(orderId)}`, { method: 'GET', signal });
+}
+
 export function listPosOrders(
   branchId: string,
   cursor: string | undefined,

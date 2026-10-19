@@ -1,0 +1,358 @@
+.entity-picker {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 8px;
+}
+
+.entity-picker-search {
+  position: relative;
+  min-width: 0;
+}
+
+.entity-picker-search > .merchant-icon {
+  position: absolute;
+  z-index: 1;
+  inset-inline-start: 12px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  color: var(--builder-muted, var(--dashboard-muted, #8493b1));
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.entity-picker .entity-picker-search-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding-inline-start: 38px;
+  border: 1px solid var(--builder-border, var(--dashboard-border, #e8eef5));
+  border-radius: 9px;
+  background: #f8fafb;
+  color: var(--builder-ink, var(--dashboard-ink, #1b2648));
+  font: inherit;
+  font-size: 13px;
+  box-shadow: none;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
+}
+
+.entity-picker .entity-picker-search-input::placeholder {
+  color: var(--builder-muted, var(--dashboard-muted, #8493b1));
+}
+
+.entity-picker .entity-picker-search-input:focus-visible {
+  border-color: var(--builder-green, #08795b);
+  background: white;
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(8 121 91 / 10%);
+}
+
+.entity-picker-select {
+  position: relative;
+  min-width: 0;
+}
+
+.entity-picker .entity-picker-select select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 9px 40px 9px 12px;
+  appearance: none;
+  border: 1px solid var(--builder-border, var(--dashboard-border, #e8eef5));
+  border-radius: 9px;
+  background: white;
+  color: var(--builder-ink, var(--dashboard-ink, #1b2648));
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
+}
+
+.entity-picker .entity-picker-select select:hover:not(:disabled) {
+  border-color: #b8c9c4;
+}
+
+.entity-picker .entity-picker-select select:focus-visible {
+  border-color: var(--builder-green, #08795b);
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(8 121 91 / 10%);
+}
+
+.entity-picker .entity-picker-select select:disabled {
+  background: #f4f7f6;
+  color: #85939a;
+  cursor: not-allowed;
+}
+
+.entity-picker-select > .merchant-icon {
+  position: absolute;
+  inset-inline-end: 12px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  color: var(--builder-muted, var(--dashboard-muted, #8493b1));
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.entity-picker-combobox {
+  position: relative;
+  min-width: 0;
+}
+
+.entity-picker-combobox-control {
+  position: relative;
+  min-width: 0;
+}
+
+.entity-picker-combobox-control > .merchant-icon {
+  position: absolute;
+  z-index: 1;
+  inset-inline-start: 12px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  color: var(--builder-muted, var(--dashboard-muted, #8493b1));
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.entity-picker .entity-picker-combobox-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 9px 40px 9px 38px;
+  border: 1px solid var(--builder-border, var(--dashboard-border, #e8eef5));
+  border-radius: 9px;
+  background: white;
+  color: var(--builder-ink, var(--dashboard-ink, #1b2648));
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: none;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
+}
+
+.entity-picker .entity-picker-combobox-input::placeholder {
+  color: var(--builder-muted, var(--dashboard-muted, #8493b1));
+  font-weight: 400;
+}
+
+.entity-picker .entity-picker-combobox-input:hover:not(:disabled) {
+  border-color: #b8c9c4;
+}
+
+.entity-picker .entity-picker-combobox-input:focus-visible,
+.entity-picker-combobox-control.is-open .entity-picker-combobox-input {
+  border-color: var(--builder-green, #08795b);
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(8 121 91 / 10%);
+}
+
+.entity-picker .entity-picker-combobox-input:disabled {
+  background: #f4f7f6;
+  color: #85939a;
+  cursor: not-allowed;
+}
+
+.entity-picker-combobox-chevron {
+  position: absolute;
+  inset-inline-end: 12px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  color: var(--builder-muted, var(--dashboard-muted, #8493b1));
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: transform 140ms ease;
+}
+
+.entity-picker-combobox-chevron.is-open {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.entity-picker-menu {
+  position: absolute;
+  z-index: 40;
+  inset-inline: 0;
+  top: calc(100% + 6px);
+  overflow: hidden;
+  border: 1px solid var(--builder-border, var(--dashboard-border, #e8eef5));
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 14px 34px rgb(28 49 44 / 15%);
+}
+
+.entity-picker-listbox {
+  max-height: 248px;
+  overflow-y: auto;
+  padding: 5px;
+  outline: none;
+}
+
+.entity-picker-option {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 7px;
+  color: var(--builder-ink, var(--dashboard-ink, #1b2648));
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.entity-picker-option:hover,
+.entity-picker-option.is-active {
+  background: #f3f8f5;
+}
+
+.entity-picker-option[aria-selected='true'] {
+  color: var(--builder-green, #08795b);
+  font-weight: 700;
+}
+
+.entity-picker-option > .merchant-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  color: var(--builder-green, #08795b);
+}
+
+.entity-picker-menu-message {
+  padding: 12px;
+  color: var(--builder-muted, var(--dashboard-muted, #8493b1));
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.entity-picker-menu .entity-picker-empty {
+  padding: 0;
+  color: var(--builder-ink, var(--dashboard-ink, #1b2648));
+  font-size: 12px;
+}
+
+.entity-picker-menu .entity-picker-error {
+  margin: 5px;
+}
+
+.entity-picker-menu .entity-picker-pages {
+  margin: 0;
+  padding: 7px;
+  border-top: 1px solid var(--builder-border, var(--dashboard-border, #e8eef5));
+}
+
+.entity-picker-pages {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 1px;
+}
+
+.entity-picker-pages [data-slot='button'] {
+  min-height: 32px;
+  padding-inline: 11px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+
+.entity-picker-error {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--builder-border, var(--dashboard-border, #e8eef5));
+  border-radius: 9px;
+  background: #f8fafb;
+  color: var(--builder-ink, var(--dashboard-ink, #1b2648));
+  font-size: 12px;
+}
+
+.entity-picker-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 1px 3px 0;
+  color: var(--builder-muted, var(--dashboard-muted, #8493b1));
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.entity-picker-empty-action {
+  color: var(--builder-green, #08795b);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.entity-picker-empty-action:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--builder-green, #08795b);
+  outline-offset: 2px;
+}
+
+.entity-picker-empty small,
+.entity-picker-error small {
+  color: var(--builder-muted, var(--dashboard-muted, #8493b1));
+  font-size: 11px;
+}
+
+.entity-picker-error {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border-color: #f1cfcb;
+  background: #fff6f5;
+  color: #963d36;
+}
+
+.entity-picker-no-results {
+  display: block;
+  padding: 1px 3px 0;
+  color: var(--builder-muted, var(--dashboard-muted, #8493b1));
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@media (max-width: 520px) {
+  .entity-picker .entity-picker-search-input,
+  .entity-picker .entity-picker-select select,
+  .entity-picker .entity-picker-combobox-input {
+    min-height: 42px;
+    font-size: 12px;
+  }
+}
+.entity-picker-create {
+  border-top: 1px solid #e5ecf3;
+  padding: 7px;
+}
+.entity-picker-create button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: start;
+  gap: 7px;
+}
+.entity-picker-create svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.entity-picker-create button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Inject,
   Param,
@@ -14,7 +15,10 @@ import type {
   CreateInventoryBranchRequest,
   CreateInventoryWarehouseRequest,
   CreateStockOpeningRequest,
+  ClearInventoryReorderThresholdResult,
   CursorPage,
+  InventoryHealthPage,
+  InventoryReorderThreshold,
   InventoryBranch,
   InventoryWarehouseSummary,
   InventoryPolicy,
@@ -23,6 +27,7 @@ import type {
   StockMovement,
   StockMovementBatchResult,
   StockItemRevisionRequest,
+  UpdateInventoryReorderThresholdRequest,
   UpdateInventoryBranchRequest,
   UpdateInventoryPolicyRequest,
   UpdateInventoryWarehouseRequest,
@@ -31,11 +36,13 @@ import { ZodValidationPipe } from '../../common/http/zod-validation.pipe.js';
 import { CurrentOwner, OwnerGuard } from '../auth/index.js';
 import { InventoryLedgerService } from './inventory-ledger.service.js';
 import { InventoryLocationsService } from './inventory-locations.service.js';
+import { InventoryVisibilityService } from './inventory-visibility.service.js';
 import {
   createInventoryBranchSchema,
   createInventoryWarehouseSchema,
   inventoryPolicyUpdateSchema,
   listInventoryBranchesSchema,
+  listInventoryHealthSchema,
   listStockBalancesSchema,
   listStockMovementsSchema,
   createStockOpeningSchema,
@@ -43,7 +50,10 @@ import {
   stockItemRevisionSchema,
   updateInventoryBranchSchema,
   updateInventoryWarehouseSchema,
+  updateInventoryReorderThresholdSchema,
+  deleteInventoryReorderThresholdSchema,
   type InventoryBranchListQuery,
+  type InventoryHealthListQuery,
   type StockBalanceListQuery,
   type StockMovementListQuery,
 } from './inventory.schemas.js';
@@ -54,6 +64,7 @@ export class InventoryLocationsController {
   constructor(
     @Inject(InventoryLocationsService) private readonly locations: InventoryLocationsService,
     @Inject(InventoryLedgerService) private readonly ledger: InventoryLedgerService,
+    @Inject(InventoryVisibilityService) private readonly visibility: InventoryVisibilityService,
   ) {}
 
   @Get('branches')
@@ -249,6 +260,51 @@ export class InventoryLocationsController {
     query: StockMovementListQuery,
   ): Promise<CursorPage<StockMovement>> {
     return this.ledger.listMovements(owner.merchantId, query);
+  }
+
+  @Get('movements/:id')
+  getMovement(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ): Promise<StockMovement> {
+    return this.visibility.getMovement(owner.merchantId, id);
+  }
+
+  @Get('health')
+  listHealth(
+    @CurrentOwner() owner: OwnerProfile,
+    @Query(new ZodValidationPipe(listInventoryHealthSchema, { format: 'messages' }))
+    query: InventoryHealthListQuery,
+  ): Promise<InventoryHealthPage> {
+    return this.visibility.listHealth(owner.merchantId, query);
+  }
+
+  @Patch('warehouses/:warehouseId/items/:stockItemId/reorder-threshold')
+  saveReorderThreshold(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('warehouseId', new ParseUUIDPipe()) warehouseId: string,
+    @Param('stockItemId', new ParseUUIDPipe()) stockItemId: string,
+    @Body(new ZodValidationPipe(updateInventoryReorderThresholdSchema, { format: 'messages' }))
+    input: UpdateInventoryReorderThresholdRequest,
+  ): Promise<InventoryReorderThreshold> {
+    return this.visibility.saveThreshold(
+      owner.merchantId,
+      owner.username,
+      warehouseId,
+      stockItemId,
+      input,
+    );
+  }
+
+  @Delete('warehouses/:warehouseId/items/:stockItemId/reorder-threshold')
+  deleteReorderThreshold(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('warehouseId', new ParseUUIDPipe()) warehouseId: string,
+    @Param('stockItemId', new ParseUUIDPipe()) stockItemId: string,
+    @Body(new ZodValidationPipe(deleteInventoryReorderThresholdSchema, { format: 'messages' }))
+    input: { revision: number },
+  ): Promise<ClearInventoryReorderThresholdResult> {
+    return this.visibility.deleteThreshold(owner.merchantId, warehouseId, stockItemId, input);
   }
 
   @Post('opening-balances')

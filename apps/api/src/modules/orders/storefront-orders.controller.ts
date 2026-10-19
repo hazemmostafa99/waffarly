@@ -24,6 +24,7 @@ import { z } from 'zod';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { parseCursorPageQuery } from '../../common/http/pagination.js';
 import { CurrentOwner, CurrentPosEmployee, OwnerGuard, PosEmployeeGuard } from '../auth/index.js';
+import { requireEmployeePermission } from '../auth/index.js';
 import { OrderLifecycleService } from './order-lifecycle.service.js';
 import {
   acceptRecipeOrderSchema,
@@ -206,6 +207,14 @@ export class PosStorefrontOrdersController {
     return this.posOrders.paymentState(employee, id);
   }
 
+  @Get(':id')
+  detail(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    return this.posOrders.detail(employee, id);
+  }
+
   @Get(':id/checks/:checkId/receipt')
   checkReceipt(
     @CurrentPosEmployee() employee: PosEmployeeSession,
@@ -228,6 +237,7 @@ export class PosStorefrontOrdersController {
 
   @Get()
   list(@CurrentPosEmployee() employee: PosEmployeeSession, @Query() query: unknown) {
+    requireEmployeePermission(employee, 'view_orders');
     const parsed = parseRequest(posOrderPageSchema, query);
     if (!employee.branches.some((branch) => branch.id === parsed.branchId)) {
       throw new ForbiddenException('This employee is not assigned to the selected branch.');
@@ -245,6 +255,7 @@ export class PosStorefrontOrdersController {
     @Body() body: unknown,
   ) {
     const input = parseRequest(acceptRecipeOrderSchema, body);
+    requireEmployeePermission(employee, 'accept_recipe_orders');
     return this.lifecycle.acceptFromPos(
       employee.merchantId,
       `pos:${employee.id}`,
@@ -260,6 +271,7 @@ export class PosStorefrontOrdersController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() body: unknown,
   ) {
+    requireEmployeePermission(employee, 'start_preparation');
     return this.lifecycle.startPreparationFromPos(
       employee.merchantId,
       `pos:${employee.id}`,

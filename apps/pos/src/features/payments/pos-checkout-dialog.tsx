@@ -3,12 +3,15 @@ import type {
   PosOrderPaymentStateResponse,
   RecordPosCheckPaymentResponse,
 } from '@waffarly/contracts';
-import { Button, Dialog, Input, useLocale } from '@waffarly/ui';
+import { Dialog, Input, cn, useLocale } from '@waffarly/ui';
 import { Plus, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react';
 import { usePosWorkspaceStore, type PendingPosPayment } from '../../app/pos-workspace-store.js';
+import { PosButton } from '../../components/pos-button.js';
 import { ApiError } from '../../lib/api-client.js';
+import { usePosViewport } from '../../lib/use-pos-viewport.js';
 import { PosReceiptView } from '../receipts/pos-receipt-view.js';
+import { PosCheckoutOrderContext, PosCheckoutOrderIdentity } from './pos-checkout-order-context.js';
 import {
   formatMoneyCents,
   parseMoneyCents,
@@ -35,6 +38,19 @@ export function PosCheckoutDialog({
   onClose: () => void;
 }) {
   const { t, errorText, formatNumber } = useLocale();
+  const formId = useId();
+  const viewport = usePosViewport();
+  const formRef = useRef<HTMLFormElement>(null);
+  function keepFocusedFieldVisible() {
+    if (!viewport.compact) return;
+    const focused = document.activeElement;
+    const scrollArea = formRef.current?.querySelector<HTMLElement>('[data-checkout-scroll]');
+    if (!(focused instanceof HTMLElement) || !scrollArea?.contains(focused)) return;
+    const field = focused.getBoundingClientRect();
+    const area = scrollArea.getBoundingClientRect();
+    if (field.bottom > area.bottom - 6) scrollArea.scrollTop += field.bottom - area.bottom + 6;
+    else if (field.top < area.top + 6) scrollArea.scrollTop -= area.top + 6 - field.top;
+  }
   const queryClient = useQueryClient();
   const queryKey = posPaymentStateKey(merchantId, orderId);
   const savePendingPayment = usePosWorkspaceStore((state) => state.savePendingPayment);
@@ -112,6 +128,14 @@ export function PosCheckoutDialog({
 
   const previewResult = activeCheck ? previewPosTenders(tenders, activeCheck.balanceDue) : null;
   const preview = previewResult?.preview ?? null;
+  const showValidation =
+    !pendingCommand && activeCheck?.status === 'open' && paymentState?.status !== 'cancelled';
+  const validationError = showValidation ? previewResult?.error : null;
+  const fieldErrors = showValidation ? (previewResult?.fieldErrors ?? {}) : {};
+  useEffect(() => {
+    const frame = requestAnimationFrame(keepFocusedFieldVisible);
+    return () => cancelAnimationFrame(frame);
+  }, [viewport.height, viewport.top, viewport.compact, tenders, validationError]);
   const mutation = useMutation({
     mutationFn: (payment: PendingPosPayment) =>
       recordPosCheckPayment(orderId, payment.checkId, payment.request),
@@ -257,7 +281,12 @@ export function PosCheckoutDialog({
           : 'Review the check balance and record cash or a confirmed terminal payment.',
       )}
       closeLabel={t('Close')}
-      className="flex w-[min(620px,calc(100%-20px))] max-h-[calc(100dvh-20px)] flex-col overflow-hidden rounded-xl sm:rounded-2xl"
+      style={viewport.dialogStyle}
+      className={cn(
+        'fixed inset-x-0 top-[var(--pos-visible-top)] bottom-auto my-2 flex w-[min(620px,calc(100%-20px))] max-h-[calc(var(--pos-visible-height)-16px)] flex-col overflow-hidden rounded-xl sm:rounded-2xl lg:inset-y-0 lg:m-auto',
+        viewport.compact &&
+          '[&_[data-slot=dialog-header]]:p-3 [&_[data-slot=dialog-header]_h2]:text-base [&_[data-slot=dialog-header]_p]:hidden',
+      )}
     >
       {receiptCheckId ? (
         <PosReceiptView
@@ -283,49 +312,130 @@ export function PosCheckoutDialog({
             )}
           </p>
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={close}>
+            <PosButton type="button" variant="outline" onClick={close}>
               {t('Close')}
-            </Button>
+            </PosButton>
             {pendingCommand && (
-              <Button
+              <PosButton
                 type="button"
+                variant="solid"
                 disabled={!online || mutation.isPending}
                 onClick={() => mutation.mutate(pendingCommand)}
               >
                 {mutation.isPending ? t('Recording payment...') : t('Check saved result')}
-              </Button>
+              </PosButton>
             )}
-            <Button type="button" onClick={() => void paymentStateQuery.refetch()}>
+            <PosButton
+              type="button"
+              variant="solid"
+              onClick={() => void paymentStateQuery.refetch()}
+            >
               {t('Retry')}
-            </Button>
+            </PosButton>
           </div>
         </div>
       ) : (
         <form
-          className="grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_auto] overflow-hidden"
+          ref={formRef}
+          onFocusCapture={() => requestAnimationFrame(keepFocusedFieldVisible)}
+          className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden"
           onSubmit={submitPayment}
         >
-          <div className="grid min-h-0 gap-4 overflow-y-auto p-4 sm:p-6">
-            <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl bg-secondary/70 p-4">
-              <div>
-                <p className="m-0 text-xs text-muted-foreground">
-                  {t('Order')} #{orderId.slice(0, 8)}
-                </p>
-                <p className="mt-1 text-sm font-semibold">{t('Order total')}</p>
-              </div>
-              <strong className="text-lg tabular-nums">
-                {formatNumber(Number(paymentState.total), {
-                  style: 'currency',
-                  currency: paymentState.currency,
-                })}
-              </strong>
-            </div>
+          <div
+            className={cn(
+              'grid shrink-0 gap-3 border-b border-border bg-card px-4 py-3 sm:px-6',
+              viewport.compact && 'gap-2 px-3 py-2',
+            )}
+          >
+            {activeCheck && (
+              <section
+                className={cn(
+                  'rounded-xl border border-border bg-secondary/60 p-3 sm:p-4',
+                  viewport.compact && 'p-2 sm:p-2',
+                )}
+                aria-label={t('Check balance')}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="m-0 truncate text-xs text-muted-foreground">
+                      <bdi dir="ltr">ORD-{orderId.slice(0, 8).toUpperCase()}</bdi>
+                    </p>
+                    <div className={cn(viewport.compact && 'hidden')}>
+                      <PosCheckoutOrderIdentity state={paymentState} />
+                    </div>
+                    <details
+                      className={cn(
+                        'mt-2 text-xs text-muted-foreground',
+                        viewport.compact && 'hidden',
+                      )}
+                    >
+                      <summary className="cursor-pointer rounded-sm py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                        {t('Balance details')}
+                      </summary>
+                      <p className="mt-2">
+                        {t('Order total')}:{' '}
+                        <span className="font-medium tabular-nums text-foreground">
+                          {formatNumber(Number(paymentState.total), {
+                            style: 'currency',
+                            currency: paymentState.currency,
+                          })}
+                        </span>
+                      </p>
+                      <p className="mt-1">
+                        {t('Check amount')}:{' '}
+                        {formatNumber(Number(activeCheck.amount), {
+                          style: 'currency',
+                          currency: paymentState.currency,
+                        })}
+                      </p>
+                      <p className="mt-1">
+                        {t('Collected')}:{' '}
+                        {formatNumber(Number(activeCheck.paidAmount), {
+                          style: 'currency',
+                          currency: paymentState.currency,
+                        })}
+                      </p>
+                    </details>
+                  </div>
+                  <div className="shrink-0 text-end">
+                    <p className="m-0 text-xs text-muted-foreground">{t('Remaining balance')}</p>
+                    <strong className="mt-0.5 block text-xl font-bold tabular-nums sm:text-2xl">
+                      {formatNumber(Number(activeCheck.balanceDue), {
+                        style: 'currency',
+                        currency: paymentState.currency,
+                      })}
+                    </strong>
+                  </div>
+                </div>
+                <div
+                  className={cn(
+                    'mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border/70 pt-2 text-xs text-muted-foreground',
+                    viewport.compact && 'hidden',
+                  )}
+                >
+                  <span>
+                    {t('Check')} {formatNumber(activeCheck.position + 1)} ·{' '}
+                    {t(activeCheck.status === 'settled' ? 'Settled' : 'Open balance')}
+                  </span>
+                </div>
+                {activeCheck.receipt && (
+                  <PosButton
+                    type="button"
+                    variant="outline"
+                    className="mt-3 w-full"
+                    onClick={() => setReceiptCheckId(activeCheck.id)}
+                  >
+                    {t('View / print receipt')} · {activeCheck.receipt.receiptNumber}
+                  </PosButton>
+                )}
+              </section>
+            )}
 
-            {paymentState.checks.length > 1 ? (
-              <label className="grid gap-1 text-sm font-medium">
+            {paymentState.checks.length > 1 && (
+              <label className="grid gap-1 text-xs font-medium text-muted-foreground">
                 {t('Choose check')}
                 <select
-                  className="min-h-11 rounded-lg border border-border bg-background px-3 text-sm"
+                  className="min-h-11 rounded-lg border border-border bg-background px-3 text-sm text-foreground"
                   value={activeCheck?.id ?? ''}
                   onChange={(event) => changeCheck(event.target.value)}
                   disabled={Boolean(pendingCommand) || mutation.isPending}
@@ -342,60 +452,23 @@ export function PosCheckoutDialog({
                   ))}
                 </select>
               </label>
-            ) : activeCheck ? (
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span>{t('Check')} 1</span>
-                <span className="font-semibold">
-                  {t(activeCheck.status === 'settled' ? 'Settled' : 'Open balance')}
-                </span>
-              </div>
-            ) : null}
-
-            {activeCheck && (
-              <section
-                className="grid gap-2 rounded-xl border border-border p-3 sm:p-4"
-                aria-label={t('Check balance')}
-              >
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-muted-foreground">{t('Check amount')}</span>
-                  <span className="tabular-nums">
-                    {formatNumber(Number(activeCheck.amount), {
-                      style: 'currency',
-                      currency: paymentState.currency,
-                    })}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-muted-foreground">{t('Collected')}</span>
-                  <span className="tabular-nums">
-                    {formatNumber(Number(activeCheck.paidAmount), {
-                      style: 'currency',
-                      currency: paymentState.currency,
-                    })}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between gap-3 border-t border-border pt-2 text-base font-bold">
-                  <span>{t('Remaining balance')}</span>
-                  <span className="tabular-nums">
-                    {formatNumber(Number(activeCheck.balanceDue), {
-                      style: 'currency',
-                      currency: paymentState.currency,
-                    })}
-                  </span>
-                </div>
-                {activeCheck.receipt && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="mt-1 w-full"
-                    onClick={() => setReceiptCheckId(activeCheck.id)}
-                  >
-                    {t('View / print receipt')} · {activeCheck.receipt.receiptNumber}
-                  </Button>
-                )}
-              </section>
             )}
+          </div>
 
+          <div
+            data-checkout-scroll
+            className={cn(
+              'grid min-h-0 gap-4 overflow-y-auto p-4 sm:p-6',
+              viewport.compact && 'gap-3 p-3 sm:p-3',
+            )}
+          >
+            {activeCheck && (
+              <PosCheckoutOrderContext
+                state={paymentState}
+                check={activeCheck}
+                onRefresh={() => void paymentStateQuery.refetch()}
+              />
+            )}
             {activeCheck && activeCheck.payments.length > 0 && (
               <section className="grid gap-2" aria-label={t('Recorded payments')}>
                 <h3 className="m-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -422,7 +495,7 @@ export function PosCheckoutDialog({
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="m-0 text-sm font-semibold">{t('Payment methods')}</h3>
                     {tenders.length < 4 && (
-                      <Button
+                      <PosButton
                         type="button"
                         size="sm"
                         variant="outline"
@@ -440,15 +513,15 @@ export function PosCheckoutDialog({
                       >
                         <Plus size={15} aria-hidden="true" />
                         {t('Add payment method')}
-                      </Button>
+                      </PosButton>
                     )}
                   </div>
                   {tenders.map((tender, index) => (
                     <div
-                      className="grid gap-2 rounded-xl border border-border p-3 sm:grid-cols-[minmax(110px,0.8fr)_minmax(100px,1fr)_minmax(100px,1fr)_auto] sm:items-end"
+                      className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2 rounded-xl border border-border p-3 sm:grid-cols-[minmax(110px,0.8fr)_minmax(100px,1fr)_minmax(100px,1fr)_auto] sm:items-start"
                       key={tender.id}
                     >
-                      <label className="grid gap-1 text-xs text-muted-foreground">
+                      <label className="col-span-full grid gap-1 text-xs text-muted-foreground sm:col-span-1">
                         {t('Method')}
                         <select
                           className="min-h-10 rounded-lg border border-border bg-background px-2 text-sm text-foreground"
@@ -474,8 +547,16 @@ export function PosCheckoutDialog({
                         {t('Amount to apply')}
                         <Input
                           inputMode="decimal"
+                          dir="ltr"
                           autoComplete="off"
                           value={tender.amount}
+                          aria-invalid={Boolean(fieldErrors[tender.id]?.amount)}
+                          aria-describedby={
+                            fieldErrors[tender.id]?.amount
+                              ? `${formId}-${tender.id}-amount`
+                              : undefined
+                          }
+                          className="aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive"
                           aria-label={t('Amount for payment {{number}}', { number: index + 1 })}
                           onChange={(event) =>
                             updateTender(tender.id, (current) => ({
@@ -489,14 +570,30 @@ export function PosCheckoutDialog({
                           }
                           disabled={mutation.isPending}
                         />
+                        {fieldErrors[tender.id]?.amount && (
+                          <span
+                            id={`${formId}-${tender.id}-amount`}
+                            className="text-xs text-destructive"
+                          >
+                            {t(fieldErrors[tender.id]!.amount!)}
+                          </span>
+                        )}
                       </label>
                       {tender.method === 'cash' ? (
                         <label className="grid gap-1 text-xs text-muted-foreground">
                           {t('Cash received')}
                           <Input
                             inputMode="decimal"
+                            dir="ltr"
                             autoComplete="off"
                             value={tender.receivedAmount}
+                            aria-invalid={Boolean(fieldErrors[tender.id]?.receivedAmount)}
+                            aria-describedby={
+                              fieldErrors[tender.id]?.receivedAmount
+                                ? `${formId}-${tender.id}-received`
+                                : undefined
+                            }
+                            className="aria-invalid:border-destructive aria-invalid:focus-visible:ring-destructive"
                             aria-label={t('Cash received for payment {{number}}', {
                               number: index + 1,
                             })}
@@ -508,6 +605,14 @@ export function PosCheckoutDialog({
                             }
                             disabled={mutation.isPending}
                           />
+                          {fieldErrors[tender.id]?.receivedAmount && (
+                            <span
+                              id={`${formId}-${tender.id}-received`}
+                              className="text-xs text-destructive"
+                            >
+                              {t(fieldErrors[tender.id]!.receivedAmount!)}
+                            </span>
+                          )}
                         </label>
                       ) : (
                         <p className="m-0 self-center text-xs text-muted-foreground">
@@ -515,7 +620,7 @@ export function PosCheckoutDialog({
                         </p>
                       )}
                       {tenders.length > 1 && (
-                        <Button
+                        <PosButton
                           type="button"
                           size="icon"
                           variant="outline"
@@ -526,7 +631,7 @@ export function PosCheckoutDialog({
                           disabled={mutation.isPending}
                         >
                           <Trash2 size={15} aria-hidden="true" />
-                        </Button>
+                        </PosButton>
                       )}
                     </div>
                   ))}
@@ -586,7 +691,25 @@ export function PosCheckoutDialog({
               </p>
             )}
           </div>
-          <footer className="grid gap-3 border-t border-border bg-card p-4 pt-3 pb-[max(16px,env(safe-area-inset-bottom))] sm:px-6">
+          <footer
+            className={cn(
+              'grid shrink-0 gap-3 border-t border-border bg-card p-4 pt-3 pb-[max(16px,env(safe-area-inset-bottom))] sm:px-6',
+              viewport.compact && 'gap-2 px-3 py-2 sm:px-3',
+            )}
+          >
+            {validationError && (
+              <p
+                id={`${formId}-validation`}
+                role="alert"
+                className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+              >
+                {t(
+                  Object.keys(fieldErrors).length
+                    ? 'Review the highlighted payment amounts.'
+                    : validationError,
+                )}
+              </p>
+            )}
             {!pendingCommand &&
               preview &&
               activeCheck?.status === 'open' &&
@@ -624,20 +747,30 @@ export function PosCheckoutDialog({
                 </div>
               )}
             <div className="flex flex-wrap justify-end gap-2">
-              <Button type="button" variant="outline" onClick={close} disabled={mutation.isPending}>
-                {activeCheck?.status === 'settled' ? t('Done') : t('Close')}
-              </Button>
+              {activeCheck?.status === 'settled' && (
+                <PosButton
+                  type="button"
+                  variant="outline"
+                  onClick={close}
+                  disabled={mutation.isPending}
+                >
+                  {t('Done')}
+                </PosButton>
+              )}
               {pendingCommand ? (
-                <Button type="submit" disabled={mutation.isPending || !online}>
+                <PosButton type="submit" variant="solid" disabled={mutation.isPending || !online}>
                   {mutation.isPending
                     ? t('Recording payment...')
                     : recoveredPayment
                       ? t('Check saved result')
                       : t('Retry the same payment')}
-                </Button>
+                </PosButton>
               ) : activeCheck?.status === 'open' && paymentState.status !== 'cancelled' ? (
-                <Button
+                <PosButton
                   type="submit"
+                  variant="solid"
+                  className="w-full"
+                  aria-describedby={validationError ? `${formId}-validation` : undefined}
                   disabled={
                     mutation.isPending ||
                     !online ||
@@ -648,10 +781,12 @@ export function PosCheckoutDialog({
                     ? t('Recording payment...')
                     : pendingCommand
                       ? t('Retry the same payment')
-                      : preview && preview.balanceAfterCents === 0n
-                        ? t('Settle check')
-                        : t('Record partial payment')}
-                </Button>
+                      : !preview
+                        ? t('Review payment amounts')
+                        : preview.balanceAfterCents === 0n
+                          ? t('Settle check')
+                          : t('Record partial payment')}
+                </PosButton>
               ) : null}
             </div>
           </footer>

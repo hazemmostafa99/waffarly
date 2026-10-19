@@ -10,15 +10,19 @@ export function SupplierEditor({
   text,
   onClose,
   onSave,
+  initialName = '',
+  error = '',
 }: {
   supplier: PurchaseSupplier | null;
   busy: boolean;
   text: (value: string) => string;
   onClose: () => void;
   onSave: (fields: SupplierFields, requestId?: string, revision?: number) => void;
+  initialName?: string;
+  error?: string;
 }) {
   const [requestId] = useState(crypto.randomUUID());
-  const [name, setName] = useState(supplier?.name ?? '');
+  const [name, setName] = useState(supplier?.name ?? initialName);
   const [contactName, setContactName] = useState(supplier?.contactName ?? '');
   const [phone, setPhone] = useState(supplier?.phone ?? '');
   const [email, setEmail] = useState(supplier?.email ?? '');
@@ -35,10 +39,16 @@ export function SupplierEditor({
       busy={busy}
     >
       <form className="products-dialog-body inventory-editor" onSubmit={submit}>
+        {error && (
+          <p className="inventory-error" role="alert">
+            {error}
+          </p>
+        )}
         <label>
           {text('Supplier')}
           <Input
             required
+            autoFocus
             maxLength={160}
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -78,7 +88,7 @@ export function SupplierEditor({
             {text('Close')}
           </Button>
           <Button type="submit" disabled={busy}>
-            {text('Save supplier')}
+            {text(busy ? 'Saving…' : 'Save supplier')}
           </Button>
         </footer>
       </form>

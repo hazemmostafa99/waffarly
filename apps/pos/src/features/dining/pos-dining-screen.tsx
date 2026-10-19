@@ -4,10 +4,12 @@ import type {
   PosEmployeeSession,
   SplitPosOrderChecksRequest,
 } from '@waffarly/contracts';
-import { Button, Dialog, Input, useLocale } from '@waffarly/ui';
+import { Dialog, Input, useLocale } from '@waffarly/ui';
+import { LayoutGrid, Plus, UsersRound } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { usePosWorkspaceStore } from '../../app/pos-workspace-store.js';
+import { PosButton } from '../../components/pos-button.js';
 import { PosCheckoutDialog } from '../payments/pos-checkout-dialog.js';
 import {
   getPosDiningSessions,
@@ -68,6 +70,7 @@ export function PosDiningScreen() {
   });
   const tables = tablesQuery.data ?? [];
   const sessions = sessionsQuery.data ?? [];
+  const occupiedTables = tables.filter((table) => table.occupancy === 'occupied');
   const availableTables = tables.filter((table) => table.occupancy === 'available');
   const moveMutation = useMutation({
     mutationFn: ({ session, tableId }: { session: PosDiningSessionSummary; tableId: string }) =>
@@ -92,149 +95,242 @@ export function PosDiningScreen() {
   const message = tablesQuery.error ?? sessionsQuery.error ?? moveMutation.error;
 
   return (
-    <section className="pos-dining-screen space-y-5">
+    <section className="pos-dining-screen min-h-full space-y-6 p-4 md:p-5">
       <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <div className="min-w-0">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-wide text-muted-foreground">
             {t('Dining')}
           </p>
-          <h2 className="text-2xl font-bold">{t('Tables & open sessions')}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h2 className="text-xl font-bold sm:text-2xl">{t('Tables & open sessions')}</h2>
+          <p className="mt-1 max-w-2xl text-xs text-muted-foreground sm:text-sm">
             {t('See table occupancy, add a new round, split checks, or move a session.')}
           </p>
         </div>
-        {branches.length > 1 && (
-          <label className="grid min-w-52 gap-1 text-xs text-muted-foreground">
-            {t('Branch')}
-            <select
-              className="min-h-10 rounded-lg border border-border bg-card px-3 text-sm text-foreground"
-              value={selectedBranchId}
-              onChange={(event) =>
-                selectBranch(employee.merchantId, employee.id, event.target.value)
-              }
-            >
-              {branches.map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {branch.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-      </header>
-
-      {message && (
-        <p
-          className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm"
-          role="alert"
-        >
-          {errorText(message instanceof Error ? message.message : t('Could not load dining data.'))}
-        </p>
-      )}
-
-      <div>
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <h3 className="text-base font-semibold">
-            {t('Table map')}{' '}
-            <span className="text-xs font-normal text-muted-foreground">
-              · {activeBranch?.name}
-            </span>
-          </h3>
-          <span className="text-xs text-muted-foreground">
-            {formatNumber(tables.length)} {t('tables')}
-          </span>
-        </div>
-        {tablesQuery.isLoading ? (
-          <p className="text-sm text-muted-foreground">{t('Loading tables...')}</p>
-        ) : tables.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border bg-card p-6 text-sm">
-            <strong>{t('No active tables are configured.')}</strong>
-            <p className="mt-1 text-muted-foreground">
-              {t('Ask the owner to add tables for this branch in POS settings.')}
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
-            {tables.map((table) => (
-              <article
-                key={table.id}
-                className={`rounded-xl border p-3 ${table.occupancy === 'occupied' ? 'border-primary/50 bg-primary/5' : 'border-border bg-card'}`}
+        <div className="flex flex-wrap items-end gap-2">
+          {branches.length > 1 && (
+            <label className="grid min-w-52 gap-1 text-xs text-muted-foreground">
+              {t('Branch')}
+              <select
+                className="min-h-10 rounded-lg border border-border bg-card px-3 text-sm text-foreground"
+                value={selectedBranchId}
+                onChange={(event) =>
+                  selectBranch(employee.merchantId, employee.id, event.target.value)
+                }
               >
-                <div className="flex items-start justify-between gap-2">
-                  <strong className="text-sm">{table.code}</strong>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${table.occupancy === 'occupied' ? 'bg-primary/15 text-primary' : 'bg-secondary text-muted-foreground'}`}
-                  >
-                    {table.occupancy === 'occupied' ? t('Occupied') : t('Free')}
-                  </span>
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {formatNumber(table.capacity)} {t('seats')}
-                </p>
-                {table.occupancy === 'occupied' && (
-                  <p className="mt-1 text-xs">
-                    {formatNumber(table.orderCount)} {t('orders')} ·{' '}
-                    {formatNumber(Number(table.outstandingTotal), {
-                      style: 'currency',
-                      currency: 'EGP',
-                    })}
-                  </p>
-                )}
-                <Link
-                  className="mt-3 inline-flex min-h-9 w-full items-center justify-center rounded-lg bg-primary px-2 text-xs font-semibold text-primary-foreground"
-                  to={`/catalog?tableId=${encodeURIComponent(table.id)}`}
-                >
-                  {table.occupancy === 'occupied' ? t('Add round') : t('Start order')}
-                </Link>
-              </article>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div>
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <h3 className="text-base font-semibold">{t('Open dining sessions')}</h3>
-          <Button
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <PosButton
             type="button"
             size="sm"
             variant="outline"
-            onClick={() => void sessionsQuery.refetch()}
-            disabled={sessionsQuery.isFetching}
+            onClick={() => void Promise.all([tablesQuery.refetch(), sessionsQuery.refetch()])}
+            disabled={tablesQuery.isFetching || sessionsQuery.isFetching}
           >
             {t('Refresh')}
-          </Button>
+          </PosButton>
+        </div>
+      </header>
+
+      {message && (
+        <div
+          className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm"
+          role="alert"
+        >
+          <p>
+            {errorText(
+              message instanceof Error ? message.message : t('Could not load dining data.'),
+            )}
+          </p>
+        </div>
+      )}
+
+      <section aria-labelledby="dining-table-map-title">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h3 id="dining-table-map-title" className="text-base font-semibold">
+              {t('Table map')}
+              {activeBranch && (
+                <span className="ms-2 text-xs font-normal text-muted-foreground">
+                  · {activeBranch.name}
+                </span>
+              )}
+            </h3>
+            {!tablesQuery.isLoading && !tablesQuery.isError && (
+              <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                <span>
+                  {formatNumber(tables.length)} {t('tables')}
+                </span>
+                <span aria-hidden="true">·</span>
+                <span>
+                  {formatNumber(occupiedTables.length)} {t('Occupied')}
+                </span>
+                <span aria-hidden="true">·</span>
+                <span>
+                  {formatNumber(availableTables.length)} {t('Free')}
+                </span>
+              </p>
+            )}
+          </div>
+        </div>
+
+        {tablesQuery.isLoading ? (
+          <div
+            aria-label={t('Loading tables...')}
+            className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+            role="status"
+          >
+            {Array.from({ length: 3 }, (_, index) => (
+              <div
+                key={index}
+                className="min-h-36 animate-pulse rounded-xl border border-border bg-card p-4"
+              >
+                <div className="h-4 w-20 rounded bg-muted" />
+                <div className="mt-8 h-3 w-28 rounded bg-muted" />
+              </div>
+            ))}
+          </div>
+        ) : tablesQuery.isError ? null : tables.length === 0 ? (
+          <div className="flex max-w-2xl items-start gap-3 rounded-xl border border-dashed border-border bg-card/60 p-4 sm:p-5">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
+              <LayoutGrid aria-hidden="true" className="size-5" />
+            </span>
+            <div className="min-w-0 text-sm">
+              <strong>{t('No active tables are configured.')}</strong>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                {t('Ask the owner to add tables for this branch in POS settings.')}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {tables.map((table) => {
+              const isOccupied = table.occupancy === 'occupied';
+
+              return (
+                <article
+                  key={table.id}
+                  className={`min-h-36 rounded-xl border p-3.5 transition-colors ${isOccupied ? 'border-primary/45 bg-primary/[0.07]' : 'border-border bg-card hover:bg-muted/30'}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[0.68rem] text-muted-foreground">{t('Table')}</p>
+                      <h4 className="mt-0.5 text-lg font-bold leading-tight">{table.code}</h4>
+                    </div>
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.68rem] font-semibold ${isOccupied ? 'bg-primary/15 text-primary' : 'bg-secondary text-muted-foreground'}`}
+                    >
+                      {isOccupied ? (
+                        <UsersRound aria-hidden="true" className="size-3.5" />
+                      ) : (
+                        <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />
+                      )}
+                      {isOccupied ? t('Occupied') : t('Free')}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 flex items-end justify-between gap-3 border-t border-border/70 pt-3">
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground">
+                        {formatNumber(table.capacity)} {t('seats')}
+                      </p>
+                      {isOccupied && (
+                        <>
+                          <p className="mt-1 text-sm font-semibold">
+                            {formatNumber(Number(table.outstandingTotal), {
+                              style: 'currency',
+                              currency: 'EGP',
+                            })}
+                          </p>
+                          <p className="text-[0.68rem] text-muted-foreground">
+                            {formatNumber(table.orderCount)}{' '}
+                            {table.orderCount === 1 ? t('Order') : t('orders')}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                    <Link
+                      aria-label={`${isOccupied ? t('Add round') : t('Start order')}: ${t('Table')} ${table.code}`}
+                      className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      to={`/catalog?tableId=${encodeURIComponent(table.id)}`}
+                    >
+                      <Plus aria-hidden="true" className="size-4" />
+                    </Link>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section aria-labelledby="dining-sessions-title" className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <h3 id="dining-sessions-title" className="text-base font-semibold">
+              {t('Open dining sessions')}
+            </h3>
+            {!sessionsQuery.isLoading && !sessionsQuery.isError && (
+              <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground">
+                {formatNumber(sessions.length)}
+              </span>
+            )}
+          </div>
         </div>
         {sessionsQuery.isLoading ? (
-          <p className="text-sm text-muted-foreground">{t('Loading sessions...')}</p>
-        ) : sessions.length === 0 ? (
-          <p className="rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground">
+          <div
+            aria-label={t('Loading sessions...')}
+            className="grid gap-3 xl:grid-cols-2"
+            role="status"
+          >
+            {Array.from({ length: 2 }, (_, index) => (
+              <div
+                key={index}
+                className="h-28 animate-pulse rounded-xl border border-border bg-card"
+              />
+            ))}
+          </div>
+        ) : sessionsQuery.isError ? null : sessions.length === 0 ? (
+          <p className="max-w-2xl rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground sm:p-5">
             {t('There are no open dining sessions at this branch.')}
           </p>
         ) : (
-          <div className="space-y-3">
+          <div className="grid gap-3 xl:grid-cols-2">
             {sessions.map((session) => (
               <article
                 key={session.id}
-                className="rounded-xl border border-border bg-card p-3 sm:p-4"
+                className="overflow-hidden rounded-xl border border-border bg-card"
               >
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
-                  <div>
-                    <strong className="text-base">
-                      {t('Table')} {session.tableCode}
-                    </strong>
-                    <p className="text-xs text-muted-foreground">
-                      {formatNumber(session.orderCount)} {t('orders')} ·{' '}
+                <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/20 p-3 sm:p-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary">
+                      <UsersRound aria-hidden="true" className="size-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-semibold">
+                        {t('Table')} {session.tableCode}
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        {formatNumber(session.orderCount)}{' '}
+                        {session.orderCount === 1 ? t('Order') : t('orders')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+                    <strong className="me-auto text-sm sm:me-1">
                       {formatNumber(Number(session.outstandingTotal), {
                         style: 'currency',
                         currency: 'EGP',
                       })}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                    </strong>
                     <select
                       aria-label={t('Move session to an available table')}
-                      className="min-h-10 max-w-48 rounded-lg border border-border bg-background px-2 text-xs"
+                      className="min-h-9 min-w-0 flex-1 rounded-lg border border-border bg-background px-2 text-xs sm:w-40 sm:flex-none"
                       value={destinationBySession[session.id] ?? ''}
                       onChange={(event) =>
                         setDestinationBySession((current) => ({
@@ -250,7 +346,7 @@ export function PosDiningScreen() {
                         </option>
                       ))}
                     </select>
-                    <Button
+                    <PosButton
                       type="button"
                       size="sm"
                       variant="outline"
@@ -261,12 +357,15 @@ export function PosDiningScreen() {
                       }}
                     >
                       {t('Move')}
-                    </Button>
+                    </PosButton>
                   </div>
-                </div>
-                <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                </header>
+                <div className="grid gap-2 p-3 sm:p-4">
                   {session.orders.map((order) => (
-                    <div key={order.id} className="rounded-lg border border-border/80 p-3">
+                    <div
+                      key={order.id}
+                      className="rounded-lg border border-border/80 bg-background/50 p-3"
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <strong className="text-sm">
                           {t('Order')} #{order.id.slice(0, 8)}
@@ -286,8 +385,8 @@ export function PosDiningScreen() {
                           </li>
                         ))}
                       </ul>
-                      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-2">
-                        <div className="flex flex-wrap gap-2">
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
+                        <div className="flex flex-wrap gap-1.5">
                           {order.checks.map((check) => (
                             <span
                               className="rounded-md bg-secondary px-2 py-1 text-[0.68rem]"
@@ -301,23 +400,28 @@ export function PosDiningScreen() {
                             </span>
                           ))}
                         </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            setSelectedOrder({ order, sessionTable: session.tableCode })
-                          }
-                        >
-                          {t('Split check')}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => setCheckoutOrderId(order.id)}
-                        >
-                          {t('Take payment')}
-                        </Button>
+                        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+                          <PosButton
+                            className="flex-1 sm:flex-none"
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() =>
+                              setSelectedOrder({ order, sessionTable: session.tableCode })
+                            }
+                          >
+                            {t('Split check')}
+                          </PosButton>
+                          <PosButton
+                            className="flex-1 sm:flex-none"
+                            type="button"
+                            size="sm"
+                            variant="solid"
+                            onClick={() => setCheckoutOrderId(order.id)}
+                          >
+                            {t('Take payment')}
+                          </PosButton>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -326,7 +430,7 @@ export function PosDiningScreen() {
             ))}
           </div>
         )}
-      </div>
+      </section>
 
       {selectedOrder && (
         <SplitOrderDialog
@@ -442,15 +546,15 @@ function SplitOrderDialog({
         </p>
         <div className="grid grid-cols-3 gap-2">
           {(['items', 'equal', 'custom'] as const).map((value) => (
-            <Button
+            <PosButton
               key={value}
               type="button"
-              variant={method === value ? 'default' : 'outline'}
+              variant={method === value ? 'solid' : 'outline'}
               aria-pressed={method === value}
               onClick={() => setMethod(value)}
             >
               {t(value === 'items' ? 'By items' : value === 'equal' ? 'Equal' : 'Custom amounts')}
-            </Button>
+            </PosButton>
           ))}
         </div>
         <label className="grid max-w-48 gap-1 text-xs text-muted-foreground">
@@ -547,12 +651,12 @@ function SplitOrderDialog({
           </p>
         )}
         <div className="flex justify-end gap-2 border-t border-border pt-3">
-          <Button type="button" variant="outline" onClick={onClose}>
+          <PosButton type="button" variant="outline" onClick={onClose}>
             {t('Cancel')}
-          </Button>
-          <Button type="submit" disabled={mutation.isPending}>
+          </PosButton>
+          <PosButton type="submit" variant="solid" disabled={mutation.isPending}>
             {mutation.isPending ? t('Saving...') : t('Save split')}
-          </Button>
+          </PosButton>
         </div>
       </form>
     </Dialog>

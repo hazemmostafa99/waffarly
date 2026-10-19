@@ -1,6 +1,5 @@
-import { isPositiveStockQuantity } from '@waffarly/contracts';
 import { cacheStockItem } from '../../inventory/stock-unit-options.js';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { useLocale } from '@waffarly/ui';
 import type {
@@ -18,19 +17,15 @@ import type {
 } from '@waffarly/contracts';
 import { Icon } from '../../../Icons.js';
 import { apiRequest, apiUpload } from '../../../lib/api-client.js';
-import {
-  ProductInventoryTab,
-  type ProductInventoryComponentDraft,
-  type ProductInventoryTargetDraft,
-} from './ProductInventoryTab.js';
-import type { OptionDraft, GroupDraft, VariantDraft } from './product-builder.types.js';
-import { BasicInformationTab } from './BasicInformationTab.js';
-import { ProductDetailsTab } from './ProductDetailsTab.js';
+import { ProductInventoryTab, type ProductInventoryTargetDraft } from './ProductInventoryTab.js';
+import type { ChoiceGroupDraft, GroupDraft, VariantDraft } from './product-builder.types.js';
+import { ProductInformationTab } from './ProductInformationTab.js';
 import { OptionsTab } from './OptionsTab.js';
 import { PreviewPublishTab } from './PreviewPublishTab.js';
 import { ProductPreview } from './ProductPreview.js';
+import { emptyInventoryComponent, inventoryTargetComplete } from './product-inventory.js';
 
-const tabKeys = ['basic', 'details', 'options', 'inventory', 'preview'] as const;
+const tabKeys = ['information', 'options', 'inventory', 'review'] as const;
 
 function newId() {
   return crypto.randomUUID();
@@ -54,13 +49,11 @@ export function ProductBuilderPage() {
   const [categories, setCategories] = useState<CatalogCategorySummary[]>([]);
   const [media, setMedia] = useState<CatalogMediaAsset[]>([]);
   const [modifierLibrary, setModifierLibrary] = useState<CatalogModifierGroupSummary[]>([]);
-  const [selectedLibraryGroupId, setSelectedLibraryGroupId] = useState('');
-  const [newGroupName, setNewGroupName] = useState('');
-  const [newGroupOptions, setNewGroupOptions] = useState('');
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [imageAssetIds, setImageAssetIds] = useState<string[]>([]);
   const [primaryImageAssetId, setPrimaryImageAssetId] = useState('');
   const [groups, setGroups] = useState<GroupDraft[]>([]);
+  const [pendingChoiceEdits, setPendingChoiceEdits] = useState(false);
   const [variants, setVariants] = useState<VariantDraft[]>([]);
   const [existingVariantIds, setExistingVariantIds] = useState<string[]>([]);
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
@@ -69,6 +62,9 @@ export function ProductBuilderPage() {
   );
   const [inventoryMode, setInventoryMode] = useState<ProductInventoryMode>(activityDefaultMode);
   const [inventoryTargets, setInventoryTargets] = useState<ProductInventoryTargetDraft[]>([]);
+  const inventoryModeDrafts = useRef<
+    Partial<Record<ProductInventoryMode, ProductInventoryTargetDraft[]>>
+  >({});
   const [inventoryEnabled, setInventoryEnabled] = useState(false);
   const [inventoryWasConfigured, setInventoryWasConfigured] = useState(false);
   const [inventoryConfigurationRequired, setInventoryConfigurationRequired] = useState(false);
@@ -104,6 +100,7 @@ export function ProductBuilderPage() {
 
   useEffect(() => {
     let cancelled = false;
+    inventoryModeDrafts.current = {};
     setNotFound(false);
     setError('');
     setActiveTab(0);
@@ -252,69 +249,27 @@ export function ProductBuilderPage() {
     (sellable) =>
       inventoryTargets.find((target) => target.variantId === sellable.variantId) ?? {
         variantId: sellable.variantId,
-        components: [{ stockItemId: '', unitCode: '', quantity: '1' }],
+        components: [emptyInventoryComponent(inventoryMode)],
       },
   );
   const inventoryConfigurationComplete =
     inventoryEnabled &&
     displayedInventoryTargets.length > 0 &&
     displayedInventoryTargets.every((target) => {
-      if (
-        !target.components.length ||
-        (inventoryMode === 'DIRECT' && target.components.length !== 1)
-      ) {
-        return false;
-      }
+      if (!inventoryTargetComplete(target, inventoryMode, stockItems)) return false;
       return target.components.every(
         (component) =>
-          (configuredStockItemIds.has(component.stockItemId) ||
-            stockItems.some((item) => item.id === component.stockItemId)) &&
-          component.unitCode.length > 0 &&
-          isPositiveStockQuantity(component.quantity),
+          configuredStockItemIds.has(component.stockItemId) ||
+          stockItems.some((item) => item.id === component.stockItemId),
       );
     });
-  function defaultAdjustment(variantId?: string) {
-    return groups.reduce((sum, group) => {
-      if (
-        group.variantOverrides?.find((override) => override.variantId === variantId)?.available ===
-        false
-      )
-        return sum;
-      return (
-        sum +
-        group.options.reduce((optionSum, option) => {
-          const override = option.variantOverrides?.find((entry) => entry.variantId === variantId);
-          return (
-            optionSum +
-            (option.defaultSelected && override?.available !== false
-              ? Number(override?.priceAdjustment ?? option.priceAdjustment ?? 0)
-              : 0)
-          );
-        }, 0)
-      );
-    }, 0);
-  }
-
-  function changeInventoryTarget(
-    variantId: string | null,
-    components: ProductInventoryComponentDraft[],
-  ) {
-    setInventoryTargets((current) => {
-      const existingIndex = current.findIndex((target) => target.variantId === variantId);
-      const nextTarget = { variantId, components };
-      return existingIndex < 0
-        ? [...current, nextTarget]
-        : current.map((target, index) => (index === existingIndex ? nextTarget : target));
-    });
-  }
-
-  function changeInventoryMode(mode: ProductInventoryMode) {
-    setInventoryMode(mode);
-    if (mode === 'DIRECT') {
-      setInventoryTargets((current) =>
-        current.map((target) => ({ ...target, components: target.components.slice(0, 1) })),
-      );
+  function saveInventoryDraft(mode: ProductInventoryMode, targets: ProductInventoryTargetDraft[]) {
+    if (mode !== inventoryMode) {
+      inventoryModeDrafts.current[inventoryMode] = structuredClone(inventoryTargets);
     }
+    inventoryModeDrafts.current[mode] = structuredClone(targets);
+    setInventoryMode(mode);
+    setInventoryTargets(structuredClone(targets));
   }
 
   async function uploadImage(file: File) {
@@ -365,8 +320,6 @@ export function ProductBuilderPage() {
         );
         return false;
       }
-    }
-    if (step === 1) {
       if (!categoryIds.length) {
         setError(text('Choose at least one category.', 'اختر تصنيفاً واحداً على الأقل.'));
         return false;
@@ -376,7 +329,7 @@ export function ProductBuilderPage() {
         return false;
       }
     }
-    if (step === 2) {
+    if (step === 1) {
       const duplicateSku = new Set<string>();
       const duplicateBarcode = new Set<string>();
       const invalidVariant = variants.find((variant) => {
@@ -445,7 +398,7 @@ export function ProductBuilderPage() {
         return false;
       }
     }
-    if (step === 3) {
+    if (step === 2) {
       if (!finalSave) {
         setError('');
         return true;
@@ -486,30 +439,14 @@ export function ProductBuilderPage() {
     return true;
   }
 
-  function changeGroup(groupId: string, update: Partial<GroupDraft>) {
-    setGroups((current) =>
-      current.map((group) => (group.id === groupId ? { ...group, ...update } : group)),
-    );
-  }
-
-  function changeOption(groupId: string, optionId: string, update: Partial<OptionDraft>) {
-    setGroups((current) =>
-      current.map((group) =>
-        group.id === groupId
-          ? {
-              ...group,
-              options: group.options.map((option) =>
-                option.id === optionId ? { ...option, ...update } : option,
-              ),
-            }
-          : group,
-      ),
-    );
-  }
-
-  function addGroupFromLibrary() {
-    const definition = modifierLibrary.find((group) => group.id === selectedLibraryGroupId);
-    if (!definition || groups.some((group) => group.modifierGroupId === definition.id)) return;
+  function addGroupFromLibrary(groupId: string) {
+    const definition = modifierLibrary.find((group) => group.id === groupId);
+    if (
+      !definition ||
+      groups.length >= 30 ||
+      groups.some((group) => group.modifierGroupId === definition.id)
+    )
+      return;
     setGroups((current) => [
       ...current,
       {
@@ -530,38 +467,34 @@ export function ProductBuilderPage() {
           })),
       },
     ]);
-    setSelectedLibraryGroupId('');
   }
 
-  async function createAndAddModifierGroup() {
-    const optionNames = newGroupOptions
-      .split(/\r?\n/)
-      .map((option) => option.trim())
-      .filter(Boolean);
-    if (!newGroupName.trim() || optionNames.length === 0) {
-      setError(
-        text(
-          'Enter a group name and at least one option.',
-          'أدخل اسم المجموعة وخياراً واحداً على الأقل.',
-        ),
+  async function createAndAddModifierGroup(draft: ChoiceGroupDraft): Promise<string | null> {
+    const options = draft.options.map((option) => ({ ...option, name: option.name.trim() }));
+    if (!draft.name.trim() || options.length === 0 || options.some((option) => !option.name)) {
+      return text(
+        'Enter a group name and at least one option.',
+        'أدخل اسم المجموعة وخياراً واحداً على الأقل.',
       );
-      return;
     }
-    if (optionNames.length > 100) {
-      setError(
-        text(
-          'A group can have up to 100 options.',
-          'يمكن أن تحتوي المجموعة على 100 خيار كحد أقصى.',
-        ),
+    if (groups.length >= 30) {
+      return text(
+        'This product has the maximum of 30 choice groups.',
+        'وصل المنتج إلى الحد الأقصى: 30 مجموعة خيارات.',
       );
-      return;
+    }
+    if (options.length > 100) {
+      return text(
+        'A group can have up to 100 options.',
+        'يمكن أن تحتوي المجموعة على 100 خيار كحد أقصى.',
+      );
     }
     setSubmitting(true);
     setError('');
     try {
       const body: CatalogModifierGroupFields = {
-        name: newGroupName.trim(),
-        options: optionNames.map((option, position) => ({ name: option, position })),
+        name: draft.name.trim(),
+        options: options.map((option, position) => ({ name: option.name, position })),
       };
       const created = await apiRequest<CatalogModifierGroupSummary>(
         '/owner/catalog/modifier-groups',
@@ -573,9 +506,6 @@ export function ProductBuilderPage() {
       setModifierLibrary((current) =>
         [...current, created].sort((a, b) => a.name.localeCompare(b.name)),
       );
-      setSelectedLibraryGroupId(created.id);
-      setNewGroupName('');
-      setNewGroupOptions('');
       setGroups((current) => [
         ...current,
         {
@@ -583,116 +513,93 @@ export function ProductBuilderPage() {
           modifierGroupId: created.id,
           name: created.name,
           description: created.description ?? '',
-          selectionMode: 'single',
-          minSelections: 0,
-          maxSelections: 1,
-          options: created.options.map((option) => ({
-            id: option.id,
-            name: option.name,
-            priceAdjustment: '0.00',
-            defaultSelected: false,
-          })),
+          variantOverrides: draft.variantOverrides,
+          selectionMode: draft.selectionMode,
+          minSelections: draft.minSelections,
+          maxSelections: draft.maxSelections,
+          options: [...created.options]
+            .sort((a, b) => a.position - b.position)
+            .map((option, index) => ({
+              ...options[index],
+              id: option.id,
+              name: option.name,
+              priceAdjustment:
+                options.find((entry) => entry.name === option.name)?.priceAdjustment ?? '0.00',
+              defaultSelected: options[index]?.defaultSelected ?? false,
+            })),
         },
       ]);
+      return null;
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : text('Could not create modifier group.', 'تعذر إنشاء مجموعة الخيارات.'),
-      );
+      return cause instanceof Error
+        ? errorText(cause.message)
+        : text('Could not create modifier group.', 'تعذر إنشاء مجموعة الخيارات.');
     } finally {
       setSubmitting(false);
     }
   }
 
-  function addVariant() {
-    setProductMode('variants');
-    setVariants((current) => [
-      ...current,
-      {
-        id: newId(),
-        name: '',
-        sku: '',
-        barcode: '',
-        price: basePrice || '0',
-        stockQuantity: '',
-        availability: 'available',
-        attributes: [],
-      },
-    ]);
-  }
-
-  function changeProductMode(mode: 'simple' | 'variants') {
-    setProductMode(mode);
-    if (mode === 'simple') {
-      setVariants([]);
-    } else if (variants.length === 0) {
-      addVariant();
+  async function updateModifierGroup(draft: GroupDraft): Promise<string | null> {
+    const current = groups.find((group) => group.id === draft.id);
+    if (!current)
+      return text(
+        'This choice group is no longer on the product.',
+        'لم تعد مجموعة الخيارات موجودة على المنتج.',
+      );
+    const definitionChanged =
+      current.name !== draft.name ||
+      current.options.length !== draft.options.length ||
+      current.options.some(
+        (option, index) =>
+          option.id !== draft.options[index]?.id || option.name !== draft.options[index]?.name,
+      );
+    if (!definitionChanged) {
+      setGroups((items) =>
+        items.map((group) =>
+          group.id === draft.id ? { ...draft, modifierGroupId: current.modifierGroupId } : group,
+        ),
+      );
+      return null;
+    }
+    setSubmitting(true);
+    setError('');
+    try {
+      const created = await apiRequest<CatalogModifierGroupSummary>(
+        '/owner/catalog/modifier-groups',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            name: draft.name,
+            description: draft.description || undefined,
+            options: draft.options.map((option, position) => ({ name: option.name, position })),
+          } satisfies CatalogModifierGroupFields),
+        },
+      );
+      const updated: GroupDraft = {
+        ...draft,
+        modifierGroupId: created.id,
+        name: created.name,
+        options: [...created.options]
+          .sort((a, b) => a.position - b.position)
+          .map((option, index) => ({ ...draft.options[index]!, id: option.id, name: option.name })),
+      };
+      setModifierLibrary((items) =>
+        [...items, created].sort((a, b) => a.name.localeCompare(b.name)),
+      );
+      setGroups((items) => items.map((group) => (group.id === draft.id ? updated : group)));
+      return null;
+    } catch (cause) {
+      return cause instanceof Error
+        ? errorText(cause.message)
+        : text('Could not update these choices.', 'تعذر تحديث هذه الخيارات.');
+    } finally {
+      setSubmitting(false);
     }
   }
 
-  function removeVariant(variantId: string) {
-    const next = variants.filter((variant) => variant.id !== variantId);
+  function applyVariants(next: VariantDraft[]) {
     setVariants(next);
-    if (next.length === 0) setProductMode('simple');
-  }
-
-  function changeVariant(variantId: string, update: Partial<VariantDraft>) {
-    setVariants((current) =>
-      current.map((variant) => (variant.id === variantId ? { ...variant, ...update } : variant)),
-    );
-  }
-
-  function changeVariantAttribute(
-    variantId: string,
-    attributeIndex: number,
-    update: Partial<VariantDraft['attributes'][number]>,
-  ) {
-    setVariants((current) =>
-      current.map((variant) =>
-        variant.id === variantId
-          ? {
-              ...variant,
-              attributes: variant.attributes.map((attribute, index) =>
-                index === attributeIndex ? { ...attribute, ...update } : attribute,
-              ),
-            }
-          : variant,
-      ),
-    );
-  }
-
-  function addVariantAttribute(variantId: string) {
-    setVariants((current) =>
-      current.map((variant) =>
-        variant.id === variantId
-          ? { ...variant, attributes: [...variant.attributes, { name: '', value: '' }] }
-          : variant,
-      ),
-    );
-  }
-
-  function removeVariantAttribute(variantId: string, attributeIndex: number) {
-    setVariants((current) =>
-      current.map((variant) =>
-        variant.id === variantId
-          ? {
-              ...variant,
-              attributes: variant.attributes.filter((_, index) => index !== attributeIndex),
-            }
-          : variant,
-      ),
-    );
-  }
-
-  function moveVariant(index: number, direction: -1 | 1) {
-    setVariants((current) => {
-      const target = index + direction;
-      if (target < 0 || target >= current.length) return current;
-      const next = [...current];
-      [next[index], next[target]] = [next[target]!, next[index]!];
-      return next;
-    });
+    setProductMode(next.length ? 'variants' : 'simple');
   }
 
   function moveGroup(index: number, direction: -1 | 1) {
@@ -706,12 +613,22 @@ export function ProductBuilderPage() {
   }
 
   async function submitProduct() {
+    if (pendingChoiceEdits) {
+      setError(
+        text(
+          'Apply or discard your unfinished choice edits before saving the product.',
+          'طبّق تعديلات الخيارات غير المكتملة أو تجاهلها قبل حفظ المنتج.',
+        ),
+      );
+      setActiveTab(1);
+      return;
+    }
     if (isEditing && revision === null) {
       setError(text('The product is not ready to save.', 'المنتج غير جاهز للحفظ.'));
       return;
     }
-    for (let step = 0; step <= 3; step += 1) {
-      if (!validateStep(step, step === 3)) {
+    for (let step = 0; step <= 2; step += 1) {
+      if (!validateStep(step, step === 2)) {
         setActiveTab(step);
         return;
       }
@@ -823,8 +740,7 @@ export function ProductBuilderPage() {
   }
 
   const tabs = [
-    text('Basic information', 'المعلومات الأساسية'),
-    text('Product details', 'تفاصيل المنتج'),
+    text('Product information', 'معلومات المنتج'),
     text('Options', 'الخيارات'),
     text('Inventory', 'المخزون'),
     text('Preview and publish', 'المعاينة والنشر'),
@@ -912,8 +828,7 @@ export function ProductBuilderPage() {
               <small>
                 {
                   [
-                    text('Name & price', 'الاسم والسعر'),
-                    text('Categories & photos', 'التصنيفات والصور'),
+                    text('Details, category & photos', 'البيانات والتصنيف والصور'),
                     text('Variants & add-ons', 'المتغيرات والإضافات'),
                     text('Direct item or recipe', 'صنف مباشر أو وصفة'),
                     text('Review & save', 'المراجعة والحفظ'),
@@ -953,18 +868,14 @@ export function ProductBuilderPage() {
               aria-labelledby={`product-builder-tab-${tabKeys[activeTab]}`}
             >
               {activeTab === 0 && (
-                <BasicInformationTab
+                <ProductInformationTab
                   name={name}
                   onNameChange={setName}
                   description={description}
                   onDescriptionChange={setDescription}
                   basePrice={basePrice}
                   onBasePriceChange={setBasePrice}
-                  text={text}
-                />
-              )}
-              {activeTab === 1 && (
-                <ProductDetailsTab
+                  productMode={productMode}
                   categories={categories}
                   categoryIds={categoryIds}
                   onCategoryIdsChange={setCategoryIds}
@@ -981,45 +892,35 @@ export function ProductBuilderPage() {
                   text={text}
                 />
               )}
-              {activeTab === 2 && (
+              <div hidden={activeTab !== 1}>
                 <OptionsTab
+                  key={productId ?? 'new-product'}
                   groups={groups}
                   recipe={inventoryEnabled && inventoryMode === 'RECIPE'}
                   productMode={productMode}
-                  onProductModeChange={changeProductMode}
                   modifierLibrary={modifierLibrary}
                   libraryLoading={loading}
-                  selectedLibraryGroupId={selectedLibraryGroupId}
-                  onSelectedLibraryGroupChange={setSelectedLibraryGroupId}
-                  newGroupName={newGroupName}
-                  onNewGroupNameChange={setNewGroupName}
-                  newGroupOptions={newGroupOptions}
-                  onNewGroupOptionsChange={setNewGroupOptions}
+                  basePrice={basePrice}
                   onAddGroupFromLibrary={addGroupFromLibrary}
-                  onCreateAndAddGroup={() => void createAndAddModifierGroup()}
+                  onCreateAndAddGroup={createAndAddModifierGroup}
+                  onSaveGroup={updateModifierGroup}
+                  onPendingEditsChange={setPendingChoiceEdits}
                   creatingGroup={submitting}
                   onGroupsChange={setGroups}
-                  onGroupChange={changeGroup}
-                  onOptionChange={changeOption}
                   onMoveGroup={moveGroup}
                   variants={variants}
-                  onVariantChange={changeVariant}
-                  onVariantAttributeChange={changeVariantAttribute}
-                  onAddVariantAttribute={addVariantAttribute}
-                  onRemoveVariantAttribute={removeVariantAttribute}
-                  onAddVariant={addVariant}
-                  onRemoveVariant={removeVariant}
-                  onMoveVariant={moveVariant}
+                  onVariantsChange={applyVariants}
                   text={text}
                 />
-              )}
-              {activeTab === 3 && (
+              </div>
+              {activeTab === 2 && (
                 <ProductInventoryTab
+                  productName={name}
                   enabled={inventoryEnabled}
                   onEnabledChange={setInventoryEnabled}
                   mode={inventoryMode}
-                  onModeChange={changeInventoryMode}
                   defaultMode={activityDefaultMode}
+                  savedModes={inventoryModeDrafts.current}
                   required={!isEditing || inventoryConfigurationRequired}
                   availability={availability}
                   stockItems={stockItems}
@@ -1028,11 +929,11 @@ export function ProductBuilderPage() {
                   }
                   targets={displayedInventoryTargets}
                   variants={variants.map((variant) => ({ id: variant.id, name: variant.name }))}
-                  onTargetChange={changeInventoryTarget}
+                  onInventorySave={saveInventoryDraft}
                   text={text}
                 />
               )}
-              {activeTab === 4 && (
+              {activeTab === 3 && (
                 <PreviewPublishTab
                   onEditStep={(step) => {
                     if (!submitting) {
@@ -1043,6 +944,7 @@ export function ProductBuilderPage() {
                   name={name}
                   description={description}
                   basePrice={basePrice}
+                  productMode={productMode}
                   availability={availability}
                   onAvailabilityChange={setAvailability}
                   categories={selectedCategories}
@@ -1055,9 +957,30 @@ export function ProductBuilderPage() {
                   inventoryConfigured={
                     inventoryConfigurationComplete || (inventoryWasConfigured && inventoryEnabled)
                   }
+                  inventoryRequired={!isEditing || inventoryConfigurationRequired}
                   formatNumber={formatNumber}
                   text={text}
                 />
+              )}
+              {pendingChoiceEdits && activeTab !== 1 && (
+                <div className="composer-inline-notice" role="status">
+                  <span>
+                    {text(
+                      'You have unfinished changes to customer choices.',
+                      'لديك تعديلات غير مكتملة على خيارات العميل.',
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    className="builder-text-button"
+                    onClick={() => {
+                      setError('');
+                      setActiveTab(1);
+                    }}
+                  >
+                    {text('Continue editing', 'متابعة التعديل')}
+                  </button>
+                </div>
               )}
               <footer className="builder-navigation">
                 <button
@@ -1071,18 +994,20 @@ export function ProductBuilderPage() {
                 >
                   {text('Back', 'السابق')}
                 </button>
-                {activeTab < 4 ? (
+                {activeTab < 3 ? (
                   <button
                     type="button"
                     className="builder-button primary"
-                    disabled={uploading}
+                    disabled={uploading || submitting}
                     onClick={() =>
-                      validateStep(activeTab) && setActiveTab((current) => Math.min(4, current + 1))
+                      validateStep(activeTab) && setActiveTab((current) => Math.min(3, current + 1))
                     }
                   >
-                    {activeTab === 3
-                      ? text('Review product', 'مراجعة المنتج')
-                      : `${text('Next: ', 'التالي: ')}${tabs[activeTab + 1]}`}
+                    {activeTab === 1 && !groups.length && !variants.length
+                      ? text('Continue without choices', 'متابعة بدون خيارات')
+                      : activeTab === 2
+                        ? text('Review product', 'مراجعة المنتج')
+                        : `${text('Next: ', 'التالي: ')}${tabs[activeTab + 1]}`}
                     <span aria-hidden="true">{isArabic ? '←' : '→'}</span>
                   </button>
                 ) : (
@@ -1119,15 +1044,6 @@ export function ProductBuilderPage() {
             categoryName={selectedCategories[0]?.name}
             groups={groups}
             variants={variants}
-            total={
-              variants.length
-                ? Math.min(
-                    ...variants.map(
-                      (variant) => Number(variant.price || 0) + defaultAdjustment(variant.id),
-                    ),
-                  )
-                : Number(basePrice || 0) + defaultAdjustment()
-            }
             formatNumber={formatNumber}
             text={text}
           />

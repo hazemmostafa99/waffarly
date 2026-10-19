@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 export function BasicInformationTab({
   name,
   onNameChange,
@@ -5,6 +7,7 @@ export function BasicInformationTab({
   onDescriptionChange,
   basePrice,
   onBasePriceChange,
+  productMode,
   text,
 }: {
   name: string;
@@ -13,54 +16,38 @@ export function BasicInformationTab({
   onDescriptionChange: (value: string) => void;
   basePrice: string;
   onBasePriceChange: (value: string) => void;
+  productMode: 'simple' | 'variants';
   text: (english: string, arabic: string) => string;
 }) {
+  const [descriptionOpen, setDescriptionOpen] = useState(Boolean(description));
   return (
-    <div className="builder-fields">
-      <div className="builder-section-heading">
-        <span>{text('01', '01')}</span>
-        <div>
-          <h2>{text('Basic information', 'المعلومات الأساسية')}</h2>
-          <p>
+    <div className="builder-fields basic-information-fields">
+      <div className="basic-name-price-row">
+        <label className="builder-field basic-product-name">
+          <span>
+            {text('Product name', 'اسم المنتج')} <i>*</i>
+          </span>
+          <input
+            required
+            autoFocus
+            maxLength={160}
+            value={name}
+            onChange={(event) => onNameChange(event.target.value)}
+            placeholder={text('e.g. Classic burger', 'مثال: برجر كلاسيك')}
+          />
+          <small>
             {text(
-              'Set the product base price. When variants are added, each variant price is used for quotes instead.',
-              'أدخل الاسم والسعر الأساسي الذي سيظهر للعملاء.',
+              'Use a short, familiar name customers can find easily.',
+              'استخدم اسمًا واضحًا يسهل على العملاء العثور عليه.',
             )}
-          </p>
-        </div>
-      </div>
-      <label className="builder-field">
-        <span>
-          {text('Product name', 'اسم المنتج')} <i>*</i>
-        </span>
-        <input
-          required
-          maxLength={160}
-          value={name}
-          onChange={(event) => onNameChange(event.target.value)}
-          placeholder={text('e.g. Classic burger', 'مثال: برجر كلاسيك')}
-        />
-      </label>
-      <label className="builder-field">
-        <span>{text('Description', 'الوصف')}</span>
-        <textarea
-          rows={4}
-          maxLength={1000}
-          value={description}
-          onChange={(event) => onDescriptionChange(event.target.value)}
-          placeholder={text(
-            'Describe the ingredients or what makes it special.',
-            'اكتب وصفاً للمكونات أو ما يميز المنتج.',
-          )}
-        />
-        <small>
-          {text(String(description.length), String(description.length))}/{text('1000', '1000')}
-        </small>
-      </label>
-      <div className="builder-field-row">
+          </small>
+        </label>
         <label className="builder-field">
           <span>
-            {text('Base price', 'السعر الأساسي')} <i>*</i>
+            {productMode === 'variants'
+              ? text('Base price', 'السعر الأساسي')
+              : text('Selling price', 'سعر البيع')}{' '}
+            <i>*</i>
           </span>
           <div className="builder-currency-field">
             <input
@@ -78,18 +65,40 @@ export function BasicInformationTab({
             />
             <b>EGP</b>
           </div>
-        </label>
-        <div className="builder-field">
-          <span>{text('Selling unit', 'وحدة البيع')}</span>
-          <div className="builder-fixed-value">
-            <span>◉</span>
-            {text('Piece', 'قطعة')}
+          {productMode === 'variants' && (
             <small>
-              {text('Only unit available in this version', 'وحدة البيع المتاحة حالياً')}
+              {text(
+                'Required for the catalog. Each size uses its own price when available.',
+                'مطلوب للكتالوج. يظهر سعر كل حجم بدلًا منه عند اختيار الأحجام.',
+              )}
             </small>
-          </div>
-        </div>
+          )}
+        </label>
       </div>
+      <details
+        className="basic-description"
+        open={descriptionOpen}
+        onToggle={(event) => setDescriptionOpen(event.currentTarget.open)}
+      >
+        <summary>
+          {text('Add a description', 'إضافة وصف')}
+          <span>{description ? text('Added', 'تمت الإضافة') : text('Optional', 'اختياري')}</span>
+        </summary>
+        <div className="builder-field">
+          <span>{text('Description', 'الوصف')}</span>
+          <textarea
+            rows={4}
+            maxLength={1000}
+            value={description}
+            onChange={(event) => onDescriptionChange(event.target.value)}
+            placeholder={text(
+              'Describe the ingredients or what makes it special.',
+              'اكتب وصفًا للمكونات أو ما يميز المنتج.',
+            )}
+          />
+          <small>{text(String(description.length), String(description.length) + '/1000')}</small>
+        </div>
+      </details>
     </div>
   );
 }
