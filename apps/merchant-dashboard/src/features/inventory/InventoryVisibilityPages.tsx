@@ -15,6 +15,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { InventoryCard } from './InventoryCard.js';
 import { InventoryHeader } from './InventoryHeader.js';
 import { StockItemPicker, WarehousePicker } from './components/InventoryPickers.js';
+import { stockUnitLabel } from './stock-unit-options.js';
 import { inventoryCopy } from './inventory-copy.js';
 
 type ThresholdEditorState = { row: InventoryStockHealth | null; key: string };
@@ -283,7 +284,7 @@ export function InventoryHealthPage() {
             </div>
           </div>
         ) : null}
-        <p className="inventory-note">
+        <p className="inventory-note inventory-health-note">
           {text(
             'Health uses Available stock only. Non-Sellable quantities are excluded, and thresholds use the item base unit.',
           )}
@@ -322,6 +323,7 @@ export function InventoryHealthPage() {
             <WarehousePicker
               value={warehouseId}
               label={text('Filter by warehouse')}
+              searchMode="combobox"
               required={false}
               emptyLabel={text('All warehouses')}
               onSelect={(warehouse) => {
@@ -759,88 +761,108 @@ export function StockMovementDetailPage() {
           </Button>
         </div>
       )}
-      <InventoryCard title={text('Movement details')}>
+      <InventoryCard title={text('Movement summary')}>
         {loading ? (
           <p role="status">{text('Loading movement details…')}</p>
         ) : movement ? (
-          <dl className="inventory-detail-grid">
-            <div>
-              <dt>{text('Stock item')}</dt>
-              <dd>
+          <div className="inventory-movement-detail">
+            <section className="inventory-movement-hero" aria-label={text('Movement summary')}>
+              <div className="inventory-movement-primary">
+                <div className="inventory-movement-meta">
+                  <span>{text(movementLabels[movement.kind] ?? 'Other movement')}</span>
+                  <Badge variant={movement.condition === 'available' ? 'success' : 'warning'}>
+                    {text(movement.condition === 'available' ? 'Available' : 'Non-Sellable')}
+                  </Badge>
+                </div>
                 <Link
-                  className="inventory-detail-link"
+                  className="inventory-movement-item"
                   to={`/inventory/items/${movement.stockItemId}`}
                 >
                   {formatDigits(movement.stockItemName)}
                 </Link>
-              </dd>
-            </div>
-            <div>
-              <dt>{text('Location')}</dt>
-              <dd>{formatDigits(`${movement.branchName} · ${movement.warehouseName}`)}</dd>
-            </div>
-            <div>
-              <dt>{text('Movement')}</dt>
-              <dd>{text(movementLabels[movement.kind] ?? 'Other movement')}</dd>
-            </div>
-            <div>
-              <dt>{text('Condition')}</dt>
-              <dd>{text(movement.condition === 'available' ? 'Available' : 'Non-Sellable')}</dd>
-            </div>
-            <div>
-              <dt>{text('Change')}</dt>
-              <dd>
-                <span className="inventory-quantity" dir="ltr">
+                <div className="inventory-movement-location">
+                  <span>{formatDigits(movement.warehouseName)}</span>
+                  <small>{formatDigits(movement.branchName)}</small>
+                </div>
+              </div>
+              <div className="inventory-movement-change">
+                <span>{text('Change')}</span>
+                <strong
+                  className={
+                    movement.baseDelta.startsWith('-') ? 'is-negative' : 'is-positive'
+                  }
+                  dir="ltr"
+                >
                   {formatDigits(
-                    `${movement.baseDelta.startsWith('-') ? '' : '+'}${movement.baseDelta} ${movement.baseUnit}`,
+                    `${movement.baseDelta.startsWith('-') ? '' : '+'}${movement.baseDelta} ${stockUnitLabel(movement.baseUnit, locale)}`,
                   )}
-                </span>
-              </dd>
-            </div>
-            <div>
-              <dt>{text('Entered quantity')}</dt>
-              <dd>
-                <span dir="ltr">
-                  {formatDigits(`${movement.enteredQuantity} ${movement.unitCode}`)}
-                </span>
-              </dd>
-            </div>
-            <div>
-              <dt>{text('Reason')}</dt>
-              <dd>{formatDigits(movement.reason)}</dd>
-            </div>
-            <div>
-              <dt>{text('Recorded by')}</dt>
-              <dd>{formatDigits(movement.actor)}</dd>
-            </div>
-            <div>
-              <dt>{text('Date')}</dt>
-              <dd>{formatDigits(new Date(movement.createdAt).toLocaleString(locale))}</dd>
-            </div>
-            <div>
-              <dt>{text('Source')}</dt>
-              <dd>
-                {sourceHref ? (
-                  <Link className="inventory-detail-link" to={sourceHref}>
-                    {text(
-                      movement.sourceType === 'purchase_invoice'
-                        ? 'View purchase invoice'
-                        : 'View related order',
-                    )}
-                  </Link>
-                ) : (
-                  text(sourceLabels[movement.sourceType] ?? 'Source reference')
-                )}{' '}
-                <small dir="ltr">{formatDigits(movement.sourceId)}</small>
-              </dd>
-            </div>
-            <div>
-              <dt>{text('Movement batch')}</dt>
-              <dd>
-                <code>{formatDigits(movement.batchId)}</code>
-              </dd>
-            </div>
-          </dl>
+                </strong>
+              </div>
+            </section>
+
+            <dl className="inventory-movement-facts">
+              {movement.sourceType !== 'purchase_invoice' && (
+                <div>
+                  <dt>{text('Reason')}</dt>
+                  <dd>{formatDigits(movement.reason)}</dd>
+                </div>
+              )}
+              <div>
+                <dt>{text('Entered quantity')}</dt>
+                <dd dir="ltr">
+                  {formatDigits(
+                    `${movement.enteredQuantity} ${stockUnitLabel(movement.unitCode, locale)}`,
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt>{text('Recorded by')}</dt>
+                <dd>{formatDigits(movement.actor)}</dd>
+              </div>
+              <div>
+                <dt>{text('Date')}</dt>
+                <dd>
+                  <time dateTime={movement.createdAt}>
+                    {formatDigits(new Date(movement.createdAt).toLocaleString(locale))}
+                  </time>
+                </dd>
+              </div>
+              <div>
+                <dt>{text('Source')}</dt>
+                <dd>
+                  {sourceHref ? (
+                    <Link className="inventory-detail-link" to={sourceHref}>
+                      {text(
+                        movement.sourceType === 'purchase_invoice'
+                          ? 'View purchase invoice'
+                          : 'View related order',
+                      )}
+                    </Link>
+                  ) : (
+                    text(sourceLabels[movement.sourceType] ?? 'Source reference')
+                  )}
+                </dd>
+              </div>
+            </dl>
+
+            <details className="inventory-movement-references">
+              <summary>{text('Technical references')}</summary>
+              <dl>
+                <div>
+                  <dt>{text('Source reference')}</dt>
+                  <dd>
+                    <code dir="ltr">{formatDigits(movement.sourceId)}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>{text('Movement batch')}</dt>
+                  <dd>
+                    <code dir="ltr">{formatDigits(movement.batchId)}</code>
+                  </dd>
+                </div>
+              </dl>
+            </details>
+          </div>
         ) : !error ? (
           <p>{text('Movement was not found.')}</p>
         ) : null}

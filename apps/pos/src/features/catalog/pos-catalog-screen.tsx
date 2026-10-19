@@ -13,13 +13,14 @@ import {
   ArrowRight,
   LayoutGrid,
   Minus,
+  Pencil,
   Plus,
   ReceiptText,
   Search,
   ShoppingBag,
   Trash2,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useOutletContext, useSearchParams } from 'react-router-dom';
 import {
   usePosWorkspaceStore,
@@ -87,6 +88,7 @@ export function POSCatalogScreen() {
   const [configuringProduct, setConfiguringProduct] = useState<PublicStorefrontProduct | null>(
     null,
   );
+  const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [checkoutOrderId, setCheckoutOrderId] = useState('');
   const [operationError, setOperationError] = useState('');
   const [online, setOnline] = useState(() => navigator.onLine);
@@ -353,12 +355,12 @@ export function POSCatalogScreen() {
     },
   });
 
-  function updateDraft(update: (draft: PosOrderDraft) => PosOrderDraft) {
-    if (!activeDraft) return;
+  function updateDraft(update: (draft: PosOrderDraft) => PosOrderDraft): boolean {
+    if (!activeDraft) return false;
     const pending = workspace?.pendingSales[activeDraft.id];
     if (pending) {
       setOperationError(t('Resolve the saved sale request before editing this order.'));
-      return;
+      return false;
     }
     try {
       saveDraft(employee.merchantId, employee.id, {
@@ -366,8 +368,10 @@ export function POSCatalogScreen() {
         updatedAt: new Date().toISOString(),
       });
       setOperationError('');
+      return true;
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : t('Could not save this order.'));
+      return false;
     }
   }
 
@@ -394,14 +398,8 @@ export function POSCatalogScreen() {
   }
 
   function addConfiguredProduct(product: PublicStorefrontProduct, configured: ConfiguredProduct) {
-    const selections = configured.selections.map((selection) => ({
-      groupId: selection.groupId,
-      options: (
-        selection.optionQuantities ??
-        selection.optionIds.map((optionId) => ({ optionId, quantity: 1 }))
-      ).map((option) => ({ optionId: option.optionId, quantity: option.quantity })),
-    }));
-    updateDraft((draft) => {
+    const selections = toDraftSelections(configured);
+    const saved = updateDraft((draft) => {
       const key = JSON.stringify({
         productId: product.id,
         variantId: configured.variantId ?? null,
@@ -433,7 +431,42 @@ export function POSCatalogScreen() {
       };
       return { ...draft, lines: [...draft.lines, line] };
     });
+    if (saved) closeConfigurator();
+  }
+
+  function updateConfiguredProduct(lineId: string, configured: ConfiguredProduct) {
+    const selections = toDraftSelections(configured);
+    const saved = updateDraft((draft) => ({
+      ...draft,
+      lines: draft.lines.map((line) => {
+        if (line.id !== lineId) return line;
+        const updatedLine: PosDraftLine = { ...line, selections };
+        if (configured.variantId) updatedLine.variantId = configured.variantId;
+        else delete updatedLine.variantId;
+        return updatedLine;
+      }),
+    }));
+    if (saved) closeConfigurator();
+  }
+
+  function closeConfigurator() {
     setConfiguringProduct(null);
+    setEditingLineId(null);
+  }
+
+  function chooseProduct(product: PublicStorefrontProduct) {
+    if (productHasChoices(product)) {
+      setEditingLineId(null);
+      setConfiguringProduct(product);
+      return;
+    }
+    addConfiguredProduct(product, { selections: [] });
+  }
+
+  function editConfiguredProduct(line: PosDraftLine, product: PublicStorefrontProduct) {
+    if (!productHasChoices(product)) return;
+    setEditingLineId(line.id);
+    setConfiguringProduct(product);
   }
 
   function changeLineQuantity(lineId: string, quantity: number) {
@@ -805,7 +838,7 @@ export function POSCatalogScreen() {
                     }
                     formatNumber={formatNumber}
                     disabled={Boolean(confirmedOrder)}
-                    onAdd={() => setConfiguringProduct(product)}
+                    onAdd={() => chooseProduct(product)}
                   />
                 ))}
               </div>
@@ -1034,9 +1067,23 @@ export function POSCatalogScreen() {
                               <div className="flex min-w-0 items-center gap-2 max-[767px]:gap-1">
                                 <div className="min-w-0 flex-1">
                                   <div className="flex min-h-9 items-center gap-2 text-start text-sm font-semibold max-[767px]:gap-1 max-[767px]:text-[11px]">
-                                    <span className="truncate">
+                                    <span className="min-w-0 flex-1 truncate">
                                       {product?.name ?? t('Product')}
                                     </span>
+                                    {product && productHasChoices(product) && (
+                                      <PosButton
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 shrink-0 gap-1 px-1.5 text-[10px] font-semibold"
+                                        aria-label={`${t('Edit options')}: ${product.name}`}
+                                        disabled={Boolean(pendingSale)}
+                                        onClick={() => editConfiguredProduct(line, product)}
+                                      >
+                                        <Pencil aria-hidden="true" size={12} />
+                                        {t('Edit')}
+                                      </PosButton>
+                                    )}
                                   </div>
                                   <div className="flex min-w-0 items-center justify-between gap-1 text-xs text-muted-foreground max-[767px]:text-[10px]">
                                     <p className="truncate">
@@ -1305,9 +1352,19 @@ export function POSCatalogScreen() {
 
       {configuringProduct && (
         <ProductConfigurator
+          key={`${configuringProduct.id}:${editingLineId ?? 'new'}`}
           product={configuringProduct}
-          onClose={() => setConfiguringProduct(null)}
-          onAdd={(configured) => addConfiguredProduct(configuringProduct, configured)}
+          initialConfiguration={
+            editingLineId
+              ? draftLineConfiguration(activeDraft?.lines.find((line) => line.id === editingLineId))
+              : undefined
+          }
+          submitLabel={t(editingLineId ? 'Save changes' : 'Add item')}
+          onClose={closeConfigurator}
+          onSubmit={(configured) => {
+            if (editingLineId) updateConfiguredProduct(editingLineId, configured);
+            else addConfiguredProduct(configuringProduct, configured);
+          }}
         />
       )}
       {checkoutOrderId && (
@@ -1338,10 +1395,11 @@ function LiveProductCard({
 }) {
   const image = product.images.find((candidate) => candidate.isPrimary) ?? product.images[0];
   const { t } = useLocale();
+  const configurable = productHasChoices(product);
   return (
     <button
       type="button"
-      aria-label={`${t('Add item')}: ${product.name}`}
+      aria-label={`${t(configurable ? 'Customize item' : 'Add item')}: ${product.name}`}
       onClick={onAdd}
       disabled={disabled}
       title={disabled ? t('Start another order to add items.') : undefined}
@@ -1362,6 +1420,11 @@ function LiveProductCard({
           <div className="flex h-full items-center justify-center rounded-lg bg-[var(--pos-active)] text-2xl font-bold text-[var(--pos-active-ink)]">
             {product.name.slice(0, 1)}
           </div>
+        )}
+        {configurable && (
+          <span className="absolute start-2 top-2 rounded-md border border-border/70 bg-card/95 px-1.5 py-1 text-[9px] font-medium text-foreground shadow-sm">
+            {t('Customizable')}
+          </span>
         )}
         {quantity > 0 && (
           <span className="absolute end-2 top-2 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
@@ -1407,26 +1470,61 @@ function LiveProductCard({
 
 function ProductConfigurator({
   product,
+  initialConfiguration,
+  submitLabel,
   onClose,
-  onAdd,
+  onSubmit,
 }: {
   product: PublicStorefrontProduct;
+  initialConfiguration?: ConfiguredProduct | undefined;
+  submitLabel: string;
   onClose: () => void;
-  onAdd: (configured: ConfiguredProduct) => void;
+  onSubmit: (configured: ConfiguredProduct) => void;
 }) {
   const { t, formatNumber } = useLocale();
-  const [variantId, setVariantId] = useState(
-    product.variants.find((variant) => variant.availability === 'available')?.id ?? '',
-  );
+  const firstAvailableVariantId =
+    product.variants.find((variant) => variant.availability === 'available')?.id ?? '';
+  const initialVariantId = product.variants.some(
+    (variant) =>
+      variant.id === initialConfiguration?.variantId && variant.availability === 'available',
+  )
+    ? (initialConfiguration?.variantId ?? firstAvailableVariantId)
+    : firstAvailableVariantId;
+  const retainInitialSelections = (initialConfiguration?.variantId ?? '') === initialVariantId;
+  const [variantId, setVariantId] = useState(initialVariantId);
   const [options, setOptions] = useState<Record<string, Record<string, number>>>(() =>
-    defaultSelections(
+    configuredSelections(
       product,
-      product.variants.find((variant) => variant.availability === 'available')?.id,
+      initialVariantId,
+      retainInitialSelections ? initialConfiguration : undefined,
     ),
   );
   const [selectionError, setSelectionError] = useState('');
   const selectedVariant = product.variants.find((variant) => variant.id === variantId);
   const unavailable = product.variants.length > 0 && !selectedVariant;
+  const availableVariants = product.variants.filter(
+    (variant) => variant.availability === 'available',
+  );
+  const visibleGroups = product.modifierGroups.filter(
+    (group) =>
+      group.variantOverrides?.find((override) => override.variantId === variantId)?.available !==
+      false,
+  );
+  const basePriceCents = Math.round(Number(selectedVariant?.price ?? product.basePrice) * 100);
+  const modifierPriceCents = visibleGroups.reduce(
+    (total, group) =>
+      total +
+      group.options.reduce((groupTotal, option) => {
+        const quantity = options[group.id]?.[option.id] ?? 0;
+        const override = option.variantOverrides?.find(
+          (candidate) => candidate.variantId === variantId,
+        );
+        if (override?.available === false) return groupTotal;
+        const unitPrice = override?.priceAdjustment ?? option.priceAdjustment;
+        return groupTotal + Math.round(Number(unitPrice) * 100) * quantity;
+      }, 0),
+    0,
+  );
 
   function changeVariant(nextId: string) {
     setVariantId(nextId);
@@ -1453,7 +1551,7 @@ function ProductConfigurator({
 
   function submit() {
     if (unavailable) return;
-    for (const group of product.modifierGroups) {
+    for (const group of visibleGroups) {
       const count = Object.keys(options[group.id] ?? {}).length;
       if (count < group.minSelections || count > group.maxSelections) {
         setSelectionError(
@@ -1466,7 +1564,7 @@ function ProductConfigurator({
         return;
       }
     }
-    onAdd({
+    onSubmit({
       ...(variantId ? { variantId } : {}),
       selections: product.modifierGroups.map((group) => {
         const selected = options[group.id] ?? {};
@@ -1492,17 +1590,31 @@ function ProductConfigurator({
       title={product.name}
       description={t('Choose the size and options for this order item.')}
       closeLabel={t('Close')}
-      className="max-h-[min(86vh,760px)] overflow-y-auto text-sm"
+      className="flex max-h-[min(86dvh,760px)] flex-col overflow-hidden text-sm"
     >
-      <div className="grid max-h-[calc(86vh-100px)] gap-2 overflow-y-auto pe-0.5">
+      <div
+        className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3"
+        data-testid="pos-product-configurator"
+      >
         {product.variants.length > 0 && (
-          <fieldset className="grid gap-2 rounded-lg border border-border p-3">
-            <legend className="px-1 text-xs font-bold">{t('Size')}</legend>
-            {product.variants
-              .filter((variant) => variant.availability === 'available')
-              .map((variant) => (
+          <fieldset className="grid gap-2 rounded-xl border border-border bg-background p-3">
+            <legend className="px-1 text-xs font-bold">{t('Choose a size')}</legend>
+            {availableVariants.length === 0 ? (
+              <p
+                className="rounded-lg border border-destructive/30 bg-card p-3 text-xs text-destructive"
+                role="status"
+              >
+                {t('No variants are currently available.')}
+              </p>
+            ) : (
+              availableVariants.map((variant) => (
                 <label
-                  className="grid min-h-10 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-md bg-secondary p-2 text-xs"
+                  className={cn(
+                    'grid min-h-11 cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-lg border px-3 py-2 text-sm transition-colors',
+                    variantId === variant.id
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border bg-card hover:bg-secondary',
+                  )}
                   key={variant.id}
                 >
                   <input
@@ -1513,81 +1625,132 @@ function ProductConfigurator({
                     className="accent-primary"
                   />
                   <span>{variant.name}</span>
-                  <strong className="text-[11px] tabular-nums">
+                  <strong className="text-xs tabular-nums">
                     {formatNumber(Number(variant.price), {
                       style: 'currency',
                       currency: product.currency,
                     })}
                   </strong>
                 </label>
-              ))}
+              ))
+            )}
           </fieldset>
         )}
-        {product.modifierGroups.map((group) => {
-          const groupAvailable =
-            group.variantOverrides?.find((override) => override.variantId === variantId)
-              ?.available !== false;
-          if (!groupAvailable) return null;
+        {visibleGroups.map((group) => {
+          const selectedCount = Object.values(options[group.id] ?? {}).filter(
+            (quantity) => quantity > 0,
+          ).length;
+          const availableOptions = group.options.filter(
+            (option) =>
+              option.variantOverrides?.find((override) => override.variantId === variantId)
+                ?.available !== false,
+          );
           return (
-            <fieldset className="grid gap-2 rounded-lg border border-border p-3" key={group.id}>
+            <fieldset
+              className="grid gap-2 rounded-xl border border-border bg-background p-3"
+              key={group.id}
+            >
               <legend className="px-1 text-xs font-bold">{group.name}</legend>
-              {group.description && (
-                <p className="text-[11px] text-muted-foreground">{group.description}</p>
-              )}
-              {group.options
-                .filter(
-                  (option) =>
-                    option.variantOverrides?.find((override) => override.variantId === variantId)
-                      ?.available !== false,
-                )
-                .map((option) => {
+              <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                <span>
+                  {group.description || (group.minSelections > 0 ? t('Required') : t('Optional'))}
+                </span>
+                <span className="tabular-nums">
+                  {selectedCount}/{group.maxSelections}
+                </span>
+              </div>
+              {availableOptions.length === 0 ? (
+                <p
+                  className="rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground"
+                  role="status"
+                >
+                  {t('No options are available for this selection.')}
+                </p>
+              ) : (
+                availableOptions.map((option) => {
                   const quantity = options[group.id]?.[option.id] ?? 0;
                   const inputType = group.selectionMode === 'single' ? 'radio' : 'checkbox';
+                  const override = option.variantOverrides?.find(
+                    (candidate) => candidate.variantId === variantId,
+                  );
+                  const priceAdjustment = override?.priceAdjustment ?? option.priceAdjustment;
                   return (
-                    <label
-                      className="grid min-h-10 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-md bg-secondary p-2 text-xs"
+                    <div
+                      className={cn(
+                        'grid min-h-11 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-lg border px-3 py-2 transition-colors',
+                        quantity > 0
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border bg-card hover:bg-secondary',
+                      )}
                       key={option.id}
                     >
                       <input
+                        id={`modifier-${group.id}-${option.id}`}
                         type={inputType}
-                        name={`modifier-${group.id}`}
+                        name={`modifier-${product.id}-${group.id}`}
                         checked={quantity > 0}
-                        className="accent-primary"
+                        className="size-4 accent-primary"
                         onChange={(event) =>
                           setOption(group.id, option.id, event.target.checked ? 1 : 0)
                         }
                       />
-                      <span>{option.name}</span>
-                      <strong>
-                        {formatNumber(Number(option.priceAdjustment), {
-                          style: 'currency',
-                          currency: product.currency,
-                        })}
-                      </strong>
-                      {quantity > 0 && (option.maxQuantity ?? 1) > 1 && (
-                        <Input
+                      <label
+                        htmlFor={`modifier-${group.id}-${option.id}`}
+                        className="flex min-w-0 cursor-pointer flex-col text-xs"
+                      >
+                        <span className="font-medium">{option.name}</span>
+                        <span className="text-[11px] text-muted-foreground">
+                          {Number(priceAdjustment) > 0
+                            ? `+${formatNumber(Number(priceAdjustment), { style: 'currency', currency: product.currency })}`
+                            : t('Included')}
+                        </span>
+                      </label>
+                      {quantity > 0 && (option.maxQuantity ?? 1) > 1 ? (
+                        <div
+                          className="flex h-8 items-center gap-2 rounded-md border border-border px-1"
                           aria-label={t('Quantity for {{option}}', { option: option.name })}
-                          type="number"
-                          min="1"
-                          max={option.maxQuantity}
-                          value={quantity}
-                          className="col-start-2 col-end-4 min-h-8 w-20"
-                          onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                            setOption(
-                              group.id,
-                              option.id,
-                              Math.max(
-                                1,
-                                Math.min(option.maxQuantity ?? 1, Number(event.target.value)),
-                              ),
-                            )
-                          }
-                        />
+                        >
+                          <button
+                            type="button"
+                            className="flex size-7 items-center justify-center rounded text-muted-foreground hover:bg-secondary"
+                            aria-label={t('Remove one {{option}}', { option: option.name })}
+                            onClick={() =>
+                              setOption(group.id, option.id, Math.max(1, quantity - 1))
+                            }
+                          >
+                            <Minus aria-hidden="true" size={14} />
+                          </button>
+                          <span className="min-w-4 text-center text-xs tabular-nums">
+                            {quantity}
+                          </span>
+                          <button
+                            type="button"
+                            className="flex size-7 items-center justify-center rounded text-muted-foreground hover:bg-secondary"
+                            aria-label={t('Add one {{option}}', { option: option.name })}
+                            disabled={quantity >= (option.maxQuantity ?? 1)}
+                            onClick={() =>
+                              setOption(
+                                group.id,
+                                option.id,
+                                Math.min(option.maxQuantity ?? 1, quantity + 1),
+                              )
+                            }
+                          >
+                            <Plus aria-hidden="true" size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <strong className="text-xs tabular-nums">
+                          {Number(priceAdjustment) > 0
+                            ? `+${formatNumber(Number(priceAdjustment), { style: 'currency', currency: product.currency })}`
+                            : ''}
+                        </strong>
                       )}
-                    </label>
+                    </div>
                   );
-                })}
-              <small className="text-[11px] text-muted-foreground">
+                })
+              )}
+              <small className="text-[11px] text-muted-foreground" aria-live="polite">
                 {t('Choose {{minimum}} to {{maximum}}', {
                   minimum: group.minSelections,
                   maximum: group.maxSelections,
@@ -1604,12 +1767,33 @@ function ProductConfigurator({
             {selectionError}
           </p>
         )}
-        <div className="sticky bottom-0 flex justify-end gap-2 bg-card py-2">
-          <PosButton type="button" variant="outline" onClick={onClose}>
+      </div>
+      <div className="shrink-0 border-t border-border bg-card px-4 py-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <span className="text-xs text-muted-foreground">{t('Estimated item total')}</span>
+          <strong data-testid="pos-configured-item-total" className="text-base tabular-nums">
+            {formatNumber((basePriceCents + modifierPriceCents) / 100, {
+              style: 'currency',
+              currency: product.currency,
+            })}
+          </strong>
+        </div>
+        <div className="flex gap-2">
+          <PosButton type="button" className="flex-1" variant="outline" onClick={onClose}>
             {t('Cancel')}
           </PosButton>
-          <PosButton type="button" variant="solid" disabled={unavailable} onClick={submit}>
-            {t('Add item')}
+          <PosButton
+            type="button"
+            className="flex-[2]"
+            variant="solid"
+            disabled={unavailable}
+            onClick={submit}
+          >
+            {submitLabel} ·{' '}
+            {formatNumber((basePriceCents + modifierPriceCents) / 100, {
+              style: 'currency',
+              currency: product.currency,
+            })}
           </PosButton>
         </div>
       </div>
@@ -1639,6 +1823,70 @@ function defaultSelections(
       return [group.id, Object.fromEntries(defaults)];
     }),
   );
+}
+
+function toDraftSelections(configured: ConfiguredProduct): PosDraftLine['selections'] {
+  return configured.selections.map((selection) => ({
+    groupId: selection.groupId,
+    options: (selection.optionQuantities?.length
+      ? selection.optionQuantities
+      : selection.optionIds.map((optionId) => ({ optionId, quantity: 1 }))
+    ).map((option) => ({ optionId: option.optionId, quantity: option.quantity })),
+  }));
+}
+
+function draftLineConfiguration(line: PosDraftLine | undefined): ConfiguredProduct | undefined {
+  if (!line) return undefined;
+  return {
+    ...(line.variantId ? { variantId: line.variantId } : {}),
+    selections: line.selections.map((selection) => ({
+      groupId: selection.groupId,
+      optionIds: selection.options.map((option) => option.optionId),
+      optionQuantities: selection.options,
+    })),
+  };
+}
+
+function configuredSelections(
+  product: PublicStorefrontProduct,
+  variantId: string,
+  initialConfiguration: ConfiguredProduct | undefined,
+): Record<string, Record<string, number>> {
+  const selections = defaultSelections(product, variantId);
+  if (!initialConfiguration) return selections;
+
+  for (const saved of initialConfiguration.selections) {
+    const group = product.modifierGroups.find((item) => item.id === saved.groupId);
+    const groupAvailable =
+      group?.variantOverrides?.find((override) => override.variantId === variantId)?.available !==
+      false;
+    if (!group || !groupAvailable) continue;
+    const availableOptions = new Map(
+      group.options
+        .filter(
+          (option) =>
+            option.variantOverrides?.find((override) => override.variantId === variantId)
+              ?.available !== false,
+        )
+        .map((option) => [option.id, option.maxQuantity ?? 1]),
+    );
+    const savedOptions = saved.optionQuantities?.length
+      ? saved.optionQuantities
+      : saved.optionIds.map((optionId) => ({ optionId, quantity: 1 }));
+    selections[group.id] = Object.fromEntries(
+      savedOptions.flatMap((option) => {
+        const maximum = availableOptions.get(option.optionId);
+        return maximum === undefined || option.quantity <= 0
+          ? []
+          : [[option.optionId, Math.min(option.quantity, maximum)]];
+      }),
+    );
+  }
+  return selections;
+}
+
+function productHasChoices(product: PublicStorefrontProduct): boolean {
+  return product.variants.length > 0 || product.modifierGroups.length > 0;
 }
 
 function summarizeSelections(

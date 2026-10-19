@@ -63,18 +63,22 @@ export function PurchaseInvoiceEditor({
   invoice,
   busy,
   error,
+  errorDetails,
   text,
   formatDigits,
   draftStorageKey,
+  onClearError,
   onClose,
   onSave,
 }: {
   invoice: PurchaseInvoice | null;
   busy: boolean;
   error: string;
+  errorDetails: string;
   text: (value: string) => string;
   formatDigits: (value: string) => string;
   draftStorageKey: string;
+  onClearError: () => void;
   onClose: () => void;
   onSave: (
     fields: Omit<CreatePurchaseInvoiceRequest, 'requestId'>,
@@ -172,6 +176,7 @@ export function PurchaseInvoiceEditor({
     );
     setFieldErrors({});
     setFormError('');
+    onClearError();
   }
   async function createSupplier(fields: SupplierFields, requestId?: string) {
     if (supplierSaving.current) return;
@@ -184,6 +189,7 @@ export function PurchaseInvoiceEditor({
         body: JSON.stringify({ ...fields, requestId }),
       });
       setSupplierId(supplier.id);
+      onClearError();
       setCreatingSupplier(null);
     } catch (cause) {
       setSupplierError(
@@ -195,6 +201,8 @@ export function PurchaseInvoiceEditor({
     }
   }
   function updateLine(key: string, change: Partial<InvoiceLineDraft>) {
+    onClearError();
+    setFormError('');
     setLines((current) =>
       current.map((line) => {
         if (line.key !== key) return line;
@@ -206,6 +214,7 @@ export function PurchaseInvoiceEditor({
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError('');
+    onClearError();
     if (!supplierId || !warehouseId) {
       setStep(1);
       setFieldErrors({
@@ -285,7 +294,11 @@ export function PurchaseInvoiceEditor({
               <li aria-current={step === 2 ? 'step' : undefined}>{text('Items and quantities')}</li>
               <li>{text('Review and receive')}</li>
             </ol>
-            <fieldset className="inventory-form-section" hidden={step !== 1} disabled={busy}>
+            <fieldset
+              className="inventory-form-section inventory-purchase-details"
+              hidden={step !== 1}
+              disabled={busy}
+            >
               <div className="inventory-picker-field">
                 <div className="inventory-pack-heading">
                   <span>{text('Supplier')}</span>
@@ -314,6 +327,7 @@ export function PurchaseInvoiceEditor({
                   }}
                   createLabel={text('Create supplier')}
                   onSelect={(supplier) => {
+                    onClearError();
                     setSupplierId(supplier?.id ?? '');
                     setFieldErrors((current) => ({ ...current, supplierId: '' }));
                   }}
@@ -325,22 +339,27 @@ export function PurchaseInvoiceEditor({
                   </small>
                 )}
               </div>
-              <label>
+              <label className="inventory-purchase-invoice-number">
                 {text('Supplier invoice number')}{' '}
                 <small aria-hidden="true">{text('Optional')}</small>
                 <Input
                   aria-label={text('Supplier invoice number')}
                   maxLength={100}
                   value={supplierInvoiceNumber}
-                  onChange={(event) => setSupplierInvoiceNumber(event.target.value)}
+                  onChange={(event) => {
+                    onClearError();
+                    setSupplierInvoiceNumber(event.target.value);
+                  }}
                 />
               </label>
-              <div className="inventory-picker-field">
+              <div className="inventory-picker-field inventory-purchase-warehouse-field">
                 {text('Warehouse')}
                 <WarehousePicker
                   value={warehouseId}
                   label={text('Warehouse')}
+                  searchMode="combobox"
                   onSelect={(warehouse) => {
+                    onClearError();
                     setWarehouseId(warehouse?.id ?? '');
                     setFieldErrors((current) => ({ ...current, warehouseId: '' }));
                   }}
@@ -393,9 +412,11 @@ export function PurchaseInvoiceEditor({
                       {text('Stock condition')}
                       <select
                         value={line.condition}
-                        onChange={(event) =>
-                          updateLine(line.key, { condition: event.target.value as StockCondition })
-                        }
+                        onChange={(event) => {
+                          updateLine(line.key, {
+                            condition: event.target.value as StockCondition,
+                          });
+                        }}
                       >
                         <option value="available">{text('Available')}</option>
                         <option value="non_sellable">{text('Non-Sellable')}</option>
@@ -449,11 +470,13 @@ export function PurchaseInvoiceEditor({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() =>
+                        onClick={() => {
+                          onClearError();
+                          setFormError('');
                           setLines((current) =>
                             current.filter((candidate) => candidate.key !== line.key),
-                          )
-                        }
+                          );
+                        }}
                       >
                         {text('Remove line')}
                       </Button>
@@ -466,16 +489,28 @@ export function PurchaseInvoiceEditor({
                   type="button"
                   variant="outline"
                   disabled={lines.length >= 100 || busy}
-                  onClick={() => setLines((current) => [...current, emptyLine()])}
+                  onClick={() => {
+                    onClearError();
+                    setFormError('');
+                    setLines((current) => [...current, emptyLine()]);
+                  }}
                 >
                   {text('Add line')}
                 </Button>
               </div>
             </fieldset>
-            {(formError || error) && (
-              <p className="inventory-error" role="alert">
-                {formError || error}
-              </p>
+            {(formError || (step === 2 ? error : '')) && (
+              <div className="inventory-error" role="alert">
+                <div className="inventory-error-content">
+                  <span>{formError || (step === 2 ? error : '')}</span>
+                  {!formError && step === 2 && errorDetails && errorDetails !== error && (
+                    <details className="inventory-error-details">
+                      <summary>{text('View error details')}</summary>
+                      <code>{errorDetails}</code>
+                    </details>
+                  )}
+                </div>
+              </div>
             )}
             <p className="inventory-note">
               {text(
@@ -489,7 +524,15 @@ export function PurchaseInvoiceEditor({
                 {text('Back to purchases')}
               </Button>
               {step === 2 && (
-                <Button type="button" variant="outline" disabled={busy} onClick={() => setStep(1)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => {
+                    onClearError();
+                    setStep(1);
+                  }}
+                >
                   {text('Back')}
                 </Button>
               )}
@@ -500,6 +543,7 @@ export function PurchaseInvoiceEditor({
                   disabled={busy}
                   onClick={(event) => {
                     event.preventDefault();
+                    onClearError();
                     if (!supplierId || !warehouseId) {
                       setFormError('');
                       setFieldErrors((current) => ({

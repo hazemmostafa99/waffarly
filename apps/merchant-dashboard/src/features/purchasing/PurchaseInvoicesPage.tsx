@@ -3,7 +3,7 @@ import {
   CursorPageControls as PageControls,
   type CursorPageState as PageState,
 } from '../../components/CursorPageControls.js';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Badge, Button, DataTable, Input, useLocale, type DataTableColumn } from '@waffarly/ui';
 import type {
   CreatePurchaseInvoiceRequest,
@@ -12,7 +12,7 @@ import type {
   PurchaseSupplier,
 } from '@waffarly/contracts';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
-import { apiRequest, apiRequestPage } from '../../lib/api-client.js';
+import { ApiError, apiRequest, apiRequestPage } from '../../lib/api-client.js';
 import { inventoryCopy } from '../inventory/inventory-copy.js';
 import { useLocation, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import { InventoryHeader } from '../inventory/InventoryHeader.js';
@@ -21,6 +21,11 @@ import { SupplierEditor } from './SupplierEditor.js';
 import { PurchaseInvoiceEditor } from './PurchaseInvoiceEditor.js';
 
 type SupplierEditorState = { supplier: PurchaseSupplier | null; key: string };
+
+function getRequestErrorDetails(cause: unknown) {
+  if (cause instanceof ApiError) return `${cause.statusCode}: ${cause.message}`;
+  return cause instanceof Error ? cause.message : '';
+}
 
 export function PurchaseInvoicesPage() {
   const { locale, t, errorText, formatDigits } = useLocale();
@@ -32,7 +37,9 @@ export function PurchaseInvoicesPage() {
   const normalizedPath = pathname.replace(/\/$/, '');
   const isNewInvoiceRoute = normalizedPath === '/inventory/purchases/new';
   const editRouteMatch = normalizedPath.match(/^\/inventory\/purchases\/([^/]+)\/edit$/);
-  const sourceInvoiceMatch = normalizedPath.match(/^\/inventory\/purchases\/([^/]+)$/);
+  const sourceInvoiceMatch = normalizedPath.match(
+    /^\/inventory\/purchases\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i,
+  );
   const editorInvoiceId = editRouteMatch?.[1] ?? null;
   const sourceInvoiceId = sourceInvoiceMatch?.[1] ?? null;
   const isInvoiceEditor = isNewInvoiceRoute || editorInvoiceId !== null;
@@ -61,7 +68,12 @@ export function PurchaseInvoicesPage() {
   const [supplierHistory, setSupplierHistory] = useState<PageState[]>([]);
   const [supplierNext, setSupplierNext] = useState<string | null>(null);
   const [suppliersLoading, setSuppliersLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
+  const [loadError, setLoadErrorState] = useState('');
+  const [loadErrorDetails, setLoadErrorDetails] = useState('');
+  const setLoadError = useCallback((message: string, details = '') => {
+    setLoadErrorState(message);
+    setLoadErrorDetails(details);
+  }, []);
   const [invoiceListError, setInvoiceListError] = useState('');
   const [supplierListError, setSupplierListError] = useState('');
   const [notice, setNotice] = useState('');
@@ -73,6 +85,11 @@ export function PurchaseInvoicesPage() {
   const [supplierEditor, setSupplierEditor] = useState<SupplierEditorState | null>(null);
   const [invoiceReview, setInvoiceReview] = useState<PurchaseInvoice | null>(null);
   const [supplierArchive, setSupplierArchive] = useState<PurchaseSupplier | null>(null);
+
+  useEffect(() => {
+    setLoadError('');
+  }, [pathname, setLoadError]);
+
   useEffect(() => {
     if (!sourceInvoiceId) return;
     let current = true;
@@ -84,12 +101,13 @@ export function PurchaseInvoicesPage() {
             cause instanceof Error
               ? errorText(cause.message)
               : inventoryCopy('Could not load the purchase invoice.', locale, t),
+            getRequestErrorDetails(cause),
           );
       });
     return () => {
       current = false;
     };
-  }, [errorText, locale, sourceInvoiceId, t]);
+  }, [errorText, locale, setLoadError, sourceInvoiceId, t]);
   useEffect(() => {
     if (searchParams.get('new') !== '1') return;
     navigate('/inventory/purchases/new', { replace: true });
@@ -359,6 +377,7 @@ export function PurchaseInvoicesPage() {
     } catch (cause) {
       setLoadError(
         cause instanceof Error ? errorText(cause.message) : text('Could not save the supplier.'),
+        getRequestErrorDetails(cause),
       );
     } finally {
       setBusy(false);
@@ -379,6 +398,7 @@ export function PurchaseInvoicesPage() {
     } catch (cause) {
       setLoadError(
         cause instanceof Error ? errorText(cause.message) : text('Could not update the supplier.'),
+        getRequestErrorDetails(cause),
       );
     } finally {
       setBusy(false);
@@ -425,6 +445,7 @@ export function PurchaseInvoicesPage() {
         cause instanceof Error
           ? errorText(cause.message)
           : text('Could not save the purchase invoice.'),
+        getRequestErrorDetails(cause),
       );
     } finally {
       setBusy(false);
@@ -466,6 +487,7 @@ export function PurchaseInvoicesPage() {
         cause instanceof Error
           ? errorText(cause.message)
           : text('Could not confirm the purchase invoice.'),
+        getRequestErrorDetails(cause),
       );
     } finally {
       setBusy(false);
@@ -521,10 +543,16 @@ export function PurchaseInvoicesPage() {
               invoice={editorInvoice}
               busy={busy}
               error={loadError}
+              errorDetails={loadErrorDetails}
               text={text}
               formatDigits={formatDigits}
               draftStorageKey={`waffarly:purchase-invoice:${profile.merchantId}:${editorInvoice?.id ?? 'new'}`}
-              onClose={() => !busy && navigate('/inventory/purchases')}
+              onClearError={() => setLoadError('')}
+              onClose={() => {
+                if (busy) return;
+                setLoadError('');
+                navigate('/inventory/purchases');
+              }}
               onSave={(fields, requestId, revision, reviewAfterSave) =>
                 void saveInvoice(fields, requestId, revision, reviewAfterSave)
               }
@@ -561,7 +589,15 @@ export function PurchaseInvoicesPage() {
       )}
       {loadError && (
         <div className="inventory-error" role="alert">
-          <span>{loadError}</span>
+          <div className="inventory-error-content">
+            <span>{loadError}</span>
+            {loadErrorDetails && loadErrorDetails !== loadError && (
+              <details className="inventory-error-details">
+                <summary>{text('View error details')}</summary>
+                <code>{loadErrorDetails}</code>
+              </details>
+            )}
+          </div>
           <Button type="button" variant="ghost" size="sm" onClick={() => setLoadError('')}>
             {text('Close')}
           </Button>

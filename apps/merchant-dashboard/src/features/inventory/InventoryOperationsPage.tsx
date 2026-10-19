@@ -681,7 +681,7 @@ export function InventoryOperationsPage({
               </div>
             </div>
           )}
-          <p className="inventory-note">
+          <p className="inventory-note inventory-health-note">
             {text('Health uses Available stock only. Non-Sellable quantities are excluded.')}
           </p>
         </InventoryCard>
@@ -854,6 +854,7 @@ export function InventoryOperationsPage({
             <WarehousePicker
               value={warehouseId}
               label={text('Filter by warehouse')}
+              searchMode="combobox"
               required={false}
               emptyLabel={text('All warehouses')}
               onSelect={(warehouse) => {

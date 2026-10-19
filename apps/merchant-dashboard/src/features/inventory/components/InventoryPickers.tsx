@@ -75,6 +75,7 @@ export function WarehousePicker({
   disabled = false,
   required = true,
   emptyLabel,
+  searchMode = 'separate',
 }: {
   value: string;
   label: string;
@@ -83,12 +84,14 @@ export function WarehousePicker({
   disabled?: boolean;
   required?: boolean;
   emptyLabel?: string;
+  searchMode?: 'separate' | 'combobox';
 }) {
   return (
     <PagedEntitySelect<InventoryWarehouseSummary>
       path="/owner/inventory/warehouses"
       value={value}
       label={label}
+      searchMode={searchMode}
       onSelect={onSelect}
       onResolve={onResolve}
       disabled={disabled}

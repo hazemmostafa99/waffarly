@@ -380,6 +380,7 @@ export function inventoryCopy(
       'الفاتورة مؤكدة مسبقًا، ولم تتم إضافة مخزون مكرر.',
     'Could not load purchase invoices.': 'تعذر تحميل فواتير الشراء.',
     'Could not save the purchase invoice.': 'تعذر حفظ فاتورة الشراء.',
+    'View error details': 'عرض تفاصيل الخطأ',
     'Could not confirm the purchase invoice.': 'تعذر تأكيد فاتورة الشراء.',
     'Confirming posts actual received quantities to this warehouse. Confirmed invoices cannot be edited.':
       'يضيف التأكيد الكميات المستلمة فعليًا إلى هذا المخزن. لا يمكن تعديل الفواتير المؤكدة.',
@@ -409,6 +410,11 @@ export function inventoryCopy(
     'Back to items': 'العودة إلى الأصناف',
     'Could not load stock health.': 'تعذر تحميل حالة المخزون.',
     'Stock health summary': 'ملخص حالة المخزون',
+    'Counts cover configured item and warehouse pairs across the selected merchant scope.':
+      'تشمل الأعداد أزواج الأصناف والمستودعات المُعدّة ضمن نطاق التاجر المحدد.',
+    'View stock health': 'عرض حالة المخزون',
+    'Health uses Available stock only. Non-Sellable quantities are excluded.':
+      'تعتمد حالة المخزون على الكميات المتاحة فقط، ولا تشمل الكميات غير الصالحة للبيع.',
     'Counts cover all configured item and warehouse pairs in this filter, not just this page.':
       'تشمل الأعداد كل أزواج الأصناف والمستودعات المعدّة ضمن هذا الفلتر، وليس هذه الصفحة فقط.',
     'Low stock': 'مخزون منخفض',
@@ -459,6 +465,8 @@ export function inventoryCopy(
     'View movement': 'عرض الحركة',
     'Could not load stock item details.': 'تعذر تحميل تفاصيل صنف المخزون.',
     'Movement details': 'تفاصيل الحركة',
+    'Movement summary': 'ملخص الحركة',
+    'Technical references': 'المعرّفات التقنية',
     'Review the immutable quantity change and follow its recorded source.':
       'راجع تغيير الكمية المسجل ومصدره.',
     'Back to movement history': 'العودة إلى سجل الحركات',

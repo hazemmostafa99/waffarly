@@ -572,7 +572,8 @@ for (const locale of ['en', 'ar']) {
       exact: true,
     });
     await expect(warehouseFilter).toBeEnabled();
-    await warehouseFilter.selectOption(warehouseId);
+    await warehouseFilter.fill('Main');
+    await page.getByRole('option').filter({ hasText: 'Main' }).click();
     await expect
       .poll(() => balanceRequests.at(-1)?.searchParams.get('warehouseId'))
       .toBe(warehouseId);

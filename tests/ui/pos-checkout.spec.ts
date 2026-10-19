@@ -7,6 +7,112 @@ const registerId = '44444444-4444-4444-8444-444444444444';
 const orderId = '55555555-5555-4555-8555-555555555555';
 const checkId = '66666666-6666-4666-8666-666666666666';
 const productId = '77777777-7777-4777-8777-777777777777';
+const largeVariantId = '88888888-8888-4888-8888-888888888881';
+const sauceGroupId = '99999999-9999-4999-8999-999999999991';
+const extrasGroupId = '99999999-9999-4999-8999-999999999992';
+const classicSauceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1';
+const spicySauceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2';
+const extraCheeseId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3';
+
+function testCatalogProduct(configurable = false) {
+  if (!configurable) {
+    return {
+      id: productId,
+      name: 'Test coffee',
+      description: null,
+      basePrice: '34.86',
+      currency: 'EGP' as const,
+      sellingUnit: 'piece' as const,
+      images: [],
+      categories: [],
+      modifierGroups: [],
+      variants: [],
+    };
+  }
+  return {
+    id: productId,
+    name: 'Test burger',
+    description: null,
+    basePrice: '34.86',
+    currency: 'EGP' as const,
+    sellingUnit: 'piece' as const,
+    images: [],
+    categories: [],
+    modifierGroups: [
+      {
+        id: sauceGroupId,
+        modifierGroupId: sauceGroupId,
+        variantOverrides: [],
+        name: 'Sauce',
+        description: null,
+        selectionMode: 'single' as const,
+        minSelections: 1,
+        maxSelections: 1,
+        position: 0,
+        options: [
+          {
+            id: classicSauceId,
+            name: 'Classic sauce',
+            priceAdjustment: '0.00',
+            defaultSelected: true,
+            maxQuantity: 1,
+            variantOverrides: [],
+            position: 0,
+          },
+          {
+            id: spicySauceId,
+            name: 'Spicy mayo',
+            priceAdjustment: '2.50',
+            defaultSelected: false,
+            maxQuantity: 1,
+            variantOverrides: [],
+            position: 1,
+          },
+        ],
+      },
+      {
+        id: extrasGroupId,
+        modifierGroupId: extrasGroupId,
+        variantOverrides: [],
+        name: 'Extras',
+        description: null,
+        selectionMode: 'multiple' as const,
+        minSelections: 0,
+        maxSelections: 2,
+        position: 1,
+        options: [
+          {
+            id: extraCheeseId,
+            name: 'Extra cheese',
+            priceAdjustment: '10.00',
+            defaultSelected: false,
+            maxQuantity: 2,
+            variantOverrides: [],
+            position: 0,
+          },
+        ],
+      },
+    ],
+    variants: [
+      {
+        id: productId,
+        name: 'Regular',
+        price: '34.86',
+        availability: 'available' as const,
+        position: 0,
+        attributes: [],
+      },
+      {
+        id: largeVariantId,
+        name: 'Large',
+        price: '49.86',
+        availability: 'available' as const,
+        position: 1,
+        attributes: [],
+      },
+    ],
+  };
+}
 
 async function showOrder(page: Page) {
   const navigation = page.getByTestId('pos-mobile-navigation');
@@ -77,6 +183,7 @@ async function openCheckout(
   mobile = false,
   catalogOnly = false,
   arabic = false,
+  configurableCatalog = false,
 ) {
   if (mobile) await page.setViewportSize({ width: 390, height: 844 });
   const orderState = paymentState();
@@ -122,33 +229,44 @@ async function openCheckout(
     route.fulfill({
       json: {
         categories: { items: [], nextCursor: null },
-        products: {
-          items: [
-            {
-              id: productId,
-              name: 'Test coffee',
-              description: null,
-              basePrice: '34.86',
-              currency: 'EGP',
-              sellingUnit: 'piece',
-              images: [],
-              categories: [],
-              modifierGroups: [],
-              variants: [],
-            },
-          ],
-          nextCursor: null,
-        },
+        products: { items: [testCatalogProduct(configurableCatalog)], nextCursor: null },
       },
     }),
   );
   await page.route('**/pos/orders/quote', async (route) => {
     const input = route.request().postDataJSON() as {
-      items: Array<{ lineId: string; quantity: number }>;
+      items: Array<{
+        lineId: string;
+        quantity: number;
+        variantId?: string;
+        selections?: Array<{
+          optionIds?: string[];
+          optionQuantities?: Array<{ optionId: string; quantity: number }>;
+        }>;
+      }>;
     };
-    const total = (input.items.reduce((sum, line) => sum + line.quantity * 3486, 0) / 100).toFixed(
-      2,
+    const baseCents = (line: (typeof input.items)[number]) =>
+      line.variantId === largeVariantId ? 4986 : 3486;
+    const modifierCents = (line: (typeof input.items)[number]) => {
+      const selections = line.selections ?? [];
+      const options = selections.flatMap((selection) =>
+        selection.optionQuantities?.length
+          ? selection.optionQuantities
+          : (selection.optionIds ?? []).map((optionId) => ({ optionId, quantity: 1 })),
+      );
+      return options.reduce(
+        (sum, option) =>
+          sum +
+          (option.optionId === spicySauceId ? 250 : option.optionId === extraCheeseId ? 1000 : 0) *
+            option.quantity,
+        0,
+      );
+    };
+    const totalCents = input.items.reduce(
+      (sum, line) => sum + line.quantity * (baseCents(line) + modifierCents(line)),
+      0,
     );
+    const total = (totalCents / 100).toFixed(2);
     await route.fulfill({
       json: {
         currency: 'EGP',
@@ -157,17 +275,17 @@ async function openCheckout(
         items: input.items.map((line) => ({
           lineId: line.lineId,
           quantity: line.quantity,
-          lineTotal: ((line.quantity * 3486) / 100).toFixed(2),
+          lineTotal: ((line.quantity * (baseCents(line) + modifierCents(line))) / 100).toFixed(2),
           quote: {
             productId,
             productRevision: 1,
-            variantId: null,
-            variantName: null,
+            variantId: line.variantId ?? null,
+            variantName: line.variantId === largeVariantId ? 'Large' : null,
             variantAttributes: [],
             currency: 'EGP',
-            basePrice: '34.86',
-            modifierTotal: '0.00',
-            totalPrice: '34.86',
+            basePrice: (baseCents(line) / 100).toFixed(2),
+            modifierTotal: (modifierCents(line) / 100).toFixed(2),
+            totalPrice: ((baseCents(line) + modifierCents(line)) / 100).toFixed(2),
             selections: [],
           },
         })),
@@ -274,7 +392,7 @@ async function openCheckout(
     };
   }
   await page.getByRole('button', { name: 'Add item: Test coffee', exact: true }).click();
-  await page.getByRole('button', { name: 'Add item', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await showOrder(page);
   await page.getByRole('button', { name: 'Confirm order', exact: true }).click();
   if (arabic) await page.getByRole('button', { name: 'Change language' }).click();
@@ -371,7 +489,7 @@ test('live POS uses the prototype workspace design with the real catalog and sav
   await page.getByLabel('Theme').selectOption('dark');
 
   await page.getByRole('button', { name: 'Add item: Test coffee', exact: true }).click();
-  await page.getByRole('button', { name: 'Add item', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await showOrder(page);
   await expect(page.locator('.pos-live-cart-line')).toHaveCount(1);
   await expect(page.locator('.pos-draft-tab.is-active')).toContainText('1 items');
@@ -400,6 +518,77 @@ test('live POS uses the prototype workspace design with the real catalog and sav
     .click();
   await expect(page.locator('.pos-live-cart-line')).toHaveCount(1);
   await page.screenshot({ path: 'test-results/pos-live-catalog.png', fullPage: true });
+});
+
+test('configurable products show variants, required choices, extras, and the estimated price', async ({
+  page,
+}, testInfo) => {
+  await openCheckout(page, false, false, true, false, true);
+
+  const product = page.getByRole('button', { name: 'Customize item: Test burger', exact: true });
+  await expect(product).toBeVisible();
+  await product.click();
+
+  const dialog = page.getByRole('dialog', { name: 'Test burger' });
+  await expect(dialog).toBeVisible();
+  const configurator = dialog.getByTestId('pos-product-configurator');
+  await expect(configurator.getByRole('group', { name: 'Choose a size' })).toContainText('Large');
+  await expect(configurator.getByRole('group', { name: 'Sauce' })).toContainText('Required');
+  await expect(configurator.getByRole('group', { name: 'Extras' })).toContainText('Optional');
+  await expect(configurator.getByLabel('Classic sauce')).toBeChecked();
+
+  await configurator.getByLabel('Large').check();
+  await configurator.getByLabel('Spicy mayo').check();
+  await configurator.getByLabel('Extra cheese').check();
+  await configurator.getByRole('button', { name: 'Add one Extra cheese' }).click();
+  await expect(dialog.getByTestId('pos-configured-item-total')).toContainText('72.36');
+  await page.screenshot({ path: testInfo.outputPath('product-options-configurator.png') });
+
+  await dialog.getByRole('button', { name: /Add item/ }).click();
+  await expect(dialog).toHaveCount(0);
+  await showOrder(page);
+  const line = page.locator('.pos-live-cart-line');
+  await expect(line).toContainText('Large');
+  await expect(line).toContainText('Spicy mayo');
+  await expect(line).toContainText('Extra cheese ×2');
+  await expect(line).toContainText('EGP 72.36');
+
+  await page.getByRole('button', { name: 'Increase quantity: Test burger', exact: true }).click();
+  await expect(line).toContainText('EGP 144.72');
+  await line.locator('summary').click();
+  await page.getByRole('textbox', { name: 'Item note for Test burger' }).fill('No onion');
+
+  await page.getByRole('button', { name: 'Edit options: Test burger', exact: true }).click();
+  const editDialog = page.getByRole('dialog', { name: 'Test burger' });
+  const editConfigurator = editDialog.getByTestId('pos-product-configurator');
+  await expect(editConfigurator.getByLabel('Large')).toBeChecked();
+  await expect(editConfigurator.getByLabel('Spicy mayo')).toBeChecked();
+  await expect(editConfigurator.getByLabel('Classic sauce')).not.toBeChecked();
+  await expect(editConfigurator.getByRole('checkbox', { name: /Extra cheese/ })).toBeChecked();
+  await expect(editConfigurator.getByRole('group', { name: 'Extras' })).toContainText('2');
+  await editConfigurator.getByLabel('Classic sauce').check();
+  await expect(editDialog.getByTestId('pos-configured-item-total')).toContainText('69.86');
+  await editDialog.getByRole('button', { name: /Save changes/ }).click();
+  await expect(editDialog).toHaveCount(0);
+  await expect(line).toContainText('Large');
+  await expect(line).toContainText('Classic sauce');
+  await expect(line).not.toContainText('Spicy mayo');
+  await expect(line).toContainText('Extra cheese ×2');
+  await expect(line).toContainText('EGP 139.72');
+  await expect(line).toContainText('No onion');
+
+  await page.getByRole('button', { name: 'Edit options: Test burger', exact: true }).click();
+  const cancelledEdit = page.getByRole('dialog', { name: 'Test burger' });
+  const cancelledConfigurator = cancelledEdit.getByTestId('pos-product-configurator');
+  await expect(cancelledConfigurator.getByLabel('Classic sauce')).toBeChecked();
+  await cancelledConfigurator.getByLabel('Spicy mayo').check();
+  await cancelledEdit.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(cancelledEdit).toHaveCount(0);
+  await expect(line).toContainText('Classic sauce');
+  await expect(line).not.toContainText('Spicy mayo');
+  await expect(line).toContainText('EGP 139.72');
+  await expect(line).toContainText('No onion');
+  await page.screenshot({ path: testInfo.outputPath('configured-cart-line-edit-action.png') });
 });
 
 test('saved orders remain searchable and contained with fifty drafts; cleanup protects pending sales', async ({
@@ -1055,7 +1244,7 @@ test('mobile and tablet selling preserve menu scroll and draft notes when switch
     await expect(order).toBeHidden();
     await expect(navigation).toBeInViewport();
     await page.getByRole('button', { name: 'Add item: Test coffee', exact: true }).click();
-    await page.getByRole('button', { name: 'Add item', exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(navigation).toContainText('EGP 34.86');
     await menu.evaluate((element) => {
       element.scrollTop = 500;

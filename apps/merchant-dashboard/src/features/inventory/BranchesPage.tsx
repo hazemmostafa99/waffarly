@@ -210,6 +210,7 @@ export function BranchesPage() {
       <InventoryHeader
         title="Branches and warehouses"
         description="Each branch can hold multiple warehouses and has one default consumption warehouse."
+        showInventoryNavigation={false}
         actions={
           <Button
             type="button"

@@ -72,6 +72,12 @@ try {
   const image = await ensureDemoImage(merchant.id);
   const category = await ensureCategory(merchant.id, image.id);
   const product = await ensureRecipeProduct(merchant.id, image.id, category.id, stockItems);
+  const configurableProduct = await ensureConfigurableProduct(
+    merchant.id,
+    image.id,
+    category.id,
+    stockItems,
+  );
   await ensurePosEmployee(merchant.id, branch.id);
   const sampleOrder = await ensureSampleRecipeOrder(merchant.id, product.id);
 
@@ -84,6 +90,9 @@ try {
   console.log(`Demo password: ${DEMO.password}`);
   console.log(`Seeded branch: ${branch.name}; default warehouse: ${DEMO.warehouseName}.`);
   console.log(`Seeded product: ${product.name}; variants each have a RECIPE target.`);
+  console.log(
+    `POS configurator test product: ${configurableProduct.name}; two variants and three option groups.`,
+  );
   console.log(`POS practice order: ${DEMO.sampleOrderCustomerName} (${sampleOrder.status}).`);
 } finally {
   await client.$disconnect();
@@ -382,6 +391,126 @@ async function ensureRecipeProduct(
         availability: 'available',
         position: 1,
         attributes: [{ name: 'الحجم', value: 'كبيرة' }],
+      },
+    ],
+    inventoryConfiguration: {
+      mode: 'RECIPE',
+      targets: [
+        {
+          variantId: smallVariantId,
+          components: [
+            { stockItemId: item.flour, unitCode: 'g', quantity: '150' },
+            { stockItemId: item.mozzarella, unitCode: 'g', quantity: '80' },
+            { stockItemId: item.tomato, unitCode: 'ml', quantity: '60' },
+            { stockItemId: item.oil, unitCode: 'ml', quantity: '5' },
+            { stockItemId: item.mushroom, unitCode: 'g', quantity: '20' },
+          ],
+        },
+        {
+          variantId: largeVariantId,
+          components: [
+            { stockItemId: item.flour, unitCode: 'g', quantity: '230' },
+            { stockItemId: item.mozzarella, unitCode: 'g', quantity: '130' },
+            { stockItemId: item.tomato, unitCode: 'ml', quantity: '90' },
+            { stockItemId: item.oil, unitCode: 'ml', quantity: '8' },
+            { stockItemId: item.mushroom, unitCode: 'g', quantity: '35' },
+          ],
+        },
+      ],
+    },
+  };
+  return products.create(merchantId, DEMO.actor, input);
+}
+
+async function ensureConfigurableProduct(
+  merchantId: string,
+  imageAssetId: string,
+  categoryId: string,
+  item: Awaited<ReturnType<typeof ensureStockItems>>,
+) {
+  const name = 'بيتزا اختبار الخيارات';
+  const found = await client.product.findFirst({
+    where: { merchantId, name },
+    select: {
+      id: true,
+      name: true,
+      createdBy: true,
+      _count: { select: { variants: true, modifierGroups: true } },
+    },
+  });
+  if (found) {
+    if (found.createdBy !== DEMO.actor)
+      throw new Error('The POS configurator test product name is already used by other data.');
+    if (found._count.variants !== 2 || found._count.modifierGroups !== 3)
+      throw new Error('The POS configurator test product is incomplete; refusing to overwrite it.');
+    return found;
+  }
+
+  const smallVariantId = randomUUID();
+  const largeVariantId = randomUUID();
+  const input: CatalogProductFields = {
+    name,
+    description: 'صنف مخصص لاختبار اختيار الحجم والعجينة والإضافات في نقطة البيع.',
+    basePrice: '180.00',
+    availability: 'available',
+    imageAssetIds: [imageAssetId],
+    primaryImageAssetId: imageAssetId,
+    categoryIds: [categoryId],
+    variants: [
+      {
+        id: smallVariantId,
+        name: 'صغيرة',
+        price: '180.00',
+        availability: 'available',
+        position: 0,
+        attributes: [{ name: 'الحجم', value: 'صغيرة' }],
+      },
+      {
+        id: largeVariantId,
+        name: 'كبيرة',
+        price: '260.00',
+        availability: 'available',
+        position: 1,
+        attributes: [{ name: 'الحجم', value: 'كبيرة' }],
+      },
+    ],
+    modifierGroups: [
+      {
+        name: 'اختار نوع العجينة',
+        description: 'اختيار واحد مطلوب.',
+        selectionMode: 'single',
+        minSelections: 1,
+        maxSelections: 1,
+        position: 0,
+        options: [
+          { name: 'رقيقة', priceAdjustment: '0.00', defaultSelected: false, position: 0 },
+          { name: 'سميكة', priceAdjustment: '20.00', defaultSelected: false, position: 1 },
+        ],
+      },
+      {
+        name: 'إضافات اختيارية',
+        description: 'يمكن اختيار حتى ٣ إضافات.',
+        selectionMode: 'multiple',
+        minSelections: 0,
+        maxSelections: 3,
+        position: 1,
+        options: [
+          { name: 'جبنة إضافية', priceAdjustment: '25.00', defaultSelected: false, position: 0 },
+          { name: 'مشروم', priceAdjustment: '15.00', defaultSelected: false, position: 1 },
+          { name: 'زيتون', priceAdjustment: '10.00', defaultSelected: false, position: 2 },
+        ],
+      },
+      {
+        name: 'صوص جانبي',
+        description: 'اختيار واحد اختياري.',
+        selectionMode: 'single',
+        minSelections: 0,
+        maxSelections: 1,
+        position: 2,
+        options: [
+          { name: 'صوص الثوم', priceAdjustment: '12.00', defaultSelected: false, position: 0 },
+          { name: 'صوص حار', priceAdjustment: '10.00', defaultSelected: false, position: 1 },
+        ],
       },
     ],
     inventoryConfiguration: {
