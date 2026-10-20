@@ -25,6 +25,7 @@ import { hashPassword } from '../auth/index.js';
 type MerchantWithOwner = {
   id: string;
   name: string;
+  storefrontSlug: string;
   activity?: string;
   contactPhone: string;
   ownerName: string;
@@ -38,6 +39,7 @@ function toSummary(merchant: MerchantWithOwner): MerchantSummary {
   return {
     id: merchant.id,
     name: merchant.name,
+    businessCode: merchant.storefrontSlug,
     activity: (merchant.activity ?? 'other') as BusinessActivityKey,
     contactPhone: merchant.contactPhone,
     ownerName: merchant.ownerName,

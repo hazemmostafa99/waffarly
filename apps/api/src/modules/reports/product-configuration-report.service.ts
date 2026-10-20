@@ -60,7 +60,7 @@ export class ProductConfigurationReportService {
            JOIN "storefront_orders" legacy_order ON legacy_order."id" = legacy_line."orderId"
            WHERE legacy_line."merchantId" = ${merchantId}
              AND legacy_order."merchantId" = ${merchantId}
-             AND legacy_order."status" = 'accepted'
+             AND legacy_order."status" IN ('accepted', 'preparing', 'ready', 'completed')
              AND legacy_order."createdAt" >= ${start}
              AND legacy_order."createdAt" < ${endExclusive}
              AND (legacy_line."basePrice" IS NULL OR legacy_line."modifierTotal" IS NULL))
@@ -71,7 +71,7 @@ export class ProductConfigurationReportService {
            JOIN "storefront_orders" snapshot_order ON snapshot_order."id" = snapshot_line."orderId"
            WHERE snapshot_line."merchantId" = ${merchantId}
              AND snapshot_order."merchantId" = ${merchantId}
-             AND snapshot_order."status" = 'accepted'
+             AND snapshot_order."status" IN ('accepted', 'preparing', 'ready', 'completed')
              AND snapshot_order."createdAt" >= ${start}
              AND snapshot_order."createdAt" < ${endExclusive}
              AND (snapshot."attributeId" IS NULL OR snapshot."valueId" IS NULL))
@@ -82,7 +82,7 @@ export class ProductConfigurationReportService {
            JOIN "storefront_orders" snapshot_order ON snapshot_order."id" = snapshot_line."orderId"
            WHERE snapshot_line."merchantId" = ${merchantId}
              AND snapshot_order."merchantId" = ${merchantId}
-             AND snapshot_order."status" = 'accepted'
+             AND snapshot_order."status" IN ('accepted', 'preparing', 'ready', 'completed')
              AND snapshot_order."createdAt" >= ${start}
              AND snapshot_order."createdAt" < ${endExclusive}
              AND (snapshot."modifierGroupId" IS NULL OR snapshot."modifierOptionId" IS NULL))
@@ -91,7 +91,7 @@ export class ProductConfigurationReportService {
         JOIN "storefront_orders" o ON o."id" = l."orderId"
         WHERE l."merchantId" = ${merchantId}
           AND o."merchantId" = ${merchantId}
-          AND o."status" IN ('accepted', 'preparing')
+          AND o."status" IN ('accepted', 'preparing', 'ready', 'completed')
           AND o."createdAt" >= ${start}
           AND o."createdAt" < ${endExclusive}
       `,
@@ -106,7 +106,7 @@ export class ProductConfigurationReportService {
         JOIN "storefront_orders" o ON o."id" = l."orderId"
         WHERE l."merchantId" = ${merchantId}
           AND o."merchantId" = ${merchantId}
-          AND o."status" IN ('accepted', 'preparing')
+          AND o."status" IN ('accepted', 'preparing', 'ready', 'completed')
           AND o."createdAt" >= ${start}
           AND o."createdAt" < ${endExclusive}
         GROUP BY l."productId", l."variantId", l."variantName"
@@ -123,7 +123,7 @@ export class ProductConfigurationReportService {
         JOIN "storefront_orders" o ON o."id" = l."orderId"
         WHERE l."merchantId" = ${merchantId}
           AND o."merchantId" = ${merchantId}
-          AND o."status" IN ('accepted', 'preparing')
+          AND o."status" IN ('accepted', 'preparing', 'ready', 'completed')
           AND o."createdAt" >= ${start}
           AND o."createdAt" < ${endExclusive}
         GROUP BY snapshot."attributeId", snapshot."valueId", snapshot."attributeName", snapshot."attributeValue"
@@ -141,7 +141,7 @@ export class ProductConfigurationReportService {
         JOIN "storefront_orders" o ON o."id" = l."orderId"
         WHERE l."merchantId" = ${merchantId}
           AND o."merchantId" = ${merchantId}
-          AND o."status" IN ('accepted', 'preparing')
+          AND o."status" IN ('accepted', 'preparing', 'ready', 'completed')
           AND o."createdAt" >= ${start}
           AND o."createdAt" < ${endExclusive}
         GROUP BY snapshot."modifierGroupId", snapshot."modifierOptionId",

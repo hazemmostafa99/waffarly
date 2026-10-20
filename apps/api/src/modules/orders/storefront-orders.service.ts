@@ -22,6 +22,7 @@ import { ProductConsumptionService, ProductPricingService } from '../catalog/ind
 import { InventoryLedgerService } from '../inventory/index.js';
 
 import { toReceipt, toSummary } from './order.mapper.js';
+import { posKitchenTicketInclude } from './pos-kitchen.persistence.js';
 import { freezeLineStockRequirements, restoreOrderConsumption } from './order-stock.persistence.js';
 
 const MAX_ORDER_TOTAL_CENTS = 999_999_999_999n;
@@ -307,10 +308,26 @@ export class StorefrontOrdersService {
   ): Promise<CursorPage<StorefrontOrderSummary>> {
     const where: Prisma.StorefrontOrderWhereInput = {
       merchantId,
-      lines: { some: { stockHandling: 'recipe_acceptance' } },
       OR: [
-        { status: 'pending', OR: [{ source: 'storefront', branchId: null }, { branchId }] },
-        { status: { in: ['accepted', 'preparing'] }, branchId },
+        {
+          lines: { some: { stockHandling: 'recipe_acceptance' } },
+          OR: [
+            { status: 'pending', OR: [{ source: 'storefront', branchId: null }, { branchId }] },
+            { status: { in: ['accepted', 'preparing', 'ready'] }, branchId },
+          ],
+        },
+        {
+          source: 'pos',
+          branchId,
+          status: { in: ['pending', 'accepted', 'preparing', 'ready'] },
+          kitchenTicket: { isNot: null },
+        },
+        {
+          source: 'pos',
+          branchId,
+          status: 'cancelled',
+          kitchenTicket: { is: { cancellationAcknowledgedAt: null } },
+        },
       ],
     };
     if (page.cursor) {
@@ -323,6 +340,9 @@ export class StorefrontOrdersService {
     const orders = await this.prisma.storefrontOrder.findMany({
       where,
       include: {
+        kitchenTicket: posKitchenTicketInclude,
+        diningSession: { select: { table: { select: { code: true } } } },
+        checks: { select: { settledAt: true } },
         lines: {
           orderBy: { position: 'asc' },
           include: {
@@ -336,7 +356,18 @@ export class StorefrontOrdersService {
       ...(page.cursor ? { cursor: { id: page.cursor }, skip: 1 } : {}),
     });
     const hasMore = orders.length > page.limit;
-    const items = orders.slice(0, page.limit).map(toSummary);
+    const items = orders.slice(0, page.limit).map((order) => {
+      const summary = toSummary(order);
+      return order.source === 'pos' && order.kitchenTicket
+        ? {
+            ...summary,
+            handoverEligible:
+              order.status === 'ready' &&
+              order.checks.length > 0 &&
+              order.checks.every((check) => check.settledAt !== null),
+          }
+        : summary;
+    });
     return { items, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null };
   }
 

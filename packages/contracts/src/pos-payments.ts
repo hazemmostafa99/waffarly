@@ -24,6 +24,8 @@ export interface PosPaymentSummary {
   terminalReference: string | null;
   operatorEmployeeId: string;
   createdAt: string;
+  refundedAmount?: string;
+  refundableAmount?: string;
 }
 
 export interface RecordPosCheckPaymentResponse {
@@ -60,9 +62,63 @@ export interface PosOrderPaymentStateResponse {
     paidAmount: string;
     balanceDue: string;
     revision: number;
-    status: 'open' | 'settled';
+    status: 'open' | 'settled' | 'cancelled';
     settledAt: string | null;
     receipt: PosReceiptSummary | null;
     payments: PosPaymentSummary[];
+    refunds?: PosRefundSummary[];
   }>;
+}
+
+export interface PosRefundAllocationRequest {
+  paymentId: string;
+  amount: string;
+  /** Required when recording an external terminal refund already completed on the device. */
+  terminalReference?: string | undefined;
+}
+
+export interface RecordPosCheckRefundRequest {
+  requestId: string;
+  revision: number;
+  branchId: string;
+  refundShiftId: string;
+  reason: string;
+  allocations: PosRefundAllocationRequest[];
+  approval?: { username: string; password: string } | undefined;
+}
+
+export interface PosRefundTenderSummary {
+  originalPaymentId: string;
+  method: PosTenderMethod;
+  amount: string;
+  terminalReference: string | null;
+}
+
+export interface PosRefundSummary {
+  id: string;
+  requestId: string;
+  receiptNumber: string;
+  checkId: string;
+  amount: string;
+  currency: 'EGP';
+  reason: string;
+  issuedAt: string;
+  createdByEmployeeId: string;
+  approvedByEmployeeId: string | null;
+  issuedBy?: string;
+  approvedBy?: string | null;
+  tenders: PosRefundTenderSummary[];
+}
+
+export interface PosRefundReceipt extends PosRefundSummary {
+  orderId: string;
+  issuedBy: string;
+  approvedBy: string | null;
+}
+
+export interface RecordPosCheckRefundResponse {
+  orderId: string;
+  orderRevision: number;
+  checkId: string;
+  refund: PosRefundReceipt;
 }

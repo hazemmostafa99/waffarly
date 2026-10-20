@@ -111,9 +111,7 @@ export function useLocale() {
         return formatDigits(
           String(
             translate(
-              required
-                ? 'Select the required modules for {{name}}.'
-                : 'Please check the entered details and try again.',
+              required ? 'Select the required modules for {{name}}.' : 'Something went wrong.',
               { name: required?.[1] },
             ),
           ),

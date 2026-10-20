@@ -1,3 +1,5 @@
+'use client';
+
 import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from 'react';
 import { cn } from './utils.js';
 

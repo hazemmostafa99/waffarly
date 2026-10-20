@@ -321,7 +321,8 @@ export interface CreateStorefrontOrderRequest {
   }>;
 }
 
-export type StorefrontOrderStatus = 'pending' | 'accepted' | 'rejected' | 'preparing' | 'cancelled';
+export type StorefrontOrderStatus =
+  'pending' | 'accepted' | 'rejected' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 
 export interface AcceptRecipeOrderRequest {
   requestId: string;
@@ -330,11 +331,26 @@ export interface AcceptRecipeOrderRequest {
 export interface StartOrderPreparationRequest {
   requestId: string;
 }
+export interface MarkOrderReadyRequest {
+  requestId: string;
+}
+export interface MarkKitchenItemReadyRequest {
+  requestId: string;
+}
+export interface HandoverPosOrderRequest {
+  requestId: string;
+}
 export interface CancelRecipeOrderRequest {
   requestId: string;
   restoreStock: boolean;
   reason: string;
 }
+
+export interface DispatchPosKitchenOrderRequest {
+  requestId: string;
+}
+
+export type PosKitchenDispatchMode = 'automatic' | 'manual' | 'legacy';
 
 export interface StorefrontOrderReceipt {
   id: string;
@@ -345,6 +361,19 @@ export interface StorefrontOrderReceipt {
 }
 
 export interface StorefrontOrderSummary {
+  readyAt?: string | null;
+  completedAt?: string | null;
+  handoverEligible?: boolean;
+  kitchenTicket?: {
+    id: string;
+    station: { id: string; name: string };
+    dispatchMode: PosKitchenDispatchMode;
+    dispatchedAt: string;
+    cancellationAcknowledgedAt?: string | null;
+  } | null;
+  cancelledAt?: string | null;
+  cancellationReason?: string | null;
+  tableCode?: string | null;
   requiresRecipeAcceptance?: boolean;
   inventoryLifecycle?: {
     branchId: string | null;
@@ -377,6 +406,7 @@ export interface StorefrontOrderSummary {
     unitPrice: string;
     lineTotal: string;
     note?: string | null;
+    kitchenReadyAt?: string | null;
     selections: Array<{
       groupName: string;
       optionName: string;

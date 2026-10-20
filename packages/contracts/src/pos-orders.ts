@@ -42,4 +42,25 @@ export interface CreatePosOrderRequest {
   }>;
 }
 
+export interface AddPosKitchenItemsRequest {
+  requestId: string;
+  revision: number;
+  items: CreatePosOrderRequest['items'];
+}
+
+export interface CancelPosOrderRequest {
+  requestId: string;
+  branchId: string;
+  reason: string;
+  approval?: {
+    username: string;
+    password: string;
+  } | undefined;
+}
+
+export interface AcknowledgePosKitchenCancellationRequest {
+  requestId: string;
+}
+
 export type CreatePosOrderResponse = StorefrontOrderSummary;
+export type AddPosKitchenItemsResponse = StorefrontOrderSummary;

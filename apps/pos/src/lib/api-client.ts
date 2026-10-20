@@ -16,12 +16,26 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(new URL(path.replace(/^\//, ''), `${apiBaseUrl()}/`), {
+export function buildApiRequestOptions(init: RequestInit = {}): RequestInit {
+  const headers = new Headers(init.headers);
+  // JSON requests need this header; adding it to bodyless GETs causes a CORS preflight.
+  if (typeof init.body === 'string' && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  return {
     ...init,
+    cache: init.cache ?? 'no-store',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...init.headers },
-  });
+    headers,
+  };
+}
+
+export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(
+    new URL(path.replace(/^\//, ''), `${apiBaseUrl()}/`),
+    buildApiRequestOptions(init),
+  );
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as {
       message?: string | string[];

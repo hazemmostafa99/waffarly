@@ -1,4 +1,10 @@
 export { BUSINESS_ACTIVITY_KEYS, BUSINESS_ACTIVITY_LABELS } from './activities-modules.js';
+export { POS_APPEARANCE_ACCENTS } from './pos-appearance.js';
+export type {
+  PosAppearanceAccent,
+  PosAppearanceSummary,
+  UpdatePosAppearanceRequest,
+} from './pos-appearance.js';
 export type { CursorPage } from './pagination.js';
 export type {
   PosRegisterSummary,
@@ -7,6 +13,17 @@ export type {
   CreatePosRegisterRequest,
   UpdatePosRegisterRequest,
   OpenPosShiftRequest,
+  PosShiftManualCashMovementSummary,
+  PosShiftReconciliationSummary,
+  PosShiftLiveSummary,
+  PosShiftClosePreviewRequest,
+  PosShiftClosePreview,
+  RecordPosShiftCashMovementRequest,
+  RecordPosShiftCashMovementResponse,
+  ClosePosShiftRequest,
+  PosShiftCloseReport,
+  PosShiftCloseReportRow,
+  OwnerPosShiftCloseReportsQuery,
 } from './shifts.js';
 export {
   STOCK_BASE_UNITS,
@@ -113,6 +130,8 @@ export type {
   CatalogModifierGroupVariantFields,
   AcceptRecipeOrderRequest,
   StartOrderPreparationRequest,
+  MarkOrderReadyRequest,
+  HandoverPosOrderRequest,
   CancelRecipeOrderRequest,
   CatalogAvailability,
   CatalogCategoryFields,
@@ -153,6 +172,9 @@ export type {
   StorefrontOrderStatus,
   StorefrontOrderReceipt,
   StorefrontOrderSummary,
+  DispatchPosKitchenOrderRequest,
+  MarkKitchenItemReadyRequest,
+  PosKitchenDispatchMode,
   UpdateStorefrontOrderStatusRequest,
   CatalogRevisionRequest,
   CreateCatalogCategoryRequest,
@@ -174,6 +196,10 @@ export {
   posEmployeeHome,
 } from './pos.js';
 export type {
+  AcknowledgePosKitchenCancellationRequest,
+  AddPosKitchenItemsRequest,
+  AddPosKitchenItemsResponse,
+  CancelPosOrderRequest,
   PosOrderQuoteRequest,
   PosOrderQuoteResponse,
   CreatePosOrderRequest,
@@ -186,7 +212,23 @@ export type {
   PosOrderPaymentStateResponse,
   RecordPosCheckPaymentRequest,
   RecordPosCheckPaymentResponse,
+  PosRefundAllocationRequest,
+  RecordPosCheckRefundRequest,
+  PosRefundTenderSummary,
+  PosRefundSummary,
+  PosRefundReceipt,
+  RecordPosCheckRefundResponse,
 } from './pos-payments.js';
+export type {
+  RecordPosItemReturnRequest,
+  PosItemReturnLine,
+  PosItemReturnSummary,
+  PosOrderReturnsState,
+  RecordPosItemReturnResponse,
+  OwnerPosItemReturnReportRow,
+  OwnerPosItemReturnReportsQuery,
+} from './pos-returns.js';
+export type { OwnerPosOperationsReport } from './pos-reports.js';
 export type {
   PosReceipt,
   PosReceiptLine,

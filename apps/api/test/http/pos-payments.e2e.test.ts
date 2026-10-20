@@ -7,6 +7,8 @@ import request from 'supertest';
 import { AuthService } from '../../src/modules/auth/auth.service.js';
 import { PosEmployeeGuard } from '../../src/modules/auth/pos-employee.guard.js';
 import { PosOrdersService } from '../../src/modules/orders/pos-orders.service.js';
+import { PosReturnsService } from '../../src/modules/orders/pos-returns.service.js';
+import { PosKitchenService } from '../../src/modules/orders/pos-kitchen.service.js';
 import { PosStorefrontOrdersController } from '../../src/modules/orders/storefront-orders.controller.js';
 import { PosReceiptsController } from '../../src/modules/orders/pos-receipts.controller.js';
 import { OrderLifecycleService } from '../../src/modules/orders/order-lifecycle.service.js';
@@ -32,19 +34,29 @@ const employee: PosEmployeeSession = {
 describe('POS payment endpoint', () => {
   let app: INestApplication;
   let authorized: boolean;
+  let canPrepare: boolean;
+  let canSell: boolean;
   const calls: unknown[][] = [];
   const stateCalls: unknown[][] = [];
   const detailCalls: unknown[][] = [];
   const receiptCalls: unknown[][] = [];
   const receiptListCalls: unknown[][] = [];
+  const kitchenCalls: unknown[][] = [];
+  const readyCalls: unknown[][] = [];
+  const handoverCalls: unknown[][] = [];
 
   beforeEach(async () => {
     authorized = true;
+    canPrepare = false;
+    canSell = true;
     calls.length = 0;
     stateCalls.length = 0;
     detailCalls.length = 0;
     receiptCalls.length = 0;
     receiptListCalls.length = 0;
+    kitchenCalls.length = 0;
+    readyCalls.length = 0;
+    handoverCalls.length = 0;
     const module = await Test.createTestingModule({
       controllers: [PosStorefrontOrdersController, PosReceiptsController],
       providers: [
@@ -54,12 +66,46 @@ describe('POS payment endpoint', () => {
           useValue: {
             requirePosEmployee: async () => {
               if (!authorized) throw new UnauthorizedException();
-              return employee;
+              return {
+                ...employee,
+                permissions: [
+                  ...(canSell ? ['sell' as const] : []),
+                  ...(canPrepare ? ['start_preparation' as const] : []),
+                ],
+              };
             },
           },
         },
         { provide: StorefrontOrdersService, useValue: {} },
-        { provide: OrderLifecycleService, useValue: {} },
+        {
+          provide: PosReturnsService,
+          useValue: {
+            state: async () => ({ orderId, eligible: false, items: [], returns: [] }),
+            record: async () => ({ orderId }),
+          },
+        },
+        {
+          provide: OrderLifecycleService,
+          useValue: {
+            markReadyFromPos: async (...args: unknown[]) => {
+              readyCalls.push(args);
+              return { id: orderId, status: 'ready' };
+            },
+            handoverFromPos: async (...args: unknown[]) => {
+              handoverCalls.push(args);
+              return { id: orderId, status: 'completed' };
+            },
+          },
+        },
+        {
+          provide: PosKitchenService,
+          useValue: {
+            dispatchDineInOrder: async (...args: unknown[]) => {
+              kitchenCalls.push(args);
+              return { id: orderId, kitchenTicket: { dispatchMode: 'manual' } };
+            },
+          },
+        },
         {
           provide: PosOrdersService,
           useValue: {
@@ -168,6 +214,55 @@ describe('POS payment endpoint', () => {
       .send(body)
       .expect(201);
     assert.deepEqual(calls, [[employee, orderId, checkId, body]]);
+  });
+
+  it('passes a manual kitchen dispatch through the authenticated POS order route', async () => {
+    await request(app.getHttpServer())
+      .post(`/pos/orders/${orderId}/kitchen-dispatch`)
+      .send({ requestId })
+      .expect(200, { id: orderId, kitchenTicket: { dispatchMode: 'manual' } });
+    assert.deepEqual(kitchenCalls, [[employee, orderId, { requestId }]]);
+  });
+
+  it('requires preparation permission before marking a POS kitchen order ready', async () => {
+    await request(app.getHttpServer())
+      .post(`/pos/orders/${orderId}/ready`)
+      .send({ requestId })
+      .expect(403);
+    assert.equal(readyCalls.length, 0);
+
+    canPrepare = true;
+    await request(app.getHttpServer())
+      .post(`/pos/orders/${orderId}/ready`)
+      .send({ requestId })
+      .expect(200, { id: orderId, status: 'ready' });
+    assert.deepEqual(readyCalls, [
+      [merchantId, `pos:${employeeId}`, orderId, { requestId }, [branchId]],
+    ]);
+  });
+
+  it('requires sell permission and records an idempotent POS handover command', async () => {
+    const body = { requestId };
+    canSell = false;
+    await request(app.getHttpServer())
+      .post(`/pos/orders/${orderId}/handover`)
+      .send(body)
+      .expect(403);
+    assert.equal(handoverCalls.length, 0);
+
+    canSell = true;
+    authorized = false;
+    await request(app.getHttpServer())
+      .post(`/pos/orders/${orderId}/handover`)
+      .send(body)
+      .expect(401);
+
+    authorized = true;
+    await request(app.getHttpServer())
+      .post(`/pos/orders/${orderId}/handover`)
+      .send(body)
+      .expect(200, { id: orderId, status: 'completed' });
+    assert.deepEqual(handoverCalls, [[merchantId, `pos:${employeeId}`, orderId, body, [branchId]]]);
   });
 
   it('requires an employee and loads payment state for an order', async () => {

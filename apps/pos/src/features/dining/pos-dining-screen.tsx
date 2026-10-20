@@ -450,6 +450,7 @@ export function PosDiningScreen() {
           merchantId={employee.merchantId}
           employeeId={employee.id}
           branchId={selectedBranchId}
+          requiresRefundApproval={!employee.permissions.includes('approve_refunds')}
           orderId={checkoutOrderId}
           onClose={() => setCheckoutOrderId('')}
         />

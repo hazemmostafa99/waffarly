@@ -13,6 +13,7 @@ const extrasGroupId = '99999999-9999-4999-8999-999999999992';
 const classicSauceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1';
 const spicySauceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2';
 const extraCheeseId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3';
+const tableId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4';
 
 function testCatalogProduct(configurable = false) {
   if (!configurable) {
@@ -116,8 +117,10 @@ function testCatalogProduct(configurable = false) {
 
 async function showOrder(page: Page) {
   const navigation = page.getByTestId('pos-mobile-navigation');
-  if (await navigation.isVisible())
-    await navigation.getByRole('button', { name: /^View order/ }).click();
+  if ((page.viewportSize()?.width ?? 1024) < 1024) {
+    await expect(navigation).toBeVisible();
+    await navigation.getByRole('button', { name: /^(View order|Added items)/ }).click();
+  }
 }
 
 async function showMenu(page: Page) {
@@ -150,9 +153,9 @@ const confirmedOrder = {
   ],
 };
 
-function paymentState() {
+function paymentState(order = confirmedOrder) {
   return {
-    context: { order: confirmedOrder, tableCode: null },
+    context: { order, tableCode: order.fulfillmentType === 'dine_in' ? '04' : null },
     orderId,
     revision: 1,
     total: '34.86',
@@ -184,9 +187,29 @@ async function openCheckout(
   catalogOnly = false,
   arabic = false,
   configurableCatalog = false,
+  orderFulfillment: 'takeaway' | 'dine_in' = 'takeaway',
+  stopAtConfirmed = false,
+  merchantAccent: 'orange' | 'plum' | 'teal' | 'blue' | null = 'orange',
 ) {
   if (mobile) await page.setViewportSize({ width: 390, height: 844 });
-  const orderState = paymentState();
+  const order = {
+    ...confirmedOrder,
+    fulfillmentType: orderFulfillment,
+    tableCode: orderFulfillment === 'dine_in' ? '04' : null,
+    kitchenTicket:
+      orderFulfillment === 'dine_in'
+        ? null
+        : {
+            id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+            station: { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', name: 'Kitchen' },
+            dispatchMode: 'automatic',
+            dispatchedAt: '2026-10-19T09:30:00.000Z',
+          },
+  };
+  const orderState = paymentState(order);
+  const dispatchRequests: Array<{ url: string; body: Record<string, unknown> }> = [];
+  const creationRequests: Array<Record<string, unknown>> = [];
+  let savedOrder = order;
   let postCount = 0;
   const paymentRequests: Record<string, unknown>[] = [];
   const processedPayments = new Map<string, Record<string, unknown>>();
@@ -203,6 +226,13 @@ async function openCheckout(
         branches: [{ id: branchId, name: 'Main branch', archivedAt: null }],
       },
     }),
+  );
+  await page.route('**/pos/appearance', (route) =>
+    merchantAccent === null
+      ? route.fulfill({ status: 503, json: { message: 'Appearance is unavailable.' } })
+      : route.fulfill({
+          json: { accent: merchantAccent, revision: 1, updatedAt: '2026-10-20T08:00:00.000Z' },
+        }),
   );
   await page.route('**/pos/registers?**', (route) =>
     route.fulfill({ json: [{ id: registerId, branchId, name: 'Front register' }] }),
@@ -224,7 +254,30 @@ async function openCheckout(
       },
     }),
   );
-  await page.route('**/pos/dining/tables?**', (route) => route.fulfill({ json: [] }));
+  await page.route('**/pos/dining/tables?**', (route) =>
+    route.fulfill({
+      json:
+        orderFulfillment === 'dine_in'
+          ? [
+              {
+                id: tableId,
+                branchId,
+                branchName: 'Main branch',
+                code: '04',
+                capacity: 4,
+                active: true,
+                revision: 1,
+                occupancy: 'available',
+                sessionId: null,
+                sessionRevision: null,
+                openedAt: null,
+                orderCount: 0,
+                outstandingTotal: '0.00',
+              },
+            ]
+          : [],
+    }),
+  );
   await page.route('**/pos/catalog**', (route) =>
     route.fulfill({
       json: {
@@ -292,13 +345,26 @@ async function openCheckout(
       },
     });
   });
-  await page.route(`**/pos/orders/${orderId}`, (route) => route.fulfill({ json: confirmedOrder }));
-  await page.route('**/pos/orders', (route) =>
-    route.fulfill({
-      status: 201,
-      json: confirmedOrder,
-    }),
-  );
+  await page.route(`**/pos/orders/${orderId}`, (route) => route.fulfill({ json: savedOrder }));
+  await page.route('**/pos/orders', (route) => {
+    if (route.request().method() === 'POST')
+      creationRequests.push(route.request().postDataJSON() as Record<string, unknown>);
+    return route.fulfill({ status: 201, json: savedOrder });
+  });
+  await page.route(`**/pos/orders/${orderId}/kitchen-dispatch`, async (route) => {
+    const body = route.request().postDataJSON() as Record<string, unknown>;
+    dispatchRequests.push({ url: route.request().url(), body });
+    savedOrder = {
+      ...savedOrder,
+      kitchenTicket: {
+        id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        station: { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', name: 'Kitchen' },
+        dispatchMode: 'manual',
+        dispatchedAt: '2026-10-19T09:30:00.000Z',
+      },
+    };
+    await route.fulfill({ json: savedOrder });
+  });
   await page.route(`**/pos/orders/${orderId}/payment-state`, (route) =>
     route.fulfill({ json: orderState }),
   );
@@ -384,7 +450,7 @@ async function openCheckout(
     await route.fulfill({ status: 201, json: response });
   });
 
-  await page.goto('/catalog');
+  await page.goto(orderFulfillment === 'dine_in' ? `/catalog?tableId=${tableId}` : '/catalog');
   if (catalogOnly) {
     return {
       paymentRequests,
@@ -395,12 +461,21 @@ async function openCheckout(
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await showOrder(page);
   await page.getByRole('button', { name: 'Confirm order', exact: true }).click();
+  if (stopAtConfirmed)
+    return {
+      paymentRequests,
+      dispatchRequests,
+      creationRequests,
+      processedPaymentCount: () => orderState.checks[0]!.payments.length,
+    };
   if (arabic) await page.getByRole('button', { name: 'Change language' }).click();
   const takePaymentName = arabic ? 'تحصيل مبلغ' : 'Take payment';
   await page.getByRole('button', { name: takePaymentName, exact: true }).click();
   await expect(page.getByRole('dialog', { name: takePaymentName })).toBeVisible();
   return {
     paymentRequests,
+    dispatchRequests,
+    creationRequests,
     processedPaymentCount: () => orderState.checks[0]!.payments.length,
   };
 }
@@ -441,10 +516,39 @@ function receiptDocument() {
   };
 }
 
+test('dine-in rounds stay off the kitchen queue until the cashier sends them', async ({ page }) => {
+  const { dispatchRequests, creationRequests, processedPaymentCount } = await openCheckout(
+    page,
+    false,
+    false,
+    false,
+    false,
+    false,
+    'dine_in',
+    true,
+  );
+  const panel = page.getByTestId('confirmed-order-panel');
+
+  await expect(panel.getByRole('button', { name: 'Send to kitchen' })).toBeEnabled();
+  await expect(
+    panel.getByText('This dine-in round stays off the kitchen screen until you send it.'),
+  ).toBeVisible();
+  await panel.getByRole('button', { name: 'Send to kitchen' }).click();
+  await expect(panel.getByText('Sent to kitchen', { exact: true })).toBeVisible();
+  await expect(panel).toContainText('Kitchen');
+  await expect(panel.getByRole('button', { name: 'Send to kitchen' })).toHaveCount(0);
+
+  expect(dispatchRequests).toHaveLength(1);
+  expect(creationRequests[0]).toMatchObject({ fulfillmentType: 'dine_in', tableId });
+  expect(dispatchRequests[0]?.url).toMatch(/\/kitchen-dispatch$/);
+  expect(typeof dispatchRequests[0]?.body.requestId).toBe('string');
+  expect(processedPaymentCount()).toBe(0);
+});
+
 test('live POS uses the prototype workspace design with the real catalog and saved drafts', async ({
   page,
 }) => {
-  await openCheckout(page, false, false, true);
+  await openCheckout(page, false, false, true, false, false, 'takeaway', false, 'teal');
 
   await expect(page.getByRole('navigation', { name: 'POS navigation' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'New sale' })).toHaveAttribute(
@@ -460,12 +564,14 @@ test('live POS uses the prototype workspace design with the real catalog and sav
   await showMenu(page);
   await expect(page.locator('.pos-draft-dock')).toBeVisible();
   await expect(page.locator('.pos-theme')).toHaveAttribute('data-theme', 'dark');
-  await expect(page.locator('.pos-theme')).toHaveAttribute('data-accent', 'orange');
+  await expect(page.locator('.pos-theme')).toHaveAttribute('data-accent', 'teal');
+  await expect(page.locator('.pos-merchant-accent')).toHaveAttribute(
+    'aria-label',
+    'Merchant accent',
+  );
 
   await page.getByLabel('Theme').selectOption('light');
   await expect(page.locator('.pos-theme')).toHaveAttribute('data-theme', 'light');
-  await page.getByRole('button', { name: 'POS accent preview' }).click();
-  await page.getByRole('button', { name: 'Teal', exact: true }).click();
   await expect(page.locator('.pos-theme')).toHaveAttribute('data-accent', 'teal');
   await page.reload();
   await expect(page.getByLabel('Theme')).toHaveValue('light');
@@ -483,9 +589,7 @@ test('live POS uses the prototype workspace design with the real catalog and sav
   }
   await page.locator('.pos-workspace-language').click();
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
-  await page.getByRole('button', { name: 'POS accent preview' }).click();
-  await page.getByRole('button', { name: 'Orange', exact: true }).click();
-  await expect(page.locator('.pos-theme')).toHaveAttribute('data-accent', 'orange');
+  await expect(page.locator('.pos-theme')).toHaveAttribute('data-accent', 'teal');
   await page.getByLabel('Theme').selectOption('dark');
 
   await page.getByRole('button', { name: 'Add item: Test coffee', exact: true }).click();
@@ -518,6 +622,19 @@ test('live POS uses the prototype workspace design with the real catalog and sav
     .click();
   await expect(page.locator('.pos-live-cart-line')).toHaveCount(1);
   await page.screenshot({ path: 'test-results/pos-live-catalog.png', fullPage: true });
+});
+
+test('merchant appearance read failure falls back to the orange POS default', async ({ page }) => {
+  await openCheckout(page, false, false, true, false, false, 'takeaway', false, null);
+
+  await expect(page.locator('.pos-theme')).toHaveAttribute('data-accent', 'orange');
+  await expect(page.locator('.pos-merchant-accent')).toHaveAttribute(
+    'aria-label',
+    'Merchant accent unavailable; using orange default',
+  );
+  await expect(
+    page.getByRole('button', { name: 'Add item: Test coffee', exact: true }),
+  ).toBeEnabled();
 });
 
 test('configurable products show variants, required choices, extras, and the estimated price', async ({
@@ -589,6 +706,213 @@ test('configurable products show variants, required choices, extras, and the est
   await expect(line).toContainText('EGP 139.72');
   await expect(line).toContainText('No onion');
   await page.screenshot({ path: testInfo.outputPath('configured-cart-line-edit-action.png') });
+});
+
+test('cart shows multiple complete items and keeps long configurations readable in both directions', async ({
+  page,
+}, testInfo) => {
+  await openCheckout(page, false, false, true, false, true);
+  await expect(page.locator('.pos-draft-tab.is-active')).toHaveCount(1);
+  const longName = 'بيتزا دجاج مشوي مع الجبنة والمشروم والخضروات الطازجة بحجم عائلي';
+  const longProductId = '77777777-7777-4777-8777-777777777778';
+  await page.route('**/pos/catalog**', (route) =>
+    route.fulfill({
+      json: {
+        categories: { items: [], nextCursor: null },
+        products: {
+          items: [
+            testCatalogProduct(true),
+            { ...testCatalogProduct(true), id: longProductId, name: longName },
+          ],
+          nextCursor: null,
+        },
+      },
+    }),
+  );
+  await page.evaluate(
+    ({ productId, longProductId, largeVariantId, sauceGroupId, classicSauceId }) => {
+      const key = Object.keys(localStorage).find((entry) =>
+        entry.startsWith('waffarly:pos:workspace:v1:'),
+      )!;
+      const envelope = JSON.parse(localStorage.getItem(key)!);
+      const draft = envelope.workspace.drafts[envelope.workspace.selectedDraftId];
+      draft.lines = Array.from({ length: 8 }, (_, index) => ({
+        id: crypto.randomUUID(),
+        productId: index < 4 ? productId : longProductId,
+        variantId: largeVariantId,
+        quantity: index === 1 ? 2 : 1,
+        selections: [
+          { groupId: sauceGroupId, options: [{ optionId: classicSauceId, quantity: 1 }] },
+        ],
+        note:
+          index < 4 ? 'No onion' : 'بدون بصل، مع وضع الصوص والإضافات في علبة منفصلة بجانب الطلب',
+      }));
+      const otherId = crypto.randomUUID();
+      envelope.workspace.drafts[otherId] = {
+        ...draft,
+        id: otherId,
+        customerName: 'Another customer',
+        lines: [],
+      };
+      localStorage.setItem(key, JSON.stringify(envelope));
+      localStorage.setItem(
+        'waffarly:pos:appearance:v1',
+        JSON.stringify({ version: 2, state: { theme: 'dark', accent: 'blue' } }),
+      );
+    },
+    { productId, longProductId, largeVariantId, sauceGroupId, classicSauceId },
+  );
+  await page.reload();
+  await showOrder(page);
+  await expect(page.getByTestId('order-draft-line')).toHaveCount(8);
+  await expect(page.locator('.pos-theme')).toHaveAttribute('data-accent', 'orange');
+  await expect(page.locator('.pos-theme')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.locator('.pos-draft-tab')).toHaveCount(2);
+  await expect(page.locator('.pos-draft-tab.is-active')).toContainText('EGP 448.74');
+  const desktop = page.viewportSize()!.width >= 1024;
+  const scroll = desktop
+    ? page.getByTestId('cart-items-scroll')
+    : page.locator('[data-pos-order-scroll]');
+  for (const arabic of [false, true]) {
+    if (arabic) {
+      await page.getByRole('button', { name: 'Change language' }).click();
+      await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    }
+    const fullyVisible = await scroll.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      return [...element.querySelectorAll('[data-testid="order-draft-line"]')].filter((row) => {
+        const rect = row.getBoundingClientRect();
+        return rect.top >= bounds.top && rect.bottom <= bounds.bottom;
+      }).length;
+    });
+    expect(fullyVisible).toBeGreaterThanOrEqual(desktop ? 4 : 2);
+    await expect(
+      page.getByRole('button', { name: arabic ? 'تأكيد الطلب' : 'Confirm order', exact: true }),
+    ).toBeInViewport();
+    await page.screenshot({
+      path: testInfo.outputPath(`cart-multiple-items-${arabic ? 'ar' : 'en'}.png`),
+    });
+  }
+  const longRow = page.getByTestId('order-draft-line').nth(4);
+  await longRow.scrollIntoViewIfNeeded();
+  await expect(longRow.getByTestId('cart-item-name')).toHaveText(longName);
+  await expect(longRow.getByTestId('cart-item-name')).toHaveCSS('white-space', 'normal');
+  await expect(longRow.getByTestId('cart-item-options')).toHaveCSS('white-space', 'normal');
+  const textFits = await longRow.evaluate((element) =>
+    [...element.querySelectorAll('span, p, summary')].every(
+      (text) => text.scrollWidth <= text.clientWidth,
+    ),
+  );
+  expect(textFits).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('cart-long-details-ar.png') });
+});
+
+test('dine-in cart stays spacious at a zoomed laptop size and expands without losing its draft', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'Laptop layout coverage');
+  await page.setViewportSize({ width: 1536, height: 696 });
+  await openCheckout(page, false, false, true, false, true);
+  await expect(page.locator('.pos-draft-tab.is-active')).toHaveCount(1);
+  await page.route('**/pos/catalog**', (route) =>
+    route.fulfill({
+      json: {
+        categories: { items: [], nextCursor: null },
+        products: {
+          items: Array.from({ length: 12 }, (_, index) => ({
+            ...testCatalogProduct(true),
+            id: index ? `77777777-7777-4777-8777-${String(index).padStart(12, '0')}` : productId,
+            name: index
+              ? `${['بيتزا خضروات', 'بيتزا دجاج', 'بيتزا جبنة', 'بطاطس', 'برجر'][index % 5]} ${index}`
+              : 'Test burger',
+          })),
+          nextCursor: null,
+        },
+      },
+    }),
+  );
+  await page.route('**/pos/dining/tables?**', (route) => route.fulfill({ json: [] }));
+  await page.evaluate(
+    ({ productId, largeVariantId, sauceGroupId, classicSauceId }) => {
+      const key = Object.keys(localStorage).find((entry) =>
+        entry.startsWith('waffarly:pos:workspace:v1:'),
+      )!;
+      const envelope = JSON.parse(localStorage.getItem(key)!);
+      const draft = envelope.workspace.drafts[envelope.workspace.selectedDraftId];
+      draft.fulfillment = 'dine-in';
+      draft.lines = Array.from({ length: 8 }, (_, index) => ({
+        id: crypto.randomUUID(),
+        productId,
+        variantId: largeVariantId,
+        quantity: index === 1 ? 2 : 1,
+        selections: [
+          { groupId: sauceGroupId, options: [{ optionId: classicSauceId, quantity: 1 }] },
+        ],
+        note: `بدون بصل ${index + 1}`,
+      }));
+      localStorage.setItem(key, JSON.stringify(envelope));
+    },
+    { productId, largeVariantId, sauceGroupId, classicSauceId },
+  );
+  await page.reload();
+  await page.getByRole('button', { name: 'Change language' }).click();
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  const items = page.getByTestId('order-draft-line');
+  await expect(items).toHaveCount(8);
+  await expect(
+    page.getByText('لا توجد ترابيزات نشطة. اطلب من مالك المتجر إعداد الترابيزات.'),
+  ).toBeVisible();
+  const visibleCount = () =>
+    page.getByTestId('cart-items-scroll').evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      return [...element.querySelectorAll('[data-testid="order-draft-line"]')].filter((row) => {
+        const rect = row.getBoundingClientRect();
+        return rect.top >= bounds.top && rect.bottom <= bounds.bottom;
+      }).length;
+    });
+  expect(await visibleCount()).toBeGreaterThanOrEqual(3);
+  const pane = page.getByTestId('pos-order-pane');
+  const before = await pane.boundingBox();
+  expect(before!.width).toBeGreaterThanOrEqual(360);
+  expect(before!.width).toBeLessThanOrEqual(400);
+  const menuBounds = await page.getByTestId('pos-menu-pane').boundingBox();
+  expect(menuBounds!.width / (menuBounds!.width + before!.width)).toBeGreaterThanOrEqual(0.7);
+  expect((await page.getByTestId('product-grid').boundingBox())!.y).toBeLessThan(300);
+  const productColumns = await page
+    .getByTestId('product-grid')
+    .evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length);
+  expect(productColumns).toBeGreaterThanOrEqual(5);
+  const confirm = page.getByRole('button', { name: 'تأكيد الطلب', exact: true });
+  await expect(confirm).toBeInViewport();
+  await expect(confirm).toBeDisabled();
+  await page.screenshot({ path: testInfo.outputPath('dine-in-laptop-compact-ar.png') });
+  await page.getByRole('button', { name: 'توسيع السلة', exact: true }).click();
+  await expect(page.getByTestId('pos-menu-pane')).toBeHidden();
+  expect((await pane.boundingBox())!.width).toBeGreaterThan(before!.width * 2);
+  expect(await visibleCount()).toBeGreaterThanOrEqual(8);
+  const expandedFits = await pane.evaluate((element) => {
+    const paneBounds = element.getBoundingClientRect();
+    return [...element.querySelectorAll('[data-testid="order-draft-line"]')].every((row) => {
+      const bounds = row.getBoundingClientRect();
+      return (
+        bounds.left >= paneBounds.left &&
+        bounds.right <= paneBounds.right &&
+        [...row.querySelectorAll('button')].every((button) => {
+          const rect = button.getBoundingClientRect();
+          return rect.left >= bounds.left && rect.right <= bounds.right;
+        })
+      );
+    });
+  });
+  expect(expandedFits).toBe(true);
+  await expect(items).toHaveCount(8);
+  await expect(items.nth(1)).toContainText('بدون بصل 2');
+  await page.screenshot({ path: testInfo.outputPath('dine-in-laptop-expanded-ar.png') });
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('pos-menu-pane')).toBeVisible();
+  await expect(items).toHaveCount(8);
+  await expect(page.getByRole('button', { name: 'توسيع السلة', exact: true })).toBeFocused();
 });
 
 test('saved orders remain searchable and contained with fifty drafts; cleanup protects pending sales', async ({
@@ -748,6 +1072,213 @@ test('confirmed order survives reload and draft switching without creating anoth
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
+test('cashier adds kitchen items with a read-only original ticket and retries the exact request', async ({
+  page,
+}) => {
+  await openCheckout(page, false, false, false, false, false, 'takeaway', true);
+  let currentOrder = {
+    ...confirmedOrder,
+    kitchenTicket: {
+      id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      station: { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', name: 'Kitchen' },
+      dispatchMode: 'automatic',
+      dispatchedAt: '2026-10-19T09:30:00.000Z',
+    },
+  };
+  const currentState = paymentState(currentOrder);
+  const requests: Record<string, unknown>[] = [];
+  let failFirstRequest = true;
+
+  await page.route(`**/pos/orders/${orderId}`, (route) => route.fulfill({ json: currentOrder }));
+  await page.route(`**/pos/orders/${orderId}/payment-state`, (route) =>
+    route.fulfill({ json: currentState }),
+  );
+  await page.route(`**/pos/orders/${orderId}/kitchen-amendments`, async (route) => {
+    requests.push(route.request().postDataJSON() as Record<string, unknown>);
+    if (failFirstRequest) {
+      failFirstRequest = false;
+      await route.abort('failed');
+      return;
+    }
+    currentOrder = {
+      ...currentOrder,
+      total: '69.72',
+      lines: [
+        ...currentOrder.lines,
+        {
+          id: 'line-added',
+          productId,
+          productName: 'Test coffee',
+          quantity: 1,
+          variantName: null,
+          selections: [],
+          note: null,
+          lineTotal: '34.86',
+        },
+      ],
+    };
+    currentState.revision = 2;
+    currentState.total = '69.72';
+    currentState.context.order = currentOrder;
+    currentState.checks[0]!.amount = '69.72';
+    currentState.checks[0]!.balanceDue = '69.72';
+    await route.fulfill({ json: currentOrder });
+  });
+
+  const panel = page.getByTestId('confirmed-order-panel');
+  await panel.getByRole('button', { name: 'Add items to this order' }).click();
+  await page.getByRole('button', { name: 'Add item: Test coffee', exact: true }).click();
+  await showOrder(page);
+  await expect(page.getByTestId('kitchen-amendment-existing-items')).toContainText(
+    'Previously sent items',
+  );
+  await expect(page.getByTestId('kitchen-amendment-existing-items')).toContainText('Test coffee');
+  await expect(page.getByRole('button', { name: 'Send added items', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Send added items', exact: true }).click();
+  await expect(page.getByText('An added-items request is saved', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Retry saved item addition', exact: true }).click();
+  await expect(page.getByTestId('confirmed-order-panel')).toContainText('69.72');
+  await expect(
+    page.getByTestId('confirmed-order-panel').getByText('Test coffee', { exact: true }),
+  ).toHaveCount(2);
+  expect(requests).toHaveLength(2);
+  expect(requests[1]).toEqual(requests[0]);
+  expect(requests[0]).toMatchObject({ revision: 1, items: [{ productId, quantity: 1 }] });
+  expect((requests[0] as { requestId: string }).requestId).toBeTruthy();
+});
+
+test('cashier recovers the exact unpaid cancellation after reload without saving supervisor credentials', async ({
+  page,
+}) => {
+  await openCheckout(page, false, false, false, false, false, 'takeaway', true);
+  let currentOrder = {
+    ...confirmedOrder,
+    kitchenTicket: {
+      id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      station: { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', name: 'Kitchen' },
+      dispatchMode: 'automatic',
+      dispatchedAt: '2026-10-19T09:30:00.000Z',
+      cancellationAcknowledgedAt: null,
+    },
+  };
+  const currentPaymentState = paymentState(currentOrder);
+  const cancellationRequests: Array<Record<string, unknown>> = [];
+  let failFirstRequest = true;
+
+  await page.route(`**/pos/orders/${orderId}`, (route) => route.fulfill({ json: currentOrder }));
+  await page.route(`**/pos/orders/${orderId}/payment-state`, (route) =>
+    route.fulfill({ json: currentPaymentState }),
+  );
+  await page.route(`**/pos/orders/${orderId}/cancel`, async (route) => {
+    cancellationRequests.push(route.request().postDataJSON() as Record<string, unknown>);
+    if (failFirstRequest) {
+      failFirstRequest = false;
+      await route.abort('failed');
+      return;
+    }
+    currentOrder = {
+      ...currentOrder,
+      status: 'cancelled',
+      cancelledAt: '2026-10-19T09:35:00.000Z',
+      cancellationReason: 'Customer changed their mind',
+    };
+    currentPaymentState.status = 'cancelled';
+    await route.fulfill({ json: currentOrder });
+  });
+
+  const panel = page.getByTestId('confirmed-order-panel');
+  await panel.getByRole('button', { name: 'Cancel unpaid order' }).click();
+  let dialog = page.getByRole('dialog', { name: 'Cancel unpaid order' });
+  await dialog.getByLabel('Cancellation reason').fill('Customer changed their mind');
+  await dialog.getByLabel('Supervisor username').fill('test-supervisor');
+  await dialog.getByLabel('Supervisor password').fill('temporary-supervisor-secret');
+  await dialog.getByRole('button', { name: 'Confirm cancellation' }).click();
+  await expect(dialog.getByRole('alert')).toBeVisible();
+
+  const savedWorkspaceContainsSecret = await page.evaluate(() =>
+    Object.keys(localStorage)
+      .filter((key) => key.startsWith('waffarly:pos:workspace:v1:'))
+      .some((key) => localStorage.getItem(key)?.includes('temporary-supervisor-secret')),
+  );
+  expect(savedWorkspaceContainsSecret).toBe(false);
+  expect(cancellationRequests).toHaveLength(1);
+
+  await page.reload();
+  const restoredPanel = page.getByTestId('confirmed-order-panel');
+  await expect(
+    restoredPanel.getByRole('button', { name: 'Retry saved cancellation' }),
+  ).toBeVisible();
+  await restoredPanel.getByRole('button', { name: 'Retry saved cancellation' }).click();
+  dialog = page.getByRole('dialog', { name: 'Cancel unpaid order' });
+  await expect(dialog.getByLabel('Cancellation reason')).toHaveValue('Customer changed their mind');
+  await expect(dialog.getByLabel('Cancellation reason')).toBeDisabled();
+  await expect(dialog.getByLabel('Supervisor password')).toHaveValue('');
+  await dialog.getByLabel('Supervisor username').fill('test-supervisor');
+  await dialog.getByLabel('Supervisor password').fill('temporary-supervisor-secret');
+  await dialog.getByRole('button', { name: 'Confirm cancellation' }).click();
+
+  await expect(restoredPanel.getByText('Cancelled', { exact: true })).toBeVisible();
+  expect(cancellationRequests).toHaveLength(2);
+  expect(cancellationRequests[1]!.requestId).toBe(cancellationRequests[0]!.requestId);
+  expect(cancellationRequests[1]!.branchId).toBe(branchId);
+  expect(cancellationRequests[1]!.reason).toBe('Customer changed their mind');
+  expect(cancellationRequests[1]!.approval).toEqual({
+    username: 'test-supervisor',
+    password: 'temporary-supervisor-secret',
+  });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test('add-items control is hidden after kitchen acceptance, payment, or check splitting', async ({
+  page,
+}) => {
+  await openCheckout(page, false, false, false, false, false, 'takeaway', true);
+  let scenario: 'accepted' | 'partially-paid' | 'split' = 'accepted';
+  const ticket = {
+    id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    station: { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', name: 'Kitchen' },
+    dispatchMode: 'automatic',
+    dispatchedAt: '2026-10-19T09:30:00.000Z',
+  };
+  await page.route(`**/pos/orders/${orderId}`, (route) =>
+    route.fulfill({
+      json: {
+        ...confirmedOrder,
+        status: scenario === 'accepted' ? 'accepted' : 'pending',
+        kitchenTicket: ticket,
+      },
+    }),
+  );
+  await page.route(`**/pos/orders/${orderId}/payment-state`, (route) => {
+    const order = {
+      ...confirmedOrder,
+      status: scenario === 'accepted' ? 'accepted' : 'pending',
+      kitchenTicket: ticket,
+    };
+    const state = paymentState(order);
+    state.status = order.status;
+    state.context.order = order;
+    if (scenario === 'partially-paid') {
+      state.checks[0]!.paidAmount = '1.00';
+      state.checks[0]!.balanceDue = '33.86';
+      state.checks[0]!.payments = [
+        { id: 'payment', amount: '1.00', refundableAmount: '1.00' },
+      ] as never;
+    } else if (scenario === 'split') {
+      state.checks[0]!.splitMethod = 'items';
+    }
+    return route.fulfill({ json: state });
+  });
+
+  const panel = page.getByTestId('confirmed-order-panel');
+  for (const nextScenario of ['accepted', 'partially-paid', 'split'] as const) {
+    scenario = nextScenario;
+    await page.reload();
+    await expect(panel).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Add items to this order' })).toHaveCount(0);
+  }
+});
+
 test('unverified payment state blocks collection and recovers with retry', async ({ page }) => {
   await openCheckout(page);
   await page
@@ -816,6 +1347,124 @@ test('cashier records a split cash and terminal payment and sees the remaining b
   await page.reload();
   await expect(panel.getByRole('status').first()).toHaveText('Partially paid');
   await expect(panel).toContainText('26.86');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+});
+
+test('cashier retries an uncertain refund exactly and can reopen its printable receipt', async ({
+  page,
+}) => {
+  await openCheckout(page, false, false, false, false, false, 'takeaway', true);
+  const currentState = paymentState();
+  const check = currentState.checks[0]!;
+  currentState.status = 'accepted';
+  check.paidAmount = '34.86';
+  check.balanceDue = '0.00';
+  check.status = 'settled';
+  check.settledAt = '2026-10-17T08:01:00.000Z';
+  check.receipt = {
+    id: 'receipt-1',
+    receiptNumber: 'POS-AB12CD34EF56AB78',
+    issuedAt: check.settledAt,
+  };
+  check.payments = [
+    {
+      id: 'cash-payment-1',
+      position: 0,
+      method: 'cash',
+      amount: '34.86',
+      receivedAmount: '34.86',
+      changeAmount: '0.00',
+      terminalReference: null,
+      operatorEmployeeId: employeeId,
+      createdAt: '2026-10-17T08:01:00.000Z',
+      refundedAmount: '0.00',
+      refundableAmount: '34.86',
+    },
+  ];
+  await page.route(`**/pos/orders/${orderId}/payment-state`, (route) =>
+    route.fulfill({ json: currentState }),
+  );
+  await page.reload();
+
+  const refundRequests: Array<Record<string, unknown>> = [];
+  let failFirstRefund = true;
+  const savedRefund = {
+    id: 'refund-1',
+    receiptNumber: 'RFD-LOCAL-01',
+    orderId,
+    checkId,
+    amount: '0.15',
+    currency: 'EGP',
+    reason: 'Disposable local refund test',
+    issuedAt: '2026-10-19T10:00:00.000Z',
+    createdByEmployeeId: employeeId,
+    approvedByEmployeeId: 'supervisor-1',
+    issuedBy: 'Cashier One',
+    approvedBy: 'Supervisor One',
+    tenders: [
+      {
+        originalPaymentId: 'cash-payment-1',
+        method: 'cash',
+        amount: '0.15',
+        terminalReference: null,
+      },
+    ],
+  };
+  await page.route(`**/pos/orders/${orderId}/checks/${checkId}/refunds`, async (route) => {
+    const request = route.request().postDataJSON() as Record<string, unknown>;
+    refundRequests.push(request);
+    if (failFirstRefund) {
+      failFirstRefund = false;
+      await route.abort('failed');
+      return;
+    }
+    currentState.revision += 1;
+    const issuedRefund = { ...savedRefund, requestId: String(request.requestId) };
+    check.refunds = [issuedRefund];
+    check.payments[0]!.refundedAmount = '0.15';
+    check.payments[0]!.refundableAmount = '34.71';
+    await route.fulfill({
+      json: { orderId, orderRevision: currentState.revision, checkId, refund: issuedRefund },
+    });
+  });
+  await page.evaluate(() => {
+    window.print = () => {
+      document.body.dataset.printRequested = 'true';
+    };
+  });
+
+  const panel = page.getByTestId('confirmed-order-panel');
+  await panel.getByRole('button', { name: /^Refund/ }).click();
+  let dialog = page.getByRole('dialog', { name: 'Refund payment' });
+  await dialog.getByLabel('Refund cash').fill('0.15');
+  await dialog.getByLabel('Refund reason').fill('Disposable local refund test');
+  await dialog.getByLabel('Supervisor username').fill('supervisor');
+  await dialog.getByLabel('Supervisor password').fill('local-supervisor-password');
+  await dialog.getByRole('button', { name: 'Record refund' }).click();
+  await expect(dialog.getByRole('alert')).toBeVisible();
+  await dialog.getByLabel('Supervisor password').fill('local-supervisor-password');
+  await dialog.getByRole('button', { name: 'Retry saved refund' }).click();
+
+  const receipt = page.getByRole('dialog', { name: 'Refund receipt' });
+  await expect(receipt.locator('.pos-receipt-document')).toContainText('RFD-LOCAL-01');
+  await expect(receipt.locator('.pos-receipt-document')).toContainText('Supervisor One');
+  await expect(receipt.getByRole('button', { name: 'Print / Save PDF' })).toBeVisible();
+  await receipt.getByRole('button', { name: 'Print / Save PDF' }).click();
+  await expect.poll(() => page.locator('body').getAttribute('data-print-requested')).toBe('true');
+  expect(refundRequests).toHaveLength(2);
+  expect(refundRequests[1]!.requestId).toBe(refundRequests[0]!.requestId);
+  expect(refundRequests[1]!.allocations).toEqual(refundRequests[0]!.allocations);
+
+  await receipt.getByRole('button', { name: 'Done' }).click();
+  await page.reload();
+  await panel.getByRole('button', { name: /^Refund/ }).click();
+  dialog = page.getByRole('dialog', { name: 'Refund payment' });
+  await dialog.getByRole('button', { name: /View refund receipt.*RFD-LOCAL-01/ }).click();
+  await expect(
+    page.getByRole('dialog', { name: 'Refund receipt' }).locator('.pos-receipt-document'),
+  ).toContainText('Disposable local refund test');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
@@ -1075,7 +1724,6 @@ test('checkout switches allocated quantities and labels amount shares as order r
     route.fulfill({ json: state }),
   );
   await page.getByRole('button', { name: 'Add item: Test coffee', exact: true }).click();
-  await page.getByRole('button', { name: 'Add item', exact: true }).click();
   await showOrder(page);
   await page.getByRole('button', { name: 'Confirm order', exact: true }).click();
   await page.getByRole('button', { name: 'Take payment', exact: true }).click();
@@ -1287,10 +1935,13 @@ test('mobile and tablet selling preserve menu scroll and draft notes when switch
     });
     await page.reload();
     await showOrder(page);
+    await expect(page.getByTestId('pos-order-pane')).toBeVisible();
+    await expect(page.getByTestId('order-draft-line')).toHaveCount(20);
     const orderScroll = page.locator('[data-pos-order-scroll]');
     await orderScroll.evaluate((element) => {
       element.scrollTop = 300;
     });
+    await expect.poll(() => orderScroll.evaluate((element) => element.scrollTop)).toBe(300);
     await showMenu(page);
     await showOrder(page);
     await expect.poll(() => orderScroll.evaluate((element) => element.scrollTop)).toBe(300);

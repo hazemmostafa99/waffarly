@@ -28,6 +28,7 @@ async function mockCatalog(page: Page, empty = false, includeArchived = false) {
     availability: index < 18 ? 'available' : 'unavailable',
     archivedAt: null as string | null,
     revision: 1,
+    variants: [],
     images: [{ mediaAssetId: 'image-1', publicUrl: imageUrl, isPrimary: true }],
     categories: [categories[index % categories.length]!],
   }));
@@ -39,6 +40,7 @@ async function mockCatalog(page: Page, empty = false, includeArchived = false) {
       availability: 'unavailable',
       archivedAt: '2026-10-13',
       revision: 2,
+      variants: [],
       images: [{ mediaAssetId: 'image-1', publicUrl: imageUrl, isPrimary: true }],
       categories: [categories[0]!],
     });
@@ -65,15 +67,17 @@ async function mockCatalog(page: Page, empty = false, includeArchived = false) {
           ? products
           : path.endsWith('/categories')
             ? categories
-            : [
-                {
-                  id: 'image-1',
-                  storageKey: 'burger.svg',
-                  publicUrl: imageUrl,
-                  mimeType: 'image/svg+xml',
-                  sizeBytes: 500,
-                },
-              ],
+            : path.endsWith('/modifier-groups')
+              ? []
+              : [
+                  {
+                    id: 'image-1',
+                    storageKey: 'burger.svg',
+                    publicUrl: imageUrl,
+                    mimeType: 'image/svg+xml',
+                    sizeBytes: 500,
+                  },
+                ],
       });
       return;
     }
@@ -112,8 +116,10 @@ async function mockCatalog(page: Page, empty = false, includeArchived = false) {
         name: String(body.name),
         basePrice: String(body.basePrice),
         availability: String(body.availability),
+        description: String(body.description),
         archivedAt: null,
         revision: 1,
+        variants: [],
         images: [{ mediaAssetId: 'image-1', publicUrl: imageUrl, isPrimary: true }],
         categories: [categories[0]!],
       });
@@ -187,19 +193,34 @@ test('search and category filters reset paging and selection; sort orders prices
   await expect(page.locator('.wf-summary-card').first()).toContainText('24');
 });
 
-test('add/edit use API payloads and dialogs restore focus', async ({ page }) => {
+test('product creation uses the catalog builder and posts the reviewed product', async ({
+  page,
+}) => {
   const mutations = await mockCatalog(page);
   await page.goto('http://127.0.0.1:5274/products');
   const add = page.getByRole('button', { name: 'Add Product', exact: true });
   await add.click();
-  const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Product name', { exact: true }).fill('New Burger');
-  await dialog.getByLabel('Description', { exact: true }).fill('Freshly prepared');
-  await dialog.getByLabel('Base price (EGP)').fill('149.50');
-  await dialog.getByRole('checkbox', { name: 'برجر', exact: true }).check();
-  await dialog.getByRole('checkbox', { name: 'burger.svg' }).check();
-  await dialog.getByRole('button', { name: 'Add Product', exact: true }).click();
-  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Create a product', exact: true })).toBeVisible();
+  await page.locator('.basic-product-name input').fill('New Burger');
+  await page.locator('.basic-name-price-row input[type="number"]').fill('149.50');
+  await page.locator('.basic-description summary').click();
+  await page.locator('.basic-description textarea').fill('Freshly prepared');
+  await page.getByRole('button', { name: 'Browse categories', exact: true }).click();
+  await page.getByRole('option').first().click();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('button', { name: 'Choose from library', exact: true }).click();
+  const mediaDialog = page.getByRole('dialog', { name: 'Choose product photos', exact: true });
+  await mediaDialog.locator('.media-library-option').first().click();
+  await mediaDialog.getByRole('button', { name: 'Apply selected photos', exact: true }).click();
+  await page.getByRole('button', { name: /Next: Options/ }).click();
+  await page.getByRole('button', { name: 'Continue without choices', exact: true }).click();
+  await page.getByRole('button', { name: 'Review product', exact: true }).click();
+  await page.locator('input[name="availability"]').nth(1).check();
+  await page.getByRole('button', { name: 'Create as unavailable', exact: true }).click();
+  await expect(page).toHaveURL('http://127.0.0.1:5274/products');
+  await expect(
+    page.getByRole('heading', { name: 'Products', level: 1, exact: true }),
+  ).toBeVisible();
   expect(mutations[0]?.body).toMatchObject({
     name: 'New Burger',
     basePrice: '149.50',
@@ -207,20 +228,99 @@ test('add/edit use API payloads and dialogs restore focus', async ({ page }) => 
     categoryIds: ['category-0'],
     imageAssetIds: ['image-1'],
     primaryImageAssetId: 'image-1',
+    availability: 'unavailable',
+    modifierGroupAssignments: [],
+    variants: [],
   });
   await expect(page.locator('.wf-summary-card').first()).toContainText('25');
-  await page.getByRole('textbox', { name: 'Search products', exact: true }).fill('New Burger');
-  await page.getByRole('button', { name: 'Edit New Burger', exact: true }).click();
-  await dialog.getByLabel('Base price (EGP)').fill('155.00');
-  await dialog.getByRole('button', { name: 'Save changes' }).click();
-  await expect(dialog).toHaveCount(0);
-  await expect(page.locator('.wf-data-table')).toContainText('EGP 155.00');
-  expect(mutations[1]?.method).toBe('PATCH');
-  expect(mutations[1]?.body.revision).toBe(1);
-  await add.click();
-  await page.keyboard.press('Escape');
-  await expect(dialog).toHaveCount(0);
-  await expect(add).toBeFocused();
+});
+
+test('product edits use the builder and preserve the loaded revision', async ({ page }) => {
+  await mockCatalog(page);
+  let saved: Record<string, unknown> | undefined;
+  await page.route('**/owner/catalog/products/product-1', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      saved = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({ json: { id: 'product-1' } });
+      return;
+    }
+    await route.fulfill({
+      json: {
+        id: 'product-1',
+        name: 'Original Burger',
+        description: 'Original description',
+        basePrice: '70.00',
+        availability: 'available',
+        revision: 3,
+        images: [{ mediaAssetId: 'image-1', publicUrl: imageUrl, isPrimary: true, position: 0 }],
+        categories: [{ id: 'category-0', name: categories[0]!.name }],
+        modifierGroups: [],
+        variants: [],
+        inventoryConfiguration: null,
+        inventoryConfigurationRequired: false,
+        inventoryDefaultMode: 'DIRECT',
+      },
+    });
+  });
+  await page.goto('http://127.0.0.1:5274/products/product-1/edit');
+  await expect(page.getByRole('heading', { name: 'Edit product', exact: true })).toBeVisible();
+  await expect(page.locator('.basic-product-name input')).toHaveValue('Original Burger');
+  await page.locator('.basic-product-name input').fill('Updated Burger');
+  await page.locator('.basic-name-price-row input[type="number"]').fill('155.00');
+  await page.getByRole('tab', { name: /Preview and publish/ }).click();
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(page).toHaveURL('http://127.0.0.1:5274/products');
+  expect(saved).toMatchObject({
+    revision: 3,
+    name: 'Updated Burger',
+    basePrice: '155.00',
+    categoryIds: ['category-0'],
+    imageAssetIds: ['image-1'],
+  });
+});
+
+test('a failed catalog refresh after save does not create the product twice', async ({ page }) => {
+  const mutations = await mockCatalog(page);
+  let failNextList = false;
+  let createRequests = 0;
+  await page.route('**/owner/catalog/products', async (route) => {
+    if (route.request().method() === 'POST') {
+      createRequests++;
+      failNextList = true;
+      await route.fallback();
+      return;
+    }
+    if (route.request().method() === 'GET' && failNextList) {
+      failNextList = false;
+      await route.fulfill({ status: 503, json: { message: 'Refresh unavailable' } });
+      return;
+    }
+    await route.fallback();
+  });
+  await page.goto('http://127.0.0.1:5274/products');
+  await page.getByRole('button', { name: 'Add Product', exact: true }).click();
+  await page.locator('.basic-product-name input').fill('Saved Burger');
+  await page.locator('.basic-name-price-row input[type="number"]').fill('155.00');
+  await page.getByRole('button', { name: 'Browse categories', exact: true }).click();
+  await page.getByRole('option').first().click();
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('button', { name: 'Choose from library', exact: true }).click();
+  const mediaDialog = page.getByRole('dialog', { name: 'Choose product photos', exact: true });
+  await mediaDialog.locator('.media-library-option').first().click();
+  await mediaDialog.getByRole('button', { name: 'Apply selected photos', exact: true }).click();
+  await page.getByRole('button', { name: /Next: Options/ }).click();
+  await page.getByRole('button', { name: 'Continue without choices', exact: true }).click();
+  await page.getByRole('button', { name: 'Review product', exact: true }).click();
+  await page.locator('input[name="availability"]').nth(1).check();
+  await page.getByRole('button', { name: 'Create as unavailable', exact: true }).click();
+  await expect(page).toHaveURL('http://127.0.0.1:5274/products');
+  await expect(page.getByRole('alert')).toContainText('Refresh unavailable');
+  expect(createRequests).toBe(1);
+  expect(mutations).toHaveLength(1);
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await expect(page.getByRole('alert')).toHaveCount(0);
+  expect(createRequests).toBe(1);
+  expect(mutations).toHaveLength(1);
 });
 
 test('archived products can be viewed and restored as unavailable', async ({ page }) => {
@@ -337,25 +437,15 @@ test('a partial import retries only remaining rows', async ({ page }) => {
   await expect(page.locator('.wf-summary-card').first()).toContainText('2');
 });
 
-test('a successful save followed by a refresh failure closes the editor without a duplicate create', async ({
-  page,
-}) => {
+test('cancelling product creation returns to the catalog without a write', async ({ page }) => {
   const mutations = await mockCatalog(page);
   await page.goto('http://127.0.0.1:5274/products');
   await page.getByRole('button', { name: 'Add Product', exact: true }).click();
-  const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Product name', { exact: true }).fill('Saved Burger');
-  await dialog.getByLabel('Base price (EGP)').fill('155');
-  await dialog.getByRole('checkbox', { name: 'برجر', exact: true }).check();
-  await dialog.getByRole('checkbox', { name: 'burger.svg' }).check();
-  await page.route('**/owner/catalog/products', async (route) => {
-    if (route.request().method() === 'GET')
-      await route.fulfill({ status: 500, json: { message: 'Refresh unavailable' } });
-    else await route.fallback();
-  });
-  await dialog.getByRole('button', { name: 'Add Product', exact: true }).click();
-  await expect(dialog).toHaveCount(0);
-  await expect(page.getByRole('alert')).toContainText('Refresh unavailable');
-  await expect(page.getByText('Product saved.', { exact: true })).toBeVisible();
-  expect(mutations).toHaveLength(1);
+  await expect(page.getByRole('heading', { name: 'Create a product', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Cancel', exact: true }).click();
+  await expect(page).toHaveURL('http://127.0.0.1:5274/products');
+  await expect(
+    page.getByRole('heading', { name: 'Products', level: 1, exact: true }),
+  ).toBeVisible();
+  expect(mutations).toHaveLength(0);
 });

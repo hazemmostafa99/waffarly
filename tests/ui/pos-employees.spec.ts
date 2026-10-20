@@ -46,6 +46,7 @@ function orderSummary(status: 'pending' | 'accepted' | 'preparing') {
     customerPhone: '01000000000',
     fulfillmentType: 'pickup',
     deliveryAddress: null,
+    requiresRecipeAcceptance: true,
     currency: 'EGP',
     total: '26.00',
     createdAt: '2026-10-15T12:00:00.000Z',
@@ -173,9 +174,15 @@ test('owner configures a cashier and register, then the cashier can open a shift
   await ownerPage
     .getByLabel('Password (12 characters minimum)', { exact: true })
     .fill('browser-test-password');
+  const branchPicker = ownerPage.getByRole('combobox', {
+    name: 'Add an active branch',
+    exact: true,
+  });
+  await branchPicker.fill('Central');
   await ownerPage
-    .getByRole('combobox', { name: 'Add an active branch', exact: true })
-    .selectOption(branchId);
+    .getByRole('listbox', { name: 'Add an active branch', exact: true })
+    .getByRole('option', { name: 'Central', exact: true })
+    .click();
   await ownerPage.getByRole('combobox', { name: 'Role', exact: true }).selectOption('cashier');
   await ownerPage.getByRole('button', { name: 'Save employee', exact: true }).click();
   await expect(ownerPage.getByText('Employee account created.', { exact: true })).toBeVisible();
@@ -188,9 +195,15 @@ test('owner configures a cashier and register, then the cashier can open a shift
 
   await ownerPage.goto('http://127.0.0.1:5274/pos-registers');
   await ownerPage.getByRole('button', { name: 'Add register', exact: true }).click();
+  const registerBranchPicker = ownerPage.getByRole('combobox', {
+    name: 'Choose branch',
+    exact: true,
+  });
+  await registerBranchPicker.fill('Central');
   await ownerPage
-    .getByRole('combobox', { name: 'Choose branch', exact: true })
-    .selectOption(branchId);
+    .getByRole('listbox', { name: 'Choose branch', exact: true })
+    .getByRole('option', { name: 'Central', exact: true })
+    .click();
   await ownerPage.getByLabel('Register name', { exact: true }).fill('Front counter');
   await ownerPage.getByRole('button', { name: 'Save register', exact: true }).click();
   await expect(ownerPage.getByText('Register created at Central.', { exact: true })).toBeVisible();
@@ -398,7 +411,7 @@ test('owner configures a cashier and register, then the cashier can open a shift
   await posPage.getByRole('button', { name: 'Change language', exact: true }).click();
   await posPage.getByRole('link', { name: 'الطلبات الواردة', exact: true }).click();
   await expect(posPage.getByRole('heading', { name: 'الطلبات الواردة' })).toBeVisible();
-  await expect(posPage.getByText('قيد التحضير', { exact: true })).toBeVisible();
+  await expect(posPage.getByText('جاري التحضير', { exact: true })).toBeVisible();
   await expect(posPage.locator('html')).toHaveAttribute('dir', 'rtl');
   await posPage.screenshot({ path: testInfo.outputPath('pos-arabic-rtl.png'), fullPage: true });
 

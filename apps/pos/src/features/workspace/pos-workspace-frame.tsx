@@ -1,4 +1,4 @@
-import { Popover, cn, useLocale } from '@waffarly/ui';
+import { cn, useLocale } from '@waffarly/ui';
 import {
   LayoutDashboard,
   LayoutGrid,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   hasPosEmployeePermission,
   posEmployeeHome,
@@ -21,15 +22,9 @@ import {
 import { PosButton } from '../../components/pos-button.js';
 import { usePosViewport } from '../../lib/use-pos-viewport.js';
 import { isReadablePosLabel } from '../../lib/display-label.js';
-import { usePosAppearanceStore, type PosAccent } from '../../app/pos-appearance-store.js';
+import { usePosAppearanceStore } from '../../app/pos-appearance-store.js';
+import { getPosAppearance, posAppearanceKey } from './pos-appearance.api.js';
 import '@waffarly/ui/pos-theme.css';
-
-const accents: Array<[PosAccent, string, string]> = [
-  ['orange', 'Orange', '#bf4c0d'],
-  ['plum', 'Plum', '#7939a4'],
-  ['teal', 'Teal', '#0d766c'],
-  ['blue', 'Blue', '#285fc1'],
-];
 
 export function PosWorkspaceFrame({
   employee,
@@ -48,12 +43,16 @@ export function PosWorkspaceFrame({
   const location = useLocation();
   const theme = usePosAppearanceStore((state) => state.theme);
   const setTheme = usePosAppearanceStore((state) => state.setTheme);
-  const accent = usePosAppearanceStore((state) => state.accent);
-  const setAccent = usePosAppearanceStore((state) => state.setAccent);
+  const appearanceQuery = useQuery({
+    queryKey: posAppearanceKey(employee.merchantId),
+    queryFn: getPosAppearance,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const accent = appearanceQuery.data?.accent ?? 'orange';
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia('(prefers-color-scheme: dark)').matches,
   );
-  const [accentOpen, setAccentOpen] = useState(false);
   const viewport = usePosViewport();
   const selling = location.pathname === '/catalog';
   useEffect(() => {
@@ -173,8 +172,13 @@ export function PosWorkspaceFrame({
             selling && 'h-full min-h-0 group-data-[input-mode=true]/pos:pb-0',
           )}
         >
-          <header className="flex min-h-[76px] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-3 py-3 group-data-[input-mode=true]/pos:hidden sm:px-5 xl:px-7">
-            <div className="flex min-w-0 items-center gap-3">
+          <header
+            className={cn(
+              'flex min-h-[76px] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-3 py-3 group-data-[input-mode=true]/pos:hidden sm:px-5 xl:px-7',
+              selling && 'min-h-16 gap-2 py-2',
+            )}
+          >
+            <div className={cn('flex min-w-0 items-center gap-3', selling && 'hidden lg:flex')}>
               <span className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-border sm:flex">
                 <LayoutGrid aria-hidden="true" size={17} strokeWidth={1.6} />
               </span>
@@ -209,61 +213,23 @@ export function PosWorkspaceFrame({
                   <option value="system">{t('System')}</option>
                 </select>
               </div>
-              <Popover
-                open={accentOpen}
-                onOpenChange={setAccentOpen}
-                label={t('POS accent preview')}
-                className="w-[min(320px,calc(100vw-24px))]"
-                trigger={(props) => (
-                  <button
-                    {...props}
-                    type="button"
-                    aria-label={t('POS accent preview')}
-                    className="flex min-h-10 items-center gap-2 rounded-lg border border-border px-2.5 text-xs font-medium hover:bg-secondary"
-                  >
-                    <Palette aria-hidden="true" size={15} />
-                    <span className="hidden sm:inline">{t('Accent')}</span>
-                    <span className="size-3.5 rounded-full bg-primary ring-2 ring-background ring-offset-1 ring-offset-border" />
-                  </button>
-                )}
+              <span
+                className="pos-merchant-accent flex min-h-10 items-center gap-2 rounded-lg border border-border px-2.5 text-xs font-medium"
+                aria-label={
+                  appearanceQuery.isError
+                    ? t('Merchant accent unavailable; using orange default')
+                    : t('Merchant accent')
+                }
+                title={
+                  appearanceQuery.isError
+                    ? t('Merchant accent unavailable; using orange default')
+                    : t('Set by merchant')
+                }
               >
-                <div className="space-y-3 p-4">
-                  <div>
-                    <h2 className="text-sm font-semibold">{t('Merchant accent')}</h2>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {t('Local appearance preview. This does not save merchant settings.')}
-                    </p>
-                  </div>
-                  <div
-                    role="group"
-                    aria-label={t('Accent color')}
-                    className="grid grid-cols-2 gap-2"
-                  >
-                    {accents.map(([id, label, color]) => (
-                      <button
-                        key={id}
-                        type="button"
-                        aria-pressed={accent === id}
-                        onClick={() => setAccent(id)}
-                        className={cn(
-                          'flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm',
-                          accent === id
-                            ? 'border-primary bg-accent font-semibold'
-                            : 'border-border',
-                        )}
-                      >
-                        <span className="size-4 rounded-full" style={{ backgroundColor: color }} />
-                        {t(label)}
-                        {accent === id && (
-                          <span aria-hidden="true" className="ms-auto text-primary">
-                            ✓
-                          </span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </Popover>
+                <Palette aria-hidden="true" size={15} />
+                <span className="hidden sm:inline">{t('Accent')}</span>
+                <span className="size-3.5 rounded-full bg-primary ring-2 ring-background ring-offset-1 ring-offset-border" />
+              </span>
               <PosButton
                 type="button"
                 variant="outline"

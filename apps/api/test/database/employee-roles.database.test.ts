@@ -4,7 +4,7 @@ import { config } from 'dotenv';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { it } from 'node:test';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { AuthService } from '../../src/modules/auth/auth.service.js';
 import { PosEmployeeService } from '../../src/modules/auth/pos-employee.service.js';
 
@@ -12,7 +12,7 @@ config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
 const databaseUrl = process.env.DATABASE_URL;
 
 it(
-  'persists employee presets, isolates tenants and reloads role and branch changes on existing sessions',
+  'persists employee presets, isolates tenants, reloads grants and revokes POS sessions',
   { skip: !databaseUrl },
   async () => {
     assert.ok(databaseUrl);
@@ -98,6 +98,11 @@ it(
               ...input,
               role: 'cashier',
             });
+            const supervisor = await employees.create(merchant.id, 'owner', {
+              ...input,
+              username: 'approval-supervisor',
+              role: 'supervisor',
+            });
             const sessionToken = randomUUID();
             await tx.authSession.create({
               data: {
@@ -107,13 +112,79 @@ it(
                 expiresAt: new Date(Date.now() + 60_000),
               },
             });
+            const logoutSessionToken = randomUUID();
+            const logoutSessionHash = createHash('sha256').update(logoutSessionToken).digest('hex');
+            await tx.authSession.create({
+              data: {
+                tokenHash: logoutSessionHash,
+                subjectKind: 'POS',
+                subjectId: cashier.id,
+                expiresAt: new Date(Date.now() + 60_000),
+              },
+            });
             const auth = new AuthService(scoped as never, {} as never);
+            assert.equal(
+              await auth.verifyPosEmployeeApproval({
+                merchantId: merchant.id,
+                branchId: branch.id,
+                actingEmployeeId: cashier.id,
+                username: 'approval-supervisor',
+                password: input.password,
+                permission: 'approve_voids',
+              }),
+              supervisor.id,
+            );
+            await assert.rejects(
+              auth.verifyPosEmployeeApproval({
+                merchantId: merchant.id,
+                branchId: branch.id,
+                actingEmployeeId: cashier.id,
+                username: 'approval-supervisor',
+                password: 'wrong-password',
+                permission: 'approve_voids',
+              }),
+              /credentials are invalid/,
+            );
+            await assert.rejects(
+              auth.verifyPosEmployeeApproval({
+                merchantId: merchant.id,
+                branchId: branch.id,
+                actingEmployeeId: supervisor.id,
+                username: cashier.username,
+                password: input.password,
+                permission: 'approve_voids',
+              }),
+              /not authorized/,
+            );
             const request = {
               headers: { cookie: `waffarly_pos_session=${sessionToken}` },
             } as Request;
             assert.equal(
               (await auth.requirePosEmployee(request)).permissions.includes('sell'),
               true,
+            );
+            const logoutRequest = {
+              headers: { cookie: `waffarly_pos_session=${logoutSessionToken}` },
+            } as Request;
+            assert.equal((await auth.requirePosEmployee(logoutRequest)).id, cashier.id);
+            const clearedCookies: string[] = [];
+            const response = {
+              clearCookie(name: string) {
+                clearedCookies.push(name);
+              },
+            } as unknown as Response;
+            await auth.logout(logoutRequest, response, 'POS');
+            assert.deepEqual(clearedCookies, ['waffarly_pos_session']);
+            assert.equal(
+              await tx.authSession.findUnique({ where: { tokenHash: logoutSessionHash } }),
+              null,
+            );
+            await assert.rejects(auth.requirePosEmployee(logoutRequest), /Session has expired/);
+            assert.ok(
+              await tx.authSession.findUnique({
+                where: { tokenHash: createHash('sha256').update(sessionToken).digest('hex') },
+              }),
+              'logging out one device keeps the employee’s other session active',
             );
             const accountant = await employees.update(merchant.id, 'owner', cashier.id, {
               revision: cashier.revision,

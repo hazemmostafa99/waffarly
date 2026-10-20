@@ -6,6 +6,7 @@ import {
   CircleDollarSign,
   Clock3,
   Info,
+  RefreshCw,
   Store,
   UserRound,
   Wallet,
@@ -16,13 +17,8 @@ import { usePosWorkspaceStore } from '../../app/pos-workspace-store.js';
 import { PosButton } from '../../components/pos-button.js';
 import { ApiError } from '../../lib/api-client.js';
 import { isReadablePosLabel } from '../../lib/display-label.js';
-import {
-  getCurrentPosShift,
-  listPosRegisters,
-  openPosShift,
-  posCurrentShiftKey,
-  posRegisterKey,
-} from './pos-shifts.api.js';
+import { PosShiftCashManagement } from './pos-shift-cash-management.js';
+import { getCurrentPosShift, listPosRegisters, openPosShift, posCurrentShiftKey, posRegisterKey } from './pos-shifts.api.js';
 
 type LayoutContext = { employee: PosEmployeeSession };
 
@@ -37,6 +33,8 @@ export function PosShiftScreen() {
   const removePendingShiftOpen = usePosWorkspaceStore((state) => state.removePendingShiftOpen);
   const persistenceError = usePosWorkspaceStore((state) => state.persistenceError);
   const pendingShiftOpen = workspace?.pendingShiftOpen ?? null;
+  const pendingShiftCashMovement = workspace?.pendingShiftCashMovement ?? null;
+  const pendingShiftClose = workspace?.pendingShiftClose ?? null;
   const branches = useMemo(
     () => employee.branches.filter((branch) => branch.archivedAt === null),
     [employee.branches],
@@ -53,18 +51,20 @@ export function PosShiftScreen() {
   }, [employee.id, employee.merchantId, hydrate]);
 
   useEffect(() => {
-    const pendingBranchId = pendingShiftOpen?.branchId;
+    const pendingBranchId = pendingShiftOpen?.branchId ??
+      pendingShiftCashMovement?.branchId ?? pendingShiftClose?.branchId;
     const preferred = pendingBranchId ?? workspace?.selectedBranchId;
     const next = branches.find((branch) => branch.id === preferred)?.id ?? branches[0]?.id ?? null;
     setBranchId(next);
-    if (next && workspace && workspace.selectedBranchId !== next && !pendingShiftOpen) {
+    if (next && workspace && workspace.selectedBranchId !== next &&
+      !pendingShiftOpen && !pendingShiftCashMovement && !pendingShiftClose) {
       try {
         selectBranch(employee.merchantId, employee.id, next);
       } catch (error) {
         setFormError(error instanceof Error ? error.message : t('Could not save this branch.'));
       }
     }
-  }, [branches, employee.id, employee.merchantId, pendingShiftOpen, selectBranch, t, workspace]);
+  }, [branches, employee.id, employee.merchantId, pendingShiftCashMovement, pendingShiftClose, pendingShiftOpen, selectBranch, t, workspace]);
 
   useEffect(() => {
     const updateOnline = () => setOnline(navigator.onLine);
@@ -90,11 +90,12 @@ export function PosShiftScreen() {
       setRegisterId('');
       return;
     }
-    const preferred = pendingShiftOpen?.registerId ?? registerId;
+    const preferred = pendingShiftOpen?.registerId ?? pendingShiftCashMovement?.registerId ??
+      pendingShiftClose?.registerId ?? registerId;
     setRegisterId(
       registers.some((register) => register.id === preferred) ? preferred : registers[0]!.id,
     );
-  }, [pendingShiftOpen?.registerId, registerId, registers]);
+  }, [pendingShiftCashMovement?.registerId, pendingShiftClose?.registerId, pendingShiftOpen?.registerId, registerId, registers]);
 
   const currentShiftKey = posCurrentShiftKey(employee.merchantId, branchId ?? '', registerId);
   const currentShiftQuery = useQuery({
@@ -103,7 +104,7 @@ export function PosShiftScreen() {
     enabled: canOpenShift && Boolean(branchId && registerId),
     refetchOnWindowFocus: true,
   });
-
+  const activeShift = currentShiftQuery.data ?? null;
   const openMutation = useMutation({
     mutationFn: (input: OpenPosShiftRequest) => openPosShift(input),
     onSuccess: async (shift, variables) => {
@@ -199,7 +200,6 @@ export function PosShiftScreen() {
     );
   }
 
-  const activeShift = currentShiftQuery.data ?? null;
   const queryError =
     registersQuery.error instanceof Error
       ? registersQuery.error.message
@@ -214,9 +214,7 @@ export function PosShiftScreen() {
 
   function retryFailedQueries() {
     if (registersQuery.isError) void registersQuery.refetch();
-    if (currentShiftQuery.isError && branchId && registerId) {
-      void currentShiftQuery.refetch();
-    }
+    if (currentShiftQuery.isError && branchId && registerId) void currentShiftQuery.refetch();
   }
 
   return (
@@ -236,13 +234,25 @@ export function PosShiftScreen() {
             {t('Review the selected register and opening cash, or start a new shift.')}
           </p>
         </div>
-        <span
-          className={`mt-1 inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${online ? 'border-success/30 bg-success/10 text-success' : 'border-warning/30 bg-warning/10 text-warning'}`}
-          role="status"
-        >
-          <span className="size-2 rounded-full bg-current" aria-hidden="true" />
-          {online ? t('Online') : t('Offline - shift opening unavailable')}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <PosButton
+            type="button"
+            variant="outline"
+            className="min-h-9 px-3"
+            disabled={registersQuery.isFetching || currentShiftQuery.isFetching}
+            onClick={retryFailedQueries}
+          >
+            <RefreshCw size={14} aria-hidden="true" />
+            {t('Refresh')}
+          </PosButton>
+          <span
+            className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${online ? 'border-success/30 bg-success/10 text-success' : 'border-warning/30 bg-warning/10 text-warning'}`}
+            role="status"
+          >
+            <span className="size-2 rounded-full bg-current" aria-hidden="true" />
+            {online ? t('Online') : t('Offline - shift opening unavailable')}
+          </span>
+        </div>
       </header>
 
       {queryError && (
@@ -294,7 +304,7 @@ export function PosShiftScreen() {
           <select
             className="min-h-12 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring"
             value={branchId ?? ''}
-            disabled={Boolean(pendingShiftOpen) || branches.length === 0}
+            disabled={Boolean(pendingShiftOpen || pendingShiftCashMovement || pendingShiftClose) || branches.length === 0}
             onChange={(event) => handleBranchChange(event.target.value)}
           >
             {branches.length === 0 && <option value="">{t('No active branches assigned')}</option>}
@@ -315,6 +325,7 @@ export function PosShiftScreen() {
             value={registerId}
             disabled={
               Boolean(pendingShiftOpen) ||
+              Boolean(pendingShiftCashMovement || pendingShiftClose) ||
               branches.length === 0 ||
               registers.length === 0 ||
               registersQuery.isLoading
@@ -429,6 +440,11 @@ export function PosShiftScreen() {
             </p>
           </div>
         </article>
+      ) : pendingShiftCashMovement || pendingShiftClose ? (
+        <article className="grid gap-2 rounded-xl border border-warning/30 bg-warning/5 p-5 text-card-foreground">
+          <h3 className="m-0 text-base font-semibold">{t('Saved shift action needs confirmation')}</h3>
+          <p className="m-0 text-sm text-muted-foreground">{t('Resolve the saved cash movement or shift close before opening a new shift.')}</p>
+        </article>
       ) : (
         <form
           className="grid gap-5 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm sm:p-6"
@@ -488,6 +504,15 @@ export function PosShiftScreen() {
             </PosButton>
           </div>
         </form>
+      )}
+      {currentShiftQuery.isSuccess && branchId && registerId && (
+        <PosShiftCashManagement
+          employee={employee}
+          branchId={branchId}
+          registerId={registerId}
+          shift={activeShift}
+          online={online}
+        />
       )}
     </section>
   );

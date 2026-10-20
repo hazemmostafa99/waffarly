@@ -62,7 +62,10 @@ jobs:
       - run: pnpm --filter @waffarly/api test:catalog-db
       - run: pnpm --filter @waffarly/api test:inventory-db
       - run: pnpm --filter @waffarly/api test:employees-db
+      - run: pnpm --filter @waffarly/api test:pos-appearance-db
       - run: pnpm --filter @waffarly/api test:pos-db
+      - run: pnpm --filter @waffarly/api test:shifts-db
+      - run: pnpm --filter @waffarly/api test:pos-returns-db
       - run: pnpm --filter @waffarly/api test:purchasing-db
       - run: pnpm --filter @waffarly/api test:storefront-orders-db
       - run: pnpm --filter @waffarly/api test:activities-db
@@ -70,5 +73,53 @@ jobs:
       - run: pnpm --filter @waffarly/merchant-dashboard build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm exec playwright test --config playwright.merchant.config.ts tests/ui/merchant-inventory.spec.ts tests/ui/merchant-recipe-orders.spec.ts
+      - run: pnpm exec playwright test --config playwright.merchant.config.ts tests/ui/merchant-pos-item-returns.spec.ts tests/ui/merchant-pos-shift-reports.spec.ts tests/ui/merchant-pos-operations.spec.ts
       - run: pnpm exec playwright test --config playwright.modifiers.config.ts
       - run: pnpm exec playwright test --config playwright.employee-roles.config.ts
+      - run: pnpm exec playwright test --config playwright.pos-checkout.config.ts
+      - run: pnpm exec playwright test --config playwright.pos-dining.config.ts tests/ui/pos-dining.spec.ts
+      - run: pnpm exec playwright test --config playwright.pos-login.config.ts
+      - run: pnpm exec playwright test --config playwright.pos-employees.config.ts
+      - run: pnpm exec playwright test --config playwright.pos-queue.config.ts
+      - run: pnpm exec playwright test --config playwright.pos-receipt-detail.config.ts
+      - run: pnpm exec playwright test --config playwright.pos-receipts.config.ts
+      - run: pnpm exec playwright test --config playwright.pos-shift.config.ts
+
+  pos-live-regressions:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: waffarly_ci
+          POSTGRES_PASSWORD: ci_test_password
+          POSTGRES_DB: waffarly_pos_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U waffarly_ci -d waffarly_pos_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://waffarly_ci:ci_test_password@127.0.0.1:5432/waffarly_pos_e2e?schema=public
+      PORT: 4005
+      CORS_ORIGINS: http://127.0.0.1:5290
+      VITE_API_BASE_URL: http://127.0.0.1:4005
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.11.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cp .env.example .env
+      - run: pnpm --filter @waffarly/contracts build
+      - run: pnpm --filter @waffarly/database build
+      - run: pnpm --filter @waffarly/database exec prisma migrate deploy --config ./prisma.config.ts
+      - run: pnpm --filter @waffarly/api pos:seed-live-e2e
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test --config playwright.pos-live.config.ts

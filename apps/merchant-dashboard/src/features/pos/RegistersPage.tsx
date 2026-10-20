@@ -11,6 +11,7 @@ import {
 import { Icon } from '../../Icons.js';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { PagedEntitySelect } from '../../components/PagedEntitySelect.js';
+import { PosAppearanceSettings } from './PosAppearanceSettings.js';
 import { ApiError, apiRequest, apiRequestPage } from '../../lib/api-client.js';
 import './registers.css';
 
@@ -199,6 +200,8 @@ export function RegistersPage() {
         </p>
       )}
 
+      <PosAppearanceSettings />
+
       <div className="products-filters register-filters">
         <label className="register-branch-filter">
           <span>{text('Branch', 'الفرع')}</span>
@@ -208,6 +211,7 @@ export function RegistersPage() {
             label={text('Filter by branch', 'تصفية حسب الفرع')}
             emptyLabel={text('All branches', 'كل الفروع')}
             required={false}
+            searchMode="combobox"
             onSelect={(branch) => {
               setBranchId(branch?.id ?? '');
               setHistory([]);
@@ -313,6 +317,7 @@ export function RegistersPage() {
                   label={text('Choose branch', 'اختر الفرع')}
                   emptyLabel={text('Choose an active branch', 'اختر فرعًا نشطًا')}
                   disabled={busy}
+                  searchMode="combobox"
                   onSelect={(branch) =>
                     setDraft((value) => ({
                       ...value,

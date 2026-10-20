@@ -240,6 +240,7 @@ export function TablesPage() {
             label={text('Filter by branch', 'تصفية حسب الفرع')}
             emptyLabel={text('All branches', 'كل الفروع')}
             required={false}
+            searchMode="combobox"
             onSelect={(branch) => {
               setBranchId(branch?.id ?? '');
               setHistory([]);
@@ -343,6 +344,7 @@ export function TablesPage() {
                   label={text('Choose branch', 'اختر الفرع')}
                   emptyLabel={text('Choose an active branch', 'اختر فرعاً نشطاً')}
                   disabled={busy}
+                  searchMode="combobox"
                   onSelect={(branch) =>
                     setDraft((value) => ({
                       ...value,

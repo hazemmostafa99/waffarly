@@ -27,13 +27,23 @@ export function toSummary(order: {
   warehouseName?: string | null;
   acceptedAt?: Date | null;
   preparationStartedAt?: Date | null;
+  readyAt?: Date | null;
+  completedAt?: Date | null;
   cancelledAt?: Date | null;
   cancellationReason?: string | null;
   stockRestored?: boolean | null;
+  kitchenTicket?: {
+    id: string;
+    dispatchMode: string;
+    dispatchedAt: Date;
+    cancellationAcknowledgedAt?: Date | null;
+    station: { id: string; name: string };
+  } | null;
+  diningSession?: { table: { code: string } } | null;
   id: string;
   status: string;
-    customerName: string | null;
-    customerPhone: string | null;
+  customerName: string | null;
+  customerPhone: string | null;
   fulfillmentType: string;
   deliveryAddress: string | null;
   total: { toString(): string };
@@ -49,6 +59,7 @@ export function toSummary(order: {
     unitPrice: { toString(): string };
     lineTotal: { toString(): string };
     note?: string | null;
+    kitchenReadyAt?: Date | null;
     variantAttributes: Array<{
       attributeId: string | null;
       valueId: string | null;
@@ -67,6 +78,33 @@ export function toSummary(order: {
   }>;
 }): StorefrontOrderSummary {
   return {
+    ...(order.cancelledAt !== undefined
+      ? { cancelledAt: order.cancelledAt?.toISOString() ?? null }
+      : {}),
+    ...(order.cancellationReason !== undefined
+      ? { cancellationReason: order.cancellationReason }
+      : {}),
+    ...(order.kitchenTicket
+      ? {
+          kitchenTicket: {
+            id: order.kitchenTicket.id,
+            station: order.kitchenTicket.station,
+            dispatchMode: order.kitchenTicket.dispatchMode as 'automatic' | 'manual' | 'legacy',
+            dispatchedAt: order.kitchenTicket.dispatchedAt.toISOString(),
+            cancellationAcknowledgedAt:
+              order.kitchenTicket.cancellationAcknowledgedAt?.toISOString() ?? null,
+          },
+        }
+      : order.kitchenTicket === null
+        ? { kitchenTicket: null }
+        : {}),
+    ...(order.diningSession !== undefined
+      ? { tableCode: order.diningSession?.table.code ?? null }
+      : {}),
+    ...(order.readyAt !== undefined ? { readyAt: order.readyAt?.toISOString() ?? null } : {}),
+    ...(order.completedAt !== undefined
+      ? { completedAt: order.completedAt?.toISOString() ?? null }
+      : {}),
     ...(order.lines.some((line) => line.stockHandling === 'recipe_acceptance')
       ? {
           requiresRecipeAcceptance: true,
@@ -105,6 +143,9 @@ export function toSummary(order: {
       unitPrice: formatCents(toCents(line.unitPrice.toString())),
       lineTotal: formatCents(toCents(line.lineTotal.toString())),
       ...(line.note !== undefined ? { note: line.note } : {}),
+      ...(line.kitchenReadyAt !== undefined
+        ? { kitchenReadyAt: line.kitchenReadyAt?.toISOString() ?? null }
+        : {}),
       selections: line.selections.map((selection) => ({
         groupName: selection.groupName,
         optionName: selection.optionName,

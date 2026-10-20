@@ -1,6 +1,7 @@
 import {
   isPosEmployeeRole,
   resolvePosEmployeePermissions,
+  type PosEmployeePermission,
   type BusinessActivityKey,
 } from '@waffarly/contracts';
 import { createHash, randomBytes } from 'node:crypto';
@@ -161,6 +162,44 @@ export class AuthService {
       ),
       branches,
     };
+  }
+
+  async verifyPosEmployeeApproval(input: {
+    merchantId: string;
+    branchId: string;
+    actingEmployeeId: string;
+    username: string;
+    password: string;
+    permission: Extract<
+      PosEmployeePermission,
+      'approve_voids' | 'approve_refunds' | 'approve_shift_close' | 'manage_cash_movements'
+    >;
+  }): Promise<string> {
+    const employee = await this.prisma.posEmployee.findUnique({
+      where: {
+        merchantId_username: {
+          merchantId: input.merchantId,
+          username: input.username.trim().toLowerCase(),
+        },
+      },
+      include: {
+        branches: {
+          where: { branch: { archivedAt: null } },
+          select: { branchId: true },
+        },
+      },
+    });
+    if (!employee || !employee.active || !(await verifyPassword(input.password, employee.passwordHash))) {
+      throw new UnauthorizedException('Supervisor approval credentials are invalid.');
+    }
+    if (employee.id === input.actingEmployeeId)
+      throw new ForbiddenException('A different supervisor must approve this action.');
+    if (!employee.branches.some((branch) => branch.branchId === input.branchId))
+      throw new ForbiddenException('The supervisor is not assigned to this branch.');
+    const role = isPosEmployeeRole(employee.role) ? employee.role : null;
+    if (!resolvePosEmployeePermissions(role, employee.permissions).includes(input.permission))
+      throw new ForbiddenException('The supervisor is not authorized to approve this action.');
+    return employee.id;
   }
 
   async logout(

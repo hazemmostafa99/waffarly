@@ -528,26 +528,36 @@ export function EmployeesPage() {
                   </label>
                 )}
               </div>
-              <div className="employee-role-help" aria-live="polite">
-                <strong>{text('Permissions for this role', 'صلاحيات هذا الدور')}</strong>
-                <ul>
-                  {visiblePermissions.map((permission) => (
-                    <li key={permission}>{text(...employeePermissionLabels[permission])}</li>
-                  ))}
-                </ul>
-                <p>
-                  {text(
-                    'Access applies only to the assigned active branches below. Employees sign in through the employee/POS workspace.',
-                    'يقتصر الوصول على الفروع النشطة المعيّنة أدناه. يسجل الموظف دخوله من مساحة الموظفين / نقاط البيع.',
-                  )}
-                </p>
-                <p>
-                  {text(
-                    'Stock changes, refunds, employee management, settings and account ownership remain owner-controlled. Accountants currently have read-only receipt access; inventory officers have read-only stock balances.',
-                    'تظل تعديلات المخزون والاسترجاعات وإدارة الموظفين والإعدادات وملكية الحساب تحت تحكم المالك. المتاح للمحاسب حاليًا هو عرض الإيصالات، ولمسؤول المخزون عرض الأرصدة فقط.',
-                  )}
-                </p>
-              </div>
+              <details className="employee-role-help" aria-live="polite">
+                <summary>
+                  <strong>{text('Permissions for this role', 'صلاحيات هذا الدور')}</strong>
+                  <span className="employee-permission-count">
+                    {visiblePermissions.length} {text('permissions', 'صلاحيات')}
+                  </span>
+                  <span className="employee-role-disclosure-icon" aria-hidden="true">
+                    <span />
+                  </span>
+                </summary>
+                <div className="employee-role-help-content">
+                  <ul>
+                    {visiblePermissions.map((permission) => (
+                      <li key={permission}>{text(...employeePermissionLabels[permission])}</li>
+                    ))}
+                  </ul>
+                  <p>
+                    {text(
+                      'Access applies only to the assigned active branches below. Employees sign in through the employee/POS workspace.',
+                      'يقتصر الوصول على الفروع النشطة المعيّنة أدناه. يسجل الموظف دخوله من مساحة الموظفين / نقاط البيع.',
+                    )}
+                  </p>
+                  <p>
+                    {text(
+                      'Stock changes, refunds, employee management, settings and account ownership remain owner-controlled. Accountants currently have read-only receipt access; inventory officers have read-only stock balances.',
+                      'تظل تعديلات المخزون والاسترجاعات وإدارة الموظفين والإعدادات وملكية الحساب تحت تحكم المالك. المتاح للمحاسب حاليًا هو عرض الإيصالات، ولمسؤول المخزون عرض الأرصدة فقط.',
+                    )}
+                  </p>
+                </div>
+              </details>
               <fieldset className="employee-branches">
                 <legend>{text('Assigned branches', 'الفروع المعيّنة')}</legend>
                 <div className="employee-branch-picker">
@@ -557,6 +567,8 @@ export function EmployeesPage() {
                     value={branchPicker}
                     label={text('Add an active branch', 'إضافة فرع نشط')}
                     required={false}
+                    emptyLabel={text('Choose a branch', 'اختر فرعًا')}
+                    searchMode="combobox"
                     onSelect={addBranch}
                   />
                 </div>

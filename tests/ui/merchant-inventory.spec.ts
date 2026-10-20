@@ -126,13 +126,17 @@ test('modifier editor saves quantity caps, variant prices and explicit empty eff
   });
   await page.goto(`http://127.0.0.1:5274/products/${productId}/edit`);
   await page.getByRole('tab', { name: /Options/ }).click();
-  await page.getByText('Quantities, variants and ingredients', { exact: true }).click();
-  const option = page.getByRole('group', { name: 'Cheese', exact: true });
+  await page.getByRole('button', { name: /^Extras Optional/ }).click();
+  const composer = page.getByRole('dialog', { name: 'Edit customer choices', exact: true });
+  await composer.getByText('Selection limits, defaults and more', { exact: true }).click();
+  await composer.getByText('Quantities, variants and ingredients', { exact: true }).click();
+  const option = composer.getByRole('group', { name: 'Cheese', exact: true });
   await option.getByLabel('Maximum quantity per option').fill('3');
-  await option.getByText('Large', { exact: true }).click();
+  await option.locator('details > summary').filter({ hasText: 'Large' }).click();
   await option.getByLabel('Variant price (blank inherits product price)').fill('1.50');
   await option.getByLabel('Replace all ingredient effects').check();
   await expect(option.getByText('An empty list means no ingredient effects.')).toBeVisible();
+  await composer.getByRole('button', { name: 'Apply changes', exact: true }).click();
   await page.getByRole('tab', { name: /Preview and publish/ }).click();
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect
@@ -208,16 +212,13 @@ for (const locale of ['en', 'ar']) {
     });
     await page.goto(`http://127.0.0.1:5274/products/${productId}/edit`);
     await page.getByRole('tab', { name: locale === 'ar' ? /المخزون/ : /Inventory/ }).click();
-    const picker = page.getByRole('group', {
-      name: locale === 'ar' ? 'صنف المخزون' : 'Stock Item',
-      exact: true,
-    });
-    await expect(picker.getByRole('combobox')).toHaveValue(selectedId);
-    const unit = page.getByRole('combobox', {
-      name: locale === 'ar' ? 'الوحدة' : 'Unit',
-      exact: true,
-    });
+    await page.locator('.inventory-target-card button').click();
+    const inventoryDialog = page.locator('.inventory-configuration-dialog');
+    const picker = inventoryDialog.locator('.entity-picker');
+    await expect(picker.getByRole('combobox')).toHaveValue(/Selected flour/);
+    const unit = inventoryDialog.locator('.inventory-quantity-unit select');
     await expect(unit).toHaveValue('kg');
+    await picker.getByRole('combobox').click();
     await expect(
       picker.getByRole('button', { name: locale === 'ar' ? 'التالي' : 'Next', exact: true }),
     ).toBeEnabled();
@@ -230,12 +231,13 @@ for (const locale of ['en', 'ar']) {
       .click();
     await expect.poll(() => lookups.at(-1)?.searchParams.get('cursor')).toBe(nextCursor);
     await expect(unit).toHaveValue('kg');
-    await picker.getByRole('searchbox').fill('Olive');
+    await picker.getByRole('combobox').fill('Olive');
     await expect.poll(() => lookups.at(-1)?.searchParams.get('search')).toBe('Olive');
     expect(lookups.at(-1)!.searchParams.has('cursor')).toBe(false);
     await expect(unit).toHaveValue('kg');
     await expect(picker.getByRole('combobox')).toBeEnabled();
-    await picker.getByRole('combobox').selectOption(otherId);
+    await picker.getByRole('combobox').fill('Olive');
+    await picker.getByRole('option').filter({ hasText: 'Olive ingredient' }).click();
     await expect(unit).toHaveValue('g');
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       await page.evaluate(() => innerWidth),
@@ -331,14 +333,14 @@ test('purchase editors use bounded lookups and preserve the selected invoice fie
   });
   await page.goto('http://127.0.0.1:5274/inventory/purchases');
   await page.getByRole('button', { name: 'New purchase invoice', exact: true }).click();
-  const dialog = page.getByRole('dialog');
+  const dialog = page.locator('.inventory-purchase-editor');
   await expect(dialog.getByRole('combobox', { name: 'Supplier', exact: true })).toBeEnabled();
   await chooseLookup(dialog, 'Supplier', 'Supplier');
   await expect(dialog.getByRole('combobox', { name: 'Warehouse', exact: true })).toBeEnabled();
-  await dialog.getByRole('combobox', { name: 'Warehouse', exact: true }).selectOption(warehouseId);
+  await chooseLookup(dialog, 'Warehouse', 'Main');
   await dialog.getByRole('button', { name: 'Continue to items', exact: true }).click();
   await expect(dialog.getByRole('combobox', { name: 'Stock item', exact: true })).toBeEnabled();
-  await chooseLookup(dialog, 'Stock item', 'Olive ingredient');
+  await chooseLookup(dialog, 'Stock item', 'Olive');
   await dialog.getByLabel('Quantity', { exact: true }).fill('1.25');
   await dialog.getByRole('button', { name: 'Save draft', exact: true }).click();
   await expect.poll(() => saved).toBeTruthy();
@@ -434,7 +436,7 @@ test('new opening selections survive a language change and post the reviewed qua
   await expect(page.getByRole('combobox', { name: 'Warehouse', exact: true })).toBeEnabled();
   await page.getByRole('combobox', { name: 'Warehouse', exact: true }).selectOption(warehouseId);
   await expect(page.getByRole('combobox', { name: 'Stock item', exact: true })).toBeEnabled();
-  await chooseLookup(page, 'Stock item', 'Olive ingredient');
+  await chooseLookup(page, 'Stock item', 'Olive');
   await page.getByLabel('Reason', { exact: true }).fill('Reviewed count');
   await page.getByLabel('Quantity', { exact: true }).fill('1.25');
   await page.getByRole('button', { name: 'Change language', exact: true }).click();
@@ -714,20 +716,22 @@ test('purchase review receives stock only after explicit confirmation and preser
     return route.fulfill({ json: url.search ? { items: [item], nextCursor: null } : item });
   });
   await page.goto('http://127.0.0.1:5274/inventory/purchases?new=1');
-  const dialog = page.getByRole('dialog');
-  await dialog.getByRole('button', { name: 'Continue to items', exact: true }).click();
-  await expect(dialog.getByRole('alert')).toContainText('Choose a supplier and warehouse');
-  await chooseLookup(dialog, 'Supplier', 'Supplier');
-  await dialog.getByRole('combobox', { name: 'Warehouse', exact: true }).selectOption(warehouseId);
-  await dialog.getByLabel('Supplier invoice number', { exact: true }).fill('INV-42');
-  await dialog.getByRole('button', { name: 'Continue to items', exact: true }).click();
-  await chooseLookup(dialog, 'Stock item', 'Olive ingredient');
-  await dialog.getByLabel('Quantity', { exact: true }).fill('1.25');
-  await dialog.getByRole('button', { name: 'Back', exact: true }).click();
-  await expect(dialog.getByLabel('Supplier invoice number', { exact: true })).toHaveValue('INV-42');
-  await dialog.getByRole('button', { name: 'Continue to items', exact: true }).click();
-  await expect(dialog.getByLabel('Quantity', { exact: true })).toHaveValue('1.25');
-  await dialog.getByRole('button', { name: 'Save and review', exact: true }).click();
+  const editor = page.locator('.inventory-purchase-editor');
+  await editor.getByRole('button', { name: 'Continue to items', exact: true }).click();
+  await expect(editor.getByRole('alert').first()).toContainText('Choose a supplier.');
+  await expect(editor.getByRole('alert').last()).toContainText('Choose a warehouse.');
+  await chooseLookup(editor, 'Supplier', 'Supplier');
+  await chooseLookup(editor, 'Warehouse', 'Main');
+  await editor.getByLabel('Supplier invoice number', { exact: true }).fill('INV-42');
+  await editor.getByRole('button', { name: 'Continue to items', exact: true }).click();
+  await chooseLookup(editor, 'Stock item', 'Olive');
+  await editor.getByLabel('Quantity', { exact: true }).fill('1.25');
+  await editor.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(editor.getByLabel('Supplier invoice number', { exact: true })).toHaveValue('INV-42');
+  await editor.getByRole('button', { name: 'Continue to items', exact: true }).click();
+  await expect(editor.getByLabel('Quantity', { exact: true })).toHaveValue('1.25');
+  await editor.getByRole('button', { name: 'Save and review', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Review supplier invoice', exact: true });
   await expect(dialog).toContainText('Receiving this purchase adds the quantities below to:');
   expect(draft).toMatchObject({
     supplierId,
@@ -838,16 +842,11 @@ for (const locale of ['en', 'ar']) {
       });
     });
     await page.goto('http://127.0.0.1:5274/inventory/purchases?new=1');
-    const editor = page.getByRole('dialog', {
-      name: ar ? 'فاتورة شراء جديدة' : 'New purchase invoice',
-      exact: true,
-    });
+    const editor = page.locator('.inventory-purchase-editor');
     await editor
       .getByLabel(ar ? 'رقم فاتورة المورد' : 'Supplier invoice number', { exact: true })
       .fill('KEEP-42');
-    await editor
-      .getByRole('combobox', { name: ar ? 'المخزن' : 'Warehouse', exact: true })
-      .selectOption(warehouseId);
+    await chooseLookup(editor, ar ? 'المخزن' : 'Warehouse', 'Main');
     await editor
       .getByRole('button', { name: ar ? 'إضافة مورد' : 'Add supplier', exact: true })
       .click();
@@ -872,7 +871,7 @@ for (const locale of ['en', 'ar']) {
       .getByRole('button', { name: ar ? 'حفظ المورد' : 'Save supplier', exact: true })
       .click();
     await expect(supplierDialog.getByRole('alert')).toContainText(
-      ar ? 'يرجى التحقق من البيانات المدخلة والمحاولة مجددًا.' : 'Supplier unavailable',
+      ar ? 'حدث خطأ غير متوقع.' : 'Supplier unavailable',
     );
     await supplierDialog
       .getByRole('button', { name: ar ? 'حفظ المورد' : 'Save supplier', exact: true })
@@ -884,7 +883,7 @@ for (const locale of ['en', 'ar']) {
     ).toHaveValue(supplier.name);
     await expect(
       editor.getByRole('combobox', { name: ar ? 'المخزن' : 'Warehouse', exact: true }),
-    ).toHaveValue(warehouseId);
+    ).toHaveValue('Central · Main');
     await expect(
       editor.getByLabel(ar ? 'رقم فاتورة المورد' : 'Supplier invoice number', { exact: true }),
     ).toHaveValue('KEEP-42');

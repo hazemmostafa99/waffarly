@@ -7,7 +7,10 @@ import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { PosDiningService } from '../../src/modules/orders/pos-dining.service.js';
+import { OrderLifecycleService } from '../../src/modules/orders/order-lifecycle.service.js';
+import { PosKitchenService } from '../../src/modules/orders/pos-kitchen.service.js';
 import { PosOrdersService } from '../../src/modules/orders/pos-orders.service.js';
+import { ProductConfigurationReportService } from '../../src/modules/reports/product-configuration-report.service.js';
 import { PaymentsService } from '../../src/modules/payments/payments.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 
@@ -149,8 +152,162 @@ it(
         dining,
         payments,
       );
+      const kitchen = new PosKitchenService(prisma as unknown as PrismaService);
+      const lifecycle = new OrderLifecycleService(
+        prisma as unknown as PrismaService,
+        {} as never,
+        {} as never,
+      );
 
-      async function createSession(tableId: string, total: string, withSplitLine = false) {
+      const supervisor = await prisma.posEmployee.create({
+        data: {
+          merchantId: merchant.id,
+          username: `supervisor-${token}`,
+          displayName: 'POS Supervisor',
+          passwordHash: 'database-test-only',
+          role: 'supervisor',
+          permissions: [],
+          createdBy: 'pos-cancellation-test',
+          updatedBy: 'pos-cancellation-test',
+          branches: {
+            create: {
+              createdBy: 'pos-cancellation-test',
+              branch: { connect: { id_merchantId: { id: branch.id, merchantId: merchant.id } } },
+            },
+          },
+        },
+      });
+      const kitchenEmployeeRecord = await prisma.posEmployee.create({
+        data: {
+          merchantId: merchant.id,
+          username: `kitchen-${token}`,
+          displayName: 'Kitchen Operator',
+          passwordHash: 'database-test-only',
+          role: 'kitchen',
+          permissions: ['accept_recipe_orders'],
+          createdBy: 'pos-cancellation-test',
+          updatedBy: 'pos-cancellation-test',
+          branches: {
+            create: {
+              createdBy: 'pos-cancellation-test',
+              branch: { connect: { id_merchantId: { id: branch.id, merchantId: merchant.id } } },
+            },
+          },
+        },
+      });
+      const kitchenEmployee: PosEmployeeSession = {
+        id: kitchenEmployeeRecord.id,
+        merchantId: merchant.id,
+        username: kitchenEmployeeRecord.username,
+        displayName: kitchenEmployeeRecord.displayName,
+        role: 'kitchen',
+        permissions: ['accept_recipe_orders'],
+        branches: [{ id: branch.id, name: branch.name, archivedAt: null }],
+      };
+      const cancellationOrder = await prisma.storefrontOrder.create({
+        data: {
+          merchantId: merchant.id,
+          branchId: branch.id,
+          posShiftId: shift.id,
+          createdByPosEmployeeId: employee.id,
+          fulfillmentType: 'takeaway',
+          source: 'pos',
+          status: 'pending',
+          currency: 'EGP',
+          total: '3.00',
+          checks: {
+            create: { position: 0, amount: '3.00', splitMethod: 'whole' },
+          },
+        },
+      });
+      const cancellationStation = await prisma.posKitchenStation.create({
+        data: {
+          merchantId: merchant.id,
+          branchId: branch.id,
+          code: `cancel-${token.slice(0, 12)}`,
+          name: 'Cancellation test station',
+        },
+      });
+      await prisma.posKitchenTicket.create({
+        data: {
+          merchantId: merchant.id,
+          branchId: branch.id,
+          stationId: cancellationStation.id,
+          orderId: cancellationOrder.id,
+          dispatchMode: 'automatic',
+        },
+      });
+      const cancellationCommand = {
+        requestId: randomUUID(),
+        branchId: branch.id,
+        reason: 'Disposable database cancellation test',
+      };
+      const cancelledOrder = await lifecycle.cancelPosFromPos(
+        employee,
+        cancellationOrder.id,
+        cancellationCommand,
+        supervisor.id,
+      );
+      assert.equal(cancelledOrder.status, 'cancelled');
+      assert.equal(cancelledOrder.cancellationReason, cancellationCommand.reason);
+      assert.equal(
+        (
+          await prisma.storefrontOrder.findUniqueOrThrow({
+            where: { id: cancellationOrder.id },
+          })
+        ).stockRestored,
+        true,
+      );
+      assert.deepEqual(
+        await lifecycle.cancelPosFromPos(
+          employee,
+          cancellationOrder.id,
+          cancellationCommand,
+          supervisor.id,
+        ),
+        cancelledOrder,
+      );
+      const cancelledCheck = await prisma.posOrderCheck.findFirstOrThrow({
+        where: { orderId: cancellationOrder.id, merchantId: merchant.id },
+      });
+      assert.ok(cancelledCheck.cancelledAt);
+      const cancellationAction = await prisma.storefrontOrderAction.findFirstOrThrow({
+        where: {
+          orderId: cancellationOrder.id,
+          merchantId: merchant.id,
+          action: 'pos_cancel',
+        },
+      });
+      assert.equal(cancellationAction.approvedByPosEmployeeId, supervisor.id);
+      assert.equal(
+        await prisma.storefrontOrderAction.count({
+          where: { orderId: cancellationOrder.id, merchantId: merchant.id, action: 'pos_cancel' },
+        }),
+        1,
+      );
+      const cancellationAcknowledgement = { requestId: randomUUID() };
+      const acknowledgedCancellation = await kitchen.acknowledgeCancellation(
+        kitchenEmployee,
+        cancellationOrder.id,
+        cancellationAcknowledgement,
+      );
+      assert.ok(acknowledgedCancellation.kitchenTicket?.cancellationAcknowledgedAt);
+      assert.deepEqual(
+        await kitchen.acknowledgeCancellation(
+          kitchenEmployee,
+          cancellationOrder.id,
+          cancellationAcknowledgement,
+        ),
+        acknowledgedCancellation,
+      );
+
+      async function createSession(
+        tableId: string,
+        total: string,
+        withSplitLine = false,
+        lineUnitPrice = '1.00',
+        withKitchenLines = false,
+      ) {
         const order = await prisma.storefrontOrder.create({
           data: {
             merchantId: merchant.id,
@@ -161,22 +318,45 @@ it(
             status: 'pending',
             currency: 'EGP',
             total,
-            ...(withSplitLine
+            ...(withKitchenLines
               ? {
                   lines: {
                     create: [
                       {
                         productId: randomUUID(),
-                        productName: 'Two shareable items',
-                        quantity: 2,
-                        unitPrice: '1.00',
-                        lineTotal: total,
+                        productName: 'Soup',
+                        quantity: 1,
+                        unitPrice: '5.00',
+                        lineTotal: '5.00',
                         position: 0,
+                      },
+                      {
+                        productId: randomUUID(),
+                        productName: 'Bread',
+                        quantity: 1,
+                        unitPrice: '5.00',
+                        lineTotal: '5.00',
+                        position: 1,
                       },
                     ],
                   },
                 }
-              : {}),
+              : withSplitLine
+                ? {
+                    lines: {
+                      create: [
+                        {
+                          productId: randomUUID(),
+                          productName: 'Two shareable items',
+                          quantity: 2,
+                          unitPrice: lineUnitPrice,
+                          lineTotal: total,
+                          position: 0,
+                        },
+                      ],
+                    },
+                  }
+                : {}),
           },
         });
         await prisma.$transaction((tx) =>
@@ -589,6 +769,179 @@ it(
       assert.equal(competingPaymentTotal._sum.amount?.toFixed(2), '0.75');
       assert.equal(await prisma.posShiftCashMovement.count({ where: { shiftId: shift.id } }), 2);
 
+      const beforeRefundState = await posOrders.paymentState(employee, roundOrderId);
+      const refundRequest = {
+        requestId: randomUUID(),
+        revision: beforeRefundState.revision,
+        branchId: branch.id,
+        refundShiftId: shift.id,
+        reason: 'Disposable database partial refund',
+        allocations: [
+          { paymentId: cashPayment.payments[0]!.id, amount: '0.15' },
+          {
+            paymentId: terminalPayment.payments[0]!.id,
+            amount: '0.25',
+            terminalReference: 'REFUND-1942',
+          },
+        ],
+      };
+      await assert.rejects(
+        posOrders.recordCheckRefund(employee, roundOrderId, payableCheck.id, refundRequest),
+        (error: unknown) => error instanceof ForbiddenException,
+      );
+      await assert.rejects(
+        posOrders.recordCheckRefund(
+          employee,
+          roundOrderId,
+          payableCheck.id,
+          refundRequest,
+          otherEmployee.id,
+        ),
+        (error: unknown) => error instanceof ForbiddenException,
+      );
+      await assert.rejects(
+        posOrders.recordCheckRefund(
+          otherBranchSession,
+          roundOrderId,
+          payableCheck.id,
+          refundRequest,
+          supervisor.id,
+        ),
+        (error: unknown) => error instanceof NotFoundException,
+      );
+      const refund = await posOrders.recordCheckRefund(
+        employee,
+        roundOrderId,
+        payableCheck.id,
+        refundRequest,
+        supervisor.id,
+      );
+      assert.equal(refund.refund.amount, '0.40');
+      assert.equal(refund.refund.reason, refundRequest.reason);
+      assert.equal(refund.refund.approvedByEmployeeId, supervisor.id);
+      assert.deepEqual(
+        refund.refund.tenders.map((tender) => [tender.method, tender.amount]),
+        [
+          ['cash', '0.15'],
+          ['terminal', '0.25'],
+        ],
+      );
+      assert.deepEqual(
+        await posOrders.recordCheckRefund(
+          employee,
+          roundOrderId,
+          payableCheck.id,
+          refundRequest,
+          supervisor.id,
+        ),
+        refund,
+      );
+      await assert.rejects(
+        posOrders.recordCheckRefund(
+          employee,
+          roundOrderId,
+          payableCheck.id,
+          {
+            ...refundRequest,
+            requestId: randomUUID(),
+            revision: refund.orderRevision,
+            allocations: [{ paymentId: cashPayment.payments[0]!.id, amount: '0.36' }],
+          },
+          supervisor.id,
+        ),
+        (error: unknown) => error instanceof ConflictException,
+      );
+      const refundTenderState = await posOrders.paymentState(employee, roundOrderId);
+      const refundedCheck = refundTenderState.checks.find((check) => check.id === payableCheck.id);
+      assert.equal(refundedCheck?.status, 'settled');
+      assert.equal(refundedCheck?.refunds?.length, 1);
+      assert.equal(refundedCheck?.refunds?.[0]?.requestId, refundRequest.requestId);
+      assert.equal(refundedCheck?.payments[0]?.refundableAmount, '0.35');
+      assert.equal(refundedCheck?.payments[1]?.refundableAmount, '0.25');
+      assert.equal(await prisma.posOrderRefund.count({ where: { orderId: roundOrderId } }), 1);
+      assert.equal(
+        await prisma.posOrderRefundTender.count({ where: { refundId: refund.refund.id } }),
+        2,
+      );
+      assert.equal(await prisma.posShiftRefundMovement.count({ where: { shiftId: shift.id } }), 1);
+      assert.equal(
+        (
+          await prisma.posShiftRefundMovement.findFirstOrThrow({ where: { shiftId: shift.id } })
+        ).amount.toFixed(2),
+        '-0.15',
+      );
+      const refundAction = await prisma.storefrontOrderAction.findUniqueOrThrow({
+        where: {
+          merchantId_requestId: { merchantId: merchant.id, requestId: refundRequest.requestId },
+        },
+      });
+      assert.equal(refundAction.action, 'pos_refund');
+      assert.equal(refundAction.createdBy, `pos:${employee.id}`);
+      assert.equal(refundAction.approvedByPosEmployeeId, supervisor.id);
+
+      const beforeCompetingRefunds = await posOrders.paymentState(employee, roundOrderId);
+      const competingRefundRequests = [randomUUID(), randomUUID()].map((requestId) => ({
+        requestId,
+        revision: beforeCompetingRefunds.revision,
+        branchId: branch.id,
+        refundShiftId: shift.id,
+        reason: 'Competing disposable partial refund',
+        allocations: [{ paymentId: cashPayment.payments[0]!.id, amount: '0.21' }],
+      }));
+      const competingRefunds = await Promise.allSettled(
+        competingRefundRequests.map((request) =>
+          posOrders.recordCheckRefund(
+            employee,
+            roundOrderId,
+            payableCheck.id,
+            request,
+            supervisor.id,
+          ),
+        ),
+      );
+      assert.equal(competingRefunds.filter((result) => result.status === 'fulfilled').length, 1);
+      const losingRefund = competingRefunds.find((result) => result.status === 'rejected');
+      assert.ok(
+        losingRefund?.status === 'rejected' && losingRefund.reason instanceof ConflictException,
+      );
+      const winningRefundIndex = competingRefunds.findIndex(
+        (result) => result.status === 'fulfilled',
+      );
+      const winningRefund = competingRefunds[winningRefundIndex];
+      assert.ok(winningRefund?.status === 'fulfilled');
+      assert.deepEqual(
+        await posOrders.recordCheckRefund(
+          employee,
+          roundOrderId,
+          payableCheck.id,
+          competingRefundRequests[winningRefundIndex]!,
+          supervisor.id,
+        ),
+        winningRefund.value,
+      );
+      const afterCompetingRefunds = await posOrders.paymentState(employee, roundOrderId);
+      const cappedCheck = afterCompetingRefunds.checks.find(
+        (check) => check.id === payableCheck.id,
+      );
+      assert.equal(cappedCheck?.refunds?.length, 2);
+      assert.equal(
+        cappedCheck?.payments.find((payment) => payment.id === cashPayment.payments[0]!.id)
+          ?.refundableAmount,
+        '0.14',
+      );
+      const cashRefundTotal = await prisma.posOrderRefundTender.aggregate({
+        where: { merchantId: merchant.id, originalPaymentId: cashPayment.payments[0]!.id },
+        _sum: { amount: true },
+      });
+      assert.equal(cashRefundTotal._sum.amount?.toFixed(2), '0.36');
+      assert.equal(await prisma.posOrderRefund.count({ where: { orderId: roundOrderId } }), 2);
+      assert.equal(await prisma.posShiftRefundMovement.count({ where: { shiftId: shift.id } }), 2);
+      const totalRefundMovement = await prisma.posShiftRefundMovement.aggregate({
+        where: { merchantId: merchant.id, shiftId: shift.id },
+        _sum: { amount: true },
+      });
+      assert.equal(totalRefundMovement._sum.amount?.toFixed(2), '-0.36');
+
       const failingShifts = Object.create(shifts) as ShiftsService;
       failingShifts.recordCashSale = async (tx, input) => {
         await shifts.recordCashSale(tx, input);
@@ -628,6 +981,155 @@ it(
         (await prisma.storefrontOrder.findUniqueOrThrow({ where: { id: takeawayOrder.id } }))
           .revision,
         1,
+      );
+
+      const handoverOrderId = await createSession(tables[1]!.id, '10.00', true, '5.00', true);
+      const laterRoundOrderId = await createSession(tables[1]!.id, '4.00', true, '2.00');
+      const handoverSplit = await dining.splitOrder(employee, handoverOrderId, {
+        requestId: randomUUID(),
+        revision: 1,
+        method: 'custom',
+        amounts: ['5.00', '5.00'],
+      });
+      const handoverSession = await prisma.posDiningSession.findFirstOrThrow({
+        where: { merchantId: merchant.id, tableId: tables[1]!.id, status: 'open' },
+      });
+      assert.equal(
+        (await prisma.storefrontOrder.findUniqueOrThrow({ where: { id: laterRoundOrderId } }))
+          .posDiningSessionId,
+        handoverSession.id,
+      );
+
+      async function makeTicketReady(id: string) {
+        await kitchen.dispatchDineInOrder(employee, id, { requestId: randomUUID() });
+        await lifecycle.acceptFromPos(
+          merchant.id,
+          `pos:${employee.id}`,
+          id,
+          { requestId: randomUUID(), branchId: branch.id },
+          [branch.id],
+        );
+        await lifecycle.startPreparationFromPos(
+          merchant.id,
+          `pos:${employee.id}`,
+          id,
+          { requestId: randomUUID() },
+          [branch.id],
+        );
+        const lines = await prisma.storefrontOrderLine.findMany({
+          where: { orderId: id, merchantId: merchant.id },
+          orderBy: { position: 'asc' },
+          select: { id: true },
+        });
+        assert.ok(lines.length > 0);
+        let readyOrder;
+        let lastReadyRequestId = '';
+        for (const [index, line] of lines.entries()) {
+          lastReadyRequestId = randomUUID();
+          readyOrder = await lifecycle.markKitchenItemReadyFromPos(
+            merchant.id,
+            `pos:${employee.id}`,
+            id,
+            line.id,
+            { requestId: lastReadyRequestId },
+            [branch.id],
+          );
+          assert.equal(readyOrder.status, index === lines.length - 1 ? 'ready' : 'preparing');
+        }
+        assert.ok(readyOrder?.lines.every((line) => line.kitchenReadyAt));
+        assert.deepEqual(
+          await lifecycle.markKitchenItemReadyFromPos(
+            merchant.id,
+            `pos:${employee.id}`,
+            id,
+            lines.at(-1)!.id,
+            { requestId: lastReadyRequestId },
+            [branch.id],
+          ),
+          readyOrder,
+        );
+      }
+      await makeTicketReady(handoverOrderId);
+      await makeTicketReady(laterRoundOrderId);
+
+      const handover = (requestId: string) =>
+        lifecycle.handoverFromPos(
+          merchant.id,
+          `pos:${employee.id}`,
+          handoverOrderId,
+          { requestId },
+          [branch.id],
+        );
+      await assert.rejects(
+        handover(randomUUID()),
+        (error: unknown) => error instanceof ConflictException,
+      );
+
+      const firstCheck = handoverSplit.checks[0]!;
+      const firstPaymentState = await posOrders.paymentState(employee, handoverOrderId);
+      await posOrders.recordCheckPayment(employee, handoverOrderId, firstCheck.id, {
+        requestId: randomUUID(),
+        revision: firstPaymentState.revision,
+        tenders: [{ method: 'cash', amount: '5.00', receivedAmount: '5.00' }],
+      });
+      await assert.rejects(
+        handover(randomUUID()),
+        (error: unknown) => error instanceof ConflictException,
+      );
+      const secondPaymentState = await posOrders.paymentState(employee, handoverOrderId);
+      await posOrders.recordCheckPayment(employee, handoverOrderId, handoverSplit.checks[1]!.id, {
+        requestId: randomUUID(),
+        revision: secondPaymentState.revision,
+        tenders: [{ method: 'cash', amount: '5.00', receivedAmount: '5.00' }],
+      });
+
+      const handoverRequestId = randomUUID();
+      const completedFirstRound = await handover(handoverRequestId);
+      assert.equal(completedFirstRound.status, 'completed');
+      const completedOrderReport = await new ProductConfigurationReportService(
+        prisma as unknown as PrismaService,
+      ).get(merchant.id, '2020-01-01', '2030-01-01');
+      assert.equal(completedOrderReport.orderCount, 2);
+      assert.equal(completedOrderReport.totalQuantity, 4);
+      assert.equal(completedOrderReport.totalRevenue, '14.00');
+      assert.equal(
+        (await prisma.posDiningSession.findUniqueOrThrow({ where: { id: handoverSession.id } }))
+          .status,
+        'open',
+      );
+      assert.equal(
+        (await dining.listTablesForEmployee(employee, branch.id)).find(
+          (table) => table.id === tables[1]!.id,
+        )?.occupancy,
+        'occupied',
+      );
+
+      const laterRoundState = await posOrders.paymentState(employee, laterRoundOrderId);
+      const laterRoundCheck = laterRoundState.checks[0]!;
+      await posOrders.recordCheckPayment(employee, laterRoundOrderId, laterRoundCheck.id, {
+        requestId: randomUUID(),
+        revision: laterRoundState.revision,
+        tenders: [{ method: 'cash', amount: '4.00', receivedAmount: '4.00' }],
+      });
+      const laterRoundCompleted = await lifecycle.handoverFromPos(
+        merchant.id,
+        `pos:${employee.id}`,
+        laterRoundOrderId,
+        { requestId: randomUUID() },
+        [branch.id],
+      );
+      assert.equal(laterRoundCompleted.status, 'completed');
+      assert.equal(
+        (await prisma.posDiningSession.findUniqueOrThrow({ where: { id: handoverSession.id } }))
+          .status,
+        'closed',
+      );
+      assert.deepEqual(await handover(handoverRequestId), completedFirstRound);
+      assert.equal(
+        (await dining.listTablesForEmployee(employee, branch.id)).find(
+          (table) => table.id === tables[1]!.id,
+        )?.occupancy,
+        'available',
       );
 
       await assert.rejects(
@@ -687,17 +1189,140 @@ it(
 
       assert.equal(
         await prisma.storefrontOrder.count({
-          where: { id: { in: [firstOrderId, secondOrderId, roundOrderId, takeawayOrder.id] } },
+          where: {
+            id: {
+              in: [
+                firstOrderId,
+                secondOrderId,
+                roundOrderId,
+                takeawayOrder.id,
+                handoverOrderId,
+                laterRoundOrderId,
+              ],
+            },
+          },
         }),
-        4,
+        6,
+      );
+
+      const supervisorSession: PosEmployeeSession = {
+        id: supervisor.id,
+        merchantId: merchant.id,
+        username: supervisor.username,
+        displayName: supervisor.displayName,
+        role: 'supervisor',
+        permissions: [
+          'open_register_shift',
+          'sell',
+          'approve_refunds',
+          'approve_shift_close',
+          'manage_cash_movements',
+        ],
+        branches: employee.branches,
+      };
+      const reconciliationRegister = await shifts.createRegister(merchant.id, 'pos-dining-test', {
+        branchId: branch.id,
+        name: `Close race register ${token}`,
+      });
+      const reconciliationShift = await shifts.openShift(supervisorSession, {
+        registerId: reconciliationRegister.id,
+        requestId: randomUUID(),
+        openingFloat: '10.00',
+      });
+      const reconciliationOrder = await prisma.storefrontOrder.create({
+        data: {
+          merchantId: merchant.id,
+          branchId: branch.id,
+          posShiftId: reconciliationShift.id,
+          createdByPosEmployeeId: employee.id,
+          fulfillmentType: 'takeaway',
+          source: 'pos',
+          status: 'pending',
+          currency: 'EGP',
+          total: '1.00',
+          lines: {
+            create: {
+              productId: randomUUID(),
+              productName: 'Close race test item',
+              quantity: 1,
+              unitPrice: '1.00',
+              lineTotal: '1.00',
+              position: 0,
+            },
+          },
+          checks: { create: { position: 0, amount: '1.00', splitMethod: 'whole' } },
+        },
+      });
+      const reconciliationCheck = await prisma.posOrderCheck.findFirstOrThrow({
+        where: { orderId: reconciliationOrder.id, merchantId: merchant.id },
+      });
+      const beforeReconciliationPayment = await posOrders.paymentState(
+        employee,
+        reconciliationOrder.id,
+      );
+      const reconciliationPayment = await posOrders.recordCheckPayment(
+        employee,
+        reconciliationOrder.id,
+        reconciliationCheck.id,
+        {
+          requestId: randomUUID(),
+          revision: beforeReconciliationPayment.revision,
+          tenders: [{ method: 'cash', amount: '1.00', receivedAmount: '1.00' }],
+        },
+      );
+      const beforeReconciliationRefund = await posOrders.paymentState(
+        employee,
+        reconciliationOrder.id,
+      );
+      const [closeRace, refundRace] = await Promise.allSettled([
+        shifts.closeShift(supervisorSession, reconciliationShift.id, {
+          requestId: randomUUID(),
+          countedCash: '11.00',
+          reason: 'Disposable close/refund race verification',
+        }),
+        posOrders.recordCheckRefund(
+          employee,
+          reconciliationOrder.id,
+          reconciliationCheck.id,
+          {
+            requestId: randomUUID(),
+            revision: beforeReconciliationRefund.revision,
+            branchId: branch.id,
+            refundShiftId: reconciliationShift.id,
+            reason: 'Disposable close/refund race verification',
+            allocations: [{ paymentId: reconciliationPayment.payments[0]!.id, amount: '1.00' }],
+          },
+          supervisor.id,
+        ),
+      ]);
+      assert.ok(closeRace.status === 'fulfilled');
+      const closeRaceRefundAmount = refundRace.status === 'fulfilled' ? '1.00' : '0.00';
+      if (refundRace.status === 'rejected')
+        assert.ok(refundRace.reason instanceof ConflictException);
+      assert.equal(closeRace.value.cashRefunds, closeRaceRefundAmount);
+      assert.equal(
+        (await prisma.posShift.findUniqueOrThrow({ where: { id: reconciliationShift.id } })).status,
+        'closed',
+      );
+      assert.equal(
+        await prisma.posShiftCloseReport.count({
+          where: { merchantId: merchant.id, shiftId: reconciliationShift.id },
+        }),
+        1,
       );
     } finally {
       try {
         for (const merchantId of merchantIds) {
           await prisma.$transaction(async (tx) => {
+            await tx.posShiftCloseReport.deleteMany({ where: { merchantId } });
             await tx.posCheckReceipt.deleteMany({ where: { merchantId } });
+            await tx.posShiftRefundMovement.deleteMany({ where: { merchantId } });
+            await tx.posOrderRefundTender.deleteMany({ where: { merchantId } });
+            await tx.posOrderRefund.deleteMany({ where: { merchantId } });
             await tx.posShiftCashMovement.deleteMany({ where: { merchantId } });
             await tx.posOrderPayment.deleteMany({ where: { merchantId } });
+            await tx.posKitchenTicket.deleteMany({ where: { merchantId } });
+            await tx.posKitchenStation.deleteMany({ where: { merchantId } });
             await tx.storefrontOrderAction.deleteMany({ where: { merchantId } });
             await tx.posOrderCheckLine.deleteMany({ where: { merchantId } });
             await tx.posOrderCheck.deleteMany({ where: { merchantId } });

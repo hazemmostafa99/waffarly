@@ -7,6 +7,12 @@ export function toCents(value: string): bigint {
   return BigInt(match[1]!) * 100n + BigInt((match[2] ?? '').padEnd(2, '0'));
 }
 
+export function toSignedCents(value: string): bigint {
+  return value.startsWith('-') ? -toCents(value.slice(1)) : toCents(value);
+}
+
 export function formatCents(value: bigint): string {
-  return `${value / 100n}.${(value % 100n).toString().padStart(2, '0')}`;
+  const sign = value < 0n ? '-' : '';
+  const absoluteValue = value < 0n ? -value : value;
+  return `${sign}${absoluteValue / 100n}.${(absoluteValue % 100n).toString().padStart(2, '0')}`;
 }

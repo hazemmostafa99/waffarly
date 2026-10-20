@@ -19,6 +19,8 @@ import { PosOrdersService } from '../../src/modules/orders/pos-orders.service.js
 import { PosReceiptsController } from '../../src/modules/orders/pos-receipts.controller.js';
 import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
 import { PosStorefrontOrdersController } from '../../src/modules/orders/storefront-orders.controller.js';
+import { PosKitchenService } from '../../src/modules/orders/pos-kitchen.service.js';
+import { PosReturnsService } from '../../src/modules/orders/pos-returns.service.js';
 
 const merchantId = '11111111-1111-4111-8111-111111111111';
 const branchId = '33333333-3333-4333-8333-333333333333';
@@ -110,6 +112,14 @@ describe('employee role boundaries', () => {
           },
         },
         { provide: PosOrdersService, useValue: sales },
+        { provide: PosKitchenService, useValue: { dispatchDineInOrder: async () => ({}) } },
+        {
+          provide: PosReturnsService,
+          useValue: {
+            state: async () => ({ orderId, eligible: false, items: [], returns: [] }),
+            record: async () => ({ orderId }),
+          },
+        },
         {
           provide: StorefrontOrdersService,
           useValue: { listForPos: async () => ({ items: [], nextCursor: null }) },

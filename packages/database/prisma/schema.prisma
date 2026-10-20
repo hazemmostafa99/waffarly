@@ -48,14 +48,26 @@ model Merchant {
   posShifts                PosShift[]
   posDiningTables          PosDiningTable[]
   posDiningSessions        PosDiningSession[]
+  posKitchenStations       PosKitchenStation[]
+  posKitchenTickets        PosKitchenTicket[]
   posOrderChecks           PosOrderCheck[]
   posCheckReceipts         PosCheckReceipt[]
   posOrderPayments         PosOrderPayment[]
   posShiftCashMovements    PosShiftCashMovement[]
+  posOrderRefunds          PosOrderRefund[]
+  posItemReturns           PosOrderItemReturn[]
+  posOrderRefundTenders    PosOrderRefundTender[]
+  posShiftRefundMovements  PosShiftRefundMovement[]
+  posShiftManualCashMovements PosShiftManualCashMovement[]
+  posShiftCloseReports    PosShiftCloseReport[]
   negativeStockPolicy      String                  @default("allow") @db.VarChar(16)
   inventoryPolicyRevision  Int                     @default(1)
   inventoryPolicyUpdatedBy String?                 @db.VarChar(80)
   inventoryPolicyUpdatedAt DateTime?               @db.Timestamptz(6)
+  posAccent                String                  @default("orange") @db.VarChar(16)
+  posAppearanceRevision    Int                     @default(1)
+  posAppearanceUpdatedBy   String?                 @db.VarChar(80)
+  posAppearanceUpdatedAt   DateTime                @default(now()) @db.Timestamptz(6)
 
   @@map("merchants")
 }
@@ -128,6 +140,8 @@ model Branch {
   posShifts         PosShift[]
   posDiningTables   PosDiningTable[]
   posDiningSessions PosDiningSession[]
+  kitchenStations   PosKitchenStation[]
+  kitchenTickets    PosKitchenTicket[]
 
   @@unique([id, merchantId])
   @@unique([merchantId, name])
@@ -390,9 +404,21 @@ model PosEmployee {
   openedShifts         PosShift[]
   openedDiningSessions PosDiningSession[]
   posOrders            StorefrontOrder[]
+  dispatchedKitchenTickets PosKitchenTicket[]
+  approvedOrderActions StorefrontOrderAction[] @relation("PosOrderActionApprover")
+  acknowledgedKitchenCancellations PosKitchenTicket[] @relation("PosKitchenCancellationAcknowledger")
   posPayments          PosOrderPayment[]
   cashMovements        PosShiftCashMovement[]
   issuedReceipts       PosCheckReceipt[]
+  issuedRefunds        PosOrderRefund[] @relation("PosRefundIssuer")
+  approvedRefunds      PosOrderRefund[] @relation("PosRefundApprover")
+  issuedItemReturns    PosOrderItemReturn[] @relation("PosItemReturnIssuer")
+  approvedItemReturns  PosOrderItemReturn[] @relation("PosItemReturnApprover")
+  refundCashMovements  PosShiftRefundMovement[]
+  manualCashMovements  PosShiftManualCashMovement[] @relation("PosShiftCashMovementOperator")
+  approvedCashMovements PosShiftManualCashMovement[] @relation("PosShiftCashMovementApprover")
+  closedShiftReports   PosShiftCloseReport[] @relation("PosShiftCloseOperator")
+  approvedShiftCloses  PosShiftCloseReport[] @relation("PosShiftCloseApprover")
 
   @@unique([id, merchantId])
   @@unique([merchantId, username])
@@ -457,6 +483,10 @@ model PosShift {
   orders             StorefrontOrder[]
   payments           PosOrderPayment[]
   cashMovements      PosShiftCashMovement[]
+  refunds            PosOrderRefund[]
+  refundCashMovements PosShiftRefundMovement[]
+  manualCashMovements PosShiftManualCashMovement[]
+  closeReport        PosShiftCloseReport?
 
   @@unique([id, merchantId])
   @@unique([merchantId, openRequestId])
@@ -510,6 +540,54 @@ model PosDiningSession {
   @@index([merchantId, branchId, status, openedAt])
   @@index([merchantId, tableId, status])
   @@map("pos_dining_sessions")
+}
+
+// The first release routes every branch order to its single default kitchen station.
+model PosKitchenStation {
+  id        String             @id @default(uuid()) @db.Uuid
+  merchantId String            @db.Uuid
+  branchId  String             @db.Uuid
+  code      String             @db.VarChar(48)
+  name      String             @db.VarChar(120)
+  active    Boolean            @default(true)
+  createdAt DateTime           @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime           @updatedAt @db.Timestamptz(6)
+  merchant  Merchant           @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  branch    Branch             @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  tickets   PosKitchenTicket[]
+
+  @@unique([id, merchantId])
+  @@unique([id, branchId, merchantId])
+  @@unique([merchantId, branchId, code])
+  @@index([merchantId, branchId, active])
+  @@map("pos_kitchen_stations")
+}
+
+// One ticket references a confirmed immutable POS round; the order remains the item snapshot source.
+model PosKitchenTicket {
+  id                        String            @id @default(uuid()) @db.Uuid
+  merchantId                String            @db.Uuid
+  branchId                  String            @db.Uuid
+  stationId                 String            @db.Uuid
+  orderId                   String            @db.Uuid
+  dispatchMode              String            @db.VarChar(16)
+  dispatchedByPosEmployeeId String?           @db.Uuid
+  dispatchedAt              DateTime          @default(now()) @db.Timestamptz(6)
+  cancellationAcknowledgedAt DateTime? @db.Timestamptz(6)
+  cancellationAcknowledgedByPosEmployeeId String? @db.Uuid
+  createdAt                 DateTime          @default(now()) @db.Timestamptz(6)
+  merchant                  Merchant          @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  branch                    Branch            @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  station                   PosKitchenStation @relation(fields: [stationId, branchId, merchantId], references: [id, branchId, merchantId], onDelete: Restrict)
+  order                     StorefrontOrder   @relation(fields: [orderId, branchId, merchantId], references: [id, branchId, merchantId], onDelete: Restrict)
+  dispatchedBy              PosEmployee?      @relation(fields: [dispatchedByPosEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  cancellationAcknowledgedBy PosEmployee? @relation("PosKitchenCancellationAcknowledger", fields: [cancellationAcknowledgedByPosEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict, map: "pos_kitchen_cancel_ack_employee_fkey")
+
+  @@unique([id, merchantId])
+  @@unique([orderId, merchantId])
+  @@unique([orderId, branchId, merchantId])
+  @@index([merchantId, branchId, dispatchedAt, id])
+  @@map("pos_kitchen_tickets")
 }
 
 // Opaque tokens are stored only as hashes. Admin identity is configured outside the database.
@@ -932,6 +1010,8 @@ model StorefrontOrder {
   warehouseName          String?                     @db.VarChar(160)
   acceptedAt             DateTime?                   @db.Timestamptz(6)
   preparationStartedAt   DateTime?                   @db.Timestamptz(6)
+  readyAt                DateTime?                   @db.Timestamptz(6)
+  completedAt            DateTime?                   @db.Timestamptz(6)
   cancelledAt            DateTime?                   @db.Timestamptz(6)
   cancellationReason     String?                     @db.VarChar(500)
   stockRestored          Boolean?
@@ -945,8 +1025,12 @@ model StorefrontOrder {
   checks                 PosOrderCheck[]
   payments               PosOrderPayment[]
   receipts               PosCheckReceipt[]
+  refunds                PosOrderRefund[]
+  itemReturns            PosOrderItemReturn[]
+  kitchenTicket          PosKitchenTicket?
 
   @@unique([id, merchantId])
+  @@unique([id, branchId, merchantId])
   @@unique([id, posShiftId, merchantId])
   @@index([merchantId, status, createdAt])
   @@index([merchantId, warehouseId, status])
@@ -960,6 +1044,7 @@ model StorefrontOrder {
 model StorefrontOrderLine {
   stockHandling             String                                @default("legacy") @db.VarChar(24)
   note                      String?                               @db.VarChar(500)
+  kitchenReadyAt            DateTime?                             @db.Timestamptz(6)
   stockRequirementsFrozenAt DateTime?                             @db.Timestamptz(6)
   id                        String                                @id @default(uuid()) @db.Uuid
   orderId                   String                                @db.Uuid
@@ -980,6 +1065,7 @@ model StorefrontOrderLine {
   variantAttributes         StorefrontOrderLineVariantAttribute[]
   stockRequirements         StorefrontOrderLineStockRequirement[]
   checkAllocations          PosOrderCheckLine[]
+  itemReturnLines           PosOrderItemReturnLine[]
 
   @@unique([id, merchantId])
   @@unique([id, orderId, merchantId])
@@ -998,12 +1084,14 @@ model PosOrderCheck {
   splitMethod String              @db.VarChar(12)
   revision    Int                 @default(1)
   settledAt   DateTime?           @db.Timestamptz(6)
+  cancelledAt DateTime?           @db.Timestamptz(6)
   createdAt   DateTime            @default(now()) @db.Timestamptz(6)
   order       StorefrontOrder     @relation(fields: [orderId, merchantId], references: [id, merchantId], onDelete: Restrict)
   merchant    Merchant            @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   allocations PosOrderCheckLine[]
   payments    PosOrderPayment[]
   receipt     PosCheckReceipt?
+  refunds     PosOrderRefund[]
 
   @@unique([id, orderId, merchantId])
   @@unique([orderId, position])
@@ -1030,7 +1118,6 @@ model PosCheckReceipt {
   @@unique([checkId])
   @@unique([checkId, orderId, merchantId])
   @@index([merchantId, orderId, issuedAt])
-  @@index([merchantId, issuedAt, id])
   @@map("pos_check_receipts")
 }
 
@@ -1057,6 +1144,7 @@ model PosOrderPayment {
   shift              PosShift              @relation(fields: [shiftId, merchantId], references: [id, merchantId], onDelete: Restrict)
   operator           PosEmployee           @relation(fields: [operatorEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
   cashMovement       PosShiftCashMovement?
+  refundTenders      PosOrderRefundTender[]
 
   @@unique([id, shiftId, merchantId])
   @@unique([merchantId, requestId, position])
@@ -1084,6 +1172,190 @@ model PosShiftCashMovement {
   @@unique([paymentId, shiftId, merchantId])
   @@index([merchantId, shiftId, createdAt])
   @@map("pos_shift_cash_movements")
+}
+
+// Refund records are immutable and reference the exact original tender allocation.
+model PosOrderRefund {
+  id                   String          @id @default(uuid()) @db.Uuid
+  merchantId           String          @db.Uuid
+  orderId              String          @db.Uuid
+  checkId              String          @db.Uuid
+  shiftId              String          @db.Uuid
+  requestId            String          @db.Uuid
+  createdByEmployeeId  String          @db.Uuid
+  approvedByEmployeeId String?         @db.Uuid
+  receiptNumber        String          @db.VarChar(40)
+  reason               String          @db.VarChar(500)
+  amount               Decimal         @db.Decimal(12, 2)
+  currency             String          @default("EGP") @db.Char(3)
+  issuedAt             DateTime        @db.Timestamptz(6)
+  snapshot             Json
+  merchant             Merchant        @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  order                StorefrontOrder @relation(fields: [orderId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  check                PosOrderCheck   @relation(fields: [checkId, orderId, merchantId], references: [id, orderId, merchantId], onDelete: Restrict)
+  shift                PosShift        @relation(fields: [shiftId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  createdBy            PosEmployee     @relation("PosRefundIssuer", fields: [createdByEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  approvedBy           PosEmployee?    @relation("PosRefundApprover", fields: [approvedByEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  tenders              PosOrderRefundTender[]
+
+  @@unique([id, shiftId, merchantId])
+  @@unique([merchantId, requestId])
+  @@unique([merchantId, receiptNumber])
+  @@index([merchantId, orderId, checkId, issuedAt])
+  @@index([merchantId, shiftId, issuedAt])
+  @@map("pos_order_refunds")
+}
+
+// Physical POS item returns are immutable audit records; money and inventory stay separate.
+model PosOrderItemReturn {
+  id                   String                 @id @default(uuid()) @db.Uuid
+  merchantId           String                 @db.Uuid
+  orderId              String                 @db.Uuid
+  requestId            String                 @db.Uuid
+  fingerprint          String                 @db.VarChar(64)
+  createdByEmployeeId  String                 @db.Uuid
+  approvedByEmployeeId String?                @db.Uuid
+  returnNumber         String                 @db.VarChar(40)
+  reason               String                 @db.VarChar(500)
+  amount               Decimal                @db.Decimal(12, 2)
+  currency             String                 @default("EGP") @db.Char(3)
+  issuedAt             DateTime               @db.Timestamptz(6)
+  snapshot             Json
+  merchant             Merchant               @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  order                StorefrontOrder        @relation(fields: [orderId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  createdBy            PosEmployee            @relation("PosItemReturnIssuer", fields: [createdByEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  approvedBy           PosEmployee?           @relation("PosItemReturnApprover", fields: [approvedByEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  lines                PosOrderItemReturnLine[]
+
+  @@unique([id, orderId, merchantId])
+  @@unique([merchantId, requestId])
+  @@unique([merchantId, returnNumber])
+  @@index([merchantId, orderId, issuedAt])
+  @@index([merchantId, issuedAt, id])
+  @@map("pos_order_item_returns")
+}
+
+model PosOrderItemReturnLine {
+  id          String              @id @default(uuid()) @db.Uuid
+  merchantId  String              @db.Uuid
+  returnId    String              @db.Uuid
+  orderId     String              @db.Uuid
+  orderLineId String              @db.Uuid
+  productName String              @db.VarChar(160)
+  variantName String?             @db.VarChar(160)
+  quantity    Int
+  disposition String              @default("waste") @db.VarChar(16)
+  unitPrice   Decimal             @db.Decimal(12, 2)
+  amount      Decimal             @db.Decimal(12, 2)
+  itemReturn  PosOrderItemReturn  @relation(fields: [returnId, orderId, merchantId], references: [id, orderId, merchantId], onDelete: Restrict)
+  orderLine   StorefrontOrderLine @relation(fields: [orderLineId, orderId, merchantId], references: [id, orderId, merchantId], onDelete: Restrict)
+
+  @@unique([returnId, orderLineId])
+  @@index([merchantId, orderLineId])
+  @@map("pos_order_item_return_lines")
+}
+
+model PosOrderRefundTender {
+  id                     String               @id @default(uuid()) @db.Uuid
+  merchantId             String               @db.Uuid
+  refundId               String               @db.Uuid
+  shiftId                String               @db.Uuid
+  originalPaymentId      String               @db.Uuid
+  originalPaymentShiftId String               @db.Uuid
+  position               Int
+  method                 String               @db.VarChar(12)
+  amount                 Decimal              @db.Decimal(12, 2)
+  terminalReference      String?              @db.VarChar(80)
+  createdAt              DateTime             @default(now()) @db.Timestamptz(6)
+  merchant               Merchant             @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  refund                 PosOrderRefund       @relation(fields: [refundId, shiftId, merchantId], references: [id, shiftId, merchantId], onDelete: Restrict)
+  originalPayment        PosOrderPayment      @relation(fields: [originalPaymentId, originalPaymentShiftId, merchantId], references: [id, shiftId, merchantId], onDelete: Restrict)
+  cashMovement           PosShiftRefundMovement?
+
+  @@unique([id, shiftId, merchantId])
+  @@unique([refundId, position])
+  @@index([merchantId, originalPaymentId, originalPaymentShiftId])
+  @@map("pos_order_refund_tenders")
+}
+
+// Cash outflows are negative and belong to the open shift that issued the refund.
+model PosShiftRefundMovement {
+  id                 String               @id @default(uuid()) @db.Uuid
+  merchantId         String               @db.Uuid
+  shiftId            String               @db.Uuid
+  refundTenderId     String               @db.Uuid
+  operatorEmployeeId String               @db.Uuid
+  amount             Decimal              @db.Decimal(12, 2)
+  createdAt          DateTime             @default(now()) @db.Timestamptz(6)
+  merchant           Merchant             @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  shift              PosShift             @relation(fields: [shiftId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  refundTender       PosOrderRefundTender @relation(fields: [refundTenderId, shiftId, merchantId], references: [id, shiftId, merchantId], onDelete: Restrict)
+  operator           PosEmployee          @relation(fields: [operatorEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([refundTenderId])
+  @@unique([refundTenderId, shiftId, merchantId])
+  @@index([merchantId, shiftId, createdAt])
+  @@map("pos_shift_refund_movements")
+}
+
+// Cash-in/out adjustments require a reason and supervisor authorization when entered by a cashier.
+model PosShiftManualCashMovement {
+  id                   String       @id @default(uuid()) @db.Uuid
+  merchantId           String       @db.Uuid
+  shiftId              String       @db.Uuid
+  requestId            String       @db.Uuid
+  fingerprint          String       @db.VarChar(64)
+  kind                 String       @db.VarChar(12)
+  amount               Decimal      @db.Decimal(12, 2)
+  dropReference        String?      @db.VarChar(80)
+  reason               String       @db.VarChar(500)
+  operatorEmployeeId   String       @db.Uuid
+  approvedByEmployeeId String?      @db.Uuid
+  createdAt            DateTime     @default(now()) @db.Timestamptz(6)
+  merchant             Merchant     @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  shift                PosShift     @relation(fields: [shiftId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  operator             PosEmployee  @relation("PosShiftCashMovementOperator", fields: [operatorEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  approvedBy           PosEmployee? @relation("PosShiftCashMovementApprover", fields: [approvedByEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([merchantId, requestId])
+  @@unique([id, shiftId, merchantId])
+  @@index([merchantId, shiftId, createdAt])
+  @@map("pos_shift_manual_cash_movements")
+}
+
+// Immutable cash count and payment-channel reconciliation recorded at shift close.
+model PosShiftCloseReport {
+  id                   String       @id @default(uuid()) @db.Uuid
+  merchantId           String       @db.Uuid
+  shiftId              String       @db.Uuid
+  requestId            String       @db.Uuid
+  fingerprint          String       @db.VarChar(64)
+  operatorEmployeeId   String       @db.Uuid
+  approvedByEmployeeId String?      @db.Uuid
+  currency             String       @default("EGP") @db.Char(3)
+  openingFloat         Decimal      @db.Decimal(12, 2)
+  cashSales            Decimal      @db.Decimal(12, 2)
+  cashRefunds          Decimal      @db.Decimal(12, 2)
+  cashIn               Decimal      @db.Decimal(12, 2)
+  cashOut              Decimal      @db.Decimal(12, 2)
+  cashDrop             Decimal      @default(0) @db.Decimal(12, 2)
+  expectedCash         Decimal      @db.Decimal(12, 2)
+  countedCash          Decimal      @db.Decimal(12, 2)
+  variance             Decimal      @db.Decimal(12, 2)
+  terminalSales        Decimal      @db.Decimal(12, 2)
+  terminalRefunds      Decimal      @db.Decimal(12, 2)
+  reason               String?      @db.VarChar(500)
+  snapshot             Json
+  closedAt             DateTime     @db.Timestamptz(6)
+  merchant             Merchant     @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  shift                PosShift     @relation(fields: [shiftId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  operator             PosEmployee  @relation("PosShiftCloseOperator", fields: [operatorEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  approvedBy           PosEmployee? @relation("PosShiftCloseApprover", fields: [approvedByEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([shiftId, merchantId])
+  @@unique([merchantId, requestId])
+  @@index([merchantId, closedAt, shiftId])
+  @@map("pos_shift_close_reports")
 }
 
 model PosOrderCheckLine {
@@ -1217,8 +1489,10 @@ model StorefrontOrderAction {
   fingerprint String          @db.VarChar(64)
   result      Json
   createdBy   String          @db.VarChar(80)
+  approvedByPosEmployeeId String? @db.Uuid
   createdAt   DateTime        @default(now()) @db.Timestamptz(6)
   order       StorefrontOrder @relation(fields: [orderId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  approvedBy PosEmployee? @relation("PosOrderActionApprover", fields: [approvedByPosEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict, map: "storefront_order_actions_approver_fkey")
 
   @@unique([merchantId, requestId])
   @@index([orderId, merchantId, createdAt])

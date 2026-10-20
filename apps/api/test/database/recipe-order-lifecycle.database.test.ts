@@ -17,6 +17,7 @@ import { ProductConfigurationReportService } from '../../src/modules/reports/pro
 import { PosEmployeeService } from '../../src/modules/auth/pos-employee.service.js';
 import type { PosEmployeeSession } from '@waffarly/contracts';
 import { PosOrdersService } from '../../src/modules/orders/pos-orders.service.js';
+import { PosDiningService } from '../../src/modules/orders/pos-dining.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 
 config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
@@ -479,6 +480,29 @@ it(
               ]),
               preparing,
             );
+            const balanceBeforeReady = await f.balance();
+            const readyRequest = { requestId: randomUUID() };
+            const ready = await f.lifecycle.markReadyFromPos(
+              f.merchantId,
+              posActor,
+              next.id,
+              readyRequest,
+              [f.branch.id],
+            );
+            assert.equal(ready.status, 'ready');
+            assert.ok(ready.readyAt);
+            assert.deepEqual(
+              await f.lifecycle.markReadyFromPos(f.merchantId, posActor, next.id, readyRequest, [
+                f.branch.id,
+              ]),
+              ready,
+            );
+            assert.equal(await f.balance(), balanceBeforeReady);
+            const savedReady = await tx.storefrontOrder.findUniqueOrThrow({
+              where: { id: next.id },
+            });
+            assert.equal(savedReady.status, 'ready');
+            assert.ok(savedReady.readyAt);
             await assert.rejects(
               f.lifecycle.cancel(f.merchantId, actor, next.id, {
                 requestId: randomUUID(),
@@ -534,6 +558,10 @@ it(
           async (tx) => {
             const scoped = transactionServices(tx);
             const f = await fixture(tx, scoped);
+            await tx.posEmployee.update({
+              where: { id_merchantId: { id: f.employee.id, merchantId: f.merchantId } },
+              data: { role: 'cashier', permissions: ['sell'] },
+            });
             await tx.merchant.update({
               where: { id: f.merchantId },
               data: { negativeStockPolicy: 'prevent' },
@@ -607,6 +635,26 @@ it(
               permissions: ['sell'],
               branches: [{ id: f.branch.id, name: f.branch.name, archivedAt: null }],
             };
+            const supervisor = await tx.posEmployee.create({
+              data: {
+                merchantId: f.merchantId,
+                username: `pos-cancel-supervisor-${randomUUID()}`,
+                displayName: 'POS Cancellation Supervisor',
+                passwordHash: 'database-test-only',
+                role: 'supervisor',
+                permissions: [],
+                createdBy: actor,
+                updatedBy: actor,
+                branches: {
+                  create: {
+                    createdBy: actor,
+                    branch: {
+                      connect: { id_merchantId: { id: f.branch.id, merchantId: f.merchantId } },
+                    },
+                  },
+                },
+              },
+            });
             const pricing = new ProductPricingService(scoped);
             const posOrders = new PosOrdersService(
               scoped,
@@ -614,7 +662,7 @@ it(
               new ProductConsumptionService(),
               new InventoryLedgerService(scoped),
               new ShiftsService(scoped),
-              { attachOrder: async () => undefined } as never,
+              new PosDiningService(scoped),
               {} as never,
             );
             const recipeLineId = randomUUID();
@@ -871,12 +919,38 @@ it(
               ).quantity.toString(),
               '74',
             );
-            const cancelled = await lifecycle.cancel(f.merchantId, actor, created.id, {
+            const cancellationCommand = {
               requestId: randomUUID(),
+              branchId: f.branch.id,
               reason: 'Fixture reversal',
-              restoreStock: true,
-            });
+            };
+            const cancelled = await lifecycle.cancelPosFromPos(
+              cashier,
+              created.id,
+              cancellationCommand,
+              supervisor.id,
+            );
             assert.equal(cancelled.status, 'cancelled');
+            assert.equal(cancelled.cancellationReason, cancellationCommand.reason);
+            assert.deepEqual(
+              await lifecycle.cancelPosFromPos(
+                cashier,
+                created.id,
+                cancellationCommand,
+                supervisor.id,
+              ),
+              cancelled,
+            );
+            const savedCancellationAction = await tx.storefrontOrderAction.findUniqueOrThrow({
+              where: {
+                merchantId_requestId: {
+                  merchantId: f.merchantId,
+                  requestId: cancellationCommand.requestId,
+                },
+              },
+            });
+            assert.equal(savedCancellationAction.action, 'pos_cancel');
+            assert.equal(savedCancellationAction.approvedByPosEmployeeId, supervisor.id);
             assert.equal(await f.balance(), '100');
             assert.equal(
               (
@@ -894,6 +968,147 @@ it(
               (await tx.productVariant.findUniqueOrThrow({ where: { id: legacyVariantId } }))
                 .stockQuantity,
               10,
+            );
+
+            const currentRecipe = await tx.product.findUniqueOrThrow({
+              where: { id: f.recipe.id },
+              select: { revision: true },
+            });
+            await f.products.update(f.merchantId, actor, f.recipe.id, currentRecipe.revision, {
+              inventoryConfiguration: f.configuration,
+            });
+            const amendmentLineId = randomUUID();
+            const amendmentLine = {
+              lineId: amendmentLineId,
+              productId: f.recipe.id,
+              variantId: f.variantId,
+              selections: [
+                {
+                  groupId: f.recipe.modifierGroups[0]!.id,
+                  optionIds: [f.recipe.modifierGroups[0]!.options[0]!.id],
+                  optionQuantities: [
+                    { optionId: f.recipe.modifierGroups[0]!.options[0]!.id, quantity: 3 },
+                  ],
+                },
+              ],
+              quantity: 1,
+            };
+            const amendmentQuote = await posOrders.quote(cashier, {
+              items: [amendmentLine],
+            });
+            const amendmentQuotedLine = amendmentQuote.items[0]!;
+            const amendmentOrder = await posOrders.create(cashier, {
+              requestId: randomUUID(),
+              registerId: register.id,
+              fulfillmentType: 'takeaway',
+              items: [
+                {
+                  ...amendmentLine,
+                  expectedProductRevision: amendmentQuotedLine.quote.productRevision,
+                },
+              ],
+            });
+            assert.equal(amendmentOrder.status, 'pending');
+            assert.ok(amendmentOrder.kitchenTicket);
+            const amendmentState = await posOrders.paymentState(cashier, amendmentOrder.id);
+            const addition = {
+              requestId: randomUUID(),
+              revision: amendmentState.revision,
+              items: [
+                {
+                  ...amendmentLine,
+                  lineId: randomUUID(),
+                  expectedProductRevision: amendmentQuotedLine.quote.productRevision,
+                },
+              ],
+            };
+            const beforeAmendmentBalance = (
+              await tx.stockBalance.findFirstOrThrow({
+                where: {
+                  merchantId: f.merchantId,
+                  warehouseId: backupWarehouse.id,
+                  stockItemId: f.item.id,
+                },
+              })
+            ).quantity.toString();
+            const amended = await posOrders.addKitchenItems(cashier, amendmentOrder.id, addition);
+            const replayedAmendment = await posOrders.addKitchenItems(
+              cashier,
+              amendmentOrder.id,
+              addition,
+            );
+            assert.equal(amended.total, '26.00');
+            assert.equal(amended.lines.length, 2);
+            assert.equal(amended.lines[0]?.id, amendmentOrder.lines[0]?.id);
+            assert.deepEqual(replayedAmendment, amended);
+            assert.equal(
+              (
+                await tx.stockBalance.findFirstOrThrow({
+                  where: {
+                    merchantId: f.merchantId,
+                    warehouseId: backupWarehouse.id,
+                    stockItemId: f.item.id,
+                  },
+                })
+              ).quantity.toString(),
+              beforeAmendmentBalance,
+            );
+            assert.equal(
+              await tx.storefrontOrderAction.count({
+                where: {
+                  merchantId: f.merchantId,
+                  orderId: amendmentOrder.id,
+                  action: 'pos_kitchen_amendment',
+                },
+              }),
+              1,
+            );
+            const amendmentSnapshot = await tx.storefrontOrderLine.findFirstOrThrow({
+              where: { orderId: amendmentOrder.id, position: 1 },
+              include: { stockRequirements: true },
+            });
+            assert.ok(amendmentSnapshot.stockRequirementsFrozenAt);
+            assert.equal(amendmentSnapshot.stockRequirements[0]?.quantity.toString(), '13');
+            await f.products.update(
+              f.merchantId,
+              actor,
+              f.recipe.id,
+              amendmentQuotedLine.quote.productRevision,
+              { inventoryConfiguration: editedRecipe },
+            );
+            const acceptedAmendment = await f.lifecycle.acceptFromPos(
+              f.merchantId,
+              `pos:${cashier.id}`,
+              amendmentOrder.id,
+              { requestId: randomUUID(), branchId: f.branch.id },
+              [f.branch.id],
+            );
+            assert.equal(acceptedAmendment.status, 'accepted');
+            assert.equal(
+              (
+                await tx.stockBalance.findFirstOrThrow({
+                  where: {
+                    merchantId: f.merchantId,
+                    warehouseId: backupWarehouse.id,
+                    stockItemId: f.item.id,
+                  },
+                })
+              ).quantity.toString(),
+              '74',
+            );
+            const acceptedAmendmentState = await posOrders.paymentState(cashier, amendmentOrder.id);
+            await assert.rejects(
+              posOrders.addKitchenItems(cashier, amendmentOrder.id, {
+                requestId: randomUUID(),
+                revision: acceptedAmendmentState.revision,
+                items: [
+                  {
+                    ...addition.items[0]!,
+                    lineId: randomUUID(),
+                  },
+                ],
+              }),
+              /before the kitchen accepts/,
             );
             throw rollback;
           },

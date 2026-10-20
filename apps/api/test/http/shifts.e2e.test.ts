@@ -9,6 +9,7 @@ import { OwnerGuard } from '../../src/modules/auth/owner.guard.js';
 import { PosEmployeeGuard } from '../../src/modules/auth/pos-employee.guard.js';
 import {
   OwnerPosRegistersController,
+  OwnerPosShiftReportsController,
   PosShiftsController,
 } from '../../src/modules/shifts/shifts.controller.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
@@ -18,6 +19,8 @@ const employeeId = '22222222-2222-4222-8222-222222222222';
 const branchId = '33333333-3333-4333-8333-333333333333';
 const registerId = '44444444-4444-4444-8444-444444444444';
 const requestId = '55555555-5555-4555-8555-555555555555';
+const shiftId = '66666666-6666-4666-8666-666666666666';
+const supervisorId = '77777777-7777-4777-8777-777777777777';
 
 const owner: OwnerProfile = {
   username: 'store-owner',
@@ -53,7 +56,7 @@ describe('POS register and shift endpoints', () => {
     currentEmployee = employee;
     calls.length = 0;
     const module = await Test.createTestingModule({
-      controllers: [OwnerPosRegistersController, PosShiftsController],
+      controllers: [OwnerPosRegistersController, OwnerPosShiftReportsController, PosShiftsController],
       providers: [
         OwnerGuard,
         PosEmployeeGuard,
@@ -68,6 +71,10 @@ describe('POS register and shift endpoints', () => {
               if (!employeeAuthorized) throw new UnauthorizedException();
               return currentEmployee;
             },
+            verifyPosEmployeeApproval: async (...args: unknown[]) => {
+              calls.push({ method: 'verifyPosEmployeeApproval', args });
+              return supervisorId;
+            },
           },
         },
         {
@@ -75,6 +82,10 @@ describe('POS register and shift endpoints', () => {
           useValue: {
             listOwnerRegisters: async (...args: unknown[]) => {
               calls.push({ method: 'listOwnerRegisters', args });
+              return { items: [], nextCursor: null };
+            },
+            listOwnerCloseReports: async (...args: unknown[]) => {
+              calls.push({ method: 'listOwnerCloseReports', args });
               return { items: [], nextCursor: null };
             },
             createRegister: async (...args: unknown[]) => {
@@ -92,6 +103,34 @@ describe('POS register and shift endpoints', () => {
             getCurrentShift: async (...args: unknown[]) => {
               calls.push({ method: 'getCurrentShift', args });
               return null;
+            },
+            getShiftBranch: async (...args: unknown[]) => {
+              calls.push({ method: 'getShiftBranch', args });
+              return branchId;
+            },
+            getReconciliation: async (...args: unknown[]) => {
+              calls.push({ method: 'getReconciliation', args });
+              return { shiftId, branchId, unsettledCheckCount: 0 };
+            },
+            previewCloseShift: async (...args: unknown[]) => {
+              calls.push({ method: 'previewCloseShift', args });
+              return { unsettledCheckCount: 0, requiresReason: false, requiresSupervisorApproval: true };
+            },
+            getLatestCloseReport: async (...args: unknown[]) => {
+              calls.push({ method: 'getLatestCloseReport', args });
+              return null;
+            },
+            getCloseReport: async (...args: unknown[]) => {
+              calls.push({ method: 'getCloseReport', args });
+              return { shiftId, variance: '0.00' };
+            },
+            recordManualCashMovement: async (...args: unknown[]) => {
+              calls.push({ method: 'recordManualCashMovement', args });
+              return { shiftId, movement: {}, reconciliation: {} };
+            },
+            closeShift: async (...args: unknown[]) => {
+              calls.push({ method: 'closeShift', args });
+              return { shiftId, variance: '0.00' };
             },
             openShift: async (...args: unknown[]) => {
               calls.push({ method: 'openShift', args });
@@ -127,6 +166,41 @@ describe('POS register and shift endpoints', () => {
     await request(app.getHttpServer())
       .post('/owner/pos/registers')
       .send({ merchantId, branchId, name: 'Injected tenant' })
+      .expect(400);
+    assert.equal(calls.length, 1);
+  });
+
+  it('authorizes owner shift reports, validates bounded filters, and derives tenant from the owner session', async () => {
+    const from = '2026-10-01T00:00:00.000Z';
+    const to = '2026-10-20T00:00:00.000Z';
+    ownerAuthorized = false;
+    await request(app.getHttpServer())
+      .get('/owner/pos/shifts/reports')
+      .query({ from, to })
+      .expect(401);
+    assert.equal(calls.length, 0);
+
+    ownerAuthorized = true;
+    await request(app.getHttpServer())
+      .get('/owner/pos/shifts/reports')
+      .query({ from, to, branchId, limit: '50' })
+      .expect(200);
+    assert.deepEqual(calls.at(-1), {
+      method: 'listOwnerCloseReports',
+      args: [merchantId, { from, to, branchId, limit: 50 }],
+    });
+
+    await request(app.getHttpServer())
+      .get('/owner/pos/shifts/reports')
+      .query({ from, to, merchantId })
+      .expect(400);
+    await request(app.getHttpServer())
+      .get('/owner/pos/shifts/reports')
+      .query({ from, to: '2026-10-01T00:00:00.000Z' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .get('/owner/pos/shifts/reports')
+      .query({ from: '2026-01-01T00:00:00.000Z', to: '2026-10-20T00:00:00.000Z' })
       .expect(400);
     assert.equal(calls.length, 1);
   });
@@ -173,5 +247,112 @@ describe('POS register and shift endpoints', () => {
       .send({ merchantId, registerId, requestId, openingFloat: '10' })
       .expect(400);
     assert.equal(calls.length, 0);
+  });
+
+  it('scopes reconciliation and verifies supervisor credentials before cash adjustments', async () => {
+    await request(app.getHttpServer())
+      .get(`/pos/shifts/${shiftId}/reconciliation`)
+      .expect(200);
+    assert.deepEqual(calls.at(-1), { method: 'getReconciliation', args: [employee, shiftId] });
+
+    const body = {
+      requestId,
+      kind: 'cash_in',
+      amount: '10.00',
+      reason: 'Change float',
+      approval: { username: 'shift-supervisor', password: 'secret' },
+    };
+    await request(app.getHttpServer())
+      .post(`/pos/shifts/${shiftId}/cash-movements`)
+      .send(body)
+      .expect(201);
+    assert.deepEqual(calls.at(-3), { method: 'getShiftBranch', args: [employee, shiftId] });
+    assert.deepEqual(calls.at(-2), {
+      method: 'verifyPosEmployeeApproval',
+      args: [{
+        merchantId,
+        branchId,
+        actingEmployeeId: employeeId,
+        username: 'shift-supervisor',
+        password: 'secret',
+        permission: 'manage_cash_movements',
+      }],
+    });
+    assert.deepEqual(calls.at(-1), {
+      method: 'recordManualCashMovement',
+      args: [employee, shiftId, body, supervisorId],
+    });
+    assert.equal(JSON.stringify(calls.at(-1)).includes('secret'), true);
+
+    await request(app.getHttpServer())
+      .post(`/pos/shifts/${shiftId}/cash-movements`)
+      .send({ ...body, requestId: 'not-a-uuid' })
+      .expect(400);
+  });
+
+  it('requires a cash-drop reference and preserves it while verifying cashier approval', async () => {
+    const body = {
+      requestId,
+      kind: 'cash_drop',
+      amount: '250.00',
+      reason: 'Evening safe drop',
+      dropReference: 'SAFE-BAG-1042',
+      approval: { username: 'shift-supervisor', password: 'secret' },
+    };
+    await request(app.getHttpServer())
+      .post(`/pos/shifts/${shiftId}/cash-movements`)
+      .send({ ...body, dropReference: undefined })
+      .expect(400);
+    assert.equal(calls.length, 0);
+
+    await request(app.getHttpServer())
+      .post(`/pos/shifts/${shiftId}/cash-movements`)
+      .send(body)
+      .expect(201);
+    assert.equal(calls.at(-2)?.method, 'verifyPosEmployeeApproval');
+    assert.equal(calls.at(-1)?.method, 'recordManualCashMovement');
+    assert.deepEqual(calls.at(-1)?.args, [employee, shiftId, body, supervisorId]);
+  });
+
+  it('allows exact shift-close retry after the shift is already closed and checks close approval', async () => {
+    const body = {
+      requestId,
+      countedCash: '101.00',
+      reason: 'One pound variance',
+      approval: { username: 'shift-supervisor', password: 'secret' },
+    };
+    await request(app.getHttpServer())
+      .post(`/pos/shifts/${shiftId}/close`)
+      .send(body)
+      .expect(201);
+    assert.deepEqual(calls.at(-3), { method: 'getShiftBranch', args: [employee, shiftId] });
+    assert.equal(calls.at(-2)?.method, 'verifyPosEmployeeApproval');
+    assert.deepEqual(calls.at(-1), {
+      method: 'closeShift',
+      args: [employee, shiftId, body, supervisorId],
+    });
+  });
+
+  it('previews a blind close without returning expected drawer totals', async () => {
+    const body = { countedCash: '100.00', reason: 'Count complete' };
+    const response = await request(app.getHttpServer())
+      .post(`/pos/shifts/${shiftId}/close-preview`)
+      .send(body)
+      .expect(201);
+    assert.deepEqual(calls.at(-1), {
+      method: 'previewCloseShift',
+      args: [employee, shiftId, body],
+    });
+    assert.deepEqual(response.body, {
+      unsettledCheckCount: 0,
+      requiresReason: false,
+      requiresSupervisorApproval: true,
+    });
+    assert.equal('expectedCash' in response.body, false);
+
+    await request(app.getHttpServer())
+      .post(`/pos/shifts/${shiftId}/close-preview`)
+      .send({ countedCash: '100.00', expectedCash: '100.00' })
+      .expect(400);
   });
 });

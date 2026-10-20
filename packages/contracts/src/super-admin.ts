@@ -3,6 +3,7 @@ import type { BusinessActivityKey } from './activities-modules.js';
 export interface MerchantSummary {
   id: string;
   name: string;
+  businessCode: string;
   activity?: BusinessActivityKey;
   contactPhone: string;
   ownerName: string;

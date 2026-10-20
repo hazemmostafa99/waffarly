@@ -70,14 +70,6 @@ export function POSScreen() {
     staleTime: 5_000,
   });
 
-  useEffect(() => {
-    if (isOnline && isWorkspaceHydrated && branchId) {
-      void queryClient.invalidateQueries({
-        queryKey: posOrderKeys.branch(employee.merchantId, branchId),
-      });
-    }
-  }, [branchId, employee.merchantId, isOnline, isWorkspaceHydrated, queryClient]);
-
   const actionMutation = useMutation({
     mutationFn: ({ orderId, action }: { orderId: string; action: PendingPosAction }) =>
       runPosOrderAction(orderId, action),
@@ -90,20 +82,38 @@ export function POSScreen() {
   const pendingActions = workspace?.pendingActions ?? {};
   const activeOrderId = actionMutation.isPending ? actionMutation.variables?.orderId : null;
   const ordersQueryError = ordersQuery.error instanceof Error ? ordersQuery.error.message : '';
+  const queueRefreshingWithSavedData =
+    ordersQuery.isFetching && !ordersQuery.isFetchingNextPage && Boolean(ordersQuery.data);
+  const queueNeedsFreshRead = ordersQuery.isRefetchError || queueRefreshingWithSavedData;
 
-  async function performAction(order: StorefrontOrderSummary, saved?: PendingPosAction) {
-    if (actionMutation.isPending || !isOnline) return;
+  async function performAction(
+    order: StorefrontOrderSummary,
+    saved?: PendingPosAction,
+    readyLineId?: string,
+  ) {
+    if (actionMutation.isPending || !isOnline || (queueNeedsFreshRead && !saved)) return;
     const pending =
       saved ??
-      (order.status === 'pending'
-        ? { action: 'accept' as const, requestId: crypto.randomUUID(), branchId }
-        : { action: 'prepare' as const, requestId: crypto.randomUUID(), branchId });
-    if (
-      !employee.permissions.includes(
-        pending.action === 'accept' ? 'accept_recipe_orders' : 'start_preparation',
-      )
-    )
-      return;
+      (readyLineId
+        ? { action: 'item_ready' as const, requestId: crypto.randomUUID(), lineId: readyLineId }
+        : order.status === 'pending'
+          ? { action: 'accept' as const, requestId: crypto.randomUUID(), branchId }
+          : order.status === 'accepted'
+            ? { action: 'prepare' as const, requestId: crypto.randomUUID(), branchId }
+            : order.status === 'preparing'
+              ? { action: 'ready' as const, requestId: crypto.randomUUID(), branchId }
+            : order.status === 'cancelled'
+              ? { action: 'cancel_ack' as const, requestId: crypto.randomUUID() }
+              : { action: 'handover' as const, requestId: crypto.randomUUID(), branchId });
+    const requiredPermission =
+      pending.action === 'accept'
+        ? 'accept_recipe_orders'
+        : pending.action === 'cancel_ack'
+          ? 'accept_recipe_orders'
+        : pending.action === 'handover'
+          ? 'sell'
+          : 'start_preparation';
+    if (!employee.permissions.includes(requiredPermission)) return;
     try {
       // Write the exact idempotent command before sending it. A timeout must reuse this payload.
       savePendingAction(employee.merchantId, employee.id, order.id, pending);
@@ -156,7 +166,9 @@ export function POSScreen() {
   function getStatusClass(status: StorefrontOrderSummary['status']) {
     if (status === 'pending') return 'bg-warning/15 text-warning';
     if (status === 'accepted') return 'bg-info/15 text-info';
-    if (status === 'preparing') return 'bg-success/15 text-success';
+    if (status === 'preparing') return 'bg-primary/15 text-primary';
+    if (status === 'ready') return 'bg-success/15 text-success';
+    if (status === 'cancelled' || status === 'rejected') return 'bg-destructive/15 text-destructive';
     return 'bg-secondary text-foreground';
   }
 
@@ -199,7 +211,7 @@ export function POSScreen() {
       </div>
       <p className="m-0 max-w-none text-sm text-muted-foreground">
         {t(
-          'Orders update automatically. Accepting deducts the saved recipe requirements from this branch.',
+          'Dine-in rounds appear after you send them. Recipe stock is deducted on acceptance; direct stock is recorded at sale.',
         )}
       </p>
       {!isOnline && (
@@ -207,7 +219,33 @@ export function POSScreen() {
           className="m-0 max-w-none rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm text-foreground"
           role="status"
         >
-          {t('POS is offline. Showing saved orders where available; order actions are paused.')}
+          {ordersQuery.dataUpdatedAt
+            ? t(
+                'POS is offline. Showing the last loaded kitchen orders from {{date}}; order actions are paused.',
+                {
+                  date: formatDate(new Date(ordersQuery.dataUpdatedAt).toISOString(), true),
+                },
+              )
+            : t('POS is offline. The kitchen queue has not loaded yet; order actions are paused.')}
+        </p>
+      )}
+      {isOnline && ordersQuery.isRefetchError && ordersQuery.dataUpdatedAt > 0 && (
+        <p
+          className="m-0 max-w-none rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm text-foreground"
+          role="alert"
+        >
+          {t(
+            'Could not refresh the kitchen queue. Showing the last successful update from {{date}}. New actions are paused; retry refresh before continuing.',
+            {
+              date: formatDate(new Date(ordersQuery.dataUpdatedAt).toISOString(), true),
+            },
+          )}
+        </p>
+      )}
+      {isOnline && ordersQuery.dataUpdatedAt > 0 && !ordersQuery.isRefetchError && (
+        <p className="m-0 text-xs text-muted-foreground" role="status">
+          {t('Last updated')}: {formatDate(new Date(ordersQuery.dataUpdatedAt).toISOString(), true)}
+          {ordersQuery.isFetching ? ` · ${t('Refreshing…')}` : ''}
         </p>
       )}
       {(persistenceError || actionErrors.workspace) && (
@@ -218,7 +256,7 @@ export function POSScreen() {
           {errorText(persistenceError ?? actionErrors.workspace!)}
         </p>
       )}
-      {ordersQueryError && (
+      {ordersQueryError && !ordersQuery.data && (
         <p
           className="m-0 max-w-none rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
           role="alert"
@@ -237,7 +275,7 @@ export function POSScreen() {
         >
           {t('No branches are assigned to this employee.')}
         </div>
-      ) : orders.length === 0 && !ordersQueryError ? (
+      ) : orders.length === 0 && (!ordersQueryError || Boolean(ordersQuery.data)) ? (
         <div
           className="rounded-xl border border-dashed border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground"
           role="status"
@@ -248,14 +286,34 @@ export function POSScreen() {
         <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
           {orders.map((order) => {
             const pending = pendingActions[order.id];
+            const lineReadiness = Boolean(order.kitchenTicket) && order.status === 'preparing';
             const canAct =
               (order.status === 'pending' &&
                 employee.permissions.includes('accept_recipe_orders')) ||
-              (order.status === 'accepted' && employee.permissions.includes('start_preparation'));
+              (order.status === 'accepted' && employee.permissions.includes('start_preparation')) ||
+              (order.status === 'preparing' &&
+                !lineReadiness &&
+                employee.permissions.includes('start_preparation')) ||
+              (order.status === 'ready' &&
+                Boolean(order.kitchenTicket) &&
+                employee.permissions.includes('sell')) ||
+              (order.status === 'cancelled' &&
+                Boolean(order.kitchenTicket) &&
+                !order.kitchenTicket?.cancellationAcknowledgedAt &&
+                employee.permissions.includes('accept_recipe_orders'));
+            const canHandover = order.status === 'ready' && Boolean(order.kitchenTicket);
+            const handoverBlocked = canHandover && order.handoverEligible !== true;
             const canRetry =
               pending &&
+              pending.action !== 'item_ready' &&
               employee.permissions.includes(
-                pending.action === 'accept' ? 'accept_recipe_orders' : 'start_preparation',
+                pending.action === 'accept'
+                  ? 'accept_recipe_orders'
+                    : pending.action === 'cancel_ack'
+                      ? 'accept_recipe_orders'
+                  : pending.action === 'handover'
+                    ? 'sell'
+                    : 'start_preparation',
               );
             return (
               <article
@@ -278,6 +336,11 @@ export function POSScreen() {
                         <span className="rounded-md bg-card px-2 py-0.5 text-xs text-muted-foreground">
                           {t(order.fulfillmentType)}
                         </span>
+                        {order.tableCode && (
+                          <span className="rounded-md bg-card px-2 py-0.5 text-xs text-muted-foreground">
+                            {t('Table')} <bdi>{order.tableCode}</bdi>
+                          </span>
+                        )}
                       </div>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         <span className="inline-flex items-center gap-1.5">
@@ -290,6 +353,32 @@ export function POSScreen() {
                           <a className="hover:text-foreground" href={`tel:${order.customerPhone}`}>
                             {order.customerPhone}
                           </a>
+                        )}
+                        {order.kitchenTicket && (
+                          <span>
+                            {t('Station: {{station}}', {
+                              station: order.kitchenTicket.station.name,
+                            })}
+                            {' · '}
+                            {t(order.kitchenTicket.dispatchMode)}
+                            {' · '}
+                            {formatDate(order.kitchenTicket.dispatchedAt, true)}
+                          </span>
+                        )}
+                        {lineReadiness && (
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">
+                            {t('{{ready}} of {{total}} items ready', {
+                              ready: formatNumber(
+                                order.lines.filter((line) => Boolean(line.kitchenReadyAt)).length,
+                              ),
+                              total: formatNumber(order.lines.length),
+                            })}
+                          </span>
+                        )}
+                        {order.status === 'ready' && order.readyAt && (
+                          <span>
+                            {t('Ready at {{date}}', { date: formatDate(order.readyAt, true) })}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -332,7 +421,53 @@ export function POSScreen() {
                             {t('Note: {{note}}', { note: line.note })}
                           </span>
                         )}
+                        {lineReadiness && line.kitchenReadyAt && (
+                          <span className="text-xs text-success">
+                            {t('Ready at {{date}}', {
+                              date: formatDate(line.kitchenReadyAt, true),
+                            })}
+                          </span>
+                        )}
                       </div>
+                      {lineReadiness && (
+                        <PosButton
+                          variant={line.kitchenReadyAt ? 'outline' : 'solid'}
+                          type="button"
+                          aria-label={
+                            line.kitchenReadyAt
+                              ? t('{{item}} ready', { item: line.productName })
+                              : t('Mark {{item}} ready', { item: line.productName })
+                          }
+                          disabled={
+                            !employee.permissions.includes('start_preparation') ||
+                            activeOrderId !== null ||
+                            !isOnline ||
+                            (queueNeedsFreshRead &&
+                              !(pending?.action === 'item_ready' && pending.lineId === line.id)) ||
+                            Boolean(
+                              pending &&
+                              (pending.action !== 'item_ready' || pending.lineId !== line.id),
+                            ) ||
+                            Boolean(line.kitchenReadyAt)
+                          }
+                          onClick={() =>
+                            void performAction(
+                              order,
+                              pending?.action === 'item_ready' && pending.lineId === line.id
+                                ? pending
+                                : undefined,
+                              line.id,
+                            )
+                          }
+                          className="min-h-9 shrink-0 px-3 text-xs"
+                        >
+                          {pending?.action === 'item_ready' && pending.lineId === line.id
+                            ? t('Retry saved action')
+                            : line.kitchenReadyAt
+                              ? t('Ready')
+                              : t('Mark ready')}
+                        </PosButton>
+                      )}
                       <span className="shrink-0 pt-1 text-sm font-medium tabular-nums">
                         {formatNumber(Number(line.lineTotal), {
                           style: 'currency',
@@ -355,6 +490,12 @@ export function POSScreen() {
                   </div>
                 )}
                 <footer className="grid gap-3 border-t border-border bg-secondary/20 p-4">
+                  {order.status === 'cancelled' && (
+                    <p className="m-0 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="status">
+                      {t('Cancelled before preparation. Stop this ticket and acknowledge the update.')}
+                      {order.cancellationReason ? ` ${t('Reason')}: ${order.cancellationReason}` : ''}
+                    </p>
+                  )}
                   <div className="flex items-center justify-between gap-3">
                     <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
                       {t('Total')}
@@ -366,11 +507,31 @@ export function POSScreen() {
                       })}
                     </strong>
                   </div>
+                  {canHandover && (
+                    <p
+                      className={cn(
+                        'm-0 rounded-lg px-3 py-2 text-xs',
+                        handoverBlocked
+                          ? 'bg-warning/10 text-warning'
+                          : 'bg-success/10 text-success',
+                      )}
+                      role="status"
+                    >
+                      {handoverBlocked
+                        ? t('Settle every check before handover.')
+                        : t('All checks are paid. The order is ready for handover.')}
+                    </p>
+                  )}
                   {(canAct || canRetry) && (
                     <PosButton
                       variant="solid"
                       type="button"
-                      disabled={activeOrderId !== null || !isOnline}
+                      disabled={
+                        activeOrderId !== null ||
+                        !isOnline ||
+                        (queueNeedsFreshRead && !pending) ||
+                        (handoverBlocked && pending?.action !== 'handover')
+                      }
                       onClick={() => void performAction(order, pending)}
                       className="min-h-11 w-full justify-center"
                     >
@@ -378,9 +539,17 @@ export function POSScreen() {
                         ? t('Saving…')
                         : pending
                           ? t('Retry saved action')
+                          : order.status === 'cancelled'
+                            ? t('Acknowledge cancellation')
                           : order.status === 'pending'
-                            ? t('Accept and deduct stock')
-                            : t('Start preparation')}
+                            ? order.requiresRecipeAcceptance
+                              ? t('Accept and deduct stock')
+                              : t('Accept order')
+                            : order.status === 'accepted'
+                              ? t('Start preparation')
+                              : order.status === 'preparing'
+                                ? t('Mark order ready')
+                                : t('Confirm handover')}
                       <ArrowRight size={16} aria-hidden="true" className="rtl:rotate-180" />
                     </PosButton>
                   )}

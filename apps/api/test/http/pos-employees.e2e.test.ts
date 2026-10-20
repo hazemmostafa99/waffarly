@@ -14,6 +14,8 @@ import { OrderLifecycleService } from '../../src/modules/orders/order-lifecycle.
 import { PosStorefrontOrdersController } from '../../src/modules/orders/storefront-orders.controller.js';
 import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
 import { PosOrdersService } from '../../src/modules/orders/pos-orders.service.js';
+import { PosKitchenService } from '../../src/modules/orders/pos-kitchen.service.js';
+import { PosReturnsService } from '../../src/modules/orders/pos-returns.service.js';
 
 const merchantId = '11111111-1111-4111-8111-111111111111';
 const employeeId = '22222222-2222-4222-8222-222222222222';
@@ -39,7 +41,7 @@ const employee: PosEmployeeSession = {
   username: 'cashier1',
   displayName: 'Cashier One',
   role: null,
-  permissions: ['accept_recipe_orders', 'start_preparation'],
+  permissions: ['accept_recipe_orders', 'start_preparation', 'sell'],
   branches: [{ id: branchId, name: 'Main', archivedAt: null }],
 };
 
@@ -70,6 +72,10 @@ describe('POS employee endpoints', () => {
             requirePosEmployee: async () => {
               if (!employeeAuthorized) throw new UnauthorizedException();
               return employee;
+            },
+            verifyPosEmployeeApproval: async (...args: unknown[]) => {
+              calls.push({ service: 'auth', method: 'verifyPosEmployeeApproval', args });
+              return '77777777-7777-4777-8777-777777777777';
             },
             logout: async (...args: unknown[]) =>
               calls.push({ service: 'auth', method: 'logout', args }),
@@ -112,6 +118,36 @@ describe('POS employee endpoints', () => {
               calls.push({ service: 'posSales', method: 'create', args });
               return { id: orderId };
             },
+            addKitchenItems: async (...args: unknown[]) => {
+              calls.push({ service: 'posSales', method: 'addKitchenItems', args });
+              return { id: orderId };
+            },
+            recordCheckRefund: async (...args: unknown[]) => {
+              calls.push({ service: 'posSales', method: 'recordCheckRefund', args });
+              return { orderId, checkId: requestId, refund: { id: requestId } };
+            },
+          },
+        },
+        {
+          provide: PosReturnsService,
+          useValue: {
+            state: async (...args: unknown[]) => {
+              calls.push({ service: 'posReturns', method: 'state', args });
+              return { orderId, eligible: true, items: [], returns: [] };
+            },
+            record: async (...args: unknown[]) => {
+              calls.push({ service: 'posReturns', method: 'record', args });
+              return { orderId, return: { id: requestId } };
+            },
+          },
+        },
+        {
+          provide: PosKitchenService,
+          useValue: {
+            dispatchDineInOrder: async (...args: unknown[]) => {
+              calls.push({ service: 'kitchen', method: 'dispatchDineInOrder', args });
+              return { id: orderId, kitchenTicket: { dispatchMode: 'manual' } };
+            },
           },
         },
         {
@@ -124,6 +160,14 @@ describe('POS employee endpoints', () => {
             startPreparationFromPos: async (...args: unknown[]) => {
               calls.push({ service: 'lifecycle', method: 'startPreparationFromPos', args });
               return { id: orderId, status: 'preparing' };
+            },
+            markKitchenItemReadyFromPos: async (...args: unknown[]) => {
+              calls.push({ service: 'lifecycle', method: 'markKitchenItemReadyFromPos', args });
+              return { id: orderId, status: 'preparing' };
+            },
+            cancelPosFromPos: async (...args: unknown[]) => {
+              calls.push({ service: 'lifecycle', method: 'cancelPosFromPos', args });
+              return { id: orderId, status: 'cancelled' };
             },
           },
         },
@@ -222,9 +266,31 @@ describe('POS employee endpoints', () => {
       method: 'create',
       args: [employee, sale],
     });
+
+    const amendment = {
+      requestId,
+      revision: 1,
+      items: [{ ...quote.items[0], expectedProductRevision: 4 }],
+    };
+    employeeAuthorized = false;
+    await request(app.getHttpServer())
+      .post(`/pos/orders/${orderId}/kitchen-amendments`)
+      .send(amendment)
+      .expect(401);
+    employeeAuthorized = true;
+    await request(app.getHttpServer())
+      .post(`/pos/orders/${orderId}/kitchen-amendments`)
+      .send(amendment)
+      .expect(200);
+    assert.deepEqual(calls.at(-1), {
+      service: 'posSales',
+      method: 'addKitchenItems',
+      args: [employee, orderId, amendment],
+    });
   });
 
-  it('passes only assigned branches to accept and preparation commands and exposes no staff cancellation route', async () => {
+  it('requires branch-bound supervisor approval for POS cancellation and acknowledges kitchen notices', async () => {
+    const lineId = '77777777-7777-4777-8777-777777777777';
     employeeAuthorized = false;
     await request(app.getHttpServer())
       .post(`/pos/orders/${orderId}/accept`)
@@ -252,10 +318,177 @@ describe('POS employee endpoints', () => {
       args: [merchantId, `pos:${employeeId}`, orderId, { requestId }, [branchId]],
     });
 
+    employeeAuthorized = false;
+    await request(app.getHttpServer())
+      .post(`/pos/orders/${orderId}/items/${lineId}/ready`)
+      .send({ requestId })
+      .expect(401);
+    employeeAuthorized = true;
+    await request(app.getHttpServer())
+      .post(`/pos/orders/${orderId}/items/${lineId}/ready`)
+      .send({ requestId })
+      .expect(200);
+    assert.deepEqual(calls.at(-1), {
+      service: 'lifecycle',
+      method: 'markKitchenItemReadyFromPos',
+      args: [merchantId, `pos:${employeeId}`, orderId, lineId, { requestId }, [branchId]],
+    });
+
     await request(app.getHttpServer())
       .post(`/pos/orders/${orderId}/cancel`)
-      .send({ requestId, reason: 'Customer cancelled', restoreStock: true })
-      .expect(404);
-    assert.equal(calls.filter((call) => call.service === 'lifecycle').length, 2);
+      .send({ requestId, branchId, reason: 'Customer cancelled' })
+      .expect(403);
+    assert.equal(calls.filter((call) => call.service === 'lifecycle').length, 3);
+
+    await request(app.getHttpServer())
+      .post(`/pos/orders/${orderId}/cancel`)
+      .send({
+        requestId,
+        branchId,
+        reason: 'Customer cancelled',
+        approval: { username: 'supervisor', password: 'supervisor-password' },
+      })
+      .expect(200);
+    assert.deepEqual(calls.at(-2), {
+      service: 'auth',
+      method: 'verifyPosEmployeeApproval',
+      args: [
+        {
+          merchantId,
+          branchId,
+          actingEmployeeId: employeeId,
+          username: 'supervisor',
+          password: 'supervisor-password',
+          permission: 'approve_voids',
+        },
+      ],
+    });
+    assert.deepEqual(calls.at(-1), {
+      service: 'lifecycle',
+      method: 'cancelPosFromPos',
+      args: [
+        employee,
+        orderId,
+        { requestId, branchId, reason: 'Customer cancelled' },
+        '77777777-7777-4777-8777-777777777777',
+      ],
+    });
+    assert.equal(
+      JSON.stringify(calls.at(-1)).includes('supervisor-password'),
+      false,
+      'never pass supervisor secrets into order persistence',
+    );
+  });
+
+  it('requires a branch supervisor to approve cashier refunds and never forwards credentials to Orders', async () => {
+    const checkId = '88888888-8888-4888-8888-888888888888';
+    const refund = {
+      requestId: '99999999-9999-4999-8999-999999999999',
+      revision: 3,
+      branchId,
+      refundShiftId: anotherBranchId,
+      reason: 'Customer return',
+      allocations: [{ paymentId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', amount: '12.50' }],
+    };
+    await request(app.getHttpServer())
+      .post(`/pos/orders/${orderId}/checks/${checkId}/refunds`)
+      .send(refund)
+      .expect(403);
+    assert.equal(
+      calls.some((call) => call.method === 'recordCheckRefund'),
+      false,
+    );
+
+    await request(app.getHttpServer())
+      .post(`/pos/orders/${orderId}/checks/${checkId}/refunds`)
+      .send({
+        ...refund,
+        approval: { username: 'supervisor', password: 'supervisor-password' },
+      })
+      .expect(201);
+    assert.deepEqual(calls.at(-2), {
+      service: 'auth',
+      method: 'verifyPosEmployeeApproval',
+      args: [
+        {
+          merchantId,
+          branchId,
+          actingEmployeeId: employeeId,
+          username: 'supervisor',
+          password: 'supervisor-password',
+          permission: 'approve_refunds',
+        },
+      ],
+    });
+    const refundCall = calls.at(-1);
+    assert.deepEqual(refundCall, {
+      service: 'posSales',
+      method: 'recordCheckRefund',
+      args: [employee, orderId, checkId, refund, '77777777-7777-4777-8777-777777777777'],
+    });
+    assert.equal(JSON.stringify(refundCall).includes('supervisor-password'), false);
+  });
+
+  it('requires branch supervisor approval for completed-sale item returns and strips credentials', async () => {
+    const lineId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const itemReturn = {
+      requestId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      branchId,
+      reason: 'Customer returned damaged item',
+      lines: [{ orderLineId: lineId, quantity: 1 }],
+    };
+    await request(app.getHttpServer()).get(`/pos/orders/${orderId}/returns`).expect(200);
+    assert.deepEqual(calls.at(-1), {
+      service: 'posReturns',
+      method: 'state',
+      args: [employee, orderId],
+    });
+
+    await request(app.getHttpServer())
+      .post(`/pos/orders/${orderId}/returns`)
+      .send(itemReturn)
+      .expect(403);
+    assert.equal(
+      calls.some((call) => call.method === 'record' && call.service === 'posReturns'),
+      false,
+    );
+
+    await request(app.getHttpServer())
+      .post(`/pos/orders/${orderId}/returns`)
+      .send({ ...itemReturn, branchId: anotherBranchId })
+      .expect(403);
+    assert.equal(
+      calls.some((call) => call.method === 'record' && call.service === 'posReturns'),
+      false,
+    );
+
+    await request(app.getHttpServer())
+      .post(`/pos/orders/${orderId}/returns`)
+      .send({
+        ...itemReturn,
+        approval: { username: 'supervisor', password: 'supervisor-password' },
+      })
+      .expect(201);
+    assert.deepEqual(calls.at(-2), {
+      service: 'auth',
+      method: 'verifyPosEmployeeApproval',
+      args: [
+        {
+          merchantId,
+          branchId,
+          actingEmployeeId: employeeId,
+          username: 'supervisor',
+          password: 'supervisor-password',
+          permission: 'approve_refunds',
+        },
+      ],
+    });
+    const returnCall = calls.at(-1);
+    assert.deepEqual(returnCall, {
+      service: 'posReturns',
+      method: 'record',
+      args: [employee, orderId, itemReturn, '77777777-7777-4777-8777-777777777777'],
+    });
+    assert.equal(JSON.stringify(returnCall).includes('supervisor-password'), false);
   });
 });

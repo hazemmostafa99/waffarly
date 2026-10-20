@@ -19,9 +19,13 @@ import {
 } from './pos-dining.controller.js';
 import { PosDiningService } from './pos-dining.service.js';
 import { PosReceiptsController } from './pos-receipts.controller.js';
+import { PosKitchenService } from './pos-kitchen.service.js';
+import { PosReturnsService } from './pos-returns.service.js';
+import { OwnerPosItemReturnsController } from './pos-returns.controller.js';
 @Module({
   imports: [AuthModule, CatalogModule, InventoryModule, ShiftsModule, PaymentsModule],
   controllers: [
+    OwnerPosItemReturnsController,
     OwnerStorefrontOrdersController,
     PosStorefrontOrdersController,
     PublicStorefrontOrdersController,
@@ -30,6 +34,13 @@ import { PosReceiptsController } from './pos-receipts.controller.js';
     PosDiningOrdersController,
     PosReceiptsController,
   ],
-  providers: [StorefrontOrdersService, OrderLifecycleService, PosOrdersService, PosDiningService],
+  providers: [
+    StorefrontOrdersService,
+    OrderLifecycleService,
+    PosOrdersService,
+    PosDiningService,
+    PosKitchenService,
+    PosReturnsService,
+  ],
 })
 export class OrdersModule {}

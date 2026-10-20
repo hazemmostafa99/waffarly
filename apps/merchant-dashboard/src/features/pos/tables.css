@@ -45,23 +45,21 @@
   font-size: 12px;
 }
 
-.pos-tables-filters .entity-picker {
+.pos-tables-filters .entity-picker--combobox {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .pos-tables-filters .entity-picker > :is(small, div[role='alert'], .entity-picker-pages) {
   grid-column: 1 / -1;
 }
 
-.pos-tables-filters .entity-picker input {
+.pos-tables-filters .entity-picker .entity-picker-combobox-input {
   min-height: 38px;
-  padding: 8px 10px;
+  padding-block: 8px;
   border: 1px solid var(--dashboard-border);
   border-radius: 7px;
-  background: #f5f8fb;
+  background: white;
   color: var(--dashboard-ink);
   font: inherit;
   font-size: 12px;
@@ -122,6 +120,19 @@
 .pos-table-editor .entity-picker {
   display: grid;
   gap: 8px;
+}
+
+.pos-table-editor .entity-picker .entity-picker-combobox-input {
+  min-height: 38px;
+  padding-block: 8px;
+  padding-inline-start: 12px;
+  padding-inline-end: 40px;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 7px;
+  background: white;
+  color: var(--dashboard-ink);
+  font: inherit;
+  font-size: 12px;
 }
 
 .pos-table-editor .entity-picker select {

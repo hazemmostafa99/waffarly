@@ -1,4 +1,9 @@
-import type { CreatePosOrderRequest, PosOrderQuoteRequest } from '@waffarly/contracts';
+import type {
+  CreatePosOrderRequest,
+  DispatchPosKitchenOrderRequest,
+  PosOrderQuoteRequest,
+  AddPosKitchenItemsRequest,
+} from '@waffarly/contracts';
 import { z } from 'zod';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 
@@ -7,7 +12,11 @@ const selectionSchema = z
     groupId: z.string().uuid(),
     optionIds: z.array(z.string().uuid()).max(100),
     optionQuantities: z
-      .array(z.object({ optionId: z.string().uuid(), quantity: z.number().int().min(1).max(99) }).strict())
+      .array(
+        z
+          .object({ optionId: z.string().uuid(), quantity: z.number().int().min(1).max(99) })
+          .strict(),
+      )
       .max(100)
       .optional(),
   })
@@ -110,10 +119,39 @@ const createOrderSchema = z
     }
   });
 
+const dispatchPosKitchenOrderSchema = z.object({ requestId: z.string().uuid() }).strict();
+
+const addPosKitchenItemsSchema = z
+  .object({
+    requestId: z.string().uuid(),
+    revision: z.number().int().min(1),
+    items: z.array(createLineSchema).min(1).max(30),
+  })
+  .strict()
+  .superRefine((request, context) => {
+    if (new Set(request.items.map((item) => item.lineId)).size !== request.items.length) {
+      context.addIssue({
+        code: 'custom',
+        path: ['items'],
+        message: 'Cart line IDs must be unique.',
+      });
+    }
+  });
+
 export function parsePosOrderQuoteRequest(input: unknown): PosOrderQuoteRequest {
   return parseRequest(quoteSchema, input);
 }
 
 export function parseCreatePosOrderRequest(input: unknown): CreatePosOrderRequest {
   return parseRequest(createOrderSchema, input);
+}
+
+export function parseDispatchPosKitchenOrderRequest(
+  input: unknown,
+): DispatchPosKitchenOrderRequest {
+  return parseRequest(dispatchPosKitchenOrderSchema, input);
+}
+
+export function parseAddPosKitchenItemsRequest(input: unknown): AddPosKitchenItemsRequest {
+  return parseRequest(addPosKitchenItemsSchema, input);
 }

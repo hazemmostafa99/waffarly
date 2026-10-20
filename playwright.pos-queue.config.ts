@@ -7,7 +7,7 @@ export default defineConfig({
   timeout: 45_000,
   expect: { timeout: 8_000 },
   use: {
-    channel: 'chrome',
+    channel: process.env.CI ? 'chromium' : 'chrome',
     headless: true,
     baseURL: 'http://127.0.0.1:5277',
     reducedMotion: 'reduce',

@@ -28,12 +28,14 @@ export function PosCheckoutDialog({
   merchantId,
   employeeId,
   branchId,
+  requiresRefundApproval,
   orderId,
   onClose,
 }: {
   merchantId: string;
   employeeId: string;
   branchId: string;
+  requiresRefundApproval: boolean;
   orderId: string;
   onClose: () => void;
 }) {
@@ -291,6 +293,10 @@ export function PosCheckoutDialog({
       {receiptCheckId ? (
         <PosReceiptView
           merchantId={merchantId}
+          employeeId={employeeId}
+          branchId={branchId}
+          requiresApproval={requiresRefundApproval}
+          canRecordItemReturn
           orderId={orderId}
           checkId={receiptCheckId}
           onBack={() => setReceiptCheckId(null)}

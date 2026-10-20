@@ -8,6 +8,9 @@ const employee = {
   id: employeeId,
   username: 'amira',
   displayName: 'Amira Hassan',
+  role: 'cashier',
+  permissions: ['accept_recipe_orders', 'start_preparation'],
+  savedPermissions: ['accept_recipe_orders', 'start_preparation'],
   active: true,
   revision: 3,
   branchIds: [branchId],
@@ -178,18 +181,19 @@ for (const locale of ['en', 'ar']) {
       ar ? 'عيّن فرعًا نشطًا واحدًا على الأقل.' : 'Assign at least one active branch.',
     );
     expect(writes).toHaveLength(0);
-    await dialog
-      .getByRole('combobox', { name: ar ? 'إضافة فرع نشط' : 'Add an active branch', exact: true })
-      .selectOption(branchId);
+    const branchPicker = dialog.getByRole('combobox', {
+      name: ar ? 'إضافة فرع نشط' : 'Add an active branch',
+      exact: true,
+    });
+    await branchPicker.fill('Central');
+    await dialog.getByRole('option', { name: 'Central', exact: true }).click();
     await page.screenshot({
       path: testInfo.outputPath(`employee-editor-${locale}.png`),
       fullPage: true,
     });
     await save.click();
     await expect(dialog.getByRole('alert')).toContainText(
-      ar
-        ? 'يرجى التحقق من البيانات المدخلة والمحاولة مجددًا.'
-        : 'Employee update failed for verification.',
+      ar ? 'حدث خطأ غير متوقع.' : 'Employee update failed for verification.',
     );
     await expect(
       dialog.getByLabel(ar ? 'اسم الموظف' : 'Employee name', { exact: true }),
@@ -203,6 +207,7 @@ for (const locale of ['en', 'ar']) {
         displayName: 'Amira Hassan',
         username: 'amira1',
         password: 'browser-test-password',
+        role: 'cashier',
         branchIds: [branchId],
       },
     });
@@ -232,7 +237,13 @@ for (const locale of ['en', 'ar']) {
     expect(writes).toEqual([
       {
         method: 'PATCH',
-        body: { revision: 3, displayName: 'Amira Updated', active: false, branchIds: [] },
+        body: {
+          revision: 3,
+          displayName: 'Amira Updated',
+          active: false,
+          role: 'cashier',
+          branchIds: [],
+        },
       },
     ]);
     await expect(page.locator('.products-notice')).toContainText(

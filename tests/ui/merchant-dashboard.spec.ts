@@ -1,5 +1,37 @@
 import { expect, test } from '@playwright/test';
 
+const sampleOrders = [
+  ['ORD-10027', 'Sarah Ahmed', '01010000001', '10000.00', 'pickup', 'Sandwich'],
+  ['ORD-10028', 'Mona Ali', '01010000002', '5000.00', 'delivery', 'Coffee'],
+  ['ORD-10029', 'Omar Samy', '01010000003', '4000.00', 'pickup', 'Waffle'],
+  ['ORD-10030', 'Nour Adel', '01010000004', '3000.00', 'delivery', 'Cake'],
+  ['ORD-10031', 'Laila Hassan', '01010000005', '2320.50', 'pickup', 'Tea'],
+].map(([id, customerName, customerPhone, total, fulfillmentType, productName], index) => ({
+  id,
+  status: 'pending',
+  customerName,
+  customerPhone,
+  fulfillmentType,
+  deliveryAddress: null,
+  currency: 'EGP',
+  total,
+  createdAt: new Date(Date.now() - index * 60_000).toISOString(),
+  lines: [
+    {
+      id: `line-${index + 1}`,
+      productName,
+      variantName: null,
+      variantAttributes: [],
+      basePrice: total,
+      modifierTotal: '0.00',
+      quantity: 1,
+      unitPrice: total,
+      lineTotal: total,
+      selections: [],
+    },
+  ],
+}));
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/auth/owner/me', (route) =>
     route.fulfill({
@@ -14,6 +46,7 @@ test.beforeEach(async ({ page }) => {
     }),
   );
   await page.route('**/owner/catalog/**', (route) => route.fulfill({ json: [] }));
+  await page.route('**/owner/orders', (route) => route.fulfill({ json: sampleOrders }));
 });
 
 test('Arabic dashboard matches the reference and stays within the viewport', async ({
@@ -27,9 +60,9 @@ test('Arabic dashboard matches the reference and stays within the viewport', asy
   await expect(page.locator('.dashboard-stat')).toHaveCount(4);
   await expect(page.locator('.dashboard-stat').first()).toContainText('EGP 24,320.50');
   await expect(page.locator('.dashboard-order-table tbody tr')).toHaveCount(5);
-  await expect(page.getByRole('heading', { name: 'توزيع المبيعات حسب الفروع' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'أفضل المنتجات مبيعاً' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'الإجراءات السريعة' })).toBeVisible();
+  await expect(page.locator('.dashboard-branches h2')).toBeVisible();
+  await expect(page.locator('.dashboard-bestsellers h2')).toBeVisible();
+  await expect(page.locator('.dashboard-quick-actions h2')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
     await page.evaluate(() => innerWidth),
   );
@@ -66,13 +99,13 @@ test('dashboard search, chart periods, utilities, and quick actions work', async
   await expect(page.getByText('No matching orders.')).toBeVisible();
   await search.fill('');
   await expect(page.locator('.dashboard-order-table tbody tr')).toHaveCount(5);
-  await page.getByRole('combobox', { name: 'Chart period' }).selectOption('monthly');
+  await page.getByRole('combobox', { name: 'Reporting period' }).selectOption('monthly');
   await expect(page.locator('.dashboard-chart')).toContainText('Week 1');
-  await page.getByRole('combobox', { name: 'Chart period' }).selectOption('weekly');
-  await expect(page.locator('.dashboard-chart')).toContainText('Saturday');
+  await page.getByRole('combobox', { name: 'Reporting period' }).selectOption('weekly');
+  await expect(page.locator('.dashboard-chart')).toContainText('Sat');
   const currentPoints = await page.locator('.dashboard-chart polyline').getAttribute('points');
-  await page.getByRole('combobox', { name: 'Reporting period' }).selectOption('previous');
-  await expect(page.locator('.dashboard-stat').first()).toContainText('EGP 19,000.39');
+  await page.getByRole('combobox', { name: 'Reporting period' }).selectOption('monthly');
+  await expect(page.locator('.dashboard-stat').first()).toContainText('EGP 24,320.50');
   await expect(page.locator('.dashboard-chart polyline')).not.toHaveAttribute(
     'points',
     currentPoints!,

@@ -1,14 +1,13 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { Fragment, useEffect, useState, type FormEvent } from 'react';
 import {
   Button,
   DashboardCard,
-  DataTable,
   Input,
   useLocale,
-  type DataTableColumn,
 } from '@waffarly/ui';
 import type { InventoryBranch, InventoryWarehouse } from '@waffarly/contracts';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
+import { Icon } from '../../Icons.js';
 import { apiRequest, apiRequestPage } from '../../lib/api-client.js';
 import { inventoryCopy } from './inventory-copy.js';
 import { InventoryHeader } from './InventoryHeader.js';
@@ -26,7 +25,7 @@ export function BranchesPage() {
   const { locale, t, errorText, formatDigits } = useLocale();
   const text = (value: string) => inventoryCopy(value, locale, t);
   const [branches, setBranches] = useState<InventoryBranch[]>([]);
-  const [selectedId, setSelectedId] = useState('');
+  const [expandedBranchId, setExpandedBranchId] = useState('');
   const [status, setStatus] = useState<'active' | 'archived' | 'all'>('active');
   const [searchDraft, setSearchDraft] = useState('');
   const [search, setSearch] = useState('');
@@ -55,9 +54,9 @@ export function BranchesPage() {
         if (!current) return;
         setBranches(page.items);
         setNextCursor(page.nextCursor);
-        setSelectedId((selected) =>
-          page.items.some((branch) => branch.id === selected)
-            ? selected
+        setExpandedBranchId((currentId) =>
+          page.items.some((branch) => branch.id === currentId)
+            ? currentId
             : (page.items[0]?.id ?? ''),
         );
       })
@@ -77,78 +76,18 @@ export function BranchesPage() {
     };
   }, [errorText, history, refreshKey, search, status]);
 
-  const selected = branches.find((branch) => branch.id === selectedId) ?? null;
-  const columns: DataTableColumn<InventoryBranch>[] = [
-    {
-      id: 'branch',
-      header: text('Branch'),
-      cell: (branch) => (
-        <div className="inventory-table-name">
-          <strong>{formatDigits(branch.name)}</strong>
-          {branch.address && <small>{formatDigits(branch.address)}</small>}
-        </div>
-      ),
-    },
-    {
-      id: 'warehouses',
-      header: text('Warehouses'),
-      cell: (branch) => (
-        <div className="inventory-table-name">
-          <strong>
-            {formatDigits(
-              String(branch.warehouses.filter((warehouse) => !warehouse.archivedAt).length),
-            )}
-          </strong>
-          <small>
-            {formatDigits(
-              branch.warehouses.find((warehouse) => warehouse.isDefaultConsumption)?.name ??
-                text('No default warehouse'),
-            )}
-          </small>
-        </div>
-      ),
-    },
-    {
-      id: 'status',
-      header: text('Status'),
-      cell: (branch) => text(branch.archivedAt ? 'Archived' : 'Active'),
-    },
-    {
-      id: 'actions',
-      header: text('Actions'),
-      className: 'inventory-action-cell',
-      cell: (branch) => (
-        <div className="inventory-row-actions">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setSelectedId(branch.id)}
-          >
-            {text('Manage')}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={Boolean(branch.archivedAt)}
-            onClick={() => setBranchEditor({ branch, key: branch.id })}
-          >
-            {text('Edit')}
-          </Button>
-        </div>
-      ),
-    },
-  ];
-
-  function applySearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setSearch(searchDraft.trim());
-    setHistory([]);
-  }
+  useEffect(() => {
+    const nextSearch = searchDraft.trim();
+    if (nextSearch === search) return;
+    const timer = window.setTimeout(() => {
+      setSearch(nextSearch);
+      setHistory([]);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search, searchDraft]);
 
   function changed(branch: InventoryBranch, message: string) {
-    setSelectedId(branch.id);
+    setExpandedBranchId(branch.id);
     setNotice(text(message));
     setLoadError('');
     setHistory([]);
@@ -261,21 +200,32 @@ export function BranchesPage() {
           </div>
         )}
         <div className="inventory-filters">
-          <form className="inventory-search" onSubmit={applySearch}>
+          <div className="inventory-branch-search">
             <label htmlFor="branch-search">{text('Search branches')}</label>
-            <div>
+            <div className="inventory-branch-search-control">
+              <Icon name="search" />
               <Input
                 id="branch-search"
+                type="search"
                 value={searchDraft}
                 maxLength={160}
                 onChange={(event) => setSearchDraft(event.target.value)}
                 placeholder={text('Search by branch name')}
               />
-              <Button type="submit" variant="outline">
-                {text('Search')}
-              </Button>
+              {searchDraft && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="inventory-branch-search-clear"
+                  aria-label={text('Clear search')}
+                  onClick={() => setSearchDraft('')}
+                >
+                  <span aria-hidden="true">×</span>
+                </Button>
+              )}
             </div>
-          </form>
+          </div>
           <label className="inventory-filter-status">
             {text('Status')}
             <select
@@ -291,24 +241,266 @@ export function BranchesPage() {
             </select>
           </label>
         </div>
-        <DataTable
-          columns={columns}
-          rows={branches}
-          rowKey={(branch) => branch.id}
-          caption={text('Branch directory')}
-          loading={loading}
-          loadingState={text('Loading branches…')}
-          emptyState={
-            listError ? (
-              <div className="inventory-empty">
-                <h3>{text('Could not load branches.')}</h3>
-                <p>{text('Retry loading the list to see your branches and warehouses.')}</p>
-              </div>
-            ) : (
-              text('No branches yet. Add a branch to begin.')
-            )
-          }
-        />
+        <div
+          className="wf-table-scroll inventory-branch-table-scroll"
+          role="region"
+          aria-label={text('Branch directory')}
+          tabIndex={0}
+        >
+          <table className="wf-data-table inventory-branch-table" aria-busy={loading}>
+            <caption className="wf-sr-only">{text('Branch directory')}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{text('Branch')}</th>
+                <th scope="col">{text('Warehouses')}</th>
+                <th scope="col">{text('Status')}</th>
+                <th scope="col">{text('Actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="wf-table-state" role="status">
+                    {text('Loading branches…')}
+                  </td>
+                </tr>
+              ) : branches.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="wf-table-state" role="status">
+                    {listError
+                      ? text('Could not load branches.')
+                      : search || status !== 'active' ? (
+                          <div className="inventory-branch-empty">
+                            <span>{text('No branches match these filters.')}</span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSearchDraft('');
+                                setSearch('');
+                                setStatus('active');
+                                setHistory([]);
+                              }}
+                            >
+                              {text('Clear filters')}
+                            </Button>
+                          </div>
+                        ) : (
+                          text('No branches yet. Add a branch to begin.')
+                        )}
+                  </td>
+                </tr>
+              ) : (
+                branches.map((branch) => {
+                  const expanded = expandedBranchId === branch.id;
+                  const activeWarehouses = branch.warehouses.filter(
+                    (warehouse) => !warehouse.archivedAt,
+                  );
+                  const defaultWarehouse = branch.warehouses.find(
+                    (warehouse) => warehouse.isDefaultConsumption,
+                  );
+                  const detailsId = 'branch-warehouses-' + branch.id;
+                  return (
+                    <Fragment key={branch.id}>
+                      <tr className={expanded ? 'is-expanded' : undefined}>
+                        <td className="inventory-branch-name-cell">
+                          <button
+                            type="button"
+                            className="inventory-branch-toggle"
+                            aria-expanded={expanded}
+                            aria-controls={detailsId}
+                            onClick={() =>
+                              setExpandedBranchId((current) =>
+                                current === branch.id ? '' : branch.id,
+                              )
+                            }
+                          >
+                            <span className="inventory-branch-chevron" aria-hidden="true">
+                              <span />
+                            </span>
+                            <span className="inventory-table-name">
+                              <strong>{formatDigits(branch.name)}</strong>
+                              <small>
+                                {branch.address
+                                  ? formatDigits(branch.address)
+                                  : text('No address provided.')}
+                              </small>
+                            </span>
+                          </button>
+                        </td>
+                        <td className="inventory-branch-warehouse-cell">
+                          <div className="inventory-branch-warehouse-summary">
+                            <small className="inventory-branch-mobile-label">
+                              {text('Warehouses')}
+                            </small>
+                            <span className="inventory-warehouse-count">
+                              {formatDigits(String(activeWarehouses.length))}
+                            </span>
+                            <small>
+                              {formatDigits(defaultWarehouse?.name ?? text('No default warehouse'))}
+                            </small>
+                          </div>
+                        </td>
+                        <td className="inventory-branch-status-cell">
+                          <small className="inventory-branch-mobile-label">
+                            {text('Status')}
+                          </small>
+                          <span
+                            className={
+                              'inventory-location-status ' +
+                              (branch.archivedAt ? 'is-archived' : 'is-active')
+                            }
+                          >
+                            {text(branch.archivedAt ? 'Archived' : 'Active')}
+                          </span>
+                        </td>
+                        <td className="inventory-action-cell inventory-branch-action-cell">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={Boolean(branch.archivedAt)}
+                            onClick={() => setBranchEditor({ branch, key: branch.id })}
+                          >
+                            {text('Edit')}
+                          </Button>
+                        </td>
+                      </tr>
+                      <tr
+                        className="inventory-branch-expanded-row"
+                        id={detailsId}
+                        hidden={!expanded}
+                      >
+                        <td colSpan={4}>
+                          <section
+                            className="inventory-branch-expansion"
+                            aria-label={text('Warehouses')}
+                          >
+                            <div className="inventory-branch-expansion-heading">
+                              <div>
+                                <h3>
+                                  {text('Warehouses')}
+                                  <span className="inventory-section-count">
+                                    {formatDigits(String(activeWarehouses.length))}
+                                  </span>
+                                </h3>
+                                <p>
+                                  {text('The default warehouse is used for future recipe consumption.')}
+                                </p>
+                              </div>
+                              <div className="inventory-row-actions">
+                                {!branch.archivedAt && (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() =>
+                                      setWarehouseEditor({
+                                        warehouse: null,
+                                        branch,
+                                        key: crypto.randomUUID(),
+                                      })
+                                    }
+                                  >
+                                    {text('Add warehouse')}
+                                  </Button>
+                                )}
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setArchiveTarget({ branch })}
+                                >
+                                  {branch.archivedAt
+                                    ? text('Restore branch')
+                                    : text('Archive branch')}
+                                </Button>
+                              </div>
+                            </div>
+                            <ul className="inventory-branch-warehouse-list">
+                              {branch.warehouses.length === 0 ? (
+                                <li className="inventory-branch-warehouse-empty">
+                                  {text('No warehouses yet.')}
+                                </li>
+                              ) : (
+                                branch.warehouses.map((warehouse) => (
+                                  <li key={warehouse.id}>
+                                    <div className="inventory-warehouse-main">
+                                      <strong>
+                                        {formatDigits(warehouse.name)}
+                                        {warehouse.isDefaultConsumption && (
+                                          <small className="inventory-warehouse-tag is-default">
+                                            {text('Default consumption warehouse')}
+                                          </small>
+                                        )}
+                                        {warehouse.archivedAt && (
+                                          <small className="inventory-warehouse-tag is-archived">
+                                            {text('Archived')}
+                                          </small>
+                                        )}
+                                      </strong>
+                                      {warehouse.isDefaultConsumption && !warehouse.archivedAt && (
+                                        <small className="inventory-warehouse-help">
+                                          {text(
+                                            'Choose another default before archiving this warehouse.',
+                                          )}
+                                        </small>
+                                      )}
+                                    </div>
+                                    <div className="inventory-row-actions">
+                                      {!warehouse.archivedAt &&
+                                        !warehouse.isDefaultConsumption && (
+                                          <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={busy || Boolean(branch.archivedAt)}
+                                            onClick={() =>
+                                              void saveWarehouseDefault(branch, warehouse)
+                                            }
+                                          >
+                                            {text('Set as default')}
+                                          </Button>
+                                        )}
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        disabled={busy || Boolean(branch.archivedAt)}
+                                        onClick={() =>
+                                          setWarehouseEditor({ warehouse, branch, key: warehouse.id })
+                                        }
+                                      >
+                                        {text('Edit')}
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        disabled={
+                                          busy ||
+                                          Boolean(branch.archivedAt) ||
+                                          (!warehouse.archivedAt && warehouse.isDefaultConsumption)
+                                        }
+                                        onClick={() => setArchiveTarget({ branch, warehouse })}
+                                      >
+                                        {warehouse.archivedAt ? text('Restore') : text('Archive')}
+                                      </Button>
+                                    </div>
+                                  </li>
+                                ))
+                              )}
+                            </ul>
+                          </section>
+                        </td>
+                      </tr>
+                    </Fragment>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
         <div className="inventory-pagination">
           <span>{formatDigits(`${branches.length} ${text('branches on this page')}`)}</span>
           <div>
@@ -333,103 +525,6 @@ export function BranchesPage() {
           </div>
         </div>
       </DashboardCard>
-
-      {selected && (
-        <DashboardCard
-          title={formatDigits(selected.name)}
-          description={
-            selected.address ? formatDigits(selected.address) : text('No address provided.')
-          }
-        >
-          <div className="inventory-pack-heading">
-            <div>
-              <h3>{text('Warehouses')}</h3>
-              <p>{text('The default warehouse is used for future recipe consumption.')}</p>
-            </div>
-            <div className="inventory-row-actions">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={Boolean(selected.archivedAt)}
-                onClick={() => setBranchEditor({ branch: selected, key: selected.id })}
-              >
-                {text('Edit branch')}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setArchiveTarget({ branch: selected })}
-              >
-                {selected.archivedAt ? text('Restore branch') : text('Archive branch')}
-              </Button>
-              {!selected.archivedAt && (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() =>
-                    setWarehouseEditor({
-                      warehouse: null,
-                      branch: selected,
-                      key: crypto.randomUUID(),
-                    })
-                  }
-                >
-                  {text('Add warehouse')}
-                </Button>
-              )}
-            </div>
-          </div>
-          <ul className="inventory-saved-units">
-            {selected.warehouses.map((warehouse) => (
-              <li key={warehouse.id}>
-                <span>
-                  <strong>{formatDigits(warehouse.name)}</strong>
-                  {warehouse.isDefaultConsumption && (
-                    <small> · {text('Default consumption warehouse')}</small>
-                  )}
-                  {warehouse.archivedAt && <small> · {text('Archived')}</small>}
-                </span>
-                <div className="inventory-row-actions">
-                  {!warehouse.archivedAt && !warehouse.isDefaultConsumption && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={busy || Boolean(selected.archivedAt)}
-                      onClick={() => void saveWarehouseDefault(selected, warehouse)}
-                    >
-                      {text('Set as default')}
-                    </Button>
-                  )}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={busy || Boolean(selected.archivedAt)}
-                    onClick={() =>
-                      setWarehouseEditor({ warehouse, branch: selected, key: warehouse.id })
-                    }
-                  >
-                    {text('Edit')}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={busy || Boolean(selected.archivedAt)}
-                    onClick={() => setArchiveTarget({ branch: selected, warehouse })}
-                  >
-                    {warehouse.archivedAt ? text('Restore') : text('Archive')}
-                  </Button>
-                </div>
-              </li>
-            ))}
-            {selected.warehouses.length === 0 && <li>{text('No warehouses yet.')}</li>}
-          </ul>
-        </DashboardCard>
-      )}
 
       {branchEditor && (
         <BranchEditor
@@ -464,6 +559,16 @@ export function BranchesPage() {
           busy={busy}
         >
           <div className="products-dialog-body">
+            <p className="inventory-archive-target">
+              <strong>
+                {('warehouse' in archiveTarget ? text('Warehouse') : text('Branch')) + ': '}
+                {formatDigits(
+                  'warehouse' in archiveTarget
+                    ? archiveTarget.warehouse.name
+                    : archiveTarget.branch.name,
+                )}
+              </strong>
+            </p>
             <p>
               {text(
                 'Archiving requires all balances in this location to be zero. The default warehouse must be changed first.',
@@ -505,28 +610,37 @@ function BranchEditor({
   const [address, setAddress] = useState(branch?.address ?? '');
   const [defaultWarehouseName, setDefaultWarehouseName] = useState('Main warehouse');
   const [error, setError] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [defaultWarehouseError, setDefaultWarehouseError] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
     setError('');
+    const branchName = name.trim();
+    const defaultName = defaultWarehouseName.trim();
+    setNameError(branchName ? '' : copy('Enter a branch name.'));
+    setDefaultWarehouseError(
+      !branch && !defaultName ? copy('Enter a default warehouse name.') : '',
+    );
+    if (!branchName || (!branch && !defaultName)) return;
+    setBusy(true);
     try {
       const updated = branch
         ? await apiRequest<InventoryBranch>(`/owner/inventory/branches/${branch.id}`, {
             method: 'PATCH',
             body: JSON.stringify({
               revision: branch.revision,
-              name: name.trim(),
+              name: branchName,
               address: address.trim(),
             }),
           })
         : await apiRequest<InventoryBranch>('/owner/inventory/branches', {
             method: 'POST',
             body: JSON.stringify({
-              name: name.trim(),
+              name: branchName,
               address: address.trim(),
-              defaultWarehouseName: defaultWarehouseName.trim(),
+              defaultWarehouseName: defaultName,
             }),
           });
       onSaved(updated, branch ? 'Branch saved.' : 'Branch created.');
@@ -561,8 +675,22 @@ function BranchEditor({
             required
             maxLength={160}
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            aria-invalid={Boolean(nameError)}
+            aria-describedby={nameError ? 'branch-name-error' : undefined}
+            onInvalid={(event) => {
+              event.preventDefault();
+              setNameError(copy('Enter a branch name.'));
+            }}
+            onChange={(event) => {
+              setName(event.target.value);
+              if (event.target.value.trim()) setNameError('');
+            }}
           />
+          {nameError && (
+            <small className="inventory-field-error" id="branch-name-error">
+              {nameError}
+            </small>
+          )}
         </label>
         <label>
           {copy('Address')}
@@ -579,8 +707,24 @@ function BranchEditor({
               required
               maxLength={160}
               value={defaultWarehouseName}
-              onChange={(event) => setDefaultWarehouseName(event.target.value)}
+              aria-invalid={Boolean(defaultWarehouseError)}
+              aria-describedby={
+                defaultWarehouseError ? 'default-warehouse-name-error' : undefined
+              }
+              onInvalid={(event) => {
+                event.preventDefault();
+                setDefaultWarehouseError(copy('Enter a default warehouse name.'));
+              }}
+              onChange={(event) => {
+                setDefaultWarehouseName(event.target.value);
+                if (event.target.value.trim()) setDefaultWarehouseError('');
+              }}
             />
+            {defaultWarehouseError && (
+              <small className="inventory-field-error" id="default-warehouse-name-error">
+                {defaultWarehouseError}
+              </small>
+            )}
           </label>
         )}
         <footer className="products-dialog-footer">
@@ -612,24 +756,28 @@ function WarehouseEditor({
   const { errorText } = useLocale();
   const [name, setName] = useState(warehouse?.name ?? '');
   const [error, setError] = useState('');
+  const [nameError, setNameError] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true);
     setError('');
+    const warehouseName = name.trim();
+    setNameError(warehouseName ? '' : copy('Enter a warehouse name.'));
+    if (!warehouseName) return;
+    setBusy(true);
     try {
       const updated = warehouse
         ? await apiRequest<InventoryBranch>(
             `/owner/inventory/branches/${branch.id}/warehouses/${warehouse.id}`,
             {
               method: 'PATCH',
-              body: JSON.stringify({ revision: warehouse.revision, name: name.trim() }),
+              body: JSON.stringify({ revision: warehouse.revision, name: warehouseName }),
             },
           )
         : await apiRequest<InventoryBranch>(`/owner/inventory/branches/${branch.id}/warehouses`, {
             method: 'POST',
-            body: JSON.stringify({ revision: branch.revision, name: name.trim() }),
+            body: JSON.stringify({ revision: branch.revision, name: warehouseName }),
           });
       onSaved(updated);
     } catch (cause) {
@@ -663,8 +811,22 @@ function WarehouseEditor({
             required
             maxLength={160}
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            aria-invalid={Boolean(nameError)}
+            aria-describedby={nameError ? 'warehouse-name-error' : undefined}
+            onInvalid={(event) => {
+              event.preventDefault();
+              setNameError(copy('Enter a warehouse name.'));
+            }}
+            onChange={(event) => {
+              setName(event.target.value);
+              if (event.target.value.trim()) setNameError('');
+            }}
           />
+          {nameError && (
+            <small className="inventory-field-error" id="warehouse-name-error">
+              {nameError}
+            </small>
+          )}
         </label>
         <footer className="products-dialog-footer">
           <Button type="button" variant="outline" disabled={busy} onClick={onClose}>

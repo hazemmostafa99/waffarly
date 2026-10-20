@@ -2,26 +2,36 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { PosReceipt } from '@waffarly/contracts';
 import { useLocale } from '@waffarly/ui';
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, Printer, RotateCcw } from 'lucide-react';
 import { PosButton } from '../../components/pos-button.js';
 import { isReadablePosLabel } from '../../lib/display-label.js';
 import { getPosCheckReceipt, posCheckReceiptKey } from './pos-receipts.api.js';
+import { PosItemReturnDialog } from './pos-item-return-dialog.js';
 import './receipt-print.css';
 
 export function PosReceiptView({
   merchantId,
+  employeeId,
+  branchId,
+  requiresApproval,
+  canRecordItemReturn,
   orderId,
   checkId,
   backLabel,
   onBack,
 }: {
   merchantId: string;
+  employeeId: string;
+  branchId: string;
+  requiresApproval: boolean;
+  canRecordItemReturn: boolean;
   orderId: string;
   checkId: string;
   backLabel?: string;
   onBack: () => void;
 }) {
   const { t, errorText, formatNumber, locale } = useLocale();
+  const [returnDialogOpen, setReturnDialogOpen] = useState(false);
   const query = useQuery({
     queryKey: posCheckReceiptKey(merchantId, orderId, checkId),
     queryFn: ({ signal }) => getPosCheckReceipt(orderId, checkId, signal),
@@ -60,17 +70,31 @@ export function PosReceiptView({
   }
 
   return (
-    <ReceiptDocument
-      receipt={query.data}
-      locale={locale}
-      t={t}
-      formatCount={formatNumber}
-      formatMoney={(amount, currency) =>
-        formatNumber(Number(amount), { style: 'currency', currency })
-      }
-      backLabel={backLabel ? t(backLabel) : t('Back to checkout')}
-      onBack={onBack}
-    />
+    <>
+      <ReceiptDocument
+        receipt={query.data}
+        locale={locale}
+        t={t}
+        formatCount={formatNumber}
+        formatMoney={(amount, currency) =>
+          formatNumber(Number(amount), { style: 'currency', currency })
+        }
+        backLabel={backLabel ? t(backLabel) : t('Back to checkout')}
+        onBack={onBack}
+        onRecordItemReturn={() => setReturnDialogOpen(true)}
+        canRecordItemReturn={canRecordItemReturn}
+      />
+      {returnDialogOpen && (
+        <PosItemReturnDialog
+          merchantId={merchantId}
+          employeeId={employeeId}
+          branchId={branchId}
+          orderId={orderId}
+          requiresApproval={requiresApproval}
+          onClose={() => setReturnDialogOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -82,6 +106,8 @@ function ReceiptDocument({
   formatMoney,
   backLabel,
   onBack,
+  onRecordItemReturn,
+  canRecordItemReturn,
 }: {
   receipt: PosReceipt;
   locale: 'en' | 'ar';
@@ -90,6 +116,8 @@ function ReceiptDocument({
   formatMoney: (amount: string, currency: string) => string;
   backLabel: string;
   onBack: () => void;
+  onRecordItemReturn: () => void;
+  canRecordItemReturn: boolean;
 }) {
   const [printError, setPrintError] = useState(false);
   const dateLocale = document.documentElement.lang || undefined;
@@ -238,6 +266,17 @@ function ReceiptDocument({
       </article>
 
       <div className="pos-receipt-screen-actions grid w-full max-w-96 grid-cols-1 gap-2 sm:grid-cols-2">
+        {canRecordItemReturn && (
+          <PosButton
+            type="button"
+            variant="outline"
+            className="min-h-11 gap-2 sm:col-span-2"
+            onClick={onRecordItemReturn}
+          >
+            <RotateCcw aria-hidden="true" size={16} />
+            {t('Record item return')}
+          </PosButton>
+        )}
         <PosButton
           type="button"
           variant="outline"

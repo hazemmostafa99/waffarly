@@ -1,4 +1,181 @@
 export const ar: Record<string, string> = {
+  'Record item return':
+    '\u062a\u0633\u062c\u064a\u0644 \u0645\u0631\u062a\u062c\u0639 \u0635\u0646\u0641',
+  'Item return recorded':
+    '\u062a\u0645 \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u0645\u0631\u062a\u062c\u0639',
+  'Recorded item return': '\u0633\u062c\u0644 \u0645\u0631\u062a\u062c\u0639 \u0635\u0646\u0641',
+  'Record returned items against the original sale. This does not refund money.':
+    '\u0633\u062c\u0651\u0644 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u0627\u0644\u0645\u0631\u062c\u0639\u0629 \u0639\u0644\u0649 \u0627\u0644\u0628\u064a\u0639 \u0627\u0644\u0623\u0635\u0644\u064a. \u0647\u0630\u0627 \u0644\u0627 \u064a\u0631\u062f \u0627\u0644\u0645\u0627\u0644.',
+  'Returned items are recorded as waste. The original receipt, payment, and stock are unchanged. Use the refund action separately to return money.':
+    '\u062a\u064f\u0633\u062c\u0651\u0644 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u0627\u0644\u0645\u0631\u062c\u0639\u0629 \u0643\u0647\u0627\u0644\u0643. \u0644\u0627 \u064a\u062a\u063a\u064a\u0631 \u0627\u0644\u0625\u064a\u0635\u0627\u0644 \u0627\u0644\u0623\u0635\u0644\u064a \u0623\u0648 \u0627\u0644\u062f\u0641\u0639 \u0623\u0648 \u0627\u0644\u0645\u062e\u0632\u0648\u0646. \u0644\u0631\u062f \u0627\u0644\u0645\u0627\u0644\u060c \u0627\u0633\u062a\u062e\u062f\u0645 \u0625\u062c\u0631\u0627\u0621 \u0627\u0644\u0627\u0633\u062a\u0631\u062f\u0627\u062f \u0627\u0644\u0645\u0646\u0641\u0635\u0644.',
+  'Loading returnable items...':
+    '\u062c\u0627\u0631\u064d \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u0627\u0644\u0642\u0627\u0628\u0644\u0629 \u0644\u0644\u0625\u0631\u062c\u0627\u0639...',
+  'Returnable items could not be loaded.':
+    '\u062a\u0639\u0630\u0631 \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u0627\u0644\u0642\u0627\u0628\u0644\u0629 \u0644\u0644\u0625\u0631\u062c\u0627\u0639.',
+  'This saved item return belongs to another branch. Switch to its original branch before retrying.':
+    '\u064a\u062e\u0635 \u0637\u0644\u0628 \u0627\u0644\u0625\u0631\u062c\u0627\u0639 \u0627\u0644\u0645\u062d\u0641\u0648\u0638 \u0641\u0631\u0639\u064b\u0627 \u0622\u062e\u0631. \u0627\u062e\u062a\u0631 \u0641\u0631\u0639\u0647 \u0627\u0644\u0623\u0635\u0644\u064a \u0642\u0628\u0644 \u0625\u0639\u0627\u062f\u0629 \u0627\u0644\u0645\u062d\u0627\u0648\u0644\u0629.',
+  'An item return request is saved. Retry the exact request; supervisor credentials are never saved.':
+    '\u062d\u064f\u0641\u0638 \u0637\u0644\u0628 \u0625\u0631\u062c\u0627\u0639. \u0623\u0639\u062f \u0627\u0644\u0637\u0644\u0628 \u0646\u0641\u0633\u0647\u060c \u0648\u0644\u0627 \u062a\u064f\u062d\u0641\u0638 \u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0645\u0634\u0631\u0641.',
+  'Original sale item':
+    '\u0635\u0646\u0641 \u0645\u0646 \u0627\u0644\u0628\u064a\u0639 \u0627\u0644\u0623\u0635\u0644\u064a',
+  'Items can only be returned after the order has been handed over.':
+    '\u064a\u0645\u0643\u0646 \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u0645\u0631\u062a\u062c\u0639 \u0628\u0639\u062f \u062a\u0633\u0644\u064a\u0645 \u0627\u0644\u0637\u0644\u0628 \u0641\u0642\u0637.',
+  'All sold item quantities have already been returned.':
+    '\u0633\u0628\u0642 \u0625\u0631\u062c\u0627\u0639 \u0643\u0645\u064a\u0627\u062a \u062c\u0645\u064a\u0639 \u0627\u0644\u0623\u0635\u0646\u0627\u0641.',
+  Returnable:
+    '\u0627\u0644\u0643\u0645\u064a\u0629 \u0627\u0644\u0645\u062a\u0627\u062d\u0629 \u0644\u0644\u0625\u0631\u062c\u0627\u0639',
+  'per item': '\u0644\u0644\u0642\u0637\u0639\u0629',
+  'Return quantity': '\u0643\u0645\u064a\u0629 \u0627\u0644\u0625\u0631\u062c\u0627\u0639',
+  'Item return reason': '\u0633\u0628\u0628 \u0627\u0644\u0625\u0631\u062c\u0627\u0639',
+  'For example: item was damaged':
+    '\u0645\u062b\u0627\u0644: \u0627\u0644\u0635\u0646\u0641 \u062a\u0627\u0644\u0641',
+  'Previous item returns':
+    '\u0627\u0644\u0645\u0631\u062a\u062c\u0639\u0627\u062a \u0627\u0644\u0633\u0627\u0628\u0642\u0629',
+  'Retry saved item return':
+    '\u0625\u0639\u0627\u062f\u0629 \u0645\u062d\u0627\u0648\u0644\u0629 \u0627\u0644\u0645\u0631\u062a\u062c\u0639 \u0627\u0644\u0645\u062d\u0641\u0648\u0638',
+  'Recording item return...':
+    '\u062c\u0627\u0631\u064d \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u0645\u0631\u062a\u062c\u0639...',
+  'The item return could not be recorded.':
+    '\u062a\u0639\u0630\u0631 \u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u0645\u0631\u062a\u062c\u0639.',
+  'Could not save this item return safely.':
+    '\u062a\u0639\u0630\u0631 \u062d\u0641\u0638 \u0637\u0644\u0628 \u0627\u0644\u0645\u0631\u062a\u062c\u0639 \u0628\u0623\u0645\u0627\u0646.',
+  Waste: '\u0647\u0627\u0644\u0643',
+  'Reference value only — no money was refunded.':
+    '\u0642\u064a\u0645\u0629 \u0645\u0631\u062c\u0639\u064a\u0629 \u0641\u0642\u0637\u060c \u0644\u0645 \u064a\u064f\u0631\u062f \u0623\u064a \u0645\u0628\u0644\u063a.',
+  'This record does not replace the original receipt.':
+    '\u0647\u0630\u0627 \u0627\u0644\u0633\u062c\u0644 \u0644\u0627 \u064a\u0633\u062a\u0628\u062f\u0644 \u0625\u064a\u0635\u0627\u0644 \u0627\u0644\u0628\u064a\u0639 \u0627\u0644\u0623\u0635\u0644\u064a.',
+  'Issued by': '\u0633\u062c\u0651\u0644\u0647',
+  'Refund payment': 'استرداد الدفعة',
+  'View refunds': 'عرض عمليات الاسترداد',
+  'View refund receipt': 'عرض إيصال الاسترداد',
+  'POS refund': 'استرداد نقطة البيع',
+  'This is a refund receipt for the recorded amount.': 'هذا إيصال استرداد بالمبلغ المسجل.',
+  'Your refund receipt is saved. Retry printing or save it as a PDF.':
+    'إيصال الاسترداد محفوظ. أعد الطباعة أو احفظه بصيغة PDF.',
+  'Refund receipt': 'إيصال الاسترداد',
+  'Refund only the amount already paid, back to its original payment method.':
+    'استرد المبلغ المدفوع فقط إلى وسيلة الدفع الأصلية.',
+  'This records money returned. It does not restore stock or change the original sale receipt.':
+    'يسجل هذا الإجراء مبلغًا أُعيد للعميل. لا يعيد المخزون ولا يغيّر إيصال البيع الأصلي.',
+  'External terminal refunds must be completed on the terminal first. Enter its refund reference here.':
+    'نفّذ الاسترداد على ماكينة الدفع أولًا، ثم أدخل رقم مرجع العملية.',
+  'Open a register shift at this branch before recording a refund.':
+    'افتح وردية للجهاز في هذا الفرع قبل تسجيل الاسترداد.',
+  'A refund request is saved. Retry the exact request; do not repeat an external terminal refund.':
+    'طلب الاسترداد محفوظ. أعد الطلب نفسه، ولا تكرر الاسترداد على الماكينة.',
+  'Loading current payment state...': 'جارٍ تحميل حالة الدفع الحالية...',
+  'Payment status is unavailable.': 'حالة الدفع غير متاحة.',
+  'Refresh payment state': 'تحديث حالة الدفع',
+  'This check has no refundable balance.': 'لا يوجد مبلغ قابل للاسترداد في هذا الحساب.',
+  'Original payment': 'الدفعة الأصلية',
+  'Cash refund': 'استرداد نقدي',
+  'External terminal refund': 'استرداد عبر ماكينة الدفع',
+  'Previously refunded': 'المبلغ المسترد سابقًا',
+  'Refund reason': 'سبب الاسترداد',
+  'Refund total': 'إجمالي الاسترداد',
+  'Terminal refund reference': 'رقم مرجع الاسترداد من الماكينة',
+  'Terminal reference': 'مرجع الماكينة',
+  'Refund recorded': 'تم تسجيل الاسترداد',
+  'Record refund': 'تسجيل الاسترداد',
+  'Retry saved refund': 'إعادة محاولة الاسترداد المحفوظ',
+  'Recording refund...': 'جارٍ تسجيل الاسترداد...',
+  'The refund could not be recorded.': 'تعذّر تسجيل الاسترداد.',
+  'Could not save this refund safely.': 'تعذّر حفظ طلب الاسترداد بأمان.',
+  'Supervisor approval is required to refund this check.':
+    'يلزم اعتماد المشرف لاسترداد هذا الحساب.',
+  'The refund exceeds the remaining amount for an original payment.':
+    'يتجاوز الاسترداد المبلغ المتبقي من دفعة أصلية.',
+  'Expand order': 'توسيع السلة',
+  'Restore menu and order': 'إظهار القائمة والسلة',
+  'Cancel unpaid order': 'إلغاء الطلب غير المدفوع',
+  'Retry saved cancellation': 'إعادة محاولة الإلغاء المحفوظ',
+  'This cancels the whole unpaid order, restores eligible stock, and sends a stop notice to the kitchen.':
+    'سيُلغي هذا الإجراء الطلب غير المدفوع بالكامل، ويعيد المخزون القابل للاسترجاع، ويرسل تنبيه إيقاف إلى المطبخ.',
+  'Orders with any payment, or orders already in preparation, cannot be cancelled here.':
+    'لا يمكن إلغاء الطلب من هنا إذا سُجّل عليه أي دفع أو بدأ المطبخ في تحضيره.',
+  'Cancellation reason': 'سبب الإلغاء',
+  'Supervisor approval': 'اعتماد المشرف',
+  'Supervisor username': 'اسم مستخدم المشرف',
+  'Supervisor password': 'كلمة مرور المشرف',
+  'Credentials are checked for this action and are never saved on this device.':
+    'يتم التحقق من بيانات الاعتماد لهذا الإجراء فقط ولا تُحفظ على هذا الجهاز.',
+  'For example: customer changed their mind': 'مثال: غيّر العميل رأيه',
+  'Keep order': 'الاحتفاظ بالطلب',
+  'Confirm cancellation': 'تأكيد الإلغاء',
+  'Cancelling...': 'جارٍ الإلغاء...',
+  'The order could not be cancelled.': 'تعذّر إلغاء الطلب.',
+  'Refresh order status': 'تحديث حالة الطلب',
+  'A cancellation request is saved. Retry the same request after an uncertain response; supervisor credentials are never saved.':
+    'يوجد طلب إلغاء محفوظ. أعد إرسال الطلب نفسه إذا كانت النتيجة غير مؤكدة؛ بيانات اعتماد المشرف لا تُحفظ.',
+  'Could not save this cancellation safely.': 'تعذّر حفظ طلب الإلغاء بأمان.',
+  'Refresh confirmed the order changed; review its current status before starting another cancellation.':
+    'أكّد التحديث تغيّر حالة الطلب. راجع حالته الحالية قبل بدء طلب إلغاء جديد.',
+  'Refresh order and replace the saved cancellation request':
+    'تحديث الطلب واستبدال طلب الإلغاء المحفوظ',
+  'Cancelled before preparation. Stop this ticket and acknowledge the update.':
+    'أُلغي الطلب قبل التحضير. أوقف هذه التذكرة وأكّد استلام التحديث.',
+  'Acknowledge cancellation': 'تأكيد استلام الإلغاء',
+  'Supervisor approval is required to cancel this order.': 'يلزم اعتماد المشرف لإلغاء هذا الطلب.',
+  'The supervisor approval is no longer valid.': 'لم يعد اعتماد المشرف صالحًا.',
+  'An order with any recorded payment must use a refund.':
+    'يجب استخدام إجراء الاسترداد لأي طلب سُجّل عليه دفع.',
+  'Only an unpaid POS order waiting for kitchen preparation can be cancelled.':
+    'يمكن إلغاء طلب نقطة البيع غير المدفوع فقط قبل بدء تحضيره في المطبخ.',
+  'This employee is no longer authorized to sell.': 'لم يعد هذا الموظف مخولًا بإجراء البيع.',
+  'A different supervisor must approve this action.': 'يجب أن يعتمد هذا الإجراء مشرف آخر.',
+  'The supervisor is not assigned to this branch.': 'المشرف غير مُعيّن لهذا الفرع.',
+  'The supervisor is not authorized to approve this action.':
+    'المشرف غير مخول لاعتماد هذا الإجراء.',
+  'Could not refresh POS storage; the saved cancellation can still be retried.':
+    'تعذّر تحديث بيانات نقطة البيع المحلية؛ ما زال بالإمكان إعادة محاولة الإلغاء المحفوظ.',
+  'Could not clear the completed cancellation recovery record.':
+    'تعذّر مسح سجل استعادة الإلغاء المكتمل.',
+  'A cancellation recovery record must stay with its original branch.':
+    'يجب أن يظل سجل استعادة الإلغاء مرتبطًا بفرعه الأصلي.',
+  'Resolve the saved cancellation before changing its reason or request.':
+    'أعد محاولة الإلغاء المحفوظ قبل تغيير السبب أو بدء طلب آخر.',
+  'Add items to this order': 'إضافة أصناف إلى هذا الطلب',
+  'Add items to order': 'إضافة أصناف للطلب',
+  'Added items': 'الأصناف المضافة',
+  'New order total': 'إجمالي الطلب الجديد',
+  'Previously sent items': 'الأصناف المرسلة سابقًا',
+  'Previously sent items stay unchanged. These additions will be sent as a new kitchen update.':
+    'ستبقى الأصناف المرسلة كما هي. سيرسل المطبخ هذه الإضافات كتحديث جديد.',
+  'The kitchen receives only these new items. No payment is collected here.':
+    'سيستلم المطبخ هذه الأصناف الجديدة فقط. لا يتم تحصيل أي مبلغ هنا.',
+  'Send added items': 'إرسال الأصناف المضافة',
+  'Sending added items...': 'جارٍ إرسال الأصناف المضافة...',
+  'Retry saved item addition': 'إعادة محاولة إرسال الإضافة المحفوظة',
+  'An added-items request is saved. Retry the exact request to check its result.':
+    'حُفظ طلب إضافة الأصناف. أعد الطلب نفسه للتحقق من نتيجته.',
+  'Items were added, but the local order could not be updated. Retry the saved request; do not send it again with a new ID.':
+    'تمت إضافة الأصناف، لكن تعذر تحديث الطلب محليًا. أعد الطلب المحفوظ ولا ترسله مرة أخرى بمعرّف جديد.',
+  'The saved kitchen addition could not be recovered.': 'تعذر استرداد إضافة المطبخ المحفوظة.',
+  'Could not add items to the order.': 'تعذر إضافة الأصناف إلى الطلب.',
+  'Could not start adding items to this order.': 'تعذر بدء إضافة أصناف إلى هذا الطلب.',
+  'Could not save this item addition safely.': 'تعذر حفظ إضافة الصنف بأمان.',
+  'Retry the saved item addition before editing it.': 'أعد إرسال الإضافة المحفوظة قبل تعديلها.',
+  'Wait for a current server quote before adding items.':
+    'انتظر السعر الحالي من الخادم قبل إضافة الأصناف.',
+  'The kitchen has accepted this order or payment has started. Refresh the order before adding items.':
+    'لقد قبل المطبخ الطلب أو بدأ الدفع. حدّث الطلب قبل إضافة أصناف.',
+  'This order changed. Refresh it before adding items.': 'تغيّر الطلب. حدّثه قبل إضافة أصناف.',
+  'This order is not linked to an open register shift.': 'هذا الطلب غير مرتبط بوردية جهاز مفتوحة.',
+  'Items can only be added before the kitchen accepts the sent order.':
+    'يمكن إضافة الأصناف فقط قبل قبول المطبخ للطلب المرسل.',
+  'Items can only be added to one unsplit check.':
+    'يمكن إضافة الأصناف فقط إلى حساب واحد غير مقسّم.',
+  'Items cannot be added after a check is settled.': 'لا يمكن إضافة أصناف بعد تسوية الحساب.',
+  'Items cannot be added after payment begins.': 'لا يمكن إضافة أصناف بعد بدء الدفع.',
+  'Items cannot be added after the check is split.': 'لا يمكن إضافة أصناف بعد تقسيم الحساب.',
+  'A product in this addition is no longer available.': 'أحد المنتجات المضافة لم يعد متاحًا.',
+  'A product changed. Review the updated quote before adding it.':
+    'تغيّر المنتج. راجع السعر المحدّث قبل إضافته.',
+  'A selected variant is no longer available.': 'الخيار المحدد لم يعد متاحًا.',
+  'The product stock handling is not supported.': 'إعداد إدارة مخزون المنتج غير مدعوم.',
+  'A selected variant does not have enough stock.': 'مخزون الخيار المحدد غير كافٍ.',
+  "The order's assigned stock warehouse is no longer available.":
+    'مخزون الطلب المخصص لم يعد متاحًا.',
   // POS dining workspace
   Dining: 'الصالة',
   'Tables & open sessions': 'الترابيزات والجلسات المفتوحة',
@@ -37,6 +214,10 @@ export const ar: Record<string, string> = {
   'Sign in with your business code and employee account.':
     'سجّل الدخول باستخدام معرّف المتجر وحساب الموظف.',
   'Business code': 'معرّف المتجر',
+  'Copy business code': 'نسخ معرّف المتجر',
+  Copied: 'تم النسخ',
+  'Use this code when signing in to POS.': 'استخدم هذا المعرّف عند تسجيل الدخول إلى نقاط البيع.',
+  'Select the code to copy it manually.': 'حدّد المعرّف لنسخه يدويًا.',
   'Point of Sale': 'نقطة البيع',
   'Sign in to access the POS workspace.': 'سجّل الدخول إلى مساحة نقاط البيع.',
   'Cashier workspace': 'مساحة الكاشير',
@@ -52,9 +233,15 @@ export const ar: Record<string, string> = {
   'Could not load orders.': 'تعذّر تحميل الطلبات.',
   'Loading orders…': 'جارٍ تحميل الطلبات…',
   'No incoming recipe orders for this branch.': 'لا توجد طلبات وصفات واردة لهذا الفرع.',
+  'POS is offline. Showing the last loaded kitchen orders from {{date}}; order actions are paused.':
+    'نقطة البيع غير متصلة. المعروض آخر طلبات مطبخ تم تحميلها في {{date}}؛ وتم إيقاف الإجراءات مؤقتًا.',
+  'POS is offline. The kitchen queue has not loaded yet; order actions are paused.':
+    'نقطة البيع غير متصلة ولم يتم تحميل قائمة المطبخ بعد؛ تم إيقاف الإجراءات مؤقتًا.',
+  'Could not refresh the kitchen queue. Showing the last successful update from {{date}}. New actions are paused; retry refresh before continuing.':
+    'تعذر تحديث قائمة المطبخ. المعروض آخر تحديث ناجح في {{date}}. تم إيقاف الإجراءات الجديدة؛ أعد التحديث قبل المتابعة.',
   pending: 'بانتظار القبول',
   accepted: 'مقبول',
-  preparing: 'قيد التحضير',
+  preparing: 'جاري التحضير',
   dine_in: 'صالة',
   takeaway: 'تيك أواي',
   pickup: 'استلام',
@@ -62,6 +249,19 @@ export const ar: Record<string, string> = {
   'Retry saved action': 'إعادة محاولة الإجراء المحفوظ',
   'Accept and deduct stock': 'قبول الطلب وخصم المخزون',
   'Start preparation': 'بدء التحضير',
+  'Mark order ready': 'تأكيد جاهزية الطلب',
+  'Mark ready': 'جاهز',
+  'Mark item ready': 'تأكيد جاهزية الصنف',
+  'Mark {{item}} ready': 'تأكيد جاهزية {{item}}',
+  '{{item}} ready': '{{item}} جاهز',
+  '{{ready}} of {{total}} items ready': 'جاهز {{ready}} من {{total}} أصناف',
+  'Ready at {{date}}': 'جاهز منذ {{date}}',
+  'Settle every check before handover.': 'يجب سداد كل الحسابات قبل تسليم الطلب.',
+  'All checks are paid. The order is ready for handover.':
+    'تم سداد كل الحسابات. الطلب جاهز للتسليم.',
+  ready: 'جاهز',
+  rejected: 'مرفوض',
+  cancelled: 'ملغي',
   'A previous reply was uncertain. Retry the saved action before continuing.':
     'لم يتأكد وصول الرد السابق. أعد محاولة الإجراء المحفوظ قبل المتابعة.',
   'This browser cannot save an in-progress action for safe retry.':
@@ -1364,10 +1564,8 @@ export const ar: Record<string, string> = {
   'Start a new takeaway order': 'بدء طلب تيك أواي جديد',
   'Sample session': 'جلسة تجريبية',
   'Open order': 'طلب مفتوح',
-  'New items': 'أصناف جديدة',
   'Not sent yet': 'لم تُرسل بعد',
   'Remove item': 'حذف الصنف',
-  'Sent to kitchen': 'تم الإرسال للمطبخ',
   Queued: 'في الانتظار',
   Ready: 'جاهز',
   'A fresh order starts here.': 'ابدأ طلبًا جديدًا هنا.',
@@ -1389,7 +1587,6 @@ export const ar: Record<string, string> = {
   'Good things in the making.': 'طابور المطبخ',
   'New round': 'إضافات جديدة',
   'Start new items': 'بدء الأصناف الجديدة',
-  'Mark order ready': 'تأكيد جاهزية الطلب',
   'Ready for handover': 'جاهز للتسليم',
   'The kitchen is all caught up.': 'تم تجهيز كل طلبات المطبخ.',
   'Sample order history': 'سجل طلبات تجريبي',
@@ -1549,6 +1746,9 @@ export const ar: Record<string, string> = {
     'لا توجد ترابيزات نشطة. اطلب من مالك المتجر إعداد الترابيزات.',
   'Draft {{number}}': 'مسودة {{number}}',
   'Merchant accent': 'لون المتجر',
+  'Set by merchant': 'يحدده التاجر',
+  'Merchant accent unavailable; using orange default':
+    'تعذر تحميل لون المتجر؛ يُستخدم البرتقالي الافتراضي',
   'Local appearance preview. This does not save merchant settings.':
     'معاينة محلية للمظهر. لا تحفظ إعدادات المتجر.',
   Accent: 'اللون',
@@ -1619,6 +1819,22 @@ export const ar: Record<string, string> = {
   'New sale': 'بيع جديد',
   'Kitchen orders': 'طلبات المطبخ',
   'Incoming orders': 'الطلبات الواردة',
+  'Dine-in rounds appear after you send them. Recipe stock is deducted on acceptance; direct stock is recorded at sale.':
+    'تظهر جولات الصالة بعد إرسالها. يُخصم مخزون الوصفات عند القبول، ويُسجل المخزون المباشر وقت البيع.',
+  'Station: {{station}}': 'المحطة: {{station}}',
+  automatic: 'تلقائي',
+  manual: 'يدوي',
+  legacy: 'طلب سابق',
+  'Sent to kitchen': 'تم الإرسال للمطبخ',
+  'This dine-in round stays off the kitchen screen until you send it.':
+    'تظل جولة الصالة خارج شاشة المطبخ حتى ترسلها.',
+  'Send to kitchen': 'إرسال للمطبخ',
+  'Sending to kitchen…': 'جارٍ الإرسال للمطبخ…',
+  'The order could not be sent to the kitchen.': 'تعذر إرسال الطلب للمطبخ.',
+  'Connect to the internet before sending this round.': 'اتصل بالإنترنت قبل إرسال هذه الجولة.',
+  'Automatically sent to kitchen': 'تم الإرسال للمطبخ تلقائيًا',
+  'Kitchen dispatch pending': 'إرسال الطلب للمطبخ قيد الانتظار',
+  'Accept order': 'قبول الطلب',
   'Live merchant menu': 'قائمة المتجر المباشرة',
   'Search products': 'ابحث عن المنتجات',
   'Search products...': 'ابحث عن منتج...',
@@ -1681,4 +1897,100 @@ export const ar: Record<string, string> = {
   'Orders update automatically. Accepting deducts the saved recipe requirements from this branch.':
     'تتحدّث الطلبات تلقائيًا. يخصم القبول متطلبات الوصفة المحفوظة من مخزون الفرع.',
   'No incoming kitchen orders for this branch.': 'لا توجد طلبات مطبخ واردة لهذا الفرع.',
+  'Cash reconciliation': 'تسوية الصندوق',
+  'Cash drawer and card terminal totals are tracked separately.':
+    'يُعرض رصيد درج النقد ومدفوعات ماكينة البطاقات كلٌ على حدة.',
+  'Refresh totals': 'تحديث الإجماليات',
+  'Cash sales': 'المبيعات النقدية',
+  'Cash refunds': 'المبالغ المستردة نقدًا',
+  'Cash added': 'إضافة نقدية',
+  'Cash removed': 'سحب نقدي',
+  'Cash dropped to safe': 'توريد نقدي للخزنة',
+  'Drop reference': 'مرجع التوريد',
+  'Safe bag / drop reference': 'رقم كيس أو مرجع التوريد',
+  'Enter a safe bag / drop reference.': 'أدخل رقم كيس أو مرجع التوريد.',
+  'Terminal sales': 'مدفوعات الماكينة',
+  'Terminal refunds': 'استردادات الماكينة',
+  'Expected cash in drawer': 'النقد المتوقع في الدرج',
+  'Shift close is blocked: {{count}} check(s) still need settlement.':
+    'تعذر إغلاق الوردية: ما زال هناك {{count}} حساب بحاجة إلى التسوية.',
+  'Remaining balance: {{amount}}': 'المبلغ المتبقي: {{amount}}',
+  'Manual cash movements': 'الحركات النقدية اليدوية',
+  'Cash in / cash out': 'إضافة أو سحب نقدي',
+  'Register cash movements': 'حركات نقدية بالصندوق',
+  'Record an addition, paid-out expense, or secured cash drop with a reason. Cashiers need supervisor approval.':
+    'سجّل إضافة نقدية أو مصروفًا مدفوعًا أو توريدًا مؤمنًا للخزنة مع السبب. يحتاج الكاشير إلى اعتماد المشرف.',
+  'Record a till adjustment with a reason. Cashiers need supervisor approval.':
+    'سجّل حركة الصندوق مع ذكر السبب. يحتاج الكاشير إلى اعتماد المشرف.',
+  'Movement type': 'نوع الحركة',
+  'Amount (EGP)': 'المبلغ (جنيه)',
+  Reason: 'السبب',
+  'Supervisor credentials are checked by the server and never saved on this device.':
+    'يتحقق الخادم من بيانات المشرف ولا تُحفظ على هذا الجهاز.',
+  'Retry saved movement': 'إعادة محاولة الحركة المحفوظة',
+  'Record movement': 'تسجيل الحركة',
+  'Close register shift': 'إغلاق وردية الكاشير',
+  'Count the physical till. Open checks must be settled before this shift can close.':
+    'احسب النقد الموجود فعليًا. يجب تسوية الحسابات المفتوحة قبل إغلاق الوردية.',
+  'Counted cash (EGP)': 'النقد المعدود (جنيه)',
+  'Variance reason': 'سبب الفرق',
+  'Required when counted cash differs': 'مطلوب عند اختلاف المبلغ المعدود',
+  'Optional when totals match': 'اختياري عند تطابق الإجماليات',
+  'A cash variance needs approval from a different supervisor.': 'يتطلب فرق النقد اعتماد مشرف آخر.',
+  'This close request is saved. Retry the exact same count; re-enter supervisor credentials if the count has a variance.':
+    'تم حفظ طلب الإغلاق. أعد الطلب بنفس المبلغ، وأدخل بيانات المشرف مجددًا إذا وُجد فرق.',
+  'Expected cash': 'النقد المتوقع',
+  'Closing...': 'جارٍ الإغلاق...',
+  'Retry shift close': 'إعادة محاولة إغلاق الوردية',
+  'Close shift and save report': 'إغلاق الوردية وحفظ التقرير',
+  'Enter both supervisor username and password.': 'أدخل اسم مستخدم المشرف وكلمة المرور.',
+  'Supervisor approval is required for a cash movement.': 'يلزم اعتماد المشرف لهذه الحركة النقدية.',
+  'Supervisor approval is required for a cash variance.': 'يلزم اعتماد المشرف لفرق النقد.',
+  'Enter a positive amount and a reason for this cash movement.':
+    'أدخل مبلغًا موجبًا وسبب الحركة النقدية.',
+  'Enter the counted cash using up to two decimal places.':
+    'أدخل النقد المعدود حتى منزلتين عشريتين.',
+  'Connect to the internet before recording register cash.':
+    'اتصل بالإنترنت قبل تسجيل حركة نقدية للصندوق.',
+  'Connect to the internet before closing this register shift.':
+    'اتصل بالإنترنت قبل إغلاق وردية الكاشير.',
+  'Connect to the internet before retrying this saved cash movement.':
+    'اتصل بالإنترنت لإعادة محاولة الحركة النقدية المحفوظة.',
+  'Connect to the internet before retrying this saved shift close.':
+    'اتصل بالإنترنت لإعادة محاولة إغلاق الوردية المحفوظ.',
+  'Could not load cash reconciliation. Refresh before recording cash or closing the shift.':
+    'تعذر تحميل تسوية الصندوق. حدّث البيانات قبل تسجيل النقد أو إغلاق الوردية.',
+  'Loading shift reconciliation...': 'جارٍ تحميل تسوية الوردية...',
+  'Saved cash movement needs confirmation': 'حركة نقدية محفوظة بانتظار التأكيد',
+  'Retry the exact same request. The amount and reason stay fixed to prevent duplicate till changes.':
+    'أعد المحاولة بالطلب نفسه. يظل المبلغ والسبب كما هما لمنع تكرار حركة الصندوق.',
+  'Saved shift close needs confirmation': 'إغلاق محفوظ بانتظار التأكيد',
+  'Counted cash: {{amount}}. Retry the same saved close request.':
+    'النقد المعدود: {{amount}}. أعد محاولة طلب الإغلاق المحفوظ نفسه.',
+  'Re-enter supervisor credentials to safely retry this shift close.':
+    'أعد إدخال بيانات المشرف لإعادة محاولة إغلاق الوردية بأمان.',
+  'Last shift close': 'آخر إغلاق للوردية',
+  Closed: 'مغلقة',
+  'Counted cash': 'النقد المعدود',
+  Variance: 'الفرق',
+  'Refresh close report': 'تحديث تقرير الإغلاق',
+  'Saved shift action needs confirmation': 'إجراء وردية محفوظ بانتظار التأكيد',
+  'Resolve the saved cash movement or shift close before opening a new shift.':
+    'أكمل الحركة النقدية أو إغلاق الوردية المحفوظ قبل فتح وردية جديدة.',
+  'Could not save this cash movement safely.': 'تعذر حفظ الحركة النقدية بأمان.',
+  'Could not save this shift close safely.': 'تعذر حفظ إغلاق الوردية بأمان.',
+  'Blind cash count': 'جرد نقدي أعمى',
+  'Count the physical cash before comparing it with the shift totals.':
+    'عُدّ النقد الموجود فعليًا قبل مقارنته بإجماليات الوردية.',
+  'Shift totals stay hidden until the physical count is submitted.':
+    'تظل إجماليات الوردية مخفية حتى إرسال قيمة الجرد الفعلي.',
+  'Refresh shift status': 'تحديث حالة الوردية',
+  'Explain a cash difference if the count is short or over':
+    'وضّح سبب الفرق إذا كان النقد أقل أو أكثر من المتوقع.',
+  'The close report shows the comparison after the count is accepted.':
+    'يعرض تقرير الإغلاق المقارنة بعد اعتماد الجرد.',
+  'Checking count...': 'جارٍ التحقق من الجرد...',
+  'Enter a reason for the cash variance before closing.': 'أدخل سبب فرق النقد قبل إغلاق الوردية.',
+  'Settle or cancel every open check before closing this shift.':
+    'سوِّ كل الحسابات المفتوحة أو ألغها قبل إغلاق الوردية.',
 };

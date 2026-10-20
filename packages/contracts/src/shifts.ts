@@ -43,3 +43,128 @@ export interface OpenPosShiftRequest {
   requestId: string;
   openingFloat: string;
 }
+
+export interface PosShiftManualCashMovementSummary {
+  id: string;
+  requestId: string;
+  kind: 'cash_in' | 'cash_out' | 'cash_drop';
+  amount: string;
+  dropReference: string | null;
+  reason: string;
+  createdAt: string;
+  operatorName: string;
+  approvedByName: string | null;
+}
+
+export interface PosShiftReconciliationSummary {
+  shiftId: string;
+  branchId: string;
+  registerId: string;
+  registerName: string;
+  currency: 'EGP';
+  openingFloat: string;
+  cashSales: string;
+  cashRefunds: string;
+  cashIn: string;
+  cashOut: string;
+  cashDrop: string;
+  expectedCash: string;
+  countedCash: string | null;
+  variance: string | null;
+  terminalSales: string;
+  terminalRefunds: string;
+  unsettledCheckCount: number;
+  unsettledBalance: string;
+  manualMovements: PosShiftManualCashMovementSummary[];
+}
+
+/** Safe open-shift data for the cashier UI; drawer totals are intentionally withheld until close. */
+export interface PosShiftLiveSummary {
+  shiftId: string;
+  branchId: string;
+  registerId: string;
+  registerName: string;
+  currency: 'EGP';
+  unsettledCheckCount: number;
+  unsettledBalance: string;
+  manualMovements: PosShiftManualCashMovementSummary[];
+}
+
+export interface PosShiftClosePreviewRequest {
+  countedCash: string;
+  reason?: string | undefined;
+}
+
+/** Reveals only the actions required after the operator submits a blind physical count. */
+export interface PosShiftClosePreview {
+  unsettledCheckCount: number;
+  requiresReason: boolean;
+  requiresSupervisorApproval: boolean;
+}
+
+export interface RecordPosShiftCashMovementRequest {
+  requestId: string;
+  kind: 'cash_in' | 'cash_out' | 'cash_drop';
+  amount: string;
+  reason: string;
+  dropReference?: string | undefined;
+  approval?: { username: string; password: string } | undefined;
+}
+
+export interface RecordPosShiftCashMovementResponse {
+  shiftId: string;
+  reconciliation: PosShiftLiveSummary;
+  movement: PosShiftManualCashMovementSummary;
+}
+
+export interface ClosePosShiftRequest {
+  requestId: string;
+  countedCash: string;
+  reason?: string | undefined;
+  approval?: { username: string; password: string } | undefined;
+}
+
+export interface PosShiftCloseReport extends Omit<PosShiftReconciliationSummary, 'countedCash' | 'variance'> {
+  id: string;
+  requestId: string;
+  closedAt: string;
+  countedCash: string;
+  variance: string;
+  operatorName: string;
+  approvedByName: string | null;
+  reason: string | null;
+}
+
+export interface PosShiftCloseReportRow {
+  id: string;
+  shiftId: string;
+  branchId: string;
+  branchName: string;
+  registerName: string;
+  openedAt: string;
+  closedAt: string;
+  openedByName: string;
+  operatorName: string;
+  approvedByName: string | null;
+  currency: 'EGP';
+  openingFloat: string;
+  cashSales: string;
+  cashRefunds: string;
+  cashIn: string;
+  cashOut: string;
+  cashDrop: string;
+  expectedCash: string;
+  countedCash: string;
+  variance: string;
+  terminalSales: string;
+  terminalRefunds: string;
+  reason: string | null;
+}
+
+export interface OwnerPosShiftCloseReportsQuery {
+  from: string;
+  to: string;
+  branchId?: string | undefined;
+  cursor?: string | undefined;
+  limit?: number | undefined;
+}

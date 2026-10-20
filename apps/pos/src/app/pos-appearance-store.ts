@@ -21,7 +21,11 @@ export const usePosAppearanceStore = create<PosAppearanceState>()(
     }),
     {
       name: 'waffarly:pos:appearance:v1',
-      version: 1,
+      version: 3,
+      migrate: (persistedState) => ({
+        ...(persistedState as Partial<PosAppearanceState>),
+        accent: 'orange' as const,
+      }),
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ theme: state.theme, accent: state.accent }),
     },

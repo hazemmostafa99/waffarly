@@ -9,6 +9,7 @@
     "start": "node dist/src/main.js",
     "admin:hash-password": "tsx src/scripts/hash-password.ts",
     "catalog:seed": "tsx src/scripts/seed-catalog.ts",
+    "pos:seed-live-e2e": "tsx src/scripts/seed-pos-live-e2e.ts",
     "inventory:seed-demo": "tsx src/scripts/seed-arabic-inventory-demo.ts",
     "lint": "eslint src test",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -17,8 +18,11 @@
     "test:inventory-db": "tsx --test test/database/inventory.database.test.ts test/database/inventory-ledger.database.test.ts test/database/inventory-visibility.database.test.ts",
     "test:purchasing-db": "tsx --test test/database/purchasing.database.test.ts",
     "test:storefront-orders-db": "tsx --test test/database/storefront-orders.database.test.ts test/database/recipe-order-lifecycle.database.test.ts",
-    "test:pos-db": "tsx --test --test-isolation=none test/database/pos-dining.database.test.ts",
+    "test:pos-db": "tsx --test --test-isolation=none test/database/pos-dining.database.test.ts test/database/pos-operations-report.database.test.ts",
+    "test:shifts-db": "tsx --test --test-isolation=none test/database/shift-reconciliation.database.test.ts",
     "test:employees-db": "tsx --test --test-isolation=none test/database/employee-roles.database.test.ts",
+    "test:pos-appearance-db": "tsx --test --test-isolation=none test/database/merchant-pos-appearance.database.test.ts",
+    "test:pos-returns-db": "tsx --test --test-isolation=none test/database/pos-returns.database.test.ts test/database/pos-returns-report.database.test.ts",
     "test:activities-db": "tsx --test test/database/activities-modules.database.test.ts"
   },
   "dependencies": {

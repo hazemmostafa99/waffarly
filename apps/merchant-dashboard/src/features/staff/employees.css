@@ -112,22 +112,22 @@
   gap: 6px;
   min-width: 0;
   color: var(--dashboard-ink);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 .employee-editor input:not([type='checkbox']),
 .employee-editor select {
   width: 100%;
   min-width: 0;
-  min-height: 36px;
-  height: 36px;
-  padding: 8px 10px;
+  min-height: 42px;
+  height: 42px;
+  padding: 9px 12px;
   border: 1px solid var(--dashboard-border);
   border-radius: 7px;
-  background: #f8fafc;
+  background: white;
   color: var(--dashboard-ink);
   font: inherit;
-  font-size: 12px;
+  font-size: 14px;
   box-shadow: none;
 }
 .employee-editor input:disabled {
@@ -135,10 +135,109 @@
 }
 .employee-role-help {
   max-width: none;
-  margin: -6px 0 0;
+  margin: 0;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 10px;
+  background: #f8fafc;
   color: var(--dashboard-muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
+}
+.employee-role-help > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 10px 14px;
+  list-style: none;
+  cursor: pointer;
+}
+.employee-role-help > summary::-webkit-details-marker {
+  display: none;
+}
+.employee-role-help > summary:focus-visible {
+  outline: 2px solid #087858;
+  outline-offset: 2px;
+}
+.employee-role-help > summary > strong {
+  flex: 1;
+  color: var(--dashboard-ink);
+  font-size: 13px;
+}
+.employee-role-disclosure-icon {
+  display: grid;
+  flex: 0 0 28px;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 8px;
+  background: white;
+}
+.employee-role-disclosure-icon > span {
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-right: 1.5px solid #176444;
+  border-bottom: 1.5px solid #176444;
+  transform: rotate(45deg);
+  transition: transform 140ms ease, margin 140ms ease;
+}
+.employee-role-help[open] .employee-role-disclosure-icon > span {
+  margin-top: 4px;
+  transform: rotate(225deg);
+}
+.employee-permission-count {
+  padding: 4px 9px;
+  border: 1px solid #d5e7dc;
+  border-radius: 20px;
+  background: #f1f8f3;
+  color: #245b43;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.employee-role-help-content {
+  display: grid;
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+.employee-role-help-content > ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.employee-role-help-content > ul > li {
+  position: relative;
+  min-width: 0;
+  padding-block: 8px;
+  padding-inline: 32px 10px;
+  border: 1px solid #e3eaf0;
+  border-radius: 8px;
+  background: white;
+  color: var(--dashboard-ink);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.employee-role-help-content > ul > li::before {
+  position: absolute;
+  inset-inline-start: 10px;
+  color: #176444;
+  content: '\2713';
+  font-weight: 700;
+}
+.employee-role-help-content > p {
+  margin: 0;
+  color: var(--dashboard-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+.employee-role-help-content > p + p {
+  padding-top: 8px;
+  border-top: 1px solid #e3eaf0;
 }
 .employee-active-toggle {
   display: flex !important;
@@ -161,6 +260,12 @@
   border: 1px solid var(--dashboard-border);
   border-radius: 8px;
 }
+.employee-branch-picker {
+  min-width: 0;
+}
+.employee-branch-picker .entity-picker--combobox {
+  width: 100%;
+}
 .employee-branches legend {
   padding-inline: 6px;
   color: var(--dashboard-ink);
@@ -169,8 +274,12 @@
 }
 .employee-branches > p {
   margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f8fafc;
   color: var(--dashboard-muted);
   font-size: 11px;
+  line-height: 1.5;
 }
 .employee-branch-list {
   display: flex;
@@ -184,11 +293,17 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 10px;
+  max-width: 100%;
+  padding: 7px 11px;
+  border: 1px solid #d5e7dc;
   border-radius: 20px;
-  background: #e9f2ff;
-  color: #367cea;
-  font-size: 11px;
+  background: #f1f8f3;
+  color: #245b43;
+  font-size: 12px;
+}
+.employee-branch-list li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .employee-branch-list button {
   padding: 0;
@@ -200,6 +315,8 @@
   cursor: pointer;
 }
 .employee-workspace .products-dialog {
+  width: min(680px, calc(100% - 28px));
+  max-height: calc(100dvh - 32px);
   color: var(--dashboard-ink);
 }
 .employee-form-actions {
@@ -248,7 +365,7 @@
     width: 100%;
   }
   .employee-form-grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .employee-table-card .wf-data-table {
     min-width: 680px;
@@ -261,5 +378,11 @@
   }
   .employee-pagination > div {
     margin-inline-start: auto;
+  }
+}
+@media (max-width: 600px) {
+  .employee-form-grid,
+  .employee-role-help-content > ul {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

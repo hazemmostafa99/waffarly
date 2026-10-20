@@ -73,6 +73,7 @@ export function PosPaymentRecoveryNotice({ employee }: { employee: PosEmployeeSe
           branchId={recoveryTarget.branchId}
           employeeId={employee.id}
           merchantId={employee.merchantId}
+          requiresRefundApproval={!employee.permissions.includes('approve_refunds')}
           orderId={recoveryTarget.orderId}
           onClose={() => setRecoveryTarget(null)}
         />

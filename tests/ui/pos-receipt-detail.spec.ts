@@ -201,6 +201,14 @@ test('print failure keeps the saved receipt open without recording another payme
   await expect(page.getByRole('alert')).toContainText('Your receipt is saved');
   await expect(page.getByRole('article', { name: 'POS receipt' })).toContainText(receiptNumber);
   expect(paymentRequests).toBe(0);
+
+  await page.reload();
+  const savedReceipt = page.getByRole('article', { name: receiptNumber });
+  await expect(savedReceipt).toBeVisible();
+  await savedReceipt.getByRole('button', { name: 'View / print receipt' }).click();
+  await expect(page.getByRole('article', { name: 'POS receipt' })).toContainText(receiptNumber);
+  await expect(page.getByRole('article', { name: 'POS receipt' })).toContainText('175.00');
+  expect(paymentRequests).toBe(0);
 });
 
 test('Arabic receipt detail retains RTL and readable paper width', async ({ page }, testInfo) => {
@@ -253,4 +261,215 @@ test('Arabic receipt detail retains RTL and readable paper width', async ({ page
     viewport: document.documentElement.clientWidth,
   }));
   expect(widths.document).toBeLessThanOrEqual(widths.viewport);
+});
+
+test('item returns are supervisor-approved, recoverable, and do not issue a refund', async ({
+  page,
+}) => {
+  await openSavedReceipt(page);
+  let paymentRequests = 0;
+  let approvalWasPersisted = false;
+  let submitted: Record<string, unknown> | undefined;
+  let recordedReturn: Record<string, any> | undefined;
+  const returnLineId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  const returnUrl = `**/pos/orders/${orderId}/returns`;
+  await page.route(returnUrl, async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        json: {
+          orderId,
+          orderReference: 'ORD-1049',
+          orderStatus: 'completed',
+          eligible: true,
+          items: [
+            {
+              orderLineId: returnLineId,
+              productName: 'Sweet Chocolate Croissant with Pistachio Cream',
+              variantName: 'Large',
+              selections: ['Extra pistachio'],
+              soldQuantity: 2,
+              returnedQuantity: 0,
+              returnableQuantity: 2,
+              unitPrice: '55.00',
+            },
+          ],
+          returns: recordedReturn ? [recordedReturn] : [],
+        },
+      });
+      return;
+    }
+
+    submitted = route.request().postDataJSON() as Record<string, unknown>;
+    const persisted = await page.evaluate(() =>
+      Object.values(localStorage).some((value) => value.includes('supervisor-secret-123')),
+    );
+    approvalWasPersisted = persisted;
+    const requestBody = submitted as {
+      requestId: string;
+      branchId: string;
+      reason: string;
+      lines: Array<{ orderLineId: string; quantity: number }>;
+    };
+    recordedReturn = {
+      id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+      requestId: requestBody.requestId,
+      returnNumber: 'RET-1049-01',
+      orderId,
+      amount: '55.00',
+      currency: 'EGP',
+      reason: requestBody.reason,
+      issuedAt: '2026-10-19T10:00:00.000Z',
+      createdByEmployeeId: employeeId,
+      approvedByEmployeeId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      issuedBy: 'Test cashier',
+      approvedBy: 'Test supervisor',
+      lines: requestBody.lines.map((line) => ({
+        ...line,
+        productName: 'Sweet Chocolate Croissant with Pistachio Cream',
+        variantName: 'Large',
+        disposition: 'waste',
+        unitPrice: '55.00',
+        amount: '55.00',
+      })),
+    };
+    await route.fulfill({
+      json: {
+        orderId,
+        return: recordedReturn,
+        state: {
+          orderId,
+          orderReference: 'ORD-1049',
+          orderStatus: 'completed',
+          eligible: true,
+          items: [
+            {
+              orderLineId: returnLineId,
+              productName: 'Sweet Chocolate Croissant with Pistachio Cream',
+              variantName: 'Large',
+              selections: ['Extra pistachio'],
+              soldQuantity: 2,
+              returnedQuantity: 1,
+              returnableQuantity: 1,
+              unitPrice: '55.00',
+            },
+          ],
+          returns: [recordedReturn],
+        },
+      },
+    });
+  });
+  await page.route('**/pos/orders/*/checks/*/payments/refunds', async (route) => {
+    paymentRequests += 1;
+    await route.fulfill({
+      status: 500,
+      json: { message: 'An item return must not refund money.' },
+    });
+  });
+
+  await page.getByRole('button', { name: 'Record item return' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Record item return' });
+  await expect(dialog).toContainText('recorded as waste');
+  await dialog
+    .getByRole('spinbutton', {
+      name: 'Return quantity: Sweet Chocolate Croissant with Pistachio Cream',
+    })
+    .fill('1');
+  await dialog.getByLabel('Item return reason').fill('Damaged in delivery');
+  await dialog.getByLabel('Supervisor username').fill('supervisor');
+  await dialog.getByLabel('Supervisor password').fill('supervisor-secret-123');
+  await dialog.getByRole('button', { name: 'Record item return' }).click();
+
+  await expect(page.getByRole('dialog', { name: 'Item return recorded' })).toContainText(
+    'RET-1049-01',
+  );
+  await expect(page.getByRole('dialog', { name: 'Item return recorded' })).toContainText(
+    'Reference value only',
+  );
+  await expect(page.getByRole('dialog', { name: 'Item return recorded' })).toContainText(
+    'no money was refunded',
+  );
+  expect(submitted).toMatchObject({
+    branchId,
+    reason: 'Damaged in delivery',
+    lines: [{ orderLineId: returnLineId, quantity: 1 }],
+    approval: { username: 'supervisor', password: 'supervisor-secret-123' },
+  });
+  expect(approvalWasPersisted).toBe(false);
+  expect(paymentRequests).toBe(0);
+  await page.getByRole('button', { name: 'Close' }).last().click();
+  await expect(page.getByRole('article', { name: 'POS receipt' })).toContainText(receiptNumber);
+  await expect(page.getByRole('article', { name: 'POS receipt' })).toContainText('175.00');
+});
+
+test('Arabic item-return workflow keeps RTL and blocks quantities above the remaining sale', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('waffarly-locale', 'ar');
+    document.cookie = 'waffarly-locale=ar; Path=/';
+  });
+  await openSavedReceipt(
+    page,
+    '\u0639\u0631\u0636 / \u0637\u0628\u0627\u0639\u0629 \u0627\u0644\u0625\u064a\u0635\u0627\u0644',
+    '\u0625\u064a\u0635\u0627\u0644 \u0646\u0642\u0627\u0637 \u0627\u0644\u0628\u064a\u0639',
+  );
+  const returnLineId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  await page.route(`**/pos/orders/${orderId}/returns`, (route) =>
+    route.fulfill({
+      json: {
+        orderId,
+        orderReference: 'ORD-1049',
+        orderStatus: 'completed',
+        eligible: true,
+        items: [
+          {
+            orderLineId: returnLineId,
+            productName: 'Test croissant',
+            variantName: null,
+            selections: [],
+            soldQuantity: 1,
+            returnedQuantity: 0,
+            returnableQuantity: 1,
+            unitPrice: '55.00',
+          },
+        ],
+        returns: [],
+      },
+    }),
+  );
+  await page
+    .getByRole('button', {
+      name: '\u062a\u0633\u062c\u064a\u0644 \u0645\u0631\u062a\u062c\u0639 \u0635\u0646\u0641',
+    })
+    .click();
+  const dialog = page.getByRole('dialog', {
+    name: '\u062a\u0633\u062c\u064a\u0644 \u0645\u0631\u062a\u062c\u0639 \u0635\u0646\u0641',
+  });
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await expect
+    .poll(() => dialog.evaluate((element) => getComputedStyle(element).direction))
+    .toBe('rtl');
+  await dialog
+    .getByLabel(
+      '\u0627\u0633\u0645 \u0645\u0633\u062a\u062e\u062f\u0645 \u0627\u0644\u0645\u0634\u0631\u0641',
+    )
+    .fill('supervisor');
+  await dialog
+    .getByLabel(
+      '\u0643\u0644\u0645\u0629 \u0645\u0631\u0648\u0631 \u0627\u0644\u0645\u0634\u0631\u0641',
+    )
+    .fill('secret');
+  const quantity = dialog.getByRole('spinbutton', {
+    name: '\u0643\u0645\u064a\u0629 \u0627\u0644\u0625\u0631\u062c\u0627\u0639: Test croissant',
+  });
+  await quantity.fill('2');
+  await expect(
+    dialog.getByRole('button', {
+      name: '\u062a\u0633\u062c\u064a\u0644 \u0645\u0631\u062a\u062c\u0639 \u0635\u0646\u0641',
+    }),
+  ).toBeDisabled();
+  await quantity.fill('1');
+  await expect(dialog).toContainText(
+    '\u0627\u0644\u0643\u0645\u064a\u0629 \u0627\u0644\u0645\u062a\u0627\u062d\u0629 \u0644\u0644\u0625\u0631\u062c\u0627\u0639',
+  );
 });

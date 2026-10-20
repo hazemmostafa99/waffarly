@@ -23,16 +23,29 @@ import type {
 import { z } from 'zod';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { parseCursorPageQuery } from '../../common/http/pagination.js';
+import { AuthService } from '../auth/index.js';
 import { CurrentOwner, CurrentPosEmployee, OwnerGuard, PosEmployeeGuard } from '../auth/index.js';
 import { requireEmployeePermission } from '../auth/index.js';
 import { OrderLifecycleService } from './order-lifecycle.service.js';
+import { PosKitchenService } from './pos-kitchen.service.js';
 import {
   acceptRecipeOrderSchema,
   cancelRecipeOrderSchema,
+  handoverPosOrderSchema,
+  markOrderReadySchema,
+  markKitchenItemReadySchema,
+  cancelPosOrderSchema,
+  acknowledgePosKitchenCancellationSchema,
   startOrderPreparationSchema,
 } from './order-lifecycle.schemas.js';
 import { StorefrontOrdersService } from './storefront-orders.service.js';
 import { PosOrdersService } from './pos-orders.service.js';
+import { parseRecordPosCheckRefundRequest, withoutPosRefundApproval } from '../payments/index.js';
+import {
+  parseRecordPosItemReturnRequest,
+  withoutPosItemReturnApproval,
+} from './pos-returns.schemas.js';
+import { PosReturnsService } from './pos-returns.service.js';
 
 const orderSelectionSchema = z
   .object({
@@ -185,6 +198,9 @@ export class PosStorefrontOrdersController {
     @Inject(StorefrontOrdersService) private readonly orders: StorefrontOrdersService,
     @Inject(OrderLifecycleService) private readonly lifecycle: OrderLifecycleService,
     @Inject(PosOrdersService) private readonly posOrders: PosOrdersService,
+    @Inject(PosKitchenService) private readonly posKitchen: PosKitchenService,
+    @Inject(PosReturnsService) private readonly posReturns: PosReturnsService,
+    @Inject(AuthService) private readonly auth: AuthService,
   ) {}
 
   @Post('quote')
@@ -199,12 +215,77 @@ export class PosStorefrontOrdersController {
     return this.posOrders.create(employee, body);
   }
 
+  @Post(':id/kitchen-dispatch')
+  @HttpCode(HttpStatus.OK)
+  dispatchToKitchen(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: unknown,
+  ) {
+    return this.posKitchen.dispatchDineInOrder(employee, id, body);
+  }
+
+  @Post(':id/kitchen-amendments')
+  @HttpCode(HttpStatus.OK)
+  addKitchenItems(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: unknown,
+  ) {
+    return this.posOrders.addKitchenItems(employee, id, body);
+  }
+
   @Get(':id/payment-state')
   paymentState(
     @CurrentPosEmployee() employee: PosEmployeeSession,
     @Param('id', new ParseUUIDPipe()) id: string,
   ) {
     return this.posOrders.paymentState(employee, id);
+  }
+
+  @Get(':id/returns')
+  itemReturnsState(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('id', new ParseUUIDPipe()) id: string,
+  ) {
+    requireEmployeePermission(employee, 'sell');
+    return this.posReturns.state(employee, id);
+  }
+
+  @Post(':id/returns')
+  @HttpCode(HttpStatus.CREATED)
+  async recordItemReturn(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: unknown,
+  ) {
+    const input = parseRecordPosItemReturnRequest(body);
+    requireEmployeePermission(employee, 'sell');
+    if (
+      !employee.branches.some(
+        (branch) => branch.id === input.branchId && branch.archivedAt === null,
+      )
+    )
+      throw new ForbiddenException('This employee is not assigned to the selected branch.');
+    const approverEmployeeId = employee.permissions.includes('approve_refunds')
+      ? undefined
+      : input.approval
+        ? await this.auth.verifyPosEmployeeApproval({
+            merchantId: employee.merchantId,
+            branchId: input.branchId,
+            actingEmployeeId: employee.id,
+            ...input.approval,
+            permission: 'approve_refunds',
+          })
+        : undefined;
+    if (!employee.permissions.includes('approve_refunds') && !approverEmployeeId)
+      throw new ForbiddenException('Supervisor approval is required to record this return.');
+    return this.posReturns.record(
+      employee,
+      id,
+      withoutPosItemReturnApproval(input),
+      approverEmployeeId,
+    );
   }
 
   @Get(':id')
@@ -233,6 +314,39 @@ export class PosStorefrontOrdersController {
     @Body() body: unknown,
   ) {
     return this.posOrders.recordCheckPayment(employee, id, checkId, body);
+  }
+
+  @Post(':id/checks/:checkId/refunds')
+  @HttpCode(HttpStatus.CREATED)
+  async recordCheckRefund(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('checkId', new ParseUUIDPipe()) checkId: string,
+    @Body() body: unknown,
+  ) {
+    const input = parseRecordPosCheckRefundRequest(body);
+    requireEmployeePermission(employee, 'sell');
+    if (
+      !employee.branches.some(
+        (branch) => branch.id === input.branchId && branch.archivedAt === null,
+      )
+    )
+      throw new ForbiddenException('This employee is not assigned to the selected branch.');
+    const approverEmployeeId = employee.permissions.includes('approve_refunds')
+      ? undefined
+      : input.approval
+        ? await this.auth.verifyPosEmployeeApproval({
+            merchantId: employee.merchantId,
+            branchId: input.branchId,
+            actingEmployeeId: employee.id,
+            ...input.approval,
+            permission: 'approve_refunds',
+          })
+        : undefined;
+    if (!employee.permissions.includes('approve_refunds') && !approverEmployeeId)
+      throw new ForbiddenException('Supervisor approval is required to refund this check.');
+    const command = withoutPosRefundApproval(input);
+    return this.posOrders.recordCheckRefund(employee, id, checkId, command, approverEmployeeId);
   }
 
   @Get()
@@ -278,6 +392,106 @@ export class PosStorefrontOrdersController {
       id,
       parseRequest(startOrderPreparationSchema, body),
       employee.branches.map((branch) => branch.id),
+    );
+  }
+
+  @Post(':id/ready')
+  @HttpCode(HttpStatus.OK)
+  markReady(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: unknown,
+  ) {
+    requireEmployeePermission(employee, 'start_preparation');
+    return this.lifecycle.markReadyFromPos(
+      employee.merchantId,
+      `pos:${employee.id}`,
+      id,
+      parseRequest(markOrderReadySchema, body),
+      employee.branches.map((branch) => branch.id),
+    );
+  }
+
+  @Post(':id/items/:lineId/ready')
+  @HttpCode(HttpStatus.OK)
+  markKitchenItemReady(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('lineId', new ParseUUIDPipe()) lineId: string,
+    @Body() body: unknown,
+  ) {
+    requireEmployeePermission(employee, 'start_preparation');
+    return this.lifecycle.markKitchenItemReadyFromPos(
+      employee.merchantId,
+      `pos:${employee.id}`,
+      id,
+      lineId,
+      parseRequest(markKitchenItemReadySchema, body),
+      employee.branches.map((branch) => branch.id),
+    );
+  }
+
+  @Post(':id/handover')
+  @HttpCode(HttpStatus.OK)
+  handover(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: unknown,
+  ) {
+    requireEmployeePermission(employee, 'sell');
+    return this.lifecycle.handoverFromPos(
+      employee.merchantId,
+      `pos:${employee.id}`,
+      id,
+      parseRequest(handoverPosOrderSchema, body),
+      employee.branches.map((branch) => branch.id),
+    );
+  }
+
+  @Post(':id/cancel')
+  @HttpCode(HttpStatus.OK)
+  async cancelPosOrder(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: unknown,
+  ) {
+    const input = parseRequest(cancelPosOrderSchema, body);
+    requireEmployeePermission(employee, 'sell');
+    if (!employee.branches.some((branch) => branch.id === input.branchId))
+      throw new ForbiddenException('This employee is not assigned to the selected branch.');
+    const approverEmployeeId = employee.permissions.includes('approve_voids')
+      ? undefined
+      : input.approval
+        ? await this.auth.verifyPosEmployeeApproval({
+            merchantId: employee.merchantId,
+            branchId: input.branchId,
+            actingEmployeeId: employee.id,
+            ...input.approval,
+            permission: 'approve_voids',
+          })
+        : undefined;
+    if (!employee.permissions.includes('approve_voids') && !approverEmployeeId)
+      throw new ForbiddenException('Supervisor approval is required to cancel this order.');
+    return this.lifecycle.cancelPosFromPos(
+      employee,
+      id,
+      { requestId: input.requestId, branchId: input.branchId, reason: input.reason },
+      approverEmployeeId,
+    );
+  }
+
+  @Post(':id/cancellation-acknowledgement')
+  @HttpCode(HttpStatus.OK)
+  acknowledgePosCancellation(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: unknown,
+  ) {
+    requireEmployeePermission(employee, 'accept_recipe_orders');
+    return this.posKitchen.acknowledgeCancellation(
+      employee,
+      id,
+      parseRequest(acknowledgePosKitchenCancellationSchema, body),
     );
   }
 }

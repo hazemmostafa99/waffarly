@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Building2, Clock3, UserRound } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Building2, Check, Clock3, Copy, UserRound } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { BUSINESS_ACTIVITY_LABELS, type MerchantSummary } from '@waffarly/contracts';
 import { Button, Card, useLocale } from '@waffarly/ui';
@@ -9,9 +9,11 @@ import { useActivateFirstMonthMutation, useMerchantsQuery } from './merchant-que
 
 export function MerchantDetailsPage() {
   const { merchantId } = useParams();
-  const { t, formatDate, errorText } = useLocale();
+  const { t, formatDate, errorText, locale } = useLocale();
+  const isArabic = locale === 'ar';
   const merchants = useMerchantsQuery();
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [businessCodeCopyState, setBusinessCodeCopyState] = useState<'copied' | 'failed' | null>(null);
   const activateFirstMonth = useActivateFirstMonthMutation();
 
   function requestActivation(merchant: MerchantSummary) {
@@ -39,6 +41,17 @@ export function MerchantDetailsPage() {
         });
       },
     });
+  }
+
+  async function copyBusinessCode(businessCode: string) {
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard is unavailable.');
+      await navigator.clipboard.writeText(businessCode);
+      setBusinessCodeCopyState('copied');
+      window.setTimeout(() => setBusinessCodeCopyState(null), 2000);
+    } catch {
+      setBusinessCodeCopyState('failed');
+    }
   }
 
   if (merchants.isPending) {
@@ -133,6 +146,51 @@ export function MerchantDetailsPage() {
           <dl className="m-0 grid gap-x-6 gap-y-4 sm:grid-cols-2">
             <DetailField label={t('Business name')} value={merchant.name} />
             <DetailField label={t('Business contact number')} value={merchant.contactPhone} direction="ltr" />
+            <div
+              className="grid min-w-0 gap-1 text-start sm:col-span-2"
+              dir={isArabic ? 'rtl' : 'ltr'}
+            >
+              <dt className="text-[11px] font-medium text-waffarly-muted">
+                {t('Business code')}
+              </dt>
+              <dd
+                className="m-0 flex flex-wrap items-center justify-start gap-2"
+                dir={isArabic ? 'rtl' : 'ltr'}
+              >
+                <bdi
+                  className="break-all rounded-md bg-waffarly-input px-2 py-1 text-left font-mono text-sm font-semibold text-waffarly-ink"
+                  dir="ltr"
+                >
+                  {merchant.businessCode}
+                </bdi>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="border-waffarly-border bg-white text-waffarly-primary hover:bg-waffarly-input"
+                  aria-label={t('Copy business code')}
+                  onClick={() => void copyBusinessCode(merchant.businessCode)}
+                >
+                  {businessCodeCopyState === 'copied' ? (
+                    <Check size={14} aria-hidden="true" />
+                  ) : (
+                    <Copy size={14} aria-hidden="true" />
+                  )}
+                  {businessCodeCopyState === 'copied' ? t('Copied') : t('Copy business code')}
+                </Button>
+              </dd>
+              <small
+                className="text-start text-[11px] text-waffarly-muted"
+                aria-live="polite"
+                dir={isArabic ? 'rtl' : 'ltr'}
+              >
+                {businessCodeCopyState === 'failed'
+                  ? t('Select the code to copy it manually.')
+                  : businessCodeCopyState === 'copied'
+                    ? t('Copied')
+                    : t('Use this code when signing in to POS.')}
+              </small>
+            </div>
           </dl>
         </Card>
 
@@ -188,11 +246,12 @@ export function MerchantDetailsPage() {
 }
 
 function BackToMerchants() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
+  const BackIcon = locale === 'ar' ? ArrowRight : ArrowLeft;
   return (
     <Button asChild variant="outline" className="border-waffarly-border bg-white text-waffarly-ink hover:bg-waffarly-input">
       <Link to="/merchants">
-        <ArrowLeft size={16} aria-hidden="true" />
+        <BackIcon size={16} aria-hidden="true" />
         {t('Back to businesses')}
       </Link>
     </Button>
@@ -203,7 +262,9 @@ function DetailField({ label, value, direction = 'auto' }: { label: string; valu
   return (
     <div className="grid min-w-0 gap-1">
       <dt className="text-[11px] font-medium text-waffarly-muted">{label}</dt>
-      <dd className="m-0 break-words text-sm font-semibold text-waffarly-ink" dir={direction}>{value}</dd>
+      <dd className="m-0 break-words text-start text-sm font-semibold text-waffarly-ink">
+        <bdi dir={direction}>{value}</bdi>
+      </dd>
     </div>
   );
 }

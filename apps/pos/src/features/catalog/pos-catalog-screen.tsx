@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
+  AddPosKitchenItemsRequest,
   CatalogProductQuoteSelection,
   CreatePosOrderRequest,
   PosDiningTableOption,
@@ -12,6 +13,8 @@ import { Dialog, Input, Textarea, cn, useLocale } from '@waffarly/ui';
 import {
   ArrowRight,
   LayoutGrid,
+  Maximize2,
+  Minimize2,
   Minus,
   Pencil,
   Plus,
@@ -28,17 +31,21 @@ import {
   type PosDraftLine,
   type PosOrderDraft,
   type PendingPosSale,
+  type PendingPosKitchenAmendment,
 } from '../../app/pos-workspace-store.js';
 import { ApiError } from '../../lib/api-client.js';
 import { posCatalogKey, getPosSellableCatalog } from './pos-catalog.api.js';
 import { getPosDiningTables, posDiningTablesKey } from '../dining/pos-dining.api.js';
 import {
+  addPosKitchenItems,
   createPosOrder,
   posOrderKeys,
   posOrderDetailKey,
   quotePosOrder,
   getPosOrder,
 } from '../orders/pos-orders.api.js';
+import { getPosOrderPaymentState, posPaymentStateKey } from '../payments/pos-payments.api.js';
+import { formatMoneyCents, parseMoneyCents } from '../payments/payment-form-model.js';
 import { PosConfirmedOrderPanel } from '../orders/pos-confirmed-order-panel.js';
 import { PosOrderSwitcher, type PosSwitcherEntry } from '../orders/pos-order-switcher.js';
 import { PosCheckoutDialog } from '../payments/pos-checkout-dialog.js';
@@ -71,7 +78,14 @@ export function POSCatalogScreen() {
   const removeDraft = usePosWorkspaceStore((state) => state.removeDraft);
   const discardEmptyDrafts = usePosWorkspaceStore((state) => state.discardEmptyDrafts);
   const completeSale = usePosWorkspaceStore((state) => state.completeSale);
+  const completeKitchenAmendment = usePosWorkspaceStore((state) => state.completeKitchenAmendment);
   const removePendingSale = usePosWorkspaceStore((state) => state.removePendingSale);
+  const savePendingKitchenAmendment = usePosWorkspaceStore(
+    (state) => state.savePendingKitchenAmendment,
+  );
+  const removePendingKitchenAmendment = usePosWorkspaceStore(
+    (state) => state.removePendingKitchenAmendment,
+  );
   const selectConfirmedOrder = usePosWorkspaceStore((state) => state.selectConfirmedOrder);
   const savePendingSale = usePosWorkspaceStore((state) => state.savePendingSale);
   const persistenceError = usePosWorkspaceStore((state) => state.persistenceError);
@@ -90,9 +104,11 @@ export function POSCatalogScreen() {
   );
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [checkoutOrderId, setCheckoutOrderId] = useState('');
+  const [amendingOrderId, setAmendingOrderId] = useState<string | null>(null);
   const [operationError, setOperationError] = useState('');
   const [online, setOnline] = useState(() => navigator.onLine);
   const [mobileView, setMobileView] = useState<'menu' | 'order'>('menu');
+  const [cartExpanded, setCartExpanded] = useState(false);
   const menuRef = useRef<HTMLElement>(null);
   const orderPaneRef = useRef<HTMLDivElement>(null);
   const scrollPositions = useRef({ menu: 0, order: 0 });
@@ -154,6 +170,31 @@ export function POSCatalogScreen() {
     enabled: false,
   });
   const confirmedSummary = confirmedSummaryQuery.isError ? undefined : confirmedSummaryQuery.data;
+  const amendmentOrderQuery = useQuery({
+    queryKey: posOrderDetailKey(employee.merchantId, employee.id, amendingOrderId ?? ''),
+    queryFn: ({ signal }) => getPosOrder(amendingOrderId!, signal),
+    enabled: Boolean(amendingOrderId),
+    retry: false,
+  });
+  const amendmentPaymentQuery = useQuery({
+    queryKey: posPaymentStateKey(employee.merchantId, amendingOrderId ?? ''),
+    queryFn: ({ signal }) => getPosOrderPaymentState(amendingOrderId!, signal),
+    enabled: Boolean(amendingOrderId),
+    retry: false,
+  });
+  const amendmentOrder = amendmentOrderQuery.data;
+  const amendmentPayment = amendmentPaymentQuery.data;
+  const amendmentAllowed = Boolean(
+    amendmentOrder?.status === 'pending' &&
+    amendmentOrder.kitchenTicket &&
+    amendmentPayment?.status === 'pending' &&
+    amendmentPayment.checks.length === 1 &&
+    amendmentPayment.checks[0]?.splitMethod === 'whole' &&
+    amendmentPayment.checks[0]?.status === 'open' &&
+    amendmentPayment.checks[0]?.payments.length === 0,
+  );
+  const pendingKitchenAmendment =
+    workspace?.pendingKitchenAmendments[amendingOrderId ?? confirmedOrder?.orderId ?? ''];
   useEffect(() => {
     if (confirmedOrder?.orderId) setMobileView('order');
   }, [confirmedOrder?.orderId]);
@@ -174,6 +215,7 @@ export function POSCatalogScreen() {
     return () => cancelAnimationFrame(frame);
   }, [mobileView]);
   function changeMobileView(next: 'menu' | 'order') {
+    if (next === 'menu') setCartExpanded(false);
     if (mobileView === next) return;
     const scroller =
       mobileView === 'menu'
@@ -301,7 +343,8 @@ export function POSCatalogScreen() {
   const quoteQuery = useQuery({
     queryKey: posOrderKeys.quote(employee.merchantId, quoteRequest),
     queryFn: () => quotePosOrder(quoteRequest),
-    enabled: canSell && !confirmedOrder && quoteRequest.items.length > 0,
+    enabled:
+      canSell && (!confirmedOrder || Boolean(amendingOrderId)) && quoteRequest.items.length > 0,
     staleTime: 5_000,
     retry: false,
   });
@@ -355,8 +398,70 @@ export function POSCatalogScreen() {
     },
   });
 
+  const amendmentMutation = useMutation({
+    mutationFn: ({ orderId, payload }: { orderId: string; payload: AddPosKitchenItemsRequest }) =>
+      addPosKitchenItems(orderId, payload),
+    onSuccess: async (order, variables) => {
+      queryClient.setQueryData(
+        posOrderDetailKey(employee.merchantId, employee.id, variables.orderId),
+        order,
+      );
+      try {
+        const pending =
+          usePosWorkspaceStore.getState().workspace?.pendingKitchenAmendments[variables.orderId];
+        if (!pending) throw new Error(t('The saved kitchen addition could not be recovered.'));
+        completeKitchenAmendment(
+          employee.merchantId,
+          employee.id,
+          variables.orderId,
+          variables.payload.requestId,
+          pending.draftId,
+        );
+        setAmendingOrderId(null);
+        setOperationError('');
+      } catch {
+        setOperationError(
+          t(
+            'Items were added, but the local order could not be updated. Retry the saved request; do not send it again with a new ID.',
+          ),
+        );
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['pos', 'orders'] }),
+        queryClient.invalidateQueries({
+          queryKey: posPaymentStateKey(employee.merchantId, variables.orderId),
+        }),
+      ]);
+    },
+    onError: (error, variables) => {
+      if (error instanceof ApiError && [400, 401, 403, 404, 409].includes(error.statusCode)) {
+        removePendingKitchenAmendment(
+          employee.merchantId,
+          employee.id,
+          variables.orderId,
+          variables.payload.requestId,
+        );
+        void Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: posOrderDetailKey(employee.merchantId, employee.id, variables.orderId),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: posPaymentStateKey(employee.merchantId, variables.orderId),
+          }),
+        ]);
+      }
+      setOperationError(
+        errorText(error instanceof Error ? error.message : t('Could not add items to the order.')),
+      );
+    },
+  });
+
   function updateDraft(update: (draft: PosOrderDraft) => PosOrderDraft): boolean {
     if (!activeDraft) return false;
+    if (amendingOrderId && pendingKitchenAmendment) {
+      setOperationError(t('Retry the saved item addition before editing it.'));
+      return false;
+    }
     const pending = workspace?.pendingSales[activeDraft.id];
     if (pending) {
       setOperationError(t('Resolve the saved sale request before editing this order.'));
@@ -388,6 +493,7 @@ export function POSCatalogScreen() {
   function createDraft() {
     if (!selectedBranchId) return;
     try {
+      setAmendingOrderId(null);
       startDraft(employee.merchantId, employee.id);
       setMobileView('menu');
       scrollPositions.current.order = 0;
@@ -395,6 +501,28 @@ export function POSCatalogScreen() {
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : t('Could not save this order.'));
     }
+  }
+
+  function startKitchenAmendment(orderId: string) {
+    try {
+      startDraft(employee.merchantId, employee.id);
+      setAmendingOrderId(orderId);
+      setMobileView('menu');
+      scrollPositions.current.order = 0;
+      setOperationError('');
+    } catch (error) {
+      setOperationError(
+        error instanceof Error ? error.message : t('Could not start adding items to this order.'),
+      );
+    }
+  }
+
+  function leaveKitchenAmendment() {
+    if (!amendingOrderId) return;
+    selectConfirmedOrder(employee.merchantId, employee.id, amendingOrderId);
+    setAmendingOrderId(null);
+    setMobileView('order');
+    setOperationError('');
   }
 
   function addConfiguredProduct(product: PublicStorefrontProduct, configured: ConfiguredProduct) {
@@ -485,6 +613,68 @@ export function POSCatalogScreen() {
 
   function confirmOrder() {
     if (!activeDraft || !registerId || !shiftQuery.data || !online) return;
+    if (amendingOrderId) {
+      const pendingAmendment = workspace?.pendingKitchenAmendments[amendingOrderId];
+      if (pendingAmendment) {
+        amendmentMutation.mutate({
+          orderId: amendingOrderId,
+          payload: pendingAmendment.payload,
+        });
+        return;
+      }
+      if (!amendmentAllowed || !amendmentPayment) {
+        setOperationError(
+          t(
+            'The kitchen has accepted this order or payment has started. Refresh the order before adding items.',
+          ),
+        );
+        return;
+      }
+      if (!quoteQuery.data || quoteQuery.isFetching || quoteQuery.isError) {
+        setOperationError(t('Wait for a current server quote before adding items.'));
+        return;
+      }
+      const quoteByLine = new Map(quoteQuery.data.items.map((item) => [item.lineId, item.quote]));
+      const payload: AddPosKitchenItemsRequest = {
+        requestId: crypto.randomUUID(),
+        revision: amendmentPayment.revision,
+        items: activeDraft.lines.map((line) => {
+          const quote = quoteByLine.get(line.id);
+          if (!quote) throw new Error(t('The server quote is missing an added item.'));
+          return {
+            lineId: line.id,
+            productId: line.productId,
+            ...(line.variantId ? { variantId: line.variantId } : {}),
+            selections: line.selections.map((selection) => ({
+              groupId: selection.groupId,
+              optionIds: selection.options.map((option) => option.optionId),
+              optionQuantities: selection.options.map((option) => ({
+                optionId: option.optionId,
+                quantity: option.quantity,
+              })),
+            })),
+            quantity: line.quantity,
+            expectedProductRevision: quote.productRevision,
+            ...(line.note.trim() ? { note: line.note.trim() } : {}),
+          };
+        }),
+      };
+      const envelope: PendingPosKitchenAmendment = {
+        requestId: payload.requestId,
+        draftId: activeDraft.id,
+        payload,
+      };
+      try {
+        savePendingKitchenAmendment(employee.merchantId, employee.id, amendingOrderId, envelope);
+        setOperationError('');
+        amendmentMutation.mutate({ orderId: amendingOrderId, payload });
+      } catch (error) {
+        setOperationError(
+          error instanceof Error ? error.message : t('Could not save this item addition safely.'),
+        );
+      }
+      return;
+    }
     const pending = workspace?.pendingSales[activeDraft.id];
     if (pending) {
       createMutation.mutate({ draftId: activeDraft.id, payload: pending.payload });
@@ -563,6 +753,9 @@ export function POSCatalogScreen() {
   const lineQuoteById = new Map((quoteQuery.data?.items ?? []).map((item) => [item.lineId, item]));
   const pendingSale = activeDraft ? workspace?.pendingSales[activeDraft.id] : undefined;
   const subtotal = quoteQuery.data?.subtotal ?? '0.00';
+  const amendedOrderTotal = formatMoneyCents(
+    (parseMoneyCents(amendmentOrder?.total ?? '0.00') ?? 0n) + (parseMoneyCents(subtotal) ?? 0n),
+  );
   const cartCount = activeDraft?.lines.reduce((sum, line) => sum + line.quantity, 0) ?? 0;
   const catalogError = catalogQuery.error instanceof Error ? catalogQuery.error.message : '';
   const switcherEntries: PosSwitcherEntry[] = [
@@ -580,13 +773,21 @@ export function POSCatalogScreen() {
         kind: 'draft',
         reference: `DRAFT-${draft.id.slice(0, 6).toUpperCase()}`,
         title: draft.customerName?.trim() || (table ? `${t('Table')} ${table.code}` : service),
-        subtitle: t('{{count}} items', {
+        subtitle: `${service} · ${t('{{count}} items', {
           count: draft.lines.reduce((sum, line) => sum + line.quantity, 0),
-        }),
+        })}`,
+        total:
+          draft.id === activeDraft?.id && quoteQuery.data && !quoteQuery.isFetching
+            ? formatNumber(Number(subtotal), { style: 'currency', currency: 'EGP' })
+            : undefined,
         updatedAt: draft.updatedAt,
         lastOpenedAt: draft.lastOpenedAt ?? draft.updatedAt,
         empty: isBlankPosDraft(draft),
-        protected: Boolean(workspace?.pendingSales[draft.id]),
+        protected:
+          Boolean(workspace?.pendingSales[draft.id]) ||
+          Object.values(workspace?.pendingKitchenAmendments ?? {}).some(
+            (amendment) => amendment.draftId === draft.id,
+          ),
       };
     }),
     ...confirmedOrders.map((order): PosSwitcherEntry => {
@@ -598,7 +799,14 @@ export function POSCatalogScreen() {
         kind: 'confirmed',
         reference: `ORD-${order.orderId.slice(0, 8).toUpperCase()}`,
         title: cached?.customerName || t('Confirmed order'),
-        subtitle: t('Saved on this device'),
+        subtitle: cached
+          ? t('{{count}} items', {
+              count: cached.lines.reduce((sum, line) => sum + line.quantity, 0),
+            })
+          : t('Saved on this device'),
+        total: cached
+          ? formatNumber(Number(cached.total), { style: 'currency', currency: cached.currency })
+          : undefined,
         updatedAt: order.createdAt,
         lastOpenedAt: order.lastOpenedAt ?? order.createdAt,
       };
@@ -628,106 +836,112 @@ export function POSCatalogScreen() {
           data-testid="pos-menu-pane"
           className={cn(
             'order-scroll min-h-0 min-w-0 flex-1 overflow-y-auto',
-            mobileView === 'order' && 'hidden lg:block',
+            cartExpanded ? 'hidden' : mobileView === 'order' && 'hidden lg:block',
           )}
         >
-          <div className="p-4 xl:p-5">
-            <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
-                  {t('Live merchant menu')}
-                </span>
-                <h2 id="pos-catalog-heading" className="mt-1 text-xl font-semibold">
-                  {t(confirmedOrder ? 'Menu' : 'New order')}
-                </h2>
-              </div>
-              <PosButton
-                type="button"
-                variant="outline"
-                className="pos-new-draft-button h-10"
-                onClick={createDraft}
-                disabled={Boolean(pendingSale)}
-              >
-                <Plus aria-hidden="true" size={16} />
-                {t('New order')}
-              </PosButton>
-            </header>
+          <div className="p-3">
+            <div className="mb-2 grid gap-2 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center">
+              <header className="flex flex-wrap items-center justify-between gap-3 lg:col-start-1 lg:row-start-1">
+                <div>
+                  <span className="sr-only">{t('Live merchant menu')}</span>
+                  <h2 id="pos-catalog-heading" className="text-base font-semibold">
+                    {amendingOrderId
+                      ? t('Add items to order')
+                      : t(confirmedOrder ? 'Menu' : 'New order')}
+                  </h2>
+                </div>
+                <PosButton
+                  type="button"
+                  variant="outline"
+                  className="pos-new-draft-button h-10"
+                  onClick={amendingOrderId ? leaveKitchenAmendment : createDraft}
+                  disabled={Boolean(pendingSale || pendingKitchenAmendment)}
+                >
+                  {amendingOrderId ? (
+                    <ReceiptText aria-hidden="true" size={16} />
+                  ) : (
+                    <Plus aria-hidden="true" size={16} />
+                  )}
+                  {t(amendingOrderId ? 'Back to order' : 'New order')}
+                </PosButton>
+              </header>
 
-            <div className="mb-3 grid gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <label className="grid min-w-32 gap-1 text-[10px] text-muted-foreground">
-                  <span>{t('Branch')}</span>
-                  <select
-                    className="min-h-9 rounded-lg border border-border bg-card px-3 text-[11px] text-foreground"
-                    value={selectedBranchId}
-                    disabled={!branches.length || Boolean(pendingSale)}
-                    onChange={(event) => {
-                      selectBranch(employee.merchantId, employee.id, event.target.value);
-                      setRegisterId('');
-                    }}
-                  >
-                    {branches.map((branch) => (
-                      <option key={branch.id} value={branch.id}>
-                        {branch.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid min-w-32 gap-1 text-[10px] text-muted-foreground">
-                  <span>{t('Register')}</span>
-                  <select
-                    className="min-h-9 rounded-lg border border-border bg-card px-3 text-[11px] text-foreground"
-                    value={registerId}
-                    disabled={registers.length === 0 || Boolean(pendingSale)}
-                    onChange={(event) => setRegisterId(event.target.value)}
-                  >
-                    {registers.map((register) => (
-                      <option key={register.id} value={register.id}>
-                        {register.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <span
-                  className={cn(
-                    'inline-flex min-h-8 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-semibold',
-                    shiftQuery.data
-                      ? 'bg-[var(--pos-active)] text-[var(--pos-active-ink)]'
-                      : 'bg-[var(--pos-note)] text-[var(--pos-note-ink)]',
-                  )}
-                  role="status"
-                >
-                  {shiftQuery.data ? t('Shift open') : t('No open shift')}
-                  {!shiftQuery.data && (
-                    <Link className="underline" to="/shift">
-                      {t('Open shift')}
-                    </Link>
-                  )}
-                </span>
-                <span
-                  className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-secondary px-2.5 text-[10px] font-semibold text-muted-foreground"
-                  role="status"
-                >
+              <div className="grid gap-2 lg:contents">
+                <div className="flex flex-wrap items-center gap-2 lg:col-start-2 lg:row-start-1 lg:justify-end">
+                  <label className="grid min-w-32 gap-1 text-[10px] text-muted-foreground">
+                    <span>{t('Branch')}</span>
+                    <select
+                      className="min-h-9 rounded-lg border border-border bg-card px-3 text-[11px] text-foreground"
+                      value={selectedBranchId}
+                      disabled={!branches.length || Boolean(pendingSale || amendingOrderId)}
+                      onChange={(event) => {
+                        selectBranch(employee.merchantId, employee.id, event.target.value);
+                        setRegisterId('');
+                      }}
+                    >
+                      {branches.map((branch) => (
+                        <option key={branch.id} value={branch.id}>
+                          {branch.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="grid min-w-32 gap-1 text-[10px] text-muted-foreground">
+                    <span>{t('Register')}</span>
+                    <select
+                      className="min-h-9 rounded-lg border border-border bg-card px-3 text-[11px] text-foreground"
+                      value={registerId}
+                      disabled={registers.length === 0 || Boolean(pendingSale || amendingOrderId)}
+                      onChange={(event) => setRegisterId(event.target.value)}
+                    >
+                      {registers.map((register) => (
+                        <option key={register.id} value={register.id}>
+                          {register.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <span
-                    className={cn('size-1.5 rounded-full', online ? 'bg-success' : 'bg-warning')}
+                    className={cn(
+                      'inline-flex min-h-8 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-semibold',
+                      shiftQuery.data
+                        ? 'bg-[var(--pos-active)] text-[var(--pos-active-ink)]'
+                        : 'bg-[var(--pos-note)] text-[var(--pos-note-ink)]',
+                    )}
+                    role="status"
+                  >
+                    {shiftQuery.data ? t('Shift open') : t('No open shift')}
+                    {!shiftQuery.data && (
+                      <Link className="underline" to="/shift">
+                        {t('Open shift')}
+                      </Link>
+                    )}
+                  </span>
+                  <span
+                    className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-secondary px-2.5 text-[10px] font-semibold text-muted-foreground"
+                    role="status"
+                  >
+                    <span
+                      className={cn('size-1.5 rounded-full', online ? 'bg-success' : 'bg-warning')}
+                    />
+                    {online ? t('Online') : t('Offline - drafts saved')}
+                  </span>
+                </div>
+                <label className="relative flex min-h-10 w-full min-w-0 items-center gap-2 rounded-xl border border-border bg-card px-3 text-muted-foreground lg:col-span-2">
+                  <Search aria-hidden="true" size={17} />
+                  <span className="sr-only">{t('Search products')}</span>
+                  <Input
+                    type="search"
+                    value={search}
+                    placeholder={t('Search products...')}
+                    onChange={(event) => setSearch(event.target.value)}
+                    className="h-11 min-w-0 border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0 lg:h-9 lg:text-xs"
                   />
-                  {online ? t('Online') : t('Offline - drafts saved')}
-                </span>
+                  <kbd className="hidden rounded border border-border px-1.5 text-[10px] sm:inline-flex">
+                    /
+                  </kbd>
+                </label>
               </div>
-              <label className="relative flex min-h-10 w-full min-w-0 items-center gap-2 rounded-xl border border-border bg-card px-3 text-muted-foreground">
-                <Search aria-hidden="true" size={17} />
-                <span className="sr-only">{t('Search products')}</span>
-                <Input
-                  type="search"
-                  value={search}
-                  placeholder={t('Search products...')}
-                  onChange={(event) => setSearch(event.target.value)}
-                  className="h-11 min-w-0 border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0 lg:h-9 lg:text-xs"
-                />
-                <kbd className="hidden rounded border border-border px-1.5 text-[10px] sm:inline-flex">
-                  /
-                </kbd>
-              </label>
             </div>
 
             {(persistenceError || operationError) && (
@@ -740,7 +954,7 @@ export function POSCatalogScreen() {
             )}
 
             <div
-              className="mb-3 flex gap-1.5 overflow-x-auto pb-1"
+              className="mb-2 flex gap-1.5 overflow-x-auto pb-1"
               aria-label={t('Product categories')}
             >
               <button
@@ -837,7 +1051,11 @@ export function POSCatalogScreen() {
                         .reduce((sum, line) => sum + line.quantity, 0) ?? 0
                     }
                     formatNumber={formatNumber}
-                    disabled={Boolean(confirmedOrder)}
+                    disabled={
+                      Boolean(confirmedOrder && !amendingOrderId) ||
+                      Boolean(pendingKitchenAmendment) ||
+                      Boolean(amendingOrderId && !amendmentAllowed)
+                    }
                     onAdd={() => chooseProduct(product)}
                   />
                 ))}
@@ -863,18 +1081,56 @@ export function POSCatalogScreen() {
           tabIndex={-1}
           id="pos-current-order-pane"
           data-testid="pos-order-pane"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && cartExpanded && !event.defaultPrevented) {
+              setCartExpanded(false);
+              event.currentTarget.querySelector<HTMLButtonElement>('[aria-expanded]')?.focus();
+            }
+          }}
           className={cn(
-            'min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex lg:w-[370px] lg:shrink-0 lg:flex-none xl:w-[390px]',
-            mobileView === 'menu' ? 'hidden' : 'flex',
+            'relative min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex lg:shrink-0 [&>aside>header]:pe-14',
+            cartExpanded ? 'flex' : 'lg:w-[360px] lg:flex-none xl:w-[400px]',
+            !cartExpanded && (mobileView === 'menu' ? 'hidden' : 'flex'),
           )}
         >
+          <PosButton
+            type="button"
+            variant="outline"
+            size="icon"
+            className="absolute end-3 top-2 z-10 size-9"
+            aria-label={t(cartExpanded ? 'Restore menu and order' : 'Expand order')}
+            title={t(cartExpanded ? 'Restore menu and order' : 'Expand order')}
+            aria-expanded={cartExpanded}
+            onClick={() => setCartExpanded((expanded) => !expanded)}
+          >
+            {cartExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+          </PosButton>
           {confirmedOrder ? (
             <PosConfirmedOrderPanel
               key={confirmedOrder.orderId}
               merchantId={employee.merchantId}
               employeeId={employee.id}
+              branchId={confirmedOrder.branchId}
+              requiresApproval={!employee.permissions.includes('approve_voids')}
+              requiresRefundApproval={!employee.permissions.includes('approve_refunds')}
+              refundShiftId={shiftQuery.data?.id ?? null}
               orderId={confirmedOrder.orderId}
               online={online}
+              hasPendingAmendment={Boolean(
+                workspace?.pendingKitchenAmendments[confirmedOrder.orderId],
+              )}
+              onAddItems={() => startKitchenAmendment(confirmedOrder.orderId)}
+              onRetryPendingAmendment={() => {
+                const pending =
+                  usePosWorkspaceStore.getState().workspace?.pendingKitchenAmendments[
+                    confirmedOrder.orderId
+                  ];
+                if (pending)
+                  amendmentMutation.mutate({
+                    orderId: confirmedOrder.orderId,
+                    payload: pending.payload,
+                  });
+              }}
               onCheckout={() => setCheckoutOrderId(confirmedOrder.orderId)}
               onNewOrder={createDraft}
             />
@@ -887,162 +1143,238 @@ export function POSCatalogScreen() {
                 className="order-scroll flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden"
                 data-pos-order-scroll
               >
-                <div className="border-b border-border p-5 max-[767px]:p-4">
-                  <div className="mb-4 flex items-center justify-between max-[767px]:mb-2">
-                    <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                      {t('Current order')}
-                    </span>
-                    <span className="font-mono text-xs text-muted-foreground">
-                      #{activeDraft?.id.slice(0, 6) ?? '—'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <h2 className="truncate text-xl font-semibold max-[767px]:text-base">
-                        {activeDraft?.fulfillment === 'dine-in'
-                          ? `${t('Table')} ${diningTablesQuery.data?.find((table) => table.id === activeDraft.tableId)?.code ?? ''}`
-                          : t(activeDraft?.fulfillment === 'delivery' ? 'Delivery' : 'Takeaway')}
-                      </h2>
-                      <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                        {activeDraft?.customerName || t('Walk-in customer')}
-                      </p>
+                {amendingOrderId ? (
+                  <div className="shrink-0 border-b border-border py-3 ps-4 pe-14">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <span className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                          {t('Add items to order')}
+                        </span>
+                        <h2 className="mt-1 truncate text-base font-semibold">
+                          ORD-{amendingOrderId.slice(0, 8).toUpperCase()}
+                        </h2>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {t(
+                            'Previously sent items stay unchanged. These additions will be sent as a new kitchen update.',
+                          )}
+                        </p>
+                      </div>
+                      {!pendingKitchenAmendment && (
+                        <PosButton
+                          type="button"
+                          variant="outline"
+                          className="min-h-9 shrink-0 px-3 text-xs"
+                          onClick={leaveKitchenAmendment}
+                        >
+                          {t('Back to order')}
+                        </PosButton>
+                      )}
                     </div>
-                    <PosButton
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      aria-label={t('New order')}
-                      disabled={Boolean(pendingSale)}
-                      onClick={createDraft}
-                      className="size-9 shrink-0"
-                    >
-                      <Plus aria-hidden="true" size={16} />
-                    </PosButton>
                   </div>
-                  <div className="mt-3 flex items-center justify-between gap-2 max-[767px]:mt-2">
-                    <span className="inline-flex items-center gap-1.5 rounded-md bg-[var(--pos-active)] px-2 py-1 text-[11px] font-semibold text-[var(--pos-active-ink)]">
-                      <span className="size-1.5 rounded-full bg-current" />
-                      {t('Open order')}
-                    </span>
-                    <span className="truncate text-[11px] text-muted-foreground">
-                      {t('Saved draft')}
-                    </span>
+                ) : (
+                  <div className="shrink-0 border-b border-border py-2 ps-3 pe-14">
+                    <div className="flex min-h-9 items-center gap-3">
+                      <span className="text-sm font-semibold">{t('Current order')}</span>
+                      <span className="font-mono text-xs text-primary">
+                        #{activeDraft?.id.slice(0, 6) ?? '—'}
+                      </span>
+                      <PosButton
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        aria-label={t('New order')}
+                        disabled={Boolean(pendingSale)}
+                        onClick={createDraft}
+                        className="ms-auto size-9 shrink-0"
+                      >
+                        <Plus aria-hidden="true" size={16} />
+                      </PosButton>
+                    </div>
+                    {activeDraft?.customerName && (
+                      <p className="text-xs leading-5 text-muted-foreground">
+                        {activeDraft.customerName}
+                      </p>
+                    )}
                   </div>
-                </div>
+                )}
 
-                <div
-                  className="grid grid-cols-3 gap-1 border-b border-border p-3 max-[767px]:p-2"
-                  role="group"
-                  aria-label={t('Fulfillment type')}
-                >
-                  {(
-                    [
-                      ['dine-in', 'Dine in'],
-                      ['takeaway', 'Takeaway'],
-                      ['delivery', 'Delivery'],
-                    ] as const
-                  ).map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      aria-pressed={activeDraft?.fulfillment === value}
-                      disabled={Boolean(pendingSale)}
-                      onClick={() => updateDraft((draft) => ({ ...draft, fulfillment: value }))}
+                {!amendingOrderId && (
+                  <>
+                    <div
                       className={cn(
-                        'flex min-h-11 items-center justify-center rounded-lg border px-2 text-[11px] font-semibold transition-colors',
-                        activeDraft?.fulfillment === value
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-border bg-card text-muted-foreground hover:text-foreground',
+                        'grid shrink-0 items-start gap-2 border-b border-border p-2',
+                        activeDraft?.fulfillment === 'dine-in' && 'sm:grid-cols-2',
                       )}
                     >
-                      {t(label)}
-                    </button>
-                  ))}
-                </div>
+                      <div
+                        className="grid shrink-0 grid-cols-3 gap-1"
+                        role="group"
+                        aria-label={t('Fulfillment type')}
+                      >
+                        {(
+                          [
+                            ['dine-in', 'Dine in'],
+                            ['takeaway', 'Takeaway'],
+                            ['delivery', 'Delivery'],
+                          ] as const
+                        ).map(([value, label]) => (
+                          <button
+                            key={value}
+                            type="button"
+                            aria-pressed={activeDraft?.fulfillment === value}
+                            disabled={Boolean(pendingSale)}
+                            onClick={() =>
+                              updateDraft((draft) => ({ ...draft, fulfillment: value }))
+                            }
+                            className={cn(
+                              'flex min-h-9 items-center justify-center rounded-lg border px-2 text-xs font-semibold transition-colors [@media(pointer:coarse)]:min-h-11',
+                              activeDraft?.fulfillment === value
+                                ? 'border-primary bg-primary text-primary-foreground'
+                                : 'border-border bg-card text-muted-foreground hover:text-foreground',
+                            )}
+                          >
+                            {t(label)}
+                          </button>
+                        ))}
+                      </div>
 
-                {activeDraft?.fulfillment === 'dine-in' && (
-                  <label className="grid gap-1 px-3 pt-2 text-[11px] text-muted-foreground">
-                    <span>{t('Table')}</span>
-                    <select
-                      className="min-h-11 rounded-lg border border-border bg-card px-3 text-base text-foreground lg:min-h-9 lg:text-xs"
-                      value={activeDraft.tableId ?? ''}
-                      disabled={Boolean(pendingSale) || diningTablesQuery.isLoading}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        updateDraft((draft) => {
-                          const next = { ...draft };
-                          if (value) next.tableId = value;
-                          else delete next.tableId;
-                          return next;
-                        });
-                      }}
+                      {activeDraft?.fulfillment === 'dine-in' && (
+                        <label className="grid min-w-0 gap-1 text-[11px] text-muted-foreground">
+                          <span className="sr-only">{t('Table')}</span>
+                          <select
+                            className="min-h-11 rounded-lg border border-border bg-card px-3 text-base text-foreground lg:min-h-9 lg:text-xs"
+                            value={activeDraft.tableId ?? ''}
+                            disabled={Boolean(pendingSale) || diningTablesQuery.isLoading}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              updateDraft((draft) => {
+                                const next = { ...draft };
+                                if (value) next.tableId = value;
+                                else delete next.tableId;
+                                return next;
+                              });
+                            }}
+                          >
+                            <option value="">{t('Select a table')}</option>
+                            {(diningTablesQuery.data ?? []).map((table) => (
+                              <option key={table.id} value={table.id}>
+                                {table.code} ·{' '}
+                                {table.occupancy === 'occupied'
+                                  ? t('Occupied · add round')
+                                  : t('Available')}
+                              </option>
+                            ))}
+                          </select>
+                          {diningTablesQuery.error && (
+                            <small role="alert" className="text-destructive">
+                              {errorText(
+                                diningTablesQuery.error instanceof Error
+                                  ? diningTablesQuery.error.message
+                                  : t('Could not load tables.'),
+                              )}
+                            </small>
+                          )}
+                          {!diningTablesQuery.isLoading && diningTablesQuery.data?.length === 0 && (
+                            <small>
+                              {t('No active tables. Ask the owner to configure dining tables.')}
+                            </small>
+                          )}
+                        </label>
+                      )}
+                    </div>
+                    {activeDraft?.fulfillment === 'delivery' && (
+                      <div className="grid shrink-0 grid-cols-2 gap-2 p-3">
+                        <Input
+                          aria-label={t('Customer name')}
+                          placeholder={t('Customer name')}
+                          value={activeDraft.customerName ?? ''}
+                          disabled={Boolean(pendingSale)}
+                          onChange={(event) =>
+                            updateDraft((draft) => ({ ...draft, customerName: event.target.value }))
+                          }
+                          className="h-11 min-w-0 rounded-lg text-base lg:h-9 lg:text-xs"
+                        />
+                        <Input
+                          aria-label={t('Phone number')}
+                          placeholder={t('Phone number')}
+                          inputMode="tel"
+                          value={activeDraft.customerPhone ?? ''}
+                          disabled={Boolean(pendingSale)}
+                          onChange={(event) =>
+                            updateDraft((draft) => ({
+                              ...draft,
+                              customerPhone: event.target.value,
+                            }))
+                          }
+                          className="h-11 min-w-0 rounded-lg text-base lg:h-9 lg:text-xs"
+                        />
+                        <Textarea
+                          aria-label={t('Delivery address')}
+                          placeholder={t('Delivery address')}
+                          value={activeDraft.deliveryAddress ?? ''}
+                          disabled={Boolean(pendingSale)}
+                          onChange={(event) =>
+                            updateDraft((draft) => ({
+                              ...draft,
+                              deliveryAddress: event.target.value,
+                            }))
+                          }
+                          className="col-span-2 min-h-14 rounded-lg text-base lg:text-xs"
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+
+                <div
+                  className="order-scroll shrink-0 px-3 py-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
+                  data-testid="cart-items-scroll"
+                >
+                  {amendingOrderId && (
+                    <section
+                      aria-label={t('Previously sent items')}
+                      className="mb-3 rounded-lg border border-border bg-secondary/40 p-3"
+                      data-testid="kitchen-amendment-existing-items"
                     >
-                      <option value="">{t('Select a table')}</option>
-                      {(diningTablesQuery.data ?? []).map((table) => (
-                        <option key={table.id} value={table.id}>
-                          {table.code} ·{' '}
-                          {table.occupancy === 'occupied'
-                            ? t('Occupied · add round')
-                            : t('Available')}
-                        </option>
-                      ))}
-                    </select>
-                    {diningTablesQuery.error && (
-                      <small role="alert" className="text-destructive">
-                        {errorText(
-                          diningTablesQuery.error instanceof Error
-                            ? diningTablesQuery.error.message
-                            : t('Could not load tables.'),
-                        )}
-                      </small>
-                    )}
-                    {!diningTablesQuery.isLoading && diningTablesQuery.data?.length === 0 && (
-                      <small>
-                        {t('No active tables. Ask the owner to configure dining tables.')}
-                      </small>
-                    )}
-                  </label>
-                )}
-                {activeDraft?.fulfillment === 'delivery' && (
-                  <div className="grid gap-2 p-3">
-                    <Input
-                      aria-label={t('Customer name')}
-                      placeholder={t('Customer name')}
-                      value={activeDraft.customerName ?? ''}
-                      disabled={Boolean(pendingSale)}
-                      onChange={(event) =>
-                        updateDraft((draft) => ({ ...draft, customerName: event.target.value }))
-                      }
-                      className="h-11 rounded-lg text-base lg:h-9 lg:text-xs"
-                    />
-                    <Input
-                      aria-label={t('Phone number')}
-                      placeholder={t('Phone number')}
-                      inputMode="tel"
-                      value={activeDraft.customerPhone ?? ''}
-                      disabled={Boolean(pendingSale)}
-                      onChange={(event) =>
-                        updateDraft((draft) => ({ ...draft, customerPhone: event.target.value }))
-                      }
-                      className="h-11 rounded-lg text-base lg:h-9 lg:text-xs"
-                    />
-                    <Textarea
-                      aria-label={t('Delivery address')}
-                      placeholder={t('Delivery address')}
-                      value={activeDraft.deliveryAddress ?? ''}
-                      disabled={Boolean(pendingSale)}
-                      onChange={(event) =>
-                        updateDraft((draft) => ({ ...draft, deliveryAddress: event.target.value }))
-                      }
-                      className="min-h-14 rounded-lg text-base lg:text-xs"
-                    />
-                  </div>
-                )}
-
-                <div className="order-scroll shrink-0 p-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:p-5">
+                      <h3 className="mb-2 text-xs font-semibold">{t('Previously sent items')}</h3>
+                      {amendmentOrderQuery.isLoading ? (
+                        <p className="m-0 text-xs text-muted-foreground" role="status">
+                          {t('Loading order details...')}
+                        </p>
+                      ) : amendmentOrderQuery.isError || !amendmentOrder ? (
+                        <p className="m-0 text-xs text-destructive" role="alert">
+                          {errorText(t('Could not load the confirmed order.'))}
+                        </p>
+                      ) : (
+                        <ul className="m-0 grid list-none gap-1 p-0 text-xs text-muted-foreground">
+                          {amendmentOrder.lines.map((line) => (
+                            <li key={line.id} className="flex items-start justify-between gap-2">
+                              <span className="min-w-0 break-words">
+                                {line.productName}
+                                {line.variantName ? ` · ${line.variantName}` : ''}
+                              </span>
+                              <bdi className="shrink-0 tabular-nums">×{line.quantity}</bdi>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {amendmentPaymentQuery.isError && (
+                        <p className="mt-2 text-xs text-destructive" role="alert">
+                          {t('Could not verify payment status. Retry before collecting.')}
+                        </p>
+                      )}
+                      {!amendmentPaymentQuery.isLoading && !amendmentAllowed && (
+                        <p className="mt-2 text-xs text-warning" role="status">
+                          {t(
+                            'Additions are available only before kitchen acceptance and before any payment or check split.',
+                          )}
+                        </p>
+                      )}
+                    </section>
+                  )}
                   {activeDraft?.lines.length ? (
                     <section aria-label={t('New items')}>
-                      <div className="mb-3 flex items-center justify-between max-[767px]:mb-2">
+                      <div className="mb-2 flex items-center justify-between">
                         <h3 className="text-xs font-semibold uppercase tracking-wider">
                           {t('New items')}
                         </h3>
@@ -1050,7 +1382,7 @@ export function POSCatalogScreen() {
                           {t('{{count}} items', { count: cartCount })}
                         </span>
                       </div>
-                      <div className="space-y-3">
+                      <div className={cn('grid gap-2', cartExpanded && 'lg:grid-cols-2')}>
                         {activeDraft.lines.map((line) => {
                           const quote = lineQuoteById.get(line.id);
                           const product = products.find((item) => item.id === line.productId);
@@ -1060,38 +1392,34 @@ export function POSCatalogScreen() {
                           const selectionSummary = summarizeSelections(product, line, t);
                           return (
                             <article
-                              className="pos-live-cart-line rounded-xl border border-border px-1.5"
+                              className="pos-live-cart-line @container/item rounded-xl border border-border bg-background/40 px-3 py-1.5"
                               data-testid="order-draft-line"
                               key={line.id}
                             >
-                              <div className="flex min-w-0 items-center gap-2 max-[767px]:gap-1">
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex min-h-9 items-center gap-2 text-start text-sm font-semibold max-[767px]:gap-1 max-[767px]:text-[11px]">
-                                    <span className="min-w-0 flex-1 truncate">
+                              <div
+                                className={cn(
+                                  'min-w-0',
+                                  cartExpanded
+                                    ? '@[520px]/item:grid @[520px]/item:grid-cols-[minmax(0,1fr)_auto] @[520px]/item:items-center @[520px]/item:gap-3'
+                                    : 'lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-2 lg:gap-y-0.5',
+                                )}
+                              >
+                                <div
+                                  className={cn('min-w-0 flex-1', !cartExpanded && 'lg:contents')}
+                                >
+                                  <div
+                                    className={cn(
+                                      'flex items-start justify-between gap-3 text-start text-sm font-semibold leading-5',
+                                      !cartExpanded && 'lg:col-span-2',
+                                    )}
+                                  >
+                                    <span
+                                      className="min-w-0 flex-1 break-words"
+                                      data-testid="cart-item-name"
+                                    >
                                       {product?.name ?? t('Product')}
                                     </span>
-                                    {product && productHasChoices(product) && (
-                                      <PosButton
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 shrink-0 gap-1 px-1.5 text-[10px] font-semibold"
-                                        aria-label={`${t('Edit options')}: ${product.name}`}
-                                        disabled={Boolean(pendingSale)}
-                                        onClick={() => editConfiguredProduct(line, product)}
-                                      >
-                                        <Pencil aria-hidden="true" size={12} />
-                                        {t('Edit')}
-                                      </PosButton>
-                                    )}
-                                  </div>
-                                  <div className="flex min-w-0 items-center justify-between gap-1 text-xs text-muted-foreground max-[767px]:text-[10px]">
-                                    <p className="truncate">
-                                      {[variant?.name, selectionSummary]
-                                        .filter(Boolean)
-                                        .join(' · ') || t('Regular')}
-                                    </p>
-                                    <strong className="shrink-0 text-sm tabular-nums text-foreground max-[767px]:text-[10px]">
+                                    <strong className="shrink-0 text-sm tabular-nums text-primary">
                                       {quote
                                         ? formatNumber(Number(quote.lineTotal), {
                                             style: 'currency',
@@ -1100,74 +1428,123 @@ export function POSCatalogScreen() {
                                         : t('Updating...')}
                                     </strong>
                                   </div>
-                                  <details className="pos-item-note-editor mt-1 text-[10px] text-muted-foreground">
-                                    <summary className="cursor-pointer truncate">
-                                      {line.note
-                                        ? `${t('Item note')}: ${line.note}`
-                                        : t('Item note')}
-                                    </summary>
-                                    <Input
-                                      aria-label={t('Item note for {{product}}', {
-                                        product: product?.name ?? '',
-                                      })}
-                                      placeholder={t('Item note')}
-                                      value={line.note}
-                                      disabled={Boolean(pendingSale)}
-                                      onChange={(event) =>
-                                        updateDraft((draft) => ({
-                                          ...draft,
-                                          lines: draft.lines.map((item) =>
-                                            item.id === line.id
-                                              ? { ...item, note: event.target.value }
-                                              : item,
-                                          ),
-                                        }))
-                                      }
-                                      className="mt-1 h-11 rounded-lg text-base lg:h-8 lg:text-xs"
-                                    />
-                                  </details>
+                                  <div
+                                    className={cn(
+                                      'mt-1 flex flex-wrap items-baseline gap-x-3 text-xs leading-5 text-muted-foreground',
+                                      !cartExpanded && 'lg:contents',
+                                    )}
+                                  >
+                                    <p
+                                      className={cn(
+                                        'max-w-full break-words',
+                                        !cartExpanded &&
+                                          'lg:col-start-1 lg:row-start-2 lg:min-w-0 lg:self-center',
+                                      )}
+                                      data-testid="cart-item-options"
+                                    >
+                                      {[variant?.name, selectionSummary]
+                                        .filter(Boolean)
+                                        .join(' · ') || t('Regular')}
+                                    </p>
+                                    <details
+                                      className={cn(
+                                        'pos-item-note-editor min-w-0 flex-1 open:basis-full',
+                                        !cartExpanded && 'lg:col-span-2 lg:row-start-3',
+                                      )}
+                                    >
+                                      <summary className="cursor-pointer break-words">
+                                        {line.note
+                                          ? `${t('Item note')}: ${line.note}`
+                                          : t('Item note')}
+                                      </summary>
+                                      <Input
+                                        aria-label={t('Item note for {{product}}', {
+                                          product: product?.name ?? '',
+                                        })}
+                                        placeholder={t('Item note')}
+                                        value={line.note}
+                                        disabled={Boolean(pendingSale)}
+                                        onChange={(event) =>
+                                          updateDraft((draft) => ({
+                                            ...draft,
+                                            lines: draft.lines.map((item) =>
+                                              item.id === line.id
+                                                ? { ...item, note: event.target.value }
+                                                : item,
+                                            ),
+                                          }))
+                                        }
+                                        className="mt-1 h-11 rounded-lg text-base lg:h-8 lg:text-xs"
+                                      />
+                                    </details>
+                                  </div>
                                 </div>
-                                <div className="flex shrink-0 items-center gap-1 max-[767px]:gap-0">
-                                  <PosButton
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    className="size-8 max-[767px]:size-11 max-[767px]:border-transparent max-[767px]:bg-transparent max-[767px]:p-0 max-[767px]:shadow-none"
-                                    aria-label={`${t('Decrease quantity')}: ${product?.name ?? ''}`}
-                                    disabled={Boolean(pendingSale)}
-                                    onClick={() => changeLineQuantity(line.id, line.quantity - 1)}
-                                  >
-                                    <span className="flex size-7 items-center justify-center rounded-md max-[767px]:border max-[767px]:border-border max-[767px]:bg-card">
-                                      <Minus size={14} />
+                                <div
+                                  className={cn(
+                                    'mt-2 flex items-center justify-between gap-2',
+                                    cartExpanded
+                                      ? '@[520px]/item:mt-0'
+                                      : 'lg:col-start-2 lg:row-start-2 lg:mt-0',
+                                  )}
+                                >
+                                  {product && productHasChoices(product) ? (
+                                    <PosButton
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 gap-1 px-2 text-xs max-[767px]:min-h-11 [@media(pointer:coarse)]:min-h-11"
+                                      aria-label={`${t('Edit options')}: ${product.name}`}
+                                      disabled={Boolean(pendingSale)}
+                                      onClick={() => editConfiguredProduct(line, product)}
+                                    >
+                                      <Pencil aria-hidden="true" size={12} />
+                                      {t('Edit')}
+                                    </PosButton>
+                                  ) : (
+                                    <span />
+                                  )}
+                                  <div className="flex shrink-0 items-center gap-1">
+                                    <PosButton
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      className="size-8 max-[767px]:size-11 [@media(pointer:coarse)]:size-11"
+                                      aria-label={`${t('Decrease quantity')}: ${product?.name ?? ''}`}
+                                      disabled={Boolean(pendingSale)}
+                                      onClick={() => changeLineQuantity(line.id, line.quantity - 1)}
+                                    >
+                                      <span className="flex size-7 items-center justify-center rounded-md max-[767px]:border max-[767px]:border-border max-[767px]:bg-card">
+                                        <Minus size={14} />
+                                      </span>
+                                    </PosButton>
+                                    <span className="min-w-7 text-center text-sm font-semibold tabular-nums text-primary">
+                                      {formatNumber(line.quantity)}
                                     </span>
-                                  </PosButton>
-                                  <span className="w-5 text-center text-[11px] font-semibold tabular-nums">
-                                    {formatNumber(line.quantity)}
-                                  </span>
-                                  <PosButton
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    className="size-8 max-[767px]:size-11 max-[767px]:border-transparent max-[767px]:bg-transparent max-[767px]:p-0 max-[767px]:shadow-none"
-                                    aria-label={`${t('Increase quantity')}: ${product?.name ?? ''}`}
-                                    disabled={Boolean(pendingSale)}
-                                    onClick={() => changeLineQuantity(line.id, line.quantity + 1)}
-                                  >
-                                    <span className="flex size-7 items-center justify-center rounded-md max-[767px]:border max-[767px]:border-border max-[767px]:bg-card">
-                                      <Plus size={14} />
-                                    </span>
-                                  </PosButton>
-                                  <PosButton
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    className="size-8 max-[767px]:size-11"
-                                    aria-label={`${t('Remove item')}: ${product?.name ?? ''}`}
-                                    disabled={Boolean(pendingSale)}
-                                    onClick={() => changeLineQuantity(line.id, 0)}
-                                  >
-                                    <Trash2 size={13} />
-                                  </PosButton>
+                                    <PosButton
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      className="size-8 max-[767px]:size-11 [@media(pointer:coarse)]:size-11"
+                                      aria-label={`${t('Increase quantity')}: ${product?.name ?? ''}`}
+                                      disabled={Boolean(pendingSale)}
+                                      onClick={() => changeLineQuantity(line.id, line.quantity + 1)}
+                                    >
+                                      <span className="flex size-7 items-center justify-center rounded-md max-[767px]:border max-[767px]:border-border max-[767px]:bg-card">
+                                        <Plus size={14} />
+                                      </span>
+                                    </PosButton>
+                                    <PosButton
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      className="ms-2 size-8 max-[767px]:size-11 [@media(pointer:coarse)]:size-11"
+                                      aria-label={`${t('Remove item')}: ${product?.name ?? ''}`}
+                                      disabled={Boolean(pendingSale)}
+                                      onClick={() => changeLineQuantity(line.id, 0)}
+                                    >
+                                      <Trash2 size={13} />
+                                    </PosButton>
+                                  </div>
                                 </div>
                               </div>
                             </article>
@@ -1184,29 +1561,59 @@ export function POSCatalogScreen() {
                   )}
                 </div>
               </div>
-              <div className="shrink-0 space-y-2 border-t border-border bg-card p-3 lg:space-y-3 lg:p-5">
-                <div className="space-y-2 text-sm max-[767px]:space-y-1.5 max-[767px]:text-[13px]">
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>{t('Subtotal')}</span>
-                    <span className="tabular-nums">
-                      {formatNumber(Number(subtotal), { style: 'currency', currency: 'EGP' })}
-                    </span>
+              <div
+                className={cn(
+                  'shrink-0 gap-2 border-t border-border bg-card px-3 py-2',
+                  amendingOrderId
+                    ? 'grid'
+                    : 'grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center [&>p]:col-span-2 [&>a]:col-span-2 [&>span]:col-span-2',
+                )}
+              >
+                {amendingOrderId ? (
+                  <div className="grid gap-1.5 text-sm">
+                    <div className="flex items-center justify-between gap-3 text-muted-foreground">
+                      <span>{t('Added items')}</span>
+                      <bdi className="tabular-nums">
+                        {formatNumber(Number(subtotal), { style: 'currency', currency: 'EGP' })}
+                      </bdi>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
+                      <strong className="text-[13px]">{t('New order total')}</strong>
+                      <strong className="text-xl tabular-nums tracking-tight text-primary">
+                        {formatNumber(Number(amendedOrderTotal), {
+                          style: 'currency',
+                          currency: 'EGP',
+                        })}
+                      </strong>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-[13px] font-semibold">{t('Total')}</span>
-                    <strong className="text-2xl tabular-nums tracking-tight max-[767px]:text-xl">
-                      {formatNumber(Number(subtotal), { style: 'currency', currency: 'EGP' })}
-                    </strong>
+                ) : (
+                  <div className="text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[13px] font-semibold">{t('Total')}</span>
+                      <strong className="text-xl tabular-nums tracking-tight text-primary">
+                        {formatNumber(Number(subtotal), { style: 'currency', currency: 'EGP' })}
+                      </strong>
+                    </div>
                   </div>
-                </div>
+                )}
                 <p className="text-[10px] text-muted-foreground">
-                  {t(
-                    'Payment is recorded in the next checkout step. No payment has been collected yet.',
-                  )}
+                  {amendingOrderId
+                    ? t('The kitchen receives only these new items. No payment is collected here.')
+                    : t(
+                        'Payment is recorded in the next checkout step. No payment has been collected yet.',
+                      )}
                 </p>
                 {pendingSale && (
                   <p className="text-xs text-warning" role="status">
                     {t('A sale request is saved. Retry this exact request to check its result.')}
+                  </p>
+                )}
+                {pendingKitchenAmendment && (
+                  <p className="text-xs text-warning" role="status">
+                    {t(
+                      'An added-items request is saved. Retry the exact request to check its result.',
+                    )}
                   </p>
                 )}
                 {!shiftQuery.data && (
@@ -1219,7 +1626,7 @@ export function POSCatalogScreen() {
                     {t('Orders can be drafted offline but must be confirmed online.')}
                   </span>
                 )}
-                {quoteQuery.error && !pendingSale && (
+                {quoteQuery.error && !pendingSale && !pendingKitchenAmendment && (
                   <p
                     className="rounded-lg border border-destructive/30 bg-card p-3 text-xs text-destructive"
                     role="alert"
@@ -1234,26 +1641,43 @@ export function POSCatalogScreen() {
                 <PosButton
                   type="button"
                   variant="solid"
-                  className="h-11 w-full text-sm font-bold"
+                  className={cn(
+                    'h-11 w-full text-sm font-bold',
+                    !amendingOrderId && 'col-start-2 row-start-1',
+                  )}
                   disabled={
                     !activeDraft?.lines.length ||
-                    (activeDraft?.fulfillment === 'dine-in' &&
-                      (!activeDraft.tableId ||
-                        diningTablesQuery.isError ||
-                        diningTablesQuery.isLoading)) ||
                     !shiftQuery.data ||
                     !online ||
-                    createMutation.isPending ||
-                    (!pendingSale &&
-                      (!quoteQuery.data || quoteQuery.isFetching || quoteQuery.isError))
+                    (amendingOrderId
+                      ? amendmentMutation.isPending ||
+                        (!pendingKitchenAmendment &&
+                          (!amendmentAllowed ||
+                            !amendmentPayment ||
+                            !quoteQuery.data ||
+                            quoteQuery.isFetching ||
+                            quoteQuery.isError))
+                      : (activeDraft?.fulfillment === 'dine-in' &&
+                          (!activeDraft.tableId ||
+                            diningTablesQuery.isError ||
+                            diningTablesQuery.isLoading)) ||
+                        createMutation.isPending ||
+                        (!pendingSale &&
+                          (!quoteQuery.data || quoteQuery.isFetching || quoteQuery.isError)))
                   }
                   onClick={confirmOrder}
                 >
-                  {createMutation.isPending
-                    ? t('Saving order...')
-                    : pendingSale
-                      ? t('Retry saved sale')
-                      : t('Confirm order')}
+                  {amendingOrderId
+                    ? amendmentMutation.isPending
+                      ? t('Sending added items...')
+                      : pendingKitchenAmendment
+                        ? t('Retry saved item addition')
+                        : t('Send added items')
+                    : createMutation.isPending
+                      ? t('Saving order...')
+                      : pendingSale
+                        ? t('Retry saved sale')
+                        : t('Confirm order')}
                   <ArrowRight aria-hidden="true" className="ms-auto rtl:rotate-180" size={17} />
                 </PosButton>
               </div>
@@ -1288,7 +1712,7 @@ export function POSCatalogScreen() {
         >
           <ShoppingBag size={17} className="shrink-0" aria-hidden="true" />
           <span className="truncate">
-            {t('View order')}{' '}
+            {t(amendingOrderId ? 'Added items' : 'View order')}{' '}
             <span className="rounded-md bg-background/20 px-1.5 py-0.5 text-[11px] tabular-nums">
               {confirmedOrder
                 ? confirmedSummary
@@ -1300,32 +1724,37 @@ export function POSCatalogScreen() {
             </span>
           </span>
           <bdi className="ms-auto shrink-0 text-xs font-semibold tabular-nums">
-            {confirmedOrder
-              ? confirmedSummary
-                ? formatNumber(Number(confirmedSummary.total), {
-                    style: 'currency',
-                    currency: confirmedSummary.currency,
-                  })
-                : t(confirmedSummaryQuery.isError ? 'Total unavailable' : 'Loading…')
-              : !cartCount
-                ? formatNumber(0, { style: 'currency', currency: 'EGP' })
-                : quoteQuery.isError
-                  ? t('Total unavailable')
-                  : quoteQuery.isFetching
-                    ? t('Updating...')
-                    : quoteQuery.data
-                      ? formatNumber(Number(quoteQuery.data.total), {
-                          style: 'currency',
-                          currency: quoteQuery.data.currency,
-                        })
-                      : t('Updating...')}
+            {amendingOrderId
+              ? formatNumber(Number(amendedOrderTotal), {
+                  style: 'currency',
+                  currency: amendmentOrder?.currency ?? 'EGP',
+                })
+              : confirmedOrder
+                ? confirmedSummary
+                  ? formatNumber(Number(confirmedSummary.total), {
+                      style: 'currency',
+                      currency: confirmedSummary.currency,
+                    })
+                  : t(confirmedSummaryQuery.isError ? 'Total unavailable' : 'Loading…')
+                : !cartCount
+                  ? formatNumber(0, { style: 'currency', currency: 'EGP' })
+                  : quoteQuery.isError
+                    ? t('Total unavailable')
+                    : quoteQuery.isFetching
+                      ? t('Updating...')
+                      : quoteQuery.data
+                        ? formatNumber(Number(quoteQuery.data.total), {
+                            style: 'currency',
+                            currency: quoteQuery.data.currency,
+                          })
+                        : t('Updating...')}
           </bdi>
         </PosButton>
       </div>
 
       <PosOrderSwitcher
         entries={switcherEntries}
-        selectedId={confirmedOrder?.orderId ?? activeDraft?.id ?? ''}
+        selectedId={amendingOrderId ?? confirmedOrder?.orderId ?? activeDraft?.id ?? ''}
         emptyCount={
           drafts.filter(
             (draft) =>
@@ -1336,6 +1765,7 @@ export function POSCatalogScreen() {
         }
         onSelect={(entry) => {
           runWorkspaceAction(() => {
+            setAmendingOrderId(null);
             if (entry.kind === 'draft') selectDraft(employee.merchantId, employee.id, entry.id);
             else selectConfirmedOrder(employee.merchantId, employee.id, entry.id);
             setMobileView('order');
@@ -1372,6 +1802,7 @@ export function POSCatalogScreen() {
           merchantId={employee.merchantId}
           employeeId={employee.id}
           branchId={selectedBranchId}
+          requiresRefundApproval={!employee.permissions.includes('approve_refunds')}
           orderId={checkoutOrderId}
           onClose={() => setCheckoutOrderId('')}
         />

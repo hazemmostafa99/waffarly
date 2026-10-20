@@ -4,7 +4,9 @@ import {
   readPosWorkspace,
   posWorkspaceStorageKey,
   usePosWorkspaceStore,
+  type PendingPosItemReturn,
   type PendingPosPayment,
+  type PendingPosRefund,
   type PosOrderDraft,
 } from './pos-workspace-store.js';
 
@@ -211,6 +213,106 @@ test('confirmed sale references replace drafts atomically, survive reload and st
   }
 });
 
+test('kitchen additions persist the exact retry and protect their draft until the result is saved', () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const localStorage = new MemoryStorage();
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { localStorage, sessionStorage: new MemoryStorage() },
+  });
+  const merchantId = 'amendment-merchant';
+  const employeeId = 'amendment-employee';
+  const store = usePosWorkspaceStore.getState();
+  try {
+    store.hydrate(merchantId, employeeId);
+    store.selectBranch(merchantId, employeeId, 'branch');
+    const saleDraftId = store.startDraft(merchantId, employeeId);
+    const sale = {
+      requestId: 'initial-sale',
+      payload: {
+        requestId: 'initial-sale',
+        registerId: 'register',
+        fulfillmentType: 'takeaway' as const,
+        items: [
+          {
+            lineId: 'initial-line',
+            productId: 'product',
+            quantity: 1,
+            expectedProductRevision: 1,
+            selections: [],
+          },
+        ],
+      },
+    };
+    store.savePendingSale(merchantId, employeeId, saleDraftId, sale);
+    store.completeSale(merchantId, employeeId, saleDraftId, sale.requestId, {
+      id: 'order',
+      createdAt: '2026-10-19T08:00:00.000Z',
+    });
+
+    const amendmentDraftId = store.startDraft(merchantId, employeeId);
+    const pending = {
+      requestId: 'exact-amendment-request',
+      draftId: amendmentDraftId,
+      payload: {
+        requestId: 'exact-amendment-request',
+        revision: 1,
+        items: [
+          {
+            lineId: 'added-line',
+            productId: 'product',
+            quantity: 1,
+            expectedProductRevision: 1,
+            selections: [],
+          },
+        ],
+      },
+    };
+    store.savePendingKitchenAmendment(merchantId, employeeId, 'order', pending);
+    store.savePendingKitchenAmendment(merchantId, employeeId, 'order', pending);
+    assert.throws(
+      () =>
+        store.savePendingKitchenAmendment(merchantId, employeeId, 'order', {
+          ...pending,
+          requestId: 'changed-request',
+          payload: { ...pending.payload, requestId: 'changed-request' },
+        }),
+      /Resolve the saved kitchen addition/,
+    );
+    assert.throws(
+      () => store.removeDraft(merchantId, employeeId, amendmentDraftId),
+      /Resolve the saved kitchen addition/,
+    );
+    store.selectConfirmedOrder(merchantId, employeeId, 'order');
+    store.discardEmptyDrafts(merchantId, employeeId);
+    assert.ok(usePosWorkspaceStore.getState().workspace?.drafts[amendmentDraftId]);
+
+    const deviceId = localStorage.getItem('waffarly:pos:device:v1')!;
+    const restored = readPosWorkspace(merchantId, employeeId, deviceId, localStorage, null);
+    assert.deepEqual(restored.pendingKitchenAmendments.order, pending);
+    store.completeKitchenAmendment(
+      merchantId,
+      employeeId,
+      'order',
+      pending.requestId,
+      amendmentDraftId,
+    );
+    const completed = usePosWorkspaceStore.getState().workspace!;
+    assert.equal(completed.pendingKitchenAmendments.order, undefined);
+    assert.equal(completed.drafts[amendmentDraftId], undefined);
+    assert.equal(completed.selectedConfirmedOrderId, 'order');
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
+    usePosWorkspaceStore.setState({
+      activeScope: null,
+      workspace: null,
+      hydratedScope: null,
+      persistenceError: null,
+    });
+  }
+});
+
 test('workspace persistence is tenant, employee, branch and device scoped and migrates uncertain actions', () => {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
   const localStorage = new MemoryStorage();
@@ -258,6 +360,33 @@ test('workspace persistence is tenant, employee, branch and device scoped and mi
     };
     usePosWorkspaceStore.getState().selectBranch(merchantId, employeeId, 'branch-a');
     usePosWorkspaceStore.getState().saveDraft(merchantId, employeeId, draft);
+    const pendingHandover = {
+      action: 'handover',
+      requestId: 'request-handover',
+    } as const;
+    usePosWorkspaceStore
+      .getState()
+      .savePendingAction(merchantId, employeeId, 'order-handover', pendingHandover);
+    const pendingItemReady = {
+      action: 'item_ready',
+      requestId: 'request-item-ready',
+      lineId: 'line-a',
+    } as const;
+    usePosWorkspaceStore
+      .getState()
+      .savePendingAction(merchantId, employeeId, 'order-item-ready', pendingItemReady);
+    assert.deepEqual(
+      readPosWorkspace(merchantId, employeeId, deviceId, localStorage, null).pendingActions[
+        'order-handover'
+      ],
+      pendingHandover,
+    );
+    assert.deepEqual(
+      readPosWorkspace(merchantId, employeeId, deviceId, localStorage, null).pendingActions[
+        'order-item-ready'
+      ],
+      pendingItemReady,
+    );
     usePosWorkspaceStore.getState().selectBranch(merchantId, employeeId, 'branch-b');
     assert.throws(
       () => usePosWorkspaceStore.getState().saveDraft(merchantId, employeeId, draft),
@@ -270,6 +399,14 @@ test('workspace persistence is tenant, employee, branch and device scoped and mi
 
     usePosWorkspaceStore.getState().hydrate(merchantId, employeeId);
     assert.deepEqual(usePosWorkspaceStore.getState().workspace?.drafts['draft-a'], draft);
+    assert.deepEqual(
+      usePosWorkspaceStore.getState().workspace?.pendingActions['order-handover'],
+      pendingHandover,
+    );
+    assert.deepEqual(
+      usePosWorkspaceStore.getState().workspace?.pendingActions['order-item-ready'],
+      pendingItemReady,
+    );
     assert.equal(usePosWorkspaceStore.getState().workspace?.selectedBranchId, 'branch-a');
   } finally {
     if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
@@ -317,6 +454,94 @@ test('shift opening envelopes persist the exact request and require explicit res
       .getState()
       .removePendingShiftOpen(merchantId, employeeId, pending.requestId);
     assert.equal(usePosWorkspaceStore.getState().workspace?.pendingShiftOpen, null);
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
+    usePosWorkspaceStore.setState({
+      activeScope: null,
+      workspace: null,
+      hydratedScope: null,
+      persistenceError: null,
+    });
+  }
+});
+
+test('cash movement and shift close recovery persist exact commands but never supervisor credentials', () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const localStorage = new MemoryStorage();
+  const sessionStorage = new MemoryStorage();
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { localStorage, sessionStorage },
+  });
+
+  try {
+    const merchantId = 'merchant-reconciliation';
+    const employeeId = 'employee-reconciliation';
+    usePosWorkspaceStore.getState().hydrate(merchantId, employeeId);
+    usePosWorkspaceStore.getState().selectBranch(merchantId, employeeId, 'branch-reconciliation');
+    const movement = {
+      branchId: 'branch-reconciliation',
+      registerId: 'register-reconciliation',
+      shiftId: 'shift-reconciliation',
+      request: {
+        requestId: 'cash-movement-retry',
+        kind: 'cash_drop' as const,
+        amount: '15.25',
+        reason: 'Change float',
+        dropReference: 'SAFE-2026-19',
+      },
+    };
+    usePosWorkspaceStore.getState().savePendingShiftCashMovement(merchantId, employeeId, movement);
+    assert.deepEqual(usePosWorkspaceStore.getState().workspace?.pendingShiftCashMovement, movement);
+    assert.throws(
+      () =>
+        usePosWorkspaceStore.getState().savePendingShiftClose(merchantId, employeeId, {
+          branchId: 'branch-reconciliation',
+          registerId: 'register-reconciliation',
+          shiftId: 'shift-reconciliation',
+          request: { requestId: 'close-blocked', countedCash: '15.25' },
+        }),
+      /Resolve the pending cash movement/,
+    );
+
+    const deviceId = usePosWorkspaceStore.getState().workspace!.deviceId;
+    const persisted = localStorage.getItem(
+      posWorkspaceStorageKey(merchantId, employeeId, deviceId),
+    )!;
+    assert.match(persisted, /"version":10/);
+    assert.doesNotMatch(persisted, /password|supervisor-secret/i);
+    usePosWorkspaceStore.setState({ activeScope: null, workspace: null, hydratedScope: null });
+    usePosWorkspaceStore.getState().hydrate(merchantId, employeeId);
+    assert.deepEqual(usePosWorkspaceStore.getState().workspace?.pendingShiftCashMovement, movement);
+    usePosWorkspaceStore
+      .getState()
+      .removePendingShiftCashMovement(merchantId, employeeId, movement.request.requestId);
+
+    const close = {
+      branchId: 'branch-reconciliation',
+      registerId: 'register-reconciliation',
+      shiftId: 'shift-reconciliation',
+      request: {
+        requestId: 'shift-close-retry',
+        countedCash: '110.00',
+        reason: 'Small drawer variance',
+      },
+    };
+    usePosWorkspaceStore.getState().savePendingShiftClose(merchantId, employeeId, close);
+    assert.deepEqual(usePosWorkspaceStore.getState().workspace?.pendingShiftClose, close);
+    assert.throws(
+      () =>
+        usePosWorkspaceStore.getState().savePendingShiftClose(merchantId, employeeId, {
+          ...close,
+          request: { ...close.request, requestId: 'replacement-close' },
+        }),
+      /Resolve the pending shift close/,
+    );
+    usePosWorkspaceStore
+      .getState()
+      .removePendingShiftClose(merchantId, employeeId, close.request.requestId);
+    assert.equal(usePosWorkspaceStore.getState().workspace?.pendingShiftClose, null);
   } finally {
     if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
     else Reflect.deleteProperty(globalThis, 'window');
@@ -425,7 +650,7 @@ test('payment recovery persists the exact branch-scoped command and restores it 
     assert.ok(deviceId);
     const storageKey = posWorkspaceStorageKey(merchantId, employeeId, deviceId);
     const persisted = JSON.parse(localStorage.getItem(storageKey)!) as { version: number };
-    assert.equal(persisted.version, 5);
+    assert.equal(persisted.version, 10);
     localStorage.setItem(
       storageKey,
       JSON.stringify({ ...JSON.parse(localStorage.getItem(storageKey)!), version: 3 }),
@@ -475,6 +700,195 @@ test('payment recovery persists the exact branch-scoped command and restores it 
       true,
     );
     assert.equal(usePosWorkspaceStore.getState().workspace?.pendingPayments[orderId], undefined);
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
+    usePosWorkspaceStore.setState({
+      activeScope: null,
+      workspace: null,
+      hydratedScope: null,
+      persistenceError: null,
+    });
+  }
+});
+
+test('cancellation recovery persists the exact branch-scoped request without supervisor credentials', () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const localStorage = new MemoryStorage();
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { localStorage, sessionStorage: new MemoryStorage() },
+  });
+  const merchantId = 'merchant-cancel';
+  const employeeId = 'employee-cashier';
+  const branchId = 'branch-cancel';
+  const orderId = 'order-cancel';
+
+  try {
+    const store = usePosWorkspaceStore.getState();
+    store.hydrate(merchantId, employeeId);
+    store.selectBranch(merchantId, employeeId, branchId);
+    const draftId = store.startDraft(merchantId, employeeId);
+    const sale = {
+      requestId: 'sale-cancel-fixture',
+      payload: { requestId: 'sale-cancel-fixture' } as never,
+    };
+    store.savePendingSale(merchantId, employeeId, draftId, sale);
+    store.completeSale(merchantId, employeeId, draftId, sale.requestId, {
+      id: orderId,
+      createdAt: '2026-10-19T08:00:00.000Z',
+    });
+    const cancellation = {
+      requestId: 'exact-cancel-command',
+      branchId,
+      reason: 'Customer changed their mind',
+    };
+    store.savePendingCancellation(merchantId, employeeId, orderId, cancellation);
+    store.savePendingCancellation(merchantId, employeeId, orderId, cancellation);
+    assert.throws(
+      () =>
+        store.savePendingCancellation(merchantId, employeeId, orderId, {
+          ...cancellation,
+          reason: 'A different reason',
+        }),
+      /Resolve the saved cancellation/,
+    );
+    assert.throws(
+      () =>
+        store.savePendingCancellation(merchantId, employeeId, orderId, {
+          ...cancellation,
+          branchId: 'another-branch',
+        }),
+      /original branch/,
+    );
+
+    const deviceId = localStorage.getItem('waffarly:pos:device:v1')!;
+    const storageKey = posWorkspaceStorageKey(merchantId, employeeId, deviceId);
+    const serialized = localStorage.getItem(storageKey)!;
+    assert.equal(serialized.includes('supervisor-password'), false);
+    const parsed = JSON.parse(serialized) as { workspace: { pendingCancellations: unknown } };
+    assert.deepEqual(parsed.workspace.pendingCancellations, { [orderId]: cancellation });
+
+    usePosWorkspaceStore.setState({
+      activeScope: null,
+      workspace: null,
+      hydratedScope: null,
+      persistenceError: null,
+    });
+    usePosWorkspaceStore.getState().hydrate(merchantId, employeeId);
+    assert.deepEqual(
+      usePosWorkspaceStore.getState().workspace?.pendingCancellations[orderId],
+      cancellation,
+    );
+    store.removePendingCancellation(merchantId, employeeId, orderId, 'wrong-request');
+    assert.deepEqual(
+      usePosWorkspaceStore.getState().workspace?.pendingCancellations[orderId],
+      cancellation,
+    );
+    store.removePendingCancellation(merchantId, employeeId, orderId, cancellation.requestId);
+    assert.equal(
+      usePosWorkspaceStore.getState().workspace?.pendingCancellations[orderId],
+      undefined,
+    );
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
+    usePosWorkspaceStore.setState({
+      activeScope: null,
+      workspace: null,
+      hydratedScope: null,
+      persistenceError: null,
+    });
+  }
+});
+
+test('refund recovery migrates, preserves exact tender allocations, and strips supervisor credentials', () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const localStorage = new MemoryStorage();
+  const sessionStorage = new MemoryStorage();
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { localStorage, sessionStorage },
+  });
+
+  try {
+    const merchantId = 'merchant-refund';
+    const employeeId = 'employee-refund';
+    const orderId = 'order-refund';
+    const checkId = 'check-refund';
+    const branchId = 'branch-refund';
+    usePosWorkspaceStore.getState().hydrate(merchantId, employeeId);
+    usePosWorkspaceStore.getState().selectBranch(merchantId, employeeId, branchId);
+    const workspace = usePosWorkspaceStore.getState().workspace!;
+    usePosWorkspaceStore.setState({
+      workspace: {
+        ...workspace,
+        confirmedOrders: {
+          [orderId]: { orderId, branchId, createdAt: '2026-10-19T00:00:00.000Z' },
+        },
+      },
+    });
+    const pending = {
+      branchId,
+      request: {
+        requestId: 'refund-request',
+        revision: 8,
+        branchId,
+        refundShiftId: 'refund-shift',
+        reason: 'Customer return',
+        allocations: [
+          { paymentId: 'cash-payment', amount: '2.50' },
+          { paymentId: 'terminal-payment', amount: '1.25', terminalReference: 'REF-123' },
+        ],
+        approval: { username: 'supervisor', password: 'never-store-me' },
+      },
+    } as unknown as PendingPosRefund;
+    usePosWorkspaceStore
+      .getState()
+      .savePendingRefund(merchantId, employeeId, orderId, checkId, pending);
+    const key = posWorkspaceStorageKey(merchantId, employeeId, workspace.deviceId);
+    const raw = localStorage.getItem(key)!;
+    assert.equal(raw.includes('never-store-me'), false);
+    assert.equal(raw.includes('approval'), false);
+    assert.equal(JSON.parse(raw).version, 10);
+    usePosWorkspaceStore.setState({ activeScope: null, hydratedScope: null, workspace: null });
+    usePosWorkspaceStore.getState().hydrate(merchantId, employeeId);
+    const saved =
+      usePosWorkspaceStore.getState().workspace?.pendingRefunds[`${orderId}:${checkId}`];
+    assert.deepEqual(saved, {
+      branchId,
+      request: {
+        requestId: 'refund-request',
+        revision: 8,
+        branchId,
+        refundShiftId: 'refund-shift',
+        reason: 'Customer return',
+        allocations: [
+          { paymentId: 'cash-payment', amount: '2.50' },
+          { paymentId: 'terminal-payment', amount: '1.25', terminalReference: 'REF-123' },
+        ],
+      },
+    });
+    assert.throws(
+      () =>
+        usePosWorkspaceStore
+          .getState()
+          .savePendingRefund(merchantId, employeeId, orderId, checkId, {
+            ...saved!,
+            request: { ...saved!.request, reason: 'Changed reason' },
+          }),
+      /Resolve the saved refund/,
+    );
+    assert.equal(
+      usePosWorkspaceStore
+        .getState()
+        .removePendingRefund(merchantId, employeeId, orderId, checkId, 'refund-request'),
+      true,
+    );
+    assert.equal(
+      usePosWorkspaceStore.getState().workspace?.pendingRefunds[`${orderId}:${checkId}`],
+      undefined,
+    );
   } finally {
     if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
     else Reflect.deleteProperty(globalThis, 'window');
@@ -652,6 +1066,83 @@ test('storage failures block new commands but retain and replay an existing exac
       /save this action safely/,
     );
     assert.equal(sessionStorage.getItem(legacyKey), JSON.stringify(saved));
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
+    usePosWorkspaceStore.setState({
+      activeScope: null,
+      workspace: null,
+      hydratedScope: null,
+      persistenceError: null,
+    });
+  }
+});
+
+test('item-return recovery preserves exact line quantities but never stores supervisor credentials', () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const localStorage = new MemoryStorage();
+  const sessionStorage = new MemoryStorage();
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { localStorage, sessionStorage },
+  });
+  try {
+    const merchantId = 'merchant-item-return';
+    const employeeId = 'employee-item-return';
+    const orderId = 'order-item-return';
+    const branchId = 'branch-item-return';
+    usePosWorkspaceStore.getState().hydrate(merchantId, employeeId);
+    usePosWorkspaceStore.getState().selectBranch(merchantId, employeeId, branchId);
+    const unsafe = {
+      branchId,
+      request: {
+        requestId: 'item-return-request',
+        branchId,
+        reason: 'Customer returned damaged food',
+        lines: [{ orderLineId: 'original-sale-line', quantity: 2 }],
+        approval: { username: 'supervisor', password: 'never-store-this' },
+      },
+    } as unknown as PendingPosItemReturn;
+    usePosWorkspaceStore.getState().savePendingItemReturn(merchantId, employeeId, orderId, unsafe);
+    const deviceId = usePosWorkspaceStore.getState().workspace!.deviceId;
+    const key = posWorkspaceStorageKey(merchantId, employeeId, deviceId);
+    const raw = localStorage.getItem(key)!;
+    assert.equal(JSON.parse(raw).version, 10);
+    assert.equal(raw.includes('never-store-this'), false);
+    assert.equal(raw.includes('approval'), false);
+
+    usePosWorkspaceStore.setState({ activeScope: null, workspace: null, hydratedScope: null });
+    usePosWorkspaceStore.getState().hydrate(merchantId, employeeId);
+    const expected = {
+      branchId,
+      request: {
+        requestId: 'item-return-request',
+        branchId,
+        reason: 'Customer returned damaged food',
+        lines: [{ orderLineId: 'original-sale-line', quantity: 2 }],
+      },
+    };
+    assert.deepEqual(
+      usePosWorkspaceStore.getState().workspace?.pendingItemReturns[orderId],
+      expected,
+    );
+    assert.throws(
+      () =>
+        usePosWorkspaceStore.getState().savePendingItemReturn(merchantId, employeeId, orderId, {
+          ...expected,
+          request: {
+            ...expected.request,
+            lines: [{ orderLineId: 'original-sale-line', quantity: 1 }],
+          },
+        }),
+      /Resolve the saved item return/,
+    );
+    assert.equal(
+      usePosWorkspaceStore
+        .getState()
+        .removePendingItemReturn(merchantId, employeeId, orderId, expected.request.requestId),
+      true,
+    );
   } finally {
     if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
     else Reflect.deleteProperty(globalThis, 'window');

@@ -60,6 +60,10 @@ export function PosReceiptsScreen() {
     return (
       <PosReceiptView
         merchantId={employee.merchantId}
+        employeeId={employee.id}
+        branchId={selectedBranchId}
+        requiresApproval={!employee.permissions.includes('approve_refunds')}
+        canRecordItemReturn={employee.permissions.includes('sell')}
         orderId={activeReceipt.orderId}
         checkId={activeReceipt.checkId}
         backLabel="Back to receipts"

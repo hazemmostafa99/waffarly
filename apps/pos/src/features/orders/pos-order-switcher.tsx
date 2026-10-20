@@ -9,6 +9,7 @@ export interface PosSwitcherEntry {
   reference: string;
   title: string;
   subtitle: string;
+  total?: string | undefined;
   updatedAt: string;
   lastOpenedAt: string;
   empty?: boolean;
@@ -177,6 +178,7 @@ export function PosOrderSwitcher({
                 <span className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
                   <bdi dir="ltr">{entry.reference}</bdi>
                   <span>{entry.subtitle}</span>
+                  {entry.total && <bdi className="font-semibold text-primary">{entry.total}</bdi>}
                 </span>
                 <time
                   dateTime={entry.updatedAt}
@@ -245,10 +247,10 @@ export function PosOrderSwitcher({
               aria-pressed={entry.id === selectedId}
               onClick={() => onSelect(entry)}
               className={cn(
-                'pos-draft-tab flex min-h-11 min-w-0 max-w-56 items-center gap-2 rounded-lg border px-3 text-start focus-visible:outline-2 focus-visible:outline-ring',
+                'pos-draft-tab flex min-h-11 min-w-40 max-w-64 shrink-0 items-center gap-2 rounded-lg border px-3 text-start focus-visible:outline-2 focus-visible:outline-ring',
                 entry.id === selectedId
-                  ? 'is-active flex-1 border-primary bg-[var(--pos-active)] text-[var(--pos-active-ink)] sm:flex-none'
-                  : 'hidden border-border text-muted-foreground hover:bg-secondary sm:flex',
+                  ? 'is-active border-primary bg-[var(--pos-active)] text-[var(--pos-active-ink)]'
+                  : 'border-border text-muted-foreground hover:bg-secondary',
               )}
             >
               {entry.id === selectedId && (
@@ -256,10 +258,13 @@ export function PosOrderSwitcher({
               )}
               <span className="min-w-0">
                 <span className="block truncate text-xs font-semibold">{entry.title}</span>
-                <span className="mt-0.5 flex gap-2 text-[10px]">
+                <span className="mt-0.5 flex gap-2 text-xs">
                   <bdi dir="ltr">{entry.reference}</bdi>
                   <span className="truncate">{entry.subtitle}</span>
                 </span>
+                {entry.total && (
+                  <bdi className="block text-xs font-semibold text-primary">{entry.total}</bdi>
+                )}
               </span>
             </button>
           ))}

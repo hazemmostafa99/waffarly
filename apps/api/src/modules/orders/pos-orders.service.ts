@@ -8,10 +8,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type {
+  AddPosKitchenItemsRequest,
+  AddPosKitchenItemsResponse,
   CreatePosOrderResponse,
   PosEmployeeSession,
   PosOrderPaymentStateResponse,
   PosPaymentSummary,
+  PosRefundReceipt,
+  RecordPosCheckRefundResponse,
   PosReceipt,
   PosReceiptHistoryPage,
   RecordPosCheckPaymentResponse,
@@ -20,6 +24,7 @@ import type {
   StorefrontOrderSummary,
 } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
+import { isPosEmployeeRole, resolvePosEmployeePermissions } from '@waffarly/contracts';
 import { createHash, randomUUID } from 'node:crypto';
 import { formatCents, toCents } from '../../common/money/money.js';
 import { assertScopedCursor, type CursorPageQuery } from '../../common/http/pagination.js';
@@ -36,19 +41,31 @@ import {
 import { InventoryLedgerService } from '../inventory/index.js';
 import { ShiftsService } from '../shifts/index.js';
 import { requireEmployeePermission } from '../auth/index.js';
-import { parseRecordPosCheckPaymentRequest, PaymentsService } from '../payments/index.js';
+import {
+  parseRecordPosCheckPaymentRequest,
+  parseRecordPosCheckRefundRequest,
+  withoutPosRefundApproval,
+  PaymentsService,
+} from '../payments/index.js';
 import { PosDiningService } from './pos-dining.service.js';
 import { buildPosReceiptSnapshot } from './pos-receipt.mapper.js';
+import { createPosKitchenTicket, posKitchenTicketInclude } from './pos-kitchen.persistence.js';
 import { toSummary } from './order.mapper.js';
 import {
   consumeDirectOrderRequirements,
   freezeLineStockRequirements,
   resolveConsumptionWarehouse,
 } from './order-stock.persistence.js';
-import { parseCreatePosOrderRequest, parsePosOrderQuoteRequest } from './pos-orders.schemas.js';
+import {
+  parseAddPosKitchenItemsRequest,
+  parseCreatePosOrderRequest,
+  parsePosOrderQuoteRequest,
+} from './pos-orders.schemas.js';
 
 const MAX_ORDER_TOTAL_CENTS = 999_999_999_999n;
 const orderSummaryInclude = {
+  kitchenTicket: posKitchenTicketInclude,
+  diningSession: { select: { table: { select: { code: true } } } },
   lines: {
     orderBy: { position: 'asc' as const },
     include: {
@@ -297,6 +314,15 @@ export class PosOrdersService {
             order.id,
             formatCents(orderTotalCents),
           );
+          if (request.fulfillmentType !== 'dine_in') {
+            await createPosKitchenTicket(tx, {
+              merchantId: employee.merchantId,
+              branchId: shift.branchId,
+              orderId: order.id,
+              dispatchMode: 'automatic',
+              dispatchedByPosEmployeeId: employee.id,
+            });
+          }
           if (hasDirectStock) {
             const warehouse = await resolveConsumptionWarehouse(
               tx,
@@ -356,6 +382,365 @@ export class PosOrdersService {
       }
       if (isSerializationConflict(error))
         throw new ConflictException('The order or stock changed. Review the cart and retry.');
+      throw error;
+    }
+  }
+
+  async addKitchenItems(
+    employee: PosEmployeeSession,
+    orderId: string,
+    input: unknown,
+  ): Promise<AddPosKitchenItemsResponse> {
+    this.requireSellPermission(employee);
+    const request: AddPosKitchenItemsRequest = parseAddPosKitchenItemsRequest(input);
+    const actor = `pos:${employee.id}`;
+    const branchIds = employee.branches
+      .filter((branch) => branch.archivedAt === null)
+      .map((branch) => branch.id);
+    const fingerprint = createHash('sha256')
+      .update(JSON.stringify({ action: 'pos_kitchen_amendment', orderId, ...request }))
+      .digest('hex');
+
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const replay = await tx.storefrontOrderAction.findUnique({
+            where: {
+              merchantId_requestId: {
+                merchantId: employee.merchantId,
+                requestId: request.requestId,
+              },
+            },
+          });
+          if (replay) return replayKitchenAmendment(replay, actor, fingerprint);
+
+          const observed = await tx.storefrontOrder.findFirst({
+            where: {
+              id: orderId,
+              merchantId: employee.merchantId,
+              source: 'pos',
+              branchId: { in: branchIds },
+            },
+            select: { branchId: true, posShiftId: true },
+          });
+          if (!observed) throw new NotFoundException('The POS order was not found.');
+          if (!observed.branchId || !observed.posShiftId)
+            throw new ConflictException('This order is not linked to an open register shift.');
+
+          await this.shifts.lockOpenShiftForPayment(tx, {
+            merchantId: employee.merchantId,
+            shiftId: observed.posShiftId,
+            branchId: observed.branchId,
+          });
+          const locked = await tx.$queryRaw<Array<{ id: string }>>`
+            SELECT "id" FROM "storefront_orders"
+            WHERE "id" = ${orderId}::uuid
+              AND "merchantId" = ${employee.merchantId}::uuid
+            FOR UPDATE`;
+          if (locked.length !== 1) throw new NotFoundException('The POS order was not found.');
+
+          const lockedReplay = await tx.storefrontOrderAction.findUnique({
+            where: {
+              merchantId_requestId: {
+                merchantId: employee.merchantId,
+                requestId: request.requestId,
+              },
+            },
+          });
+          if (lockedReplay) return replayKitchenAmendment(lockedReplay, actor, fingerprint);
+
+          const order = await tx.storefrontOrder.findFirst({
+            where: {
+              id: orderId,
+              merchantId: employee.merchantId,
+              source: 'pos',
+              branchId: { in: branchIds },
+            },
+            include: {
+              ...orderSummaryInclude,
+              checks: {
+                orderBy: { position: 'asc' },
+                select: { id: true, amount: true, splitMethod: true, settledAt: true },
+              },
+            },
+          });
+          if (!order) throw new NotFoundException('The POS order was not found.');
+          if (order.revision !== request.revision)
+            throw new ConflictException('This order changed. Refresh it before adding items.');
+          if (order.status !== 'pending' || !order.kitchenTicket)
+            throw new ConflictException(
+              'Items can only be added before the kitchen accepts the sent order.',
+            );
+          if (order.checks.length !== 1 || order.checks[0]?.splitMethod !== 'whole')
+            throw new ConflictException('Items can only be added to one unsplit check.');
+          const check = order.checks[0]!;
+          if (check.settledAt)
+            throw new ConflictException('Items cannot be added after a check is settled.');
+          const paymentCount = await tx.posOrderPayment.count({
+            where: { orderId, merchantId: employee.merchantId },
+          });
+          if (paymentCount > 0)
+            throw new ConflictException('Items cannot be added after payment begins.');
+          const allocationCount = await tx.posOrderCheckLine.count({
+            where: { orderId, merchantId: employee.merchantId },
+          });
+          if (allocationCount > 0)
+            throw new ConflictException('Items cannot be added after the check is split.');
+
+          const quote = await this.quoteItems(employee.merchantId, request, tx);
+          const quoteByLineId = new Map(quote.items.map((item) => [item.lineId, item.quote]));
+          const directRequirements: InventoryRequirement[] = [];
+          const firstPosition =
+            order.lines.reduce((max, line) => Math.max(max, line.position), -1) + 1;
+
+          for (const [index, item] of request.items.entries()) {
+            const product = await tx.product.findFirst({
+              where: { id: item.productId, merchantId: employee.merchantId, archivedAt: null },
+              select: {
+                id: true,
+                name: true,
+                availability: true,
+                revision: true,
+                inventoryConfiguration: { select: { mode: true } },
+                variants: {
+                  select: {
+                    id: true,
+                    name: true,
+                    availability: true,
+                    stockQuantity: true,
+                    attributeSelections: {
+                      orderBy: { attribute: { position: 'asc' } },
+                      select: {
+                        attributeId: true,
+                        valueId: true,
+                        attribute: { select: { id: true, name: true, position: true } },
+                        value: { select: { id: true, value: true } },
+                      },
+                    },
+                  },
+                },
+                modifierGroups: {
+                  orderBy: { position: 'asc' },
+                  select: {
+                    id: true,
+                    modifierGroupId: true,
+                    position: true,
+                    modifierGroup: { select: { name: true } },
+                    options: {
+                      orderBy: { option: { position: 'asc' } },
+                      select: {
+                        optionId: true,
+                        priceAdjustment: true,
+                        option: { select: { name: true, position: true } },
+                      },
+                    },
+                  },
+                },
+              },
+            });
+            const lineQuote = quoteByLineId.get(item.lineId);
+            if (!product || product.availability !== 'available' || !lineQuote)
+              throw new ConflictException('A product in this addition is no longer available.');
+            if (
+              product.revision !== item.expectedProductRevision ||
+              product.revision !== lineQuote.productRevision
+            )
+              throw new ConflictException(
+                'A product changed. Review the updated quote before adding it.',
+              );
+
+            const variant = lineQuote.variantId
+              ? product.variants.find((candidate) => candidate.id === lineQuote.variantId)
+              : undefined;
+            if (product.variants.length > 0 && (!variant || variant.availability !== 'available'))
+              throw new ConflictException('A selected variant is no longer available.');
+
+            const mode = product.inventoryConfiguration?.mode ?? null;
+            if (mode && mode !== 'DIRECT' && mode !== 'RECIPE')
+              throw new ConflictException('The product stock handling is not supported.');
+            const stockHandling =
+              mode === 'DIRECT'
+                ? 'direct_sale'
+                : mode === 'RECIPE'
+                  ? 'recipe_acceptance'
+                  : 'legacy';
+            let requirements: InventoryRequirement[] = [];
+            if (mode === 'DIRECT' || mode === 'RECIPE') {
+              requirements = await this.consumption.requirements(
+                tx,
+                employee.merchantId,
+                [
+                  {
+                    productId: product.id,
+                    variantId: variant?.id ?? null,
+                    quantity: item.quantity,
+                    selections: quoteSelectionsForRequirements(lineQuote.selections),
+                  },
+                ],
+                mode,
+              );
+              if (mode === 'DIRECT') directRequirements.push(...requirements);
+            }
+
+            let stockReserved = false;
+            if (
+              stockHandling === 'legacy' &&
+              variant?.stockQuantity !== null &&
+              variant?.stockQuantity !== undefined
+            ) {
+              const reservation = await tx.productVariant.updateMany({
+                where: {
+                  id: variant.id,
+                  merchantId: employee.merchantId,
+                  productId: product.id,
+                  availability: 'available',
+                  stockQuantity: { gte: item.quantity },
+                },
+                data: { stockQuantity: { decrement: item.quantity } },
+              });
+              if (reservation.count !== 1)
+                throw new ConflictException('A selected variant does not have enough stock.');
+              stockReserved = true;
+            }
+
+            const lineTotalCents = toCents(lineQuote.totalPrice) * BigInt(item.quantity);
+            const savedLine = await tx.storefrontOrderLine.create({
+              data: {
+                orderId,
+                merchantId: employee.merchantId,
+                productId: product.id,
+                variantId: variant?.id ?? null,
+                productName: product.name,
+                variantName: variant?.name ?? null,
+                basePrice: lineQuote.basePrice,
+                modifierTotal: lineQuote.modifierTotal,
+                quantity: item.quantity,
+                unitPrice: lineQuote.totalPrice,
+                lineTotal: formatCents(lineTotalCents),
+                note: item.note?.trim() || null,
+                stockHandling,
+                stockReserved,
+                position: firstPosition + index,
+                selections: { create: createSelectionSnapshots(product, lineQuote.selections) },
+                variantAttributes: {
+                  create: lineQuote.variantAttributes.map((attribute) => ({
+                    attributeId: attribute.attributeId,
+                    valueId: attribute.valueId,
+                    attributeName: attribute.attributeName,
+                    attributeValue: attribute.value,
+                    position: attribute.position,
+                  })),
+                },
+              },
+              select: { id: true },
+            });
+            if (mode === 'DIRECT' || mode === 'RECIPE')
+              await freezeLineStockRequirements(
+                tx,
+                employee.merchantId,
+                savedLine.id,
+                requirements,
+              );
+          }
+
+          const newTotalCents = toCents(order.total.toString()) + toCents(quote.total);
+          if (newTotalCents > MAX_ORDER_TOTAL_CENTS)
+            throw new BadRequestException('The order total is too large.');
+          const updatedOrder = await tx.storefrontOrder.updateMany({
+            where: {
+              id: orderId,
+              merchantId: employee.merchantId,
+              revision: request.revision,
+              status: 'pending',
+            },
+            data: { total: formatCents(newTotalCents), revision: { increment: 1 } },
+          });
+          if (updatedOrder.count !== 1)
+            throw new ConflictException('This order changed. Refresh it before adding items.');
+          await tx.posOrderCheck.update({
+            where: { id: check.id },
+            data: {
+              amount: formatCents(toCents(check.amount.toString()) + toCents(quote.total)),
+              revision: { increment: 1 },
+            },
+          });
+
+          if (directRequirements.length) {
+            let warehouse: Awaited<ReturnType<typeof resolveConsumptionWarehouse>>;
+            if (order.warehouseId) {
+              const rows = await tx.$queryRaw<Array<{ id: string }>>`
+                SELECT "id" FROM "warehouses"
+                WHERE "id" = ${order.warehouseId}::uuid
+                  AND "merchantId" = ${employee.merchantId}::uuid
+                  AND "branchId" = ${order.branchId}::uuid
+                  AND "archivedAt" IS NULL
+                FOR SHARE`;
+              if (!rows.length)
+                throw new ConflictException(
+                  "The order's assigned stock warehouse is no longer available.",
+                );
+              warehouse = await tx.warehouse.findFirstOrThrow({
+                where: { id: order.warehouseId, merchantId: employee.merchantId },
+                include: { branch: { select: { name: true } } },
+              });
+            } else {
+              warehouse = await resolveConsumptionWarehouse(
+                tx,
+                employee.merchantId,
+                order.branchId!,
+              );
+            }
+            await consumeDirectOrderRequirements(
+              tx,
+              this.ledger,
+              employee.merchantId,
+              actor,
+              orderId,
+              warehouse.id,
+              directRequirements,
+            );
+            if (!order.warehouseId)
+              await tx.storefrontOrder.update({
+                where: { id: orderId },
+                data: {
+                  warehouseId: warehouse.id,
+                  branchName: warehouse.branch.name,
+                  warehouseName: warehouse.name,
+                },
+              });
+          }
+
+          const summary = toSummary(
+            await tx.storefrontOrder.findFirstOrThrow({
+              where: { id: orderId, merchantId: employee.merchantId },
+              include: orderSummaryInclude,
+            }),
+          );
+          await tx.storefrontOrderAction.create({
+            data: {
+              merchantId: employee.merchantId,
+              orderId,
+              requestId: request.requestId,
+              action: 'pos_kitchen_amendment',
+              fingerprint,
+              result: summary as unknown as Prisma.InputJsonValue,
+              createdBy: actor,
+            },
+          });
+          return summary;
+        },
+        { isolationLevel: 'Serializable' },
+      );
+    } catch (error) {
+      if (isUniqueConstraintError(error) || isSerializationConflict(error)) {
+        const previous = await this.prisma.storefrontOrderAction.findUnique({
+          where: {
+            merchantId_requestId: { merchantId: employee.merchantId, requestId: request.requestId },
+          },
+        });
+        if (previous) return replayKitchenAmendment(previous, actor, fingerprint);
+        throw new ConflictException('This order changed. Refresh it before adding items.');
+      }
       throw error;
     }
   }
@@ -441,7 +826,8 @@ export class PosOrdersService {
             where: { id: checkId, orderId, merchantId: employee.merchantId },
           });
           if (!check) throw new NotFoundException('The check was not found.');
-          if (check.settledAt) throw new ConflictException('This check is already settled.');
+          if (check.settledAt || check.cancelledAt)
+            throw new ConflictException('This check is already settled or cancelled.');
 
           const existingPayments = await tx.posOrderPayment.aggregate({
             where: { orderId, checkId, merchantId: employee.merchantId },
@@ -535,6 +921,262 @@ export class PosOrdersService {
     }
   }
 
+  async recordCheckRefund(
+    employee: PosEmployeeSession,
+    orderId: string,
+    checkId: string,
+    input: unknown,
+    approverEmployeeId?: string,
+  ): Promise<RecordPosCheckRefundResponse> {
+    this.requireSellPermission(employee);
+    const parsed = parseRecordPosCheckRefundRequest(input);
+    const request = withoutPosRefundApproval(parsed);
+    const actor = `pos:${employee.id}`;
+    const fingerprint = createHash('sha256')
+      .update(JSON.stringify({ orderId, checkId, ...request, approverEmployeeId: approverEmployeeId ?? null }))
+      .digest('hex');
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const previous = await tx.storefrontOrderAction.findUnique({
+            where: { merchantId_requestId: { merchantId: employee.merchantId, requestId: request.requestId } },
+          });
+          if (previous) return this.replayPosRefund(previous, actor, fingerprint);
+
+          const order = await tx.storefrontOrder.findFirst({
+            where: {
+              id: orderId,
+              merchantId: employee.merchantId,
+              source: 'pos',
+              branchId: { in: employee.branches.filter((branch) => branch.archivedAt === null).map((branch) => branch.id) },
+            },
+            select: { id: true, branchId: true, currency: true, revision: true, status: true, cancelledAt: true },
+          });
+          if (!order?.branchId) throw new NotFoundException('The POS order was not found.');
+          if (request.branchId !== order.branchId)
+            throw new ForbiddenException('The refund branch does not match this order.');
+
+          const actorRow = await tx.posEmployee.findFirst({
+            where: {
+              id: employee.id,
+              merchantId: employee.merchantId,
+              active: true,
+              branches: { some: { merchantId: employee.merchantId, branchId: order.branchId, branch: { archivedAt: null } } },
+            },
+            select: { displayName: true, role: true, permissions: true },
+          });
+          const actorPermissions = actorRow
+            ? resolvePosEmployeePermissions(isPosEmployeeRole(actorRow.role) ? actorRow.role : null, actorRow.permissions)
+            : [];
+          if (!actorRow || !actorPermissions.includes('sell'))
+            throw new ForbiddenException('This employee is no longer authorized to sell.');
+          if (!approverEmployeeId && !actorPermissions.includes('approve_refunds'))
+            throw new ForbiddenException('Supervisor approval is required to refund this check.');
+          let approverName: string | null = null;
+          if (approverEmployeeId) {
+            if (approverEmployeeId === employee.id)
+              throw new ForbiddenException('A different supervisor must approve this refund.');
+            const approver = await tx.posEmployee.findFirst({
+              where: {
+                id: approverEmployeeId,
+                merchantId: employee.merchantId,
+                active: true,
+                branches: { some: { merchantId: employee.merchantId, branchId: order.branchId, branch: { archivedAt: null } } },
+              },
+              select: { displayName: true, role: true, permissions: true },
+            });
+            const approverPermissions = approver
+              ? resolvePosEmployeePermissions(isPosEmployeeRole(approver.role) ? approver.role : null, approver.permissions)
+              : [];
+            if (!approver || !approverPermissions.includes('approve_refunds'))
+              throw new ForbiddenException('The supervisor approval is no longer valid.');
+            approverName = approver.displayName;
+          }
+
+          await this.shifts.lockOpenShiftForRefund(tx, {
+            merchantId: employee.merchantId,
+            shiftId: request.refundShiftId,
+            branchId: order.branchId,
+            employee,
+          });
+          const lockedOrder = await tx.$queryRaw<Array<{ id: string }>>`
+            SELECT "id" FROM "storefront_orders"
+            WHERE "id" = ${orderId}::uuid AND "merchantId" = ${employee.merchantId}::uuid
+            FOR UPDATE`;
+          if (!lockedOrder.length) throw new NotFoundException('The POS order was not found.');
+          const currentOrder = await tx.storefrontOrder.findFirstOrThrow({
+            where: { id: orderId, merchantId: employee.merchantId, source: 'pos', branchId: order.branchId },
+            select: { id: true, branchId: true, currency: true, revision: true, status: true, cancelledAt: true },
+          });
+          if (currentOrder.revision !== request.revision)
+            throw new ConflictException('This order changed. Reload its payment state before refunding.');
+          if (currentOrder.cancelledAt || ['cancelled', 'rejected'].includes(currentOrder.status))
+            throw new ConflictException('A cancelled order cannot be refunded here.');
+
+          const lockedChecks = await tx.$queryRaw<Array<{ id: string }>>`
+            SELECT "id" FROM "pos_order_checks"
+            WHERE "id" = ${checkId}::uuid AND "orderId" = ${orderId}::uuid
+              AND "merchantId" = ${employee.merchantId}::uuid FOR UPDATE`;
+          if (!lockedChecks.length) throw new NotFoundException('The POS check was not found.');
+          const check = await tx.posOrderCheck.findFirst({
+            where: { id: checkId, orderId, merchantId: employee.merchantId },
+            select: { id: true, amount: true, settledAt: true, cancelledAt: true },
+          });
+          if (!check || check.cancelledAt) throw new ConflictException('This check cannot be refunded.');
+
+          const originals = await tx.posOrderPayment.findMany({
+            where: { id: { in: request.allocations.map((allocation) => allocation.paymentId) }, merchantId: employee.merchantId, orderId, checkId },
+          });
+          if (originals.length !== request.allocations.length)
+            throw new BadRequestException('Every refund amount must refer to an original payment on this check.');
+          let totalCents = 0n;
+          const normalized: Array<{ payment: (typeof originals)[number]; amount: string; cents: bigint; terminalReference: string | null }> = [];
+          for (const allocation of request.allocations) {
+            const payment = originals.find((row) => row.id === allocation.paymentId);
+            if (!payment) throw new BadRequestException('An original payment was not found on this check.');
+            const cents = toCents(allocation.amount);
+            if (cents <= 0n) throw new BadRequestException('Refund amounts must be greater than zero.');
+            if (payment.method === 'terminal' && !allocation.terminalReference?.trim())
+              throw new BadRequestException('Enter the reference from the completed terminal refund.');
+            if (payment.method === 'cash' && allocation.terminalReference)
+              throw new BadRequestException('Cash refunds cannot include a terminal reference.');
+            const previousRefunds = await tx.posOrderRefundTender.aggregate({
+              where: { originalPaymentId: payment.id, originalPaymentShiftId: payment.shiftId, merchantId: employee.merchantId },
+              _sum: { amount: true },
+            });
+            const originalCents = toCents(payment.amount.toString());
+            const alreadyRefunded = toCents(previousRefunds._sum.amount?.toString() ?? '0.00');
+            if (alreadyRefunded + cents > originalCents)
+              throw new ConflictException('The requested refund exceeds the remaining amount for an original payment.');
+            totalCents += cents;
+            normalized.push({ payment, amount: formatCents(cents), cents, terminalReference: allocation.terminalReference?.trim() ?? null });
+          }
+          if (totalCents <= 0n) throw new BadRequestException('Enter a refund amount.');
+
+          const refundId = randomUUID();
+          const issuedAt = new Date();
+          const receiptNumber = `RFD-${refundId.replaceAll('-', '').slice(0, 12).toUpperCase()}`;
+          const receipt: PosRefundReceipt = {
+            id: refundId,
+            requestId: request.requestId,
+            receiptNumber,
+            orderId,
+            checkId,
+            amount: formatCents(totalCents),
+            currency: currentOrder.currency as 'EGP',
+            reason: request.reason,
+            issuedAt: issuedAt.toISOString(),
+            createdByEmployeeId: employee.id,
+            approvedByEmployeeId: approverEmployeeId ?? null,
+            issuedBy: actorRow.displayName,
+            approvedBy: approverName,
+            tenders: normalized.map(({ payment, amount, terminalReference }) => ({
+              originalPaymentId: payment.id,
+              method: payment.method as 'cash' | 'terminal',
+              amount,
+              terminalReference,
+            })),
+          };
+          await tx.posOrderRefund.create({
+            data: {
+              id: refundId,
+              merchantId: employee.merchantId,
+              orderId,
+              checkId,
+              shiftId: request.refundShiftId,
+              requestId: request.requestId,
+              createdByEmployeeId: employee.id,
+              approvedByEmployeeId: approverEmployeeId ?? null,
+              receiptNumber,
+              reason: request.reason,
+              amount: receipt.amount,
+              currency: currentOrder.currency,
+              issuedAt,
+              snapshot: receipt as unknown as Prisma.InputJsonValue,
+            },
+          });
+          for (const [position, tender] of normalized.entries()) {
+            const row = await tx.posOrderRefundTender.create({
+              data: {
+                merchantId: employee.merchantId,
+                refundId,
+                shiftId: request.refundShiftId,
+                originalPaymentId: tender.payment.id,
+                originalPaymentShiftId: tender.payment.shiftId,
+                position,
+                method: tender.payment.method,
+                amount: tender.amount,
+                terminalReference: tender.terminalReference,
+              },
+              select: { id: true },
+            });
+            if (tender.payment.method === 'cash') {
+              await this.shifts.recordCashRefund(tx, {
+                merchantId: employee.merchantId,
+                shiftId: request.refundShiftId,
+                refundTenderId: row.id,
+                operatorEmployeeId: employee.id,
+                amount: formatCents(-tender.cents),
+              });
+            }
+          }
+          const changed = await tx.storefrontOrder.updateMany({
+            where: { id: orderId, merchantId: employee.merchantId, revision: request.revision },
+            data: { revision: { increment: 1 } },
+          });
+          if (changed.count !== 1) throw new ConflictException('This order changed. Reload its payment state before refunding.');
+          await tx.posOrderCheck.update({
+            where: { id: checkId },
+            data: { revision: { increment: 1 } },
+          });
+          const response: RecordPosCheckRefundResponse = {
+            orderId,
+            orderRevision: request.revision + 1,
+            checkId,
+            refund: receipt,
+          };
+          await tx.storefrontOrderAction.create({
+            data: {
+              merchantId: employee.merchantId,
+              orderId,
+              requestId: request.requestId,
+              action: 'pos_refund',
+              fingerprint,
+              result: response as unknown as Prisma.InputJsonValue,
+              createdBy: actor,
+              approvedByPosEmployeeId: approverEmployeeId ?? null,
+            },
+          });
+          return response;
+        },
+        { isolationLevel: 'Serializable' },
+      );
+    } catch (error) {
+      if (isUniqueConstraintError(error) || isSerializationConflict(error)) {
+        const previous = await this.prisma.storefrontOrderAction.findUnique({
+          where: { merchantId_requestId: { merchantId: employee.merchantId, requestId: request.requestId } },
+        });
+        if (previous) return this.replayPosRefund(previous, actor, fingerprint);
+        throw new ConflictException('This order or payment changed concurrently. Reload and retry the same refund command.');
+      }
+      throw error;
+    }
+  }
+
+  private replayPosRefund(
+    previous: { action: string; fingerprint: string; createdBy: string; result: unknown },
+    actor: string,
+    fingerprint: string,
+  ): RecordPosCheckRefundResponse {
+    if (
+      previous.action !== 'pos_refund' ||
+      previous.createdBy !== actor ||
+      previous.fingerprint !== fingerprint
+    )
+      throw new ConflictException('The request ID was already used for a different POS action.');
+    return previous.result as RecordPosCheckRefundResponse;
+  }
+
   async detail(employee: PosEmployeeSession, orderId: string): Promise<StorefrontOrderSummary> {
     this.requireSellPermission(employee);
     const order = await this.prisma.storefrontOrder.findFirst({
@@ -581,7 +1223,18 @@ export class PosOrdersService {
                 orderLine: { select: { productName: true, variantName: true, position: true } },
               },
             },
-            payments: { orderBy: [{ position: 'asc' }, { createdAt: 'asc' }] },
+            payments: {
+              orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+              include: { refundTenders: { select: { amount: true } } },
+            },
+            refunds: {
+              orderBy: { issuedAt: 'asc' },
+              include: {
+                createdBy: { select: { displayName: true } },
+                approvedBy: { select: { displayName: true } },
+                tenders: { orderBy: { position: 'asc' } },
+              },
+            },
             receipt: { select: { id: true, receiptNumber: true, issuedAt: true } },
           },
         },
@@ -618,7 +1271,11 @@ export class PosOrdersService {
           paidAmount: formatCents(paidCents),
           balanceDue: formatCents(amountCents - paidCents),
           revision: check.revision,
-          status: check.settledAt ? ('settled' as const) : ('open' as const),
+          status: check.settledAt
+            ? ('settled' as const)
+            : check.cancelledAt
+              ? ('cancelled' as const)
+              : ('open' as const),
           settledAt: check.settledAt?.toISOString() ?? null,
           receipt: check.receipt
             ? {
@@ -627,16 +1284,45 @@ export class PosOrdersService {
                 issuedAt: check.receipt.issuedAt.toISOString(),
               }
             : null,
-          payments: check.payments.map((payment) => ({
-            id: payment.id,
-            position: payment.position,
-            method: payment.method as PosPaymentSummary['method'],
-            amount: formatCents(toCents(payment.amount.toString())),
-            receivedAmount: formatCents(toCents(payment.receivedAmount.toString())),
-            changeAmount: formatCents(toCents(payment.changeAmount.toString())),
-            terminalReference: payment.terminalReference,
-            operatorEmployeeId: payment.operatorEmployeeId,
-            createdAt: payment.createdAt.toISOString(),
+          payments: check.payments.map((payment) => {
+            const refundedCents = payment.refundTenders.reduce(
+              (sum, refund) => sum + toCents(refund.amount.toString()),
+              0n,
+            );
+            const amountCents = toCents(payment.amount.toString());
+            return {
+              id: payment.id,
+              position: payment.position,
+              method: payment.method as PosPaymentSummary['method'],
+              amount: formatCents(amountCents),
+              receivedAmount: formatCents(toCents(payment.receivedAmount.toString())),
+              changeAmount: formatCents(toCents(payment.changeAmount.toString())),
+              terminalReference: payment.terminalReference,
+              operatorEmployeeId: payment.operatorEmployeeId,
+              createdAt: payment.createdAt.toISOString(),
+              refundedAmount: formatCents(refundedCents),
+              refundableAmount: formatCents(amountCents - refundedCents),
+            };
+          }),
+          refunds: check.refunds.map((refund) => ({
+            id: refund.id,
+            requestId: refund.requestId,
+            receiptNumber: refund.receiptNumber,
+            checkId: refund.checkId,
+            amount: formatCents(toCents(refund.amount.toString())),
+            currency: refund.currency as 'EGP',
+            reason: refund.reason,
+            issuedAt: refund.issuedAt.toISOString(),
+            createdByEmployeeId: refund.createdByEmployeeId,
+            approvedByEmployeeId: refund.approvedByEmployeeId,
+            issuedBy: refund.createdBy.displayName,
+            approvedBy: refund.approvedBy?.displayName ?? null,
+            tenders: refund.tenders.map((tender) => ({
+              originalPaymentId: tender.originalPaymentId,
+              method: tender.method as 'cash' | 'terminal',
+              amount: formatCents(toCents(tender.amount.toString())),
+              terminalReference: tender.terminalReference,
+            })),
           })),
         };
       }),
@@ -888,6 +1574,20 @@ function replayPosPayment(
     throw new ConflictException('The request ID was already used for a different POS action.');
   }
   return previous.result as RecordPosCheckPaymentResponse;
+}
+
+function replayKitchenAmendment(
+  previous: { action: string; fingerprint: string; createdBy: string; result: unknown },
+  actor: string,
+  fingerprint: string,
+): AddPosKitchenItemsResponse {
+  if (
+    previous.action !== 'pos_kitchen_amendment' ||
+    previous.createdBy !== actor ||
+    previous.fingerprint !== fingerprint
+  )
+    throw new ConflictException('This request ID was already used for a different POS action.');
+  return previous.result as AddPosKitchenItemsResponse;
 }
 
 function parseStoredPosReceipt(value: Prisma.JsonValue): PosReceipt {

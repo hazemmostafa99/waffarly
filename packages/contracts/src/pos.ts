@@ -28,6 +28,8 @@ export const POS_EMPLOYEE_ROLE_PERMISSIONS = {
     'sell',
     'view_receipts',
     'view_inventory',
+    'approve_shift_close',
+    'manage_cash_movements',
   ],
   cashier: ['open_register_shift', 'sell'],
   inventory_officer: ['view_inventory'],
@@ -40,6 +42,8 @@ export const POS_EMPLOYEE_ROLE_PERMISSIONS = {
     'approve_discounts',
     'approve_voids',
     'approve_refunds',
+    'approve_shift_close',
+    'manage_cash_movements',
   ],
 } as const satisfies Record<PosEmployeeRole, readonly string[]>;
 
@@ -50,6 +54,8 @@ export const POS_EMPLOYEE_PERMISSIONS = [
   'approve_discounts',
   'approve_voids',
   'approve_refunds',
+  'approve_shift_close',
+  'manage_cash_movements',
   'view_orders',
   'view_receipts',
   'view_inventory',

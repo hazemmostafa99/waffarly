@@ -40,7 +40,7 @@ export function Login() {
   });
 
   const selectedTheme = theme === 'system' ? (systemDark ? 'dark' : 'light') : theme;
-  const accent = usePosAppearanceStore((state) => state.accent);
+  const accent = 'orange';
   const sessionCheckError =
     sessionQuery.error instanceof Error &&
     !(sessionQuery.error instanceof ApiError && sessionQuery.error.statusCode === 401)

@@ -227,10 +227,17 @@ test('cashier moves a table session and splits whole quantities from the dining 
   await dialog.getByLabel('Check 1 · Butter Croissant').fill('1');
   await dialog.getByLabel('Check 2 · Butter Croissant').fill('1');
   expect(
-    await dialog
-      .getByRole('button', { name: 'Save split', exact: true })
-      .evaluate((button) => getComputedStyle(button).backgroundColor),
-  ).toBe('rgb(255, 153, 94)');
+    await dialog.getByRole('button', { name: 'Save split', exact: true }).evaluate((button) => {
+      const theme = button.closest('.pos-theme');
+      if (!theme) throw new Error('POS theme root is missing.');
+      const probe = document.createElement('div');
+      probe.style.backgroundColor = getComputedStyle(theme).getPropertyValue('--primary');
+      theme.append(probe);
+      const tokenColor = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return getComputedStyle(button).backgroundColor === tokenColor;
+    }),
+  ).toBe(true);
   await page.screenshot({ path: 'test-results/pos-dining-split.png', fullPage: true });
   await dialog.getByRole('button', { name: 'Save split', exact: true }).click();
   await expect(dialog).not.toBeVisible();

@@ -2,7 +2,10 @@ import { BadRequestException } from '@nestjs/common';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { normalizeTenders } from '../../src/modules/payments/payment.rules.js';
-import { parseRecordPosCheckPaymentRequest } from '../../src/modules/payments/payments.schemas.js';
+import {
+  parseRecordPosCheckPaymentRequest,
+  parseRecordPosCheckRefundRequest,
+} from '../../src/modules/payments/payments.schemas.js';
 
 describe('POS check tenders', () => {
   it('normalizes cash change and a manually confirmed terminal split exactly in cents', () => {
@@ -76,6 +79,41 @@ describe('POS check tenders', () => {
         ...base,
         tenders: [{ method: 'terminal', amount: '5.00', terminalReference: '4111 1111 1111 1111' }],
       }),
+    );
+  });
+
+  it('validates refund allocations and requires terminal refund references without persisting approval secrets', () => {
+    const request = {
+      requestId: '77777777-7777-4777-8777-777777777777',
+      revision: 4,
+      branchId: '33333333-3333-4333-8333-333333333333',
+      refundShiftId: '44444444-4444-4444-8444-444444444444',
+      reason: 'Customer returned an unopened item',
+      allocations: [
+        {
+          paymentId: '55555555-5555-4555-8555-555555555555',
+          amount: '15.25',
+          terminalReference: 'REF-1942',
+        },
+      ],
+      approval: { username: 'supervisor', password: 'not-for-persistence' },
+    };
+    assert.deepEqual(parseRecordPosCheckRefundRequest(request), request);
+    assert.throws(() =>
+      parseRecordPosCheckRefundRequest({ ...request, allocations: [{ ...request.allocations[0], amount: '0.00' }] }),
+      BadRequestException,
+    );
+    assert.throws(() =>
+      parseRecordPosCheckRefundRequest({ ...request, allocations: [request.allocations[0], request.allocations[0]] }),
+      BadRequestException,
+    );
+    assert.throws(() =>
+      parseRecordPosCheckRefundRequest({ ...request, reason: '   ' }),
+      BadRequestException,
+    );
+    assert.throws(() =>
+      parseRecordPosCheckRefundRequest({ ...request, approval: { username: 'supervisor', password: 'x'.repeat(257) } }),
+      BadRequestException,
     );
   });
 });

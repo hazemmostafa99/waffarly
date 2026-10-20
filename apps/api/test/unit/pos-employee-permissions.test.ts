@@ -38,7 +38,9 @@ describe('POS employee role permissions', () => {
       'accept_recipe_orders',
       'approve_discounts',
       'approve_refunds',
+      'approve_shift_close',
       'approve_voids',
+      'manage_cash_movements',
       'open_register_shift',
       'sell',
       'start_preparation',
@@ -64,6 +66,14 @@ describe('POS employee role permissions', () => {
     assert.equal(
       resolvePosEmployeePermissions('branch_manager', oldGrants).includes('approve_refunds'),
       false,
+    );
+    assert.equal(
+      resolvePosEmployeePermissions('branch_manager', oldGrants).includes('approve_shift_close'),
+      true,
+    );
+    assert.equal(
+      resolvePosEmployeePermissions('branch_manager', oldGrants).includes('manage_cash_movements'),
+      true,
     );
   });
 

@@ -45,23 +45,21 @@
   font-size: 12px;
 }
 
-.register-filters .entity-picker {
+.register-filters .entity-picker--combobox {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .register-filters .entity-picker > :is(small, div[role='alert'], .entity-picker-pages) {
   grid-column: 1 / -1;
 }
 
-.register-filters .entity-picker input {
+.register-filters .entity-picker .entity-picker-combobox-input {
   min-height: 38px;
-  padding: 8px 10px;
+  padding-block: 8px;
   border: 1px solid var(--dashboard-border);
   border-radius: 7px;
-  background: #f5f8fb;
+  background: white;
   color: var(--dashboard-ink);
   font: inherit;
   font-size: 12px;
@@ -178,6 +176,19 @@
 .register-editor .entity-picker {
   display: grid;
   gap: 8px;
+}
+
+.register-editor .entity-picker .entity-picker-combobox-input {
+  min-height: 38px;
+  padding-block: 8px;
+  padding-inline-start: 12px;
+  padding-inline-end: 40px;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 7px;
+  background: white;
+  color: var(--dashboard-ink);
+  font: inherit;
+  font-size: 12px;
 }
 
 .register-editor .entity-picker select {

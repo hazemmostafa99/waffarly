@@ -18,20 +18,46 @@ import type {
   PosEmployeeSession,
   PosRegisterOption,
   PosRegisterSummary,
+  PosShiftCloseReport,
+  PosShiftClosePreview,
+  PosShiftCloseReportRow,
+  PosShiftLiveSummary,
   PosShiftSummary,
+  RecordPosShiftCashMovementResponse,
   UpdatePosRegisterRequest,
 } from '@waffarly/contracts';
 import { parseRequest, ZodValidationPipe } from '../../common/http/zod-validation.pipe.js';
-import { CurrentOwner, CurrentPosEmployee, OwnerGuard, PosEmployeeGuard } from '../auth/index.js';
+import { AuthService, CurrentOwner, CurrentPosEmployee, OwnerGuard, PosEmployeeGuard } from '../auth/index.js';
 import {
+  closePosShiftSchema,
   createPosRegisterSchema,
   openPosShiftSchema,
   ownerPosRegisterListSchema,
+  ownerPosShiftCloseReportsSchema,
   posCurrentShiftSchema,
   posRegisterListSchema,
+  posShiftClosePreviewSchema,
+  recordPosShiftCashMovementSchema,
   updatePosRegisterSchema,
 } from './shifts.schemas.js';
 import { ShiftsService } from './shifts.service.js';
+
+@UseGuards(OwnerGuard)
+@Controller('owner/pos/shifts')
+export class OwnerPosShiftReportsController {
+  constructor(@Inject(ShiftsService) private readonly shifts: ShiftsService) {}
+
+  @Get('reports')
+  listCloseReports(
+    @CurrentOwner() owner: OwnerProfile,
+    @Query() query: unknown,
+  ): Promise<CursorPage<PosShiftCloseReportRow>> {
+    return this.shifts.listOwnerCloseReports(
+      owner.merchantId,
+      parseRequest(ownerPosShiftCloseReportsSchema, query),
+    );
+  }
+}
 
 @UseGuards(OwnerGuard)
 @Controller('owner/pos/registers')
@@ -72,7 +98,10 @@ export class OwnerPosRegistersController {
 @UseGuards(PosEmployeeGuard)
 @Controller('pos')
 export class PosShiftsController {
-  constructor(@Inject(ShiftsService) private readonly shifts: ShiftsService) {}
+  constructor(
+    @Inject(ShiftsService) private readonly shifts: ShiftsService,
+    @Inject(AuthService) private readonly auth: AuthService,
+  ) {}
 
   @Get('registers')
   listRegisters(
@@ -100,6 +129,90 @@ export class PosShiftsController {
   ): Promise<PosShiftSummary> {
     requireShiftPermission(employee);
     return this.shifts.openShift(employee, parseRequest(openPosShiftSchema, input));
+  }
+
+  @Get('shifts/latest-close')
+  latestCloseReport(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Query() query: unknown,
+  ): Promise<PosShiftCloseReport | null> {
+    requireShiftPermission(employee);
+    const parsed = parseRequest(posCurrentShiftSchema, query);
+    return this.shifts.getLatestCloseReport(employee, parsed.registerId);
+  }
+
+  @Get('shifts/:shiftId/reconciliation')
+  reconciliation(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('shiftId', new ParseUUIDPipe()) shiftId: string,
+  ): Promise<PosShiftLiveSummary> {
+    requireShiftPermission(employee);
+    return this.shifts.getReconciliation(employee, shiftId);
+  }
+
+  @Get('shifts/:shiftId/close-report')
+  closeReport(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('shiftId', new ParseUUIDPipe()) shiftId: string,
+  ): Promise<PosShiftCloseReport> {
+    requireShiftPermission(employee);
+    return this.shifts.getCloseReport(employee, shiftId);
+  }
+
+  @Post('shifts/:shiftId/close-preview')
+  closePreview(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('shiftId', new ParseUUIDPipe()) shiftId: string,
+    @Body() input: unknown,
+  ): Promise<PosShiftClosePreview> {
+    requireShiftPermission(employee);
+    return this.shifts.previewCloseShift(
+      employee,
+      shiftId,
+      parseRequest(posShiftClosePreviewSchema, input),
+    );
+  }
+
+  @Post('shifts/:shiftId/cash-movements')
+  async recordCashMovement(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('shiftId', new ParseUUIDPipe()) shiftId: string,
+    @Body() input: unknown,
+  ): Promise<RecordPosShiftCashMovementResponse> {
+    requireShiftPermission(employee);
+    const parsed = parseRequest(recordPosShiftCashMovementSchema, input);
+    const branchId = await this.shifts.getShiftBranch(employee, shiftId);
+    const approverEmployeeId = parsed.approval
+      ? await this.auth.verifyPosEmployeeApproval({
+          merchantId: employee.merchantId,
+          branchId,
+          actingEmployeeId: employee.id,
+          ...parsed.approval,
+          permission: 'manage_cash_movements',
+        })
+      : undefined;
+    return this.shifts.recordManualCashMovement(employee, shiftId, parsed, approverEmployeeId);
+  }
+
+  @Post('shifts/:shiftId/close')
+  async closeShift(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Param('shiftId', new ParseUUIDPipe()) shiftId: string,
+    @Body() input: unknown,
+  ): Promise<PosShiftCloseReport> {
+    requireShiftPermission(employee);
+    const parsed = parseRequest(closePosShiftSchema, input);
+    const branchId = await this.shifts.getShiftBranch(employee, shiftId);
+    const approverEmployeeId = parsed.approval
+      ? await this.auth.verifyPosEmployeeApproval({
+          merchantId: employee.merchantId,
+          branchId,
+          actingEmployeeId: employee.id,
+          ...parsed.approval,
+          permission: 'approve_shift_close',
+        })
+      : undefined;
+    return this.shifts.closeShift(employee, shiftId, parsed, approverEmployeeId);
   }
 }
 

@@ -15,6 +15,8 @@ const statusColors: Record<StorefrontOrderStatus, string> = {
   pending: '#f5bd59',
   accepted: '#087c61',
   preparing: '#6488d4',
+  ready: '#31936f',
+  completed: '#607d72',
   cancelled: '#9a789b',
   rejected: '#e98978',
 };

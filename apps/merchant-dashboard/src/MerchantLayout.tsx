@@ -19,6 +19,9 @@ const navigation = [
   { id: 'employees', label: 'Employees', icon: 'customers' },
   { id: 'pos-registers', label: 'POS Registers', icon: 'orders' },
   { id: 'pos-tables', label: 'POS Tables', icon: 'grid' },
+  { id: 'pos-shift-reports', label: 'POS Shift Reports', icon: 'receipt' },
+  { id: 'pos-item-returns', label: 'POS Returns & Waste', icon: 'receipt' },
+  { id: 'pos-operations', label: 'POS Operations', icon: 'revenue' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
 ] as const;
 
@@ -77,6 +80,9 @@ export function MerchantLayout() {
       '/employees',
       '/pos-registers',
       '/pos-tables',
+      '/pos-shift-reports',
+      '/pos-item-returns',
+      '/pos-operations',
     ].includes(location.pathname) &&
     !isProductBuilder &&
     !location.pathname.startsWith('/inventory');
@@ -86,8 +92,11 @@ export function MerchantLayout() {
   function navigationLabel(item: (typeof navigation)[number]): string {
     if (item.id === 'inventory') return copy('Inventory');
     if (locale === 'ar') {
+      if (item.id === 'pos-operations') return 'تقارير تشغيل POS';
       if (item.id === 'pos-registers') return 'نقاط البيع';
       if (item.id === 'pos-tables') return 'ترابيزات POS';
+      if (item.id === 'pos-shift-reports') return 'تقارير ورديات POS';
+      if (item.id === 'pos-item-returns') return 'مرتجعات وهالك POS';
       if (item.id === 'employees') return 'الموظفون';
     }
     return t(item.label);

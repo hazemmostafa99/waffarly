@@ -7,7 +7,7 @@ export default defineConfig({
   timeout: 45_000,
   expect: { timeout: 8_000 },
   use: {
-    channel: 'chrome',
+    channel: process.env.CI ? 'chromium' : 'chrome',
     headless: true,
     viewport: { width: 1365, height: 900 },
     screenshot: 'only-on-failure',

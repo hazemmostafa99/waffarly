@@ -1,0 +1,240 @@
+.pos-operations-page {
+  --dashboard-pos-accent: #c6531b;
+  display: grid;
+  gap: 1.1rem;
+  padding: clamp(1rem, 2vw, 1.75rem);
+  color: var(--dashboard-ink, #1b2648);
+}
+
+.pos-operations-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.pos-operations-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pos-operations-heading h1 {
+  margin: 0.2rem 0 0;
+  font-size: clamp(1.4rem, 2vw, 1.9rem);
+  line-height: 1.2;
+}
+
+.pos-operations-heading p,
+.pos-operations-scope {
+  max-width: 70rem;
+  margin: 0.45rem 0 0;
+  color: var(--dashboard-muted, #68758d);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.pos-operations-eyebrow {
+  color: var(--dashboard-pos-accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pos-operations-filters {
+  display: grid;
+  grid-template-columns: minmax(13rem, 1.4fr) repeat(2, minmax(13rem, 1fr));
+  gap: 0.85rem;
+  align-items: end;
+  padding: 1rem;
+  border: 1px solid var(--dashboard-border, #eaf0f6);
+  border-radius: 0.8rem;
+  background: #fff;
+}
+
+.pos-operations-filters label {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.pos-operations-filters input {
+  width: 100%;
+  min-height: 2.7rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--dashboard-border, #eaf0f6);
+  border-radius: 0.55rem;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+
+.pos-operations-scope {
+  margin: -0.4rem 0 0;
+  font-size: 0.78rem;
+}
+
+.pos-operations-content {
+  display: grid;
+  gap: 1rem;
+}
+
+.pos-operations-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+  gap: 0.7rem;
+}
+
+.pos-operations-metric {
+  display: grid;
+  align-content: space-between;
+  gap: 0.65rem;
+  min-height: 5.2rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--dashboard-border, #eaf0f6);
+  border-radius: 0.65rem;
+  background: #fff;
+}
+
+.pos-operations-metric span {
+  color: var(--dashboard-muted, #68758d);
+  font-size: 0.78rem;
+}
+
+.pos-operations-metric strong {
+  font-size: 1.05rem;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+
+.pos-operations-metric.is-emphasis {
+  border-color: color-mix(
+    in srgb,
+    var(--dashboard-pos-accent) 38%,
+    var(--dashboard-border, #eaf0f6)
+  );
+  background: color-mix(in srgb, var(--dashboard-pos-accent) 6%, #fff);
+}
+
+.pos-operations-timing {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+}
+
+.pos-operations-empty {
+  margin: 0;
+  color: var(--dashboard-muted, #68758d);
+  font-size: 0.85rem;
+}
+
+.pos-operations-table-scroll {
+  max-width: 100%;
+  overflow: auto;
+  overscroll-behavior-inline: contain;
+  border: 1px solid var(--dashboard-border, #eaf0f6);
+  border-radius: 0.65rem;
+}
+
+.pos-operations-table-scroll:focus-visible {
+  outline: 2px solid var(--dashboard-pos-accent);
+  outline-offset: 2px;
+}
+
+.pos-operations-cashier-table {
+  width: 100%;
+  min-width: 54rem;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  text-align: start;
+  font-variant-numeric: tabular-nums;
+}
+
+.pos-operations-cashier-table th,
+.pos-operations-cashier-table td {
+  padding: 0.75rem 0.85rem;
+  border-bottom: 1px solid var(--dashboard-border, #eaf0f6);
+  text-align: start;
+  white-space: nowrap;
+}
+
+.pos-operations-cashier-table thead {
+  background: color-mix(in srgb, var(--dashboard-pos-accent) 5%, #fff);
+  color: var(--dashboard-muted, #68758d);
+  font-size: 0.74rem;
+}
+
+.pos-operations-cashier-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+
+.pos-operations-cashier-table tbody th {
+  min-width: 11rem;
+  font-weight: 600;
+}
+
+.pos-operations-cashier-table td small,
+.pos-operations-cashier-table th small {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--dashboard-muted, #68758d);
+  font-size: 0.72rem;
+  font-weight: 400;
+}
+
+.pos-operations-cashier-table td strong,
+.pos-operations-cashier-table th strong {
+  font-weight: 700;
+}
+
+.pos-operations-note,
+.pos-operations-error {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--dashboard-border, #eaf0f6);
+  border-radius: 0.65rem;
+  color: var(--dashboard-muted, #68758d);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.pos-operations-note svg {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 auto;
+}
+
+.pos-operations-error {
+  justify-content: space-between;
+  border-color: color-mix(in srgb, #c53a32 35%, var(--dashboard-border, #eaf0f6));
+  color: #a62722;
+}
+
+.pos-operations-loading {
+  margin: 0;
+  color: var(--dashboard-muted, #68758d);
+}
+
+@media (max-width: 760px) {
+  .pos-operations-page {
+    padding: 0.9rem;
+  }
+
+  .pos-operations-heading {
+    align-items: start;
+  }
+
+  .pos-operations-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .pos-operations-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
