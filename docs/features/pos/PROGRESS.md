@@ -1322,3 +1322,29 @@ concurrent run hit shared trace-folder ENOENT errors; isolated output fixed tear
 Existing Vite bundle advisories remain. Physical device/courier
 and cashier acceptance stay pending; follow the disposable 300 EGP scenario in
 the companion specification before rollout to a branch.
+### 2026-10-26 — Close-preview variance requirements and Arabic validation
+
+Fixed the cashier's 2500 EGP blind-count preview path. Local validation messages
+stay as untranslated keys until `errorText` renders them, avoiding a second Arabic
+translation lookup that replaced the reason prompt with a generic error. Apply
+the preview's supervisor requirement before returning for a missing variance
+reason, so the reason prompt and approval fields appear together on the first
+response. Payment rules, expected-cash visibility and close authorization remain
+unchanged. No API/database or real-shift write was performed.
+
+Verification: POS typecheck, lint and production build passed (existing Vite
+large-chunk advisory). Shift/delivery Playwright passed **38/38** on desktop and
+phone with intercepted APIs. New English/Arabic cases submit countedCash=2500
+without a reason, assert the specific localized reason prompt and visible
+supervisor fields, block a close POST until reason and approval are provided,
+then complete one mocked close. Manual acceptance against the operator's real
+shift remains separate; refresh the POS to load the updated client.
+
+
+### Shift screen: remove the standalone blind-count card
+
+- Removed the redundant blind-count heading, instructional box, and separate status-refresh button.
+- Added one accessible hint beside counted cash; expected cash remains hidden until closing.
+- The page Refresh button now refreshes register, current shift, and active reconciliation/latest close data.
+- Unpaid-check and pending-delivery warnings remain conditional; manual cash movement history remains available.
+- Validation: POS typecheck, lint, production build, shared UI build; 38/38 shift/delivery browser tests passed on desktop/mobile. The added refresh request assertion also passed on both viewports (2/2).

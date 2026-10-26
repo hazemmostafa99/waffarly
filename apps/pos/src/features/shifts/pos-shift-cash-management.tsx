@@ -69,6 +69,7 @@ export function PosShiftCashManagement({
   const [supervisorUsername, setSupervisorUsername] = useState('');
   const [supervisorPassword, setSupervisorPassword] = useState('');
   const [requiresCloseApproval, setRequiresCloseApproval] = useState(false);
+  // errorText localizes these keys once when rendering; do not translate them on assignment.
   const [formError, setFormError] = useState('');
 
   const reconciliationKey = posShiftReconciliationKey(employee.merchantId, shift?.id ?? '');
@@ -171,7 +172,7 @@ export function PosShiftCashManagement({
   function credentials() {
     if (!supervisorUsername.trim() && !supervisorPassword) return undefined;
     if (!supervisorUsername.trim() || !supervisorPassword) {
-      setFormError(t('Enter both supervisor username and password.'));
+      setFormError('Enter both supervisor username and password.');
       return undefined;
     }
     return { username: supervisorUsername.trim(), password: supervisorPassword };
@@ -185,7 +186,7 @@ export function PosShiftCashManagement({
   ) {
     const approval = credentials();
     if (!canManageCash && !approval) {
-      setFormError(t('Supervisor approval is required for a cash movement.'));
+      setFormError('Supervisor approval is required for a cash movement.');
       return;
     }
     try {
@@ -197,7 +198,7 @@ export function PosShiftCashManagement({
       });
     } catch (cause) {
       setFormError(
-        cause instanceof Error ? cause.message : t('Could not save this cash movement safely.'),
+        cause instanceof Error ? cause.message : 'Could not save this cash movement safely.',
       );
       return;
     }
@@ -208,16 +209,16 @@ export function PosShiftCashManagement({
   function handleMovement(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!online || !shift) {
-      setFormError(t('Connect to the internet before recording register cash.'));
+      setFormError('Connect to the internet before recording register cash.');
       return;
     }
     const saved = pendingMovement?.shiftId === shift.id ? pendingMovement.request : null;
     if (!saved && kind === 'cash_drop' && !dropReference.trim()) {
-      setFormError(t('Enter a safe bag / drop reference.'));
+      setFormError('Enter a safe bag / drop reference.');
       return;
     }
     if (!saved && (!/^(?=.*[1-9])\d{1,10}(?:\.\d{1,2})?$/.test(amount) || !reason.trim())) {
-      setFormError(t('Enter a positive amount and a reason for this cash movement.'));
+      setFormError('Enter a positive amount and a reason for this cash movement.');
       return;
     }
     submitMovement(
@@ -237,7 +238,7 @@ export function PosShiftCashManagement({
   function retryMovement(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!online || !pendingMovement) {
-      setFormError(t('Connect to the internet before retrying this saved cash movement.'));
+      setFormError('Connect to the internet before retrying this saved cash movement.');
       return;
     }
     submitMovement(
@@ -257,7 +258,7 @@ export function PosShiftCashManagement({
     const approval = credentials();
     if (supervisorUsername.trim() && !approval) return;
     if (!shift && (!canApproveClose || request.deliveryHandover) && !approval) {
-      setFormError(t('Re-enter supervisor credentials to safely retry this shift close.'));
+      setFormError('Re-enter supervisor credentials to safely retry this shift close.');
       return;
     }
     try {
@@ -270,26 +271,24 @@ export function PosShiftCashManagement({
             ...(request.deliveryHandover ? { deliveryHandover: request.deliveryHandover } : {}),
           },
         });
+        setRequiresCloseApproval(preview.requiresSupervisorApproval);
         if (preview.unsettledCheckCount > 0) {
-          setFormError(t('Settle or cancel every open check before closing this shift.'));
+          setFormError('Settle or cancel every open check before closing this shift.');
           return;
         }
         if (preview.requiresDeliveryHandover) {
-          setFormError(t('Enter the employee receiving pending deliveries.'));
+          setFormError('Enter the employee receiving pending deliveries.');
           return;
         }
         if (preview.requiresReason && !request.reason) {
-          setFormError(t('Enter a reason for the cash variance before closing.'));
+          setFormError('Enter a reason for the cash variance before closing.');
           return;
         }
-        setRequiresCloseApproval(preview.requiresSupervisorApproval);
         if (preview.requiresSupervisorApproval && !approval) {
           setFormError(
-            t(
-              preview.pendingDeliveryCount
-                ? 'Delivery handover requires a different supervisor.'
-                : 'Supervisor approval is required for a cash variance.',
-            ),
+            preview.pendingDeliveryCount
+              ? 'Delivery handover requires a different supervisor.'
+              : 'Supervisor approval is required for a cash variance.',
           );
           return;
         }
@@ -298,7 +297,7 @@ export function PosShiftCashManagement({
       if (!pendingClose) savePendingShiftClose(employee.merchantId, employee.id, command);
     } catch (cause) {
       setFormError(
-        cause instanceof Error ? cause.message : t('Could not save this shift close safely.'),
+        cause instanceof Error ? cause.message : 'Could not save this shift close safely.',
       );
       return;
     }
@@ -309,12 +308,12 @@ export function PosShiftCashManagement({
   function handleClose(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!online || !shift) {
-      setFormError(t('Connect to the internet before closing this register shift.'));
+      setFormError('Connect to the internet before closing this register shift.');
       return;
     }
     const saved = pendingClose?.shiftId === shift.id ? pendingClose.request : null;
     if (!saved && !/^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(countedCash)) {
-      setFormError(t('Enter the counted cash using up to two decimal places.'));
+      setFormError('Enter the counted cash using up to two decimal places.');
       return;
     }
     void submitClose(
@@ -335,7 +334,7 @@ export function PosShiftCashManagement({
   function retryClose(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!online || !pendingClose) {
-      setFormError(t('Connect to the internet before retrying this saved shift close.'));
+      setFormError('Connect to the internet before retrying this saved shift close.');
       return;
     }
     void submitClose(
@@ -392,101 +391,74 @@ export function PosShiftCashManagement({
             </div>
           ) : reconciliation.data ? (
             <>
-              <section
-                className="grid gap-4 rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-5"
-                aria-labelledby="pos-reconciliation-heading"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <h3 id="pos-reconciliation-heading" className="m-0 text-lg font-semibold">
-                      {t('Blind cash count')}
-                    </h3>
-                    <p className="m-0 mt-1 text-xs text-muted-foreground">
-                      {t('Count the physical cash before comparing it with the shift totals.')}
-                    </p>
-                  </div>
-                  <PosButton
-                    type="button"
-                    variant="outline"
-                    className="min-h-9 px-3"
-                    onClick={() => void reconciliation.refetch()}
-                    disabled={reconciliation.isFetching}
-                  >
-                    <RefreshCw size={14} aria-hidden="true" /> {t('Refresh shift status')}
-                  </PosButton>
+              {reconciliation.data.unsettledCheckCount > 0 && (
+                <div
+                  className="grid gap-1 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning"
+                  role="status"
+                >
+                  <strong>
+                    {t('Shift close is blocked: {{count}} check(s) still need settlement.', {
+                      count: reconciliation.data.unsettledCheckCount,
+                    })}
+                  </strong>
+                  <span>
+                    {t('Remaining balance: {{amount}}', {
+                      amount: formatMoney(reconciliation.data.unsettledBalance),
+                    })}
+                  </span>
                 </div>
-                <p className="m-0 rounded-lg border border-info/30 bg-info/5 p-3 text-xs leading-relaxed text-muted-foreground">
-                  {t('Shift totals stay hidden until the physical count is submitted.')}
-                </p>
-                {reconciliation.data.unsettledCheckCount > 0 && (
-                  <div
-                    className="grid gap-1 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning"
-                    role="status"
-                  >
-                    <strong>
-                      {t('Shift close is blocked: {{count}} check(s) still need settlement.', {
-                        count: reconciliation.data.unsettledCheckCount,
-                      })}
-                    </strong>
-                    <span>
-                      {t('Remaining balance: {{amount}}', {
-                        amount: formatMoney(reconciliation.data.unsettledBalance),
-                      })}
-                    </span>
-                  </div>
-                )}
-                {(reconciliation.data.pendingDeliveryCount ?? 0) > 0 && (
-                  <div className="rounded-lg border border-warning/40 bg-warning/10 p-3">
-                    <strong>
-                      {t('Pending deliveries')}: {reconciliation.data.pendingDeliveryCount}
-                    </strong>
-                    <p>
-                      {t('Money outside the drawer')}:{' '}
-                      {formatMoney(reconciliation.data.pendingDeliveryBalance ?? '0.00')}
-                    </p>
-                    <Link className="underline" to="/deliveries">
-                      {t('Review delivery follow-up')}
-                    </Link>
-                    <p className="text-xs">
-                      {t(
-                        'These amounts are not drawer cash. A named recipient and a different supervisor must approve handover.',
-                      )}
-                    </p>
-                  </div>
-                )}
-                {reconciliation.data.manualMovements.length > 0 && (
-                  <details className="rounded-lg border border-border bg-background/60 p-3">
-                    <summary className="cursor-pointer text-sm font-semibold">
-                      {t('Manual cash movements')} ({reconciliation.data.manualMovements.length})
-                    </summary>
-                    <ul className="m-0 mt-3 grid list-none gap-2 p-0 text-xs">
-                      {reconciliation.data.manualMovements.map((movement) => (
-                        <li
-                          key={movement.id}
-                          className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-2"
-                        >
-                          <span>
-                            {movement.kind === 'cash_in'
-                              ? t('Cash added')
-                              : movement.kind === 'cash_drop'
-                                ? t('Cash dropped to safe')
-                                : t('Cash removed')}{' '}
-                            · {movement.reason}
-                            {movement.dropReference
-                              ? ` · ${t('Drop reference')}: ${movement.dropReference}`
-                              : ''}{' '}
-                            · {movement.operatorName}
-                          </span>
-                          <strong className="tabular-nums">
-                            {movement.kind === 'cash_in' ? '+' : '−'}
-                            {formatMoney(movement.amount)}
-                          </strong>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-              </section>
+              )}
+              {(reconciliation.data.pendingDeliveryCount ?? 0) > 0 && (
+                <div className="rounded-lg border border-warning/40 bg-warning/10 p-3">
+                  <strong>
+                    {t('Pending deliveries')}: {reconciliation.data.pendingDeliveryCount}
+                  </strong>
+                  <p>
+                    {t('Money outside the drawer')}:{' '}
+                    {formatMoney(reconciliation.data.pendingDeliveryBalance ?? '0.00')}
+                  </p>
+                  <Link className="underline" to="/deliveries">
+                    {t('Review delivery follow-up')}
+                  </Link>
+                  <p className="text-xs">
+                    {t(
+                      'These amounts are not drawer cash. A named recipient and a different supervisor must approve handover.',
+                    )}
+                  </p>
+                </div>
+              )}
+              {reconciliation.data.manualMovements.length > 0 && (
+                <details className="rounded-lg border border-border bg-background/60 p-3">
+                  <summary className="cursor-pointer text-sm font-semibold">
+                    {t('Manual cash movements')} ({reconciliation.data.manualMovements.length})
+                  </summary>
+                  <ul className="m-0 mt-3 grid list-none gap-2 p-0 text-xs">
+                    {reconciliation.data.manualMovements.map((movement) => (
+                      <li
+                        key={movement.id}
+                        className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-2"
+                      >
+                        <span>
+                          {movement.kind === 'cash_in'
+                            ? t('Cash added')
+                            : movement.kind === 'cash_drop'
+                              ? t('Cash dropped to safe')
+                              : t('Cash removed')}{' '}
+                          · {movement.reason}
+                          {movement.dropReference
+                            ? ` · ${t('Drop reference')}: ${movement.dropReference}`
+                            : ''}{' '}
+                          · {movement.operatorName}
+                        </span>
+                        <strong className="tabular-nums">
+                          {movement.kind === 'cash_in' ? '+' : '−'}
+                          {formatMoney(movement.amount)}
+                        </strong>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
 
               {canSell && (
                 <form
@@ -604,14 +576,18 @@ export function PosShiftCashManagement({
                   <h3 className="m-0 text-base font-semibold">{t('Close register shift')}</h3>
                   <p className="m-0 mt-1 text-xs text-muted-foreground">
                     {t(
-                      'Count the physical till. Ordinary unpaid checks block closing; tracked deliveries require an approved handover.',
+                      'Ordinary unpaid checks block closing; tracked deliveries require an approved handover.',
                     )}
                   </p>
                 </div>
+                <p id="pos-close-count-hint" className="m-0 text-xs text-muted-foreground">
+                  {t('Count the cash physically present. Expected cash appears after closing.')}
+                </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
                     {t('Counted cash (EGP)')}
                     <Input
+                      aria-describedby="pos-close-count-hint"
                       type="text"
                       inputMode="decimal"
                       required

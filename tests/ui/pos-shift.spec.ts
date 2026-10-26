@@ -39,10 +39,7 @@ const reconciliation = {
   manualMovements: [],
 };
 
-async function openCashManagementPage(
-  page: Page,
-  options: { unsettledCheckCount?: number } = {},
-) {
+async function openCashManagementPage(page: Page, options: { unsettledCheckCount?: number } = {}) {
   let activeShift: typeof openShift | null = openShift;
   let latestClose: Record<string, unknown> | null = null;
   let expectedCash = 1550.5;
@@ -74,9 +71,7 @@ async function openCashManagementPage(
   await page.route(`**/pos/shifts/${openShift.id}/reconciliation`, (route) =>
     route.fulfill({ json: currentReconciliation }),
   );
-  await page.route('**/pos/shifts/latest-close**', (route) =>
-    route.fulfill({ json: latestClose }),
-  );
+  await page.route('**/pos/shifts/latest-close**', (route) => route.fulfill({ json: latestClose }));
   await page.route(`**/pos/shifts/${openShift.id}/close-preview`, async (route) => {
     const body = route.request().postDataJSON() as { countedCash: string; reason?: string };
     const hasVariance = Number(body.countedCash) !== expectedCash;
@@ -109,7 +104,9 @@ async function openCashManagementPage(
       ...currentReconciliation,
       manualMovements: [...currentReconciliation.manualMovements, movement],
     };
-    await route.fulfill({ json: { shiftId: openShift.id, reconciliation: currentReconciliation, movement } });
+    await route.fulfill({
+      json: { shiftId: openShift.id, reconciliation: currentReconciliation, movement },
+    });
   });
   await page.route(`**/pos/shifts/${openShift.id}/close`, async (route) => {
     const body = route.request().postDataJSON() as Record<string, unknown>;
@@ -143,7 +140,7 @@ async function openCashManagementPage(
 
   await page.goto('/shift');
   await expect(page.getByRole('heading', { name: 'Open register shift' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Blind cash count' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Close register shift' })).toBeVisible();
   return { movementRequests, closeRequests };
 }
 
@@ -345,17 +342,19 @@ test('Arabic open-shift screen follows RTL and hides unreadable saved operator n
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
 });
 
-test('blind count hides totals and an unpaid check blocks shift closing', async ({
-  page,
-}) => {
+test('blind count hides totals and an unpaid check blocks shift closing', async ({ page }) => {
   const requests = await openCashManagementPage(page, { unsettledCheckCount: 1 });
-  const reconciliationCard = page.getByRole('region', { name: 'Blind cash count' });
-  await expect(reconciliationCard).toContainText('Shift totals stay hidden');
+  const reconciliationCard = page.locator('main');
+  await expect(page.getByText('Count the cash physically present. Expected cash appears after closing.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Blind cash count' })).toHaveCount(0);
+  const refreshedStatus = page.waitForRequest(`**/pos/shifts/${openShift.id}/reconciliation`);
+  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+  await refreshedStatus;
   await expect(reconciliationCard).not.toContainText('1,550.50');
   await expect(page.getByLabel('Counted cash (EGP)')).toHaveValue('');
   await expect(reconciliationCard).toContainText('85.00');
   await expect(page.getByRole('button', { name: 'Close shift and save report' })).toBeDisabled();
-  await expect(reconciliationCard.getByRole('status')).toContainText('Shift close is blocked');
+  await expect(page.getByText('Shift close is blocked:', { exact: false })).toBeVisible();
   expect(requests.closeRequests).toHaveLength(0);
 });
 
@@ -378,20 +377,28 @@ test('cash movement requires supervisor credentials and updates drawer reconcili
     reason: 'Change fund top-up',
     approval: { username: 'supervisor', password: 'local-test-password' },
   });
-  await expect(page.getByRole('region', { name: 'Blind cash count' })).not.toContainText('1,575.50');
+  await expect(page.locator('main')).not.toContainText(
+    '1,575.50',
+  );
   await page.getByText('Manual cash movements').click();
   await expect(page.getByText(/Change fund top-up/)).toBeVisible();
   await expect(movementForm.getByLabel('Supervisor password')).toHaveValue('');
 });
 
-test('cash drop requires a safe reference and is recorded separately from paid-out cash', async ({ page }) => {
+test('cash drop requires a safe reference and is recorded separately from paid-out cash', async ({
+  page,
+}) => {
   const requests = await openCashManagementPage(page);
   const movementForm = page.locator('form').filter({ has: page.getByLabel('Amount (EGP)') });
   await movementForm.getByLabel('Movement type').selectOption('cash_drop');
   await movementForm.getByLabel('Amount (EGP)').fill('200.00');
   await movementForm.getByLabel('Reason', { exact: true }).fill('Mid-shift secure drop');
   await movementForm.getByRole('button', { name: 'Record movement' }).click();
-  expect(await movementForm.getByLabel('Safe bag / drop reference').evaluate((input: HTMLInputElement) => !input.checkValidity())).toBe(true);
+  expect(
+    await movementForm
+      .getByLabel('Safe bag / drop reference')
+      .evaluate((input: HTMLInputElement) => !input.checkValidity()),
+  ).toBe(true);
   expect(requests.movementRequests).toHaveLength(0);
 
   await movementForm.getByLabel('Safe bag / drop reference').fill('SAFE-BAG-1042');
@@ -405,7 +412,7 @@ test('cash drop requires a safe reference and is recorded separately from paid-o
     reason: 'Mid-shift secure drop',
     dropReference: 'SAFE-BAG-1042',
   });
-  const reconciliationCard = page.getByRole('region', { name: 'Blind cash count' });
+  const reconciliationCard = page.locator('main');
   await reconciliationCard.getByText('Manual cash movements').click();
   await expect(reconciliationCard).toContainText('Cash dropped to safe');
   await expect(reconciliationCard).toContainText('SAFE-BAG-1042');
@@ -443,3 +450,59 @@ test('cash variance requires a reason and supervisor approval before closing', a
   await expect(page.getByRole('heading', { name: 'Last shift close' })).toBeVisible();
   await expect(page.getByLabel('Supervisor password')).toHaveCount(0);
 });
+
+for (const locale of ['en', 'ar'] as const) {
+  test(`blind count preview reveals the reason and supervisor requirements together (${locale})`, async ({
+    page,
+  }) => {
+    const requests = await openCashManagementPage(page);
+    if (locale === 'ar') await page.getByRole('button', { name: 'Change language' }).click();
+    const labels =
+      locale === 'ar'
+        ? {
+            count: 'النقد المعدود (جنيه)',
+            reason: 'سبب الفرق',
+            close: 'إغلاق الوردية وحفظ التقرير',
+            username: 'اسم مستخدم المشرف',
+            password: 'كلمة مرور المشرف',
+            reasonError: 'أدخل سبب فرق النقد قبل إغلاق الوردية.',
+            approvalError: 'يلزم اعتماد المشرف لفرق النقد.',
+            saved: 'آخر إغلاق للوردية',
+          }
+        : {
+            count: 'Counted cash (EGP)',
+            reason: 'Variance reason',
+            close: 'Close shift and save report',
+            username: 'Supervisor username',
+            password: 'Supervisor password',
+            reasonError: 'Enter a reason for the cash variance before closing.',
+            approvalError: 'Supervisor approval is required for a cash variance.',
+            saved: 'Last shift close',
+          };
+    const closeForm = page.locator('form').filter({ has: page.getByLabel(labels.count) });
+    await closeForm.getByLabel(labels.count).fill('2500');
+    await closeForm.getByRole('button', { name: labels.close }).click();
+
+    await expect(page.getByRole('alert')).toHaveText(labels.reasonError);
+    await expect(closeForm.getByLabel(labels.username)).toBeVisible();
+    await expect(closeForm.getByLabel(labels.password)).toBeVisible();
+    await expect(closeForm.getByLabel(labels.count)).toHaveValue('2500');
+    expect(requests.closeRequests).toHaveLength(0);
+
+    await closeForm.getByLabel(labels.reason).fill('Count confirmed after a recount');
+    await closeForm.getByRole('button', { name: labels.close }).click();
+    await expect(page.getByRole('alert')).toHaveText(labels.approvalError);
+    expect(requests.closeRequests).toHaveLength(0);
+
+    await closeForm.getByLabel(labels.username).fill('supervisor');
+    await closeForm.getByLabel(labels.password).fill('local-test-password');
+    await closeForm.getByRole('button', { name: labels.close }).click();
+    await expect(page.getByRole('heading', { name: labels.saved })).toBeVisible();
+    expect(requests.closeRequests).toHaveLength(1);
+    expect(requests.closeRequests[0]).toMatchObject({
+      countedCash: '2500',
+      reason: 'Count confirmed after a recount',
+      approval: { username: 'supervisor', password: 'local-test-password' },
+    });
+  });
+}

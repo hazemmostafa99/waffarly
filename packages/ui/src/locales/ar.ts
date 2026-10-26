@@ -1,4 +1,8 @@
 export const ar: Record<string, string> = {
+  'Count the cash physically present. Expected cash appears after closing.':
+    'عدّ النقد الموجود فعلًا؛ المتوقع هيظهر بعد الإقفال.',
+  'Ordinary unpaid checks block closing; tracked deliveries require an approved handover.':
+    'الحسابات العادية غير المسددة بتمنع الإقفال، والدليفري المتابع محتاج تسليم معتمد.',
   'Delivery follow-up': 'متابعة الدليفري',
   'Close and approve delivery handover before moving follow-up to another drawer.':
     'اقفل الوردية وسلّم متابعة الدليفري باعتماد المشرف قبل نقلها لدرج تاني.',

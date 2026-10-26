@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useIsFetching, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { OpenPosShiftRequest, PosEmployeeSession } from '@waffarly/contracts';
 import { Input, useLocale } from '@waffarly/ui';
 import {
@@ -18,7 +18,7 @@ import { PosButton } from '../../components/pos-button.js';
 import { ApiError } from '../../lib/api-client.js';
 import { isReadablePosLabel } from '../../lib/display-label.js';
 import { PosShiftCashManagement } from './pos-shift-cash-management.js';
-import { getCurrentPosShift, listPosRegisters, openPosShift, posCurrentShiftKey, posRegisterKey } from './pos-shifts.api.js';
+import { getCurrentPosShift, listPosRegisters, openPosShift, posCurrentShiftKey, posLatestShiftCloseKey, posRegisterKey, posShiftReconciliationKey } from './pos-shifts.api.js';
 
 type LayoutContext = { employee: PosEmployeeSession };
 
@@ -105,6 +105,10 @@ export function PosShiftScreen() {
     refetchOnWindowFocus: true,
   });
   const activeShift = currentShiftQuery.data ?? null;
+  const cashStatusKey = activeShift
+    ? posShiftReconciliationKey(employee.merchantId, activeShift.id)
+    : posLatestShiftCloseKey(employee.merchantId, registerId);
+  const cashStatusFetching = useIsFetching({ queryKey: cashStatusKey });
   const openMutation = useMutation({
     mutationFn: (input: OpenPosShiftRequest) => openPosShift(input),
     onSuccess: async (shift, variables) => {
@@ -212,9 +216,12 @@ export function PosShiftScreen() {
     ? activeShift!.openedByName
     : t('Cashier name unavailable');
 
-  function retryFailedQueries() {
-    if (registersQuery.isError) void registersQuery.refetch();
-    if (currentShiftQuery.isError && branchId && registerId) void currentShiftQuery.refetch();
+  function refreshShiftData() {
+    if (branchId) void registersQuery.refetch();
+    if (branchId && registerId) {
+      void currentShiftQuery.refetch();
+      void queryClient.refetchQueries({ queryKey: cashStatusKey, type: 'active' });
+    }
   }
 
   return (
@@ -239,8 +246,8 @@ export function PosShiftScreen() {
             type="button"
             variant="outline"
             className="min-h-9 px-3"
-            disabled={registersQuery.isFetching || currentShiftQuery.isFetching}
-            onClick={retryFailedQueries}
+            disabled={!branchId || registersQuery.isFetching || currentShiftQuery.isFetching || cashStatusFetching > 0}
+            onClick={refreshShiftData}
           >
             <RefreshCw size={14} aria-hidden="true" />
             {t('Refresh')}
@@ -264,8 +271,8 @@ export function PosShiftScreen() {
           <PosButton
             type="button"
             variant="outline"
-            disabled={registersQuery.isFetching || currentShiftQuery.isFetching}
-            onClick={retryFailedQueries}
+            disabled={!branchId || registersQuery.isFetching || currentShiftQuery.isFetching || cashStatusFetching > 0}
+            onClick={refreshShiftData}
           >
             {t('Retry')}
           </PosButton>
