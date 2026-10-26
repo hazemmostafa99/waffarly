@@ -411,6 +411,19 @@ function isPendingShiftClose(value: unknown): value is PendingPosShiftClose {
     typeof request.requestId === 'string' &&
     Boolean(request.requestId) &&
     isPersistedMoney(request.countedCash) &&
+    (request.deliveryHandover === undefined ||
+      (request.deliveryHandover !== null &&
+        typeof request.deliveryHandover === 'object' &&
+        Object.keys(request.deliveryHandover).length === 1 &&
+        typeof (request.deliveryHandover as Record<string, unknown>).recipientUsername ===
+          'string' &&
+        Boolean(
+          (
+            (request.deliveryHandover as Record<string, unknown>).recipientUsername as string
+          ).trim(),
+        ) &&
+        ((request.deliveryHandover as Record<string, unknown>).recipientUsername as string)
+          .length <= 80)) &&
     (request.reason === undefined ||
       (typeof request.reason === 'string' && request.reason.length <= 500))
   );
@@ -770,6 +783,14 @@ function parseWorkspace(
               countedCash: value.pendingShiftClose.request.countedCash,
               ...(typeof value.pendingShiftClose.request.reason === 'string'
                 ? { reason: value.pendingShiftClose.request.reason }
+                : {}),
+              ...(value.pendingShiftClose.request.deliveryHandover
+                ? {
+                    deliveryHandover: {
+                      recipientUsername:
+                        value.pendingShiftClose.request.deliveryHandover.recipientUsername,
+                    },
+                  }
                 : {}),
             },
           }

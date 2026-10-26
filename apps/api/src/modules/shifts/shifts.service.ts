@@ -6,6 +6,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { createHash } from 'node:crypto';
+import { readDeliveryBalances } from './delivery-reconciliation.js';
+import type { PosDeliveryHandoverSnapshot } from '@waffarly/contracts';
 import type {
   CursorPage,
   PosEmployeeSession,
@@ -25,7 +27,10 @@ import type { Prisma, PrismaClient } from '@waffarly/database';
 import { assertScopedCursor } from '../../common/http/pagination.js';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { formatCents, toCents, toSignedCents } from '../../common/money/money.js';
-import { isSerializationConflict, isUniqueConstraintError } from '../../infrastructure/database/prisma-errors.js';
+import {
+  isSerializationConflict,
+  isUniqueConstraintError,
+} from '../../infrastructure/database/prisma-errors.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { isPosEmployeeRole, resolvePosEmployeePermissions } from '@waffarly/contracts';
 import {
@@ -77,6 +82,8 @@ type CloseReportRecord = Prisma.PosShiftCloseReportGetPayload<{
 }>;
 
 const ownerCloseReportSelect = {
+  deliveryCashReceived: true,
+  deliveryHandover: true,
   id: true,
   shiftId: true,
   currency: true,
@@ -361,32 +368,49 @@ export class ShiftsService {
   ): Promise<PosShiftClosePreview> {
     this.requireShiftCapability(employee);
     const request: PosShiftClosePreviewRequest = parseRequest(posShiftClosePreviewSchema, input);
-    return this.prisma.$transaction(async (tx) => {
-      const shift = await tx.posShift.findFirst({
-        where: {
-          id: shiftId,
-          merchantId: employee.merchantId,
-          status: 'open',
-          branch: { archivedAt: null },
-          register: { active: true },
-        },
-        include: shiftInclude,
-      });
-      if (!shift) throw new NotFoundException('The open register shift was not found.');
-      this.assertAssignedBranch(employee, shift.branchId);
-      const actorPermissions = await this.currentEmployeePermissions(tx, employee, shift.branchId);
-      if (!actorPermissions.includes('open_register_shift'))
-        throw new ForbiddenException('This employee is no longer authorized to close register shifts.');
-      const reconciliation = await buildShiftReconciliation(tx, shift);
-      const variance = toCents(request.countedCash) !== toCents(reconciliation.expectedCash);
-      return {
-        unsettledCheckCount: reconciliation.unsettledCheckCount,
-        requiresReason: reconciliation.unsettledCheckCount === 0 && variance && !request.reason,
-        requiresSupervisorApproval:
-          reconciliation.unsettledCheckCount === 0 && variance &&
-          !actorPermissions.includes('approve_shift_close'),
-      };
-    }, { isolationLevel: 'ReadCommitted' });
+    return this.prisma.$transaction(
+      async (tx) => {
+        const shift = await tx.posShift.findFirst({
+          where: {
+            id: shiftId,
+            merchantId: employee.merchantId,
+            status: 'open',
+            branch: { archivedAt: null },
+            register: { active: true },
+          },
+          include: shiftInclude,
+        });
+        if (!shift) throw new NotFoundException('The open register shift was not found.');
+        this.assertAssignedBranch(employee, shift.branchId);
+        const actorPermissions = await this.currentEmployeePermissions(
+          tx,
+          employee,
+          shift.branchId,
+        );
+        if (!actorPermissions.includes('open_register_shift'))
+          throw new ForbiddenException(
+            'This employee is no longer authorized to close register shifts.',
+          );
+        const reconciliation = await buildShiftReconciliation(tx, shift);
+        const variance = toCents(request.countedCash) !== toCents(reconciliation.expectedCash);
+        return {
+          unsettledCheckCount: reconciliation.unsettledCheckCount,
+          requiresReason: reconciliation.unsettledCheckCount === 0 && variance && !request.reason,
+          requiresSupervisorApproval:
+            (reconciliation.unsettledCheckCount === 0 &&
+              variance &&
+              !actorPermissions.includes('approve_shift_close')) ||
+            Boolean(reconciliation.pendingDeliveryCount),
+          ...(reconciliation.pendingDeliveryCount
+            ? {
+                pendingDeliveryCount: reconciliation.pendingDeliveryCount,
+                requiresDeliveryHandover: !request.deliveryHandover,
+              }
+            : {}),
+        };
+      },
+      { isolationLevel: 'ReadCommitted' },
+    );
   }
 
   async getShiftBranch(employee: PosEmployeeSession, shiftId: string): Promise<string> {
@@ -412,7 +436,11 @@ export class ShiftsService {
         shift: {
           registerId: query.registerId,
           status: 'closed',
-          branchId: { in: employee.branches.filter((branch) => branch.archivedAt === null).map((branch) => branch.id) },
+          branchId: {
+            in: employee.branches
+              .filter((branch) => branch.archivedAt === null)
+              .map((branch) => branch.id),
+          },
           register: { merchantId: employee.merchantId },
         },
       },
@@ -432,7 +460,11 @@ export class ShiftsService {
         shiftId,
         merchantId: employee.merchantId,
         shift: {
-          branchId: { in: employee.branches.filter((branch) => branch.archivedAt === null).map((branch) => branch.id) },
+          branchId: {
+            in: employee.branches
+              .filter((branch) => branch.archivedAt === null)
+              .map((branch) => branch.id),
+          },
         },
       },
       include: closeReportInclude,
@@ -451,7 +483,9 @@ export class ShiftsService {
     const parsed = parseRequest(recordPosShiftCashMovementSchema, input);
     const request = withoutShiftCashMovementApproval(parsed);
     const fingerprint = createHash('sha256')
-      .update(JSON.stringify({ shiftId, ...request, approverEmployeeId: approverEmployeeId ?? null }))
+      .update(
+        JSON.stringify({ shiftId, ...request, approverEmployeeId: approverEmployeeId ?? null }),
+      )
       .digest('hex');
     const existing = await this.prisma.posShiftManualCashMovement.findFirst({
       where: { merchantId: employee.merchantId, requestId: request.requestId },
@@ -466,13 +500,20 @@ export class ShiftsService {
             where: { merchantId: employee.merchantId, requestId: request.requestId },
             include: manualCashMovementInclude,
           });
-          if (prior) return this.replayManualCashMovement(employee, prior, shiftId, fingerprint, tx);
+          if (prior)
+            return this.replayManualCashMovement(employee, prior, shiftId, fingerprint, tx);
 
           const shiftRow = await lockOpenShiftForCashMovement(tx, employee, shiftId);
           this.assertAssignedBranch(employee, shiftRow.branchId);
-          const actorPermissions = await this.currentEmployeePermissions(tx, employee, shiftRow.branchId);
+          const actorPermissions = await this.currentEmployeePermissions(
+            tx,
+            employee,
+            shiftRow.branchId,
+          );
           if (!actorPermissions.includes('sell'))
-            throw new ForbiddenException('This employee is not authorized to change register cash.');
+            throw new ForbiddenException(
+              'This employee is not authorized to change register cash.',
+            );
           let approverEmployeeIdForRecord: string | null = null;
           if (actorPermissions.includes('manage_cash_movements')) {
             if (approverEmployeeId) {
@@ -529,7 +570,9 @@ export class ShiftsService {
           include: manualCashMovementInclude,
         });
         if (prior) return this.replayManualCashMovement(employee, prior, shiftId, fingerprint);
-        throw new ConflictException('The cash movement changed concurrently. Refresh the shift and retry.');
+        throw new ConflictException(
+          'The cash movement changed concurrently. Refresh the shift and retry.',
+        );
       }
       throw error;
     }
@@ -545,7 +588,9 @@ export class ShiftsService {
     const parsed = parseRequest(closePosShiftSchema, input);
     const request = withoutShiftCloseApproval(parsed);
     const fingerprint = createHash('sha256')
-      .update(JSON.stringify({ shiftId, ...request, approverEmployeeId: approverEmployeeId ?? null }))
+      .update(
+        JSON.stringify({ shiftId, ...request, approverEmployeeId: approverEmployeeId ?? null }),
+      )
       .digest('hex');
     const previous = await this.prisma.posShiftCloseReport.findFirst({
       where: { merchantId: employee.merchantId, requestId: request.requestId },
@@ -573,11 +618,18 @@ export class ShiftsService {
               AND s."status" = 'open'
             FOR UPDATE OF s`;
           const lockedShift = locked[0];
-          if (!lockedShift) throw new ConflictException('This register shift is already closed or unavailable.');
+          if (!lockedShift)
+            throw new ConflictException('This register shift is already closed or unavailable.');
           this.assertAssignedBranch(employee, lockedShift.branchId);
-          const actorPermissions = await this.currentEmployeePermissions(tx, employee, lockedShift.branchId);
+          const actorPermissions = await this.currentEmployeePermissions(
+            tx,
+            employee,
+            lockedShift.branchId,
+          );
           if (!actorPermissions.includes('open_register_shift'))
-            throw new ForbiddenException('This employee is no longer authorized to close register shifts.');
+            throw new ForbiddenException(
+              'This employee is no longer authorized to close register shifts.',
+            );
 
           let approvedByEmployeeId: string | null = null;
           if (approverEmployeeId) {
@@ -596,11 +648,88 @@ export class ShiftsService {
           const reconciliation = await buildShiftReconciliation(tx, shift);
           if (reconciliation.unsettledCheckCount > 0)
             throw new ConflictException('Settle or cancel every check before closing this shift.');
+          let deliveryHandover: PosDeliveryHandoverSnapshot | null = null;
+          if (reconciliation.pendingDeliveryCount) {
+            if (!request.deliveryHandover || !approvedByEmployeeId)
+              throw new ForbiddenException(
+                'Pending deliveries require a named recipient and approval from a different supervisor.',
+              );
+            const recipient = await tx.posEmployee.findFirst({
+              where: {
+                merchantId: employee.merchantId,
+                username: request.deliveryHandover.recipientUsername,
+                active: true,
+                branches: {
+                  some: { branchId: lockedShift.branchId, branch: { archivedAt: null } },
+                },
+              },
+              select: { id: true, displayName: true, role: true, permissions: true },
+            });
+            const recipientPermissions = recipient
+              ? resolvePosEmployeePermissions(
+                  isPosEmployeeRole(recipient.role) ? recipient.role : null,
+                  recipient.permissions,
+                )
+              : [];
+            if (
+              !recipient ||
+              recipient.id === employee.id ||
+              !recipientPermissions.includes('sell') ||
+              !recipientPermissions.includes('open_register_shift')
+            )
+              throw new ForbiddenException(
+                'Choose a different active cashier or supervisor assigned to this branch.',
+              );
+            const deliveries = await readDeliveryBalances(tx, employee.merchantId, {
+              shiftId,
+              limit: 501,
+            });
+            if (deliveries.length > 500)
+              throw new ConflictException(
+                'Resolve deliveries until at most 500 follow-ups remain before closing.',
+              );
+            const approver = await tx.posEmployee.findFirstOrThrow({
+              where: { id: approvedByEmployeeId, merchantId: employee.merchantId },
+              select: { displayName: true },
+            });
+            deliveryHandover = {
+              recipientEmployeeId: recipient.id,
+              recipientName: recipient.displayName,
+              approvedByName: approver.displayName,
+              deliveries: deliveries.map((d) => ({
+                orderId: d.orderId,
+                courierName: d.courierName,
+                status: d.status,
+                customerDue: formatCents(toCents(d.customerDue)),
+                courierCashHeld: formatCents(toCents(d.courierCashHeld)),
+              })),
+            };
+            await tx.posDelivery.updateMany({
+              where: {
+                merchantId: employee.merchantId,
+                orderId: { in: deliveries.map((d) => d.orderId) },
+                followupShiftId: shiftId,
+              },
+              data: {
+                custodianEmployeeId: recipient.id,
+                followupShiftId: null,
+                revision: { increment: 1 },
+              },
+            });
+          } else if (request.deliveryHandover) {
+            throw new ConflictException(
+              'There are no pending deliveries to hand over. Refresh the shift.',
+            );
+          }
           const countedCash = formatCents(toCents(request.countedCash));
           const varianceCents = toCents(countedCash) - toCents(reconciliation.expectedCash);
           if (varianceCents !== 0n && !request.reason?.trim())
             throw new ConflictException('Enter a reason for the cash variance.');
-          if (varianceCents !== 0n && !approvedByEmployeeId && !actorPermissions.includes('approve_shift_close'))
+          if (
+            varianceCents !== 0n &&
+            !approvedByEmployeeId &&
+            !actorPermissions.includes('approve_shift_close')
+          )
             throw new ForbiddenException('Supervisor approval is required for a cash variance.');
 
           const closedAt = new Date();
@@ -620,6 +749,10 @@ export class ShiftsService {
               currency: shift.currency,
               openingFloat: finalReconciliation.openingFloat,
               cashSales: finalReconciliation.cashSales,
+              deliveryCashReceived: finalReconciliation.deliveryCashReceived ?? '0.00',
+              ...(deliveryHandover
+                ? { deliveryHandover: deliveryHandover as unknown as Prisma.InputJsonValue }
+                : {}),
               cashRefunds: finalReconciliation.cashRefunds,
               cashIn: finalReconciliation.cashIn,
               cashOut: finalReconciliation.cashOut,
@@ -639,7 +772,8 @@ export class ShiftsService {
             where: { id: shiftId, merchantId: employee.merchantId, status: 'open' },
             data: { status: 'closed', closedAt },
           });
-          if (changed.count !== 1) throw new ConflictException('This register shift was closed concurrently.');
+          if (changed.count !== 1)
+            throw new ConflictException('This register shift was closed concurrently.');
           const savedReport = await tx.posShiftCloseReport.findFirstOrThrow({
             where: { id: report.id, merchantId: employee.merchantId },
             include: closeReportInclude,
@@ -655,7 +789,9 @@ export class ShiftsService {
           include: closeReportInclude,
         });
         if (prior) return this.replayShiftClose(employee, prior, shiftId, fingerprint);
-        throw new ConflictException('The shift changed while closing. Refresh the reconciliation and retry.');
+        throw new ConflictException(
+          'The shift changed while closing. Refresh the reconciliation and retry.',
+        );
       }
       throw error;
     }
@@ -675,7 +811,8 @@ export class ShiftsService {
       },
       select: { role: true, permissions: true },
     });
-    if (!current) throw new ForbiddenException('This employee is not active at the selected branch.');
+    if (!current)
+      throw new ForbiddenException('This employee is not active at the selected branch.');
     return resolvePosEmployeePermissions(
       isPosEmployeeRole(current.role) ? current.role : null,
       current.permissions,
@@ -700,7 +837,8 @@ export class ShiftsService {
       },
       select: { id: true, role: true, permissions: true },
     });
-    if (!approver) throw new ForbiddenException('The approving employee is not active at this branch.');
+    if (!approver)
+      throw new ForbiddenException('The approving employee is not active at this branch.');
     const permissions = resolvePosEmployeePermissions(
       isPosEmployeeRole(approver.role) ? approver.role : null,
       approver.permissions,
@@ -721,19 +859,24 @@ export class ShiftsService {
       record.shiftId !== shiftId ||
       record.operatorEmployeeId !== employee.id ||
       record.fingerprint !== fingerprint
-    ) throw new ConflictException('This cash movement request ID was already used for another action.');
-    return db.posShift.findFirst({
-      where: { id: shiftId, merchantId: employee.merchantId },
-      include: shiftInclude,
-    }).then(async (shift) => {
-      if (!shift) throw new NotFoundException('The register shift was not found.');
-      this.assertAssignedBranch(employee, shift.branchId);
-      return {
-        shiftId,
-        reconciliation: toLiveShiftSummary(await buildShiftReconciliation(db, shift)),
-        movement: toManualCashMovementSummary(record),
-      };
-    });
+    )
+      throw new ConflictException(
+        'This cash movement request ID was already used for another action.',
+      );
+    return db.posShift
+      .findFirst({
+        where: { id: shiftId, merchantId: employee.merchantId },
+        include: shiftInclude,
+      })
+      .then(async (shift) => {
+        if (!shift) throw new NotFoundException('The register shift was not found.');
+        this.assertAssignedBranch(employee, shift.branchId);
+        return {
+          shiftId,
+          reconciliation: toLiveShiftSummary(await buildShiftReconciliation(db, shift)),
+          movement: toManualCashMovementSummary(record),
+        };
+      });
   }
 
   private replayShiftClose(
@@ -747,7 +890,10 @@ export class ShiftsService {
       record.shiftId !== shiftId ||
       record.operatorEmployeeId !== employee.id ||
       record.fingerprint !== fingerprint
-    ) throw new ConflictException('This shift close request ID was already used for another action.');
+    )
+      throw new ConflictException(
+        'This shift close request ID was already used for another action.',
+      );
     this.assertAssignedBranch(employee, record.shift.branchId);
     return toCloseReport(record);
   }
@@ -824,6 +970,29 @@ export class ShiftsService {
       throw new ConflictException('The register shift for this order is not open.');
   }
 
+  /** Orders holds the source/follow-up/receiving shift locks in sorted order. */
+  async lockDeliveryReceivingShift(
+    tx: Prisma.TransactionClient,
+    input: {
+      merchantId: string;
+      branchId: string;
+      shiftId: string;
+      followupShiftId: string | null;
+    },
+  ): Promise<void> {
+    await this.lockOpenShiftForPayment(tx, input);
+    if (input.followupShiftId && input.followupShiftId !== input.shiftId) {
+      const current = await tx.posShift.findFirst({
+        where: { id: input.followupShiftId, merchantId: input.merchantId, status: 'open' },
+        select: { id: true },
+      });
+      if (current)
+        throw new ConflictException(
+          'Close and approve delivery handover before moving follow-up to another drawer.',
+        );
+    }
+  }
+
   async lockOpenShiftForRefund(
     tx: Prisma.TransactionClient,
     input: { merchantId: string; shiftId: string; branchId: string; employee: PosEmployeeSession },
@@ -840,7 +1009,8 @@ export class ShiftsService {
         AND s."status" = 'open'
       FOR SHARE OF s
     `;
-    if (rows.length === 0) throw new ConflictException('Choose an open register shift for this refund.');
+    if (rows.length === 0)
+      throw new ConflictException('Choose an open register shift for this refund.');
     this.assertAssignedBranch(input.employee, input.branchId);
   }
 
@@ -861,7 +1031,8 @@ export class ShiftsService {
         AND "status" = 'open'
       FOR SHARE
     `;
-    if (rows.length === 0) throw new ConflictException('The refund register shift is no longer open.');
+    if (rows.length === 0)
+      throw new ConflictException('The refund register shift is no longer open.');
     await tx.posShiftRefundMovement.create({
       data: {
         merchantId: input.merchantId,
@@ -986,9 +1157,21 @@ async function buildShiftReconciliation(
   shift: ShiftRecord,
 ): Promise<PosShiftReconciliationSummary> {
   const where = { merchantId: shift.merchantId, shiftId: shift.id };
-  const [cashSalesResult, cashRefundsResult, manualTotals, movementRecords, terminalSalesResult,
-    terminalRefundsResult, unsettled] = await Promise.all([
-    db.posShiftCashMovement.aggregate({ where: { ...where, kind: 'cash_sale' }, _sum: { amount: true } }),
+  const [
+    cashSalesResult,
+    cashRefundsResult,
+    manualTotals,
+    movementRecords,
+    terminalSalesResult,
+    terminalRefundsResult,
+    unsettled,
+    deliveryCash,
+    deliveries,
+  ] = await Promise.all([
+    db.posShiftCashMovement.aggregate({
+      where: { ...where, kind: 'cash_sale' },
+      _sum: { amount: true },
+    }),
     db.posShiftRefundMovement.aggregate({ where, _sum: { amount: true } }),
     db.posShiftManualCashMovement.groupBy({ by: ['kind'], where, _sum: { amount: true } }),
     db.posShiftManualCashMovement.findMany({
@@ -997,8 +1180,14 @@ async function buildShiftReconciliation(
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: 50,
     }),
-    db.posOrderPayment.aggregate({ where: { ...where, method: 'terminal' }, _sum: { amount: true } }),
-    db.posOrderRefundTender.aggregate({ where: { ...where, method: 'terminal' }, _sum: { amount: true } }),
+    db.posOrderPayment.aggregate({
+      where: { ...where, method: 'terminal' },
+      _sum: { amount: true },
+    }),
+    db.posOrderRefundTender.aggregate({
+      where: { ...where, method: 'terminal' },
+      _sum: { amount: true },
+    }),
     db.$queryRaw<Array<{ unsettledCheckCount: number; unsettledBalance: string }>>`
       WITH unsettled AS (
         SELECT c."id", GREATEST(c."amount" - COALESCE(SUM(p."amount"), 0), 0) AS due
@@ -1010,6 +1199,7 @@ async function buildShiftReconciliation(
         WHERE c."merchantId" = ${shift.merchantId}::uuid
           AND o."posShiftId" = ${shift.id}::uuid
           AND o."source" = 'pos'
+          AND NOT EXISTS (SELECT 1 FROM "pos_deliveries" d WHERE d."orderId" = o."id" AND d."merchantId" = o."merchantId")
           AND c."settledAt" IS NULL
           AND c."cancelledAt" IS NULL
         GROUP BY c."id", c."amount"
@@ -1018,20 +1208,33 @@ async function buildShiftReconciliation(
         COALESCE(SUM(due), 0)::text AS "unsettledBalance"
       FROM unsettled
     `,
+    db.posDeliveryRemittance.aggregate({ where, _sum: { amount: true } }),
+    readDeliveryBalances(db, shift.merchantId, { shiftId: shift.id, limit: 501 }),
   ]);
 
   const sum = (value: { toString(): string } | null | undefined): bigint =>
     value ? toSignedCents(value.toString()) : 0n;
   const cashRefundMovement = sum(cashRefundsResult._sum.amount);
-  const cashIn = manualTotals.filter((row) => row.kind === 'cash_in')
+  const cashIn = manualTotals
+    .filter((row) => row.kind === 'cash_in')
     .reduce((total, row) => total + sum(row._sum.amount), 0n);
-  const cashOut = manualTotals.filter((row) => row.kind === 'cash_out')
+  const cashOut = manualTotals
+    .filter((row) => row.kind === 'cash_out')
     .reduce((total, row) => total + sum(row._sum.amount), 0n);
-  const cashDrop = manualTotals.filter((row) => row.kind === 'cash_drop')
+  const cashDrop = manualTotals
+    .filter((row) => row.kind === 'cash_drop')
     .reduce((total, row) => total + sum(row._sum.amount), 0n);
   const cashSales = sum(cashSalesResult._sum.amount);
   const openingFloat = toCents(shift.openingFloat.toFixed(2));
-  const expectedCash = openingFloat + cashSales + cashRefundMovement + cashIn - cashOut - cashDrop;
+  const deliveryCashReceived = sum(deliveryCash._sum.amount);
+  const expectedCash =
+    openingFloat +
+    cashSales +
+    deliveryCashReceived +
+    cashRefundMovement +
+    cashIn -
+    cashOut -
+    cashDrop;
   const counts = unsettled[0] ?? { unsettledCheckCount: 0, unsettledBalance: '0.00' };
 
   return {
@@ -1042,6 +1245,9 @@ async function buildShiftReconciliation(
     currency: 'EGP',
     openingFloat: formatCents(openingFloat),
     cashSales: formatCents(cashSales),
+    deliveryCashReceived: formatCents(deliveryCashReceived),
+    pendingDeliveryCount: deliveries[0]?.pendingTotalCount ?? 0,
+    pendingDeliveryBalance: formatCents(toCents(deliveries[0]?.pendingTotalBalance ?? '0.00')),
     cashRefunds: formatCents(cashRefundMovement < 0n ? -cashRefundMovement : cashRefundMovement),
     cashIn: formatCents(cashIn),
     cashOut: formatCents(cashOut),
@@ -1073,9 +1279,7 @@ function toManualCashMovementSummary(
   };
 }
 
-function toLiveShiftSummary(
-  reconciliation: PosShiftReconciliationSummary,
-): PosShiftLiveSummary {
+function toLiveShiftSummary(reconciliation: PosShiftReconciliationSummary): PosShiftLiveSummary {
   return {
     shiftId: reconciliation.shiftId,
     branchId: reconciliation.branchId,
@@ -1085,6 +1289,8 @@ function toLiveShiftSummary(
     unsettledCheckCount: reconciliation.unsettledCheckCount,
     unsettledBalance: reconciliation.unsettledBalance,
     manualMovements: reconciliation.manualMovements,
+    pendingDeliveryCount: reconciliation.pendingDeliveryCount ?? 0,
+    pendingDeliveryBalance: reconciliation.pendingDeliveryBalance ?? '0.00',
   };
 }
 
@@ -1098,6 +1304,8 @@ function toCloseReport(report: CloseReportRecord): PosShiftCloseReportContract {
     currency: report.currency as 'EGP',
     openingFloat: report.openingFloat.toFixed(2),
     cashSales: report.cashSales.toFixed(2),
+    deliveryCashReceived: report.deliveryCashReceived.toFixed(2),
+    deliveryHandover: report.deliveryHandover as unknown as PosDeliveryHandoverSnapshot | null,
     cashRefunds: report.cashRefunds.toFixed(2),
     cashIn: report.cashIn.toFixed(2),
     cashOut: report.cashOut.toFixed(2),
@@ -1129,6 +1337,8 @@ function toOwnerCloseReportRow(report: OwnerCloseReportRecord): PosShiftCloseRep
     currency: report.currency as 'EGP',
     openingFloat: report.openingFloat.toFixed(2),
     cashSales: report.cashSales.toFixed(2),
+    deliveryCashReceived: report.deliveryCashReceived.toFixed(2),
+    deliveryHandover: report.deliveryHandover as unknown as PosDeliveryHandoverSnapshot | null,
     cashRefunds: report.cashRefunds.toFixed(2),
     cashIn: report.cashIn.toFixed(2),
     cashOut: report.cashOut.toFixed(2),

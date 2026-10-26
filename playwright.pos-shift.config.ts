@@ -2,7 +2,7 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/ui',
-  testMatch: 'pos-shift.spec.ts',
+  testMatch: ['pos-shift.spec.ts', 'pos-delivery.spec.ts'],
   workers: 1,
   timeout: 45_000,
   expect: { timeout: 8_000 },

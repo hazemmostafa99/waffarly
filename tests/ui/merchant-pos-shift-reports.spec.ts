@@ -16,6 +16,21 @@ const report = {
   currency: 'EGP',
   openingFloat: '500.00',
   cashSales: '1250.00',
+  deliveryCashReceived: '75.00',
+  deliveryHandover: {
+    recipientEmployeeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    recipientName: 'Hassan Followup',
+    approvedByName: 'Delivery Supervisor',
+    deliveries: [
+      {
+        orderId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        courierName: 'Courier Ali',
+        status: 'out_for_delivery',
+        customerDue: '300.00',
+        courierCashHeld: '0.00',
+      },
+    ],
+  },
   cashRefunds: '50.00',
   cashIn: '100.00',
   cashOut: '25.00',
@@ -67,6 +82,15 @@ for (const locale of ['en', 'ar']) {
       }),
     ).toBeVisible();
     await expect(page.getByText('Sara Adel', { exact: true })).toBeVisible();
+    await expect(
+      page.getByText(
+        `${locale === 'ar' ? 'كاش مستلم من الطيار' : 'Courier cash received'}: 75.00 EGP`,
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await page.locator('summary').filter({ hasText: 'Hassan Followup' }).click();
+    await expect(page.getByText('Courier Ali', { exact: false })).toBeVisible();
+    await expect(page.getByText('Delivery Supervisor', { exact: false })).toBeVisible();
     await expect.poll(() => reads.length).toBe(1);
     expect(reads[0]!.searchParams.get('limit')).toBe('25');
     expect(reads[0]!.searchParams.has('from')).toBe(true);

@@ -1,4 +1,45 @@
 export const ar: Record<string, string> = {
+  'Delivery follow-up': 'متابعة الدليفري',
+  'Close and approve delivery handover before moving follow-up to another drawer.':
+    'اقفل الوردية وسلّم متابعة الدليفري باعتماد المشرف قبل نقلها لدرج تاني.',
+  'Delivery handover requires a different supervisor.':
+    'تسليم متابعة الدليفري محتاج موافقة مشرف مختلف.',
+  'Count the physical till. Ordinary unpaid checks block closing; tracked deliveries require an approved handover.':
+    'عدّ النقد الموجود فعلًا. الحسابات العادية غير المسددة بتمنع الإقفال، والدليفري المتابع محتاج تسليم معتمد.',
+  'The delivery changed. Refresh and retry.': 'بيانات الدليفري اتغيرت. حدّث الصفحة وراجع العملية.',
+  'Only the responsible employee or a supervisor can manage this delivery.':
+    'مسؤول المتابعة أو المشرف بس يقدر ينفذ العملية دي.',
+  'The received amount exceeds the cash still held by the courier.':
+    'المبلغ أكبر من الكاش اللي لسه مع الطيار.',
+  'Pending deliveries require a named recipient and approval from a different supervisor.':
+    'الدليفري المعلق محتاج موظف مستلم بالاسم وموافقة مشرف مختلف.',
+  'Choose a different active cashier or supervisor assigned to this branch.':
+    'اختار كاشير أو مشرف نشط غيرك ومسند لنفس الفرع.',
+  'Receive all courier cash for this payment before issuing a refund.':
+    'استلم كاش الدفعة دي بالكامل من الطيار قبل استردادها.',
+  'Cash paid to courier': 'كاش دفعه العميل للطيار',
+  'Pending deliveries': 'طلبات دليفري معلقة',
+  'Money outside the drawer': 'فلوس لسه برّه الدرج',
+  'Review delivery follow-up': 'مراجعة متابعة الدليفري',
+  'These amounts are not drawer cash. A named recipient and a different supervisor must approve handover.':
+    'المبالغ دي مش نقد جوه الدرج. لازم مسؤول مستلم بالاسم وموافقة مشرف مختلف لتسليم المتابعة.',
+  'Receiving employee username': 'اسم مستخدم الموظف المستلم للمتابعة',
+  'Enter the employee receiving pending deliveries.':
+    'اكتب اسم مستخدم الموظف اللي هيستلم متابعة الدليفري المعلق.',
+  'Courier cash received': 'كاش مستلم من الطيار',
+  'Delivery handover': 'تسليم متابعة الدليفري',
+  'Customer due': 'باقي على العميل',
+  'Cash with courier': 'كاش مع الطيار',
+  'Delivery details': 'بيانات التوصيل',
+  'At least 2 characters': 'حرفان على الأقل',
+  'At least 7 digits': '7 أرقام على الأقل',
+  'At least 8 characters. Include street and building details.':
+    '8 أحرف على الأقل. اذكر تفاصيل الشارع والمبنى.',
+  'Enter a customer name between 2 and 120 characters.': 'أدخل اسم العميل من حرفين إلى 120 حرفًا.',
+  'Enter a phone number with at least 7 digits (up to 32 characters).':
+    'أدخل رقم هاتف يحتوي على 7 أرقام على الأقل (بحد أقصى 32 حرفًا).',
+  'Enter a delivery address between 8 and 1000 characters.':
+    'أدخل عنوان التوصيل من 8 إلى 1000 حرف.',
   'Record item return':
     '\u062a\u0633\u062c\u064a\u0644 \u0645\u0631\u062a\u062c\u0639 \u0635\u0646\u0641',
   'Item return recorded':
@@ -744,10 +785,7 @@ export const ar: Record<string, string> = {
   'An amount from 0 to 99999999.99, with up to two decimal places':
     'مبلغ من ٠ إلى ٩٩٩٩٩٩٩٩٫٩٩ بحد أقصى منزلتين عشريتين',
   Currency: 'العملة',
-  'Select currency': 'اختر العملة',
   EGP: 'جنيه مصري',
-  USD: 'دولار أمريكي',
-  EUR: 'يورو',
   'Billing interval': 'دورة الفوترة',
   Monthly: 'شهري',
   Optional: 'اختياري',
@@ -1994,3 +2032,4 @@ export const ar: Record<string, string> = {
   'Settle or cancel every open check before closing this shift.':
     'سوِّ كل الحسابات المفتوحة أو ألغها قبل إغلاق الوردية.',
 };
+// Delivery custody and shift handover.

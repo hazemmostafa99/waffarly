@@ -2,13 +2,13 @@
 
 **Feature:** SA-PS01 — Plan definitions and pricing  
 **Status:** Initial plan administration implemented; broader subscription requirements remain open.  
-**Last updated:** 2026-10-13  
+**Last updated:** 2026-10-20
 **Parent:** [Plans & Subscriptions overview](OVERVIEW.md)  
 **Authorization:** PS-D04 — the owner answered “do both” to documenting the basic plan and implementing it in the app.
 
 ## 1. Overview and Goals
 
-Super Admin can create, list, and edit monthly restaurant plan definitions. Each offer has a name, an administrator-entered monthly price, an explicitly selected currency, and an optional description. The Plans tab follows the existing navigation and visual conventions.
+Super Admin can create, list, and edit monthly restaurant plan definitions. Each offer has a name, an administrator-entered monthly price, a fixed EGP currency, and an optional description. The Plans tab follows the existing navigation and visual conventions.
 
 Current work starts with a basic monthly offer (PS-D03). The earlier multiple-plan direction (PS-D02) is preserved: the catalog supports multiple definitions without inventing tier names, feature differences, or usage limits. No actual commercial price is seeded or selected by this implementation.
 
@@ -31,7 +31,7 @@ These are reversible implementation choices for the authorized slice, separate f
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Name             | Required trimmed text, 1–160 characters. Duplicate display names are permitted; identifiers distinguish records.                                                                        |
 | Monthly price    | Required decimal string from `0` to `99999999.99`, with at most two fractional digits; stored as `DECIMAL(10,2)` and returned with two digits. Floating-point JSON prices are rejected. |
-| Currency         | Administrator explicitly selects EGP, USD, or EUR; the form has no selected default. This is the initial supported set, not a declaration that all offers use one currency.             |
+| Currency         | Always EGP. Both plan editors submit EGP automatically; the API, service, shared contracts, and database reject other currencies.             |
 | Billing interval | Always `monthly`; other intervals are rejected. This does not define merchant coverage dates.                                                                                           |
 | Description      | Optional trimmed text up to 1,000 characters; omitted API values become an empty string.                                                                                                |
 | Record facts     | UUID identifier, revision, timestamps, and creation/update administrator identifiers.                                                                                                   |
@@ -43,7 +43,7 @@ Zero is representable without creating a free offer automatically. Taxes, availa
 ### Create and Inspect
 
 1. The authenticated Super Admin opens **Plans**.
-2. The administrator enters a name, monthly price, explicitly selected currency, and optional description.
+2. The administrator enters a name, monthly price in EGP and optional description.
 3. The API validates and normalizes the fields and saves the definition with administrator attribution.
 4. The UI displays the offer, amount/currency per month, description, and update date.
 
@@ -82,7 +82,7 @@ The [Prisma schema](../../../../packages/database/prisma/schema.prisma) defines 
 
 ## 7. UI and Implementation References
 
-- [Plans view](../../../../apps/super-admin/src/Plans.tsx) and [styles](../../../../apps/super-admin/src/plans.css): responsive create/edit form and catalog, with no preset price/currency.
+- [Plans view](../../../../apps/super-admin/src/Plans.tsx) and [styles](../../../../apps/super-admin/src/plans.css): responsive create/edit form and catalog, with no preset price and EGP fixed automatically.
 - [Super Admin app](../../../../apps/super-admin/src/App.tsx): Plans navigation alongside Restaurants and Design library.
 - [Controller](../../../../apps/api/src/modules/super-admin/plan.controller.ts): authenticated routes, strict input validation, and normalization.
 - [Service](../../../../apps/api/src/modules/super-admin/plan.service.ts): list/create/edit, replay handling, and revision checks.
@@ -100,8 +100,10 @@ The [Prisma schema](../../../../packages/database/prisma/schema.prisma) defines 
 
 ## 9. Running the Feature
 
-Apply the migration, generate/build shared packages, and run API/Super Admin using the [local setup](../../../setup/LOCAL_DEVELOPMENT.md). Sign in and open **Plans**. Enter the commercial amount/currency when creating an offer; no sample plan is installed.
+Apply the migration, generate/build shared packages, and run API/Super Admin using the [local setup](../../../setup/LOCAL_DEVELOPMENT.md). Sign in and open **Plans**. Enter the commercial amount in EGP when creating an offer; no sample plan is installed.
 
 ## 10. Remaining Subscription Decisions
 
 Basic offer administration is implemented. Merchant assignment, agreed-price preservation, feature differences, limits, monthly coverage boundaries, renewal, expiry, operational restrictions, and collection evidence remain separate discovery work. This is not a complete recurring subscription system.
+
+EGP-only enforcement is added by migration `20261020120000_monthly_plans_egp_only`. Apply it before deploying the narrowed contracts/API. It preserves historical amounts and fails if any non-EGP definitions remain; review their commercial prices explicitly before migrating. No exchange-rate conversion or automatic relabeling is performed.

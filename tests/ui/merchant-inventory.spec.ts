@@ -50,113 +50,643 @@ async function authenticate(page: Page, locale = 'en') {
   );
 }
 
-test('modifier editor saves quantity caps, variant prices and explicit empty effects', async ({
-  page,
-}) => {
-  await authenticate(page);
-  let saved: Record<string, unknown> | undefined;
-  await page.route('**/owner/catalog/**', (route) => {
-    if (route.request().method() === 'PATCH') {
-      saved = route.request().postDataJSON();
-      return route.fulfill({ json: { id: productId } });
-    }
-    const detail = new URL(route.request().url()).pathname.endsWith(`/products/${productId}`);
-    return route.fulfill({
-      json: detail
-        ? {
-            id: productId,
-            name: 'Recipe bowl',
-            description: '',
-            basePrice: '20.00',
-            availability: 'available',
-            revision: 1,
-            images: [{ mediaAssetId: otherId, publicUrl: '', isPrimary: true, position: 0 }],
-            categories: [{ id: warehouseId }],
-            variants: [
-              {
-                id: warehouseId,
-                name: 'Large',
-                sku: null,
-                barcode: null,
-                price: '20.00',
-                stockQuantity: null,
-                availability: 'available',
-                position: 0,
-                attributes: [],
-              },
-            ],
-            modifierGroups: [
-              {
-                id: supplierId,
-                modifierGroupId: nextCursor,
-                name: 'Extras',
-                description: '',
-                selectionMode: 'multiple',
-                minSelections: 0,
-                maxSelections: 1,
-                position: 0,
-                options: [
+for (const locale of ['en', 'ar']) {
+  test(`modifier editor saves quantity caps, variant prices and explicit empty effects (${locale})`, async ({
+    page,
+  }, testInfo) => {
+    await authenticate(page, locale);
+    const ar = locale === 'ar';
+    let saved: Record<string, unknown> | undefined;
+    await page.route('**/owner/catalog/**', (route) => {
+      if (route.request().method() === 'PATCH') {
+        saved = route.request().postDataJSON();
+        return route.fulfill({ json: { id: productId } });
+      }
+      const detail = new URL(route.request().url()).pathname.endsWith(`/products/${productId}`);
+      return route.fulfill({
+        json: detail
+          ? {
+              id: productId,
+              name: 'Recipe bowl',
+              description: '',
+              basePrice: '20.00',
+              availability: 'available',
+              revision: 1,
+              images: [{ mediaAssetId: otherId, publicUrl: '', isPrimary: true, position: 0 }],
+              categories: [{ id: warehouseId }],
+              variants: [
+                {
+                  id: merchantId,
+                  name: 'Small',
+                  sku: null,
+                  barcode: null,
+                  price: '15.00',
+                  stockQuantity: null,
+                  availability: 'available',
+                  position: 1,
+                  attributes: [],
+                },
+                {
+                  id: warehouseId,
+                  name: 'Large',
+                  sku: null,
+                  barcode: null,
+                  price: '20.00',
+                  stockQuantity: null,
+                  availability: 'available',
+                  position: 0,
+                  attributes: [],
+                },
+              ],
+              modifierGroups: [
+                {
+                  id: supplierId,
+                  modifierGroupId: nextCursor,
+                  name: 'Extras',
+                  description: '',
+                  selectionMode: 'multiple',
+                  minSelections: 0,
+                  maxSelections: 1,
+                  position: 0,
+                  options: [
+                    {
+                      id: selectedId,
+                      name: 'Cheese',
+                      priceAdjustment: '2.00',
+                      defaultSelected: true,
+                      maxQuantity: 1,
+                      position: 0,
+                      effects: [
+                        {
+                          stockItemId: selectedId,
+                          unitCode: 'g',
+                          quantity: '10',
+                          direction: 'ADD',
+                        },
+                      ],
+                      variantOverrides: [],
+                    },
+                    {
+                      id: otherId,
+                      name: 'Sauce',
+                      priceAdjustment: '0.00',
+                      defaultSelected: false,
+                      maxQuantity: 1,
+                      position: 1,
+                      effects: [],
+                      variantOverrides: [],
+                    },
+                    {
+                      id: '88888888-8888-4888-8888-888888888888',
+                      name: 'Mushroom',
+                      priceAdjustment: '3.00',
+                      defaultSelected: false,
+                      maxQuantity: 1,
+                      position: 2,
+                      effects: [
+                        {
+                          stockItemId: selectedId,
+                          unitCode: 'g',
+                          quantity: '5',
+                          direction: 'REMOVE',
+                        },
+                      ],
+                      variantOverrides: [
+                        {
+                          variantId: warehouseId,
+                          available: true,
+                          priceAdjustment: '4.00',
+                          effects: [
+                            {
+                              stockItemId: selectedId,
+                              unitCode: 'g',
+                              quantity: '20',
+                              direction: 'ADD',
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                    {
+                      id: '99999999-9999-4999-8999-999999999999',
+                      name: 'Pickles',
+                      priceAdjustment: '1.00',
+                      defaultSelected: false,
+                      maxQuantity: 1,
+                      position: 3,
+                      effects: [],
+                      variantOverrides: [
+                        {
+                          variantId: merchantId,
+                          available: true,
+                          priceAdjustment: '1.00',
+                          effects: [
+                            {
+                              stockItemId: selectedId,
+                              unitCode: 'g',
+                              quantity: '30',
+                              direction: 'ADD',
+                            },
+                          ],
+                        },
+                        {
+                          variantId: warehouseId,
+                          available: true,
+                          priceAdjustment: '2.00',
+                          effects: [
+                            {
+                              stockItemId: selectedId,
+                              unitCode: 'g',
+                              quantity: '60',
+                              direction: 'ADD',
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+              inventoryConfigurationRequired: true,
+              inventoryDefaultMode: 'RECIPE',
+              inventoryConfiguration: {
+                mode: 'RECIPE',
+                targets: [
                   {
-                    id: selectedId,
-                    name: 'Cheese',
-                    priceAdjustment: '2.00',
-                    defaultSelected: true,
-                    maxQuantity: 1,
-                    position: 0,
-                    effects: [],
-                    variantOverrides: [],
+                    variantId: merchantId,
+                    components: [{ stockItemId: selectedId, unitCode: 'g', quantity: '10' }],
+                  },
+                  {
+                    variantId: warehouseId,
+                    components: [{ stockItemId: selectedId, unitCode: 'g', quantity: '10' }],
                   },
                 ],
               },
-            ],
-            inventoryConfigurationRequired: true,
-            inventoryDefaultMode: 'RECIPE',
-            inventoryConfiguration: {
-              mode: 'RECIPE',
-              targets: [
-                {
-                  variantId: warehouseId,
-                  components: [{ stockItemId: selectedId, unitCode: 'g', quantity: '10' }],
-                },
-              ],
-            },
-          }
-        : [],
+            }
+          : [],
+      });
     });
+    let ingredientUnavailable = true;
+    await page.route('**/owner/inventory/items**', (route) =>
+      ingredientUnavailable && new URL(route.request().url()).pathname.endsWith(`/${selectedId}`)
+        ? route.fulfill({ status: 503, json: { message: 'Temporarily unavailable' } })
+        : route.fulfill({
+            json: new URL(route.request().url()).pathname.endsWith(`/${selectedId}`)
+              ? selectedItem
+              : { items: [selectedItem], nextCursor: null },
+          }),
+    );
+    await page.goto(`http://127.0.0.1:5274/products/${productId}/edit`);
+    await page.getByRole('tab', { name: ar ? /الخيارات/ : /Options/ }).click();
+    const composer = page.getByRole('dialog', {
+      name: ar ? 'تعديل خيارات العميل' : 'Edit customer choices',
+      exact: true,
+    });
+    const mobile = testInfo.project.name === 'mobile';
+    const overview = page.locator('.builder-groups-list .choice-overview-table');
+    await expect(overview).toContainText('Pickles');
+    await expect(overview).toContainText(
+      ar ? 'تعذّر تحميل المكوّن' : 'Ingredient could not be loaded',
+    );
+    ingredientUnavailable = false;
+    await page
+      .getByRole('button', {
+        name: ar ? 'إعادة تحميل المكوّنات' : 'Retry loading ingredients',
+        exact: true,
+      })
+      .click();
+    await expect(overview).toContainText('Selected flour');
+    await expect(overview.locator('tbody').getByRole('row')).toHaveCount(8);
+    await expect(overview).not.toContainText(ar ? 'الإعدادات الافتراضية' : 'Default settings');
+    const sharedSettings = page.locator('.builder-groups-list .choice-shared-settings');
+    await expect(sharedSettings).not.toHaveAttribute('open');
+    await expect(
+      overview.getByRole('row').filter({ hasText: 'Sauce' }).filter({ hasText: 'Small' }),
+    ).toContainText(ar ? 'لا تغيير في المخزون' : 'No stock change');
+    const inheritedRow = overview
+      .getByRole('row')
+      .filter({ hasText: 'Cheese' })
+      .filter({ hasText: 'Small' });
+    await expect(inheritedRow).toContainText('10');
+    await expect(inheritedRow.locator('.choice-shared-value')).toHaveCount(2);
+    const customRow = overview
+      .getByRole('row')
+      .filter({ hasText: 'Pickles' })
+      .filter({ hasText: 'Large' });
+    await expect(customRow).toContainText('60');
+    await expect(customRow.locator('.choice-shared-value')).toHaveCount(0);
+    await expect(customRow).not.toContainText(ar ? 'لا تغيير في المخزون' : 'No stock change');
+    await sharedSettings.locator('summary').click();
+    const unusedShared = sharedSettings.getByRole('region', { name: 'Pickles', exact: true });
+    await expect(unusedShared).toContainText(
+      ar ? 'لا تستخدمه الأحجام الحالية' : 'Not used by current sizes',
+    );
+    await expect(unusedShared).toContainText(ar ? 'لا تغيير في المخزون' : 'No stock change');
+    await sharedSettings.locator('summary').click();
+    expect(
+      await page.evaluate(() =>
+        Boolean(
+          document
+            .querySelector('.builder-options-start')!
+            .compareDocumentPosition(document.querySelector('.builder-variant-summary')!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+        ),
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath(`configured-product-${locale}.png`),
+      fullPage: true,
+    });
+    const sizeOverride = overview
+      .getByRole('row')
+      .filter({ hasText: 'Mushroom' })
+      .filter({ hasText: 'Large' });
+    await expect(sizeOverride).toContainText('20');
+    await sizeOverride
+      .getByRole('button', { name: ar ? 'تعديل المخزون' : 'Edit stock', exact: true })
+      .click();
+    await expect(
+      composer.getByRole('tab', {
+        name: ar ? 'استهلاك المخزون' : 'Stock consumption',
+        exact: true,
+      }),
+    ).toHaveAttribute('aria-selected', 'true');
+    await expect(
+      composer
+        .getByRole('group', {
+          name: ar ? 'إعدادات المخزون للحجم' : 'Stock settings for',
+          exact: true,
+        })
+        .getByRole('button', { name: 'Large', exact: true }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await expect(composer.locator('.modifier-stock-option.is-open h4')).toContainText('Mushroom');
+    await expect(
+      composer.locator('.modifier-stock-inline-editor').getByRole('textbox'),
+    ).toHaveValue('20');
+    await composer
+      .getByRole('button', {
+        name: ar ? 'إغلاق والاحتفاظ بالمسودة' : 'Close and keep draft',
+        exact: true,
+      })
+      .click();
+    await page.locator('.builder-choice-summary').filter({ hasText: 'Extras' }).click();
+    await expect(
+      composer.getByRole('tab', { name: ar ? 'نظرة عامة' : 'Overview', exact: true }),
+    ).toHaveAttribute('aria-selected', 'true');
+    await expect(composer.locator('.choice-overview-table')).toContainText('Pickles');
+    await composer.screenshot({ path: testInfo.outputPath(`overview-${locale}.png`) });
+    await composer
+      .getByRole('tab', { name: ar ? 'الاختيارات والأسعار' : 'Choices and prices', exact: true })
+      .click();
+    const preview = composer.getByRole('complementary', {
+      name: ar ? 'معاينة العميل' : 'Customer preview',
+    });
+    await composer.screenshot({ path: testInfo.outputPath(`choices-${locale}.png`) });
+    await composer
+      .getByText(
+        ar
+          ? 'إعدادات إضافية: الحدود والافتراضيات والكميات'
+          : 'More settings: limits, defaults and quantities',
+        { exact: true },
+      )
+      .click();
+    await composer.locator('.composer-quantities').getByLabel('Cheese', { exact: true }).fill('3');
+    await composer.getByRole('tab', { name: ar ? 'حسب الحجم' : 'By size', exact: true }).click();
+    const price = composer.getByLabel(
+      ar ? 'Cheese، Large: السعر الإضافي (ج.م)' : 'Cheese, Large: extra price (EGP)',
+      { exact: true },
+    );
+    await price.fill('1.50');
+    await composer
+      .locator('.modifier-matrix tbody tr')
+      .filter({ hasText: 'Cheese' })
+      .getByRole('button', { name: ar ? 'استعادة السعر الافتراضي' : 'Reset price', exact: true })
+      .click();
+    await expect(price).toHaveValue('');
+    await price.fill('1.234');
+    await composer
+      .getByRole('button', { name: ar ? 'تطبيق التغييرات' : 'Apply changes', exact: true })
+      .click();
+    await expect(composer).toBeVisible();
+    await expect(price).toBeFocused();
+    await expect(composer.getByRole('alert')).toContainText(
+      ar ? 'أدخل سعرًا إضافيًا' : 'Enter an extra price',
+    );
+    await price.fill('1.50');
+    await composer.screenshot({ path: testInfo.outputPath(`sizes-${locale}.png`) });
+    if (mobile)
+      await composer
+        .getByRole('button', { name: ar ? 'معاينة العميل' : 'Customer preview', exact: true })
+        .click();
+    await preview.getByRole('radio', { name: /Large/ }).check();
+    await expect(preview.locator('.preview-total')).toContainText('21.50');
+    await preview
+      .getByRole('spinbutton', { name: ar ? 'Cheese: الكمية' : 'Cheese: quantity' })
+      .fill('3');
+    await expect(preview.locator('.preview-total')).toContainText('24.50');
+    await expect(preview.locator('.customer-preview-stock')).toContainText('30');
+    await preview.getByRole('radio', { name: /Small/ }).check();
+    await expect(preview.locator('.preview-total')).toContainText('17.00');
+    if (mobile)
+      await composer
+        .getByRole('button', { name: ar ? 'العودة للتعديل' : 'Back to editing' })
+        .click();
+    // The size table and preview must both respect group availability.
+    await composer.locator('.modifier-visibility').getByLabel('Small', { exact: true }).uncheck();
+    if (mobile)
+      await composer
+        .getByRole('button', { name: ar ? 'معاينة العميل' : 'Customer preview', exact: true })
+        .click();
+    await expect(preview.getByRole('checkbox', { name: /Cheese/ })).toHaveCount(0);
+    await expect(preview.locator('.preview-total')).toContainText('15.00');
+    if (mobile)
+      await composer
+        .getByRole('button', { name: ar ? 'العودة للتعديل' : 'Back to editing' })
+        .click();
+    await composer.locator('.modifier-visibility').getByLabel('Small', { exact: true }).check();
+    // Keep focus navigation usable in both writing directions.
+    const sizesTab = composer.getByRole('tab', { name: ar ? 'حسب الحجم' : 'By size', exact: true });
+    await sizesTab.press(ar ? 'ArrowLeft' : 'ArrowRight');
+    await expect(
+      composer.getByRole('tab', {
+        name: ar ? 'استهلاك المخزون' : 'Stock consumption',
+        exact: true,
+      }),
+    ).toHaveAttribute('aria-selected', 'true');
+    await expect(composer.locator('.choice-workspace-preview')).toBeHidden();
+    await expect(composer.locator('.modifier-stock-inline-editor')).toHaveCount(0);
+    await expect(
+      composer.getByRole('group', {
+        name: ar ? 'الخيارات المعدّة' : 'Configured choices',
+        exact: true,
+      }),
+    ).toContainText('Pickles');
+    await composer.screenshot({ path: testInfo.outputPath(`stock-${locale}.png`) });
+    await composer
+      .getByRole('button', {
+        name: ar ? 'تعديل مخزون Cheese' : 'Edit stock for Cheese',
+        exact: true,
+      })
+      .click();
+    await expect(composer.locator('.modifier-stock-inline-editor')).toHaveCount(1);
+    await expect(
+      composer.getByRole('combobox', { name: ar ? 'المكوّن' : 'Ingredient', exact: true }),
+    ).toHaveValue(/Selected flour/);
+    await composer
+      .getByRole('button', { name: ar ? 'تعديل مخزون Sauce' : 'Edit stock for Sauce', exact: true })
+      .click();
+    await expect(composer.locator('.modifier-stock-inline-editor')).toHaveCount(1);
+    await expect(composer.locator('.modifier-stock-option.is-open h4')).toHaveText('Sauce');
+    const ingredientPicker = composer.getByRole('combobox', {
+      name: ar ? 'المكوّن' : 'Ingredient',
+      exact: true,
+    });
+    await expect(ingredientPicker).toBeFocused();
+    await composer
+      .getByRole('button', { name: ar ? 'إنهاء تعديل Sauce' : 'Finish editing Sauce', exact: true })
+      .click();
+    await composer
+      .getByRole('button', { name: ar ? 'تعديل مخزون Sauce' : 'Edit stock for Sauce', exact: true })
+      .click();
+    await ingredientPicker.fill('flour');
+    await composer.getByRole('option').filter({ hasText: 'Selected flour' }).click();
+    const quantityInput = composer.getByRole('textbox', {
+      name: ar ? 'الكمية' : 'Quantity',
+      exact: true,
+    });
+    await expect(quantityInput).toBeFocused();
+    await quantityInput.fill('15');
+    await expect(
+      composer.locator('.modifier-stock-option.is-open .choice-stock-summary'),
+    ).toContainText('15');
+    await composer
+      .getByRole('button', { name: ar ? 'ربط مكوّن آخر' : 'Add another ingredient', exact: true })
+      .click();
+    await composer
+      .getByRole('button', {
+        name: ar ? 'إلغاء إضافة المكوّن' : 'Cancel adding ingredient',
+        exact: true,
+      })
+      .click();
+    await composer
+      .getByRole('button', {
+        name: ar ? 'تعديل مخزون Cheese' : 'Edit stock for Cheese',
+        exact: true,
+      })
+      .click();
+    await composer.screenshot({ path: testInfo.outputPath(`stock-editor-${locale}.png`) });
+    await composer
+      .getByRole('group', {
+        name: ar ? 'إعدادات المخزون للحجم' : 'Stock settings for',
+        exact: true,
+      })
+      .getByRole('button', { name: 'Large', exact: true })
+      .click();
+    await expect(
+      composer.locator('.modifier-stock-option.is-open .choice-stock-summary'),
+    ).toContainText('Selected flour');
+    await expect(
+      composer.locator('.modifier-stock-option.is-open .choice-stock-summary'),
+    ).toContainText('10');
+    const customize = composer.getByRole('button', {
+      name: ar ? 'تخصيص' : 'Customize',
+      exact: true,
+    });
+    await customize.click();
+    await composer
+      .getByRole('textbox', { name: ar ? 'الكمية' : 'Quantity', exact: true })
+      .fill('0');
+    await composer
+      .getByRole('button', { name: ar ? 'تطبيق التغييرات' : 'Apply changes', exact: true })
+      .click();
+    await expect(composer).toBeVisible();
+    await expect(composer.getByRole('alert')).toContainText(
+      ar ? 'أدخل كمية أكبر من صفر' : 'quantity greater than zero',
+    );
+    await expect(
+      composer.getByRole('textbox', { name: ar ? 'الكمية' : 'Quantity', exact: true }),
+    ).toBeFocused();
+    await composer
+      .getByRole('textbox', { name: ar ? 'الكمية' : 'Quantity', exact: true })
+      .fill('25');
+    await composer
+      .getByRole('button', { name: ar ? 'استعادة الافتراضي' : 'Use defaults', exact: true })
+      .click();
+    await expect(
+      composer.locator('.modifier-stock-option.is-open .choice-stock-summary'),
+    ).toContainText('10');
+    await customize.click();
+    await expect(
+      composer.getByRole('combobox', { name: ar ? 'المكوّن' : 'Ingredient', exact: true }),
+    ).toHaveValue(/Selected flour/);
+    await composer
+      .getByRole('button', { name: ar ? 'حذف المكوّن 1' : 'Remove ingredient 1', exact: true })
+      .click();
+    await expect(composer.locator('.modifier-help')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      await page.evaluate(() => innerWidth),
+    );
+    await composer
+      .getByRole('button', { name: ar ? 'تطبيق التغييرات' : 'Apply changes', exact: true })
+      .click();
+    await page.getByRole('tab', { name: ar ? /المعاينة والنشر/ : /Preview and publish/ }).click();
+    await page
+      .getByRole('button', { name: ar ? 'حفظ التغييرات' : 'Save changes', exact: true })
+      .click();
+    await expect
+      .poll(() => saved?.modifierGroupAssignments)
+      .toMatchObject([
+        {
+          options: expect.arrayContaining([
+            expect.objectContaining({
+              optionId: selectedId,
+              maxQuantity: 3,
+              effects: [
+                { stockItemId: selectedId, unitCode: 'g', quantity: '10', direction: 'ADD' },
+              ],
+              variantOverrides: [
+                { variantId: warehouseId, available: true, priceAdjustment: '1.50', effects: [] },
+              ],
+            }),
+            expect.objectContaining({
+              optionId: '88888888-8888-4888-8888-888888888888',
+              variantOverrides: [
+                expect.objectContaining({
+                  variantId: warehouseId,
+                  priceAdjustment: '4.00',
+                  effects: [
+                    { stockItemId: selectedId, unitCode: 'g', quantity: '20', direction: 'ADD' },
+                  ],
+                }),
+              ],
+            }),
+            expect.objectContaining({
+              optionId: otherId,
+              effects: [
+                { stockItemId: selectedId, unitCode: 'g', quantity: '15', direction: 'ADD' },
+              ],
+            }),
+          ]),
+        },
+      ]);
   });
-  await page.goto(`http://127.0.0.1:5274/products/${productId}/edit`);
-  await page.getByRole('tab', { name: /Options/ }).click();
-  await page.getByRole('button', { name: /^Extras Optional/ }).click();
-  const composer = page.getByRole('dialog', { name: 'Edit customer choices', exact: true });
-  await composer.getByText('Selection limits, defaults and more', { exact: true }).click();
-  await composer.getByText('Quantities, variants and ingredients', { exact: true }).click();
-  const option = composer.getByRole('group', { name: 'Cheese', exact: true });
-  await option.getByLabel('Maximum quantity per option').fill('3');
-  await option.locator('details > summary').filter({ hasText: 'Large' }).click();
-  await option.getByLabel('Variant price (blank inherits product price)').fill('1.50');
-  await option.getByLabel('Replace all ingredient effects').check();
-  await expect(option.getByText('An empty list means no ingredient effects.')).toBeVisible();
-  await composer.getByRole('button', { name: 'Apply changes', exact: true }).click();
-  await page.getByRole('tab', { name: /Preview and publish/ }).click();
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
-  await expect
-    .poll(() => saved?.modifierGroupAssignments)
-    .toMatchObject([
-      {
-        options: [
-          {
-            optionId: selectedId,
-            maxQuantity: 3,
-            variantOverrides: [
-              { variantId: warehouseId, available: true, priceAdjustment: '1.50', effects: [] },
-            ],
-          },
-        ],
-      },
-    ]);
-});
+}
 
 for (const locale of ['en', 'ar']) {
+  test(`simple choice overview has one configuration without shared defaults (${locale})`, async ({
+    page,
+  }, testInfo) => {
+    await authenticate(page, locale);
+    const ar = locale === 'ar';
+    await page.route('**/owner/catalog/**', (route) =>
+      route.fulfill({
+        json: new URL(route.request().url()).pathname.endsWith(`/products/${productId}`)
+          ? {
+              id: productId,
+              name: 'Simple bowl',
+              description: '',
+              basePrice: '20.00',
+              availability: 'available',
+              revision: 1,
+              images: [],
+              categories: [],
+              variants: [],
+              modifierGroups: [
+                {
+                  id: supplierId,
+                  modifierGroupId: nextCursor,
+                  name: 'Extras',
+                  description: '',
+                  selectionMode: 'multiple',
+                  minSelections: 0,
+                  maxSelections: 2,
+                  position: 0,
+                  options: [
+                    {
+                      id: selectedId,
+                      name: 'Cheese',
+                      priceAdjustment: '2.00',
+                      defaultSelected: false,
+                      maxQuantity: 1,
+                      position: 0,
+                      effects: [
+                        {
+                          stockItemId: selectedId,
+                          unitCode: 'g',
+                          quantity: '10',
+                          direction: 'ADD',
+                        },
+                      ],
+                      variantOverrides: [],
+                    },
+                    {
+                      id: otherId,
+                      name: 'Sauce',
+                      priceAdjustment: '0.00',
+                      defaultSelected: false,
+                      maxQuantity: 1,
+                      position: 1,
+                      effects: [],
+                      variantOverrides: [],
+                    },
+                  ],
+                },
+              ],
+              inventoryConfigurationRequired: false,
+              inventoryDefaultMode: 'RECIPE',
+              inventoryConfiguration: {
+                mode: 'RECIPE',
+                targets: [
+                  {
+                    variantId: null,
+                    components: [{ stockItemId: selectedId, unitCode: 'g', quantity: '10' }],
+                  },
+                ],
+              },
+            }
+          : [],
+      }),
+    );
+    await page.route('**/owner/inventory/items**', (route) =>
+      route.fulfill({
+        json: new URL(route.request().url()).pathname.endsWith(`/${selectedId}`)
+          ? selectedItem
+          : { items: [selectedItem], nextCursor: null },
+      }),
+    );
+    await page.goto(`http://127.0.0.1:5274/products/${productId}/edit`);
+    await page.getByRole('tab', { name: ar ? /الخيارات/ : /Options/ }).click();
+    const overview = page.locator('.builder-groups-list .choice-overview-table');
+    await expect(overview.locator('tbody').getByRole('row')).toHaveCount(2);
+    await expect(overview).toContainText('Selected flour');
+    await expect(
+      overview.getByRole('columnheader', { name: ar ? 'الحجم' : 'Size', exact: true }),
+    ).toHaveCount(0);
+    await expect(overview).not.toContainText(ar ? 'الإعدادات الافتراضية' : 'Default settings');
+    await expect(page.locator('.choice-shared-settings')).toHaveCount(0);
+    await expect(overview.locator('.choice-shared-value')).toHaveCount(0);
+    await expect(overview.getByRole('row').filter({ hasText: 'Sauce' })).toContainText(
+      ar ? 'لا تغيير في المخزون' : 'No stock change',
+    );
+    await page.locator('.builder-choice-summary').filter({ hasText: 'Extras' }).click();
+    const composer = page.getByRole('dialog', {
+      name: ar ? 'تعديل خيارات العميل' : 'Edit customer choices',
+      exact: true,
+    });
+    await expect(composer.locator('.choice-overview-table tbody').getByRole('row')).toHaveCount(2);
+    await expect(composer.locator('.choice-shared-settings')).toHaveCount(0);
+    await composer.screenshot({ path: testInfo.outputPath(`simple-overview-${locale}.png`) });
+    await composer
+      .locator('.choice-overview-table')
+      .getByRole('row')
+      .filter({ hasText: 'Cheese' })
+      .getByRole('button', { name: ar ? 'تعديل المخزون' : 'Edit stock', exact: true })
+      .click();
+    await expect(
+      composer.getByRole('combobox', { name: ar ? 'المكوّن' : 'Ingredient', exact: true }),
+    ).toHaveValue(/Selected flour/);
+  });
+
   test(`product inventory keeps selected units while searching and paging (${locale})`, async ({
     page,
   }) => {

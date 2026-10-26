@@ -5,6 +5,7 @@ import { POSLayout } from './POSLayout.js';
 import { POSScreen } from './POSScreen.js';
 import { POSCatalogScreen } from './features/catalog/pos-catalog-screen.js';
 import { PosShiftScreen } from './features/shifts/pos-shift-screen.js';
+import { PosDeliveryScreen } from './features/delivery/pos-delivery-screen.js';
 import { PosDiningScreen } from './features/dining/pos-dining-screen.js';
 import { PosReceiptsScreen } from './features/receipts/pos-receipts-screen.js';
 import { EmployeeAccess, EmployeeAccessNotice } from './features/auth/employee-access.js';
@@ -28,6 +29,14 @@ export const router = createBrowserRouter([
     path: '/',
     element: <POSLayout />,
     children: [
+      {
+        path: 'deliveries',
+        element: (
+          <EmployeeAccess permission="sell">
+            <PosDeliveryScreen />
+          </EmployeeAccess>
+        ),
+      },
       {
         index: true,
         element: (

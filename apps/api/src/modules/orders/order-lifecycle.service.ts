@@ -465,6 +465,15 @@ export class OrderLifecycleService {
                 });
             }
           } else if (command.action === 'handover') {
+            if (
+              await tx.posDelivery.findFirst({
+                where: { orderId, merchantId },
+                select: { orderId: true },
+              })
+            )
+              throw new ConflictException(
+                'Confirm customer delivery from the delivery follow-up screen.',
+              );
             if (order.source !== 'pos' || !order.kitchenTicket)
               throw new ConflictException('Only ticketed POS orders can be handed over here.');
             if (order.status !== 'ready')

@@ -12,6 +12,8 @@ export interface RecordPosCheckPaymentRequest {
   requestId: string;
   revision: number;
   tenders: PosCheckTender[];
+  cashCustody?: 'courier';
+  receivingShiftId?: string;
 }
 
 export interface PosPaymentSummary {
@@ -26,6 +28,8 @@ export interface PosPaymentSummary {
   createdAt: string;
   refundedAmount?: string;
   refundableAmount?: string;
+  cashCustody?: 'drawer' | 'courier';
+  courierCashRemaining?: string;
 }
 
 export interface RecordPosCheckPaymentResponse {

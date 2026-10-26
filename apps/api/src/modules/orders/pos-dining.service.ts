@@ -20,7 +20,7 @@ import type {
 } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { createHash } from 'node:crypto';
-import { toCents, formatCents } from '../../common/money/money.js';
+import { toCents, formatCents, requireEgpCurrency } from '../../common/money/money.js';
 import { assertScopedCursor } from '../../common/http/pagination.js';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import {
@@ -644,7 +644,7 @@ function toSessionSummary(session: SessionRecord): PosDiningSessionSummary {
   const orders = session.orders.map((order) => ({
     id: order.id,
     total: formatCents(toCents(order.total.toString())),
-    currency: order.currency,
+    currency: requireEgpCurrency(order.currency),
     status: order.status,
     revision: order.revision,
     createdAt: order.createdAt.toISOString(),

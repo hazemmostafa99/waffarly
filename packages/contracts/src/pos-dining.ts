@@ -47,7 +47,7 @@ export interface PosDiningSessionSummary {
   orders: Array<{
     id: string;
     total: string;
-    currency: string;
+    currency: 'EGP';
     status: string;
     revision: number;
     createdAt: string;

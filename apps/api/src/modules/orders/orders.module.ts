@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { PosDeliveryController } from './pos-delivery.controller.js';
+import { PosDeliveryService } from './pos-delivery.service.js';
 import { AuthModule } from '../auth/index.js';
 import { InventoryModule } from '../inventory/index.js';
 import { OrderLifecycleService } from './order-lifecycle.service.js';
@@ -25,6 +27,7 @@ import { OwnerPosItemReturnsController } from './pos-returns.controller.js';
 @Module({
   imports: [AuthModule, CatalogModule, InventoryModule, ShiftsModule, PaymentsModule],
   controllers: [
+    PosDeliveryController,
     OwnerPosItemReturnsController,
     OwnerStorefrontOrdersController,
     PosStorefrontOrdersController,
@@ -35,6 +38,7 @@ import { OwnerPosItemReturnsController } from './pos-returns.controller.js';
     PosReceiptsController,
   ],
   providers: [
+    PosDeliveryService,
     StorefrontOrdersService,
     OrderLifecycleService,
     PosOrdersService,

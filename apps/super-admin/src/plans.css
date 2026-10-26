@@ -13,7 +13,6 @@
     padding: 0;
     min-width: 0;
   }
-  .plan-fields select,
   .plan-fields textarea {
     width: 100%;
     border: 1px solid #aab8a8;
@@ -26,15 +25,9 @@
   .plan-fields textarea {
     resize: vertical;
   }
-  .plan-fields select:focus,
   .plan-fields textarea:focus {
     outline: 2px solid #79a886;
     outline-offset: 1px;
-  }
-  .plan-price-inputs {
-    display: grid;
-    grid-template-columns: 1fr 120px;
-    gap: 12px;
   }
   .plan-interval {
     display: flex;

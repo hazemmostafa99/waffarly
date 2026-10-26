@@ -308,6 +308,7 @@ export class StorefrontOrdersService {
   ): Promise<CursorPage<StorefrontOrderSummary>> {
     const where: Prisma.StorefrontOrderWhereInput = {
       merchantId,
+      delivery: { is: null },
       OR: [
         {
           lines: { some: { stockHandling: 'recipe_acceptance' } },

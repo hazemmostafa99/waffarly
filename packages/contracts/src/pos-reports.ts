@@ -15,11 +15,13 @@ export type OwnerPosOperationsReport = {
   collections: { cash: string; terminal: string; total: string };
   refunds: { cash: string; terminal: string; total: string };
   netCollected: string;
+  deliveryCash?: { customerCollections: string; drawerReceipts: string };
   preparation: {
     acceptedToStartSeconds: number | null;
     startToReadySeconds: number | null;
   };
   cashierActivity: Array<{
+    deliveryCashReceived?: string;
     employeeId: string | null;
     employeeName: string | null;
     ordersOpened: number;

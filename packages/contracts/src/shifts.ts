@@ -64,6 +64,9 @@ export interface PosShiftReconciliationSummary {
   currency: 'EGP';
   openingFloat: string;
   cashSales: string;
+  deliveryCashReceived?: string;
+  pendingDeliveryCount?: number;
+  pendingDeliveryBalance?: string;
   cashRefunds: string;
   cashIn: string;
   cashOut: string;
@@ -88,11 +91,14 @@ export interface PosShiftLiveSummary {
   unsettledCheckCount: number;
   unsettledBalance: string;
   manualMovements: PosShiftManualCashMovementSummary[];
+  pendingDeliveryCount?: number;
+  pendingDeliveryBalance?: string;
 }
 
 export interface PosShiftClosePreviewRequest {
   countedCash: string;
   reason?: string | undefined;
+  deliveryHandover?: { recipientUsername: string } | undefined;
 }
 
 /** Reveals only the actions required after the operator submits a blind physical count. */
@@ -100,6 +106,8 @@ export interface PosShiftClosePreview {
   unsettledCheckCount: number;
   requiresReason: boolean;
   requiresSupervisorApproval: boolean;
+  pendingDeliveryCount?: number;
+  requiresDeliveryHandover?: boolean;
 }
 
 export interface RecordPosShiftCashMovementRequest {
@@ -122,9 +130,13 @@ export interface ClosePosShiftRequest {
   countedCash: string;
   reason?: string | undefined;
   approval?: { username: string; password: string } | undefined;
+  deliveryHandover?: { recipientUsername: string } | undefined;
 }
 
-export interface PosShiftCloseReport extends Omit<PosShiftReconciliationSummary, 'countedCash' | 'variance'> {
+export interface PosShiftCloseReport extends Omit<
+  PosShiftReconciliationSummary,
+  'countedCash' | 'variance'
+> {
   id: string;
   requestId: string;
   closedAt: string;
@@ -133,6 +145,7 @@ export interface PosShiftCloseReport extends Omit<PosShiftReconciliationSummary,
   operatorName: string;
   approvedByName: string | null;
   reason: string | null;
+  deliveryHandover?: PosDeliveryHandoverSnapshot | null;
 }
 
 export interface PosShiftCloseReportRow {
@@ -159,6 +172,8 @@ export interface PosShiftCloseReportRow {
   terminalSales: string;
   terminalRefunds: string;
   reason: string | null;
+  deliveryCashReceived?: string;
+  deliveryHandover?: PosDeliveryHandoverSnapshot | null;
 }
 
 export interface OwnerPosShiftCloseReportsQuery {
@@ -168,3 +183,4 @@ export interface OwnerPosShiftCloseReportsQuery {
   cursor?: string | undefined;
   limit?: number | undefined;
 }
+import type { PosDeliveryHandoverSnapshot } from './pos-delivery.js';

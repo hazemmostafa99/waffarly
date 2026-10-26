@@ -87,7 +87,7 @@ Sessions use HTTP-only cookies and require the configured local frontend origins
 
 The additive `20261013040000_monthly_plans` migration creates platform-owned offer definitions. Apply pending development migrations and generate/build the database and contracts packages before running API/Super Admin. No plan or commercial price is seeded.
 
-After signing in, open **Plans**, enter the plan name and monthly price, choose EGP/USD/EUR explicitly, and optionally add a description. Saved definitions appear in the catalog and can be edited. Identical unchanged-input create retries reuse their initial result; edits reject stale revisions and ask you to refresh/reopen the plan. These actions do not assign merchants, collect fees, activate coverage, renew, or enforce expiry.
+After signing in, open **Plans**, enter the plan name and monthly price in EGP, and optionally add a description. Saved definitions appear in the catalog and can be edited. Identical unchanged-input create retries reuse their initial result; edits reject stale revisions and ask you to refresh/reopen the plan. These actions do not assign merchants, collect fees, activate coverage, renew, or enforce expiry.
 
 See the [Monthly Plan specification](../features/super-admin/plans-subscriptions/MONTHLY_PLAN.md) for contracts, validation choices, and remaining subscription decisions. `pnpm --filter @waffarly/api test` includes health and monthly-plan API tests using a test database provider.
 

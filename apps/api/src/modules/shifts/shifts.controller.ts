@@ -27,7 +27,13 @@ import type {
   UpdatePosRegisterRequest,
 } from '@waffarly/contracts';
 import { parseRequest, ZodValidationPipe } from '../../common/http/zod-validation.pipe.js';
-import { AuthService, CurrentOwner, CurrentPosEmployee, OwnerGuard, PosEmployeeGuard } from '../auth/index.js';
+import {
+  AuthService,
+  CurrentOwner,
+  CurrentPosEmployee,
+  OwnerGuard,
+  PosEmployeeGuard,
+} from '../auth/index.js';
 import {
   closePosShiftSchema,
   createPosRegisterSchema,

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useOutletContext } from 'react-router-dom';
+import { useOutletContext } from 'react-router-dom';
 import {
+  Button,
   DashboardCard,
   DataTable,
   Pagination,
@@ -11,8 +12,9 @@ import {
 import type { Category, MediaAsset, Product } from './CatalogWorkspace.js';
 import { categoriesCopy } from './categories-copy.js';
 import { DashboardDialog } from './components/DashboardDialog.js';
+import { MediaImagePickerDialog } from './components/MediaImagePickerDialog.js';
 import { Icon } from './Icons.js';
-import { apiRequest } from './lib/api-client.js';
+import { apiRequest, apiUpload } from './lib/api-client.js';
 
 const pageSize = 10;
 
@@ -24,13 +26,13 @@ type CategoryDraft = {
   imageAssetId: string;
 };
 
-function categoryDraft(category: Category | null, media: MediaAsset[]): CategoryDraft {
+function categoryDraft(category: Category | null): CategoryDraft {
   return {
     name: category?.name ?? '',
     description: category?.description ?? '',
     parentId: category?.parentId ?? '',
     availability: category?.availability ?? 'available',
-    imageAssetId: category?.image.id ?? media[0]?.id ?? '',
+    imageAssetId: category?.image.id ?? '',
   };
 }
 
@@ -43,7 +45,7 @@ export function CategoriesPage() {
   const [media, setMedia] = useState<MediaAsset[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const [draft, setDraft] = useState<CategoryDraft>(() => categoryDraft(null, []));
+  const [draft, setDraft] = useState<CategoryDraft>(() => categoryDraft(null));
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
   const [sort, setSort] = useState('name');
@@ -54,6 +56,7 @@ export function CategoriesPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [imagePickerOpen, setImagePickerOpen] = useState(false);
 
   const activeCategories = categories.filter((category) => !category.archivedAt);
   const selected = categories.find((category) => category.id === selectedId) ?? null;
@@ -88,7 +91,7 @@ export function CategoriesPage() {
     setSelectedId(nextId);
     if (!creating) {
       setDraft(
-        categoryDraft(nextCategories.find((category) => category.id === nextId) ?? null, nextMedia),
+        categoryDraft(nextCategories.find((category) => category.id === nextId) ?? null),
       );
     }
   }
@@ -104,7 +107,7 @@ export function CategoriesPage() {
   function selectCategory(category: Category) {
     setCreating(false);
     setSelectedId(category.id);
-    setDraft(categoryDraft(category, media));
+    setDraft(categoryDraft(category));
     setError('');
     setNotice('');
   }
@@ -112,7 +115,7 @@ export function CategoriesPage() {
   function startCreating() {
     setCreating(true);
     setSelectedId(null);
-    setDraft(categoryDraft(null, media));
+    setDraft(categoryDraft(null));
     setError('');
     setNotice('');
   }
@@ -184,6 +187,12 @@ export function CategoriesPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function uploadCategoryImage(file: File): Promise<MediaAsset> {
+    const asset = await apiUpload<MediaAsset>('/owner/catalog/media/upload', file);
+    setMedia((current) => [asset, ...current.filter((item) => item.id !== asset.id)]);
+    return asset;
   }
 
   const normalizedQueries = [query, globalSearch].map((value) =>
@@ -282,6 +291,7 @@ export function CategoriesPage() {
   const rootCategories = activeCategories.filter(
     (category) => category.parentId === null && category.id !== selected?.id,
   );
+  const selectedImage = media.find((asset) => asset.id === draft.imageAssetId) ?? null;
 
   return (
     <div className="categories-page">
@@ -447,19 +457,6 @@ export function CategoriesPage() {
           ) : (
             <form className="categories-form" onSubmit={(event) => void save(event)}>
               <fieldset disabled={busy || Boolean(selected?.archivedAt)}>
-                <div className="categories-cover-preview">
-                  {draft.imageAssetId ? (
-                    <img
-                      src={media.find((asset) => asset.id === draft.imageAssetId)?.publicUrl}
-                      alt=""
-                    />
-                  ) : (
-                    <Icon name="image" />
-                  )}
-                  <span>
-                    <Icon name="camera" />
-                  </span>
-                </div>
                 <label>
                   {copy('Category name')}
                   <input
@@ -516,31 +513,40 @@ export function CategoriesPage() {
                   </button>
                 </div>
                 <div className="categories-images">
-                  <strong>{copy('Cover image')}</strong>
-                  <div>
-                    {media.slice(0, 5).map((asset) => (
-                      <button
+                  <div className="categories-image-copy">
+                    <strong>{copy('Cover image')}</strong>
+                    <small>{copy('Choose a clear image to represent this category.')}</small>
+                  </div>
+                  <div className="categories-image-control">
+                    {selectedImage ? (
+                      <img src={selectedImage.publicUrl} alt="" />
+                    ) : (
+                      <span className="categories-image-placeholder">
+                        <Icon name="image" />
+                      </span>
+                    )}
+                    <div>
+                      <strong>
+                        {selectedImage ? copy('Image selected') : copy('No image selected')}
+                      </strong>
+                      <small>
+                        {selectedImage
+                          ? selectedImage.storageKey.split(/[\\/]/).pop()
+                          : copy('A category image is required.')}
+                      </small>
+                      <Button
                         type="button"
-                        key={asset.id}
-                        className={draft.imageAssetId === asset.id ? 'selected' : ''}
-                        aria-label={asset.storageKey}
-                        onClick={() => setDraft({ ...draft, imageAssetId: asset.id })}
+                        variant="outline"
+                        size="sm"
+                        disabled={busy || Boolean(selected?.archivedAt)}
+                        onClick={() => setImagePickerOpen(true)}
                       >
-                        <img src={asset.publicUrl} alt="" />
-                      </button>
-                    ))}
-                    <Link to="/media" className="categories-add-image">
-                      <Icon name="plus" />
-                      {copy('Add image')}
-                    </Link>
+                        <Icon name={selectedImage ? 'edit' : 'image'} />
+                        {copy(selectedImage ? 'Change image' : 'Choose image')}
+                      </Button>
+                    </div>
                   </div>
                 </div>
-                {!media.length && (
-                  <p>
-                    {copy('Add an image in Media Library before creating a category.')}{' '}
-                    <Link to="/media">{copy('Media Library')}</Link>
-                  </p>
-                )}
               </fieldset>
               <button
                 type="submit"
@@ -578,6 +584,18 @@ export function CategoriesPage() {
           )}
         </DashboardCard>
       </div>
+
+      {imagePickerOpen && (
+        <MediaImagePickerDialog
+          assets={media}
+          selectedId={draft.imageAssetId}
+          copy={copy}
+          errorText={errorText}
+          onClose={() => setImagePickerOpen(false)}
+          onApply={(asset) => setDraft((current) => ({ ...current, imageAssetId: asset.id }))}
+          onUpload={uploadCategoryImage}
+        />
+      )}
 
       {deleteOpen && selected && (
         <DashboardDialog

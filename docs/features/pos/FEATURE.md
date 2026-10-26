@@ -2,7 +2,7 @@
 
 ## Status and authority
 
-- Last reviewed: 2026-10-20.
+- Last reviewed: 2026-10-26.
 - Status: M1 and M2 remain partial; M3 is in progress; M4 dining sessions/split checks are implemented within their exit scope; M5 is in progress; M6.1-M6.6 kitchen dispatch, readiness, handover, queue freshness and pre-acceptance additions have automated coverage; M7.1 cancellation, M7.2 original-payment-linked refunds and M7.3 post-handover item returns recorded as waste have focused API, local PostgreSQL and desktop/mobile UI coverage; M8.1 blind count/shift close, M8.2 bounded owner close reports, M8.3 dedicated cash-drop classification, M8.4 owner return/waste audit reports and M8.5 POS operations reporting have focused API, rollback-only PostgreSQL and desktop/mobile UI coverage. Merchant POS accent configuration is persisted with owner and cashier API coverage; manual merchant/cashier review remains pending. M8.5 owner acceptance remains pending. Cashier/device acceptance remains pending. POS discount application and analytics are deferred under POS-D17; multi-station readiness, physical printer acceptance and direct one-click PDF download remain open. ETA fiscal integration is deferred.
 - Companion execution ledger: [PROGRESS.md](PROGRESS.md). Read both before each implementation slice.
 - UI/UX companion: [UI_UX.md](UI_UX.md). Follow its workspace, interaction, dual-theme and usability requirements for frontend slices.
@@ -12,6 +12,16 @@
 - The user requested these references, the frontend stack and an interactive prototype, then clarified that its design should become the production POS baseline. The live `/catalog` selling screen now uses Tailwind utilities and shared POS tokens while keeping real API, React Query and Zustand draft flows. Operator review on 2026-10-18 found substantial visual and usability gaps across the live routes; the Step 1 visual handoff is **not accepted**. Follow the cross-page correction plan in [UI_UX.md](UI_UX.md) and deliver one tested page slice at a time. `/prototype` remains a development-only sample for interactions not yet migrated. Printer hardware details remain open; ETA fiscal issuance is deferred.
 
 Use these labels: **EXISTING** means observed in source; **CONFIRMED** records an explicit user choice; **TARGET** is the proposed implementation contract; **OPEN** needs a decision before its affected slice; **DEFERRED** is outside the first release. Update decisions before changing dependent behavior. Later explicit user instructions take precedence over this document.
+
+### Delivery collection update — 2026-10-26
+
+POS-D18: the user approved implementing tracked COD delivery across shifts.
+See [Delivery collections](DELIVERY_COLLECTIONS.md) for the implemented exception
+to D05/D06, customer-versus-drawer money rules, supervisor handover, recovery,
+rollout and acceptance. Other unpaid fulfillment types retain their close block.
+The original order attribution is retained. Courier-held payments never enter a
+drawer until an attributable remittance into an open same-branch shift. Financial
+shift totals and frozen handover snapshots stay unchanged after later collection.
 
 ### Current implementation update — 2026-10-18
 
@@ -617,7 +627,7 @@ Core invariants:
 
 1. Merchant comes from the actor. Every order, bill, payment, table, station, shift, warehouse and nested reference is merchant-scoped; branch and register grants are additional constraints. Use compound database relationships and test foreign-tenant references.
 2. Order execution, payment summary, kitchen progress and dining occupancy are separate facts. Derive payment balances from successful immutable allocations and refunds; a cached summary is updated transactionally, never trusted from the client.
-3. Prices and totals are decimal strings at HTTP boundaries, integer arithmetic internally using existing money helpers. Use the current currency precision, reject mixed currencies, and define deterministic cent allocation for equal splits/discounts. No float-based settlement.
+3. Prices and totals are EGP decimal strings at HTTP boundaries, integer arithmetic internally using existing money helpers. EGP is the only supported currency; reject other currency codes and define deterministic cent allocation for equal splits/discounts. No float-based settlement.
 4. Requote cart changes on the server. Quotes carry expiry/revision/fingerprint context; confirmation revalidates it. Changed prices or unavailable choices require cashier review, never silent repricing of a confirmed sale.
 5. Every command has a merchant-scoped request key and payload fingerprint. Replay returns its recorded result; reuse with another payload conflicts. Resource revisions protect edits. A timeout is unknown, not a failed sale.
 6. Historical product names, modifiers, prices, approved discounts, charge/tax breakdowns and stock-consumption facts remain stable after catalog edits. New snapshot policy must be introduced explicitly; do not infer missing facts on old orders.

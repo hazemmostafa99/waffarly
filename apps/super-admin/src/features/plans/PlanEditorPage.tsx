@@ -3,7 +3,6 @@ import type {
   CreateMonthlyPlanRequest,
   MonthlyPlanSettings,
   MonthlyPlanSummary,
-  PlanCurrency,
   UpdateMonthlyPlanRequest,
 } from '@waffarly/contracts';
 import { Button, Card, Input, Textarea, useLocale, type LocalizedMessage } from '@waffarly/ui';
@@ -15,7 +14,7 @@ import { PageHeader } from '../../components/PageHeader.js';
 import { ApiError, apiRequest } from '../../lib/api-client.js';
 import { useMonthlyPlansQuery } from './plans-queries.js';
 
-type FormValues = Omit<MonthlyPlanSettings, 'currency'> & { currency: PlanCurrency | '' };
+type FormValues = Omit<MonthlyPlanSettings, 'currency'>;
 type SavePlanInput = {
   settings: MonthlyPlanSettings;
   planId?: string;
@@ -27,7 +26,6 @@ const emptyForm: FormValues = {
   name: '',
   description: '',
   monthlyPrice: '',
-  currency: '',
   billingInterval: 'monthly',
 };
 
@@ -36,7 +34,6 @@ function settingsFor(plan: MonthlyPlanSummary): FormValues {
     name: plan.name,
     description: plan.description,
     monthlyPrice: plan.monthlyPrice,
-    currency: plan.currency,
     billingInterval: 'monthly',
   };
 }
@@ -44,8 +41,7 @@ function settingsFor(plan: MonthlyPlanSummary): FormValues {
 function sameSettings(left: FormValues, right: FormValues) {
   return left.name === right.name &&
     left.description === right.description &&
-    left.monthlyPrice === right.monthlyPrice &&
-    left.currency === right.currency;
+    left.monthlyPrice === right.monthlyPrice;
 }
 
 export function PlanEditorPage() {
@@ -146,9 +142,9 @@ export function PlanEditorPage() {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (savePlan.isPending || !form.currency || conflict) return;
+    if (savePlan.isPending || conflict) return;
     setError('');
-    const settings: MonthlyPlanSettings = { ...form, currency: form.currency };
+    const settings: MonthlyPlanSettings = { ...form, currency: 'EGP' };
     if (isEditing) {
       if (!basePlan || basePlan.id !== planId || loadedPlanId !== planId) return;
       savePlan.mutate({ settings, planId: basePlan.id, revision: basePlan.revision });
@@ -271,36 +267,20 @@ export function PlanEditorPage() {
                   />
                 </label>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="grid gap-1.5 text-xs font-semibold text-waffarly-ink">
-                    {t('Monthly price')}
-                    <Input
-                      required
-                      type="text"
-                      inputMode="decimal"
-                      pattern="(?:0|[1-9][0-9]{0,7})(?:\.[0-9]{1,2})?"
-                      title={t('An amount from 0 to 99999999.99, with up to two decimal places')}
-                      maxLength={11}
-                      value={form.monthlyPrice}
-                      placeholder="0.00"
-                      onChange={(event) => updateField('monthlyPrice', event.target.value)}
-                    />
-                  </label>
-                  <label className="grid gap-1.5 text-xs font-semibold text-waffarly-ink">
-                    {t('Currency')}
-                    <select
-                      required
-                      value={form.currency}
-                      onChange={(event) => updateField('currency', event.target.value as PlanCurrency)}
-                      className="h-11 w-full rounded-lg border border-waffarly-border bg-waffarly-input px-3 text-sm font-normal text-waffarly-ink outline-none transition focus-visible:ring-2 focus-visible:ring-waffarly-primary/30"
-                    >
-                      <option value="" disabled>{t('Select currency')}</option>
-                      <option value="EGP">{t('EGP')}</option>
-                      <option value="USD">{t('USD')}</option>
-                      <option value="EUR">{t('EUR')}</option>
-                    </select>
-                  </label>
-                </div>
+                <label className="grid gap-1.5 text-xs font-semibold text-waffarly-ink">
+                  <span>{t('Monthly price')} ({t('EGP')})</span>
+                  <Input
+                    required
+                    type="text"
+                    inputMode="decimal"
+                    pattern="(?:0|[1-9][0-9]{0,7})(?:\.[0-9]{1,2})?"
+                    title={t('An amount from 0 to 99999999.99, with up to two decimal places')}
+                    maxLength={11}
+                    value={form.monthlyPrice}
+                    placeholder="0.00"
+                    onChange={(event) => updateField('monthlyPrice', event.target.value)}
+                  />
+                </label>
 
                 <div className="flex items-center justify-between rounded-xl bg-waffarly-input px-4 py-3 text-xs text-waffarly-muted">
                   <span>{t('Billing interval')}</span>

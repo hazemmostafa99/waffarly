@@ -43,6 +43,7 @@ describe('POS kitchen tickets', () => {
 
     assert.deepEqual(capturedWhere, {
       merchantId,
+      delivery: { is: null },
       OR: [
         {
           lines: { some: { stockHandling: 'recipe_acceptance' } },

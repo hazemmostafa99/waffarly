@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { PosEmployeeSession, PosPaymentSummary, PosCheckTender } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
-import { formatCents, toCents } from '../../common/money/money.js';
+import { formatCents, requireEgpCurrency, toCents } from '../../common/money/money.js';
 import { ShiftsService } from '../shifts/index.js';
 import { normalizeTenders } from './payment.rules.js';
 
@@ -15,6 +15,7 @@ export interface RecordCheckTendersCommand {
   balanceDue: string;
   employee: PosEmployeeSession;
   tenders: PosCheckTender[];
+  cashCustody?: 'courier';
 }
 
 @Injectable()
@@ -25,6 +26,7 @@ export class PaymentsService {
     tx: Prisma.TransactionClient,
     command: RecordCheckTendersCommand,
   ): Promise<{ payments: PosPaymentSummary[]; appliedAmount: string; balanceDue: string }> {
+    const currency = requireEgpCurrency(command.currency);
     const normalized = normalizeTenders(command.tenders, command.balanceDue);
     const rows: PosPaymentSummary[] = [];
     for (const [position, tender] of normalized.entries()) {
@@ -41,11 +43,12 @@ export class PaymentsService {
           amount: tender.amount,
           receivedAmount: tender.receivedAmount,
           changeAmount: tender.changeAmount,
-          currency: command.currency,
+          currency,
           terminalReference: tender.terminalReference,
+          cashCustody: command.cashCustody ?? 'drawer',
         },
       });
-      if (payment.method === 'cash') {
+      if (payment.method === 'cash' && command.cashCustody !== 'courier') {
         await this.shifts.recordCashSale(tx, {
           merchantId: payment.merchantId,
           shiftId: payment.shiftId,
@@ -64,6 +67,7 @@ export class PaymentsService {
         terminalReference: payment.terminalReference,
         operatorEmployeeId: payment.operatorEmployeeId,
         createdAt: payment.createdAt.toISOString(),
+        cashCustody: command.cashCustody ?? 'drawer',
       });
     }
     const appliedCents = normalized.reduce((sum, tender) => sum + toCents(tender.amount), 0n);

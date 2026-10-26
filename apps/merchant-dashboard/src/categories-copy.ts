@@ -2,6 +2,28 @@ import type { Locale } from '@waffarly/ui';
 import { formatDigits } from '@waffarly/ui';
 
 const ar: Record<string, string> = {
+  'Choose category image': 'اختر صورة التصنيف',
+  'Choose one image from your library or upload a new one.':
+    'اختر صورة من مكتبة الوسائط أو ارفع صورة جديدة.',
+  'Close image picker': 'إغلاق معرض الصور',
+  'Search images': 'البحث في الصور',
+  'Search by file name...': 'ابحث باسم الملف...',
+  'Uploading...': 'جارٍ رفع الصورة...',
+  'Upload image': 'رفع صورة',
+  'Choose a JPEG, PNG, or WebP image up to 10 MB.':
+    'اختر صورة JPEG أو PNG أو WebP بحجم يصل إلى 10 ميجابايت.',
+  'Could not upload the image.': 'تعذر رفع الصورة.',
+  'Available images': 'الصور المتاحة',
+  'No images match this search.': 'لا توجد صور تطابق هذا البحث.',
+  'No images in your library yet. Upload one to use it here.':
+    'لا توجد صور في مكتبة الوسائط. ارفع صورة لاستخدامها هنا.',
+  'Use image': 'استخدام الصورة',
+  'Choose a clear image to represent this category.': 'اختر صورة واضحة لتمثيل هذا التصنيف.',
+  'Image selected': 'تم اختيار الصورة',
+  'No image selected': 'لم يتم اختيار صورة',
+  'A category image is required.': 'يجب اختيار صورة للتصنيف.',
+  'Change image': 'تغيير الصورة',
+  'Choose image': 'اختر صورة',
   Categories: 'التصنيفات',
   'Organize product categories and structure them for easy browsing and search.':
     'إدارة تصنيفات المنتجات وتنظيمها لسهولة التصفح والبحث',

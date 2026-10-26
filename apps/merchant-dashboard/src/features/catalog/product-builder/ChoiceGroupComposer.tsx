@@ -1,8 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useModifierStockItems } from './use-modifier-stock-items.js';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Dialog, useLocale } from '@waffarly/ui';
 import { Icon } from '../../../Icons.js';
 import { CustomerChoicesPreview } from './CustomerChoicesPreview.js';
 import { ModifierDetailsEditor } from './ModifierDetailsEditor.js';
+import {
+  ChoiceConfigurationOverview,
+  type ChoiceEditorView,
+} from './ChoiceConfigurationOverview.js';
 import type {
   ChoiceGroupDraft,
   GroupDraft,
@@ -21,6 +26,7 @@ export function ChoiceGroupComposer({
   onAdd,
   initialGroup,
   initialDraft,
+  initialView,
   onSave,
   variants,
   recipe,
@@ -33,6 +39,7 @@ export function ChoiceGroupComposer({
   onAdd: (draft: ChoiceGroupDraft) => Promise<string | null>;
   initialGroup?: GroupDraft | undefined;
   initialDraft?: GroupDraft | undefined;
+  initialView?: ChoiceEditorView | undefined;
   onSave: (group: GroupDraft) => Promise<string | null>;
   variants: VariantDraft[];
   recipe: boolean;
@@ -82,6 +89,22 @@ export function ChoiceGroupComposer({
   const [attempted, setAttempted] = useState(false);
   const [error, setError] = useState('');
   const [focusRow, setFocusRow] = useState('');
+  const [activeTab, setActiveTab] = useState<ChoiceEditorView['section']>(
+    initialView?.section ?? (initialGroup ? 'overview' : 'choices'),
+  );
+  const [editorView, setEditorView] = useState<ChoiceEditorView>(
+    initialView ?? { section: 'overview' },
+  );
+  const [mobilePreview, setMobilePreview] = useState(false);
+  const panelId = useId();
+  const tabs = [
+    { id: 'overview' as const, label: text('Overview', 'نظرة عامة') },
+    { id: 'choices' as const, label: text('Choices and prices', 'الاختيارات والأسعار') },
+    ...(variants.length ? [{ id: 'sizes' as const, label: text('By size', 'حسب الحجم') }] : []),
+    ...(recipe
+      ? [{ id: 'inventory' as const, label: text('Stock consumption', 'استهلاك المخزون') }]
+      : []),
+  ];
   const titleInput = useRef<HTMLInputElement>(null);
   const adding = useRef(false);
   const inputs = useRef(new Map<string, HTMLInputElement>());
@@ -92,6 +115,10 @@ export function ChoiceGroupComposer({
   useEffect(() => {
     if (focusRow) inputs.current.get(focusRow)?.focus();
   }, [focusRow]);
+  useEffect(() => {
+    if (initialView?.section === 'choices' && initialView.optionId)
+      priceInputs.current.get(initialView.optionId)?.focus();
+  }, [initialView]);
   const activeRows = rows.filter(
     (row) =>
       row.name.trim() ||
@@ -119,6 +146,18 @@ export function ChoiceGroupComposer({
     maxSelections: max,
     variantOverrides: groupOverrides,
   };
+  const stock = useModifierStockItems(recipe ? [currentGroup] : []);
+  const dirty = JSON.stringify(currentGroup) !== JSON.stringify(seed);
+  function openView(view: ChoiceEditorView) {
+    setEditorView(view);
+    setActiveTab(view.section);
+    setMobilePreview(false);
+    requestAnimationFrame(() => {
+      if (view.section === 'choices' && view.optionId)
+        priceInputs.current.get(view.optionId)?.focus();
+      else document.getElementById(`${panelId}-${view.section}`)?.focus();
+    });
+  }
   const baseline = useRef(JSON.stringify(currentGroup));
   function suspend() {
     onClose(
@@ -170,14 +209,20 @@ export function ChoiceGroupComposer({
     setAttempted(true);
     setError('');
     if (!name.trim()) {
-      titleInput.current?.focus();
+      setActiveTab('choices');
+      setMobilePreview(false);
+      requestAnimationFrame(() => titleInput.current?.focus());
       return;
     }
     const invalidRow = activeRows.find((row) => nameError(row) || !validPrice(row.priceAdjustment));
     if (!activeRows.length || invalidRow) {
-      (invalidRow && !nameError(invalidRow) ? priceInputs : inputs).current
-        .get(invalidRow?.id ?? rows[0]!.id)
-        ?.focus();
+      setActiveTab('choices');
+      setMobilePreview(false);
+      requestAnimationFrame(() =>
+        (invalidRow && !nameError(invalidRow) ? priceInputs : inputs).current
+          .get(invalidRow?.id ?? rows[0]!.id)
+          ?.focus(),
+      );
       return;
     }
     if (
@@ -191,12 +236,92 @@ export function ChoiceGroupComposer({
           'استخدم أعدادًا صحيحة لحدود الاختيار، ولا تتجاوز بالاختيارات الافتراضية الحد الأقصى.',
         ),
       );
-      if (advancedSettings.current) advancedSettings.current.open = true;
-      if (activeRows.filter((row) => row.defaultSelected).length > max)
-        advancedSettings.current
-          ?.querySelector<HTMLInputElement>('.composer-defaults input:checked')
+      setActiveTab('choices');
+      setMobilePreview(false);
+      requestAnimationFrame(() => {
+        if (advancedSettings.current) advancedSettings.current.open = true;
+        if (activeRows.filter((row) => row.defaultSelected).length > max)
+          advancedSettings.current
+            ?.querySelector<HTMLInputElement>('.composer-defaults input:checked')
+            ?.focus();
+        else (!Number.isInteger(min) ? minimumInput : maximumInput).current?.focus();
+      });
+      return;
+    }
+    const invalidQuantity = activeRows.some(
+      (row) =>
+        row.maxQuantity !== undefined &&
+        (!Number.isInteger(row.maxQuantity) || row.maxQuantity < 1 || row.maxQuantity > 99),
+    );
+    const invalidSizePrice = activeRows.some((row) =>
+      row.variantOverrides?.some((override) => !validPrice(override.priceAdjustment ?? '')),
+    );
+    if (invalidQuantity || invalidSizePrice) {
+      const tab = invalidQuantity ? 'choices' : 'sizes';
+      setActiveTab(tab);
+      setMobilePreview(false);
+      setError(
+        invalidQuantity
+          ? text('Use a whole quantity from 1 to 99.', 'استخدم كمية صحيحة من 1 إلى 99.')
+          : text(
+              'Enter an extra price of 0 or more, with up to 2 decimals.',
+              'أدخل سعرًا إضافيًا من صفر فأكثر، بمنزلتين عشريتين كحد أقصى.',
+            ),
+      );
+      requestAnimationFrame(() => {
+        if (invalidQuantity && advancedSettings.current) advancedSettings.current.open = true;
+        document
+          .getElementById(`${panelId}-${tab}`)
+          ?.querySelector<HTMLInputElement>('input[aria-invalid="true"]')
           ?.focus();
-      else (!Number.isInteger(min) ? minimumInput : maximumInput).current?.focus();
+      });
+      return;
+    }
+    const invalidStock = recipe
+      ? activeRows
+          .flatMap((option) => [
+            { optionId: option.id, variantId: '', effects: option.effects ?? [] },
+            ...(option.variantOverrides ?? [])
+              .filter((override) => variants.some((variant) => variant.id === override.variantId))
+              .map((override) => ({
+                optionId: option.id,
+                variantId: override.variantId,
+                effects: override.effects ?? [],
+              })),
+          ])
+          .find((entry) =>
+            entry.effects.some(
+              (effect) =>
+                !effect.stockItemId ||
+                !effect.unitCode ||
+                !Number.isFinite(Number(effect.quantity)) ||
+                Number(effect.quantity) <= 0,
+            ),
+          )
+      : undefined;
+    if (invalidStock) {
+      setEditorView({
+        section: 'inventory',
+        optionId: invalidStock.optionId,
+        ...(invalidStock.variantId ? { variantId: invalidStock.variantId } : {}),
+      });
+      setActiveTab('inventory');
+      setMobilePreview(false);
+      setError(
+        text(
+          'Choose an ingredient, a unit, and a quantity greater than zero.',
+          'اختر المكوّن والوحدة، وأدخل كمية أكبر من صفر.',
+        ),
+      );
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          const panel = document.getElementById(`${panelId}-inventory`);
+          const field =
+            panel?.querySelector<HTMLElement>('[aria-invalid="true"]') ??
+            panel?.querySelector<HTMLElement>('.modifier-stock-inline-editor input');
+          field?.focus();
+        }),
+      );
       return;
     }
     adding.current = true;
@@ -238,311 +363,502 @@ export function ChoiceGroupComposer({
         'Name the choices, set any extra charges, and choose how customers select them.',
         'اكتب الاختيارات، وحدّد أي سعر إضافي وطريقة اختيار العميل.',
       )}
-      closeLabel={text('Close', 'إغلاق')}
-      className="choice-composer-dialog"
+      closeLabel={text('Close and keep draft', 'إغلاق والاحتفاظ بالمسودة')}
+      className="choice-composer-dialog choice-workspace-dialog"
     >
-      <div className="choice-composer-layout">
-        <div className="choice-composer-editor" aria-busy={creating}>
-          <label className="builder-field">
-            <span className="composer-section-title">
-              <b>1</b>
-              {text('Choice group name', 'اسم مجموعة الخيارات')}
-            </span>
-            <input
-              autoFocus
-              ref={titleInput}
-              maxLength={160}
-              value={name}
-              disabled={creating}
-              aria-invalid={showError('name') && !name.trim()}
-              onBlur={() => markTouched('name')}
-              aria-describedby={
-                showError('name') && !name.trim() ? 'choice-title-error' : undefined
-              }
-              onChange={(event) => setName(event.target.value)}
-              placeholder={text('e.g. Extras', 'مثال: الإضافات')}
-            />
-            {showError('name') && !name.trim() && (
-              <small id="choice-title-error" className="choice-field-error">
-                {text('Enter a title for these choices.', 'اكتب عنوانًا لهذه الاختيارات.')}
-              </small>
-            )}
-          </label>
-          <div className="choice-composer-rows">
-            <div className="composer-section-heading">
-              <h3 className="composer-section-title">
-                <b>2</b>
-                {text('Choices and prices', 'الاختيارات والأسعار')}
-              </h3>
+      <div className="choice-workspace-toolbar">
+        <div
+          className="choice-workspace-tabs"
+          role="tablist"
+          aria-label={text('Choice settings', 'إعدادات الخيارات')}
+        >
+          {tabs.map((tab, index) => (
+            <button
+              key={tab.id}
+              id={`${panelId}-${tab.id}-tab`}
+              type="button"
+              role="tab"
+              aria-label={tab.label}
+              aria-selected={activeTab === tab.id}
+              aria-controls={`${panelId}-${tab.id}`}
+              tabIndex={activeTab === tab.id ? 0 : -1}
+              onClick={() => {
+                setActiveTab(tab.id);
+                setMobilePreview(false);
+              }}
+              onKeyDown={(event) => {
+                const rtl =
+                  event.currentTarget.closest('[dir]')?.getAttribute('dir') === 'rtl' ||
+                  document.documentElement.dir === 'rtl';
+                const delta =
+                  event.key === 'ArrowRight'
+                    ? rtl
+                      ? -1
+                      : 1
+                    : event.key === 'ArrowLeft'
+                      ? rtl
+                        ? 1
+                        : -1
+                      : 0;
+                if (!delta && event.key !== 'Home' && event.key !== 'End') return;
+                event.preventDefault();
+                const next =
+                  tabs[
+                    event.key === 'Home'
+                      ? 0
+                      : event.key === 'End'
+                        ? tabs.length - 1
+                        : (index + delta + tabs.length) % tabs.length
+                  ]!;
+                setActiveTab(next.id);
+                setMobilePreview(false);
+                document.getElementById(`${panelId}-${next.id}-tab`)?.focus();
+              }}
+            >
+              <span className="choice-tab-full-label">{tab.label}</span>
+              <span className="choice-tab-short-label">
+                {tab.id === 'choices'
+                  ? text('Choices', 'الاختيارات')
+                  : tab.id === 'inventory'
+                    ? text('Stock', 'المخزون')
+                    : tab.label}
+              </span>
+            </button>
+          ))}
+        </div>
+        {activeTab !== 'inventory' && (
+          <button
+            type="button"
+            className="builder-button choice-preview-toggle"
+            aria-expanded={mobilePreview}
+            aria-controls={`${panelId}-preview`}
+            onClick={() => setMobilePreview((current) => !current)}
+          >
+            <Icon name="eye" />
+            {mobilePreview
+              ? text('Back to editing', 'العودة للتعديل')
+              : text('Customer preview', 'معاينة العميل')}
+          </button>
+        )}
+      </div>
+      <div
+        className={`choice-composer-layout choice-workspace-layout${mobilePreview ? ' is-previewing' : ''}${activeTab === 'inventory' ? ' is-stock-view' : ''}`}
+      >
+        <div className="choice-workspace-editor" aria-busy={creating}>
+          <fieldset
+            disabled={creating}
+            className="choice-workspace-panel choice-overview-panel"
+            role="tabpanel"
+            id={`${panelId}-overview`}
+            aria-labelledby={`${panelId}-overview-tab`}
+            hidden={activeTab !== 'overview'}
+            tabIndex={0}
+          >
+            <div className="modifier-section-heading">
+              <h3>{name || text('Current configuration', 'الإعداد الحالي')}</h3>
               <p>
                 {text(
-                  'Extra prices are added to the product price. Leave blank for free.',
-                  'السعر الإضافي يُضاف لسعر المنتج. اتركه فارغًا للاختيارات المجانية.',
+                  'Review the actual prices and ingredients for each choice and size. Select an action to edit.',
+                  'راجع الأسعار والمكوّنات الفعلية لكل اختيار وحجم. اختر إجراءً للتعديل.',
                 )}
               </p>
             </div>
-            <div className="choice-composer-table-head" aria-hidden="true">
-              <span>{text('Choice name', 'اسم الاختيار')}</span>
-              <span>{text('Extra price (EGP)', 'السعر الإضافي (ج.م)')}</span>
-              <span />
-            </div>
-            {rows.map((row, index) => (
-              <div className="choice-composer-row" key={row.id}>
-                <label className="builder-field">
-                  <span className="composer-mobile-label">
-                    {text(`Choice ${index + 1}`, `الخيار ${index + 1}`)}
-                  </span>
-                  <input
-                    ref={(element) => {
-                      if (element) inputs.current.set(row.id, element);
-                      else inputs.current.delete(row.id);
-                    }}
-                    maxLength={160}
-                    value={row.name}
-                    disabled={creating}
-                    aria-invalid={showError(`name:${row.id}`) && Boolean(nameError(row))}
-                    onBlur={() => markTouched(`name:${row.id}`)}
-                    aria-describedby={
-                      showError(`name:${row.id}`) && nameError(row)
-                        ? `choice-name-error-${row.id}`
-                        : undefined
-                    }
-                    onChange={(event) => updateRow(row.id, { name: event.target.value })}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault();
-                        addRow();
-                      }
-                    }}
-                    placeholder={text('Choice name', 'اسم الخيار')}
-                  />
-                  {showError(`name:${row.id}`) && nameError(row) && (
-                    <small id={`choice-name-error-${row.id}`} className="choice-field-error">
-                      {nameError(row)}
-                    </small>
-                  )}
-                </label>
-                <label className="builder-field">
-                  <span className="composer-mobile-label">
-                    {text(
-                      `Extra price for choice ${index + 1} (EGP)`,
-                      `السعر الإضافي للخيار ${index + 1} (ج.م)`,
-                    )}
-                  </span>
-                  <input
-                    ref={(element) => {
-                      if (element) priceInputs.current.set(row.id, element);
-                      else priceInputs.current.delete(row.id);
-                    }}
-                    type="text"
-                    inputMode="decimal"
-                    lang="en"
-                    dir="ltr"
-                    value={row.priceAdjustment}
-                    disabled={creating}
-                    placeholder="0.00"
-                    aria-invalid={showError(`price:${row.id}`) && !validPrice(row.priceAdjustment)}
-                    onBlur={() => markTouched(`price:${row.id}`)}
-                    aria-describedby={
-                      showError(`price:${row.id}`) && !validPrice(row.priceAdjustment)
-                        ? `choice-price-error-${row.id}`
-                        : undefined
-                    }
-                    onChange={(event) => updateRow(row.id, { priceAdjustment: event.target.value })}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault();
-                        addRow();
-                      }
-                    }}
-                  />
-                  {showError(`price:${row.id}`) && !validPrice(row.priceAdjustment) && (
-                    <small id={`choice-price-error-${row.id}`} className="choice-field-error">
-                      {text(
-                        'Enter a price of 0 or more, with up to 2 decimals.',
-                        'أدخل سعرًا من صفر فأكثر، بمنزلتين عشريتين كحد أقصى.',
-                      )}
-                    </small>
-                  )}
-                </label>
-                <button
-                  type="button"
-                  className="builder-remove-button"
-                  disabled={rows.length === 1 || creating}
-                  aria-label={text(`Remove choice ${index + 1}`, `حذف الخيار ${index + 1}`)}
-                  onClick={() => setRows((current) => current.filter((item) => item.id !== row.id))}
-                >
-                  <Icon name="trash" />
-                </button>
-              </div>
-            ))}
-            {attempted && !activeRows.length && (
-              <small className="choice-field-error" role="alert">
-                {text('Add at least one choice.', 'أضف خيارًا واحدًا على الأقل.')}
-              </small>
-            )}
-            <button
-              type="button"
-              className="builder-button"
-              disabled={rows.length >= 100 || creating}
-              onClick={addRow}
-            >
-              <Icon name="plus" />
-              {text('Add another choice', 'إضافة خيار آخر')}
-            </button>
-          </div>
-          <fieldset className="choice-composer-rules" disabled={creating}>
-            <legend className="composer-section-title">
-              <b>3</b>
-              {text('Selection rules', 'قواعد الاختيار')}
-            </legend>
-            <div className="choice-segmented">
-              {(['single', 'multiple'] as const).map((mode) => (
-                <label key={mode} className={selectionMode === mode ? 'is-selected' : ''}>
-                  <input
-                    type="radio"
-                    name="composer-selection-mode"
-                    checked={selectionMode === mode}
-                    onChange={() => {
-                      setSelectionMode(mode);
-                      setMaxSelections(mode === 'single' ? 1 : Math.max(1, activeRows.length));
-                      if (mode === 'single') {
-                        setMinSelections(1);
-                        setRows((current) => {
-                          let found = false;
-                          return current.map((row) => {
-                            const defaultSelected = row.defaultSelected && !found;
-                            if (defaultSelected) found = true;
-                            return { ...row, defaultSelected };
-                          });
-                        });
-                      }
-                    }}
-                  />
-                  <span className="choice-policy-copy">
-                    <strong>
-                      {mode === 'single'
-                        ? text('One choice', 'اختيار واحد')
-                        : text('Several choices', 'أكثر من اختيار')}
-                    </strong>
-                    <small>
-                      {mode === 'single'
-                        ? text('Customer chooses one item.', 'يختار العميل أحد الخيارات.')
-                        : text('Customer can combine choices.', 'يمكن للعميل الجمع بين الخيارات.')}
-                    </small>
-                  </span>
-                </label>
-              ))}
-            </div>
-            <label className="choice-required-toggle">
-              <input
-                type="checkbox"
-                checked={required}
-                onChange={(event) => setRequired(event.target.checked)}
-              />
-              <span className="choice-policy-copy">
-                <strong>{text('Require a choice', 'الاختيار مطلوب')}</strong>
-                <small>
-                  {required
-                    ? text(
-                        'Customer must choose before continuing.',
-                        'يجب أن يختار العميل قبل المتابعة.',
-                      )
-                    : text(
-                        'Customer can continue without a choice.',
-                        'يستطيع العميل المتابعة بدون اختيار.',
-                      )}
-                </small>
-              </span>
-              <span className="choice-policy-badge">
-                {required ? text('Required', 'مطلوب') : text('Optional', 'اختياري')}
-              </span>
-            </label>
-          </fieldset>
-          <details className="composer-advanced-settings" ref={advancedSettings}>
-            <summary>
-              {text(
-                'Selection limits, defaults and more',
-                'حدود الاختيار والخيارات الافتراضية والمزيد',
-              )}
-              <Icon name="chevron" />
-            </summary>
-            <div className="builder-selection-limits">
-              <label className="builder-field">
-                <span>{text('Minimum selections', 'أقل عدد للاختيارات')}</span>
-                <input
-                  ref={minimumInput}
-                  type="number"
-                  min={required ? 1 : 0}
-                  max={max}
-                  value={min}
-                  disabled={!required || creating}
-                  onChange={(event) => setMinSelections(Number(event.target.value) || 1)}
-                />
-              </label>
-              <label className="builder-field">
-                <span>{text('Maximum selections', 'أكبر عدد للاختيارات')}</span>
-                <input
-                  ref={maximumInput}
-                  type="number"
-                  min="1"
-                  max={Math.max(1, activeRows.length)}
-                  value={max}
-                  disabled={selectionMode === 'single' || creating}
-                  onChange={(event) => setMaxSelections(Number(event.target.value) || 1)}
-                />
-              </label>
-            </div>
-            <fieldset className="composer-defaults" disabled={creating}>
-              <legend>{text('Selected by default', 'محدد افتراضيًا')}</legend>
-              {rows
-                .filter((row) => row.name.trim())
-                .map((row) => (
-                  <label key={row.id}>
-                    <input
-                      type="checkbox"
-                      checked={row.defaultSelected}
-                      disabled={
-                        selectionMode === 'multiple' &&
-                        !row.defaultSelected &&
-                        activeRows.filter((option) => option.defaultSelected).length >= max
-                      }
-                      onChange={(event) => {
-                        const checked = event.target.checked;
-                        setRows((current) =>
-                          current.map((option) =>
-                            option.id === row.id
-                              ? { ...option, defaultSelected: checked }
-                              : selectionMode === 'single' && checked
-                                ? { ...option, defaultSelected: false }
-                                : option,
-                          ),
-                        );
-                      }}
-                    />
-                    <span>{row.name}</span>
-                  </label>
-                ))}
-            </fieldset>
-            <ModifierDetailsEditor
+            <span className={`choice-config-badge${dirty ? ' is-draft' : ''}`}>
+              {dirty || initialDraft
+                ? text('Unapplied edits', 'تعديلات لم تُطبّق بعد')
+                : text('Current product configuration', 'الإعداد الحالي للمنتج')}
+            </span>
+            <ChoiceConfigurationOverview
               group={currentGroup}
               variants={variants}
               recipe={recipe}
-              onGroupChange={(_, patch) => {
-                if ('variantOverrides' in patch) setGroupOverrides(patch.variantOverrides);
-              }}
-              onOptionChange={(_, id, patch) => updateRow(id, patch)}
+              items={stock.items}
+              failed={stock.failed}
+              onEdit={openView}
               text={text}
             />
-          </details>
+            {stock.failed.length > 0 && (
+              <button type="button" className="builder-text-button" onClick={stock.retry}>
+                {text('Retry loading ingredients', 'إعادة تحميل المكوّنات')}
+              </button>
+            )}
+          </fieldset>
+          <fieldset
+            disabled={creating}
+            className="choice-workspace-panel choice-composer-editor"
+            role="tabpanel"
+            id={`${panelId}-choices`}
+            aria-labelledby={`${panelId}-choices-tab`}
+            hidden={activeTab !== 'choices'}
+          >
+            <label className="builder-field">
+              <span className="composer-section-title">
+                <b>1</b>
+                {text('Choice group name', 'اسم مجموعة الخيارات')}
+              </span>
+              <input
+                autoFocus
+                ref={titleInput}
+                maxLength={160}
+                value={name}
+                disabled={creating}
+                aria-invalid={showError('name') && !name.trim()}
+                onBlur={() => markTouched('name')}
+                aria-describedby={
+                  showError('name') && !name.trim() ? 'choice-title-error' : undefined
+                }
+                onChange={(event) => setName(event.target.value)}
+                placeholder={text('e.g. Extras', 'مثال: الإضافات')}
+              />
+              {showError('name') && !name.trim() && (
+                <small id="choice-title-error" className="choice-field-error">
+                  {text('Enter a title for these choices.', 'اكتب عنوانًا لهذه الاختيارات.')}
+                </small>
+              )}
+            </label>
+            <div className="choice-composer-rows">
+              <div className="composer-section-heading">
+                <h3 className="composer-section-title">
+                  <b>2</b>
+                  {text('Choices and prices', 'الاختيارات والأسعار')}
+                </h3>
+                <p>
+                  {text(
+                    'Extra prices are added to the product price. Leave blank for free.',
+                    'السعر الإضافي يُضاف لسعر المنتج. اتركه فارغًا للاختيارات المجانية.',
+                  )}
+                </p>
+              </div>
+              <div className="choice-composer-table-head" aria-hidden="true">
+                <span>{text('Choice name', 'اسم الاختيار')}</span>
+                <span>{text('Extra price (EGP)', 'السعر الإضافي (ج.م)')}</span>
+                <span />
+              </div>
+              {rows.map((row, index) => (
+                <div className="choice-composer-row" key={row.id}>
+                  <label className="builder-field">
+                    <span className="composer-mobile-label">
+                      {text(`Choice ${index + 1}`, `الخيار ${index + 1}`)}
+                    </span>
+                    <input
+                      ref={(element) => {
+                        if (element) inputs.current.set(row.id, element);
+                        else inputs.current.delete(row.id);
+                      }}
+                      maxLength={160}
+                      value={row.name}
+                      disabled={creating}
+                      aria-invalid={showError(`name:${row.id}`) && Boolean(nameError(row))}
+                      onBlur={() => markTouched(`name:${row.id}`)}
+                      aria-describedby={
+                        showError(`name:${row.id}`) && nameError(row)
+                          ? `choice-name-error-${row.id}`
+                          : undefined
+                      }
+                      onChange={(event) => updateRow(row.id, { name: event.target.value })}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          addRow();
+                        }
+                      }}
+                      placeholder={text('Choice name', 'اسم الخيار')}
+                    />
+                    {showError(`name:${row.id}`) && nameError(row) && (
+                      <small id={`choice-name-error-${row.id}`} className="choice-field-error">
+                        {nameError(row)}
+                      </small>
+                    )}
+                  </label>
+                  <label className="builder-field">
+                    <span className="composer-mobile-label">
+                      {text(
+                        `Extra price for choice ${index + 1} (EGP)`,
+                        `السعر الإضافي للخيار ${index + 1} (ج.م)`,
+                      )}
+                    </span>
+                    <input
+                      ref={(element) => {
+                        if (element) priceInputs.current.set(row.id, element);
+                        else priceInputs.current.delete(row.id);
+                      }}
+                      type="text"
+                      inputMode="decimal"
+                      lang="en"
+                      dir="ltr"
+                      value={row.priceAdjustment}
+                      disabled={creating}
+                      placeholder="0.00"
+                      aria-invalid={
+                        showError(`price:${row.id}`) && !validPrice(row.priceAdjustment)
+                      }
+                      onBlur={() => markTouched(`price:${row.id}`)}
+                      aria-describedby={
+                        showError(`price:${row.id}`) && !validPrice(row.priceAdjustment)
+                          ? `choice-price-error-${row.id}`
+                          : undefined
+                      }
+                      onChange={(event) =>
+                        updateRow(row.id, { priceAdjustment: event.target.value })
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          addRow();
+                        }
+                      }}
+                    />
+                    {showError(`price:${row.id}`) && !validPrice(row.priceAdjustment) && (
+                      <small id={`choice-price-error-${row.id}`} className="choice-field-error">
+                        {text(
+                          'Enter a price of 0 or more, with up to 2 decimals.',
+                          'أدخل سعرًا من صفر فأكثر، بمنزلتين عشريتين كحد أقصى.',
+                        )}
+                      </small>
+                    )}
+                  </label>
+                  <button
+                    type="button"
+                    className="builder-remove-button"
+                    disabled={rows.length === 1 || creating}
+                    aria-label={text(`Remove choice ${index + 1}`, `حذف الخيار ${index + 1}`)}
+                    onClick={() =>
+                      setRows((current) => current.filter((item) => item.id !== row.id))
+                    }
+                  >
+                    <Icon name="trash" />
+                  </button>
+                </div>
+              ))}
+              {attempted && !activeRows.length && (
+                <small className="choice-field-error" role="alert">
+                  {text('Add at least one choice.', 'أضف خيارًا واحدًا على الأقل.')}
+                </small>
+              )}
+              <button
+                type="button"
+                className="builder-button"
+                disabled={rows.length >= 100 || creating}
+                onClick={addRow}
+              >
+                <Icon name="plus" />
+                {text('Add another choice', 'إضافة خيار آخر')}
+              </button>
+            </div>
+            <fieldset className="choice-composer-rules" disabled={creating}>
+              <legend className="composer-section-title">
+                <b>3</b>
+                {text('Selection rules', 'قواعد الاختيار')}
+              </legend>
+              <div className="choice-segmented">
+                {(['single', 'multiple'] as const).map((mode) => (
+                  <label key={mode} className={selectionMode === mode ? 'is-selected' : ''}>
+                    <input
+                      type="radio"
+                      name="composer-selection-mode"
+                      checked={selectionMode === mode}
+                      onChange={() => {
+                        setSelectionMode(mode);
+                        setMaxSelections(mode === 'single' ? 1 : Math.max(1, activeRows.length));
+                        if (mode === 'single') {
+                          setMinSelections(1);
+                          setRows((current) => {
+                            let found = false;
+                            return current.map((row) => {
+                              const defaultSelected = row.defaultSelected && !found;
+                              if (defaultSelected) found = true;
+                              return { ...row, defaultSelected };
+                            });
+                          });
+                        }
+                      }}
+                    />
+                    <span className="choice-policy-copy">
+                      <strong>
+                        {mode === 'single'
+                          ? text('One choice', 'اختيار واحد')
+                          : text('Several choices', 'أكثر من اختيار')}
+                      </strong>
+                      <small>
+                        {mode === 'single'
+                          ? text('Customer chooses one item.', 'يختار العميل أحد الخيارات.')
+                          : text(
+                              'Customer can combine choices.',
+                              'يمكن للعميل الجمع بين الخيارات.',
+                            )}
+                      </small>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <label className="choice-required-toggle">
+                <input
+                  type="checkbox"
+                  checked={required}
+                  onChange={(event) => setRequired(event.target.checked)}
+                />
+                <span className="choice-policy-copy">
+                  <strong>{text('Require a choice', 'الاختيار مطلوب')}</strong>
+                  <small>
+                    {required
+                      ? text(
+                          'Customer must choose before continuing.',
+                          'يجب أن يختار العميل قبل المتابعة.',
+                        )
+                      : text(
+                          'Customer can continue without a choice.',
+                          'يستطيع العميل المتابعة بدون اختيار.',
+                        )}
+                  </small>
+                </span>
+                <span className="choice-policy-badge">
+                  {required ? text('Required', 'مطلوب') : text('Optional', 'اختياري')}
+                </span>
+              </label>
+            </fieldset>
+            <details className="composer-advanced-settings" ref={advancedSettings}>
+              <summary>
+                {text(
+                  'More settings: limits, defaults and quantities',
+                  'إعدادات إضافية: الحدود والافتراضيات والكميات',
+                )}
+                <Icon name="chevron" />
+              </summary>
+              <div className="builder-selection-limits">
+                <label className="builder-field">
+                  <span>{text('Minimum selections', 'أقل عدد للاختيارات')}</span>
+                  <input
+                    ref={minimumInput}
+                    type="number"
+                    min={required ? 1 : 0}
+                    max={max}
+                    value={min}
+                    disabled={!required || creating}
+                    onChange={(event) => setMinSelections(Number(event.target.value) || 1)}
+                  />
+                </label>
+                <label className="builder-field">
+                  <span>{text('Maximum selections', 'أكبر عدد للاختيارات')}</span>
+                  <input
+                    ref={maximumInput}
+                    type="number"
+                    min="1"
+                    max={Math.max(1, activeRows.length)}
+                    value={max}
+                    disabled={selectionMode === 'single' || creating}
+                    onChange={(event) => setMaxSelections(Number(event.target.value) || 1)}
+                  />
+                </label>
+              </div>
+              <fieldset className="composer-defaults" disabled={creating}>
+                <legend>{text('Selected by default', 'محدد افتراضيًا')}</legend>
+                {rows
+                  .filter((row) => row.name.trim())
+                  .map((row) => (
+                    <label key={row.id}>
+                      <input
+                        type="checkbox"
+                        checked={row.defaultSelected}
+                        disabled={
+                          selectionMode === 'multiple' &&
+                          !row.defaultSelected &&
+                          activeRows.filter((option) => option.defaultSelected).length >= max
+                        }
+                        onChange={(event) => {
+                          const checked = event.target.checked;
+                          setRows((current) =>
+                            current.map((option) =>
+                              option.id === row.id
+                                ? { ...option, defaultSelected: checked }
+                                : selectionMode === 'single' && checked
+                                  ? { ...option, defaultSelected: false }
+                                  : option,
+                            ),
+                          );
+                        }}
+                      />
+                      <span>{row.name}</span>
+                    </label>
+                  ))}
+              </fieldset>
+              <fieldset className="composer-quantities">
+                <legend>{text('Maximum quantity of each choice', 'أقصى كمية لكل خيار')}</legend>
+                <p>
+                  {text(
+                    'Use 1 when a choice can only be selected once.',
+                    'استخدم 1 إذا كان الخيار يُختار مرة واحدة فقط.',
+                  )}
+                </p>
+                {rows
+                  .filter((row) => row.name.trim())
+                  .map((row) => (
+                    <label className="builder-field" key={row.id}>
+                      <span>{row.name}</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="99"
+                        value={row.maxQuantity ?? 1}
+                        aria-invalid={
+                          row.maxQuantity !== undefined &&
+                          (!Number.isInteger(row.maxQuantity) ||
+                            row.maxQuantity < 1 ||
+                            row.maxQuantity > 99)
+                        }
+                        onChange={(event) =>
+                          updateRow(row.id, { maxQuantity: Number(event.target.value) })
+                        }
+                      />
+                    </label>
+                  ))}
+              </fieldset>
+            </details>
+          </fieldset>
+          {tabs
+            .filter((tab) => tab.id === 'sizes' || tab.id === 'inventory')
+            .map((tab) => (
+              <fieldset
+                key={tab.id}
+                disabled={creating}
+                className="choice-workspace-panel"
+                role="tabpanel"
+                id={`${panelId}-${tab.id}`}
+                aria-labelledby={`${panelId}-${tab.id}-tab`}
+                hidden={activeTab !== tab.id}
+                tabIndex={0}
+              >
+                <ModifierDetailsEditor
+                  key={`${tab.id}:${editorView.optionId ?? ''}:${editorView.variantId ?? ''}`}
+                  group={currentGroup}
+                  variants={variants}
+                  section={tab.id as 'sizes' | 'inventory'}
+                  initialOptionId={editorView.optionId}
+                  initialVariantId={editorView.variantId}
+                  stockItems={stock.items}
+                  failedItems={stock.failed}
+                  onGroupChange={(_, patch) => {
+                    if ('variantOverrides' in patch) setGroupOverrides(patch.variantOverrides);
+                  }}
+                  onOptionChange={(_, id, patch) => updateRow(id, patch)}
+                  text={text}
+                />
+              </fieldset>
+            ))}
           {error && (
             <p className="choice-field-error" role="alert">
               {error}
             </p>
           )}
+          {activeTab !== 'overview' && stock.failed.length > 0 && (
+            <button type="button" className="builder-text-button" onClick={stock.retry}>
+              {text('Retry loading ingredients', 'إعادة تحميل المكوّنات')}
+            </button>
+          )}
         </div>
         <aside
-          className="choice-composer-preview"
+          className="choice-composer-preview choice-workspace-preview"
+          hidden={activeTab === 'inventory'}
+          id={`${panelId}-preview`}
           aria-label={text('Customer preview', 'معاينة العميل')}
         >
           <h3>
@@ -558,6 +874,10 @@ export function ChoiceGroupComposer({
           </div>
           <CustomerChoicesPreview
             groups={previewGroup.options.length ? [previewGroup] : []}
+            variants={variants}
+            showStockSummary={recipe}
+            stockItems={stock.items}
+            failedItems={stock.failed}
             basePrice={basePrice}
             text={text}
           />
@@ -583,7 +903,7 @@ export function ChoiceGroupComposer({
           disabled={creating}
           onClick={() => onClose()}
         >
-          {text('Cancel', 'إلغاء')}
+          {text('Discard edits', 'تجاهل التعديلات')}
         </button>
         <small
           className="choice-composer-footer-note"
@@ -598,10 +918,7 @@ export function ChoiceGroupComposer({
           )}
         </small>
         <p className="composer-draft-hint">
-          {text(
-            'Close with × to keep a draft while editing this product. Cancel discards these edits.',
-            'الإغلاق بعلامة × يحتفظ بالمسودة أثناء تعديل هذا المنتج. إلغاء يتجاهل هذه التعديلات.',
-          )}
+          {text('Save the product to keep these changes.', 'احفظ المنتج لحفظ هذه التغييرات.')}
         </p>
       </footer>
     </Dialog>

@@ -113,7 +113,7 @@ function ReceiptDocument({
   locale: 'en' | 'ar';
   t: (value: string) => string;
   formatCount: (value: number) => string;
-  formatMoney: (amount: string, currency: string) => string;
+  formatMoney: (amount: string, currency: 'EGP') => string;
   backLabel: string;
   onBack: () => void;
   onRecordItemReturn: () => void;
@@ -240,7 +240,13 @@ function ReceiptDocument({
           {receipt.payments.map((payment, index) => (
             <ReceiptAmountRow
               key={`${payment.method}-${index}`}
-              label={t(payment.method === 'cash' ? 'Cash' : 'External terminal')}
+              label={t(
+                payment.cashCustody === 'courier'
+                  ? 'Cash paid to courier'
+                  : payment.method === 'cash'
+                    ? 'Cash'
+                    : 'External terminal',
+              )}
               amount={formatMoney(payment.amount, receipt.currency)}
             />
           ))}

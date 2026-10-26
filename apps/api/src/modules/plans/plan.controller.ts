@@ -28,7 +28,7 @@ const settings = z.object({
       const [whole, fraction = ''] = price.split('.');
       return `${whole}.${fraction.padEnd(2, '0')}`;
     }),
-  currency: z.enum(['EGP', 'USD', 'EUR']),
+  currency: z.literal('EGP'),
   billingInterval: z.literal('monthly'),
 });
 const creation = settings.extend({ requestId: z.uuid() }).strict();

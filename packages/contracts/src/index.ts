@@ -261,3 +261,8 @@ export type {
   CreatePosEmployeeRequest,
   UpdatePosEmployeeRequest,
 } from './pos.js';
+export type {
+  PosDeliverySummary,
+  PosDeliveryCommand,
+  PosDeliveryHandoverSnapshot,
+} from './pos-delivery.js';

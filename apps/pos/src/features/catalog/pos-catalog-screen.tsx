@@ -9,7 +9,7 @@ import type {
   PublicStorefrontProduct,
   StorefrontOrderSummary,
 } from '@waffarly/contracts';
-import { Dialog, Input, Textarea, cn, useLocale } from '@waffarly/ui';
+import { Dialog, Input, cn, useLocale } from '@waffarly/ui';
 import {
   ArrowRight,
   LayoutGrid,
@@ -34,6 +34,14 @@ import {
   type PendingPosKitchenAmendment,
 } from '../../app/pos-workspace-store.js';
 import { ApiError } from '../../lib/api-client.js';
+import { PosDeliveryDetails } from './pos-delivery-details.js';
+import {
+  customerFields,
+  customerErrorsFromIssues,
+  validateDeliveryDetails,
+  type CustomerErrors,
+  type CustomerField,
+} from './pos-customer-validation.js';
 import { posCatalogKey, getPosSellableCatalog } from './pos-catalog.api.js';
 import { getPosDiningTables, posDiningTablesKey } from '../dining/pos-dining.api.js';
 import {
@@ -106,6 +114,11 @@ export function POSCatalogScreen() {
   const [checkoutOrderId, setCheckoutOrderId] = useState('');
   const [amendingOrderId, setAmendingOrderId] = useState<string | null>(null);
   const [operationError, setOperationError] = useState('');
+  const [customerValidation, setCustomerValidation] = useState<{
+    draftId: string;
+    touched: CustomerField[];
+    serverErrors: CustomerErrors;
+  }>({ draftId: '', touched: [], serverErrors: {} });
   const [online, setOnline] = useState(() => navigator.onLine);
   const [mobileView, setMobileView] = useState<'menu' | 'order'>('menu');
   const [cartExpanded, setCartExpanded] = useState(false);
@@ -152,6 +165,36 @@ export function POSCatalogScreen() {
   );
   const activeDraft =
     drafts.find((draft) => draft.id === workspace?.selectedDraftId) ?? drafts[0] ?? null;
+  const localCustomerErrors =
+    activeDraft?.fulfillment === 'delivery' ? validateDeliveryDetails(activeDraft) : {};
+  const customerErrors: CustomerErrors = {};
+  if (activeDraft?.id === customerValidation.draftId && activeDraft?.fulfillment === 'delivery') {
+    for (const field of customerValidation.touched) {
+      const message = customerValidation.serverErrors[field] ?? localCustomerErrors[field];
+      if (message) customerErrors[field] = message;
+    }
+  }
+  function focusCustomerError() {
+    requestAnimationFrame(() => {
+      orderPaneRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+    });
+  }
+  function touchCustomerField(field: CustomerField, clearServerError = false) {
+    if (!activeDraft) return;
+    setCustomerValidation((previous) => {
+      const current =
+        previous.draftId === activeDraft.id
+          ? previous
+          : { draftId: activeDraft.id, touched: [], serverErrors: {} };
+      return {
+        ...current,
+        touched: clearServerError ? current.touched : [...new Set([...current.touched, field])],
+        serverErrors: clearServerError
+          ? { ...current.serverErrors, [field]: undefined }
+          : current.serverErrors,
+      };
+    });
+  }
   const confirmedOrders = useMemo(
     () =>
       workspace?.merchantId === employee.merchantId && workspace.employeeId === employee.id
@@ -390,6 +433,28 @@ export function POSCatalogScreen() {
           void queryClient.invalidateQueries({
             queryKey: posOrderKeys.quote(employee.merchantId, quoteRequest),
           });
+        }
+      }
+      if (
+        error instanceof ApiError &&
+        error.statusCode === 400 &&
+        activeDraft?.id === variables.draftId &&
+        activeDraft.fulfillment === 'delivery'
+      ) {
+        const serverErrors = customerErrorsFromIssues(error.issues);
+        if (Object.keys(serverErrors).length) {
+          setCustomerValidation({
+            draftId: variables.draftId,
+            touched: [...customerFields],
+            serverErrors,
+          });
+          const otherIssues = error.issues.filter(
+            (issue) =>
+              !customerFields.some((field) => issue.path.length === 1 && issue.path[0] === field),
+          );
+          setOperationError(otherIssues.map((issue) => issue.message).join(', '));
+          focusCustomerError();
+          return;
         }
       }
       setOperationError(
@@ -678,6 +743,16 @@ export function POSCatalogScreen() {
     const pending = workspace?.pendingSales[activeDraft.id];
     if (pending) {
       createMutation.mutate({ draftId: activeDraft.id, payload: pending.payload });
+      return;
+    }
+    if (activeDraft.fulfillment === 'delivery' && Object.keys(localCustomerErrors).length) {
+      setCustomerValidation({
+        draftId: activeDraft.id,
+        touched: [...customerFields],
+        serverErrors: {},
+      });
+      setOperationError('');
+      focusCustomerError();
       return;
     }
     if (!quoteQuery.data || quoteQuery.isFetching || quoteQuery.isError) {
@@ -1283,45 +1358,16 @@ export function POSCatalogScreen() {
                       )}
                     </div>
                     {activeDraft?.fulfillment === 'delivery' && (
-                      <div className="grid shrink-0 grid-cols-2 gap-2 p-3">
-                        <Input
-                          aria-label={t('Customer name')}
-                          placeholder={t('Customer name')}
-                          value={activeDraft.customerName ?? ''}
-                          disabled={Boolean(pendingSale)}
-                          onChange={(event) =>
-                            updateDraft((draft) => ({ ...draft, customerName: event.target.value }))
-                          }
-                          className="h-11 min-w-0 rounded-lg text-base lg:h-9 lg:text-xs"
-                        />
-                        <Input
-                          aria-label={t('Phone number')}
-                          placeholder={t('Phone number')}
-                          inputMode="tel"
-                          value={activeDraft.customerPhone ?? ''}
-                          disabled={Boolean(pendingSale)}
-                          onChange={(event) =>
-                            updateDraft((draft) => ({
-                              ...draft,
-                              customerPhone: event.target.value,
-                            }))
-                          }
-                          className="h-11 min-w-0 rounded-lg text-base lg:h-9 lg:text-xs"
-                        />
-                        <Textarea
-                          aria-label={t('Delivery address')}
-                          placeholder={t('Delivery address')}
-                          value={activeDraft.deliveryAddress ?? ''}
-                          disabled={Boolean(pendingSale)}
-                          onChange={(event) =>
-                            updateDraft((draft) => ({
-                              ...draft,
-                              deliveryAddress: event.target.value,
-                            }))
-                          }
-                          className="col-span-2 min-h-14 rounded-lg text-base lg:text-xs"
-                        />
-                      </div>
+                      <PosDeliveryDetails
+                        values={activeDraft}
+                        errors={customerErrors}
+                        disabled={Boolean(pendingSale)}
+                        onBlur={(field) => touchCustomerField(field)}
+                        onChange={(field, value) => {
+                          if (updateDraft((draft) => ({ ...draft, [field]: value })))
+                            touchCustomerField(field, true);
+                        }}
+                      />
                     )}
                   </>
                 )}

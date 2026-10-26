@@ -1,22 +1,33 @@
 import { useId, useState } from 'react';
 import { useLocale } from '@waffarly/ui';
 import type { GroupDraft, VariantDraft } from './product-builder.types.js';
+import type { StockItem } from '@waffarly/contracts';
+import { StockEffectsSummary } from './ChoiceConfigurationOverview.js';
 
 export function CustomerChoicesPreview({
   groups,
   variants = [],
   basePrice,
   text,
+  showStockSummary = false,
+  stockItems = {},
+  failedItems = [],
 }: {
   groups: GroupDraft[];
   variants?: VariantDraft[];
   basePrice: string;
   text: (english: string, arabic: string) => string;
+  showStockSummary?: boolean;
+  stockItems?: Record<string, StockItem>;
+  failedItems?: string[];
 }) {
   const { formatNumber } = useLocale();
   const prefix = useId();
   const [variantId, setVariantId] = useState('');
   const [selections, setSelections] = useState<Record<string, string[]>>({});
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const quantityFor = (key: string, option: GroupDraft['options'][number]) =>
+    Math.min(Math.max(1, quantities[`${key}:${option.id}`] ?? 1), option.maxQuantity ?? 1);
   const money = (amount: number) =>
     formatNumber(amount, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const variant =
@@ -63,7 +74,9 @@ export function CustomerChoicesPreview({
       (sum, group) =>
         sum +
         group.options.reduce(
-          (subtotal, option) => subtotal + (group.chosen.includes(option.id) ? option.price : 0),
+          (subtotal, option) =>
+            subtotal +
+            (group.chosen.includes(option.id) ? option.price * quantityFor(group.key, option) : 0),
           0,
         ),
       0,
@@ -80,6 +93,7 @@ export function CustomerChoicesPreview({
           onClick={() => {
             setVariantId('');
             setSelections({});
+            setQuantities({});
           }}
         >
           {text('Reset preview', 'إعادة المعاينة')}
@@ -120,35 +134,57 @@ export function CustomerChoicesPreview({
           {group.options.map((option) => {
             const checked = group.chosen.includes(option.id);
             return (
-              <label className="customer-preview-option" key={option.id}>
-                <input
-                  type={group.selectionMode === 'single' ? 'radio' : 'checkbox'}
-                  name={`${prefix}-${group.key}`}
-                  checked={checked}
-                  disabled={
-                    !checked &&
-                    group.selectionMode === 'multiple' &&
-                    group.chosen.length >= group.maxSelections
-                  }
-                  onChange={() =>
-                    setSelections((current) => ({
-                      ...current,
-                      [group.key]:
-                        group.selectionMode === 'single'
-                          ? [option.id]
-                          : checked
-                            ? group.chosen.filter((id) => id !== option.id)
-                            : [...group.chosen, option.id],
-                    }))
-                  }
-                />
-                <span>{option.name}</span>
-                <b>
-                  {option.price
-                    ? `+${money(option.price)} ${text('EGP', 'ج.م')}`
-                    : text('Free', 'مجانًا')}
-                </b>
-              </label>
+              <div key={option.id} className="customer-preview-choice">
+                <label className="customer-preview-option">
+                  <input
+                    type={group.selectionMode === 'single' ? 'radio' : 'checkbox'}
+                    name={`${prefix}-${group.key}`}
+                    checked={checked}
+                    disabled={
+                      !checked &&
+                      group.selectionMode === 'multiple' &&
+                      group.chosen.length >= group.maxSelections
+                    }
+                    onChange={() =>
+                      setSelections((current) => ({
+                        ...current,
+                        [group.key]:
+                          group.selectionMode === 'single'
+                            ? [option.id]
+                            : checked
+                              ? group.chosen.filter((id) => id !== option.id)
+                              : [...group.chosen, option.id],
+                      }))
+                    }
+                  />
+                  <span>{option.name}</span>
+                  <b>
+                    {option.price
+                      ? `+${money(option.price)} ${text('EGP', 'ج.م')}`
+                      : text('Free', 'مجانًا')}
+                  </b>
+                </label>
+                {checked && (option.maxQuantity ?? 1) > 1 && (
+                  <label className="customer-preview-quantity">
+                    <span>{text(`${option.name}: quantity`, `${option.name}: الكمية`)}</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max={option.maxQuantity ?? 1}
+                      value={quantityFor(group.key, option)}
+                      onChange={(event) =>
+                        setQuantities((current) => ({
+                          ...current,
+                          [`${group.key}:${option.id}`]: Math.min(
+                            option.maxQuantity ?? 1,
+                            Math.max(1, Number(event.target.value) || 1),
+                          ),
+                        }))
+                      }
+                    />
+                  </label>
+                )}
+              </div>
             );
           })}
           {group.minSelections === 0 && group.chosen.length > 0 && (
@@ -176,6 +212,45 @@ export function CustomerChoicesPreview({
           {money(total)} {text('EGP', 'ج.م')}
         </strong>
       </div>
+      {showStockSummary && (
+        <section
+          className="customer-preview-stock"
+          aria-label={text(
+            'Stock changes from selected extras',
+            'تغييرات المخزون من الإضافات المحددة',
+          )}
+        >
+          <h4>{text('Stock changes from extras', 'تغييرات المخزون من الإضافات')}</h4>
+          <p>
+            {text(
+              'For this selection. The base product recipe is separate.',
+              'لهذه الاختيارات فقط. وصفة المنتج الأساسية منفصلة.',
+            )}
+          </p>
+          <StockEffectsSummary
+            effects={visibleGroups.flatMap((group) =>
+              group.options
+                .filter((option) => group.chosen.includes(option.id))
+                .flatMap((option) => {
+                  const effects =
+                    option.variantOverrides?.find((entry) => entry.variantId === variant?.id)
+                      ?.effects ??
+                    option.effects ??
+                    [];
+                  return effects.map((effect) => ({
+                    ...effect,
+                    quantity: Number.isFinite(Number(effect.quantity))
+                      ? String(Number(effect.quantity) * quantityFor(group.key, option))
+                      : effect.quantity,
+                  }));
+                }),
+            )}
+            items={stockItems}
+            failed={failedItems}
+            text={text}
+          />
+        </section>
+      )}
     </div>
   );
 }

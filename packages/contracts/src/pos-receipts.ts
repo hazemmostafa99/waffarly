@@ -12,7 +12,7 @@ export interface PosReceiptHistoryItem extends PosReceiptSummary {
   orderReference: string;
   checkNumber: number;
   amount: string;
-  currency: string;
+  currency: 'EGP';
 }
 
 export interface PosReceiptHistoryPage {
@@ -34,6 +34,7 @@ export interface PosReceiptPayment {
   amount: string;
   receivedAmount: string;
   changeAmount: string;
+  cashCustody?: 'courier';
 }
 
 /** Frozen customer-facing facts for one fully settled POS check. */
@@ -51,7 +52,7 @@ export interface PosReceipt {
   tableCode: string | null;
   cashierName: string;
   registerName: string | null;
-  currency: string;
+  currency: 'EGP';
   checkNumber: number;
   splitMethod: PosReceiptSplitMethod;
   amount: string;

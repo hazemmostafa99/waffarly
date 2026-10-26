@@ -1,5 +1,5 @@
 import type { PosReceipt, PosReceiptPayment, PosReceiptSplitMethod } from '@waffarly/contracts';
-import { formatCents, toCents } from '../../common/money/money.js';
+import { formatCents, requireEgpCurrency, toCents } from '../../common/money/money.js';
 
 export interface PosReceiptLineSource {
   name: string;
@@ -56,7 +56,7 @@ export function buildPosReceiptSnapshot(input: PosReceiptSnapshotInput): PosRece
     tableCode: input.tableCode,
     cashierName: input.cashierName,
     registerName: input.registerName,
-    currency: input.currency,
+    currency: requireEgpCurrency(input.currency),
     checkNumber: input.checkNumber,
     splitMethod: input.splitMethod,
     amount: formatCents(toCents(input.amount)),

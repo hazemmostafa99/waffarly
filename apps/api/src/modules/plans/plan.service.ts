@@ -1,4 +1,4 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   CreateMonthlyPlanRequest,
   MonthlyPlanSettings,
@@ -6,6 +6,7 @@ import type {
   UpdateMonthlyPlanRequest,
 } from '@waffarly/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
+import { requireEgpCurrency } from '../../common/money/money.js';
 
 type PlanRecord = {
   id: string;
@@ -27,7 +28,7 @@ function toSummary(record: PlanRecord): MonthlyPlanSummary {
     name: record.name,
     description: record.description,
     monthlyPrice: record.monthlyPrice.toFixed(2),
-    currency: record.currency as MonthlyPlanSummary['currency'],
+    currency: requireEgpCurrency(record.currency),
     billingInterval: 'monthly',
     revision: record.revision,
     createdBy: record.createdBy,
@@ -68,6 +69,7 @@ export class PlanService {
     input: CreateMonthlyPlanRequest,
     administrator: string,
   ): Promise<MonthlyPlanSummary> {
+    if (input.currency !== 'EGP') throw new BadRequestException('Plan currency must be EGP.');
     const { requestId, ...settings } = input;
     try {
       return toSummary(
@@ -104,6 +106,7 @@ export class PlanService {
     input: UpdateMonthlyPlanRequest,
     administrator: string,
   ): Promise<MonthlyPlanSummary> {
+    if (input.currency !== 'EGP') throw new BadRequestException('Plan currency must be EGP.');
     const { revision, ...settings } = input;
     return this.prisma.$transaction(async (transaction) => {
       const changed = await transaction.monthlyPlan.updateMany({

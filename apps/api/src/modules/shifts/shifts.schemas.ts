@@ -1,8 +1,5 @@
 import { z } from 'zod';
-import type {
-  ClosePosShiftRequest,
-  RecordPosShiftCashMovementRequest,
-} from '@waffarly/contracts';
+import type { ClosePosShiftRequest, RecordPosShiftCashMovementRequest } from '@waffarly/contracts';
 
 const uuid = z.string().uuid();
 const registerName = z.string().trim().min(1).max(80);
@@ -31,9 +28,17 @@ export const ownerPosShiftCloseReportsSchema = z
     const from = Date.parse(query.from);
     const to = Date.parse(query.to);
     if (to <= from) {
-      context.addIssue({ code: 'custom', path: ['to'], message: 'End time must be after start time.' });
+      context.addIssue({
+        code: 'custom',
+        path: ['to'],
+        message: 'End time must be after start time.',
+      });
     } else if (to - from > 93 * 24 * 60 * 60 * 1000) {
-      context.addIssue({ code: 'custom', path: ['to'], message: 'Report range cannot exceed 93 days.' });
+      context.addIssue({
+        code: 'custom',
+        path: ['to'],
+        message: 'Report range cannot exceed 93 days.',
+      });
     }
   });
 export type OwnerPosShiftCloseReportsInput = z.infer<typeof ownerPosShiftCloseReportsSchema>;
@@ -66,6 +71,9 @@ const approvalSchema = z
   .strict();
 const positiveAmount = z.string().regex(/^(?=.*[1-9])\d{1,10}(?:\.\d{1,2})?$/);
 const nonNegativeAmount = z.string().regex(/^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/);
+const deliveryHandoverSchema = z
+  .object({ recipientUsername: z.string().trim().min(1).max(80) })
+  .strict();
 
 export const recordPosShiftCashMovementSchema = z
   .object({
@@ -79,10 +87,18 @@ export const recordPosShiftCashMovementSchema = z
   .strict()
   .superRefine((input, context) => {
     if (input.kind === 'cash_drop' && !input.dropReference) {
-      context.addIssue({ code: 'custom', path: ['dropReference'], message: 'A cash-drop reference is required.' });
+      context.addIssue({
+        code: 'custom',
+        path: ['dropReference'],
+        message: 'A cash-drop reference is required.',
+      });
     }
     if (input.kind !== 'cash_drop' && input.dropReference !== undefined) {
-      context.addIssue({ code: 'custom', path: ['dropReference'], message: 'A cash-drop reference applies only to cash drops.' });
+      context.addIssue({
+        code: 'custom',
+        path: ['dropReference'],
+        message: 'A cash-drop reference applies only to cash drops.',
+      });
     }
   });
 
@@ -92,6 +108,7 @@ export const closePosShiftSchema = z
     countedCash: nonNegativeAmount,
     reason: z.string().trim().min(1).max(500).optional(),
     approval: approvalSchema.optional(),
+    deliveryHandover: deliveryHandoverSchema.optional(),
   })
   .strict();
 
@@ -99,6 +116,7 @@ export const posShiftClosePreviewSchema = z
   .object({
     countedCash: nonNegativeAmount,
     reason: z.string().trim().min(1).max(500).optional(),
+    deliveryHandover: deliveryHandoverSchema.optional(),
   })
   .strict();
 export type PosShiftClosePreviewInput = z.infer<typeof posShiftClosePreviewSchema>;
@@ -122,5 +140,6 @@ export function withoutShiftCloseApproval(
     requestId: input.requestId,
     countedCash: input.countedCash,
     ...(input.reason ? { reason: input.reason } : {}),
+    ...(input.deliveryHandover ? { deliveryHandover: input.deliveryHandover } : {}),
   };
 }

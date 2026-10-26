@@ -1,4 +1,4 @@
-export type PlanCurrency = 'EGP' | 'USD' | 'EUR';
+export type PlanCurrency = 'EGP';
 
 export interface MonthlyPlanSettings {
   name: string;

@@ -22,8 +22,14 @@ type OrderTotalsRow = {
   startToReadySeconds: bigint | null;
 };
 
-type TenderTotalsRow = { cashCents: string; terminalCents: string };
+type TenderTotalsRow = {
+  cashCents: string;
+  terminalCents: string;
+  courierCashCents?: string;
+  deliveryDrawerCents?: string;
+};
 type CashierActivityRow = {
+  deliveryCashReceivedCents?: string;
   employeeId: string | null;
   employeeName: string | null;
   ordersOpened: bigint;
@@ -126,6 +132,10 @@ export class PosOperationsReportService {
       `,
       this.prisma.$queryRaw<TenderTotalsRow[]>`
         SELECT
+          COALESCE(TRUNC(SUM(p."amount") FILTER (WHERE p."cashCustody" = 'courier') * 100), 0)::text AS "courierCashCents",
+          (SELECT COALESCE(TRUNC(SUM(r."amount") * 100), 0)::text FROM "pos_delivery_remittances" r
+            WHERE r."merchantId" = ${merchantId}::uuid AND r."createdAt" >= ${from} AND r."createdAt" < ${to}
+            AND (${query.branchId ?? null}::uuid IS NULL OR r."branchId" = ${query.branchId ?? null}::uuid)) AS "deliveryDrawerCents",
           COALESCE(TRUNC(SUM(p."amount") FILTER (WHERE p."method" = 'cash') * 100), 0)::text AS "cashCents",
           COALESCE(TRUNC(SUM(p."amount") FILTER (WHERE p."method" = 'terminal') * 100), 0)::text AS "terminalCents"
         FROM "pos_order_payments" p
@@ -191,14 +201,22 @@ export class PosOperationsReportService {
             AND t."createdAt" < ${to}
             AND (${query.branchId ?? null}::uuid IS NULL OR o."branchId" = ${query.branchId ?? null}::uuid)
           GROUP BY r."createdByEmployeeId"
+        ), delivery_activity AS (
+          SELECT r."operatorEmployeeId" AS "employeeId", TRUNC(SUM(r."amount") * 100)::text AS "receivedCents"
+          FROM "pos_delivery_remittances" r WHERE r."merchantId" = ${merchantId}::uuid
+            AND r."createdAt" >= ${from} AND r."createdAt" < ${to}
+            AND (${query.branchId ?? null}::uuid IS NULL OR r."branchId" = ${query.branchId ?? null}::uuid)
+          GROUP BY r."operatorEmployeeId"
         ), activity_employees AS (
           SELECT "employeeId" FROM order_activity
           UNION
           SELECT "employeeId" FROM collection_activity
           UNION
           SELECT "employeeId" FROM refund_activity
+          UNION SELECT "employeeId" FROM delivery_activity
         )
         SELECT a."employeeId", e."displayName" AS "employeeName",
+          COALESCE(d."receivedCents", '0') AS "deliveryCashReceivedCents",
           COALESCE(s."ordersOpened", 0)::bigint AS "ordersOpened",
           COALESCE(s."cancelledOrders", 0)::bigint AS "cancelledOrders",
           COALESCE(s."orderValueCents", '0') AS "orderValueCents",
@@ -213,6 +231,7 @@ export class PosOperationsReportService {
         LEFT JOIN order_activity s ON s."employeeId" IS NOT DISTINCT FROM a."employeeId"
         LEFT JOIN collection_activity c ON c."employeeId" IS NOT DISTINCT FROM a."employeeId"
         LEFT JOIN refund_activity r ON r."employeeId" IS NOT DISTINCT FROM a."employeeId"
+        LEFT JOIN delivery_activity d ON d."employeeId" IS NOT DISTINCT FROM a."employeeId"
         ORDER BY e."displayName" NULLS LAST, a."employeeId" NULLS LAST
       `,
     ]);
@@ -261,6 +280,10 @@ export class PosOperationsReportService {
         total: formatCents(totalRefundedCents),
       },
       netCollected: formatCents(totalCollectedCents - totalRefundedCents),
+      deliveryCash: {
+        customerCollections: formatCents(BigInt(collections.courierCashCents ?? '0')),
+        drawerReceipts: formatCents(BigInt(collections.deliveryDrawerCents ?? '0')),
+      },
       preparation: {
         acceptedToStartSeconds:
           orders.acceptedToStartSeconds === null ? null : Number(orders.acceptedToStartSeconds),
@@ -275,6 +298,9 @@ export class PosOperationsReportService {
         return {
           employeeId: row.employeeId,
           employeeName: row.employeeName,
+          ...(row.deliveryCashReceivedCents !== undefined
+            ? { deliveryCashReceived: formatCents(BigInt(row.deliveryCashReceivedCents)) }
+            : {}),
           ordersOpened: Number(row.ordersOpened),
           cancelledOrders: Number(row.cancelledOrders),
           orderValue: formatCents(BigInt(row.orderValueCents)),

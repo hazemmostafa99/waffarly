@@ -624,6 +624,103 @@ test('live POS uses the prototype workspace design with the real catalog and sav
   await page.screenshot({ path: 'test-results/pos-live-catalog.png', fullPage: true });
 });
 
+test('delivery errors stay beside editable fields and prevent invalid sales', async ({
+  page,
+}, testInfo) => {
+  await openCheckout(page, false, false, true);
+  let requests = 0;
+  await page.route('**/pos/orders', (route) => {
+    requests += 1;
+    return route.fulfill({ status: 201, json: confirmedOrder });
+  });
+  await page.getByRole('button', { name: 'Add item: Test coffee', exact: true }).click();
+  await showOrder(page);
+  await page.getByRole('button', { name: 'Delivery', exact: true }).click();
+  const name = page.getByRole('textbox', { name: 'Customer name' });
+  const phone = page.getByRole('textbox', { name: 'Phone number' });
+  const address = page.getByRole('textbox', { name: 'Delivery address' });
+  await expect(name).toHaveAttribute('aria-invalid', 'false');
+  await name.fill('k');
+  await phone.fill('01552');
+  await address.fill('cairo');
+  await page.getByRole('button', { name: 'Confirm order', exact: true }).click();
+  await expect(name).toBeFocused();
+  for (const field of [name, phone, address])
+    await expect(field).toHaveAttribute('aria-invalid', 'true');
+  await expect(name).toHaveAccessibleDescription(
+    'Enter a customer name between 2 and 120 characters.',
+  );
+  await expect(phone).toHaveAccessibleDescription(
+    'Enter a phone number with at least 7 digits (up to 32 characters).',
+  );
+  expect(requests).toBe(0);
+  await page.screenshot({ path: testInfo.outputPath('delivery-errors.png'), fullPage: true });
+
+  await name.fill('Karim');
+  await phone.fill('01552123456');
+  await address.fill('12 Cairo Street');
+  for (const field of [name, phone, address])
+    await expect(field).toHaveAttribute('aria-invalid', 'false');
+  await page.getByRole('button', { name: 'Confirm order', exact: true }).click();
+  await expect(page.getByTestId('confirmed-order-panel')).toBeVisible();
+  expect(requests).toBe(1);
+});
+
+test('delivery server validation is localized, focused, and cleared when corrected', async ({
+  page,
+}, testInfo) => {
+  await openCheckout(page, false, false, true);
+  await page.route('**/pos/orders', (route) =>
+    route.fulfill({
+      status: 400,
+      json: {
+        message: [
+          {
+            path: ['customerPhone'],
+            code: 'too_small',
+            message: 'Too small: expected string to have >=7 characters',
+          },
+          { path: ['customerPhone'], code: 'custom', message: 'Invalid input' },
+        ],
+      },
+    }),
+  );
+  await page.getByRole('button', { name: 'Add item: Test coffee', exact: true }).click();
+  await showOrder(page);
+  await page.getByRole('button', { name: 'Delivery', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Customer name' }).fill('Karim');
+  const phone = page.getByRole('textbox', { name: 'Phone number' });
+  await phone.fill('01552123456');
+  await page.getByRole('textbox', { name: 'Delivery address' }).fill('12 Cairo Street');
+  await page.getByRole('button', { name: 'Confirm order', exact: true }).click();
+  await expect(phone).toBeFocused();
+  await expect(phone).toBeEnabled();
+  await expect(phone).toHaveAttribute('aria-invalid', 'true');
+  await expect(
+    page.getByText('Enter a phone number with at least 7 digits (up to 32 characters).', {
+      exact: true,
+    }),
+  ).toHaveCount(1);
+  await expect(page.getByText('[object Object]', { exact: false })).toHaveCount(0);
+  await page.locator('.pos-workspace-language').click();
+  await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  await expect(page.locator('#pos-customerPhone-help')).toContainText('أدخل رقم هاتف');
+  await page.screenshot({
+    path: testInfo.outputPath('delivery-server-error-ar.png'),
+    fullPage: true,
+  });
+  await page.locator('#pos-customerPhone').fill('01552987654');
+  await expect(page.locator('#pos-customerPhone')).toHaveAttribute('aria-invalid', 'false');
+  await page.locator('.pos-workspace-language').click();
+  await page.getByRole('button', { name: 'New order', exact: true }).first().click();
+  await showOrder(page);
+  await page.getByRole('button', { name: 'Delivery', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Phone number' })).toHaveAttribute(
+    'aria-invalid',
+    'false',
+  );
+});
+
 test('merchant appearance read failure falls back to the orange POS default', async ({ page }) => {
   await openCheckout(page, false, false, true, false, false, 'takeaway', false, null);
 

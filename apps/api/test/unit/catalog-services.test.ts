@@ -229,6 +229,32 @@ describe('catalog service invariants', () => {
     );
   });
 
+  it('rejects non-image media assets as category images within the merchant scope', async () => {
+    const imageId = '11111111-1111-4111-8111-111111111111';
+    let mediaQuery: unknown;
+    const service = new CategoryService({
+      mediaAsset: {
+        findFirst: async (args: unknown) => {
+          mediaQuery = args;
+          return { mimeType: 'application/pdf' };
+        },
+      },
+    } as never);
+
+    await assert.rejects(
+      service.create(owner.merchantId, owner.username, {
+        name: 'Dinner',
+        imageAssetId: imageId,
+        availability: 'available',
+      }),
+      /Category image must be a JPEG, PNG, or WebP image/i,
+    );
+    assert.deepEqual(mediaQuery, {
+      where: { id: imageId, merchantId: owner.merchantId },
+      select: { mimeType: true },
+    });
+  });
+
   it('rejects moving a main category with children beneath another category', async () => {
     const categoryId = '22222222-2222-4222-8222-222222222222';
     const parentId = '33333333-3333-4333-8333-333333333333';

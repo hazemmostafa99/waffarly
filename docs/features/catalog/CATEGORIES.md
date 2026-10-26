@@ -228,6 +228,7 @@ Image cleanup, audit history, and concurrent Product assignment remain open impl
 - An unavailable or archived main Category hides its child Categories in effective navigation without changing stored child state.
 - Merchants do not manually order Categories within a hierarchy level.
 - Category media may reuse an existing tenant-authorized asset; the same asset may be referenced by other Products or Categories.
+- Category images currently use the shared Media policy: tenant-owned JPEG, PNG, or WebP assets up to 10 MB.
 
 ### 10.2 Baseline rules if implemented
 
@@ -245,7 +246,7 @@ Image cleanup, audit history, and concurrent Product assignment remain open impl
 - Exact actions covered by `Manage Catalog` and their staff/branch scope.
 - Whether a Product may link to both a main Category and one of its child Categories simultaneously.
 - Arabic-script validation, length, normalization, and duplicate names.
-- Image/media rules.
+- Image dimensions, crop behavior, processing, storage-provider lifecycle, and cleanup rules.
 - Explicit versus default availability at creation.
 - System ordering and navigation presentation.
 - Archival restoration and editing details.

@@ -775,16 +775,75 @@ export class PosOrdersService {
               source: 'pos',
               branchId: { in: employee.branches.map((branch) => branch.id) },
             },
-            select: { branchId: true, posShiftId: true },
+            select: { branchId: true, posShiftId: true, fulfillmentType: true, delivery: true },
           });
           if (!observedOrder) throw new NotFoundException('The POS order was not found.');
           if (!observedOrder.posShiftId || !observedOrder.branchId)
             throw new ConflictException('This order is not linked to a POS shift.');
-          await this.shifts.lockOpenShiftForPayment(tx, {
-            merchantId: employee.merchantId,
-            shiftId: observedOrder.posShiftId,
-            branchId: observedOrder.branchId,
-          });
+          const deliveryPayment =
+            request.cashCustody === 'courier' || Boolean(request.receivingShiftId);
+          const paymentShiftId = request.receivingShiftId ?? observedOrder.posShiftId;
+          if (deliveryPayment) {
+            if (
+              observedOrder.fulfillmentType !== 'delivery' ||
+              !observedOrder.delivery ||
+              observedOrder.delivery.status === 'failed'
+            )
+              throw new ConflictException(
+                'Dispatch this delivery before recording a courier or later-shift payment.',
+              );
+            const actorRow = await tx.posEmployee.findFirst({
+              where: {
+                id: employee.id,
+                merchantId: employee.merchantId,
+                active: true,
+                branches: {
+                  some: { branchId: observedOrder.branchId, branch: { archivedAt: null } },
+                },
+              },
+              select: { role: true, permissions: true },
+            });
+            const permissions = actorRow
+              ? resolvePosEmployeePermissions(
+                  isPosEmployeeRole(actorRow.role) ? actorRow.role : null,
+                  actorRow.permissions,
+                )
+              : [];
+            if (
+              !permissions.includes('sell') ||
+              (observedOrder.delivery.custodianEmployeeId !== employee.id &&
+                !permissions.includes('approve_shift_close'))
+            )
+              throw new ForbiddenException(
+                'Only the responsible employee or a supervisor can record this delivery collection.',
+              );
+            const shiftIds = [
+              ...new Set(
+                [
+                  observedOrder.posShiftId,
+                  observedOrder.delivery.followupShiftId,
+                  paymentShiftId,
+                ].filter((id): id is string => Boolean(id)),
+              ),
+            ].sort();
+            for (const shiftId of shiftIds)
+              await tx.$queryRaw`SELECT "id" FROM "pos_shifts" WHERE "id" = ${shiftId}::uuid AND "merchantId" = ${employee.merchantId}::uuid FOR SHARE`;
+          }
+          if (request.cashCustody !== 'courier') {
+            if (request.receivingShiftId && observedOrder.delivery)
+              await this.shifts.lockDeliveryReceivingShift(tx, {
+                merchantId: employee.merchantId,
+                shiftId: paymentShiftId,
+                branchId: observedOrder.branchId,
+                followupShiftId: observedOrder.delivery.followupShiftId,
+              });
+            else
+              await this.shifts.lockOpenShiftForPayment(tx, {
+                merchantId: employee.merchantId,
+                shiftId: paymentShiftId,
+                branchId: observedOrder.branchId,
+              });
+          }
           await tx.$queryRaw`SELECT "id" FROM "storefront_orders" WHERE "id" = ${orderId}::uuid AND "merchantId" = ${employee.merchantId}::uuid FOR UPDATE`;
           const order = await tx.storefrontOrder.findFirst({
             where: {
@@ -812,6 +871,22 @@ export class PosOrdersService {
             throw new ConflictException('This order is not linked to a POS shift.');
           if (order.posShiftId !== observedOrder.posShiftId)
             throw new ConflictException('This order changed. Reload it before taking payment.');
+          if (deliveryPayment) {
+            const delivery = await tx.posDelivery.findFirst({
+              where: { orderId, merchantId: employee.merchantId },
+            });
+            if (!delivery || delivery.revision !== observedOrder.delivery?.revision)
+              throw new ConflictException('Delivery responsibility changed. Refresh and retry.');
+            await tx.posDelivery.update({
+              where: { orderId },
+              data: {
+                revision: { increment: 1 },
+                ...(request.receivingShiftId
+                  ? { followupShiftId: request.receivingShiftId, custodianEmployeeId: employee.id }
+                  : {}),
+              },
+            });
+          }
 
           const lockedCheck = await tx.$queryRaw<Array<{ id: string }>>`
             SELECT "id"
@@ -843,12 +918,13 @@ export class PosOrdersService {
             merchantId: employee.merchantId,
             orderId,
             checkId,
-            shiftId: order.posShiftId,
+            shiftId: paymentShiftId,
             requestId: request.requestId,
             currency: order.currency,
             balanceDue: formatCents(balanceCents),
             employee,
             tenders: request.tenders,
+            ...(request.cashCustody ? { cashCustody: request.cashCustody } : {}),
           });
           const paidAfter = checkAmount - toCents(tenderResult.balanceDue);
           const settledAt = paidAfter === checkAmount ? new Date() : null;
@@ -933,13 +1009,25 @@ export class PosOrdersService {
     const request = withoutPosRefundApproval(parsed);
     const actor = `pos:${employee.id}`;
     const fingerprint = createHash('sha256')
-      .update(JSON.stringify({ orderId, checkId, ...request, approverEmployeeId: approverEmployeeId ?? null }))
+      .update(
+        JSON.stringify({
+          orderId,
+          checkId,
+          ...request,
+          approverEmployeeId: approverEmployeeId ?? null,
+        }),
+      )
       .digest('hex');
     try {
       return await this.prisma.$transaction(
         async (tx) => {
           const previous = await tx.storefrontOrderAction.findUnique({
-            where: { merchantId_requestId: { merchantId: employee.merchantId, requestId: request.requestId } },
+            where: {
+              merchantId_requestId: {
+                merchantId: employee.merchantId,
+                requestId: request.requestId,
+              },
+            },
           });
           if (previous) return this.replayPosRefund(previous, actor, fingerprint);
 
@@ -948,9 +1036,20 @@ export class PosOrdersService {
               id: orderId,
               merchantId: employee.merchantId,
               source: 'pos',
-              branchId: { in: employee.branches.filter((branch) => branch.archivedAt === null).map((branch) => branch.id) },
+              branchId: {
+                in: employee.branches
+                  .filter((branch) => branch.archivedAt === null)
+                  .map((branch) => branch.id),
+              },
             },
-            select: { id: true, branchId: true, currency: true, revision: true, status: true, cancelledAt: true },
+            select: {
+              id: true,
+              branchId: true,
+              currency: true,
+              revision: true,
+              status: true,
+              cancelledAt: true,
+            },
           });
           if (!order?.branchId) throw new NotFoundException('The POS order was not found.');
           if (request.branchId !== order.branchId)
@@ -961,12 +1060,21 @@ export class PosOrdersService {
               id: employee.id,
               merchantId: employee.merchantId,
               active: true,
-              branches: { some: { merchantId: employee.merchantId, branchId: order.branchId, branch: { archivedAt: null } } },
+              branches: {
+                some: {
+                  merchantId: employee.merchantId,
+                  branchId: order.branchId,
+                  branch: { archivedAt: null },
+                },
+              },
             },
             select: { displayName: true, role: true, permissions: true },
           });
           const actorPermissions = actorRow
-            ? resolvePosEmployeePermissions(isPosEmployeeRole(actorRow.role) ? actorRow.role : null, actorRow.permissions)
+            ? resolvePosEmployeePermissions(
+                isPosEmployeeRole(actorRow.role) ? actorRow.role : null,
+                actorRow.permissions,
+              )
             : [];
           if (!actorRow || !actorPermissions.includes('sell'))
             throw new ForbiddenException('This employee is no longer authorized to sell.');
@@ -981,12 +1089,21 @@ export class PosOrdersService {
                 id: approverEmployeeId,
                 merchantId: employee.merchantId,
                 active: true,
-                branches: { some: { merchantId: employee.merchantId, branchId: order.branchId, branch: { archivedAt: null } } },
+                branches: {
+                  some: {
+                    merchantId: employee.merchantId,
+                    branchId: order.branchId,
+                    branch: { archivedAt: null },
+                  },
+                },
               },
               select: { displayName: true, role: true, permissions: true },
             });
             const approverPermissions = approver
-              ? resolvePosEmployeePermissions(isPosEmployeeRole(approver.role) ? approver.role : null, approver.permissions)
+              ? resolvePosEmployeePermissions(
+                  isPosEmployeeRole(approver.role) ? approver.role : null,
+                  approver.permissions,
+                )
               : [];
             if (!approver || !approverPermissions.includes('approve_refunds'))
               throw new ForbiddenException('The supervisor approval is no longer valid.');
@@ -1005,11 +1122,25 @@ export class PosOrdersService {
             FOR UPDATE`;
           if (!lockedOrder.length) throw new NotFoundException('The POS order was not found.');
           const currentOrder = await tx.storefrontOrder.findFirstOrThrow({
-            where: { id: orderId, merchantId: employee.merchantId, source: 'pos', branchId: order.branchId },
-            select: { id: true, branchId: true, currency: true, revision: true, status: true, cancelledAt: true },
+            where: {
+              id: orderId,
+              merchantId: employee.merchantId,
+              source: 'pos',
+              branchId: order.branchId,
+            },
+            select: {
+              id: true,
+              branchId: true,
+              currency: true,
+              revision: true,
+              status: true,
+              cancelledAt: true,
+            },
           });
           if (currentOrder.revision !== request.revision)
-            throw new ConflictException('This order changed. Reload its payment state before refunding.');
+            throw new ConflictException(
+              'This order changed. Reload its payment state before refunding.',
+            );
           if (currentOrder.cancelledAt || ['cancelled', 'rejected'].includes(currentOrder.status))
             throw new ConflictException('A cancelled order cannot be refunded here.');
 
@@ -1022,34 +1153,73 @@ export class PosOrdersService {
             where: { id: checkId, orderId, merchantId: employee.merchantId },
             select: { id: true, amount: true, settledAt: true, cancelledAt: true },
           });
-          if (!check || check.cancelledAt) throw new ConflictException('This check cannot be refunded.');
+          if (!check || check.cancelledAt)
+            throw new ConflictException('This check cannot be refunded.');
 
           const originals = await tx.posOrderPayment.findMany({
-            where: { id: { in: request.allocations.map((allocation) => allocation.paymentId) }, merchantId: employee.merchantId, orderId, checkId },
+            where: {
+              id: { in: request.allocations.map((allocation) => allocation.paymentId) },
+              merchantId: employee.merchantId,
+              orderId,
+              checkId,
+            },
+            include: { deliveryRemittances: { select: { amount: true } } },
           });
           if (originals.length !== request.allocations.length)
-            throw new BadRequestException('Every refund amount must refer to an original payment on this check.');
+            throw new BadRequestException(
+              'Every refund amount must refer to an original payment on this check.',
+            );
           let totalCents = 0n;
-          const normalized: Array<{ payment: (typeof originals)[number]; amount: string; cents: bigint; terminalReference: string | null }> = [];
+          const normalized: Array<{
+            payment: (typeof originals)[number];
+            amount: string;
+            cents: bigint;
+            terminalReference: string | null;
+          }> = [];
           for (const allocation of request.allocations) {
             const payment = originals.find((row) => row.id === allocation.paymentId);
-            if (!payment) throw new BadRequestException('An original payment was not found on this check.');
+            if (!payment)
+              throw new BadRequestException('An original payment was not found on this check.');
+            if (
+              payment.cashCustody === 'courier' &&
+              payment.deliveryRemittances.reduce(
+                (sum, r) => sum + toCents(r.amount.toFixed(2)),
+                0n,
+              ) < toCents(payment.amount.toFixed(2))
+            )
+              throw new ConflictException(
+                'Receive all courier cash for this payment before issuing a refund.',
+              );
             const cents = toCents(allocation.amount);
-            if (cents <= 0n) throw new BadRequestException('Refund amounts must be greater than zero.');
+            if (cents <= 0n)
+              throw new BadRequestException('Refund amounts must be greater than zero.');
             if (payment.method === 'terminal' && !allocation.terminalReference?.trim())
-              throw new BadRequestException('Enter the reference from the completed terminal refund.');
+              throw new BadRequestException(
+                'Enter the reference from the completed terminal refund.',
+              );
             if (payment.method === 'cash' && allocation.terminalReference)
               throw new BadRequestException('Cash refunds cannot include a terminal reference.');
             const previousRefunds = await tx.posOrderRefundTender.aggregate({
-              where: { originalPaymentId: payment.id, originalPaymentShiftId: payment.shiftId, merchantId: employee.merchantId },
+              where: {
+                originalPaymentId: payment.id,
+                originalPaymentShiftId: payment.shiftId,
+                merchantId: employee.merchantId,
+              },
               _sum: { amount: true },
             });
             const originalCents = toCents(payment.amount.toString());
             const alreadyRefunded = toCents(previousRefunds._sum.amount?.toString() ?? '0.00');
             if (alreadyRefunded + cents > originalCents)
-              throw new ConflictException('The requested refund exceeds the remaining amount for an original payment.');
+              throw new ConflictException(
+                'The requested refund exceeds the remaining amount for an original payment.',
+              );
             totalCents += cents;
-            normalized.push({ payment, amount: formatCents(cents), cents, terminalReference: allocation.terminalReference?.trim() ?? null });
+            normalized.push({
+              payment,
+              amount: formatCents(cents),
+              cents,
+              terminalReference: allocation.terminalReference?.trim() ?? null,
+            });
           }
           if (totalCents <= 0n) throw new BadRequestException('Enter a refund amount.');
 
@@ -1124,7 +1294,10 @@ export class PosOrdersService {
             where: { id: orderId, merchantId: employee.merchantId, revision: request.revision },
             data: { revision: { increment: 1 } },
           });
-          if (changed.count !== 1) throw new ConflictException('This order changed. Reload its payment state before refunding.');
+          if (changed.count !== 1)
+            throw new ConflictException(
+              'This order changed. Reload its payment state before refunding.',
+            );
           await tx.posOrderCheck.update({
             where: { id: checkId },
             data: { revision: { increment: 1 } },
@@ -1154,10 +1327,14 @@ export class PosOrdersService {
     } catch (error) {
       if (isUniqueConstraintError(error) || isSerializationConflict(error)) {
         const previous = await this.prisma.storefrontOrderAction.findUnique({
-          where: { merchantId_requestId: { merchantId: employee.merchantId, requestId: request.requestId } },
+          where: {
+            merchantId_requestId: { merchantId: employee.merchantId, requestId: request.requestId },
+          },
         });
         if (previous) return this.replayPosRefund(previous, actor, fingerprint);
-        throw new ConflictException('This order or payment changed concurrently. Reload and retry the same refund command.');
+        throw new ConflictException(
+          'This order or payment changed concurrently. Reload and retry the same refund command.',
+        );
       }
       throw error;
     }
@@ -1225,7 +1402,10 @@ export class PosOrdersService {
             },
             payments: {
               orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
-              include: { refundTenders: { select: { amount: true } } },
+              include: {
+                refundTenders: { select: { amount: true } },
+                deliveryRemittances: { select: { amount: true } },
+              },
             },
             refunds: {
               orderBy: { issuedAt: 'asc' },
@@ -1302,6 +1482,17 @@ export class PosOrdersService {
               createdAt: payment.createdAt.toISOString(),
               refundedAmount: formatCents(refundedCents),
               refundableAmount: formatCents(amountCents - refundedCents),
+              cashCustody: payment.cashCustody as 'drawer' | 'courier',
+              courierCashRemaining:
+                payment.cashCustody === 'courier'
+                  ? formatCents(
+                      amountCents -
+                        payment.deliveryRemittances.reduce(
+                          (sum, r) => sum + toCents(r.amount.toFixed(2)),
+                          0n,
+                        ),
+                    )
+                  : '0.00',
             };
           }),
           refunds: check.refunds.map((refund) => ({
@@ -1493,6 +1684,7 @@ export class PosOrdersService {
         amount: payment.amount.toString(),
         receivedAmount: payment.receivedAmount.toString(),
         changeAmount: payment.changeAmount.toString(),
+        ...(payment.cashCustody === 'courier' ? { cashCustody: 'courier' as const } : {}),
       })),
     });
     await tx.posCheckReceipt.create({
@@ -1601,6 +1793,7 @@ function parseStoredPosReceipt(value: Prisma.JsonValue): PosReceipt {
     typeof receipt.receiptNumber !== 'string' ||
     typeof receipt.issuedAt !== 'string' ||
     typeof receipt.amount !== 'string' ||
+    receipt.currency !== 'EGP' ||
     !Array.isArray(receipt.items) ||
     !Array.isArray(receipt.payments)
   ) {

@@ -82,6 +82,7 @@ export function PosWorkspaceFrame({
       ? [
           { to: '/catalog', label: 'New sale', icon: ShoppingBag },
           { to: '/dining', label: 'Tables', icon: Utensils },
+          { to: '/deliveries', label: 'Delivery follow-up', icon: ShoppingBag },
         ]
       : []),
     ...(hasPosEmployeePermission(employee, 'view_receipts')

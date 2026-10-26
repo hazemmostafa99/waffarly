@@ -40,10 +40,14 @@ export function ShiftReportsPage() {
     let current = true;
     const from = new Date(`${fromDate}T00:00:00`);
     const to = new Date(`${toDate}T00:00:00`);
-    const calendarDays = (Date.UTC(to.getFullYear(), to.getMonth(), to.getDate()) -
-      Date.UTC(from.getFullYear(), from.getMonth(), from.getDate())) / 86_400_000;
+    const calendarDays =
+      (Date.UTC(to.getFullYear(), to.getMonth(), to.getDate()) -
+        Date.UTC(from.getFullYear(), from.getMonth(), from.getDate())) /
+      86_400_000;
     if (!fromDate || !toDate || calendarDays < 0 || calendarDays > 92) {
-      setError(text('Choose a valid range of up to 93 days.', 'اختر فترة صحيحة لا تتجاوز ٩٣ يومًا.'));
+      setError(
+        text('Choose a valid range of up to 93 days.', 'اختر فترة صحيحة لا تتجاوز ٩٣ يومًا.'),
+      );
       setPage(emptyPage);
       setLoading(false);
       return () => {
@@ -53,7 +57,10 @@ export function ShiftReportsPage() {
 
     setLoading(true);
     setError('');
-    const query = new URLSearchParams({ ...reportRange(fromDate, toDate), limit: String(pageSize) });
+    const query = new URLSearchParams({
+      ...reportRange(fromDate, toDate),
+      limit: String(pageSize),
+    });
     if (branchId) query.set('branchId', branchId);
     const cursor = history.at(-1);
     if (cursor) query.set('cursor', cursor);
@@ -85,6 +92,36 @@ export function ShiftReportsPage() {
   const amount = (value: string) => `${value} EGP`;
   const columns: DataTableColumn<PosShiftCloseReportRow>[] = [
     {
+      id: 'delivery',
+      header: text('Delivery follow-up', 'متابعة الدليفري'),
+      cell: (row) => (
+        <div className="shift-report-primary-cell">
+          <span>
+            {text('Courier cash received', 'كاش مستلم من الطيار')}:{' '}
+            {amount(row.deliveryCashReceived ?? '0.00')}
+          </span>
+          {row.deliveryHandover && (
+            <details>
+              <summary>
+                {text('Handed over to', 'المتابعة اتسلمت إلى')}:{' '}
+                {row.deliveryHandover.recipientName} ({row.deliveryHandover.deliveries.length})
+              </summary>
+              <p>
+                {text('Approved by', 'اعتمدها')}: {row.deliveryHandover.approvedByName}
+              </p>
+              {row.deliveryHandover.deliveries.map((d) => (
+                <p key={d.orderId}>
+                  #{d.orderId.slice(0, 8)} · {d.courierName} ·{' '}
+                  {text('Customer due', 'باقي على العميل')}: {amount(d.customerDue)} ·{' '}
+                  {text('With courier', 'مع الطيار')}: {amount(d.courierCashHeld)}
+                </p>
+              ))}
+            </details>
+          )}
+        </div>
+      ),
+    },
+    {
       id: 'register',
       header: text('Register / branch', 'نقطة البيع / الفرع'),
       cell: (row) => (
@@ -100,7 +137,9 @@ export function ShiftReportsPage() {
       cell: (row) => (
         <div className="shift-report-primary-cell">
           <strong>{dateTime(row.openedAt)}</strong>
-          <small>{text('Closed', 'الإغلاق')}: {dateTime(row.closedAt)}</small>
+          <small>
+            {text('Closed', 'الإغلاق')}: {dateTime(row.closedAt)}
+          </small>
         </div>
       ),
     },
@@ -110,7 +149,9 @@ export function ShiftReportsPage() {
       cell: (row) => (
         <div className="shift-report-primary-cell">
           <strong>{row.openedByName}</strong>
-          <small>{text('Closed by', 'أغلقها')}: {row.operatorName}</small>
+          <small>
+            {text('Closed by', 'أغلقها')}: {row.operatorName}
+          </small>
         </div>
       ),
     },
@@ -119,8 +160,12 @@ export function ShiftReportsPage() {
       header: text('Cash drawer', 'الصندوق النقدي'),
       cell: (row) => (
         <div className="shift-report-money-cell">
-          <span>{text('Expected', 'المتوقع')}: {amount(row.expectedCash)}</span>
-          <span>{text('Counted', 'المعدود')}: {amount(row.countedCash)}</span>
+          <span>
+            {text('Expected', 'المتوقع')}: {amount(row.expectedCash)}
+          </span>
+          <span>
+            {text('Counted', 'المعدود')}: {amount(row.countedCash)}
+          </span>
           <strong className={row.variance === '0.00' ? 'balanced' : 'variance'}>
             {text('Variance', 'الفرق')}: {amount(row.variance)}
           </strong>
@@ -132,10 +177,19 @@ export function ShiftReportsPage() {
       header: text('Cash movement', 'حركة النقد'),
       cell: (row) => (
         <div className="shift-report-money-cell">
-          <span>{text('Sales', 'المبيعات')}: {amount(row.cashSales)}</span>
-          <span>{text('Refunds', 'المرتجعات')}: {amount(row.cashRefunds)}</span>
-          <span>{text('Dropped to safe', 'وُرّد للخزنة')}: {amount(row.cashDrop)}</span>
-          <small>{text('In', 'داخل')}: {amount(row.cashIn)} · {text('Paid out', 'مصروف')}: {amount(row.cashOut)}</small>
+          <span>
+            {text('Sales', 'المبيعات')}: {amount(row.cashSales)}
+          </span>
+          <span>
+            {text('Refunds', 'المرتجعات')}: {amount(row.cashRefunds)}
+          </span>
+          <span>
+            {text('Dropped to safe', 'وُرّد للخزنة')}: {amount(row.cashDrop)}
+          </span>
+          <small>
+            {text('In', 'داخل')}: {amount(row.cashIn)} · {text('Paid out', 'مصروف')}:{' '}
+            {amount(row.cashOut)}
+          </small>
         </div>
       ),
     },
@@ -144,8 +198,12 @@ export function ShiftReportsPage() {
       header: text('External terminal', 'ماكينة الدفع'),
       cell: (row) => (
         <div className="shift-report-money-cell">
-          <span>{text('Sales', 'المبيعات')}: {amount(row.terminalSales)}</span>
-          <span>{text('Refunds', 'المرتجعات')}: {amount(row.terminalRefunds)}</span>
+          <span>
+            {text('Sales', 'المبيعات')}: {amount(row.terminalSales)}
+          </span>
+          <span>
+            {text('Refunds', 'المرتجعات')}: {amount(row.terminalRefunds)}
+          </span>
         </div>
       ),
     },
@@ -166,9 +224,19 @@ export function ShiftReportsPage() {
       <header className="products-heading shift-reports-heading">
         <div>
           <h1>{text('POS shift reports', 'تقارير ورديات نقطة البيع')}</h1>
-          <p>{text('Review closed-shift cash counts, tenders and approvals for a selected period.', 'راجع جرد النقد والمدفوعات واعتمادات الورديات المغلقة خلال فترة محددة.')}</p>
+          <p>
+            {text(
+              'Review closed-shift cash counts, tenders and approvals for a selected period.',
+              'راجع جرد النقد والمدفوعات واعتمادات الورديات المغلقة خلال فترة محددة.',
+            )}
+          </p>
         </div>
-        <Button type="button" variant="outline" disabled={loading} onClick={() => setRefresh((value) => value + 1)}>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={loading}
+          onClick={() => setRefresh((value) => value + 1)}
+        >
           <Icon name="refresh" />
           {text('Refresh', 'تحديث')}
         </Button>
@@ -192,18 +260,39 @@ export function ShiftReportsPage() {
         </label>
         <label>
           <span>{text('From', 'من تاريخ')}</span>
-          <input type="date" value={fromDate} max={toDate} onChange={(event) => { setFromDate(event.target.value); setHistory([]); }} />
+          <input
+            type="date"
+            value={fromDate}
+            max={toDate}
+            onChange={(event) => {
+              setFromDate(event.target.value);
+              setHistory([]);
+            }}
+          />
         </label>
         <label>
           <span>{text('To', 'إلى تاريخ')}</span>
-          <input type="date" value={toDate} min={fromDate} onChange={(event) => { setToDate(event.target.value); setHistory([]); }} />
+          <input
+            type="date"
+            value={toDate}
+            min={fromDate}
+            onChange={(event) => {
+              setToDate(event.target.value);
+              setHistory([]);
+            }}
+          />
         </label>
       </div>
 
       {error && (
         <div className="products-error shift-reports-error" role="alert">
           <span>{error}</span>
-          <Button type="button" variant="outline" disabled={loading} onClick={() => setRefresh((value) => value + 1)}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={loading}
+            onClick={() => setRefresh((value) => value + 1)}
+          >
             {text('Retry', 'إعادة المحاولة')}
           </Button>
         </div>
@@ -212,7 +301,11 @@ export function ShiftReportsPage() {
       <DashboardCard
         className="shift-reports-table-card"
         title={text('Closed shifts', 'الورديات المغلقة')}
-        description={text('Variance is counted cash minus expected cash. Each row uses the immutable close report.', 'الفرق هو النقد المعدود ناقص النقد المتوقع. كل صف يعرض تقرير الإغلاق المحفوظ.')}>
+        description={text(
+          'Variance is counted cash minus expected cash. Each row uses the immutable close report.',
+          'الفرق هو النقد المعدود ناقص النقد المتوقع. كل صف يعرض تقرير الإغلاق المحفوظ.',
+        )}
+      >
         <DataTable
           columns={columns}
           rows={page.items}
@@ -222,18 +315,40 @@ export function ShiftReportsPage() {
           loadingState={text('Loading shift reports...', 'جارٍ تحميل تقارير الورديات...')}
           emptyState={
             <div className="shift-reports-empty">
-              <strong>{text('No closed shifts in this period.', 'لا توجد ورديات مغلقة خلال هذه الفترة.')}</strong>
-              <p>{text('Try another date range or branch. Open shifts appear here after they are closed.', 'جرّب فترة أو فرعًا آخر. تظهر الوردية هنا بعد إغلاقها.')}</p>
+              <strong>
+                {text('No closed shifts in this period.', 'لا توجد ورديات مغلقة خلال هذه الفترة.')}
+              </strong>
+              <p>
+                {text(
+                  'Try another date range or branch. Open shifts appear here after they are closed.',
+                  'جرّب فترة أو فرعًا آخر. تظهر الوردية هنا بعد إغلاقها.',
+                )}
+              </p>
             </div>
           }
         />
         <div className="register-pagination">
-          <span>{text(`${formatNumber(page.items.length)} reports on this page`, `${formatNumber(page.items.length)} تقرير في هذه الصفحة`)}</span>
+          <span>
+            {text(
+              `${formatNumber(page.items.length)} reports on this page`,
+              `${formatNumber(page.items.length)} تقرير في هذه الصفحة`,
+            )}
+          </span>
           <div>
-            <Button type="button" variant="outline" disabled={loading || history.length === 0} onClick={() => setHistory((current) => current.slice(0, -1))}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={loading || history.length === 0}
+              onClick={() => setHistory((current) => current.slice(0, -1))}
+            >
               {text('Previous', 'السابق')}
             </Button>
-            <Button type="button" variant="outline" disabled={loading || !page.nextCursor} onClick={() => setHistory((current) => [...current, page.nextCursor ?? undefined])}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={loading || !page.nextCursor}
+              onClick={() => setHistory((current) => [...current, page.nextCursor ?? undefined])}
+            >
               {text('Next', 'التالي')}
             </Button>
           </div>

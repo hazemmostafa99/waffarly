@@ -35,8 +35,21 @@ const recordPosCheckPaymentSchema = z
     requestId: z.string().uuid(),
     revision: z.number().int().min(1),
     tenders: z.array(tenderSchema).min(1).max(4),
+    cashCustody: z.literal('courier').optional(),
+    receivingShiftId: z.string().uuid().optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((request, context) => {
+    if (
+      request.cashCustody === 'courier' &&
+      (request.receivingShiftId || request.tenders.some((t) => t.method !== 'cash'))
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Courier collections must be cash without a drawer shift.',
+      });
+    }
+  });
 
 const refundAllocationSchema = z
   .object({
@@ -67,8 +80,15 @@ const recordPosCheckRefundSchema = z
   })
   .strict()
   .superRefine((request, context) => {
-    if (new Set(request.allocations.map((allocation) => allocation.paymentId)).size !== request.allocations.length) {
-      context.addIssue({ code: 'custom', path: ['allocations'], message: 'Original payment IDs must be unique.' });
+    if (
+      new Set(request.allocations.map((allocation) => allocation.paymentId)).size !==
+      request.allocations.length
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['allocations'],
+        message: 'Original payment IDs must be unique.',
+      });
     }
   });
 

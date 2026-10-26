@@ -33,7 +33,7 @@ The first slice uses an environment-configured Super Admin username and scrypt p
 
 ## Decisions still open
 
-The authorized monthly-plan slice (PS-D04) adds platform-owned `MonthlyPlan` definitions, an additive migration, shared decimal-string contracts, guarded create/list/update API routes, and a Super Admin Plans view. Prices use `DECIMAL(10,2)`; initial currencies are explicitly selected from EGP/USD/EUR. UUID creation requests protect identical initial retries, and revision checks protect concurrent edits. No price is seeded, and merchant assignment, agreed-price snapshots, recurring coverage, and general audit history remain separate work. See the [Monthly Plan specification](../features/super-admin/plans-subscriptions/MONTHLY_PLAN.md).
+The authorized monthly-plan slice (PS-D04) adds platform-owned `MonthlyPlan` definitions, an additive migration, shared decimal-string contracts, guarded create/list/update API routes, and a Super Admin Plans view. Prices use `DECIMAL(10,2)`; EGP is the only supported currency across plans, POS, and storefront; database check constraints enforce it. UUID creation requests protect identical initial retries, and revision checks protect concurrent edits. No price is seeded, and merchant assignment, agreed-price snapshots, recurring coverage, and general audit history remain separate work. See the [Monthly Plan specification](../features/super-admin/plans-subscriptions/MONTHLY_PLAN.md).
 
 - Whether POS is independently deployed or part of the merchant dashboard.
 - Final authentication/session strategy, administrator roles, and tenant-isolation enforcement for future operational modules.

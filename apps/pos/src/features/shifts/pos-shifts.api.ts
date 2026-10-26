@@ -10,7 +10,7 @@ import type {
   RecordPosShiftCashMovementRequest,
   RecordPosShiftCashMovementResponse,
 } from '@waffarly/contracts';
-import { apiRequest } from '../../lib/api-client.js';
+import { apiRequest, apiRequestNullable } from '../../lib/api-client.js';
 
 export const posRegisterKey = (merchantId: string, branchId: string) =>
   ['pos', merchantId, branchId, 'registers'] as const;
@@ -40,7 +40,7 @@ export function getCurrentPosShift(
   signal?: AbortSignal,
 ): Promise<PosShiftSummary | null> {
   const query = new URLSearchParams({ registerId });
-  return apiRequest(`/pos/shifts/current?${query.toString()}`, {
+  return apiRequestNullable(`/pos/shifts/current?${query.toString()}`, {
     method: 'GET',
     ...(signal ? { signal } : {}),
   });
@@ -75,7 +75,7 @@ export function getLatestPosShiftClose(
   signal?: AbortSignal,
 ): Promise<PosShiftCloseReport | null> {
   const query = new URLSearchParams({ registerId });
-  return apiRequest(`/pos/shifts/latest-close?${query.toString()}`, {
+  return apiRequestNullable(`/pos/shifts/latest-close?${query.toString()}`, {
     method: 'GET',
     ...(signal ? { signal } : {}),
   });

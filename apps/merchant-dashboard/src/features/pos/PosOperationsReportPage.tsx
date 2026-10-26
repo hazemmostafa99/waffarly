@@ -131,6 +131,17 @@ export function PosOperationsReportPage() {
     ];
     rows.push(
       [],
+      [
+        text('Cash collected by couriers', 'كاش دفعه العميل للطيار'),
+        report.deliveryCash?.customerCollections ?? '0.00',
+        'EGP',
+      ],
+      [
+        text('Courier cash received into drawers', 'كاش الطيار المستلم في الأدراج'),
+        report.deliveryCash?.drawerReceipts ?? '0.00',
+        'EGP',
+      ],
+      [],
       [text('Cashier activity', 'نشاط الكاشيرين')],
       [
         text('Cashier / operator', 'الكاشير / الموظف'),
@@ -143,6 +154,7 @@ export function PosOperationsReportPage() {
         text('Refunds recorded', 'عمليات الاسترداد'),
         text('Refunded (EGP)', 'المبالغ المستردة (جنيه)'),
         text('Net collected (EGP)', 'صافي التحصيل (جنيه)'),
+        text('Courier cash received into drawer (EGP)', 'كاش الطيار المستلم في الدرج (جنيه)'),
       ],
     );
     for (const activity of cashierActivity) {
@@ -157,6 +169,7 @@ export function PosOperationsReportPage() {
         activity.refundCount,
         activity.refunds.total,
         activity.netCollected,
+        activity.deliveryCashReceived ?? '0.00',
       ]);
     }
     const csv =
@@ -262,6 +275,24 @@ export function PosOperationsReportPage() {
 
       {report && !error && (
         <div className="pos-operations-content" aria-busy={loading}>
+          <DashboardCard
+            title={text('Delivery cash', 'كاش الدليفري')}
+            description={text(
+              'Customer payments can remain with couriers. Drawer receipt is a separate transfer and is not added again to collections.',
+              'فلوس العميل ممكن تكون لسه مع الطيار. استلامها في الدرج حركة منفصلة، ومش بتتضاف للتحصيل مرة تانية.',
+            )}
+          >
+            <div className="pos-operations-metrics">
+              <Metric
+                label={text('Customer cash paid to couriers', 'كاش دفعه العميل للطيار')}
+                value={money(report.deliveryCash?.customerCollections ?? '0.00')}
+              />
+              <Metric
+                label={text('Courier cash received into drawers', 'كاش الطيار المستلم في الأدراج')}
+                value={money(report.deliveryCash?.drawerReceipts ?? '0.00')}
+              />
+            </div>
+          </DashboardCard>
           <DashboardCard
             title={text('Orders and balances', 'الطلبات والأرصدة')}
             description={text(
@@ -377,6 +408,7 @@ export function PosOperationsReportPage() {
                       <th scope="col">{text('Collections', 'التحصيل')}</th>
                       <th scope="col">{text('Refunds', 'الاسترداد')}</th>
                       <th scope="col">{text('Net collected', 'صافي التحصيل')}</th>
+                      <th scope="col">{text('Courier cash received', 'كاش مستلم من الطيار')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -409,6 +441,7 @@ export function PosOperationsReportPage() {
                         <td>
                           <strong>{money(activity.netCollected)}</strong>
                         </td>
+                        <td>{money(activity.deliveryCashReceived ?? '0.00')}</td>
                       </tr>
                     ))}
                   </tbody>

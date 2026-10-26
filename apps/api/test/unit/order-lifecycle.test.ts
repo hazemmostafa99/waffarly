@@ -99,6 +99,7 @@ function createReadyService(
   const updates: unknown[] = [];
   const lineUpdates: unknown[] = [];
   const transaction = {
+    posDelivery: { findFirst: async () => null },
     $queryRaw: async () => [{ id: orderId }],
     storefrontOrder: {
       findFirst: async (_input: unknown) => ({ id: orderId }),
@@ -115,7 +116,13 @@ function createReadyService(
       create: async ({
         data,
       }: {
-        data: { requestId: string; action: string; fingerprint: string; createdBy: string; result: unknown };
+        data: {
+          requestId: string;
+          action: string;
+          fingerprint: string;
+          createdBy: string;
+          result: unknown;
+        };
       }) => {
         actions.set(data.requestId, data);
         return data;
@@ -213,7 +220,10 @@ function createCancellationService(options?: {
       },
     ],
   };
-  const actions = new Map<string, { action: string; fingerprint: string; createdBy: string; result: unknown }>();
+  const actions = new Map<
+    string,
+    { action: string; fingerprint: string; createdBy: string; result: unknown }
+  >();
   const actionWrites: Array<Record<string, unknown>> = [];
   const updates: Array<Record<string, unknown>> = [];
   const checkUpdates: Array<Record<string, unknown>> = [];
@@ -225,7 +235,7 @@ function createCancellationService(options?: {
           return { role: 'cashier', permissions: options?.actorPermissions ?? ['sell'] };
         if (where.id === supervisorId)
           return {
-          role: options?.approverPermissions ? 'cashier' : 'supervisor',
+            role: options?.approverPermissions ? 'cashier' : 'supervisor',
             permissions: options?.approverPermissions ?? ['approve_voids'],
           };
         return null;
@@ -236,7 +246,10 @@ function createCancellationService(options?: {
         actions.get(where.merchantId_requestId.requestId) ?? null,
       create: async ({ data }: { data: Record<string, unknown> }) => {
         actionWrites.push(data);
-        actions.set(data.requestId as string, data as (typeof actions extends Map<string, infer V> ? V : never));
+        actions.set(
+          data.requestId as string,
+          data as typeof actions extends Map<string, infer V> ? V : never,
+        );
         return data;
       },
     },
@@ -260,7 +273,8 @@ function createCancellationService(options?: {
     },
   };
   const prisma = {
-    $transaction: async (callback: (tx: typeof transaction) => Promise<unknown>) => callback(transaction),
+    $transaction: async (callback: (tx: typeof transaction) => Promise<unknown>) =>
+      callback(transaction),
     storefrontOrderAction: {
       findUnique: async ({ where }: { where: { merchantId_requestId: { requestId: string } } }) =>
         actions.get(where.merchantId_requestId.requestId) ?? null,
@@ -411,8 +425,14 @@ describe('POS kitchen readiness', () => {
 
 describe('POS order cancellation', () => {
   it('cancels an unpaid ticket with a distinct branch supervisor and replays without repeating stock effects', async () => {
-    const { service, employee: cashier, order, actionWrites, updates, checkUpdates } =
-      createCancellationService();
+    const {
+      service,
+      employee: cashier,
+      order,
+      actionWrites,
+      updates,
+      checkUpdates,
+    } = createCancellationService();
     const command = { requestId, branchId, reason: 'Customer changed their mind' };
     const cancelled = await service.cancelPosFromPos(cashier, orderId, command, supervisorId);
     const replay = await service.cancelPosFromPos(cashier, orderId, command, supervisorId);
@@ -453,24 +473,26 @@ describe('POS order cancellation', () => {
     );
 
     const unapproved = createCancellationService();
-    await assert.rejects(unapproved.service.cancelPosFromPos(unapproved.employee, orderId, command));
+    await assert.rejects(
+      unapproved.service.cancelPosFromPos(unapproved.employee, orderId, command),
+    );
 
     const wrongBranch = createCancellationService();
     await assert.rejects(
-      wrongBranch.service.cancelPosFromPos(wrongBranch.employee, orderId, {
-        ...command,
-        branchId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-      }, supervisorId),
+      wrongBranch.service.cancelPosFromPos(
+        wrongBranch.employee,
+        orderId,
+        {
+          ...command,
+          branchId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        },
+        supervisorId,
+      ),
     );
 
     const unauthorized = createCancellationService({ approverPermissions: ['sell'] });
     await assert.rejects(
-      unauthorized.service.cancelPosFromPos(
-        unauthorized.employee,
-        orderId,
-        command,
-        supervisorId,
-      ),
+      unauthorized.service.cancelPosFromPos(unauthorized.employee, orderId, command, supervisorId),
       /approval is no longer valid/,
     );
   });

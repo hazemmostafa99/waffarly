@@ -75,7 +75,7 @@ export function WarehousePicker({
   disabled = false,
   required = true,
   emptyLabel,
-  searchMode = 'separate',
+  searchMode = 'combobox',
 }: {
   value: string;
   label: string;

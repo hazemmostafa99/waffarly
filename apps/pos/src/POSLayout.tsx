@@ -103,6 +103,7 @@ export function POSLayout() {
       onSignOut={() => void signOut()}
     >
       {employee.permissions.includes('sell') && <PosPaymentRecoveryNotice employee={employee} />}
+      {employee.permissions.includes('sell') && <PosDeliveryRecoveryNotice employee={employee} />}
       {sessionQuery.error && (
         <p
           className="m-0 max-w-none rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm text-foreground"
@@ -119,3 +120,4 @@ export function POSLayout() {
     </PosWorkspaceFrame>
   );
 }
+import { PosDeliveryRecoveryNotice } from './features/delivery/pos-delivery-screen.js';

@@ -13,6 +13,28 @@ Orders also exposes authenticated `GET /pos/orders/:id` for the selling workspac
 
 ## Ownership
 
+Tracked POS delivery (2026-10-26) stays in Orders: dispatch, customer delivery/failure,
+responsibility, bounded cross-device queue and partial courier remittance.
+Payments adds explicit cash custody. Order-origin shift remains immutable; tracked
+delivery can post a drawer payment into an explicit open same-branch receiving
+shift. A courier-held customer payment retains source-shift attribution but has no
+drawer journal effect; `PosDeliveryRemittance` records its actual receiving shift
+and employee. Shifts adds remittances to expected drawer cash separately from cash
+sales and permits only explicit named/supervisor-approved delivery handover at
+close. The frozen handover snapshot is a dedicated safe owner-report field.
+Shifts exports `readDeliveryBalances` deliberately for Orders' bounded queue and
+its own reconciliation; no reverse module dependency is added. Compound tenant/
+branch foreign keys and a payment same-branch trigger preserve scope after
+decoupling payment shift from order-origin shift. Reports count customer payments
+once; courier cash receipts are separate event-time and employee metrics. See
+[Delivery collections](../features/pos/DELIVERY_COLLECTIONS.md).
+
+EGP is the only supported currency across plans, storefront, POS dining,
+payments, receipts, refunds, returns, and shifts. Shared currency fields are
+EGP literals; persisted currency columns have EGP-only check constraints.
+Receipt mapping and payment recording reject non-EGP values. The EGP migrations
+preserve stored amounts and never relabel or convert historical money.
+
 The Orders-owned payment-state response includes optional checkout `context` (the existing frozen order summary and current dining table code) plus check `splitMethod` and `allocations` using the existing check-summary allocation shape. Its tenant/POS/sell filters also exclude archived assigned branches. Context and balances are returned together from the scoped order read; no new persistence schema or write behavior is introduced. POS uses allocations for item checks, while equal/custom checks show full-order items only as reference. Optional metadata preserves compatibility with older responses, which receive an explicit unavailable-context message. Roll out contracts/API before the new UI for complete details.
 
 | Module     | Responsibility                                                                                                                                         | Application dependencies                   |

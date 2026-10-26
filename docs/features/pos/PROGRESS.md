@@ -1295,3 +1295,30 @@ The live receipt print button invokes the browser print dialog, where an operato
 - Ran `fnm exec --using 24.11.1 pnpm.cmd --filter @waffarly/api test:pos-db`: **2/2 passed** against the configured local PostgreSQL database. The integration fixture proves concurrent duplicate payment replay returns one result/effect, competing 0.75 EGP tenders against a 1.00 EGP check yield one success and a 0.25 EGP balance, and injected cash-journal failure rolls back payment, journal, order revision and settlement.
 - Ran `fnm exec --using 24.11.1 pnpm.cmd exec playwright test --config playwright.pos-receipt-detail.config.ts --reporter=list`: **10/10 passed** across desktop/mobile. Browser API calls are intercepted; this verifies UI recovery, not a live cashier-to-API/database journey or physical printer/PDF output.
 - Corrected the M5.5 Feature test command to point to the receipt-detail Playwright config that actually includes this case. Real cashier acceptance, physical 80mm printing and direct PDF generation remain open. Next, continue M9 hardening; the live owner-report journey still requires its disposable CI run.
+## 2026-10-26 — Tracked COD delivery across register shifts (POS-D18)
+
+Implemented the user-approved delivery-only exception to unpaid shift closure and
+payment-gated handover. [Delivery collections](DELIVERY_COLLECTIONS.md) records
+the rules, commands, rollout, checks and manual acceptance. Orders retains origin
+attribution and tracks dispatch/outcome/custodian; customer cash custody and actual
+courier remittance remain separate. A different supervisor approves named close
+handover; the old close snapshot never changes after later payments. Receiving
+cash updates only the receiving open same-branch drawer. Ordinary unpaid orders
+keep their close block. Failed delivery never silently cancels, refunds or restores
+stock. Cashier and owner interfaces/CSV expose the distinction.
+
+New migration applied to local `localhost:5433/waffarly` only (54 migrations, no
+reset). Added branch/tenant relations and payment-branch trigger; no production
+deployment. Exact recovery is scoped to merchant/employee/browser device and
+excludes credentials. A rejected action is discarded on the server under the
+order lock before clearing local recovery, so a late original cannot post cash.
+
+Verification: API typecheck/lint/build, 194/194 HTTP/unit; POS typecheck/lint/build,
+33/33 unit; merchant typecheck/lint/build; PostgreSQL shifts/delivery 3/3, POS 2/2,
+returns 2/2, storefront/recipe compatibility 6/6. Browser coverage includes desktop/
+phone shift/delivery, Arabic/English, uncertain-write replay and owner handover/CSV
+reporting with intercepted APIs: final POS 34/34 and owner 10/10. An intermediate
+concurrent run hit shared trace-folder ENOENT errors; isolated output fixed teardown.
+Existing Vite bundle advisories remain. Physical device/courier
+and cashier acceptance stay pending; follow the disposable 300 EGP scenario in
+the companion specification before rollout to a branch.

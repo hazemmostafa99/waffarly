@@ -5,18 +5,16 @@ import type {
   CreateMonthlyPlanRequest,
   MonthlyPlanSettings,
   MonthlyPlanSummary,
-  PlanCurrency,
   UpdateMonthlyPlanRequest,
 } from '@waffarly/contracts';
 import { ApiError, apiRequest } from './lib/api-client.js';
 import './plans.css';
 
-type FormValues = Omit<MonthlyPlanSettings, 'currency'> & { currency: PlanCurrency | '' };
+type FormValues = Omit<MonthlyPlanSettings, 'currency'>;
 const emptyForm: FormValues = {
   name: '',
   description: '',
   monthlyPrice: '',
-  currency: '',
   billingInterval: 'monthly',
 };
 
@@ -78,7 +76,6 @@ export function Plans() {
       name: plan.name,
       description: plan.description,
       monthlyPrice: plan.monthlyPrice,
-      currency: plan.currency,
       billingInterval: 'monthly',
     });
     setError('');
@@ -96,11 +93,11 @@ export function Plans() {
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saving || loading || !form.currency || conflict) return;
+    if (saving || loading || conflict) return;
     setSaving(true);
     setError('');
     setNotice('');
-    const settings: MonthlyPlanSettings = { ...form, currency: form.currency };
+    const settings: MonthlyPlanSettings = { ...form, currency: 'EGP' };
     try {
       let saved: MonthlyPlanSummary;
       if (editing) {
@@ -176,9 +173,9 @@ export function Plans() {
                   onChange={(event) => change('name', event.target.value)}
                 />
               </label>
-              <div className="plan-price-inputs">
+              <div>
                 <label>
-                  {t('Monthly price')}{' '}
+                  {t('Monthly price')} ({t('EGP')}){' '}
                   <Input
                     required
                     type="text"
@@ -190,21 +187,6 @@ export function Plans() {
                     placeholder="0.00"
                     onChange={(event) => change('monthlyPrice', event.target.value)}
                   />
-                </label>
-                <label>
-                  {t('Currency')}{' '}
-                  <select
-                    required
-                    value={form.currency}
-                    onChange={(event) => change('currency', event.target.value as PlanCurrency)}
-                  >
-                    <option value="" disabled>
-                      {t('Select currency')}{' '}
-                    </option>
-                    <option value="EGP">{t('EGP')}</option>
-                    <option value="USD">{t('USD')}</option>
-                    <option value="EUR">{t('EUR')}</option>
-                  </select>
                 </label>
               </div>
               <p className="plan-interval">

@@ -526,10 +526,17 @@ test('cash movement and shift close recovery persist exact commands but never su
         requestId: 'shift-close-retry',
         countedCash: '110.00',
         reason: 'Small drawer variance',
+        deliveryHandover: { recipientUsername: 'next-cashier' },
       },
     };
     usePosWorkspaceStore.getState().savePendingShiftClose(merchantId, employeeId, close);
     assert.deepEqual(usePosWorkspaceStore.getState().workspace?.pendingShiftClose, close);
+    const closeDevice = usePosWorkspaceStore.getState().workspace!.deviceId;
+    assert.deepEqual(
+      readPosWorkspace(merchantId, employeeId, closeDevice, localStorage, null).pendingShiftClose
+        ?.request.deliveryHandover,
+      close.request.deliveryHandover,
+    );
     assert.throws(
       () =>
         usePosWorkspaceStore.getState().savePendingShiftClose(merchantId, employeeId, {

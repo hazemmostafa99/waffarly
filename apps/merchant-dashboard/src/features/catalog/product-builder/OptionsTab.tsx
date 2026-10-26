@@ -1,6 +1,11 @@
+import { useModifierStockItems } from './use-modifier-stock-items.js';
 import { useEffect, useRef, useState } from 'react';
 import { VariantComposer } from './VariantComposer.js';
 import { ChoiceGroupComposer, type ChoiceTemplate } from './ChoiceGroupComposer.js';
+import {
+  ChoiceConfigurationOverview,
+  type ChoiceEditorView,
+} from './ChoiceConfigurationOverview.js';
 import type { CatalogModifierGroupSummary } from '@waffarly/contracts';
 import { Icon } from '../../../Icons.js';
 import type { ChoiceGroupDraft, GroupDraft, VariantDraft } from './product-builder.types.js';
@@ -53,6 +58,8 @@ export function OptionsTab({
   const [variantsOpen, setVariantsOpen] = useState(false);
   const [variantDraft, setVariantDraft] = useState<VariantDraft[] | null>(null);
   const [editingGroupId, setEditingGroupId] = useState('');
+  const [editingView, setEditingView] = useState<ChoiceEditorView>({ section: 'overview' });
+  const stock = useModifierStockItems(recipe ? groups : []);
   const [choiceDrafts, setChoiceDrafts] = useState<Record<string, GroupDraft>>({});
   const [feedback, setFeedback] = useState<{ message: string; target: string } | null>(null);
   const summaryRefs = useRef(new Map<string, HTMLElement>());
@@ -69,10 +76,12 @@ export function OptionsTab({
     return () => clearTimeout(timer);
   }, [feedback]);
   function openNew(template: ChoiceTemplate) {
+    setEditingView({ section: 'choices' });
     setEditingGroupId('');
     setComposerTemplate(template);
   }
-  function openExisting(id: string) {
+  function openExisting(id: string, view: ChoiceEditorView = { section: 'overview' }) {
+    setEditingView(view);
     setEditingGroupId(id);
     setComposerTemplate('custom');
   }
@@ -395,8 +404,8 @@ export function OptionsTab({
             <h3>{text('Choices on this product', 'الخيارات على هذا المنتج')}</h3>
             <p>
               {text(
-                'Open a card to adjust prices or selection rules.',
-                'افتح أي بطاقة لتعديل الأسعار أو قواعد الاختيار.',
+                'Review all configured choices below. These are product draft settings; save the product to keep changes.',
+                'راجع كل الخيارات المعدّة أدناه. هذه إعدادات مسودة المنتج؛ احفظ المنتج لحفظ التغييرات.',
               )}
             </p>
           </div>
@@ -440,16 +449,11 @@ export function OptionsTab({
                         `حتى ${group.maxSelections} اختيارات`,
                       )}
                 </small>
-                <span className="builder-choice-summary-options">
-                  {group.options.slice(0, 3).map((option) => (
-                    <span key={option.id}>
-                      {option.name} ·{' '}
-                      {Number(option.priceAdjustment)
-                        ? `+${option.priceAdjustment} ${text('EGP', 'ج.م')}`
-                        : text('Free', 'مجانًا')}
-                    </span>
-                  ))}
-                  {group.options.length > 3 && <span>+{group.options.length - 3}</span>}
+                <span className="choice-config-badge">
+                  {text(
+                    `${group.options.length} choices · product draft`,
+                    `${group.options.length} خيارات · مسودة المنتج`,
+                  )}
                 </span>
               </span>
               <span className="builder-choice-edit">
@@ -459,6 +463,15 @@ export function OptionsTab({
                 <Icon name="edit" />
               </span>
             </button>
+            <ChoiceConfigurationOverview
+              group={group}
+              variants={variants}
+              recipe={recipe}
+              items={stock.items}
+              failed={stock.failed}
+              onEdit={(view) => openExisting(group.id, view)}
+              text={text}
+            />
             <div className="builder-choice-card-actions">
               <div className="builder-order-buttons">
                 <button
@@ -493,6 +506,11 @@ export function OptionsTab({
           </article>
         ))}
       </div>
+      {stock.failed.length > 0 && (
+        <button type="button" className="builder-text-button" onClick={stock.retry}>
+          {text('Retry loading ingredients', 'إعادة تحميل المكوّنات')}
+        </button>
+      )}
       {variantsOpen && (
         <VariantComposer
           variants={variants}
@@ -513,6 +531,7 @@ export function OptionsTab({
           creating={creatingGroup}
           initialGroup={groups.find((group) => group.id === editingGroupId)}
           initialDraft={choiceDrafts[activeChoiceKey]}
+          initialView={editingView}
           onClose={closeChoice}
           onSave={saveChoice}
           variants={variants}

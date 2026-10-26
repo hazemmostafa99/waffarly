@@ -1,5 +1,11 @@
 import { ConflictException } from '@nestjs/common';
 
+/** Validate persisted money before exposing or recording it as EGP. */
+export function requireEgpCurrency(value: string): 'EGP' {
+  if (value !== 'EGP') throw new ConflictException('Currency must be EGP.');
+  return value;
+}
+
 /** Parse non-negative decimal amounts without floating-point rounding. */
 export function toCents(value: string): bigint {
   const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(value);

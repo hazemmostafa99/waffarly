@@ -148,6 +148,7 @@ describe('monthly plan administration', () => {
     assert.equal(created.body.description, 'Optional note');
     assert.equal(created.body.createdBy, 'test-admin');
     assert.equal(created.body.billingInterval, 'monthly');
+    assert.equal(created.body.currency, 'EGP');
     assert.equal(created.body.requestId, undefined);
     const list = await request(app.getHttpServer())
       .get('/admin/plans')
@@ -166,6 +167,8 @@ describe('monthly plan administration', () => {
       { monthlyPrice: '1e3' },
       { monthlyPrice: '' },
       { currency: 'XYZ' },
+      { currency: 'USD' },
+      { currency: 'EUR' },
       { billingInterval: 'yearly' },
       { name: '  ' },
       { firstMonthActivatedAt: new Date().toISOString() },
@@ -175,6 +178,41 @@ describe('monthly plan administration', () => {
         .set('x-test-admin', 'yes')
         .send({ ...payload(), ...invalid })
         .expect(400);
+    }
+    assert.equal(records.length, 0);
+  });
+
+  it('rejects non-EGP edits without changing the saved offer', async () => {
+    const creation = payload();
+    const created = await request(app.getHttpServer())
+      .post('/admin/plans')
+      .set('x-test-admin', 'yes')
+      .send(creation)
+      .expect(201);
+    const { requestId: _requestId, ...settings } = creation;
+    assert.ok(_requestId);
+    for (const currency of ['USD', 'EUR']) {
+      await request(app.getHttpServer())
+        .patch(`/admin/plans/${created.body.id}`)
+        .set('x-test-admin', 'yes')
+        .send({ ...settings, currency, revision: 1 })
+        .expect(400);
+    }
+    assert.ok(records[0]);
+    assert.equal(records[0].currency, 'EGP');
+    assert.equal(records[0].revision, 1);
+  });
+
+  it('enforces EGP for service calls outside the HTTP controller', async () => {
+    const plans = app.get(PlanService);
+    for (const currency of ['USD', 'EUR']) {
+      // Simulate an untyped caller bypassing the shared contract.
+      const input = { ...payload(), billingInterval: 'monthly' as const, currency: currency as 'EGP' };
+      await assert.rejects(plans.create(input, 'test-admin'), /Plan currency must be EGP/);
+      await assert.rejects(
+        plans.update(randomUUID(), { ...input, revision: 1 }, 'test-admin'),
+        /Plan currency must be EGP/,
+      );
     }
     assert.equal(records.length, 0);
   });

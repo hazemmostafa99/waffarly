@@ -21,11 +21,13 @@ const report = {
   collections: { cash: '100.00', terminal: '20.00', total: '120.00' },
   refunds: { cash: '2.50', terminal: '0.00', total: '2.50' },
   netCollected: '117.50',
+  deliveryCash: { customerCollections: '50.00', drawerReceipts: '30.00' },
   preparation: { acceptedToStartSeconds: 300, startToReadySeconds: 900 },
   cashierActivity: [
     {
       employeeId: '44444444-4444-4444-8444-444444444444',
       employeeName: 'Sam Lee',
+      deliveryCashReceived: '30.00',
       ordersOpened: 3,
       cancelledOrders: 1,
       orderValue: '75.00',
@@ -98,6 +100,8 @@ for (const locale of ['en', 'ar']) {
       locale === 'ar' ? 'نشاط غير منسوب' : 'Unattributed activity',
     );
     await expect(activity).toContainText('75.00 EGP');
+    await expect(activity).toContainText('30.00 EGP');
+    await expect(page.getByText('50.00 EGP', { exact: true })).toBeVisible();
     await expect(page.getByText(locale === 'ar' ? '5 د' : '5 min', { exact: true })).toBeVisible();
     await expect(
       page.getByText(locale === 'ar' ? '15 د' : '15 min', { exact: true }),
@@ -129,6 +133,8 @@ for (const locale of ['en', 'ar']) {
     expect(csv).toContain('2026-10-20T12:00:00.000Z');
     expect(csv).toContain('"115.00"');
     expect(csv).toContain('"117.50"');
+    expect(csv).toContain('"50.00"');
+    expect(csv).toContain('"30.00"');
     expect(csv).toContain('"Sam Lee"');
     expect(csv).toContain('"75.00"');
     expect(csv).toContain(locale === 'ar' ? 'نشاط الكاشيرين' : 'Cashier activity');

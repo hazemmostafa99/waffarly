@@ -12,6 +12,7 @@ import { PrismaService } from '../../../infrastructure/database/prisma.service.j
 
 export type CategoryInput = CatalogCategoryFields;
 type CategoryPatch = { [Key in keyof CategoryInput]?: CategoryInput[Key] | undefined };
+const supportedCategoryImageMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 @Injectable()
 export class CategoryService {
@@ -145,8 +146,12 @@ export class CategoryService {
   private async assertImage(merchantId: string, imageAssetId: string): Promise<void> {
     const image = await this.prisma.mediaAsset.findFirst({
       where: { id: imageAssetId, merchantId },
+      select: { mimeType: true },
     });
     if (!image) throw new BadRequestException('Image does not belong to this merchant.');
+    if (!supportedCategoryImageMimeTypes.has(image.mimeType)) {
+      throw new BadRequestException('Category image must be a JPEG, PNG, or WebP image.');
+    }
   }
 
   private async assertParent(
