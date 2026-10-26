@@ -1,16 +1,56 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { CursorPage, InventoryBranch, PosShiftCloseReportRow } from '@waffarly/contracts';
 import { Button, DashboardCard, DataTable, useLocale, type DataTableColumn } from '@waffarly/ui';
+import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { Icon } from '../../Icons.js';
 import { PagedEntitySelect } from '../../components/PagedEntitySelect.js';
 import { apiRequestPage } from '../../lib/api-client.js';
+import { InventoryHeader } from '../inventory/InventoryHeader.js';
+import { PosReportEmptyState, PosReportFilters, PosReportPagination } from './PosReportLayout.js';
 import './shift-reports.css';
 
 const pageSize = 25;
 const emptyPage: CursorPage<PosShiftCloseReportRow> = { items: [], nextCursor: null };
+const emptyHistory: Array<string | undefined> = [];
+type ReportPeriod = 'today' | 'yesterday' | 'last7' | 'last30' | 'custom';
+
+const reportPeriods: ReportPeriod[] = ['today', 'yesterday', 'last7', 'last30', 'custom'];
 
 function dateValue(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function isDateValue(value: string | null): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00`);
+  return !Number.isNaN(date.getTime()) && dateValue(date) === value;
+}
+
+function shiftedDate(value: string, days: number): string {
+  const date = new Date(`${value}T00:00:00`);
+  date.setDate(date.getDate() + days);
+  return dateValue(date);
+}
+
+function daysBetween(fromDate: string, toDate: string): number {
+  const from = new Date(`${fromDate}T00:00:00`);
+  const to = new Date(`${toDate}T00:00:00`);
+  return (
+    (Date.UTC(to.getFullYear(), to.getMonth(), to.getDate()) -
+      Date.UTC(from.getFullYear(), from.getMonth(), from.getDate())) /
+    86_400_000
+  );
+}
+
+function presetRange(period: Exclude<ReportPeriod, 'custom'>): { from: string; to: string } {
+  const today = dateValue(new Date());
+  if (period === 'today') return { from: today, to: today };
+  if (period === 'yesterday') {
+    const yesterday = shiftedDate(today, -1);
+    return { from: yesterday, to: yesterday };
+  }
+  return { from: shiftedDate(today, period === 'last7' ? -6 : -29), to: today };
 }
 
 function reportRange(fromDate: string, toDate: string): { from: string; to: string } {
@@ -23,28 +63,114 @@ function reportRange(fromDate: string, toDate: string): { from: string; to: stri
 export function ShiftReportsPage() {
   const { locale, errorText, formatNumber } = useLocale();
   const text = (en: string, ar: string) => (locale === 'ar' ? ar : en);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(emptyPage);
-  const [history, setHistory] = useState<Array<string | undefined>>([]);
-  const [branchId, setBranchId] = useState('');
-  const [fromDate, setFromDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 29);
-    return dateValue(date);
-  });
-  const [toDate, setToDate] = useState(() => dateValue(new Date()));
+  const branchId = searchParams.get('branchId') ?? '';
+  const periodParam = searchParams.get('period');
+  const period: ReportPeriod = reportPeriods.includes(periodParam as ReportPeriod)
+    ? (periodParam as ReportPeriod)
+    : periodParam === null && searchParams.has('from') && searchParams.has('to')
+      ? 'custom'
+      : 'last30';
+  const defaultRange = presetRange('last30');
+  const appliedRange =
+    period === 'custom'
+      ? {
+          from: isDateValue(searchParams.get('from'))
+            ? searchParams.get('from')!
+            : defaultRange.from,
+          to: isDateValue(searchParams.get('to')) ? searchParams.get('to')! : defaultRange.to,
+        }
+      : presetRange(period);
+  const filterKey = JSON.stringify([branchId, appliedRange.from, appliedRange.to]);
+  const [pagination, setPagination] = useState<{
+    filterKey: string;
+    cursors: Array<string | undefined>;
+  }>(() => ({ filterKey, cursors: [] }));
+  const history = pagination.filterKey === filterKey ? pagination.cursors : emptyHistory;
+  const cursor = history.at(-1);
+  const [draftFromDate, setDraftFromDate] = useState(appliedRange.from);
+  const [draftToDate, setDraftToDate] = useState(appliedRange.to);
+  const [customEditing, setCustomEditing] = useState(period === 'custom');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [rangeError, setRangeError] = useState('');
+  const [selectedReport, setSelectedReport] = useState<PosShiftCloseReportRow | null>(null);
   const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
+    setDraftFromDate(appliedRange.from);
+    setDraftToDate(appliedRange.to);
+    setCustomEditing(period === 'custom');
+    setRangeError('');
+  }, [appliedRange.from, appliedRange.to, period]);
+
+  function updateFilters(next: {
+    branchId: string;
+    period: ReportPeriod;
+    from?: string;
+    to?: string;
+  }) {
+    setSearchParams((current) => {
+      const updated = new URLSearchParams(current);
+      if (next.branchId) updated.set('branchId', next.branchId);
+      else updated.delete('branchId');
+      updated.set('period', next.period);
+      if (next.period === 'custom' && next.from && next.to) {
+        updated.set('from', next.from);
+        updated.set('to', next.to);
+      } else {
+        updated.delete('from');
+        updated.delete('to');
+      }
+      return updated;
+    });
+  }
+
+  function selectPeriod(nextPeriod: ReportPeriod) {
+    if (nextPeriod === 'custom') {
+      setDraftFromDate(appliedRange.from);
+      setDraftToDate(appliedRange.to);
+      setCustomEditing(true);
+      setRangeError('');
+      return;
+    }
+    setCustomEditing(false);
+    setRangeError('');
+    updateFilters({ branchId, period: nextPeriod });
+  }
+
+  function applyCustomRange() {
+    const rangeDays = daysBetween(draftFromDate, draftToDate);
+    if (
+      !isDateValue(draftFromDate) ||
+      !isDateValue(draftToDate) ||
+      rangeDays < 0 ||
+      rangeDays > 92
+    ) {
+      setRangeError(
+        text('Choose a valid range of up to 93 days.', 'اختر فترة صحيحة لا تتجاوز ٩٣ يومًا.'),
+      );
+      return;
+    }
+    setRangeError('');
+    setCustomEditing(false);
+    updateFilters({ branchId, period: 'custom', from: draftFromDate, to: draftToDate });
+  }
+
+  function resetFilters() {
+    setCustomEditing(false);
+    setRangeError('');
+    setDraftFromDate(defaultRange.from);
+    setDraftToDate(defaultRange.to);
+    updateFilters({ branchId: '', period: 'last30' });
+  }
+
+  useEffect(() => {
     let current = true;
-    const from = new Date(`${fromDate}T00:00:00`);
-    const to = new Date(`${toDate}T00:00:00`);
-    const calendarDays =
-      (Date.UTC(to.getFullYear(), to.getMonth(), to.getDate()) -
-        Date.UTC(from.getFullYear(), from.getMonth(), from.getDate())) /
-      86_400_000;
-    if (!fromDate || !toDate || calendarDays < 0 || calendarDays > 92) {
+    const { from: fromDate, to: toDate } = appliedRange;
+    const calendarDays = daysBetween(fromDate, toDate);
+    if (!isDateValue(fromDate) || !isDateValue(toDate) || calendarDays < 0 || calendarDays > 92) {
       setError(
         text('Choose a valid range of up to 93 days.', 'اختر فترة صحيحة لا تتجاوز ٩٣ يومًا.'),
       );
@@ -62,19 +188,20 @@ export function ShiftReportsPage() {
       limit: String(pageSize),
     });
     if (branchId) query.set('branchId', branchId);
-    const cursor = history.at(-1);
     if (cursor) query.set('cursor', cursor);
     void apiRequestPage<PosShiftCloseReportRow>(`/owner/pos/shifts/reports?${query.toString()}`)
       .then((result) => {
         if (current) setPage(result);
       })
       .catch((cause: unknown) => {
-        if (current)
+        if (current) {
+          setPage(emptyPage);
           setError(
             cause instanceof Error
               ? errorText(cause.message)
               : text('Could not load shift reports.', 'تعذر تحميل تقارير الورديات.'),
           );
+        }
       })
       .finally(() => {
         if (current) setLoading(false);
@@ -82,168 +209,184 @@ export function ShiftReportsPage() {
     return () => {
       current = false;
     };
-  }, [branchId, errorText, fromDate, history, locale, refresh, toDate]);
+  }, [appliedRange.from, appliedRange.to, branchId, cursor, errorText, locale, refresh]);
 
   const dateTime = (value: string) =>
     new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(new Date(value));
+  const dateLabel = (value: string) =>
+    new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', {
+      dateStyle: 'medium',
+    }).format(new Date(`${value}T00:00:00`));
   const amount = (value: string) => `${value} EGP`;
+  const varianceStatus = (row: PosShiftCloseReportRow) => {
+    const variance = Number(row.variance);
+    if (!Number.isFinite(variance) || variance === 0) {
+      return { tone: 'is-active', label: text('Balanced', 'متوازن') };
+    }
+    const value = amount(Math.abs(variance).toFixed(2));
+    return variance < 0
+      ? { tone: 'pos-report-status-warning', label: text(`Short by ${value}`, `عجز ${value}`) }
+      : { tone: 'pos-report-status-warning', label: text(`Over by ${value}`, `زيادة ${value}`) };
+  };
   const columns: DataTableColumn<PosShiftCloseReportRow>[] = [
-    {
-      id: 'delivery',
-      header: text('Delivery follow-up', 'متابعة الدليفري'),
-      cell: (row) => (
-        <div className="shift-report-primary-cell">
-          <span>
-            {text('Courier cash received', 'كاش مستلم من الطيار')}:{' '}
-            {amount(row.deliveryCashReceived ?? '0.00')}
-          </span>
-          {row.deliveryHandover && (
-            <details>
-              <summary>
-                {text('Handed over to', 'المتابعة اتسلمت إلى')}:{' '}
-                {row.deliveryHandover.recipientName} ({row.deliveryHandover.deliveries.length})
-              </summary>
-              <p>
-                {text('Approved by', 'اعتمدها')}: {row.deliveryHandover.approvedByName}
-              </p>
-              {row.deliveryHandover.deliveries.map((d) => (
-                <p key={d.orderId}>
-                  #{d.orderId.slice(0, 8)} · {d.courierName} ·{' '}
-                  {text('Customer due', 'باقي على العميل')}: {amount(d.customerDue)} ·{' '}
-                  {text('With courier', 'مع الطيار')}: {amount(d.courierCashHeld)}
-                </p>
-              ))}
-            </details>
-          )}
-        </div>
-      ),
-    },
     {
       id: 'register',
       header: text('Register / branch', 'نقطة البيع / الفرع'),
       cell: (row) => (
-        <div className="shift-report-primary-cell">
-          <strong>{row.registerName}</strong>
-          <small>{row.branchName}</small>
+        <div className="pos-report-identity">
+          <span className="products-thumb-empty">
+            <Icon name="receipt" />
+          </span>
+          <div className="pos-report-cell">
+            <strong>{row.registerName}</strong>
+            <small>{row.branchName}</small>
+          </div>
         </div>
       ),
     },
     {
       id: 'shift',
-      header: text('Shift', 'الوردية'),
+      header: text('Closed shift', 'الوردية المغلقة'),
       cell: (row) => (
-        <div className="shift-report-primary-cell">
-          <strong>{dateTime(row.openedAt)}</strong>
+        <div className="pos-report-cell shift-report-date-cell">
+          <strong>{dateTime(row.closedAt)}</strong>
           <small>
-            {text('Closed', 'الإغلاق')}: {dateTime(row.closedAt)}
+            {text('Opened', 'بدأت')}: {dateTime(row.openedAt)}
           </small>
         </div>
       ),
     },
     {
       id: 'operators',
-      header: text('Operators', 'الموظفون'),
+      header: text('Cashier', 'الكاشير'),
       cell: (row) => (
-        <div className="shift-report-primary-cell">
-          <strong>{row.openedByName}</strong>
+        <div className="pos-report-cell">
+          <strong>{row.operatorName}</strong>
           <small>
-            {text('Closed by', 'أغلقها')}: {row.operatorName}
+            {text('Opened by', 'بدأها')}: {row.openedByName}
           </small>
         </div>
       ),
     },
     {
-      id: 'drawer',
-      header: text('Cash drawer', 'الصندوق النقدي'),
+      id: 'expected',
+      header: text('Expected cash', 'النقد المتوقع'),
+      cell: (row) => <span className="pos-report-amount">{amount(row.expectedCash)}</span>,
+    },
+    {
+      id: 'counted',
+      header: text('Counted cash', 'النقد المعدود'),
+      cell: (row) => <strong className="pos-report-amount">{amount(row.countedCash)}</strong>,
+    },
+    {
+      id: 'variance',
+      header: text('Difference', 'الفرق'),
       cell: (row) => (
-        <div className="shift-report-money-cell">
-          <span>
-            {text('Expected', 'المتوقع')}: {amount(row.expectedCash)}
-          </span>
-          <span>
-            {text('Counted', 'المعدود')}: {amount(row.countedCash)}
-          </span>
-          <strong className={row.variance === '0.00' ? 'balanced' : 'variance'}>
-            {text('Variance', 'الفرق')}: {amount(row.variance)}
-          </strong>
-        </div>
+        <span className={`inventory-location-status pos-report-status ${varianceStatus(row).tone}`}>
+          {varianceStatus(row).label}
+        </span>
       ),
     },
     {
-      id: 'cash',
-      header: text('Cash movement', 'حركة النقد'),
+      id: 'details',
+      header: text('Report', 'التقرير'),
       cell: (row) => (
-        <div className="shift-report-money-cell">
-          <span>
-            {text('Sales', 'المبيعات')}: {amount(row.cashSales)}
-          </span>
-          <span>
-            {text('Refunds', 'المرتجعات')}: {amount(row.cashRefunds)}
-          </span>
-          <span>
-            {text('Dropped to safe', 'وُرّد للخزنة')}: {amount(row.cashDrop)}
-          </span>
-          <small>
-            {text('In', 'داخل')}: {amount(row.cashIn)} · {text('Paid out', 'مصروف')}:{' '}
-            {amount(row.cashOut)}
-          </small>
-        </div>
-      ),
-    },
-    {
-      id: 'terminal',
-      header: text('External terminal', 'ماكينة الدفع'),
-      cell: (row) => (
-        <div className="shift-report-money-cell">
-          <span>
-            {text('Sales', 'المبيعات')}: {amount(row.terminalSales)}
-          </span>
-          <span>
-            {text('Refunds', 'المرتجعات')}: {amount(row.terminalRefunds)}
-          </span>
-        </div>
-      ),
-    },
-    {
-      id: 'approval',
-      header: text('Approval / reason', 'الاعتماد / السبب'),
-      cell: (row) => (
-        <div className="shift-report-primary-cell">
-          <strong>{row.approvedByName ?? text('Not required', 'غير مطلوب')}</strong>
-          <small>{row.reason ?? text('No variance reason', 'لا يوجد سبب فرق')}</small>
-        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shift-report-view-button"
+          type="button"
+          onClick={() => setSelectedReport(row)}
+        >
+          {text('View details', 'عرض التفاصيل')}
+        </Button>
       ),
     },
   ];
 
-  return (
-    <section className="shift-reports-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <header className="products-heading shift-reports-heading">
-        <div>
-          <h1>{text('POS shift reports', 'تقارير ورديات نقطة البيع')}</h1>
-          <p>
-            {text(
-              'Review closed-shift cash counts, tenders and approvals for a selected period.',
-              'راجع جرد النقد والمدفوعات واعتمادات الورديات المغلقة خلال فترة محددة.',
-            )}
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={loading}
-          onClick={() => setRefresh((value) => value + 1)}
-        >
-          <Icon name="refresh" />
-          {text('Refresh', 'تحديث')}
-        </Button>
-      </header>
+  const emptyState = (
+    <PosReportEmptyState
+      title={text('No closed shifts in this period.', 'لا توجد ورديات مغلقة خلال هذه الفترة.')}
+      description={text(
+        'Try another date range or branch. Open shifts appear here after they are closed.',
+        'جرّب فترة أو فرعًا آخر. تظهر الوردية هنا بعد إغلاقها.',
+      )}
+      {...(branchId || period !== 'last30' ? { onReset: resetFilters } : {})}
+    />
+  );
 
-      <div className="products-filters shift-reports-filters">
-        <label>
+  return (
+    <section
+      className="inventory-page pos-report-page shift-reports-page"
+      dir={locale === 'ar' ? 'rtl' : 'ltr'}
+    >
+      <InventoryHeader
+        title={text('POS shift reports', 'تقارير ورديات نقطة البيع')}
+        description={text(
+          'Review closed-shift cash counts, payments and approvals for a selected period.',
+          'راجع جرد النقد والمدفوعات واعتمادات الورديات المغلقة خلال فترة محددة.',
+        )}
+        showInventoryNavigation={false}
+        actions={
+          <Button type="button" disabled={loading} onClick={() => setRefresh((value) => value + 1)}>
+            <Icon name="refresh" />
+            {text('Refresh', 'تحديث')}
+          </Button>
+        }
+      />
+
+      <PosReportFilters
+        footer={
+          <>
+            {(customEditing || period === 'custom') && (
+              <div className="pos-report-custom-range">
+                <label className="pos-report-field">
+                  <span>{text('From', 'من تاريخ')}</span>
+                  <input
+                    type="date"
+                    aria-label={text('From date', 'من تاريخ')}
+                    dir="ltr"
+                    value={draftFromDate}
+                    max={draftToDate}
+                    onChange={(event) => {
+                      setDraftFromDate(event.target.value);
+                      setRangeError('');
+                    }}
+                  />
+                </label>
+                <label className="pos-report-field">
+                  <span>{text('To', 'إلى تاريخ')}</span>
+                  <input
+                    type="date"
+                    aria-label={text('To date', 'إلى تاريخ')}
+                    dir="ltr"
+                    value={draftToDate}
+                    min={draftFromDate}
+                    onChange={(event) => {
+                      setDraftToDate(event.target.value);
+                      setRangeError('');
+                    }}
+                  />
+                </label>
+                <Button type="button" onClick={applyCustomRange}>
+                  {text('Apply dates', 'تطبيق التواريخ')}
+                </Button>
+              </div>
+            )}
+            {(branchId || period !== 'last30' || customEditing) && (
+              <div className="pos-report-filter-actions">
+                <Button type="button" variant="ghost" onClick={resetFilters}>
+                  {text('Reset filters', 'إعادة ضبط الفلاتر')}
+                </Button>
+              </div>
+            )}
+          </>
+        }
+      >
+        <div className="pos-report-field">
           <span>{text('Branch', 'الفرع')}</span>
           <PagedEntitySelect<InventoryBranch>
             path="/owner/inventory/branches"
@@ -252,44 +395,52 @@ export function ShiftReportsPage() {
             emptyLabel={text('All branches', 'كل الفروع')}
             required={false}
             searchMode="combobox"
-            onSelect={(branch) => {
-              setBranchId(branch?.id ?? '');
-              setHistory([]);
-            }}
+            onSelect={(branch) =>
+              updateFilters({
+                branchId: branch?.id ?? '',
+                period,
+                ...(period === 'custom' ? appliedRange : {}),
+              })
+            }
           />
+        </div>
+        <label className="pos-report-field">
+          <span>{text('Period', 'الفترة')}</span>
+          <select
+            aria-label={text('Report period', 'فترة التقرير')}
+            value={customEditing || period === 'custom' ? 'custom' : period}
+            onChange={(event) => selectPeriod(event.target.value as ReportPeriod)}
+          >
+            <option value="today">{text('Today', 'اليوم')}</option>
+            <option value="yesterday">{text('Yesterday', 'أمس')}</option>
+            <option value="last7">{text('Last 7 days', 'آخر ٧ أيام')}</option>
+            <option value="last30">{text('Last 30 days', 'آخر ٣٠ يومًا')}</option>
+            <option value="custom">{text('Custom range', 'فترة مخصصة')}</option>
+          </select>
         </label>
-        <label>
-          <span>{text('From', 'من تاريخ')}</span>
-          <input
-            type="date"
-            value={fromDate}
-            max={toDate}
-            onChange={(event) => {
-              setFromDate(event.target.value);
-              setHistory([]);
-            }}
-          />
-        </label>
-        <label>
-          <span>{text('To', 'إلى تاريخ')}</span>
-          <input
-            type="date"
-            value={toDate}
-            min={fromDate}
-            onChange={(event) => {
-              setToDate(event.target.value);
-              setHistory([]);
-            }}
-          />
-        </label>
-      </div>
+        <div className="pos-report-field">
+          <span>{text('Selected dates', 'التواريخ المحددة')}</span>
+          <div className="pos-report-range" aria-live="polite">
+            <Icon name="calendar" />
+            <span>
+              {dateLabel(appliedRange.from)} — {dateLabel(appliedRange.to)}
+            </span>
+          </div>
+        </div>
+      </PosReportFilters>
+
+      {rangeError && (
+        <div className="inventory-error" role="alert">
+          <span>{rangeError}</span>
+        </div>
+      )}
 
       {error && (
-        <div className="products-error shift-reports-error" role="alert">
+        <div className="inventory-error" role="alert">
           <span>{error}</span>
           <Button
-            type="button"
             variant="outline"
+            type="button"
             disabled={loading}
             onClick={() => setRefresh((value) => value + 1)}
           >
@@ -302,58 +453,244 @@ export function ShiftReportsPage() {
         className="shift-reports-table-card"
         title={text('Closed shifts', 'الورديات المغلقة')}
         description={text(
-          'Variance is counted cash minus expected cash. Each row uses the immutable close report.',
-          'الفرق هو النقد المعدود ناقص النقد المتوقع. كل صف يعرض تقرير الإغلاق المحفوظ.',
+          'Scan the cash result first, then open a report for the full shift breakdown.',
+          'راجع نتيجة النقد أولًا، ثم افتح التقرير لمراجعة تفاصيل الوردية.',
         )}
       >
-        <DataTable
-          columns={columns}
-          rows={page.items}
-          rowKey={(row) => row.id}
-          caption={text('POS shift close reports', 'تقارير إغلاق ورديات نقطة البيع')}
-          loading={loading}
-          loadingState={text('Loading shift reports...', 'جارٍ تحميل تقارير الورديات...')}
-          emptyState={
-            <div className="shift-reports-empty">
-              <strong>
-                {text('No closed shifts in this period.', 'لا توجد ورديات مغلقة خلال هذه الفترة.')}
-              </strong>
-              <p>
-                {text(
-                  'Try another date range or branch. Open shifts appear here after they are closed.',
-                  'جرّب فترة أو فرعًا آخر. تظهر الوردية هنا بعد إغلاقها.',
-                )}
-              </p>
-            </div>
-          }
-        />
-        <div className="register-pagination">
-          <span>
-            {text(
-              `${formatNumber(page.items.length)} reports on this page`,
-              `${formatNumber(page.items.length)} تقرير في هذه الصفحة`,
-            )}
-          </span>
-          <div>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={loading || history.length === 0}
-              onClick={() => setHistory((current) => current.slice(0, -1))}
-            >
-              {text('Previous', 'السابق')}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={loading || !page.nextCursor}
-              onClick={() => setHistory((current) => [...current, page.nextCursor ?? undefined])}
-            >
-              {text('Next', 'التالي')}
-            </Button>
-          </div>
+        <div className="shift-reports-desktop-table">
+          <DataTable
+            columns={columns}
+            rows={page.items}
+            rowKey={(row) => row.id}
+            caption={text('POS shift close reports', 'تقارير إغلاق ورديات نقطة البيع')}
+            loading={loading}
+            loadingState={text('Loading shift reports...', 'جارٍ تحميل تقارير الورديات...')}
+            emptyState={emptyState}
+          />
         </div>
+
+        {loading ? (
+          <div className="shift-reports-mobile-state" role="status">
+            {text('Loading shift reports...', 'جارٍ تحميل تقارير الورديات...')}
+          </div>
+        ) : page.items.length === 0 ? (
+          <div className="shift-reports-mobile-state">{emptyState}</div>
+        ) : (
+          <div className="shift-reports-mobile-list">
+            {page.items.map((row) => {
+              const status = varianceStatus(row);
+              return (
+                <article className="shift-report-mobile-card" key={row.id}>
+                  <header>
+                    <div>
+                      <strong>{row.registerName}</strong>
+                      <small>{row.branchName}</small>
+                    </div>
+                    <span className={`inventory-location-status pos-report-status ${status.tone}`}>
+                      {status.label}
+                    </span>
+                  </header>
+                  <div className="shift-report-mobile-facts">
+                    <span>
+                      <small>{text('Closed', 'الإغلاق')}</small>
+                      <strong>{dateTime(row.closedAt)}</strong>
+                    </span>
+                    <span>
+                      <small>{text('Cashier', 'الكاشير')}</small>
+                      <strong>{row.operatorName}</strong>
+                    </span>
+                    <span>
+                      <small>{text('Expected', 'المتوقع')}</small>
+                      <strong>{amount(row.expectedCash)}</strong>
+                    </span>
+                    <span>
+                      <small>{text('Counted', 'المعدود')}</small>
+                      <strong>{amount(row.countedCash)}</strong>
+                    </span>
+                  </div>
+                  <Button
+                    className="shift-report-view-button"
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    onClick={() => setSelectedReport(row)}
+                  >
+                    {text('View details', 'عرض التفاصيل')}
+                  </Button>
+                </article>
+              );
+            })}
+          </div>
+        )}
+        <PosReportPagination
+          summary={text(
+            `${formatNumber(page.items.length)} reports on this page`,
+            `${formatNumber(page.items.length)} تقرير في هذه الصفحة`,
+          )}
+          loading={loading}
+          hasPrevious={history.length > 0}
+          hasNext={Boolean(page.nextCursor)}
+          onPrevious={() => setPagination({ filterKey, cursors: history.slice(0, -1) })}
+          onNext={() => setPagination({ filterKey, cursors: [...history, page.nextCursor ?? undefined] })}
+        />
       </DashboardCard>
+
+      {selectedReport && (
+        <DashboardDialog
+          title={`${text('Shift report', 'تقرير الوردية')} · ${selectedReport.registerName}`}
+          closeLabel={text('Close report details', 'إغلاق تفاصيل التقرير')}
+          onClose={() => setSelectedReport(null)}
+        >
+          <div className="shift-report-detail-content">
+            <div className="shift-report-detail-intro">
+              <span>
+                {text('Opened', 'بدأت')}: {dateTime(selectedReport.openedAt)}
+              </span>
+              <span>
+                {text('Closed at', 'أُغلقت في')}: {dateTime(selectedReport.closedAt)}
+              </span>
+              <span>
+                {text('Shift ID', 'رقم الوردية')}: {selectedReport.shiftId.slice(0, 8)}
+              </span>
+            </div>
+
+            <div className="shift-report-detail-meta">
+              <span>
+                <small>{text('Branch', 'الفرع')}</small>
+                <strong>{selectedReport.branchName}</strong>
+              </span>
+              <span>
+                <small>{text('Register', 'نقطة البيع')}</small>
+                <strong>{selectedReport.registerName}</strong>
+              </span>
+              <span>
+                <small>{text('Opened by', 'بدأها')}</small>
+                <strong>{selectedReport.openedByName}</strong>
+              </span>
+              <span>
+                <small>{text('Closed by', 'أغلقها')}</small>
+                <strong>{selectedReport.operatorName}</strong>
+              </span>
+            </div>
+
+            <div className="shift-report-detail-grid">
+              <section>
+                <h3>{text('Cash drawer', 'الصندوق النقدي')}</h3>
+                <dl>
+                  <div>
+                    <dt>{text('Opening float', 'رصيد بداية الوردية')}</dt>
+                    <dd>{amount(selectedReport.openingFloat)}</dd>
+                  </div>
+                  <div>
+                    <dt>{text('Expected cash', 'النقد المتوقع')}</dt>
+                    <dd>{amount(selectedReport.expectedCash)}</dd>
+                  </div>
+                  <div>
+                    <dt>{text('Counted cash', 'النقد المعدود')}</dt>
+                    <dd>{amount(selectedReport.countedCash)}</dd>
+                  </div>
+                  <div className="shift-report-detail-variance">
+                    <dt>{text('Difference', 'الفرق')}</dt>
+                    <dd>
+                      <span
+                        className={`inventory-location-status pos-report-status ${varianceStatus(selectedReport).tone}`}
+                      >
+                        {varianceStatus(selectedReport).label}
+                      </span>
+                      <small>{amount(selectedReport.variance)}</small>
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section>
+                <h3>{text('Cash movement', 'حركة النقد')}</h3>
+                <dl>
+                  <div>
+                    <dt>{text('Cash sales', 'مبيعات نقدية')}</dt>
+                    <dd>{amount(selectedReport.cashSales)}</dd>
+                  </div>
+                  <div>
+                    <dt>{text('Refunds', 'المرتجعات')}</dt>
+                    <dd>{amount(selectedReport.cashRefunds)}</dd>
+                  </div>
+                  <div>
+                    <dt>{text('Cash in', 'إيداع نقدي')}</dt>
+                    <dd>{amount(selectedReport.cashIn)}</dd>
+                  </div>
+                  <div>
+                    <dt>{text('Paid out', 'مصروف نقدي')}</dt>
+                    <dd>{amount(selectedReport.cashOut)}</dd>
+                  </div>
+                  <div>
+                    <dt>{text('Dropped to safe', 'توريد للخزنة')}</dt>
+                    <dd>{amount(selectedReport.cashDrop)}</dd>
+                  </div>
+                  <div>
+                    <dt>{text('Courier cash received', 'نقد مستلم من الطيار')}</dt>
+                    <dd>{amount(selectedReport.deliveryCashReceived ?? '0.00')}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section>
+                <h3>{text('External terminal', 'ماكينة الدفع')}</h3>
+                <dl>
+                  <div>
+                    <dt>{text('Card sales', 'مبيعات البطاقة')}</dt>
+                    <dd>{amount(selectedReport.terminalSales)}</dd>
+                  </div>
+                  <div>
+                    <dt>{text('Card refunds', 'مرتجعات البطاقة')}</dt>
+                    <dd>{amount(selectedReport.terminalRefunds)}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section>
+                <h3>{text('Approval', 'الاعتماد')}</h3>
+                <dl>
+                  <div>
+                    <dt>{text('Approved by', 'اعتمدها')}</dt>
+                    <dd>{selectedReport.approvedByName ?? text('Not required', 'غير مطلوب')}</dd>
+                  </div>
+                  <div>
+                    <dt>{text('Variance reason', 'سبب الفرق')}</dt>
+                    <dd>{selectedReport.reason ?? text('No reason recorded', 'لم يُسجل سبب')}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              {selectedReport.deliveryHandover && (
+                <section className="shift-report-delivery-section">
+                  <h3>{text('Delivery handover', 'تسليم عهدة التوصيل')}</h3>
+                  <p>
+                    {text('Received by', 'استلمها')} {selectedReport.deliveryHandover.recipientName}{' '}
+                    · {text('Approved by', 'اعتمدها')}{' '}
+                    {selectedReport.deliveryHandover.approvedByName}
+                  </p>
+                  <div className="shift-report-delivery-list">
+                    {selectedReport.deliveryHandover.deliveries.map((delivery) => (
+                      <div key={delivery.orderId}>
+                        <strong>
+                          #{delivery.orderId.slice(0, 8)} · {delivery.courierName}
+                        </strong>
+                        <span>
+                          {text('Customer due', 'المتبقي على العميل')}:{' '}
+                          {amount(delivery.customerDue)}
+                        </span>
+                        <span>
+                          {text('With courier', 'مع الطيار')}: {amount(delivery.courierCashHeld)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+          </div>
+        </DashboardDialog>
+      )}
     </section>
   );
 }

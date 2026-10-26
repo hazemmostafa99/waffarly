@@ -4,7 +4,8 @@ import { Button, DashboardCard, DataTable, useLocale, type DataTableColumn } fro
 import { Icon } from '../../Icons.js';
 import { PagedEntitySelect } from '../../components/PagedEntitySelect.js';
 import { apiRequestPage } from '../../lib/api-client.js';
-import './shift-reports.css';
+import { InventoryHeader } from '../inventory/InventoryHeader.js';
+import { PosReportEmptyState, PosReportFilters, PosReportPagination } from './PosReportLayout.js';
 import './item-return-reports.css';
 
 const pageSize = 25;
@@ -12,6 +13,13 @@ const emptyPage: CursorPage<OwnerPosItemReturnReportRow> = { items: [], nextCurs
 
 function dateValue(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function defaultRange() {
+  const to = new Date();
+  const from = new Date(to);
+  from.setDate(from.getDate() - 29);
+  return { from: dateValue(from), to: dateValue(to) };
 }
 
 function reportRange(fromDate: string, toDate: string): { from: string; to: string } {
@@ -27,12 +35,8 @@ export function ItemReturnReportsPage() {
   const [page, setPage] = useState(emptyPage);
   const [history, setHistory] = useState<Array<string | undefined>>([]);
   const [branchId, setBranchId] = useState('');
-  const [fromDate, setFromDate] = useState(() => {
-    const date = new Date();
-    date.setDate(date.getDate() - 29);
-    return dateValue(date);
-  });
-  const [toDate, setToDate] = useState(() => dateValue(new Date()));
+  const [fromDate, setFromDate] = useState(() => defaultRange().from);
+  const [toDate, setToDate] = useState(() => defaultRange().to);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refresh, setRefresh] = useState(0);
@@ -89,6 +93,17 @@ export function ItemReturnReportsPage() {
     };
   }, [branchId, errorText, fromDate, history, locale, refresh, toDate]);
 
+  function resetFilters() {
+    const range = defaultRange();
+    setBranchId('');
+    setFromDate(range.from);
+    setToDate(range.to);
+    setHistory([]);
+  }
+
+  const hasFilters =
+    Boolean(branchId) || fromDate !== defaultRange().from || toDate !== defaultRange().to;
+
   const dateTime = (value: string) =>
     new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', {
       dateStyle: 'medium',
@@ -106,7 +121,7 @@ export function ItemReturnReportsPage() {
       id: 'return',
       header: text('Return / sale', 'المرتجع / الطلب'),
       cell: (row) => (
-        <div className="shift-report-primary-cell">
+        <div className="pos-report-cell">
           <strong>{row.returnNumber}</strong>
           <small>{row.orderReference}</small>
         </div>
@@ -116,7 +131,7 @@ export function ItemReturnReportsPage() {
       id: 'date-branch',
       header: text('Issued / branch', 'التاريخ / الفرع'),
       cell: (row) => (
-        <div className="shift-report-primary-cell">
+        <div className="pos-report-cell">
           <strong>{dateTime(row.issuedAt)}</strong>
           <small>
             {row.branchName} · {fulfillment(row.fulfillmentType)}
@@ -135,9 +150,14 @@ export function ItemReturnReportsPage() {
                 {line.productName}
                 {line.variantName ? ` · ${line.variantName}` : ''}
               </strong>
-              <span>
-                {text('Qty', 'الكمية')} {formatNumber(line.quantity)} · {text('Waste', 'هالك')}
-              </span>
+              <div className="item-return-line-meta">
+                <span>
+                  {text('Qty', 'الكمية')} {formatNumber(line.quantity)}
+                </span>
+                <span className="inventory-location-status is-archived">
+                  {text('Waste', 'هالك')}
+                </span>
+              </div>
             </div>
           ))}
         </div>
@@ -152,7 +172,7 @@ export function ItemReturnReportsPage() {
       id: 'reference-value',
       header: text('Reference value', 'قيمة استرشادية'),
       cell: (row) => (
-        <div className="shift-report-money-cell">
+        <div className="pos-report-cell pos-report-amount">
           <strong>{amount(row.referenceValue)}</strong>
           <small>{text('Not a refund', 'ليست مبلغًا مستردًا')}</small>
         </div>
@@ -162,7 +182,7 @@ export function ItemReturnReportsPage() {
       id: 'operators',
       header: text('Recorded by / approved by', 'سجله / اعتمده'),
       cell: (row) => (
-        <div className="shift-report-primary-cell">
+        <div className="pos-report-cell">
           <strong>{row.issuedBy}</strong>
           <small>
             {row.approvedBy ?? text('No separate approval', 'لا يحتاج اعتمادًا منفصلًا')}
@@ -174,32 +194,36 @@ export function ItemReturnReportsPage() {
 
   return (
     <section
-      className="shift-reports-page item-return-reports-page"
+      className="inventory-page pos-report-page item-return-reports-page"
       dir={locale === 'ar' ? 'rtl' : 'ltr'}
     >
-      <header className="products-heading shift-reports-heading">
-        <div>
-          <h1>{text('POS returns & waste', 'مرتجعات وهالك نقطة البيع')}</h1>
-          <p>
-            {text(
-              'Audit recorded item returns by branch and date. Returned goods are marked as waste; the reference value is not a cash refund.',
-              'راجع مرتجعات الأصناف المسجلة حسب الفرع والتاريخ. تُسجل الأصناف كهالك، والقيمة الاسترشادية ليست مبلغًا مستردًا.',
-            )}
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={loading}
-          onClick={() => setRefresh((value) => value + 1)}
-        >
-          <Icon name="refresh" />
-          {text('Refresh', 'تحديث')}
-        </Button>
-      </header>
+      <InventoryHeader
+        title={text('POS returns & waste', 'مرتجعات وهالك نقطة البيع')}
+        description={text(
+          'Review recorded item returns and waste by branch and date.',
+          'راجع مرتجعات الأصناف والهالك المسجل حسب الفرع والتاريخ.',
+        )}
+        showInventoryNavigation={false}
+        actions={
+          <Button type="button" disabled={loading} onClick={() => setRefresh((value) => value + 1)}>
+            <Icon name="refresh" />
+            {text('Refresh', 'تحديث')}
+          </Button>
+        }
+      />
 
-      <div className="products-filters shift-reports-filters">
-        <label>
+      <PosReportFilters
+        footer={
+          hasFilters ? (
+            <div className="pos-report-filter-actions">
+              <Button type="button" variant="ghost" onClick={resetFilters}>
+                {text('Reset filters', 'إعادة ضبط الفلاتر')}
+              </Button>
+            </div>
+          ) : undefined
+        }
+      >
+        <div className="pos-report-field">
           <span>{text('Branch', 'الفرع')}</span>
           <PagedEntitySelect<InventoryBranch>
             path="/owner/inventory/branches"
@@ -213,35 +237,37 @@ export function ItemReturnReportsPage() {
               setHistory([]);
             }}
           />
-        </label>
-        <label>
+        </div>
+        <label className="pos-report-field">
           <span>{text('From', 'من تاريخ')}</span>
           <input
             type="date"
             value={fromDate}
             max={toDate}
+            dir="ltr"
             onChange={(event) => {
               setFromDate(event.target.value);
               setHistory([]);
             }}
           />
         </label>
-        <label>
+        <label className="pos-report-field">
           <span>{text('To', 'إلى تاريخ')}</span>
           <input
             type="date"
             value={toDate}
             min={fromDate}
+            dir="ltr"
             onChange={(event) => {
               setToDate(event.target.value);
               setHistory([]);
             }}
           />
         </label>
-      </div>
+      </PosReportFilters>
 
       {error && (
-        <div className="products-error shift-reports-error" role="alert">
+        <div className="inventory-error" role="alert">
           <span>{error}</span>
           <Button
             type="button"
@@ -255,13 +281,21 @@ export function ItemReturnReportsPage() {
       )}
 
       <DashboardCard
-        className="shift-reports-table-card item-return-report-card"
+        className="item-return-report-card"
         title={text('Recorded returns', 'المرتجعات المسجلة')}
         description={text(
-          'These records document returned goods as waste. They do not change the original receipt, payments or inventory.',
-          'توثق هذه السجلات الأصناف المرتجعة كهالك، ولا تعدل الإيصال الأصلي أو المدفوعات أو المخزون.',
+          'Returned items are recorded as waste. Reference values are not cash refunds.',
+          'تُسجل الأصناف المرتجعة كهالك. القيم الاسترشادية ليست مبالغ مستردة.',
         )}
       >
+        {page.items.length > 0 && (
+          <p className="pos-report-table-hint">
+            {text(
+              'Scroll horizontally to view all return details.',
+              'مرّر الجدول أفقيًا لعرض جميع تفاصيل المرتجعات.',
+            )}
+          </p>
+        )}
         <DataTable
           columns={columns}
           rows={page.items}
@@ -270,45 +304,30 @@ export function ItemReturnReportsPage() {
           loading={loading}
           loadingState={text('Loading return reports...', 'جارٍ تحميل تقارير المرتجعات...')}
           emptyState={
-            <div className="shift-reports-empty">
-              <strong>
-                {text('No item returns in this period.', 'لا توجد مرتجعات أصناف خلال هذه الفترة.')}
-              </strong>
-              <p>
-                {text(
-                  'Try another date range or branch. Only recorded POS returns appear here.',
-                  'جرّب فترة أو فرعًا آخر. تظهر هنا مرتجعات نقطة البيع المسجلة فقط.',
-                )}
-              </p>
-            </div>
+            <PosReportEmptyState
+              title={text(
+                'No item returns in this period.',
+                'لا توجد مرتجعات أصناف خلال هذه الفترة.',
+              )}
+              description={text(
+                'Try another date range or branch. Only recorded POS returns appear here.',
+                'جرّب فترة أو فرعًا آخر. تظهر هنا مرتجعات نقطة البيع المسجلة فقط.',
+              )}
+              {...(hasFilters ? { onReset: resetFilters } : {})}
+            />
           }
         />
-        <div className="register-pagination">
-          <span>
-            {text(
-              `${formatNumber(page.items.length)} returns on this page`,
-              `${formatNumber(page.items.length)} مرتجع في هذه الصفحة`,
-            )}
-          </span>
-          <div>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={loading || history.length === 0}
-              onClick={() => setHistory((current) => current.slice(0, -1))}
-            >
-              {text('Previous', 'السابق')}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={loading || !page.nextCursor}
-              onClick={() => setHistory((current) => [...current, page.nextCursor ?? undefined])}
-            >
-              {text('Next', 'التالي')}
-            </Button>
-          </div>
-        </div>
+        <PosReportPagination
+          summary={text(
+            `${formatNumber(page.items.length)} returns on this page`,
+            `${formatNumber(page.items.length)} مرتجع في هذه الصفحة`,
+          )}
+          loading={loading}
+          hasPrevious={history.length > 0}
+          hasNext={Boolean(page.nextCursor)}
+          onPrevious={() => setHistory((current) => current.slice(0, -1))}
+          onNext={() => setHistory((current) => [...current, page.nextCursor ?? undefined])}
+        />
       </DashboardCard>
     </section>
   );

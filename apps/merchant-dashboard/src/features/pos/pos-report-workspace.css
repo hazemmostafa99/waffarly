@@ -1,0 +1,192 @@
+.pos-report-page {
+  min-width: 0;
+}
+
+.pos-report-page .wf-data-table:has(.wf-table-state) {
+  min-width: 0;
+}
+
+.pos-report-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.3fr) repeat(2, minmax(200px, 1fr));
+  align-items: end;
+  gap: 12px;
+}
+
+.pos-report-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--dashboard-ink);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.pos-report-field :is(input[type='date'], select) {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 9px 11px;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 8px;
+  background: white;
+  color: var(--dashboard-ink);
+  font: inherit;
+  font-weight: 400;
+}
+
+.pos-report-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #f5f8fb;
+  color: var(--dashboard-muted);
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.pos-report-range .merchant-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.pos-report-filter-actions {
+  display: flex;
+  justify-content: end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.pos-report-custom-range {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr)) auto;
+  align-items: end;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 8px;
+  background: #f5f8fb;
+}
+
+.pos-report-cell {
+  display: grid;
+  gap: 4px;
+  min-width: 120px;
+}
+
+.pos-report-cell strong {
+  color: var(--dashboard-ink);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.pos-report-cell small {
+  color: var(--dashboard-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.pos-report-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pos-report-identity .products-thumb-empty {
+  flex: 0 0 36px;
+}
+
+.pos-report-amount {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.pos-report-status {
+  width: fit-content;
+  max-width: 100%;
+}
+
+.pos-report-status-warning {
+  border-color: #eedbb4;
+  background: #fff4df;
+  color: #92610c;
+}
+
+.pos-report-pagination {
+  flex-wrap: wrap;
+}
+
+.pos-report-empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 12px;
+  color: var(--dashboard-ink);
+  text-align: center;
+  white-space: normal;
+}
+
+.pos-report-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #f1f8f3;
+  color: #245b43;
+}
+
+.pos-report-empty-icon .merchant-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.pos-report-empty strong {
+  font-size: 16px;
+}
+
+.pos-report-empty p {
+  max-width: 540px;
+  margin: 0;
+  color: var(--dashboard-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.pos-report-table-hint {
+  display: none;
+  margin: 0 0 10px;
+  color: var(--dashboard-muted);
+  font-size: 13px;
+}
+
+.pos-report-page :is(input, select, button):focus-visible {
+  outline: 2px solid #087858;
+  outline-offset: 2px;
+}
+
+@media (max-width: 1300px) {
+  .pos-report-table-hint {
+    display: block;
+  }
+}
+
+@media (max-width: 900px) {
+  .pos-report-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .pos-report-custom-range {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pos-report-custom-range > button {
+    justify-self: start;
+  }
+}

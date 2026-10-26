@@ -22,6 +22,7 @@ import { recordPosCheckPayment } from '../payments/pos-payments.api.js';
 import { useDeliveryRecovery, type PendingDeliveryWrite } from './delivery-recovery.js';
 
 type ReadyDelivery = { id: string; revision: number; total: string; customerName: string | null };
+type DeliveryView = 'ready' | 'delivery' | 'cash' | 'history';
 
 export function PosDeliveryRecoveryNotice({ employee }: { employee: PosEmployeeSession }) {
   const { locale } = useLocale();
@@ -77,7 +78,7 @@ export function PosDeliveryScreen() {
   const [registerId, setRegisterId] = useState('');
   const [cursor, setCursor] = useState<string | undefined>();
   const [readyCursor, setReadyCursor] = useState<string | undefined>();
-  const [includeResolved, setIncludeResolved] = useState(false);
+  const [activeView, setActiveView] = useState<DeliveryView>('ready');
   const [formError, setFormError] = useState('');
   const [savedResult, setSavedResult] = useState<'unknown' | 'committed' | 'not_found'>('unknown');
   const [resolving, setResolving] = useState(false);
@@ -108,10 +109,10 @@ export function PosDeliveryScreen() {
     enabled: Boolean(selectedRegister),
   });
   const list = useQuery({
-    queryKey: ['pos-deliveries', employee.merchantId, branchId, cursor, includeResolved],
+    queryKey: ['pos-deliveries', employee.merchantId, branchId, cursor, activeView === 'history'],
     queryFn: ({ signal }) =>
       apiRequest<CursorPage<PosDeliverySummary>>(
-        `/pos/deliveries?${new URLSearchParams({ branchId, includeResolved: String(includeResolved), ...(cursor ? { cursor } : {}) })}`,
+        `/pos/deliveries?${new URLSearchParams({ branchId, includeResolved: String(activeView === 'history'), ...(cursor ? { cursor } : {}) })}`,
         { signal },
       ),
     enabled: Boolean(branchId),
@@ -198,6 +199,25 @@ export function PosDeliveryScreen() {
     (ready.error instanceof Error ? ready.error.message : '') ||
     (shift.error instanceof Error ? shift.error.message : '') ||
     (registers.error instanceof Error ? registers.error.message : '');
+  const deliveries = list.data?.items ?? [];
+  const deliveryFollowups = deliveries.filter(
+    (delivery) => delivery.status !== 'delivered' || delivery.customerDue !== '0.00',
+  );
+  const cashDeliveries = deliveries.filter((delivery) => delivery.courierCashHeld !== '0.00');
+  const historyDeliveries = deliveries.filter(
+    (delivery) =>
+      delivery.status === 'delivered' &&
+      delivery.customerDue === '0.00' &&
+      delivery.courierCashHeld === '0.00',
+  );
+  const cashGroups = Array.from(
+    cashDeliveries.reduce((groups, delivery) => {
+      const group = groups.get(delivery.courierName) ?? [];
+      group.push(delivery);
+      groups.set(delivery.courierName, group);
+      return groups;
+    }, new Map<string, PosDeliverySummary[]>()),
+  ).sort(([a], [b]) => a.localeCompare(b, locale));
   const disabled =
     !online ||
     write.isPending ||
@@ -248,21 +268,6 @@ export function PosDeliveryScreen() {
           {text('Offline — new actions are paused.', 'مفيش اتصال — العمليات الجديدة متوقفة.')}
         </p>
       )}
-      <label className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          checked={includeResolved}
-          disabled={Boolean(pending)}
-          onChange={(event) => {
-            setIncludeResolved(event.target.checked);
-            setCursor(undefined);
-          }}
-        />
-        {text(
-          'Include completed follow-up and receipt history',
-          'عرض الطلبات اللي خلصت وسجل استلام الفلوس',
-        )}
-      </label>
       {pending && (
         <div className="grid gap-3 rounded-xl border border-warning/40 bg-warning/10 p-4">
           <strong>
@@ -326,7 +331,7 @@ export function PosDeliveryScreen() {
             )}
         </div>
       )}
-      <div className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2">
+      <div className="grid gap-3 rounded-xl border border-border bg-card p-3 sm:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_auto] xl:items-end">
         <label>
           {text('Branch', 'الفرع')}
           <select
@@ -364,87 +369,241 @@ export function PosDeliveryScreen() {
               </option>
             ))}
           </select>
-          <span className="text-xs text-muted-foreground">
-            {shift.data
-              ? text('Open shift', 'الوردية مفتوحة')
-              : text('Open a shift to receive drawer cash.', 'افتح وردية عشان تستلم كاش في الدرج.')}
-          </span>{' '}
-          <Link className="underline" to="/shift">
-            {text('Register shift', 'الوردية')}
-          </Link>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs">
+            <span className={shift.data ? 'text-foreground' : 'text-warning'}>
+              {shift.data
+                ? text('Shift open', 'الوردية مفتوحة')
+                : text('No open shift', 'مفيش وردية مفتوحة')}
+            </span>
+            {!shift.data && (
+              <span className="text-muted-foreground">
+                {text('Open a shift before receiving courier cash.', 'افتح وردية قبل استلام كاش الطيار.')}
+              </span>
+            )}
+            <Link className="underline" to="/shift">
+              {text('Manage shift', 'إدارة الوردية')}
+            </Link>
+          </div>
         </label>
+        <p className="text-xs text-muted-foreground xl:max-w-48">
+          {text(
+            'Customer payment and courier cash are tracked separately.',
+            'دفع العميل وتوريد كاش الطيار بيتسجلوا كل واحد لوحده.',
+          )}
+        </p>
       </div>
-      <div className="grid gap-3">
-        <h2 className="text-lg font-semibold">
-          {text('Ready to leave with a courier', 'جاهز يخرج مع الطيار')}
-        </h2>
-        {ready.isLoading && <p>{text('Loading...', 'جارٍ التحميل...')}</p>}
-        {ready.data?.items.length === 0 && (
-          <p>{text('No ready deliveries.', 'مفيش طلبات دليفري جاهزة للخروج.')}</p>
-        )}
-        {ready.data?.items.map((order) => (
-          <DispatchCard
-            key={order.id}
-            order={order}
-            disabled={disabled}
-            text={text}
-            onSubmit={(courierName) =>
-              submit({
-                branchId,
-                orderId: order.id,
-                kind: 'action',
-                request: {
-                  action: 'dispatch',
-                  requestId: crypto.randomUUID(),
-                  revision: order.revision,
-                  courierName,
-                },
-              })
-            }
-          />
-        ))}
-        <div className="flex gap-2">
-          {readyCursor && (
-            <PosButton variant="outline" onClick={() => setReadyCursor(undefined)}>
-              {text('First page', 'أول صفحة')}
-            </PosButton>
-          )}
-          {ready.data?.nextCursor && (
-            <PosButton variant="outline" onClick={() => setReadyCursor(ready.data!.nextCursor!)}>
-              {text('Next', 'التالي')}
-            </PosButton>
-          )}
+      <div className="grid gap-4">
+        <div
+          role="tablist"
+          aria-label={text('Delivery work queues', 'قوائم متابعة الدليفري')}
+          className="flex overflow-x-auto border-b border-border"
+        >
+          {([
+            { id: 'ready', label: text('Ready to dispatch', 'جاهز للتوصيل'), count: ready.data?.items.length },
+            { id: 'delivery', label: text('Delivery follow-up', 'متابعة التوصيل'), count: activeView === 'history' ? undefined : deliveryFollowups.length },
+            { id: 'cash', label: text('Courier cash', 'تحصيل كاش الطيار'), count: activeView === 'history' ? undefined : cashDeliveries.length },
+            { id: 'history', label: text('History', 'السجل'), count: activeView === 'history' ? historyDeliveries.length : undefined },
+          ] as const).map((view) => (
+            <button
+              key={view.id}
+              id={`delivery-tab-${view.id}`}
+              type="button"
+              role="tab"
+              aria-selected={activeView === view.id}
+              aria-controls="delivery-tab-panel"
+              onClick={() => {
+                setActiveView(view.id);
+                setCursor(undefined);
+              }}
+              className={`inline-flex min-h-12 shrink-0 items-center gap-2 border-b-2 px-4 text-sm font-medium transition-colors ${activeView === view.id ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+            >
+              <span>{view.label}</span>
+              {view.count !== undefined && (
+                <span className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${activeView === view.id ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                  {view.count}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
-      </div>
-      <div className="grid gap-3">
-        <h2 className="text-lg font-semibold">
-          {text('Deliveries and money still being followed up', 'طلبات وفلوس لسه تحت المتابعة')}
-        </h2>
-        {list.isLoading && <p>{text('Loading...', 'جارٍ التحميل...')}</p>}
-        {list.data?.items.length === 0 && (
-          <p>{text('No pending delivery follow-up.', 'مفيش دليفري معلق تحت المتابعة.')}</p>
-        )}
-        {list.data?.items.map((delivery) => (
-          <DeliveryCard
-            key={`${delivery.orderId}:${delivery.revision}`}
-            delivery={delivery}
-            employee={employee}
-            shift={shift.data ?? null}
-            disabled={disabled || shift.isFetching || shift.isError}
-            text={text}
-            submit={submit}
-          />
-        ))}
-        <div className="flex gap-2">
-          {cursor && (
-            <PosButton variant="outline" onClick={() => setCursor(undefined)}>
-              {text('First page', 'أول صفحة')}
-            </PosButton>
+        <p className="-mt-2 text-xs text-muted-foreground">
+          {text('Counts reflect the orders on the current page.', 'الأعداد بتوضح الطلبات الظاهرة في الصفحة الحالية.')}
+        </p>
+
+        <div
+          id="delivery-tab-panel"
+          role="tabpanel"
+          aria-labelledby={`delivery-tab-${activeView}`}
+          className="grid gap-3"
+        >
+          {activeView === 'ready' && (
+            <>
+              <div>
+                <h2 className="text-lg font-semibold">{text('Ready to dispatch', 'جاهز للتوصيل')}</h2>
+                <p className="text-sm text-muted-foreground">{text('Choose a courier for each prepared order.', 'اختار الطيار لكل طلب جاهز.')}</p>
+              </div>
+              {ready.isLoading && <p>{text('Loading orders...', 'جارٍ تحميل الطلبات...')}</p>}
+              {ready.data?.items.length === 0 && (
+                <p className="rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground">
+                  {text('All set. There are no orders waiting for dispatch.', 'تمام، مفيش طلبات مستنية التوصيل.')}
+                </p>
+              )}
+              {ready.data?.items.map((order) => (
+                <DispatchCard
+                  key={order.id}
+                  order={order}
+                  disabled={disabled}
+                  text={text}
+                  onSubmit={(courierName) =>
+                    submit({
+                      branchId,
+                      orderId: order.id,
+                      kind: 'action',
+                      request: {
+                        action: 'dispatch',
+                        requestId: crypto.randomUUID(),
+                        revision: order.revision,
+                        courierName,
+                      },
+                    })
+                  }
+                />
+              ))}
+              <PaginationControls
+                cursor={readyCursor}
+                nextCursor={ready.data?.nextCursor ?? null}
+                text={text}
+                onFirst={() => setReadyCursor(undefined)}
+                onNext={(next) => setReadyCursor(next)}
+              />
+            </>
           )}
-          {list.data?.nextCursor && (
-            <PosButton variant="outline" onClick={() => setCursor(list.data!.nextCursor!)}>
-              {text('Next', 'التالي')}
-            </PosButton>
+
+          {activeView === 'delivery' && (
+            <>
+              <div>
+                <h2 className="text-lg font-semibold">{text('Delivery follow-up', 'متابعة التوصيل')}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {text('Confirm delivery, record a failed attempt, or collect an outstanding customer payment.', 'أكد التوصيل، سجل محاولة فاشلة، أو سجل المبلغ المتبقي على العميل.')}
+                </p>
+              </div>
+              {list.isLoading && <p>{text('Loading orders...', 'جارٍ تحميل الطلبات...')}</p>}
+              {list.data && deliveryFollowups.length === 0 && (
+                <p className="rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground">
+                  {text('No delivery follow-up is needed right now.', 'مفيش طلبات محتاجة متابعة توصيل حاليًا.')}
+                </p>
+              )}
+              {deliveryFollowups.map((delivery) => (
+                <DeliveryCard
+                  key={`${delivery.orderId}:${delivery.revision}`}
+                  delivery={delivery}
+                  employee={employee}
+                  shift={shift.data ?? null}
+                  disabled={disabled || shift.isFetching || shift.isError}
+                  text={text}
+                  submit={submit}
+                />
+              ))}
+              <PaginationControls
+                cursor={cursor}
+                nextCursor={list.data?.nextCursor ?? null}
+                text={text}
+                onFirst={() => setCursor(undefined)}
+                onNext={(next) => setCursor(next)}
+              />
+            </>
+          )}
+
+          {activeView === 'cash' && (
+            <>
+              <div>
+                <h2 className="text-lg font-semibold">{text('Cash to receive from couriers', 'كاش مطلوب استلامه من الطيارين')}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {text('Groups and totals cover the orders on this page. Use Next to continue through the list.', 'التجميع والإجمالي للطلبات الظاهرة في الصفحة دي. استخدم التالي عشان تكمل باقي القائمة.')}
+                </p>
+              </div>
+              {list.isLoading && <p>{text('Loading cash balances...', 'جارٍ تحميل أرصدة الكاش...')}</p>}
+              {list.data && cashGroups.length === 0 && (
+                <p className="rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground">
+                  {text('No courier cash is waiting to be received.', 'مفيش كاش مستني التوريد من الطيارين.')}
+                </p>
+              )}
+              {cashGroups.map(([courierName, orders]) => {
+                const totalCents = orders.reduce((sum, order) => sum + amountToCents(order.courierCashHeld), 0);
+                return (
+                  <section key={courierName} className="overflow-hidden rounded-xl border border-border bg-card">
+                    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/30 px-4 py-3">
+                      <div>
+                        <h3 className="font-semibold">{courierName}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {text(`${orders.length} order${orders.length === 1 ? '' : 's'}`, `${orders.length} طلب`)}
+                        </p>
+                      </div>
+                      <p className="text-end">
+                        <span className="block text-xs text-muted-foreground">{text('Cash still with courier', 'الكاش المتبقي مع الطيار')}</span>
+                        <strong className="text-lg tabular-nums"><bdi dir="ltr">{formatCents(totalCents, locale)} {text('EGP', 'ج.م.')}</bdi></strong>
+                      </p>
+                    </header>
+                    <div className="divide-y divide-border">
+                      {orders.map((delivery) => (
+                        <CourierCashOrder
+                          key={`${delivery.orderId}:${delivery.revision}`}
+                          delivery={delivery}
+                          employee={employee}
+                          shift={shift.data ?? null}
+                          disabled={disabled || shift.isFetching || shift.isError}
+                          text={text}
+                          submit={submit}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+              <PaginationControls
+                cursor={cursor}
+                nextCursor={list.data?.nextCursor ?? null}
+                text={text}
+                onFirst={() => setCursor(undefined)}
+                onNext={(next) => setCursor(next)}
+              />
+            </>
+          )}
+
+          {activeView === 'history' && (
+            <>
+              <div>
+                <h2 className="text-lg font-semibold">{text('Completed deliveries', 'الطلبات المكتملة')}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {text('Delivered orders with customer balances and courier cash fully settled.', 'الطلبات اللي اتسلمت واتصفى حساب العميل وكاش الطيار فيها.')}
+                </p>
+              </div>
+              {list.isLoading && <p>{text('Loading history...', 'جارٍ تحميل السجل...')}</p>}
+              {list.data && historyDeliveries.length === 0 && (
+                <p className="rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground">
+                  {text('No completed deliveries in this part of the history.', 'مفيش طلبات مكتملة في الجزء ده من السجل.')}
+                </p>
+              )}
+              {historyDeliveries.map((delivery) => (
+                <DeliveryCard
+                  key={`${delivery.orderId}:${delivery.revision}`}
+                  delivery={delivery}
+                  employee={employee}
+                  shift={shift.data ?? null}
+                  disabled
+                  readOnly
+                  text={text}
+                  submit={submit}
+                />
+              ))}
+              <PaginationControls
+                cursor={cursor}
+                nextCursor={list.data?.nextCursor ?? null}
+                text={text}
+                onFirst={() => setCursor(undefined)}
+                onNext={(next) => setCursor(next)}
+              />
+            </>
           )}
         </div>
       </div>
@@ -466,18 +625,26 @@ function DispatchCard({
   const [name, setName] = useState('');
   return (
     <form
-      className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4"
+      className="grid gap-4 rounded-xl border border-border bg-card p-4 lg:grid-cols-[minmax(0,1fr)_minmax(14rem,20rem)_auto] lg:items-end"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit(name.trim());
       }}
     >
-      <p className="me-auto">
-        #{order.id.slice(0, 8)} · {order.customerName} · {order.total} EGP
-      </p>
-      <label>
-        {text('Courier name / reference', 'اسم الطيار / مرجعه')}
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{text('Ready for dispatch', 'جاهز للتوصيل')}</p>
+        <h3 className="truncate font-semibold">{order.customerName || text('Customer name unavailable', 'اسم العميل غير متاح')}</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {text('Order', 'طلب')} <bdi dir="ltr">#{order.id.slice(0, 8)}</bdi>
+          <span className="mx-2">·</span>
+          {text('Total', 'الإجمالي')} <strong className="tabular-nums"><bdi dir="ltr">{order.total} {text('EGP', 'ج.م.')}</bdi></strong>
+        </p>
+      </div>
+      <label className="grid gap-1">
+        {text('Courier name or reference', 'اسم الطيار أو مرجعه')}
         <Input
+          aria-label={text('Courier name or reference', 'اسم الطيار أو مرجعه')}
+          placeholder={text('Enter courier name', 'اكتب اسم الطيار')}
           required
           maxLength={160}
           value={name}
@@ -485,13 +652,55 @@ function DispatchCard({
         />
       </label>
       <PosButton type="submit" disabled={disabled || !name.trim()}>
-        {text('Send with courier', 'خرج مع الطيار')}
+        {text('Dispatch order', 'تسليم للطيار')}
       </PosButton>
     </form>
   );
 }
 
-function DeliveryCard({
+function amountToCents(amount: string) {
+  const [units = '0', fraction = ''] = amount.split('.');
+  return Number(units) * 100 + Number(fraction.padEnd(2, '0').slice(0, 2));
+}
+
+function formatCents(cents: number, locale: string) {
+  return new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
+}
+
+function PaginationControls({
+  cursor,
+  nextCursor,
+  text,
+  onFirst,
+  onNext,
+}: {
+  cursor: string | undefined;
+  nextCursor: string | null;
+  text: (en: string, ar: string) => string;
+  onFirst: () => void;
+  onNext: (cursor: string) => void;
+}) {
+  if (!cursor && !nextCursor) return null;
+  return (
+    <div className="flex gap-2 pt-1">
+      {cursor && (
+        <PosButton variant="outline" onClick={onFirst}>
+          {text('First page', 'أول صفحة')}
+        </PosButton>
+      )}
+      {nextCursor && (
+        <PosButton variant="outline" onClick={() => onNext(nextCursor)}>
+          {text('Next page', 'الصفحة التالية')}
+        </PosButton>
+      )}
+    </div>
+  );
+}
+
+function CourierCashOrder({
   delivery: d,
   employee,
   shift,
@@ -506,7 +715,125 @@ function DeliveryCard({
   text: (en: string, ar: string) => string;
   submit: (saved: PendingDeliveryWrite) => void;
 }) {
-  const [amount, setAmount] = useState('');
+  const firstPayment = d.courierPayments.find((payment) => payment.remaining !== '0.00');
+  const [paymentId, setPaymentId] = useState(firstPayment?.id ?? '');
+  const [amount, setAmount] = useState(firstPayment?.remaining ?? '');
+  const mine =
+    d.custodianEmployeeId === employee.id || employee.permissions.includes('approve_shift_close');
+  const selectedPayment = d.courierPayments.find((payment) => payment.id === paymentId);
+  const moneyValid = /^(?=.*[1-9])\d{1,10}(?:\.\d{1,2})?$/.test(amount);
+
+  return (
+    <article className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] sm:items-center">
+      <div className="min-w-0">
+        <p className="font-semibold">
+          {text('Order', 'طلب')} <bdi dir="ltr">#{d.orderId.slice(0, 8)}</bdi>
+          <span className="mx-2 text-muted-foreground">·</span>
+          {d.status === 'delivered'
+            ? text('Delivered', 'تم التوصيل')
+            : d.status === 'failed'
+              ? text('Delivery failed', 'تعذر التوصيل')
+              : text('Out with courier', 'خرج مع الطيار')}
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {text('Customer still owes', 'المتبقي على العميل')}:{' '}
+          <bdi dir="ltr">{d.customerDue} {text('EGP', 'ج.م.')}</bdi>
+        </p>
+        <p className="mt-1 font-semibold tabular-nums">
+          {text('To receive', 'المطلوب استلامه')}:{' '}
+          <bdi dir="ltr">{d.courierCashHeld} {text('EGP', 'ج.م.')}</bdi>
+        </p>
+        {!mine && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            {text('The assigned employee or a supervisor can receive this cash.', 'مسؤول المتابعة أو المشرف يقدر يستلم الكاش ده.')}
+          </p>
+        )}
+      </div>
+      {mine && (
+        <form
+          className="grid gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!shift || !paymentId || !moneyValid) return;
+            submit({
+              branchId: d.branchId,
+              orderId: d.orderId,
+              kind: 'action',
+              request: {
+                requestId: crypto.randomUUID(),
+                revision: d.revision,
+                action: 'remit',
+                receivingShiftId: shift.id,
+                paymentId,
+                amount,
+              },
+            });
+          }}
+        >
+          {d.courierPayments.filter((payment) => payment.remaining !== '0.00').length > 1 && (
+            <label className="grid gap-1 text-sm">
+              {text('Payment balance', 'رصيد الدفع')}
+              <select
+                className="min-h-11 w-full rounded border border-input bg-background px-3"
+                value={paymentId}
+                onChange={(event) => {
+                  const nextPaymentId = event.target.value;
+                  setPaymentId(nextPaymentId);
+                  setAmount(d.courierPayments.find((payment) => payment.id === nextPaymentId)?.remaining ?? '');
+                }}
+              >
+                {d.courierPayments
+                  .filter((payment) => payment.remaining !== '0.00')
+                  .map((payment) => (
+                    <option key={payment.id} value={payment.id}>
+                      #{payment.id.slice(0, 8)} · {payment.remaining} {text('EGP', 'ج.م.')}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          )}
+          <label className="grid gap-1 text-sm">
+            {text('Amount received', 'المبلغ المستلم')}
+            <Input
+              inputMode="decimal"
+              required
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+            />
+          </label>
+          <PosButton
+            type="submit"
+            disabled={disabled || !shift || !paymentId || !selectedPayment || !moneyValid}
+          >
+            {text('Confirm cash received', 'تأكيد استلام الكاش')}
+          </PosButton>
+        </form>
+      )}
+    </article>
+  );
+}
+
+function DeliveryCard({
+  delivery: d,
+  employee,
+  shift,
+  disabled,
+  readOnly = false,
+  text,
+  submit,
+}: {
+  delivery: PosDeliverySummary;
+  employee: PosEmployeeSession;
+  shift: PosShiftSummary | null;
+  disabled: boolean;
+  readOnly?: boolean;
+  text: (en: string, ar: string) => string;
+  submit: (saved: PendingDeliveryWrite) => void;
+}) {
+  const [customerPaymentAmount, setCustomerPaymentAmount] = useState('');
+  const [remitAmount, setRemitAmount] = useState(
+    d.courierPayments.find((payment) => payment.remaining !== '0.00')?.remaining ?? '',
+  );
   const [reason, setReason] = useState('');
   const [courier, setCourier] = useState(d.courierName);
   const [checkId, setCheckId] = useState(d.checks.find((c) => c.balanceDue !== '0.00')?.id ?? '');
@@ -520,7 +847,8 @@ function DeliveryCard({
   const action = (command: PosDeliveryCommand) =>
     submit({ branchId: d.branchId, orderId: d.orderId, kind: 'action', request: command });
   const base = () => ({ requestId: crypto.randomUUID(), revision: d.revision });
-  const moneyValid = /^(?=.*[1-9])\d{1,10}(?:\.\d{1,2})?$/.test(amount);
+  const customerMoneyValid = /^(?=.*[1-9])\d{1,10}(?:\.\d{1,2})?$/.test(customerPaymentAmount);
+  const remitMoneyValid = /^(?=.*[1-9])\d{1,10}(?:\.\d{1,2})?$/.test(remitAmount);
   function payment(event: FormEvent) {
     event.preventDefault();
     submit({
@@ -538,10 +866,10 @@ function DeliveryCard({
           method === 'terminal'
             ? {
                 method: 'terminal',
-                amount,
+                amount: customerPaymentAmount,
                 ...(reference.trim() ? { terminalReference: reference.trim() } : {}),
               }
-            : { method: 'cash', amount, receivedAmount: amount },
+            : { method: 'cash', amount: customerPaymentAmount, receivedAmount: customerPaymentAmount },
         ],
       },
     });
@@ -549,26 +877,33 @@ function DeliveryCard({
   return (
     <article className="grid gap-4 rounded-xl border border-border bg-card p-4 sm:p-5">
       <header>
-        <h3 className="font-semibold">
-          #{d.orderId.slice(0, 8)} · {d.courierName}
-        </h3>
-        <p>
-          {d.status === 'delivered'
-            ? text('Delivered to customer', 'وصل للعميل')
-            : d.status === 'failed'
-              ? text('Delivery failed', 'التوصيل فشل')
-              : text('Out with courier', 'خرج مع الطيار')}{' '}
-          · {text('Responsible', 'مسؤول المتابعة')}: {d.custodianName}
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="font-semibold">
+            {text('Order', 'طلب')} <bdi dir="ltr">#{d.orderId.slice(0, 8)}</bdi>
+          </h3>
+          <span className={`rounded-full px-2.5 py-1 text-xs ${d.status === 'failed' ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'}`}>
+            {d.status === 'delivered'
+              ? text('Delivered', 'تم التوصيل')
+              : d.status === 'failed'
+                ? text('Delivery failed', 'تعذر التوصيل')
+                : text('Out with courier', 'خرج مع الطيار')}
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {text('Courier', 'الطيار')}: {d.courierName}
+          <span className="mx-2">·</span>
+          {text('Follow-up owner', 'مسؤول المتابعة')}: {d.custodianName}
         </p>
-        {d.failureReason && <p className="text-warning">{d.failureReason}</p>}
+        {d.failureReason && <p className="mt-2 text-sm text-warning">{d.failureReason}</p>}
       </header>
       <div className="grid gap-2 sm:grid-cols-2">
-        <p>
-          {text('Customer still owes', 'لسه مطلوب من العميل')}: <strong>{d.customerDue} EGP</strong>
+        <p className="rounded-lg bg-muted/30 p-3">
+          <span className="block text-xs text-muted-foreground">{text('Customer balance due', 'المتبقي على العميل')}</span>
+          <strong className="mt-1 block tabular-nums"><bdi dir="ltr">{d.customerDue} {text('EGP', 'ج.م.')}</bdi></strong>
         </p>
-        <p>
-          {text('Cash still with courier', 'كاش لسه مع الطيار')}:{' '}
-          <strong>{d.courierCashHeld} EGP</strong>
+        <p className="rounded-lg bg-muted/30 p-3">
+          <span className="block text-xs text-muted-foreground">{text('Courier cash to receive', 'كاش مطلوب من الطيار')}</span>
+          <strong className="mt-1 block tabular-nums"><bdi dir="ltr">{d.courierCashHeld} {text('EGP', 'ج.م.')}</bdi></strong>
         </p>
       </div>
       {Boolean(d.remittances?.length) && (
@@ -589,7 +924,8 @@ function DeliveryCard({
         </details>
       )}
       <div className="flex flex-wrap gap-2">
-        {mine &&
+        {!readOnly &&
+          mine &&
           shift &&
           (d.followupShiftId !== shift.id || d.custodianEmployeeId !== employee.id) && (
             <PosButton
@@ -605,7 +941,7 @@ function DeliveryCard({
           </PosButton>
         )}
       </div>
-      {!mine && (
+      {!readOnly && !mine && (
         <p className="text-muted-foreground">
           {text(
             'The assigned employee or a supervisor handles these actions.',
@@ -657,12 +993,6 @@ function DeliveryCard({
           </PosButton>
         </form>
       )}
-      {mine && (
-        <label className="grid max-w-xs gap-1">
-          {text('Amount (EGP)', 'المبلغ بالجنيه')}
-          <Input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
-        </label>
-      )}
       {mine && d.status !== 'failed' && d.customerDue !== '0.00' && (
         <form className="grid gap-3 border-t border-border pt-3" onSubmit={payment}>
           <label>
@@ -705,6 +1035,15 @@ function DeliveryCard({
               </option>
             </select>
           </label>
+          <label className="grid max-w-xs gap-1">
+            {text('Customer payment amount', 'المبلغ اللي دفعه العميل')}
+            <Input
+              inputMode="decimal"
+              required
+              value={customerPaymentAmount}
+              onChange={(event) => setCustomerPaymentAmount(event.target.value)}
+            />
+          </label>
           {method === 'terminal' && (
             <Input
               aria-label={text('Terminal reference', 'مرجع الماكينة')}
@@ -716,7 +1055,7 @@ function DeliveryCard({
           )}
           <PosButton
             type="submit"
-            disabled={disabled || !moneyValid || !checkId || (method !== 'courier' && !shift)}
+            disabled={disabled || !customerMoneyValid || !checkId || (method !== 'courier' && !shift)}
           >
             {text('Record customer payment once', 'سجل دفع العميل مرة واحدة')}
           </PosButton>
@@ -727,7 +1066,7 @@ function DeliveryCard({
           className="grid gap-3 border-t border-border pt-3"
           onSubmit={(event) => {
             event.preventDefault();
-            action({ ...base(), action: 'remit', receivingShiftId: shift!.id, paymentId, amount });
+            action({ ...base(), action: 'remit', receivingShiftId: shift!.id, paymentId, amount: remitAmount });
           }}
         >
           <label>
@@ -738,7 +1077,10 @@ function DeliveryCard({
             <select
               className="min-h-11 w-full rounded border border-input bg-background px-3"
               value={paymentId}
-              onChange={(e) => setPaymentId(e.target.value)}
+              onChange={(e) => {
+                setPaymentId(e.target.value);
+                setRemitAmount(d.courierPayments.find((payment) => payment.id === e.target.value)?.remaining ?? '');
+              }}
             >
               {d.courierPayments
                 .filter((p) => p.remaining !== '0.00')
@@ -749,13 +1091,22 @@ function DeliveryCard({
                 ))}
             </select>
           </label>
+          <label className="grid max-w-xs gap-1">
+            {text('Amount received from courier', 'المبلغ المستلم من الطيار')}
+            <Input
+              inputMode="decimal"
+              required
+              value={remitAmount}
+              onChange={(event) => setRemitAmount(event.target.value)}
+            />
+          </label>
           <p className="text-xs text-muted-foreground">
             {text(
               'This receives existing courier money; it does not charge the customer again.',
               'ده استلام فلوس موجودة مع الطيار؛ مش تحصيل تاني من العميل.',
             )}
           </p>
-          <PosButton type="submit" disabled={disabled || !shift || !paymentId || !moneyValid}>
+          <PosButton type="submit" disabled={disabled || !shift || !paymentId || !remitMoneyValid}>
             {text('Confirm cash actually received', 'تأكيد الكاش اللي استلمته فعلًا')}
           </PosButton>
         </form>

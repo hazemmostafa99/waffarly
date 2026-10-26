@@ -145,15 +145,17 @@ test('failed lazy report download shows a recoverable reload action', async ({ p
     route.fulfill({ json: { items: [], nextCursor: null } }),
   );
   let chunkRequests = 0;
+  let blockChunk = true;
   await page.route('**/assets/ItemReturnReportsPage-*.js', (route) => {
     chunkRequests += 1;
-    return chunkRequests === 1 ? route.abort() : route.continue();
+    return blockChunk ? route.abort() : route.continue();
   });
 
   await page.goto('http://127.0.0.1:5274/pos-item-returns');
   await expect(
     page.getByRole('alert').getByRole('heading', { name: 'This page could not be loaded' }),
   ).toBeVisible();
+  blockChunk = false;
   await page.getByRole('button', { name: 'Reload page', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'POS returns & waste' })).toBeVisible();
   expect(chunkRequests).toBeGreaterThanOrEqual(2);

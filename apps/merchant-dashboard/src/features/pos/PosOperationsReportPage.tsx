@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { InventoryBranch, OwnerPosOperationsReport } from '@waffarly/contracts';
 import { Button, DashboardCard, useLocale } from '@waffarly/ui';
 import { Icon } from '../../Icons.js';
 import { PagedEntitySelect } from '../../components/PagedEntitySelect.js';
 import { apiRequest } from '../../lib/api-client.js';
+import { InventoryHeader } from '../inventory/InventoryHeader.js';
 import './pos-operations-report.css';
 
 const maxRangeMs = 93 * 24 * 60 * 60 * 1000;
@@ -186,81 +188,97 @@ export function PosOperationsReportPage() {
   }
 
   return (
-    <section className="pos-operations-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <header className="pos-operations-heading">
-        <div>
-          <span className="pos-operations-eyebrow">{text('Reports', 'التقارير')}</span>
-          <h1>{text('POS operations', 'تشغيل نقطة البيع')}</h1>
+    <section className="inventory-page pos-operations-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+      <InventoryHeader
+        title={text('POS operations', 'تشغيل نقطة البيع')}
+        description={text(
+          'Review order progress, current balances, collections, refunds and kitchen timing.',
+          'تابع تقدم الطلبات والأرصدة الحالية والتحصيلات والاستردادات ووقت تجهيز المطبخ.',
+        )}
+        showInventoryNavigation={false}
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!report || loading}
+              onClick={downloadCsv}
+            >
+              {text('Download CSV', 'تنزيل CSV')}
+            </Button>
+            <Button
+              type="button"
+              disabled={loading}
+              onClick={() => setRefresh((value) => value + 1)}
+            >
+              <Icon name="refresh" />
+              {text('Refresh', 'تحديث')}
+            </Button>
+          </>
+        }
+      />
+
+      <DashboardCard
+        className="pos-operations-filter-card"
+        title={text('Report filters', 'فلاتر التقرير')}
+        description={text(
+          'Choose a branch and a period of up to 93 days. All times are in UTC.',
+          'اختر الفرع وفترة لا تتجاوز ٩٣ يومًا. جميع الأوقات بتوقيت UTC.',
+        )}
+      >
+        <div className="inventory-filters pos-operations-filters">
+          <div className="pos-operations-filter-field">
+            <span>{text('Branch', 'الفرع')}</span>
+            <PagedEntitySelect<InventoryBranch>
+              path="/owner/inventory/branches"
+              value={branchId}
+              label={text('Filter by branch', 'تصفية حسب الفرع')}
+              emptyLabel={text('All branches', 'كل الفروع')}
+              required={false}
+              searchMode="combobox"
+              onSelect={(branch) => setBranchId(branch?.id ?? '')}
+            />
+          </div>
+          <label className="pos-operations-filter-field" htmlFor="operations-from">
+            <span>{text('From (UTC)', 'من (UTC)')}</span>
+            <input
+              id="operations-from"
+              type="datetime-local"
+              dir="ltr"
+              value={from}
+              max={to}
+              onChange={(event) => setFrom(event.target.value)}
+            />
+          </label>
+          <label className="pos-operations-filter-field" htmlFor="operations-to">
+            <span>{text('Until, exclusive (UTC)', 'حتى، غير شامل (UTC)')}</span>
+            <input
+              id="operations-to"
+              type="datetime-local"
+              dir="ltr"
+              value={to}
+              min={from}
+              onChange={(event) => setTo(event.target.value)}
+            />
+          </label>
+        </div>
+
+        <details className="pos-operations-scope">
+          <summary>
+            <Icon name="help" />
+            {text('How these figures are calculated', 'كيف تُحسب هذه الأرقام؟')}
+          </summary>
           <p>
             {text(
-              'Review order progress, current balances, collections, refunds and kitchen timing.',
-              'تابع تقدم الطلبات والأرصدة الحالية والتحصيلات والاستردادات ووقت تجهيز المطبخ.',
+              'Collections and refunds use their event time. Outstanding is the current balance of orders placed in this range. Order and kitchen counts use order creation time.',
+              'يُحسب التحصيل والاسترداد حسب وقت حدوثهما. الرصيد المتبقي هو الرصيد الحالي للطلبات المنشأة خلال الفترة. أعداد الطلبات والمطبخ تعتمد على وقت إنشاء الطلب.',
             )}
           </p>
-        </div>
-        <div className="pos-operations-actions">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!report || loading}
-            onClick={downloadCsv}
-          >
-            {text('Download CSV', 'تنزيل CSV')}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={loading}
-            onClick={() => setRefresh((value) => value + 1)}
-          >
-            <Icon name="refresh" />
-            {text('Refresh', 'تحديث')}
-          </Button>
-        </div>
-      </header>
-
-      <div className="pos-operations-filters">
-        <label>
-          <span>{text('Branch', 'الفرع')}</span>
-          <PagedEntitySelect<InventoryBranch>
-            path="/owner/inventory/branches"
-            value={branchId}
-            label={text('Filter by branch', 'تصفية حسب الفرع')}
-            emptyLabel={text('All branches', 'كل الفروع')}
-            required={false}
-            searchMode="combobox"
-            onSelect={(branch) => setBranchId(branch?.id ?? '')}
-          />
-        </label>
-        <label>
-          <span>{text('From (UTC)', 'من (UTC)')}</span>
-          <input
-            type="datetime-local"
-            value={from}
-            max={to}
-            onChange={(event) => setFrom(event.target.value)}
-          />
-        </label>
-        <label>
-          <span>{text('Until, exclusive (UTC)', 'حتى، غير شامل (UTC)')}</span>
-          <input
-            type="datetime-local"
-            value={to}
-            min={from}
-            onChange={(event) => setTo(event.target.value)}
-          />
-        </label>
-      </div>
-
-      <p className="pos-operations-scope">
-        {text(
-          'Collections and refunds use their event time. Outstanding is the current balance of orders placed in this range. Order and kitchen counts use order creation time.',
-          'يُحسب التحصيل والاسترداد حسب وقت حدوثهما. الرصيد المتبقي هو الرصيد الحالي للطلبات المنشأة خلال الفترة. أعداد الطلبات والمطبخ تعتمد على وقت إنشاء الطلب.',
-        )}
-      </p>
+        </details>
+      </DashboardCard>
 
       {error && (
-        <div className="pos-operations-error" role="alert">
+        <div className="inventory-error pos-operations-error" role="alert">
           <span>{error}</span>
           <Button
             type="button"
@@ -276,31 +294,14 @@ export function PosOperationsReportPage() {
       {report && !error && (
         <div className="pos-operations-content" aria-busy={loading}>
           <DashboardCard
-            title={text('Delivery cash', 'كاش الدليفري')}
-            description={text(
-              'Customer payments can remain with couriers. Drawer receipt is a separate transfer and is not added again to collections.',
-              'فلوس العميل ممكن تكون لسه مع الطيار. استلامها في الدرج حركة منفصلة، ومش بتتضاف للتحصيل مرة تانية.',
-            )}
-          >
-            <div className="pos-operations-metrics">
-              <Metric
-                label={text('Customer cash paid to couriers', 'كاش دفعه العميل للطيار')}
-                value={money(report.deliveryCash?.customerCollections ?? '0.00')}
-              />
-              <Metric
-                label={text('Courier cash received into drawers', 'كاش الطيار المستلم في الأدراج')}
-                value={money(report.deliveryCash?.drawerReceipts ?? '0.00')}
-              />
-            </div>
-          </DashboardCard>
-          <DashboardCard
+            className="pos-operations-orders"
             title={text('Orders and balances', 'الطلبات والأرصدة')}
             description={text(
               'Orders are counted once even when split into multiple checks.',
               'يُحسب الطلب مرة واحدة حتى إذا قُسّم إلى عدة حسابات.',
             )}
           >
-            <div className="pos-operations-metrics">
+            <dl className="pos-operations-metrics pos-operations-order-metrics">
               <Metric
                 label={text('Placed orders', 'الطلبات المنشأة')}
                 value={number(report.orders.placedCount)}
@@ -332,19 +333,20 @@ export function PosOperationsReportPage() {
               <Metric
                 label={text('Current outstanding', 'المتبقي حاليًا')}
                 value={money(report.orders.outstanding)}
-                emphasis
+                warning={Number(report.orders.outstanding) > 0}
               />
-            </div>
+            </dl>
           </DashboardCard>
 
           <DashboardCard
+            className="pos-operations-collections"
             title={text('Collections and refunds', 'التحصيلات والاستردادات')}
             description={text(
               'Tender activity is grouped separately from order value.',
               'تُعرض حركة وسائل الدفع منفصلة عن قيمة الطلبات.',
             )}
           >
-            <div className="pos-operations-metrics">
+            <dl className="pos-operations-metrics pos-operations-collection-metrics">
               <Metric
                 label={text('Cash collected', 'التحصيل النقدي')}
                 value={money(report.collections.cash)}
@@ -356,7 +358,6 @@ export function PosOperationsReportPage() {
               <Metric
                 label={text('Total collected', 'إجمالي التحصيل')}
                 value={money(report.collections.total)}
-                emphasis
               />
               <Metric
                 label={text('Cash refunds', 'استرداد نقدي')}
@@ -369,12 +370,54 @@ export function PosOperationsReportPage() {
               <Metric
                 label={text('Net collected', 'صافي التحصيل')}
                 value={money(report.netCollected)}
-                emphasis
+                emphasis={Number(report.netCollected) >= 0}
+                warning={Number(report.netCollected) < 0}
               />
-            </div>
+            </dl>
           </DashboardCard>
 
           <DashboardCard
+            className="pos-operations-delivery"
+            title={text('Delivery cash', 'كاش الدليفري')}
+            description={text(
+              'Cash held by couriers and transfers received into drawers are tracked separately.',
+              'يُعرض النقد مع الطيارين منفصلًا عن المبالغ المستلمة في الأدراج.',
+            )}
+          >
+            <dl className="pos-operations-metrics">
+              <Metric
+                label={text('Customer cash paid to couriers', 'كاش دفعه العميل للطيار')}
+                value={money(report.deliveryCash?.customerCollections ?? '0.00')}
+              />
+              <Metric
+                label={text('Courier cash received into drawers', 'كاش الطيار المستلم في الأدراج')}
+                value={money(report.deliveryCash?.drawerReceipts ?? '0.00')}
+              />
+            </dl>
+          </DashboardCard>
+
+          <DashboardCard
+            className="pos-operations-kitchen"
+            title={text('Kitchen timing', 'توقيت المطبخ')}
+            description={text(
+              'Averages include orders that have both timestamps.',
+              'تشمل المتوسطات الطلبات التي لديها وقتا البداية والنهاية.',
+            )}
+          >
+            <dl className="pos-operations-metrics">
+              <Metric
+                label={text('Accepted to preparation', 'من القبول إلى بدء التحضير')}
+                value={duration(report.preparation.acceptedToStartSeconds)}
+              />
+              <Metric
+                label={text('Preparation to ready', 'من بدء التحضير إلى الجاهزية')}
+                value={duration(report.preparation.startToReadySeconds)}
+              />
+            </dl>
+          </DashboardCard>
+
+          <DashboardCard
+            className="pos-operations-cashiers"
             title={text('Cashier activity', 'نشاط الكاشيرين')}
             description={text(
               'Orders are attributed to the employee who opened them; collections and refunds are attributed to the employee who recorded each payment action.',
@@ -389,92 +432,92 @@ export function PosOperationsReportPage() {
                 )}
               </p>
             ) : (
-              <div
-                className="pos-operations-table-scroll"
-                role="region"
-                aria-label={text(
-                  'Scrollable cashier activity table',
-                  'جدول نشاط الكاشيرين القابل للتمرير',
-                )}
-                tabIndex={0}
-              >
-                <table className="pos-operations-cashier-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">{text('Cashier / operator', 'الكاشير / الموظف')}</th>
-                      <th scope="col">{text('Orders opened', 'الطلبات المنشأة')}</th>
-                      <th scope="col">{text('Order value', 'قيمة الطلبات')}</th>
-                      <th scope="col">{text('Payments', 'المدفوعات')}</th>
-                      <th scope="col">{text('Collections', 'التحصيل')}</th>
-                      <th scope="col">{text('Refunds', 'الاسترداد')}</th>
-                      <th scope="col">{text('Net collected', 'صافي التحصيل')}</th>
-                      <th scope="col">{text('Courier cash received', 'كاش مستلم من الطيار')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cashierActivity.map((activity) => (
-                      <tr key={activity.employeeId ?? 'unattributed'}>
-                        <th scope="row">
-                          <strong>
-                            {activity.employeeName ??
-                              text('Unattributed activity', 'نشاط غير منسوب')}
-                          </strong>
-                          <small>
-                            {number(activity.cancelledOrders)} {text('cancelled', 'ملغاة')}
-                          </small>
-                        </th>
-                        <td>{number(activity.ordersOpened)}</td>
-                        <td>{money(activity.orderValue)}</td>
-                        <td>{number(activity.paymentCount)}</td>
-                        <td>
-                          <span>
-                            {text('Cash', 'كاش')}: {money(activity.collections.cash)}
-                          </span>
-                          <small>
-                            {text('Terminal', 'ماكينة')}: {money(activity.collections.terminal)}
-                          </small>
-                        </td>
-                        <td>
-                          <span>{number(activity.refundCount)}</span>
-                          <small>{money(activity.refunds.total)}</small>
-                        </td>
-                        <td>
-                          <strong>{money(activity.netCollected)}</strong>
-                        </td>
-                        <td>{money(activity.deliveryCashReceived ?? '0.00')}</td>
+              <>
+                <p className="pos-operations-table-hint" id="operations-table-hint">
+                  {text(
+                    'Scroll horizontally to view all cashier figures.',
+                    'مرّر الجدول أفقيًا لعرض جميع أرقام الكاشيرين.',
+                  )}
+                </p>
+                <div
+                  className="wf-table-scroll pos-operations-table-scroll"
+                  role="region"
+                  aria-describedby="operations-table-hint"
+                  aria-label={text(
+                    'Scrollable cashier activity table',
+                    'جدول نشاط الكاشيرين القابل للتمرير',
+                  )}
+                  tabIndex={0}
+                >
+                  <table className="wf-data-table pos-operations-cashier-table">
+                    <caption className="wf-sr-only">
+                      {text('Cashier activity', 'نشاط الكاشيرين')}
+                    </caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">{text('Cashier / operator', 'الكاشير / الموظف')}</th>
+                        <th scope="col">{text('Orders opened', 'الطلبات المنشأة')}</th>
+                        <th scope="col">{text('Order value', 'قيمة الطلبات')}</th>
+                        <th scope="col">{text('Payments', 'المدفوعات')}</th>
+                        <th scope="col">{text('Collections', 'التحصيل')}</th>
+                        <th scope="col">{text('Refunds', 'الاسترداد')}</th>
+                        <th scope="col">{text('Net collected', 'صافي التحصيل')}</th>
+                        <th scope="col">{text('Courier cash received', 'كاش مستلم من الطيار')}</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {cashierActivity.map((activity) => (
+                        <tr key={activity.employeeId ?? 'unattributed'}>
+                          <th scope="row">
+                            <div className="inventory-table-name">
+                              <strong>
+                                {activity.employeeName ??
+                                  text('Unattributed activity', 'نشاط غير منسوب')}
+                              </strong>
+                              <small>
+                                {number(activity.cancelledOrders)} {text('cancelled', 'ملغاة')}
+                              </small>
+                            </div>
+                          </th>
+                          <td>{number(activity.ordersOpened)}</td>
+                          <td>{money(activity.orderValue)}</td>
+                          <td>{number(activity.paymentCount)}</td>
+                          <td>
+                            <span>
+                              {text('Cash', 'كاش')}: {money(activity.collections.cash)}
+                            </span>
+                            <small>
+                              {text('Terminal', 'ماكينة')}: {money(activity.collections.terminal)}
+                            </small>
+                          </td>
+                          <td>
+                            <span>{number(activity.refundCount)}</span>
+                            <small>{money(activity.refunds.total)}</small>
+                          </td>
+                          <td>
+                            <strong>{money(activity.netCollected)}</strong>
+                          </td>
+                          <td>{money(activity.deliveryCashReceived ?? '0.00')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
-          </DashboardCard>
-
-          <DashboardCard
-            title={text('Kitchen timing', 'توقيت المطبخ')}
-            description={text(
-              'Averages include orders that have both timestamps.',
-              'تشمل المتوسطات الطلبات التي لديها وقتا البداية والنهاية.',
-            )}
-          >
-            <div className="pos-operations-metrics pos-operations-timing">
-              <Metric
-                label={text('Accepted to preparation', 'من القبول إلى بدء التحضير')}
-                value={duration(report.preparation.acceptedToStartSeconds)}
-              />
-              <Metric
-                label={text('Preparation to ready', 'من بدء التحضير إلى الجاهزية')}
-                value={duration(report.preparation.startToReadySeconds)}
-              />
-            </div>
           </DashboardCard>
 
           <p className="pos-operations-note">
             <Icon name="help" />
-            {text(
-              'Discount totals are omitted until POS discounts are recorded as an auditable sale adjustment. Returned-item waste is available in POS Returns & Waste.',
-              'لا نعرض إجمالي الخصومات حتى تُسجل خصومات نقطة البيع كتعديلات بيع قابلة للمراجعة. بيانات هالك المرتجعات متاحة في تقرير مرتجعات وهالك POS.',
-            )}
+            <span>
+              {text(
+                'Discount totals are not included in this report.',
+                'إجمالي الخصومات غير مشمول في هذا التقرير.',
+              )}{' '}
+              <Link to="/pos-item-returns">
+                {text('View POS returns & waste', 'عرض مرتجعات وهالك POS')}
+              </Link>
+            </span>
           </p>
         </div>
       )}
@@ -493,15 +536,19 @@ function Metric({
   label,
   value,
   emphasis = false,
+  warning = false,
 }: {
   label: string;
   value: string;
   emphasis?: boolean;
+  warning?: boolean;
 }) {
   return (
-    <div className={`pos-operations-metric ${emphasis ? 'is-emphasis' : ''}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
+    <div
+      className={`pos-operations-metric${emphasis ? ' is-emphasis' : ''}${warning ? ' is-warning' : ''}`}
+    >
+      <dt>{label}</dt>
+      <dd>{value}</dd>
     </div>
   );
 }
