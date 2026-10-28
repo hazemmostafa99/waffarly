@@ -11,8 +11,9 @@ import {
   PosAppearanceController,
 } from './pos-appearance.controller.js';
 import { MerchantPosAppearanceService } from './merchant-pos-appearance.service.js';
+import { SubscriptionsModule } from '../subscriptions/index.js';
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, SubscriptionsModule],
   controllers: [
     MerchantController,
     OwnerPosAppearanceController,

@@ -7,6 +7,7 @@ import { OrderLifecycleService } from './order-lifecycle.service.js';
 import { CatalogModule } from '../catalog/index.js';
 import { ShiftsModule } from '../shifts/index.js';
 import { PaymentsModule } from '../payments/index.js';
+import { SubscriptionsModule } from '../subscriptions/index.js';
 import {
   OwnerStorefrontOrdersController,
   PosStorefrontOrdersController,
@@ -25,7 +26,14 @@ import { PosKitchenService } from './pos-kitchen.service.js';
 import { PosReturnsService } from './pos-returns.service.js';
 import { OwnerPosItemReturnsController } from './pos-returns.controller.js';
 @Module({
-  imports: [AuthModule, CatalogModule, InventoryModule, ShiftsModule, PaymentsModule],
+  imports: [
+    AuthModule,
+    CatalogModule,
+    InventoryModule,
+    ShiftsModule,
+    PaymentsModule,
+    SubscriptionsModule,
+  ],
   controllers: [
     PosDeliveryController,
     OwnerPosItemReturnsController,

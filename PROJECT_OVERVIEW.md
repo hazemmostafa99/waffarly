@@ -1,5 +1,7 @@
 # Waffarly (وفّرلي) — Project Overview
 
+> **2026-10-28 subscription update:** Independent EGP prices for 1/3/6/12/24-month terms and merchant subscription administration are implemented. Manual external collection remains required; no provider or automatic renewal is introduced. Current access, expiry and legacy-review rules are in [Merchant subscriptions](docs/features/super-admin/plans-subscriptions/SUBSCRIPTIONS.md), superseding earlier monthly-only/open lifecycle statements below.
+
 > **Scope correction — 2026-10-13:** The product owner clarified that Waffarly serves different business activities, including clothing stores, supermarkets, restaurants, and other businesses. This supersedes earlier restaurant-only launch restrictions in this working draft. Shared merchant registration, profiles, plans, and branding must remain activity-neutral. Restaurant order acceptance and kitchen flows apply to restaurants; specialized operations for other activities still need their own scope decisions.
 
 > **Document status:** Working draft v0.2 — first-release direction and core technology decisions recorded; unresolved requirements remain explicitly marked.

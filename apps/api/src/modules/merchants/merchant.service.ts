@@ -4,6 +4,7 @@ import {
   Inject,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import type {
   ApproveMerchantApplicationRequest,
@@ -21,6 +22,7 @@ import { assertScopedCursor, type CursorPageQuery } from '../../common/http/pagi
 import { isUniqueConstraintError } from '../../infrastructure/database/prisma-errors.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { hashPassword } from '../auth/index.js';
+import { SubscriptionService, effectiveSubscriptionStatus } from '../subscriptions/index.js';
 
 type MerchantWithOwner = {
   id: string;
@@ -33,6 +35,7 @@ type MerchantWithOwner = {
   firstMonthActivatedAt: Date | null;
   createdAt: Date;
   owner: { username: string } | null;
+  subscription?: { status: string; periods: { id: string }[] } | null;
 };
 
 function toSummary(merchant: MerchantWithOwner): MerchantSummary {
@@ -46,6 +49,14 @@ function toSummary(merchant: MerchantWithOwner): MerchantSummary {
     ownerMobile: merchant.ownerMobile,
     username: merchant.owner?.username ?? '',
     firstMonthActivatedAt: merchant.firstMonthActivatedAt?.toISOString() ?? null,
+    subscriptionStatus: merchant.subscription
+      ? effectiveSubscriptionStatus(
+          merchant.subscription.status,
+          merchant.subscription.periods.length > 0,
+        )
+      : merchant.firstMonthActivatedAt
+        ? 'legacy'
+        : 'pending',
     createdAt: merchant.createdAt.toISOString(),
   };
 }
@@ -113,7 +124,12 @@ function toApplicationSummary(
 
 @Injectable()
 export class MerchantService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Optional()
+    @Inject(SubscriptionService)
+    private readonly subscriptions: SubscriptionService = new SubscriptionService(prisma),
+  ) {}
 
   async list(page: CursorPageQuery = { limit: 50 }): Promise<CursorPage<MerchantSummary>> {
     if (page.cursor) {
@@ -124,39 +140,59 @@ export class MerchantService {
       assertScopedCursor(page.cursor, anchor !== null);
     }
     const merchants = await this.prisma.merchant.findMany({
-      include: { owner: { select: { username: true } } },
+      include: {
+        owner: { select: { username: true } },
+        subscription: {
+          select: {
+            status: true,
+            periods: {
+              where: { startsAt: { lte: new Date() }, coverageEndsAt: { gt: new Date() } },
+              select: { id: true },
+              take: 1,
+            },
+          },
+        },
+      },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: page.limit + 1,
       ...(page.cursor ? { cursor: { id: page.cursor }, skip: 1 } : {}),
     });
     const hasMore = merchants.length > page.limit;
     const items = merchants.slice(0, page.limit).map(toSummary);
-    return { items, nextCursor: hasMore ? items.at(-1)?.id ?? null : null };
+    return { items, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null };
   }
 
-  async create(input: CreateMerchantRequest): Promise<MerchantSummary> {
+  async create(
+    input: CreateMerchantRequest,
+    administrator = 'super-admin',
+  ): Promise<MerchantSummary> {
     const username = input.username.trim().toLowerCase();
     const existing = await this.prisma.ownerAccount.findUnique({ where: { username } });
     if (existing) throw new ConflictException('Username is already in use.');
 
     try {
       const id = randomUUID();
-      const merchant = await this.prisma.merchant.create({
-        data: {
-          id,
-          name: input.name.trim(),
-          storefrontSlug: createStorefrontSlug(input.name, id),
-          activity: input.activity ?? 'other',
-          contactPhone: input.contactPhone.trim(),
-          ownerName: input.ownerName.trim(),
-          ownerMobile: input.ownerMobile.trim(),
-          owner: {
-            create: { username, passwordHash: await hashPassword(input.password) },
+      const passwordHash = await hashPassword(input.password);
+      return await this.prisma.$transaction(async (tx) => {
+        const merchant = await tx.merchant.create({
+          data: {
+            id,
+            name: input.name.trim(),
+            storefrontSlug: createStorefrontSlug(input.name, id),
+            activity: input.activity ?? 'other',
+            contactPhone: input.contactPhone.trim(),
+            ownerName: input.ownerName.trim(),
+            ownerMobile: input.ownerMobile.trim(),
+            owner: {
+              create: { username, passwordHash },
+            },
           },
-        },
-        include: { owner: { select: { username: true } } },
+          include: { owner: { select: { username: true } } },
+        });
+        if (input.subscription)
+          await this.subscriptions.assignOnboarding(tx, id, input.subscription, administrator);
+        return toSummary(merchant);
       });
-      return toSummary(merchant);
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         throw new ConflictException('Username is already in use.');
@@ -304,23 +340,10 @@ export class MerchantService {
     merchantId: string,
     administratorUsername: string,
   ): Promise<MerchantSummary> {
-    const changed = await this.prisma.merchant.updateMany({
-      where: { id: merchantId, firstMonthActivatedAt: null },
-      data: {
-        firstMonthActivatedAt: new Date(),
-        firstMonthActivatedBy: administratorUsername,
-      },
-    });
-    if (changed.count === 0) {
-      const merchant = await this.prisma.merchant.findUnique({ where: { id: merchantId } });
-      if (!merchant) throw new NotFoundException('Merchant was not found.');
-      throw new ConflictException('First month has already been activated.');
-    }
-    const merchant = await this.prisma.merchant.findUniqueOrThrow({
-      where: { id: merchantId },
-      include: { owner: { select: { username: true } } },
-    });
-    return toSummary(merchant);
+    // Historical timestamp activation cannot create paid coverage or bypass suspension.
+    void merchantId;
+    void administratorUsername;
+    throw new ConflictException('Activate a priced subscription from subscription management.');
   }
 }
 

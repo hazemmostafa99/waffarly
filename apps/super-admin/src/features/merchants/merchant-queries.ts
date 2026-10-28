@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ActivateFirstMonthRequest, MerchantApplicationSummary, MerchantSummary } from '@waffarly/contracts';
+import { useQuery } from '@tanstack/react-query';
+import type { MerchantApplicationSummary, MerchantSummary } from '@waffarly/contracts';
 import { adminQueryKeys } from '../../app/query-keys.js';
 import { apiRequest } from '../../lib/api-client.js';
 
@@ -16,22 +16,6 @@ export function useMerchantApplicationsQuery() {
     queryKey: adminQueryKeys.applications,
     queryFn: () => apiRequest<MerchantApplicationSummary[]>('/admin/merchant-applications'),
     staleTime: 0,
-  });
-}
-
-export function useActivateFirstMonthMutation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (merchantId: string) => {
-      const body: ActivateFirstMonthRequest = { externalCollectionConfirmed: true };
-      return apiRequest<MerchantSummary>(`/admin/merchants/${merchantId}/activate-first-month`, {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.merchants });
-    },
   });
 }
 

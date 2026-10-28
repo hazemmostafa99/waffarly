@@ -1,5 +1,7 @@
 # Waffarly — Super Admin Overview
 
+> **2026-10-28:** Multi-duration prices and merchant subscription lifecycle are implemented. See [Merchant subscriptions](plans-subscriptions/SUBSCRIPTIONS.md). Its activation, renewal, expiry, access and legacy-review rules supersede the earlier monthly-only and first-month-only discovery statements below.
+
 > **Scope correction — 2026-10-13:** Waffarly serves multiple business activities. Earlier restaurant-only restrictions in this draft are superseded. Merchant onboarding, subscriptions, and shared modules apply across activities; templates may be general or scoped to a business activity.
 
 **Document status:** Initial discovery draft; not an approved complete MVP scope or technical design.  

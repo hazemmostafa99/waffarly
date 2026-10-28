@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import type {
   CashDrawerSummary,
@@ -9,7 +9,7 @@ import type {
   InventoryBranch,
   OwnerProfile,
 } from '@waffarly/contracts';
-import { Button, DashboardCard, Input, useLocale } from '@waffarly/ui';
+import { Button, DataTable, Input, useLocale, type DataTableColumn } from '@waffarly/ui';
 import { apiRequestPage, apiRequestSingle, ApiError } from '../../lib/api-client.js';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { PagedEntitySelect } from '../../components/PagedEntitySelect.js';
@@ -23,6 +23,20 @@ type Dialog =
   | { kind: 'receive' | 'resolve'; transfer: CashTransferSummary }
   | { kind: 'movement'; safe: CashSafeSummary };
 type SavedCommand = { path: string; body: Record<string, string> };
+type Detail =
+  | { kind: 'drawer'; row: CashDrawerSummary }
+  | { kind: 'safe'; row: CashSafeSummary }
+  | { kind: 'transfer'; row: CashTransferSummary };
+type Fact = [string, string];
+// Money arrives as decimal strings; use minor units for review calculations.
+const cents = (value: string) => {
+  const [whole, fraction = ''] = value.replace('-', '').split('.');
+  return (
+    (value.startsWith('-') ? -1n : 1n) * (BigInt(whole!) * 100n + BigInt(fraction.padEnd(2, '0')))
+  );
+};
+const decimal = (value: bigint) =>
+  `${value < 0n ? '-' : ''}${(value < 0n ? -value : value) / 100n}.${String((value < 0n ? -value : value) % 100n).padStart(2, '0')}`;
 const emptyPage = { items: [], nextCursor: null };
 
 export function CashCustodyPage() {
@@ -47,8 +61,11 @@ export function CashCustodyPage() {
   const [transfers, setTransfers] = useState<CursorPage<CashTransferSummary>>(emptyPage);
   const [safes, setSafes] = useState<CursorPage<CashSafeSummary>>(emptyPage);
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  const [detail, setDetail] = useState<Detail | null>(null);
+  const [review, setReview] = useState<{ command: SavedCommand; facts: Fact[] } | null>(null);
   const [safeBranch, setSafeBranch] = useState('');
   const [movementKind, setMovementKind] = useState('deposit');
+  const [receivedCount, setReceivedCount] = useState('');
   const [ledgerSafe, setLedgerSafe] = useState<{
     id: string;
     name: string;
@@ -56,6 +73,8 @@ export function CashCustodyPage() {
   } | null>(null);
   const [ledger, setLedger] = useState<CursorPage<CashSafeMovementSummary>>(emptyPage);
   const [ledgerHistory, setLedgerHistory] = useState<string[]>([]);
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+  const [ledgerError, setLedgerError] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -102,6 +121,8 @@ export function CashCustodyPage() {
     const q = new URLSearchParams({ limit: '25' });
     if (ledgerCursor) q.set('cursor', ledgerCursor);
     setLedger(emptyPage);
+    setLedgerLoading(true);
+    setLedgerError('');
     void apiRequestPage<CashSafeMovementSummary>(
       `/owner/pos/cash/${ledgerSafe.kind}/${ledgerSafe.id}/movements?${q}`,
       { signal: controller.signal },
@@ -109,11 +130,14 @@ export function CashCustodyPage() {
       .then(setLedger)
       .catch((cause: unknown) => {
         if (!controller.signal.aborted)
-          setError(
+          setLedgerError(
             cause instanceof Error
               ? errorText(cause.message)
               : text('Could not load ledger.', 'تعذر تحميل كشف الحركة.'),
           );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLedgerLoading(false);
       });
     return () => controller.abort();
   }, [ledgerSafe, ledgerCursor, refresh, errorText, locale]);
@@ -129,6 +153,7 @@ export function CashCustodyPage() {
       localStorage.removeItem(storageKey);
       setPending(null);
       setDialog(null);
+      setReview(null);
       setRefresh((value) => value + 1);
       setNotice(text('Cash record saved.', 'تم تسجيل الحركة.'));
     } catch (cause) {
@@ -147,11 +172,22 @@ export function CashCustodyPage() {
   }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!dialog || pending) return;
+    if (!dialog || pending || review) return;
     const fields = Object.fromEntries(new FormData(event.currentTarget).entries()) as Record<
       string,
       string
     >;
+    for (const key of ['amount', 'receivedAmount', 'openingBalance']) {
+      if (fields[key] !== undefined && !/^\d+(\.\d{1,2})?$/.test(fields[key]!)) {
+        setError(
+          text(
+            'Enter a valid amount with up to two decimal places.',
+            'اكتب مبلغًا صحيحًا بحد أقصى رقمين بعد العلامة العشرية.',
+          ),
+        );
+        return;
+      }
+    }
     let path = '/owner/pos/cash/';
     if (dialog.kind === 'safe') {
       path += 'safes';
@@ -162,7 +198,79 @@ export function CashCustodyPage() {
       path += `transfers/${dialog.transfer.id}/${dialog.kind}`;
     if (dialog.kind === 'movement') path += `safes/${dialog.safe.id}/movements`;
     if (dialog.kind !== 'resolve') fields.requestId = crypto.randomUUID();
-    void send({ path, body: fields });
+    if (dialog.kind === 'safe') {
+      void send({ path, body: fields });
+      return;
+    }
+    const facts: Fact[] = [];
+    if (dialog.kind === 'movement') {
+      facts.push(
+        [text('Safe', 'الخزنة'), dialog.safe.name],
+        [text('Branch', 'الفرع'), dialog.safe.branchName],
+        [
+          text('Movement', 'الحركة'),
+          movementKind === 'deposit' ? text('Deposit', 'إيداع') : text('Withdrawal', 'صرف'),
+        ],
+        [text('Current balance', 'الرصيد الحالي'), money(dialog.safe.balance)],
+        [text('Amount', 'المبلغ'), money(fields.amount!)],
+        [
+          text('Expected balance after', 'الرصيد المتوقع بعد العملية'),
+          money(
+            decimal(
+              cents(dialog.safe.balance) +
+                (movementKind === 'deposit' ? 1n : -1n) * cents(fields.amount!),
+            ),
+          ),
+        ],
+      );
+    } else if (dialog.kind === 'transfer') {
+      const selectedSafe = event.currentTarget.querySelector('[name="safeId"]');
+      facts.push(
+        [text('Drawer', 'الدرج'), dialog.drawer.registerName],
+        [text('Cashier', 'الكاشير'), dialog.drawer.cashierName],
+        [
+          text('Receiving safe', 'الخزنة المستلمة'),
+          (
+            selectedSafe
+              ?.closest('.cash-field')
+              ?.querySelector('[role="combobox"]') as HTMLInputElement | null
+          )?.value ?? fields.safeId!,
+        ],
+        [text('Amount', 'المبلغ'), money(fields.amount!)],
+        [
+          text('Remaining after handoff', 'المتبقي بعد التسليم'),
+          money(decimal(cents(dialog.drawer.remainingCash) - cents(fields.amount!))),
+        ],
+        [text('Reference', 'المرجع'), fields.reference!],
+      );
+    } else {
+      facts.push(
+        [text('Reference', 'المرجع'), dialog.transfer.reference],
+        [text('Destination', 'الوجهة'), dialog.transfer.destinationName],
+        [text('Declared handoff', 'المبلغ المسلّم'), money(dialog.transfer.amount)],
+      );
+      if (dialog.kind === 'receive') {
+        const difference = cents(fields.receivedAmount!) - cents(dialog.transfer.amount);
+        if (difference !== 0n && !fields.note?.trim()) {
+          setError(
+            text('Add a receipt note explaining the difference.', 'اكتب ملاحظة توضح فرق الاستلام.'),
+          );
+          return;
+        }
+        facts.push(
+          [text('Actually received', 'المستلم فعليًا'), money(fields.receivedAmount!)],
+          [text('Receipt difference', 'فرق الاستلام'), money(decimal(difference))],
+        );
+      } else {
+        facts.push([
+          text('Receipt difference', 'فرق الاستلام'),
+          money(dialog.transfer.difference ?? '0.00'),
+        ]);
+      }
+    }
+    facts.push([text('Reason / note', 'السبب / الملاحظة'), fields.reason || fields.note || '—']);
+    setError('');
+    setReview({ command: { path, body: fields }, facts });
   }
   const currentPage = tab === 'drawers' ? drawers : tab === 'transfers' ? transfers : safes;
   const statusLabel = (value: string) =>
@@ -172,6 +280,306 @@ export function CashCustodyPage() {
       discrepancy: text('Receipt difference', 'فرق استلام'),
       resolved: text('Difference reviewed', 'تمت مراجعة الفرق'),
     })[value] ?? value;
+
+  function openAction(value: Dialog) {
+    setDetail(null);
+    setReview(null);
+    setError('');
+    setMovementKind('deposit');
+    setReceivedCount('');
+    setDialog(value);
+  }
+  function closeAction() {
+    if (busy) return;
+    setDialog(null);
+    setReview(null);
+    setError('');
+  }
+  function openLedger(id: string, name: string, kind: 'drawers' | 'safes') {
+    setDetail(null);
+    setLedgerHistory([]);
+    setLedgerSafe({ id, name, kind });
+  }
+  function detailTitle(value: Detail) {
+    return value.kind === 'drawer'
+      ? value.row.registerName
+      : value.kind === 'safe'
+        ? value.row.name
+        : value.row.reference;
+  }
+  function detailFacts(value: Detail): Fact[] {
+    const row = value.row;
+    if (value.kind === 'drawer') {
+      const d = value.row;
+      return [
+        [text('Branch', 'الفرع'), d.branchName],
+        [text('Cashier', 'الكاشير'), d.cashierName],
+        [
+          text('Shift status', 'حالة الشيفت'),
+          d.status === 'closed'
+            ? text('Closed shift', 'شيفت مقفول')
+            : text('Open shift', 'شيفت مفتوح'),
+        ],
+        [text('Opened at', 'وقت الفتح'), formatDate(d.openedAt, true)],
+        [text('Closed at', 'وقت التقفيل'), d.closedAt ? formatDate(d.closedAt, true) : '—'],
+        [text('Expected at close', 'الرصيد المتوقع'), money(d.expectedCash)],
+        [
+          text('Counted at close', 'المعدود وقت التقفيل'),
+          d.countedCash === null ? '—' : money(d.countedCash),
+        ],
+        [text('Count variance', 'فرق الجرد'), d.variance === null ? '—' : money(d.variance)],
+        [text('Remaining custody', 'المتبقي بالعهدة'), money(d.remainingCash)],
+        [text('Awaiting safe receipt', 'بانتظار استلام الخزنة'), money(d.pendingAmount)],
+        [text('Received in safe', 'المستلم في الخزنة'), money(d.receivedInSafe)],
+        [text('Received by next shift', 'المستلم للشيفت التالي'), money(d.carriedForward)],
+        [
+          text('Earlier unverified cash drops', 'توريدات سابقة بدون تأكيد استلام'),
+          money(d.legacyDropAmount),
+        ],
+        [text('Shift ID', 'رقم الشيفت'), d.id],
+      ];
+    }
+    if (value.kind === 'safe') {
+      const d = value.row;
+      return [
+        [text('Branch', 'الفرع'), d.branchName],
+        [text('Confirmed safe balance', 'رصيد الخزنة المؤكد'), money(d.balance)],
+        [text('Awaiting receipt', 'توريدات بانتظار الاستلام'), money(d.pendingAmount)],
+        [text('Safe ID', 'رقم الخزنة'), row.id],
+      ];
+    }
+    const d = value.row;
+    return [
+      [text('Source drawer', 'الدرج المصدر'), d.registerName],
+      [text('Destination', 'الوجهة'), d.destinationName],
+      [
+        text('Movement', 'الحركة'),
+        d.kind === 'safe'
+          ? text('Safe handoff', 'توريد للخزنة')
+          : text('Shift carryover', 'فكة للشيفت التالي'),
+      ],
+      [text('Receipt status', 'حالة الاستلام'), statusLabel(d.status)],
+      [text('Declared handoff', 'المبلغ المسلّم'), money(d.amount)],
+      [
+        text('Actually received', 'المستلم فعليًا'),
+        d.receivedAmount === null ? '—' : money(d.receivedAmount),
+      ],
+      [
+        text('Receipt difference', 'فرق الاستلام'),
+        d.difference === null ? '—' : money(d.difference),
+      ],
+      [text('Handed by', 'سجّل التسليم'), d.createdByName ?? d.createdBy],
+      [text('Handed at', 'وقت التسليم'), formatDate(d.createdAt, true)],
+      [text('Received by', 'المستلم'), d.receivedByName ?? d.receivedBy ?? '—'],
+      [text('Received at', 'وقت الاستلام'), d.receivedAt ? formatDate(d.receivedAt, true) : '—'],
+      [text('Reason', 'السبب'), d.reason],
+      [text('Receipt note', 'ملاحظة الاستلام'), d.receiptNote ?? '—'],
+      [text('Review result', 'نتيجة المراجعة'), d.resolutionNote ?? '—'],
+      [text('Reviewed by', 'تمت المراجعة بواسطة'), d.resolvedBy ?? '—'],
+      [text('Transfer ID', 'رقم الحركة'), d.id],
+    ];
+  }
+  function primaryAction(value: Detail) {
+    if (value.kind === 'drawer')
+      return value.row.status === 'closed' && cents(value.row.remainingCash) > 0n ? (
+        <Button
+          disabled={busy || !!pending}
+          onClick={() => openAction({ kind: 'transfer', drawer: value.row })}
+        >
+          {text('Transfer to safe', 'توريد للخزنة')}
+        </Button>
+      ) : null;
+    if (value.kind === 'safe')
+      return (
+        <Button
+          disabled={busy || !!pending}
+          onClick={() => openAction({ kind: 'movement', safe: value.row })}
+        >
+          {text('Deposit / withdrawal', 'إيداع / صرف')}
+        </Button>
+      );
+    const kind =
+      value.row.status === 'pending'
+        ? 'receive'
+        : value.row.status === 'discrepancy'
+          ? 'resolve'
+          : null;
+    return (
+      kind && (
+        <Button
+          disabled={busy || !!pending}
+          onClick={() => openAction({ kind, transfer: value.row })}
+        >
+          {kind === 'receive'
+            ? text('Count & receive', 'عدّ واستلام التوريد')
+            : text('Review difference', 'مراجعة الفرق')}
+        </Button>
+      )
+    );
+  }
+  function secondaryActions(value: Detail) {
+    return (
+      <>
+        <Button
+          variant="outline"
+          onClick={() =>
+            openLedger(
+              value.kind === 'transfer' ? value.row.sourceShiftId : value.row.id,
+              value.kind === 'safe' ? value.row.name : value.row.registerName,
+              value.kind === 'safe' ? 'safes' : 'drawers',
+            )
+          }
+        >
+          <Icon name="file" />
+          {text('Movement statement', 'كشف الحركة')}
+        </Button>
+        {value.kind === 'drawer' && (
+          <>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setDetail(null);
+                setTab('transfers');
+                setHistory([]);
+                setStatus('');
+                setBranch(value.row.branchId);
+              }}
+            >
+              <Icon name="branches" />
+              {text('View branch transfers', 'عرض توريدات الفرع')}
+            </Button>
+            <Link to="/pos-shift-reports">
+              <Icon name="receipt" />
+              {text('Shift reports', 'تقارير الشيفتات')}
+            </Link>
+          </>
+        )}
+      </>
+    );
+  }
+  function rowActions(value: Detail) {
+    return (
+      <div className="cash-table-actions">
+        <Button variant="outline" onClick={() => setDetail(value)}>
+          {text('Details', 'التفاصيل')}
+        </Button>
+        {primaryAction(value)}
+        <CashActionMenu label={text('More actions', 'إجراءات إضافية')} context={detailTitle(value)}>
+          {secondaryActions(value)}
+        </CashActionMenu>
+      </div>
+    );
+  }
+  const drawerColumns: DataTableColumn<CashDrawerSummary>[] = [
+    {
+      id: 'register',
+      header: text('Drawer / cashier', 'الدرج / الكاشير'),
+      cell: (r) => (
+        <>
+          <strong>{r.registerName}</strong>
+          <small className="cash-cell-note">{r.cashierName}</small>
+        </>
+      ),
+    },
+    { id: 'branch', header: text('Branch', 'الفرع'), cell: (r) => r.branchName },
+    {
+      id: 'status',
+      header: text('Shift status', 'حالة الشيفت'),
+      cell: (r) => (
+        <>
+          <span className={`cash-status ${r.status === 'closed' ? '' : 'pending'}`}>
+            {r.status === 'closed'
+              ? text('Closed shift', 'شيفت مقفول')
+              : text('Open shift', 'شيفت مفتوح')}
+          </span>
+          <small className="cash-cell-note">{formatDate(r.closedAt ?? r.openedAt, true)}</small>
+        </>
+      ),
+    },
+    {
+      id: 'expected',
+      header: text('Expected balance', 'الرصيد المتوقع'),
+      cell: (r) => money(r.expectedCash),
+    },
+    {
+      id: 'remaining',
+      header: text('Remaining custody', 'المتبقي بالعهدة'),
+      cell: (r) => <strong>{money(r.remainingCash)}</strong>,
+    },
+    {
+      id: 'pending',
+      header: text('Awaiting receipt', 'توريدات بانتظار الاستلام'),
+      cell: (r) => money(r.pendingAmount),
+    },
+    {
+      id: 'actions',
+      header: text('Actions', 'الإجراءات'),
+      cell: (r) => rowActions({ kind: 'drawer', row: r }),
+    },
+  ];
+  const transferColumns: DataTableColumn<CashTransferSummary>[] = [
+    {
+      id: 'reference',
+      header: text('Reference / route', 'المرجع / المسار'),
+      cell: (r) => (
+        <>
+          <strong>{r.reference}</strong>
+          <small className="cash-cell-note">
+            {r.registerName} → {r.destinationName}
+          </small>
+        </>
+      ),
+    },
+    { id: 'amount', header: text('Handed over', 'المسلّم'), cell: (r) => money(r.amount) },
+    {
+      id: 'received',
+      header: text('Actually received', 'المستلم فعليًا'),
+      cell: (r) => (r.receivedAmount === null ? '—' : money(r.receivedAmount)),
+    },
+    {
+      id: 'difference',
+      header: text('Receipt difference', 'فرق الاستلام'),
+      cell: (r) => (
+        <span
+          className={
+            r.difference && cents(r.difference.replace('-', '')) !== 0n ? 'cash-difference' : ''
+          }
+        >
+          {r.difference === null ? '—' : money(r.difference)}
+        </span>
+      ),
+    },
+    {
+      id: 'status',
+      header: text('Receipt status', 'حالة الاستلام'),
+      cell: (r) => <span className={`cash-status ${r.status}`}>{statusLabel(r.status)}</span>,
+    },
+    { id: 'date', header: text('Time', 'الوقت'), cell: (r) => formatDate(r.createdAt, true) },
+    {
+      id: 'actions',
+      header: text('Actions', 'الإجراءات'),
+      cell: (r) => rowActions({ kind: 'transfer', row: r }),
+    },
+  ];
+  const safeColumns: DataTableColumn<CashSafeSummary>[] = [
+    { id: 'name', header: text('Safe', 'الخزنة'), cell: (r) => <strong>{r.name}</strong> },
+    { id: 'branch', header: text('Branch', 'الفرع'), cell: (r) => r.branchName },
+    {
+      id: 'balance',
+      header: text('Confirmed safe balance', 'رصيد الخزنة المؤكد'),
+      cell: (r) => <strong>{money(r.balance)}</strong>,
+    },
+    {
+      id: 'pending',
+      header: text('Awaiting receipt', 'توريدات بانتظار الاستلام'),
+      cell: (r) => money(r.pendingAmount),
+    },
+    {
+      id: 'actions',
+      header: text('Actions', 'الإجراءات'),
+      cell: (r) => rowActions({ kind: 'safe', row: r }),
+    },
+  ];
 
   return (
     <div className="inventory-page cash-custody-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
@@ -189,7 +597,7 @@ export function CashCustodyPage() {
         <Button
           onClick={() => {
             setSafeBranch(branch);
-            setDialog({ kind: 'safe' });
+            openAction({ kind: 'safe' });
           }}
           disabled={busy || !!pending}
         >
@@ -323,277 +731,37 @@ export function CashCustodyPage() {
           </p>
         </div>
       ) : (
-        <div className={`cash-record-grid cash-record-grid--${tab}`}>
-          {tab === 'drawers' &&
-            drawers.items.map((row) => (
-              <article
-                key={row.id}
-                className="cash-drawer-card"
-                aria-label={`${row.registerName} · ${row.cashierName}`}
-              >
-                <header className="cash-drawer-header">
-                  <div className="cash-drawer-identity">
-                    <span className="cash-drawer-icon" aria-hidden="true">
-                      <Icon name="orders" />
-                    </span>
-                    <div>
-                      <span className="cash-drawer-overline">
-                        {text('Cash drawer', 'درج الكاشير')}
-                      </span>
-                      <h2>{row.registerName}</h2>
-                    </div>
-                  </div>
-                  <span className={`cash-status ${row.status === 'closed' ? '' : 'pending'}`}>
-                    {row.status === 'closed'
-                      ? text('Closed shift', 'شيفت مقفول')
-                      : text('Open shift', 'شيفت مفتوح')}
-                  </span>
-                </header>
-                <div className="cash-drawer-meta">
-                  <span>
-                    <Icon name="branches" />
-                    <span>
-                      {text('Branch', 'الفرع')}
-                      <strong>{row.branchName}</strong>
-                    </span>
-                  </span>
-                  <span>
-                    <Icon name="customers" />
-                    <span>
-                      {text('Cashier', 'الكاشير')}
-                      <strong>{row.cashierName}</strong>
-                    </span>
-                  </span>
-                  <span>
-                    <Icon name="clock" />
-                    <span>
-                      {row.status === 'closed'
-                        ? text('Closed at', 'وقت التقفيل')
-                        : text('Opened at', 'وقت الفتح')}
-                      <time dateTime={row.closedAt ?? row.openedAt}>
-                        {formatDate(row.closedAt ?? row.openedAt, true)}
-                      </time>
-                    </span>
-                  </span>
-                </div>
-                <div className="cash-drawer-balance cash-primary">
-                  <span>
-                    {row.status === 'closed'
-                      ? text('Remaining custody', 'المتبقي بالعهدة')
-                      : text('Expected in drawer', 'المتوقع في الدرج')}
-                  </span>
-                  <strong>{money(row.remainingCash)}</strong>
-                  <p>
-                    {row.status !== 'closed'
-                      ? text('Based on the recorded cash movements.', 'حسب حركات النقدية المسجلة.')
-                      : Number(row.remainingCash) > 0
-                        ? text(
-                            'Still in custody until a handoff is recorded.',
-                            'لسه بالعهدة لحد تسجيل تسليم للخزنة أو للشيفت التالي.',
-                          )
-                        : Number(row.pendingAmount) > 0
-                          ? text(
-                              'Handed over. Safe receipt still needs confirmation.',
-                              'تم التسليم، وفيه توريدات لسه محتاجة تأكيد استلام.',
-                            )
-                          : text(
-                              'This shift has no remaining cash to hand over.',
-                              'مفيش نقدية متبقية للتسليم من الشيفت ده.',
-                            )}
-                  </p>
-                </div>
-                <div className="cash-drawer-details">
-                  <h3>{text('Cash count', 'ملخص الجرد')}</h3>
-                  <dl className="cash-count-grid">
-                    <div>
-                      <dt>{text('Expected at close', 'الرصيد المتوقع')}</dt>
-                      <dd>{money(row.expectedCash)}</dd>
-                    </div>
-                    <div>
-                      <dt>{text('Counted at close', 'المعدود وقت التقفيل')}</dt>
-                      <dd>{row.countedCash === null ? '—' : money(row.countedCash)}</dd>
-                    </div>
-                    <div
-                      className={row.variance && Number(row.variance) !== 0 ? 'has-variance' : ''}
-                    >
-                      <dt>{text('Count variance', 'فرق الجرد')}</dt>
-                      <dd>{row.variance === null ? '—' : money(row.variance)}</dd>
-                    </div>
-                  </dl>
-                  <h3>{text('Where the cash went', 'متابعة تسليم النقدية')}</h3>
-                  <dl className="cash-handoff-grid">
-                    <div className={Number(row.pendingAmount) > 0 ? 'is-pending' : ''}>
-                      <dt>
-                        <Icon name="clock" />
-                        {text('Awaiting safe receipt', 'بانتظار استلام الخزنة')}
-                      </dt>
-                      <dd>{money(row.pendingAmount)}</dd>
-                    </div>
-                    <div>
-                      <dt>
-                        <Icon name="check" />
-                        {text('Received in safe', 'المستلم في الخزنة')}
-                      </dt>
-                      <dd>{money(row.receivedInSafe)}</dd>
-                    </div>
-                    <div>
-                      <dt>
-                        <Icon name="customers" />
-                        {text('Received by next shift', 'المستلم للشيفت التالي')}
-                      </dt>
-                      <dd>{money(row.carriedForward)}</dd>
-                    </div>
-                  </dl>
-                </div>
-                {row.legacyDropAmount !== '0.00' && (
-                  <p className="cash-warning">
-                    {text(
-                      'Earlier cash drops without verified safe receipt:',
-                      'توريدات سابقة بدون تأكيد استلام خزنة:',
-                    )}{' '}
-                    {money(row.legacyDropAmount)}
-                  </p>
-                )}
-                <footer className="cash-actions cash-drawer-actions">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setLedgerSafe({ id: row.id, name: row.registerName, kind: 'drawers' });
-                      setLedgerHistory([]);
-                    }}
-                  >
-                    {text('Movement statement', 'كشف الحركة')}
-                  </Button>
-                  {row.status === 'closed' && Number(row.remainingCash) > 0 && (
-                    <Button
-                      className="cash-primary-action"
-                      disabled={busy || !!pending}
-                      onClick={() => setDialog({ kind: 'transfer', drawer: row })}
-                    >
-                      {text('Transfer to safe', 'توريد للخزنة')}
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setTab('transfers');
-                      setHistory([]);
-                      setStatus('');
-                      setBranch(row.branchId);
-                    }}
-                  >
-                    {text('View branch transfers', 'عرض توريدات الفرع')}
-                  </Button>
-                  <Link to="/pos-shift-reports">{text('Shift reports', 'تقارير الشيفتات')}</Link>
-                </footer>
-              </article>
-            ))}
-          {tab === 'safes' &&
-            safes.items.map((row) => (
-              <DashboardCard key={row.id} title={row.name} description={row.branchName}>
-                <div className="cash-primary">
-                  <span>{text('Confirmed safe balance', 'رصيد الخزنة المؤكد')}</span>
-                  <strong>{money(row.balance)}</strong>
-                </div>
-                <dl className="cash-facts">
-                  <dt>{text('Awaiting receipt', 'توريدات بانتظار الاستلام')}</dt>
-                  <dd>{money(row.pendingAmount)}</dd>
-                </dl>
-                <div className="cash-actions">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setLedgerSafe({ id: row.id, name: row.name, kind: 'safes' });
-                      setLedgerHistory([]);
-                    }}
-                  >
-                    {text('Movement statement', 'كشف الحركة')}
-                  </Button>
-                  <Button
-                    disabled={busy || !!pending}
-                    onClick={() => setDialog({ kind: 'movement', safe: row })}
-                  >
-                    {text('Deposit / withdrawal', 'إيداع / صرف')}
-                  </Button>
-                </div>
-              </DashboardCard>
-            ))}
-          {tab === 'transfers' &&
-            transfers.items.map((row) => (
-              <DashboardCard
-                key={row.id}
-                title={`${row.registerName} → ${row.destinationName}`}
-                description={row.reference}
-              >
-                <div className="cash-card-heading">
-                  <span className={`cash-status ${row.status}`}>{statusLabel(row.status)}</span>
-                  <small>{formatDate(row.createdAt, true)}</small>
-                </div>
-                <div className="cash-primary">
-                  <span>
-                    {row.kind === 'safe'
-                      ? text('Handed to safe', 'المسلّم للخزنة')
-                      : text('Shift carryover', 'فكة للشيفت التالي')}
-                  </span>
-                  <strong>{money(row.amount)}</strong>
-                </div>
-                <dl className="cash-facts">
-                  <dt>{text('Handed by', 'سجّل التسليم')}</dt>
-                  <dd>{row.createdByName ?? row.createdBy}</dd>
-                  <dt>{text('Received by', 'المستلم')}</dt>
-                  <dd>{row.receivedByName ?? row.receivedBy ?? '—'}</dd>
-                  <dt>{text('Actually received', 'المستلم فعليًا')}</dt>
-                  <dd>{row.receivedAmount === null ? '—' : money(row.receivedAmount)}</dd>
-                  <dt>{text('Receipt difference', 'فرق الاستلام')}</dt>
-                  <dd>{row.difference === null ? '—' : money(row.difference)}</dd>
-                  <dt>{text('Received at', 'وقت الاستلام')}</dt>
-                  <dd>{row.receivedAt ? formatDate(row.receivedAt, true) : '—'}</dd>
-                </dl>
-                <p>{row.reason}</p>
-                {row.receiptNote && <p>{row.receiptNote}</p>}
-                {row.resolutionNote && (
-                  <p className="cash-notice">
-                    {row.resolutionNote} · {row.resolvedBy}
-                  </p>
-                )}
-                <small className="cash-reference">
-                  {text('Transfer', 'رقم الحركة')}: {row.id}
-                </small>
-                <div className="cash-actions">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setLedgerSafe({
-                        id: row.sourceShiftId,
-                        name: row.registerName,
-                        kind: 'drawers',
-                      });
-                      setLedgerHistory([]);
-                    }}
-                  >
-                    {text('Movement statement', 'كشف الحركة')}
-                  </Button>
-                  {row.status === 'pending' && (
-                    <Button
-                      disabled={busy || !!pending}
-                      onClick={() => setDialog({ kind: 'receive', transfer: row })}
-                    >
-                      {text('Count & receive', 'عدّ واستلام التوريد')}
-                    </Button>
-                  )}
-                  {row.status === 'discrepancy' && (
-                    <Button
-                      disabled={busy || !!pending}
-                      onClick={() => setDialog({ kind: 'resolve', transfer: row })}
-                    >
-                      {text('Review difference', 'مراجعة الفرق')}
-                    </Button>
-                  )}
-                </div>
-              </DashboardCard>
-            ))}
-        </div>
+        <>
+          {tab === 'drawers' && (
+            <DataTable
+              columns={drawerColumns}
+              rows={drawers.items}
+              rowKey={(row) => row.id}
+              caption={text('Drawers & custody', 'الأدراج والعهد')}
+              emptyState="?"
+            />
+          )}
+          {tab === 'transfers' && (
+            <DataTable
+              columns={transferColumns}
+              rows={transfers.items}
+              rowKey={(row) => row.id}
+              caption={text('Transfers & receipts', 'التوريدات والاستلام')}
+              emptyState="?"
+            />
+          )}
+          {tab === 'safes' && (
+            <DataTable
+              columns={safeColumns}
+              rows={safes.items}
+              rowKey={(row) => row.id}
+              caption={text('Safes', 'الخزن')}
+              emptyState="?"
+            />
+          )}
+        </>
       )}
+
       <footer className="cash-pagination">
         <Button
           variant="outline"
@@ -613,6 +781,23 @@ export function CashCustodyPage() {
           {text('Next', 'التالي')}
         </Button>
       </footer>
+      {detail && (
+        <DashboardDialog
+          wide
+          className="cash-dialog"
+          title={`${text('Details', 'التفاصيل')} ? ${detailTitle(detail)}`}
+          closeLabel={text('Close', 'إغلاق')}
+          onClose={() => setDetail(null)}
+        >
+          <div className="cash-detail-body">
+            <CashFacts facts={detailFacts(detail)} />
+            <div className="cash-detail-actions">
+              {primaryAction(detail)}
+              {secondaryActions(detail)}
+            </div>
+          </div>
+        </DashboardDialog>
+      )}
       {dialog && (
         <DashboardDialog
           className="cash-dialog"
@@ -629,7 +814,7 @@ export function CashCustodyPage() {
           }
           closeLabel={text('Close', 'إغلاق')}
           busy={busy}
-          onClose={() => setDialog(null)}
+          onClose={closeAction}
         >
           <form className="cash-form" onSubmit={submit}>
             <div className="cash-form-intro">
@@ -658,7 +843,7 @@ export function CashCustodyPage() {
                         )}
               </p>
             </div>
-            <fieldset disabled={busy || !!pending}>
+            <fieldset disabled={busy || !!pending} hidden={!!review}>
               {dialog.kind === 'safe' && (
                 <>
                   <div className="cash-field">
@@ -747,14 +932,35 @@ export function CashCustodyPage() {
                   </p>
                   <label>
                     {text('Physically received (EGP)', 'المبلغ المستلم فعليًا (جنيه)')}
-                    <Input name="receivedAmount" required type="number" min="0" step="0.01" />
+                    <Input
+                      name="receivedAmount"
+                      required
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={receivedCount}
+                      onChange={(event) => setReceivedCount(event.target.value)}
+                    />
                   </label>
+                  {/^[0-9]+(\.[0-9]{1,2})?$/.test(receivedCount) && (
+                    <p role="status" className="cash-difference">
+                      {text('Receipt difference', 'فرق الاستلام')}:{' '}
+                      {money(decimal(cents(receivedCount) - cents(dialog.transfer.amount)))}
+                    </p>
+                  )}
                   <label>
                     {text(
                       'Receipt note (required for a difference)',
                       'ملاحظة الاستلام (إلزامية لو فيه فرق)',
                     )}
-                    <Input name="note" maxLength={500} />
+                    <Input
+                      name="note"
+                      maxLength={500}
+                      required={
+                        /^[0-9]+(\.[0-9]{1,2})?$/.test(receivedCount) &&
+                        cents(receivedCount) !== cents(dialog.transfer.amount)
+                      }
+                    />
                   </label>
                 </>
               )}
@@ -792,7 +998,14 @@ export function CashCustodyPage() {
                   </div>
                   <label>
                     {text('Amount (EGP)', 'المبلغ (جنيه)')}
-                    <Input name="amount" required type="number" min="0.01" step="0.01" />
+                    <Input
+                      name="amount"
+                      required
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      max={movementKind === 'withdrawal' ? dialog.safe.balance : undefined}
+                    />
                   </label>
                   <label>
                     {text('Reason / document reference', 'السبب / مرجع المستند')}
@@ -806,13 +1019,62 @@ export function CashCustodyPage() {
                     ? text('Saving…', 'جارٍ الحفظ…')
                     : dialog.kind === 'safe'
                       ? text('Create safe', 'إضافة خزنة')
-                      : text('Confirm', 'تأكيد')}
+                      : text('Review operation', 'مراجعة العملية')}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setDialog(null)}>
+                <Button type="button" variant="outline" onClick={closeAction}>
                   {text('Cancel', 'إلغاء')}
                 </Button>
               </div>
             </fieldset>
+            {review && (
+              <section
+                className="cash-review"
+                aria-label={text('Review operation', 'مراجعة العملية')}
+              >
+                <h3>{text('Review before confirming', 'راجع البيانات قبل التأكيد')}</h3>
+                <CashFacts facts={review.facts} />
+                <p className="cash-notice">
+                  {dialog.kind === 'transfer'
+                    ? text(
+                        'The safe balance increases only after receipt is confirmed.',
+                        'رصيد الخزنة بيزيد بعد تأكيد الاستلام فقط.',
+                      )
+                    : dialog.kind === 'resolve'
+                      ? text(
+                          'Reviewing a difference does not change the safe balance.',
+                          'مراجعة الفرق لا تغيّر رصيد الخزنة.',
+                        )
+                      : text(
+                          'Confirm to record this cash movement.',
+                          'بالتأكيد هتتسجل الحركة بالمبالغ الموضحة.',
+                        )}
+                </p>
+                <div className="cash-form-footer">
+                  <Button
+                    type="button"
+                    autoFocus
+                    disabled={busy || !!pending}
+                    onClick={() => void send(review.command)}
+                  >
+                    {busy ? text('Saving…', 'جارٍ الحفظ…') : text('Confirm', 'تأكيد')}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={busy || !!pending}
+                    onClick={() => {
+                      setReview(null);
+                      setError('');
+                    }}
+                  >
+                    {text('Back to edit', 'رجوع للتعديل')}
+                  </Button>
+                  <Button type="button" variant="outline" disabled={busy} onClick={closeAction}>
+                    {text('Cancel', 'إلغاء')}
+                  </Button>
+                </div>
+              </section>
+            )}
             {error && (
               <p role="alert" className="cash-alert">
                 {error}
@@ -834,7 +1096,21 @@ export function CashCustodyPage() {
           onClose={() => setLedgerSafe(null)}
         >
           <div className="cash-ledger">
-            <table>
+            {ledgerLoading && (
+              <p role="status">{text('Loading movements…', 'جارٍ تحميل الحركات…')}</p>
+            )}
+            {ledgerError && (
+              <div role="alert">
+                <p>{ledgerError}</p>
+                <Button onClick={() => setRefresh((v) => v + 1)}>
+                  {text('Retry', 'إعادة المحاولة')}
+                </Button>
+              </div>
+            )}
+            {!ledgerLoading && !ledgerError && !ledger.items.length && (
+              <p role="status">{text('No movements yet.', 'لا توجد حركات حتى الآن.')}</p>
+            )}
+            <table hidden={ledgerLoading || !!ledgerError || !ledger.items.length}>
               <thead>
                 <tr>
                   {[
@@ -883,14 +1159,14 @@ export function CashCustodyPage() {
             <div className="cash-pagination">
               <Button
                 variant="outline"
-                disabled={!ledgerHistory.length}
+                disabled={ledgerLoading || !ledgerHistory.length}
                 onClick={() => setLedgerHistory((value) => value.slice(0, -1))}
               >
                 {text('Previous', 'السابق')}
               </Button>
               <Button
                 variant="outline"
-                disabled={!ledger.nextCursor}
+                disabled={ledgerLoading || !ledger.nextCursor}
                 onClick={() => setLedgerHistory((value) => [...value, ledger.nextCursor!])}
               >
                 {text('Next', 'التالي')}
@@ -974,5 +1250,101 @@ function SafePicker({ branchId }: { branchId: string }) {
         )}
       </span>
     </div>
+  );
+}
+
+function CashFacts({ facts }: { facts: Fact[] }) {
+  return (
+    <dl className="cash-detail-facts">
+      {facts.map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function CashActionMenu({
+  label,
+  context,
+  children,
+}: {
+  label: string;
+  context: string;
+  children: ReactNode;
+}) {
+  const id = useId();
+  const panel = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const dismiss = () => panel.current?.hidePopover();
+    // Keep the popup attached to the row by dismissing when its scroll position changes.
+    const dismissOnScroll = (event: Event) => {
+      if (event.target instanceof Node && panel.current?.contains(event.target)) return;
+      dismiss();
+    };
+    window.addEventListener('resize', dismiss);
+    document.addEventListener('scroll', dismissOnScroll, true);
+    return () => {
+      window.removeEventListener('resize', dismiss);
+      document.removeEventListener('scroll', dismissOnScroll, true);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        className="cash-more-trigger"
+        aria-label={label}
+        title={label}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={id}
+        popoverTarget={id}
+        onClick={(event) => {
+          event.preventDefault();
+          const popup = panel.current;
+          if (!popup) return;
+          if (popup.matches(':popover-open')) {
+            popup.hidePopover();
+            return;
+          }
+          const rect = event.currentTarget.getBoundingClientRect();
+          const width = Math.min(240, window.innerWidth - 24);
+          const rtl = getComputedStyle(event.currentTarget).direction === 'rtl';
+          popup.style.width = `${width}px`;
+          popup.style.left = `${Math.max(12, Math.min(rtl ? rect.left : rect.right - width, window.innerWidth - width - 12))}px`;
+          // Measure the contents before showing, including the heading and all action rows.
+          popup.style.top = `${rect.bottom + 8}px`;
+          popup.style.visibility = 'hidden';
+          popup.showPopover();
+          const height = popup.getBoundingClientRect().height;
+          popup.style.top = `${Math.max(12, rect.bottom + height + 20 <= window.innerHeight ? rect.bottom + 8 : rect.top - height - 8)}px`;
+          popup.style.visibility = '';
+          popup.querySelector<HTMLElement>('button, a')?.focus({ preventScroll: true });
+        }}
+      >
+        <Icon name="more" />
+      </Button>
+      <div
+        id={id}
+        ref={panel}
+        popover="auto"
+        role="dialog"
+        aria-label={label}
+        className="cash-action-popover"
+        onToggle={(event) => setOpen(event.currentTarget.matches(':popover-open'))}
+      >
+        <div className="cash-action-popover-heading">{context}</div>
+        <div className="cash-action-popover-items" onClick={() => panel.current?.hidePopover()}>
+          {children}
+        </div>
+      </div>
+    </>
   );
 }

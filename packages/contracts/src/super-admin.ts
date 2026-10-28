@@ -1,6 +1,7 @@
 import type { BusinessActivityKey } from './activities-modules.js';
 
 export interface MerchantSummary {
+  subscriptionStatus?: import('./subscriptions.js').SubscriptionStatus;
   id: string;
   name: string;
   businessCode: string;
@@ -14,6 +15,7 @@ export interface MerchantSummary {
 }
 
 export interface CreateMerchantRequest {
+  subscription?: { planId: string; months: import('./plans.js').SubscriptionMonths } | undefined;
   name: string;
   activity?: BusinessActivityKey;
   contactPhone: string;
@@ -73,6 +75,7 @@ export interface LoginRequest {
 }
 
 export interface OwnerProfile {
+  subscriptionStatus?: import('./subscriptions.js').SubscriptionStatus;
   username: string;
   merchantId: string;
   merchantName: string;
@@ -80,5 +83,5 @@ export interface OwnerProfile {
   contactPhone: string;
   ownerName: string;
   ownerMobile: string;
-  firstMonthActivatedAt: string;
+  firstMonthActivatedAt: string | null;
 }

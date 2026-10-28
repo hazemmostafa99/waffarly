@@ -1,6 +1,8 @@
 # Waffarly — Plans & Subscriptions Overview
 
-**Document status:** Domain discovery with the initial monthly-plan administration slice authorized and implemented; broader subscription requirements remain open.  
+> **2026-10-28 implementation update:** The owner approved multi-duration pricing and merchant subscription administration. [Merchant subscriptions](SUBSCRIPTIONS.md) is the current specification for assignment, external collection, coverage, renewal, changes, suspension, cancellation, expiry, access and legacy migration. Historical monthly-only/open lifecycle statements below describe the earlier discovery phase.
+
+**Document status:** Historical discovery with current subscription implementation specified separately.  
 **Last updated:** 2026-10-13  
 **Parent:** [Super Admin Overview](../OVERVIEW.md)  
 **Related domain:** [Merchant Management](../merchants/OVERVIEW.md)  

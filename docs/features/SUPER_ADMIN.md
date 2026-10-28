@@ -1,4 +1,6 @@
-﻿# Super Admin — Feature Discovery and Specification
+# Super Admin — Feature Discovery and Specification
+
+> **2026-10-28:** [Merchant subscriptions](super-admin/plans-subscriptions/SUBSCRIPTIONS.md) supersedes historical first-month-only activation and unresolved lifecycle statements in this document. Independent duration pricing, assignment, manual collection, renewal, changes, suspension, cancellation and expiry are implemented.
 
 **Status:** DRAFT — the product owner has authorized implementation of the confirmed first slice; remaining proposals and open rules are not approved.
 **Scope:** First restaurant release in Egypt, with future platform capabilities identified separately.

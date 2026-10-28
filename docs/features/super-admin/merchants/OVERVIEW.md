@@ -1,5 +1,7 @@
 # Waffarly — Merchant Management Overview
 
+> **2026-10-28:** Merchant creation can atomically assign an available plan/duration; each merchant receives a pending subscription independently of approval. Owners can authenticate for read/recovery access before activation, while operational writes require active coverage. Existing activated merchants retain legacy access pending review. See [Merchant subscriptions](../plans-subscriptions/SUBSCRIPTIONS.md); earlier first-month access restrictions below are superseded.
+
 **Document status:** Domain discovery draft; feature delivery scope and unresolved workflows are not approved.  
 **Last updated:** 2026-10-13  
 **Parent:** [Super Admin Overview](../OVERVIEW.md)  

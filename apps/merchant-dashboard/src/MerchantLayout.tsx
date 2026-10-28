@@ -131,6 +131,11 @@ export function MerchantLayout() {
     <Navigate to="/login" replace state={{ from: location.pathname }} />
   ) : (
     <div className="merchant-layout">
+      {profile.subscriptionStatus && !['active', 'legacy'].includes(profile.subscriptionStatus) && (
+        <div role="status" style={{ position: 'fixed', bottom: 16, insetInline: 16, zIndex: 100, padding: 16, borderRadius: 12, background: '#fff3cd', color: '#573e00', boxShadow: '0 4px 20px #0002' }}>
+          {t('Your subscription is inactive. You can review records and finish existing work. Contact Waffarly to renew or reactivate.')}
+        </div>
+      )}
       <aside
         id="merchant-mobile-navigation"
         className={`merchant-sidebar ${menuOpen ? 'is-open' : ''}`}

@@ -30,6 +30,28 @@ const settings = z.object({
     }),
   currency: z.literal('EGP'),
   billingInterval: z.literal('monthly'),
+  available: z.boolean().optional(),
+  terms: z
+    .array(
+      z
+        .object({
+          months: z.union([z.literal(3), z.literal(6), z.literal(12), z.literal(24)]),
+          price: z
+            .string()
+            .regex(/^(?:0|[1-9]\d{0,7})(?:\.\d{1,2})?$/)
+            .transform((value) => {
+              const [whole, fraction = ''] = value.split('.');
+              return `${whole}.${fraction.padEnd(2, '0')}`;
+            }),
+        })
+        .strict(),
+    )
+    .max(4)
+    .refine(
+      (terms) => new Set(terms.map((term) => term.months)).size === terms.length,
+      'Each duration must have only one price.',
+    )
+    .optional(),
 });
 const creation = settings.extend({ requestId: z.uuid() }).strict();
 const update = settings.extend({ revision: z.number().int().min(1).max(2147483646) }).strict();

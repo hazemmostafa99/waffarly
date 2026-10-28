@@ -1,5 +1,13 @@
 # API architecture
 
+Subscriptions (2026-10-28) owns merchant subscription accounts, paid period snapshots,
+manual collection administration, quotes, lifecycle, history and current eligibility.
+It has no Auth dependency. Auth imports Subscriptions for per-request eligibility;
+Plans imports Auth and Subscriptions for guarded administration; Merchants imports
+Subscriptions for atomic onboarding assignment; Orders imports Subscriptions for
+transactional public checkout checks. Existing first-month timestamps are historical
+compatibility facts, not access authority. See [Merchant subscriptions](../features/super-admin/plans-subscriptions/SUBSCRIPTIONS.md).
+
 Employee role presets and the available branch-scoped employee workflows are
 documented in [Employee roles](../features/employees/FEATURE.md). Auth owns the
 permission foundation; Inventory owns employee stock reads and Orders owns queue
@@ -52,15 +60,16 @@ The Orders-owned payment-state response includes optional checkout `context` (th
 
 | Module     | Responsibility                                                                                                                                         | Application dependencies                   |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
-| auth       | Owner/Admin/POS employee credentials, sessions, guards, employee records, and branch assignments                                                       | Configuration, database                    |
-| merchants  | Merchant profiles, applications, first-month activation, and revisioned tenant-level POS accent configuration                                          | Auth                                       |
-| plans      | Platform monthly plan definitions                                                                                                                      | Auth                                       |
+| auth       | Owner/Admin/POS employee credentials, sessions, guards, employee records, and branch assignments                                                       | Configuration, database, subscriptions |
+| merchants  | Merchant profiles, applications, onboarding plan assignment, and revisioned tenant-level POS accent configuration                                          | Auth, subscriptions |
+| plans      | Plan definitions, duration prices and subscription administration controllers                                                                           | Auth, subscriptions                        |
+| subscriptions | Merchant paid coverage, manual collections, lifecycle, quotes, history and eligibility                                                              | Database                                   |
 | activities | Business activity and capability definitions/metadata                                                                                                  | Auth                                       |
 | storefront | Owner design settings, templates, public storefront composition                                                                                        | Auth, catalog                              |
 | catalog    | Products, categories, reusable modifiers, authoritative pricing, and product inventory configurations                                                  | Auth, inventory                            |
 | inventory  | Merchant-owned Stock Items/units, branches/warehouses, policy, balances, and transactional movement ledger                                             | Auth                                       |
 | purchasing | Merchant-owned supplier directory and draft/confirmed purchase invoices                                                                                | Auth, inventory                            |
-| orders     | Storefront and POS order submission/snapshots, stock compatibility, dining tables/sessions/checks, tenders, ordinary POS receipts and recipe lifecycle | Auth, catalog, inventory, shifts, payments |
+| orders     | Storefront and POS order submission/snapshots, stock compatibility, dining tables/sessions/checks, tenders, ordinary POS receipts and recipe lifecycle | Auth, catalog, inventory, shifts, payments, subscriptions |
 | shifts     | Merchant-owned POS registers, opening shifts, register/branch attribution and cash journal                                                             | Auth                                       |
 | payments   | Immutable POS cash/manual-terminal tenders, exact tender/change rules and check balances                                                               | Auth, shifts                               |
 | media      | Tenant-owned image metadata and upload orchestration                                                                                                   | Auth, storage adapter                      |

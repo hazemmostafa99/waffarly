@@ -20,6 +20,7 @@ import { isSerializationConflict } from '../../infrastructure/database/prisma-er
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { ProductConsumptionService, ProductPricingService } from '../catalog/index.js';
 import { InventoryLedgerService } from '../inventory/index.js';
+import { SubscriptionService } from '../subscriptions/index.js';
 
 import { toReceipt, toSummary } from './order.mapper.js';
 import { posKitchenTicketInclude } from './pos-kitchen.persistence.js';
@@ -37,6 +38,9 @@ export class StorefrontOrdersService {
     @Inject(ProductPricingService) private readonly products: ProductPricingService,
     @Optional() @Inject(ProductConsumptionService) consumption?: ProductConsumptionService,
     @Optional() @Inject(InventoryLedgerService) ledger?: InventoryLedgerService,
+    @Optional()
+    @Inject(SubscriptionService)
+    private readonly subscriptions: SubscriptionService = new SubscriptionService(prisma),
   ) {
     this.consumption = consumption ?? new ProductConsumptionService();
     this.ledger = ledger ?? new InventoryLedgerService(prisma);
@@ -59,6 +63,7 @@ export class StorefrontOrdersService {
     try {
       return await this.prisma.$transaction(
         async (transaction) => {
+          await this.subscriptions.requireActive(merchant.id, transaction);
           const order = await transaction.storefrontOrder.create({
             data: {
               merchant: { connect: { id: merchant.id } },

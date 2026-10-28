@@ -273,3 +273,12 @@ export type {
   PosDeliveryCommand,
   PosDeliveryHandoverSnapshot,
 } from './pos-delivery.js';
+export type { SubscriptionMonths, PlanTerm } from './plans.js';
+export type {
+  SubscriptionStatus,
+  SubscriptionSummary,
+  SubscriptionDetail,
+  SubscriptionCommand,
+  SubscriptionQuote,
+  SubscriptionDashboard,
+} from './subscriptions.js';

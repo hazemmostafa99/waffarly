@@ -65,9 +65,9 @@ test('admin routes survive refresh and browser history and restore business data
 }) => {
   await mockSession(page);
   await page.goto('http://127.0.0.1:5273/plans');
-  await expect(page.locator('h1')).toHaveText('Monthly plans');
+  await expect(page.locator('h1')).toHaveText('Subscription plans');
   await page.reload();
-  await expect(page.locator('h1')).toHaveText('Monthly plans');
+  await expect(page.locator('h1')).toHaveText('Subscription plans');
   const nav = page.getByRole('navigation', { name: 'Platform administration' });
   await expect(nav.getByRole('link', { name: 'Businesses Onboarding' })).not.toHaveAttribute(
     'aria-current',
@@ -77,7 +77,7 @@ test('admin routes survive refresh and browser history and restore business data
   await expect(page).toHaveURL('http://127.0.0.1:5273/');
   await expect(page.getByRole('heading', { name: 'Route Test Shop' })).toBeVisible();
   await page.goBack();
-  await expect(page.locator('h1')).toHaveText('Monthly plans');
+  await expect(page.locator('h1')).toHaveText('Subscription plans');
   await page.goForward();
   await expect(page.getByRole('heading', { name: 'Route Test Shop' })).toBeVisible();
 });
@@ -100,7 +100,7 @@ test('merchant routes keep owner settings and use browser history', async ({ pag
 });
 
 for (const [port, path, heading] of [
-  [5273, '/plans', 'Monthly plans'],
+  [5273, '/plans', 'Subscription plans'],
   [5274, '/settings', 'Settings'],
 ] as const) {
   test(`${port} protects deep links, returns after login, and signs out`, async ({ page }) => {

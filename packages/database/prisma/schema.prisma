@@ -17,6 +17,7 @@ model FoundationMarker {
 
 // A merchant is the tenant boundary across business activities.
 model Merchant {
+  subscription Subscription?
   cashSafes PosCashSafe[]
   id                       String                  @id @default(uuid()) @db.Uuid
   name                     String                  @db.VarChar(160)
@@ -650,6 +651,10 @@ model MerchantStorefront {
 
 // Commercial definitions only. Merchant coverage and collection are separate concerns.
 model MonthlyPlan {
+  assignedSubscriptions Subscription[] @relation("AssignedSubscriptionPlan")
+  subscriptionPeriods SubscriptionPeriod[] @relation("SubscriptionPeriodPlan")
+  available       Boolean  @default(true)
+  terms           PlanTerm[]
   id              String   @id @default(uuid()) @db.Uuid
   creationRequest String   @unique @db.Uuid
   name            String   @db.VarChar(160)
@@ -664,6 +669,64 @@ model MonthlyPlan {
   updatedAt       DateTime @updatedAt @db.Timestamptz(6)
 
   @@map("monthly_plans")
+}
+
+model PlanTerm {
+  planId String @db.Uuid
+  months Int
+  price Decimal @db.Decimal(10, 2)
+  plan MonthlyPlan @relation(fields: [planId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  @@id([planId, months])
+  @@map("plan_terms")
+}
+
+model Subscription {
+  merchantId String @id @db.Uuid
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  status String @default("pending") @db.VarChar(16)
+  revision Int @default(1)
+  cancelAtEnd Boolean @default(false)
+  assignedPlanId String? @db.Uuid
+  assignedPlan MonthlyPlan? @relation("AssignedSubscriptionPlan", fields: [assignedPlanId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  assignedMonths Int?
+  periods SubscriptionPeriod[]
+  events SubscriptionEvent[]
+  @@map("subscriptions")
+}
+
+model SubscriptionPeriod {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  subscription Subscription @relation(fields: [merchantId], references: [merchantId], onDelete: Restrict, onUpdate: NoAction)
+  planId String @db.Uuid
+  plan MonthlyPlan @relation("SubscriptionPeriodPlan", fields: [planId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  planName String @db.VarChar(160)
+  months Int
+  price Decimal @db.Decimal(10, 2)
+  collected Decimal @db.Decimal(10, 2)
+  credit Decimal @db.Decimal(10, 2)
+  startsAt DateTime @db.Timestamptz(6)
+  endsAt DateTime @db.Timestamptz(6)
+  coverageEndsAt DateTime @db.Timestamptz(6)
+  @@index([merchantId, startsAt, coverageEndsAt])
+  @@map("subscription_periods")
+}
+
+model SubscriptionEvent {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  subscription Subscription @relation(fields: [merchantId], references: [merchantId], onDelete: Restrict, onUpdate: NoAction)
+  requestId String @db.Uuid
+  fingerprint String @db.VarChar(64)
+  action String @db.VarChar(24)
+  administrator String @db.VarChar(80)
+  reason String @db.VarChar(1000)
+  collected Decimal @default(0) @db.Decimal(10, 2)
+  result Json
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  @@unique([merchantId, requestId])
+  @@index([merchantId, createdAt, id])
+  @@map("subscription_events")
 }
 
 // Dashboard overrides of code-managed definitions. Applicability is catalog metadata only.

@@ -1,5 +1,7 @@
 # Monthly Plan — Initial Implementation
 
+> **2026-10-28:** This describes the initial slice. [Merchant subscriptions](SUBSCRIPTIONS.md) extends offers with independent duration prices/availability and implements merchant assignment and the subscription lifecycle. Monthly-only limitations below are historical.
+
 **Feature:** SA-PS01 — Plan definitions and pricing  
 **Status:** Initial plan administration implemented; broader subscription requirements remain open.  
 **Last updated:** 2026-10-20

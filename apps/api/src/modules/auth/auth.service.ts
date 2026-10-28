@@ -17,6 +17,7 @@ import type { OwnerProfile, PosEmployeeSession, PosLoginRequest } from '@waffarl
 import { AppConfiguration } from '../../config/app-configuration.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { verifyPassword } from './password.js';
+import { SubscriptionService, isSubscriptionRecoveryRequest } from '../subscriptions/index.js';
 
 const SESSION_LIFETIME_MS = 8 * 60 * 60 * 1000;
 const ADMIN_COOKIE = 'waffarly_admin_session';
@@ -40,6 +41,8 @@ export class AuthService {
   constructor(
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AppConfiguration) private readonly config: AppConfiguration,
+    @Inject(SubscriptionService)
+    private readonly subscriptions: SubscriptionService = new SubscriptionService(prisma),
   ) {}
 
   async loginAdmin(username: string, password: string, response: Response): Promise<void> {
@@ -64,9 +67,7 @@ export class AuthService {
     if (!account || !(await verifyPassword(password, account.passwordHash))) {
       throw new UnauthorizedException('Invalid credentials.');
     }
-    if (!account.merchant.firstMonthActivatedAt) {
-      throw new ForbiddenException('Subscription is not active.');
-    }
+    // Owners can sign in to inspect subscription status even while operations are restricted.
     await this.startSession('OWNER', account.id, OWNER_COOKIE, response);
   }
 
@@ -85,13 +86,11 @@ export class AuthService {
           },
         })
       : null;
-    if (!employee || !(await verifyPassword(input.password, employee.passwordHash))) {
+    if (!merchant || !employee || !(await verifyPassword(input.password, employee.passwordHash))) {
       throw new UnauthorizedException('Invalid credentials.');
     }
     if (!employee.active) throw new UnauthorizedException('Invalid credentials.');
-    if (!merchant?.firstMonthActivatedAt) {
-      throw new ForbiddenException('Subscription is not active.');
-    }
+    // POS sessions may settle existing work; guards block new operations when inactive.
     const activeBranchCount = await this.prisma.posEmployeeBranch.count({
       where: { employeeId: employee.id, merchantId: merchant.id, branch: { archivedAt: null } },
     });
@@ -115,7 +114,8 @@ export class AuthService {
       include: { merchant: true },
     });
     if (!account) throw new UnauthorizedException('Owner session is invalid.');
-    if (!account.merchant.firstMonthActivatedAt) {
+    const access = await this.subscriptions.access(account.merchantId);
+    if (!access.allowed && !isSubscriptionRecoveryRequest(request.method, request.path)) {
       throw new ForbiddenException('Subscription is not active.');
     }
     return {
@@ -126,7 +126,8 @@ export class AuthService {
       contactPhone: account.merchant.contactPhone,
       ownerName: account.merchant.ownerName,
       ownerMobile: account.merchant.ownerMobile,
-      firstMonthActivatedAt: account.merchant.firstMonthActivatedAt.toISOString(),
+      firstMonthActivatedAt: account.merchant.firstMonthActivatedAt?.toISOString() ?? null,
+      subscriptionStatus: access.status,
     };
   }
 
@@ -144,7 +145,8 @@ export class AuthService {
       },
     });
     if (!employee || !employee.active) throw new UnauthorizedException('POS session is invalid.');
-    if (!employee.merchant.firstMonthActivatedAt) {
+    const access = await this.subscriptions.access(employee.merchantId);
+    if (!access.allowed && !isSubscriptionRecoveryRequest(request.method, request.path)) {
       throw new ForbiddenException('Subscription is not active.');
     }
     const branches = employee.branches.map(({ branch }) => ({ ...branch, archivedAt: null }));
@@ -189,7 +191,11 @@ export class AuthService {
         },
       },
     });
-    if (!employee || !employee.active || !(await verifyPassword(input.password, employee.passwordHash))) {
+    if (
+      !employee ||
+      !employee.active ||
+      !(await verifyPassword(input.password, employee.passwordHash))
+    ) {
       throw new UnauthorizedException('Supervisor approval credentials are invalid.');
     }
     if (employee.id === input.actingEmployeeId)

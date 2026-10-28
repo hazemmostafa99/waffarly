@@ -137,10 +137,39 @@ for (const locale of ['en', 'ar']) {
     await expect(
       page.getByText(label('Remaining custody', 'المتبقي بالعهدة'), { exact: true }),
     ).toBeVisible();
-    await expect(page.locator('.cash-drawer-meta')).toContainText(label('Cashier', 'الكاشير'));
-    await expect(page.locator('.cash-drawer-meta')).toContainText(
-      label('Closed at', 'وقت التقفيل'),
-    );
+    await expect(page.getByRole('table')).toBeVisible();
+    await page.getByRole('button', { name: label('Details', 'التفاصيل'), exact: true }).click();
+    await expect(page.getByRole('dialog')).toContainText(label('Closed at', 'وقت التقفيل'));
+    await expect(page.getByRole('dialog')).toContainText('Amira Hassan');
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: label('Close', 'إغلاق'), exact: true })
+      .click();
+    const more = page.getByRole('button', {
+      name: label('More actions', 'إجراءات إضافية'),
+      exact: true,
+    });
+    const actionRow = page.getByRole('row').filter({ has: more });
+    const rowBefore = await actionRow.boundingBox();
+    await more.click();
+    const actionMenu = page.getByRole('dialog', {
+      name: label('More actions', 'إجراءات إضافية'),
+      exact: true,
+    });
+    await expect(
+      actionMenu.getByRole('link', { name: label('Shift reports', 'تقارير الشيفتات') }),
+    ).toBeVisible();
+    expect((await actionRow.boundingBox())?.height).toBe(rowBefore?.height);
+    await page.screenshot({
+      path: testInfo.outputPath(`cash-actions-${locale}.png`),
+      fullPage: true,
+    });
+    await page.keyboard.press('Escape');
+    await expect(actionMenu).not.toBeVisible();
+    await expect(more).toBeFocused();
+    await more.click();
+    await more.click();
+    await expect(actionMenu).not.toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath(`cash-drawers-${locale}.png`),
       fullPage: true,
@@ -151,14 +180,40 @@ for (const locale of ['en', 'ar']) {
         exact: true,
       })
       .click();
-    await expect(page.getByText('BAG-1042', { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('cell', { name: 'BAG-1042 Front drawer → Main safe', exact: true }),
+    ).toBeVisible();
     await page
       .getByRole('button', { name: label('Count & receive', 'عدّ واستلام التوريد'), exact: true })
       .click();
     const dialog = page.getByRole('dialog');
     await dialog
       .getByLabel(label('Physically received (EGP)', 'المبلغ المستلم فعليًا (جنيه)'))
+      .fill('2990.00');
+    await expect(dialog.getByRole('status')).toContainText('10');
+    await dialog
+      .getByRole('button', { name: label('Review operation', 'مراجعة العملية'), exact: true })
+      .click();
+    expect(submitted).toBeNull();
+    await expect(
+      dialog.getByRole('button', { name: label('Confirm', 'تأكيد'), exact: true }),
+    ).toHaveCount(0);
+    await dialog
+      .getByLabel(label('Physically received (EGP)', 'المبلغ المستلم فعليًا (جنيه)'))
       .fill('3000.00');
+    await dialog
+      .getByRole('button', { name: label('Review operation', 'مراجعة العملية'), exact: true })
+      .click();
+    expect(submitted).toBeNull();
+    await dialog
+      .getByRole('button', { name: label('Back to edit', 'رجوع للتعديل'), exact: true })
+      .click();
+    await expect(
+      dialog.getByLabel(label('Physically received (EGP)', 'المبلغ المستلم فعليًا (جنيه)')),
+    ).toHaveValue('3000.00');
+    await dialog
+      .getByRole('button', { name: label('Review operation', 'مراجعة العملية'), exact: true })
+      .click();
     await dialog.getByRole('button', { name: label('Confirm', 'تأكيد'), exact: true }).click();
     await expect(dialog).not.toBeVisible();
     expect(submitted).toMatchObject({ receivedAmount: '3000.00', note: '' });
@@ -169,11 +224,14 @@ for (const locale of ['en', 'ar']) {
     await expect(
       page.getByText(label('Confirmed safe balance', 'رصيد الخزنة المؤكد')),
     ).toBeVisible();
-    await expect(page.locator('.cash-primary strong')).toContainText('4,000');
+    await expect(page.getByRole('cell').filter({ hasText: '4,000' })).toBeVisible();
     await page.screenshot({
       path: testInfo.outputPath(`cash-safes-${locale}.png`),
       fullPage: true,
     });
+    await page
+      .getByRole('button', { name: label('More actions', 'إجراءات إضافية'), exact: true })
+      .click();
     await page
       .getByRole('button', { name: label('Movement statement', 'كشف الحركة'), exact: true })
       .click();
@@ -191,6 +249,22 @@ for (const locale of ['en', 'ar']) {
       .getByRole('dialog')
       .getByRole('button', { name: label('Close', 'إغلاق'), exact: true })
       .click();
+    await page.getByRole('button', { name: label('Details', 'التفاصيل'), exact: true }).click();
+    await expect(page.getByRole('dialog')).toContainText('Main safe');
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: label('Deposit / withdrawal', 'إيداع / صرف'), exact: true })
+      .click();
+    await dialog.getByLabel(label('Amount (EGP)', 'المبلغ (جنيه)'), { exact: true }).fill('0.25');
+    await dialog
+      .getByLabel(label('Reason / document reference', 'السبب / مرجع المستند'))
+      .fill('COUNT-ADJUSTMENT');
+    await dialog
+      .getByRole('button', { name: label('Review operation', 'مراجعة العملية'), exact: true })
+      .click();
+    await expect(dialog).toContainText('4,000.25');
+    await dialog.getByRole('button', { name: label('Cancel', 'إلغاء'), exact: true }).click();
+    expect(submitted).toMatchObject({ receivedAmount: '3000.00' });
     await page
       .getByRole('button', { name: label('Create safe', 'إضافة خزنة'), exact: true })
       .click();
@@ -264,6 +338,11 @@ for (const locale of ['en', 'ar']) {
       .getByLabel(label('Handoff / bag reference', 'مرجع التسليم / الكيس'))
       .fill('BAG-NEW');
     await dialog.getByLabel(label('Reason', 'السبب'), { exact: true }).fill('Remaining custody');
+    await dialog
+      .getByRole('button', { name: label('Review operation', 'مراجعة العملية'), exact: true })
+      .click();
+    await expect(dialog).toContainText('Main safe');
+    expect(commands).toHaveLength(0);
     await dialog.getByRole('button', { name: label('Confirm', 'تأكيد'), exact: true }).click();
     await expect.poll(() => commands.length).toBe(1);
     await page.reload();

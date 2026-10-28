@@ -1,215 +1,401 @@
-import { useMemo, useState } from 'react';
-import { BadgeCheck, CalendarClock, Clock3, Search, Store } from 'lucide-react';
+import { formatSubscriptionMoney } from './subscription-money.js';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Button, Card, Input, useLocale } from '@waffarly/ui';
-import type { MerchantSummary } from '@waffarly/contracts';
+import {
+  BadgeCheck,
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
+  CircleDollarSign,
+  ListFilter,
+  RefreshCw,
+  Search,
+  Settings2,
+  ShieldAlert,
+  Store,
+  X,
+} from 'lucide-react';
+import { Button, Input, useLocale } from '@waffarly/ui';
+import type {
+  SubscriptionDashboard,
+  SubscriptionStatus,
+  SubscriptionSummary,
+} from '@waffarly/contracts';
 import { PageHeader } from '../../components/PageHeader.js';
-import { StatCard } from '../../components/StatCard.js';
 import { StatusBadge } from '../../components/StatusBadge.js';
-import { useActivateFirstMonthMutation, useMerchantsQuery } from '../merchants/merchant-queries.js';
+import { apiRequest, apiRequestPage } from '../../lib/api-client.js';
+import { useMonthlyPlansQuery } from '../plans/plans-queries.js';
+import { subscriptionStatusLabels as labels } from './subscription-status.js';
+import { SubscriptionEditor } from './SubscriptionEditor.js';
+import './subscriptions.css';
 
-type AccessFilter = 'all' | 'activated' | 'awaiting';
-
-function parseAccessFilter(value: string | null): AccessFilter {
-  return value === 'activated' || value === 'awaiting' ? value : 'all';
-}
+const statuses: SubscriptionStatus[] = [
+  'active',
+  'pending',
+  'suspended',
+  'expired',
+  'cancelled',
+  'legacy',
+];
 
 export function SubscriptionsPage() {
-  const { t, formatDate, errorText, locale } = useLocale();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const merchants = useMerchantsQuery();
-  const activateFirstMonth = useActivateFirstMonthMutation();
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const search = searchParams.get('q') ?? '';
-  const accessFilter = parseAccessFilter(searchParams.get('access'));
-
-  function updateParams(updates: Record<string, string | null>) {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      for (const [key, value] of Object.entries(updates)) {
+  const { t, formatDate, formatNumber, errorText, locale } = useLocale();
+  const [params, setParams] = useSearchParams();
+  const [cursors, setCursors] = useState<string[]>([]);
+  const merchantId = params.get('merchant') ?? '';
+  const search = new URLSearchParams();
+  for (const key of ['q', 'status', 'planId', 'expiring'])
+    if (params.get(key)) search.set(key, params.get(key)!);
+  if (cursors.at(-1)) search.set('cursor', cursors.at(-1)!);
+  const plans = useMonthlyPlansQuery();
+  const records = useQuery({
+    queryKey: ['subscriptions', 'list', search.toString()],
+    queryFn: () => apiRequestPage<SubscriptionSummary>(`/admin/subscriptions?${search}`),
+    refetchInterval: 60000,
+    enabled: !merchantId,
+  });
+  const dashboard = useQuery({
+    queryKey: ['subscriptions', 'dashboard'],
+    queryFn: () => apiRequest<SubscriptionDashboard>('/admin/subscriptions/dashboard'),
+    refetchInterval: 60000,
+  });
+  function update(key: string, value: string) {
+    setCursors([]);
+    setParams(
+      (before) => {
+        const next = new URLSearchParams(before);
         if (value) next.set(key, value);
         else next.delete(key);
-      }
-      return next;
-    }, { replace: true });
-  }
-
-  function confirmActivation(merchant: MerchantSummary) {
-    if (!window.confirm(t('Confirm that the first month was collected outside Waffarly for {{name}}?', { name: merchant.name }))) return;
-    setFeedback(null);
-    activateFirstMonth.mutate(merchant.id, {
-      onSuccess: (updatedMerchant) => {
-        setFeedback({ type: 'success', message: t('First month activated for {{name}}.', { name: updatedMerchant.name }) });
+        if (key === 'status') next.delete('expiring');
+        return next;
       },
-      onError: (cause: unknown) => {
-        setFeedback({ type: 'error', message: errorText(cause instanceof Error ? cause.message : 'Something went wrong.') });
-      },
-    });
+      { replace: key === 'q' },
+    );
   }
-
-  const normalizedSearch = search.trim().toLocaleLowerCase(locale);
-  const records = useMemo(() => (merchants.data ?? []).filter((merchant) => {
-    const searchable = [merchant.name, merchant.ownerName, merchant.username, merchant.contactPhone, merchant.ownerMobile]
-      .join(' ')
-      .toLocaleLowerCase(locale);
-    const matchesSearch = !normalizedSearch || searchable.includes(normalizedSearch);
-    const activated = Boolean(merchant.firstMonthActivatedAt);
-    const matchesAccess = accessFilter === 'all' || (accessFilter === 'activated' ? activated : !activated);
-    return matchesSearch && matchesAccess;
-  }), [accessFilter, locale, merchants.data, normalizedSearch]);
-
-  const activatedCount = (merchants.data ?? []).filter((merchant) => merchant.firstMonthActivatedAt).length;
-  const awaitingCount = (merchants.data?.length ?? 0) - activatedCount;
-  const hasFilters = Boolean(search || accessFilter !== 'all');
-
+  const hasFilters = ['q', 'status', 'planId', 'expiring'].some((key) => params.get(key));
+  const stats = [
+    {
+      label: 'Active subscriptions',
+      value: dashboard.data?.counts.active,
+      icon: BadgeCheck,
+      tone: 'mint',
+      status: 'active',
+      helper: 'Currently covered businesses',
+    },
+    {
+      label: 'Expiring within 7 days',
+      value: dashboard.data?.expiringSoon,
+      icon: CalendarClock,
+      tone: 'gold',
+      status: 'expiring',
+      helper: 'Follow up before coverage ends',
+    },
+    {
+      label: 'Needs subscription review',
+      value: dashboard.data?.counts.legacy,
+      icon: ShieldAlert,
+      tone: 'blue',
+      status: 'legacy',
+      helper: 'Existing access is preserved',
+    },
+  ];
+  const money = (amount: string) => formatSubscriptionMoney(amount, locale);
+  const showAll = () => update('merchant', '');
   return (
-    <div className="grid gap-6">
+    <div className="subscription-page">
       <PageHeader
         eyebrow={t('Plans & subscriptions')}
-        title={t('Subscription access')}
-        description={t('The current API records first-month activation only; plan assignment, later payments, renewal, and expiry details are not available here.')}
+        title={t('Subscription management')}
+        description={t('Manage coverage, renewals, and collections in one place.')}
         actions={
-          <Button asChild variant="outline" className="border-waffarly-border bg-white text-waffarly-ink hover:bg-waffarly-input">
-            <Link to="/plans">{t('View monthly plans')}</Link>
+          <Button asChild variant="outline">
+            <Link to="/plans">
+              <Settings2 size={16} />
+              {t('Subscription plans')}
+            </Link>
           </Button>
         }
       />
-
-      <div className="flex items-start gap-3 rounded-2xl border border-waffarly-border bg-white px-4 py-4 shadow-[0_3px_12px_rgba(20,32,62,0.035)] md:px-5">
-        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-waffarly-kpi-blue text-waffarly-info" aria-hidden="true">
-          <CalendarClock size={18} />
-        </span>
-        <p className="m-0 text-sm leading-6 text-waffarly-muted">{t('Creating a business and recording first-month access are separate. Activation requires confirmation of collection outside Waffarly.')}</p>
-      </div>
-
-      {feedback && (
-        <p className={`m-0 rounded-xl px-4 py-3 text-sm ${feedback.type === 'success' ? 'bg-waffarly-kpi-mint text-waffarly-primary' : 'bg-waffarly-danger-bg text-waffarly-danger'}`} role={feedback.type === 'success' ? 'status' : 'alert'}>
-          {feedback.message}
+      {dashboard.isError && (
+        <p role="alert" className="subscription-alert">
+          {errorText(dashboard.error.message)}
         </p>
       )}
-
-      {merchants.isError && (
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger" role="alert">
-          <div className="min-w-0">
-            <strong className="block">{t('Could not load access records.')}</strong>
-            <p className="mb-0 mt-1 text-xs">{errorText(merchants.error instanceof Error ? merchants.error.message : 'Something went wrong.')}</p>
+      {!merchantId && (
+        <div className="subscription-stats">
+          {stats.map(({ icon: Icon, ...stat }) => (
+            <button
+              key={stat.label}
+              type="button"
+              className={`subscription-stat subscription-stat--${stat.tone}`}
+              onClick={() => {
+                if (stat.status === 'expiring') {
+                  setCursors([]);
+                  setParams((before) => {
+                    const next = new URLSearchParams(before);
+                    next.delete('status');
+                    next.set('expiring', 'true');
+                    return next;
+                  });
+                } else update('status', stat.status);
+              }}
+            >
+              <span className="subscription-stat-icon">
+                <Icon size={20} />
+              </span>
+              <span className="subscription-stat-copy">
+                <span>{t(stat.label)}</span>
+                <strong>{stat.value === undefined ? '—' : formatNumber(stat.value)}</strong>
+                <small>{t(stat.helper)}</small>
+              </span>
+            </button>
+          ))}
+          <div className="subscription-stat subscription-stat--neutral">
+            <span className="subscription-stat-icon">
+              <CircleDollarSign size={20} />
+            </span>
+            <span className="subscription-stat-copy">
+              <span>{t('Recorded external collections')}</span>
+              <strong className="subscription-stat-money">
+                {dashboard.data ? money(dashboard.data.collected) : '—'}
+              </strong>
+              <small>{t('Confirmed outside Waffarly')}</small>
+            </span>
           </div>
-          <Button variant="outline" size="sm" className="border-waffarly-border bg-white text-waffarly-primary" onClick={() => void merchants.refetch()}>
-            {t('Try again')}
-          </Button>
         </div>
       )}
-
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label={t('First-month access summary')}>
-        <StatCard label={t('Businesses')} value={merchants.data?.length ?? '—'} helper={t('Businesses registered on Waffarly')} icon={Store} tone="mint" loading={merchants.isPending} />
-        <StatCard label={t('First month activated')} value={merchants.data ? activatedCount : '—'} helper={t('Businesses with first-month activation recorded')} icon={BadgeCheck} tone="blue" loading={merchants.isPending} />
-        <StatCard label={t('Awaiting first-month activation')} value={merchants.data ? awaitingCount : '—'} helper={t('Businesses awaiting first-month activation')} icon={Clock3} tone="gold" loading={merchants.isPending} />
-      </section>
-
-      <Card className="min-w-0 overflow-hidden rounded-2xl border-waffarly-border bg-waffarly-surface p-0 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-waffarly-border p-4 md:p-5">
-          <div>
-            <h2 className="m-0 text-sm font-bold">{t('First-month access records')}</h2>
-            <p className="mb-0 mt-1 text-xs text-waffarly-muted">{t('Filter the confirmed access fact currently available for each business.')}</p>
+      {merchantId ? (
+        <SubscriptionEditor key={merchantId} merchantId={merchantId} onClose={showAll} />
+      ) : (
+        <section
+          className="subscription-surface subscription-list"
+          aria-label={t('All subscriptions')}
+        >
+          <div className="subscription-list-header">
+            <div>
+              <h2>{t('All subscriptions')}</h2>
+              <p>{t('Find a business and manage its subscription.')}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={records.isFetching || dashboard.isFetching}
+              onClick={() => {
+                void records.refetch();
+                void dashboard.refetch();
+              }}
+            >
+              <RefreshCw size={15} className={records.isFetching ? 'animate-spin' : ''} />
+              {t('Refresh')}
+            </Button>
           </div>
-          <span className="rounded-full bg-waffarly-kpi-mint px-3 py-1 text-xs font-bold text-waffarly-primary">{records.length} {t('records')}</span>
-        </div>
-
-        <div className="grid gap-3 border-b border-waffarly-border p-4 md:grid-cols-[minmax(220px,1fr)_minmax(170px,auto)_auto] md:items-end md:p-5">
-          <label className="grid gap-1.5 text-xs font-semibold text-waffarly-ink">
-            <span>{t('Search access records')}</span>
-            <span className="relative">
-              <Search className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-waffarly-muted" size={16} aria-hidden="true" />
+          <div
+            className="subscription-status-tabs"
+            role="group"
+            aria-label={t('Filter by subscription access')}
+          >
+            <button
+              type="button"
+              aria-pressed={!params.get('status') && !params.get('expiring')}
+              onClick={() => update('status', '')}
+            >
+              {t('All statuses')}
+              <span>
+                {dashboard.data
+                  ? formatNumber(Object.values(dashboard.data.counts).reduce((a, b) => a + b, 0))
+                  : '—'}
+              </span>
+            </button>
+            {statuses.map((status) => (
+              <button
+                key={status}
+                type="button"
+                aria-pressed={params.get('status') === status}
+                onClick={() => update('status', status)}
+              >
+                {t(labels[status])}
+                <span>{dashboard.data ? formatNumber(dashboard.data.counts[status]) : '—'}</span>
+              </button>
+            ))}
+          </div>
+          <div className="subscription-filters">
+            <label className="subscription-search">
+              <Search size={17} aria-hidden="true" />
+              <span className="sr-only">{t('Search businesses')}</span>
               <Input
                 type="search"
-                className="h-10 rounded-xl border-waffarly-border bg-white ps-10 pe-3 text-sm text-waffarly-ink placeholder:text-waffarly-muted"
-                placeholder={t('Search by business, owner, username, or phone')}
-                value={search}
-                onChange={(event) => updateParams({ q: event.target.value || null })}
+                placeholder={t('Search by business, owner, or phone')}
+                value={params.get('q') ?? ''}
+                onChange={(e) => update('q', e.target.value)}
               />
-            </span>
-          </label>
-          <label className="grid gap-1.5 text-xs font-semibold text-waffarly-ink">
-            <span>{t('First-month access')}</span>
-            <select
-              className="h-10 min-w-0 rounded-xl border border-waffarly-border bg-white px-3 text-sm font-medium text-waffarly-ink outline-none focus-visible:ring-2 focus-visible:ring-waffarly-primary"
-              value={accessFilter}
-              onChange={(event) => updateParams({ access: event.target.value === 'all' ? null : event.target.value })}
-              aria-label={t('Filter by first-month access')}
-            >
-              <option value="all">{t('All access states')}</option>
-              <option value="activated">{t('First month activated')}</option>
-              <option value="awaiting">{t('Awaiting first-month activation')}</option>
-            </select>
-          </label>
-          {hasFilters && (
-            <Button variant="ghost" size="sm" type="button" className="h-10 justify-self-start px-2 text-waffarly-primary hover:bg-waffarly-kpi-mint hover:text-waffarly-primary md:justify-self-end" onClick={() => updateParams({ q: null, access: null })}>
-              {t('Clear filters')}
-            </Button>
+            </label>
+            <label className="subscription-filter-plan">
+              <ListFilter size={16} aria-hidden="true" />
+              <span className="sr-only">{t('Plan')}</span>
+              <select
+                value={params.get('planId') ?? ''}
+                onChange={(e) => update('planId', e.target.value)}
+              >
+                <option value="">{t('All plans')}</option>
+                {plans.data?.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {hasFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setCursors([]);
+                  setParams({});
+                }}
+              >
+                <X size={14} />
+                {t('Clear filters')}
+              </Button>
+            )}
+          </div>
+          {params.get('expiring') && (
+            <div className="subscription-filter-note">
+              <CalendarClock size={15} />
+              {t('Expiring within 7 days')}
+            </div>
           )}
-        </div>
-
-        <div className="overflow-x-auto" role="region" aria-label={t('First-month access records')} tabIndex={0}>
-          <table className="w-full min-w-[680px] border-collapse text-start text-sm" aria-busy={merchants.isPending}>
-            <caption className="sr-only">{t('First-month access records')}</caption>
-            <thead className="bg-waffarly-input text-[10px] font-bold uppercase tracking-wide text-waffarly-muted">
-              <tr className="border-b border-waffarly-border">
-                <th className="px-4 py-3 text-start" scope="col">{t('Business')}</th>
-                <th className="px-4 py-3 text-start" scope="col">{t('Owner')}</th>
-                <th className="px-4 py-3 text-start" scope="col">{t('First-month access')}</th>
-                <th className="px-4 py-3 text-start" scope="col">{t('Activation date')}</th>
-                <th className="px-4 py-3 text-end" scope="col">{t('Actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {merchants.isPending ? (
-                <tr><td className="px-4 py-12 text-center text-sm text-waffarly-muted" colSpan={5} role="status">{t('Loading access records…')}</td></tr>
-              ) : merchants.isError && !merchants.data ? (
-                <tr><td className="px-4 py-12 text-center text-sm text-waffarly-muted" colSpan={5}>{t('Access records are unavailable.')}</td></tr>
-              ) : records.length === 0 ? (
+          {records.isError && (
+            <p role="alert" className="subscription-alert">
+              {errorText(records.error.message)}
+            </p>
+          )}
+          <div className="subscription-table-scroll">
+            <table aria-busy={records.isFetching}>
+              <thead>
                 <tr>
-                  <td className="px-4 py-12 text-center" colSpan={5}>
-                    <div className="grid justify-items-center gap-2">
-                      <span className="grid size-11 place-items-center rounded-xl bg-waffarly-kpi-mint text-waffarly-primary"><Store size={20} aria-hidden="true" /></span>
-                      <strong className="text-sm">{hasFilters ? t('No access records match these filters.') : t('No businesses yet')}</strong>
-                      <p className="m-0 text-xs text-waffarly-muted">{hasFilters ? t('Try changing your search or filters.') : t('Businesses will appear here when they are created.')}</p>
-                      {hasFilters && <Button variant="outline" size="sm" type="button" className="mt-1 border-waffarly-border bg-white text-waffarly-primary" onClick={() => updateParams({ q: null, access: null })}>{t('Clear filters')}</Button>}
-                    </div>
-                  </td>
+                  {['Business', 'Plan', 'Status', 'Ends at', 'Actions'].map((h) => (
+                    <th key={h}>{t(h)}</th>
+                  ))}
                 </tr>
-              ) : (
-                records.map((merchant) => (
-                  <tr className="border-b border-waffarly-border last:border-0" key={merchant.id}>
-                    <td className="px-4 py-3.5">
-                      <Link className="font-semibold text-waffarly-ink underline-offset-4 hover:text-waffarly-primary hover:underline" to={`/merchants/${merchant.id}`}>{merchant.name}</Link>
-                      <small className="mt-1 block text-[11px] text-waffarly-muted" dir="ltr">{merchant.contactPhone}</small>
+              </thead>
+              <tbody>
+                {records.data?.items.map((s) => (
+                  <tr key={s.merchantId}>
+                    <td>
+                      <div className="subscription-business">
+                        <span className="subscription-business-avatar">
+                          <Store size={17} />
+                        </span>
+                        <div>
+                          <Link to={`/merchants/${s.merchantId}`}>{s.merchantName}</Link>
+                          {!s.currentPeriod && <small>{t(labels[s.status])}</small>}
+                        </div>
+                      </div>
                     </td>
-                    <td className="px-4 py-3.5">
-                      <strong className="block text-xs font-semibold text-waffarly-ink">{merchant.ownerName}</strong>
-                      <small className="mt-1 block text-[11px] text-waffarly-muted" dir="ltr">{merchant.ownerMobile}</small>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <StatusBadge tone={merchant.firstMonthActivatedAt ? 'success' : 'warning'}>
-                        {merchant.firstMonthActivatedAt ? t('First month activated') : t('Awaiting first-month activation')}
-                      </StatusBadge>
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-waffarly-muted">
-                      {merchant.firstMonthActivatedAt ? formatDate(merchant.firstMonthActivatedAt) : '—'}
-                    </td>
-                    <td className="px-4 py-3.5 text-end">
-                      {!merchant.firstMonthActivatedAt && (
-                        <Button variant="outline" size="sm" type="button" disabled={activateFirstMonth.isPending} className="h-8 border-waffarly-border bg-white px-2.5 text-[11px] text-waffarly-primary hover:bg-waffarly-kpi-mint hover:text-waffarly-primary" onClick={() => confirmActivation(merchant)}>
-                          {t('Activate first month')}
-                        </Button>
+                    <td>
+                      {s.currentPeriod ? (
+                        <>
+                          <strong>{s.currentPeriod.planName}</strong>
+                          <small>
+                            {t('{{months}} months', { months: s.currentPeriod.months })}
+                          </small>
+                        </>
+                      ) : (
+                        (plans.data?.find((p) => p.id === s.assignedPlanId)?.name ?? (
+                          <span className="subscription-muted">{t('Not assigned')}</span>
+                        ))
                       )}
                     </td>
+                    <td>
+                      <StatusBadge
+                        tone={
+                          s.status === 'active'
+                            ? 'success'
+                            : s.status === 'cancelled'
+                              ? 'neutral'
+                              : 'warning'
+                        }
+                      >
+                        {t(labels[s.status])}
+                      </StatusBadge>
+                      {s.cancelAtEnd && <small>{t('Cancels at period end')}</small>}
+                    </td>
+                    <td>
+                      {s.endsAt ? (
+                        formatDate(s.endsAt)
+                      ) : (
+                        <span className="subscription-muted">{t('No end date')}</span>
+                      )}
+                    </td>
+                    <td>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => update('merchant', s.merchantId)}
+                      >
+                        {t('Manage subscription')}
+                        {locale === 'ar' ? <ChevronLeft size={15} /> : <ChevronRight size={15} />}
+                      </Button>
+                    </td>
                   </tr>
-                ))
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {records.isPending && (
+            <div className="subscription-list-empty" role="status">
+              {t('Loading subscriptions…')}
+            </div>
+          )}
+          {records.data?.items.length === 0 && (
+            <div className="subscription-list-empty">
+              <Search size={28} />
+              <strong>{t('No subscriptions match these filters.')}</strong>
+              {hasFilters && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setCursors([]);
+                    setParams({});
+                  }}
+                >
+                  {t('Clear filters')}
+                </Button>
               )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+            </div>
+          )}
+          <footer className="subscription-list-footer">
+            <span>
+              {records.data
+                ? t('{{count}} businesses on this page', { count: records.data.items.length })
+                : '—'}
+            </span>
+            <div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!cursors.length}
+                onClick={() => setCursors((s) => s.slice(0, -1))}
+              >
+                {t('Previous')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!records.data?.nextCursor}
+                onClick={() => {
+                  if (records.data?.nextCursor)
+                    setCursors((s) => [...s, records.data!.nextCursor!]);
+                }}
+              >
+                {t('Next')}
+              </Button>
+            </div>
+          </footer>
+        </section>
+      )}
     </div>
   );
 }

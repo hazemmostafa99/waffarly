@@ -19,6 +19,13 @@ import { AdminGuard, CurrentAdmin } from '../auth/index.js';
 import { MerchantService } from './merchant.service.js';
 
 const creationSchema = z.object({
+  subscription: z
+    .object({
+      planId: z.uuid(),
+      months: z.union([z.literal(1), z.literal(3), z.literal(6), z.literal(12), z.literal(24)]),
+    })
+    .strict()
+    .optional(),
   name: z.string().trim().min(1).max(160),
   activity: z.enum(BUSINESS_ACTIVITY_KEYS).default('other'),
   contactPhone: z.string().trim().min(3).max(32),
@@ -44,9 +51,12 @@ export class MerchantController {
   }
 
   @Post()
-  async create(@Body() body: unknown): Promise<MerchantSummary> {
+  async create(
+    @Body() body: unknown,
+    @CurrentAdmin() administrator: string,
+  ): Promise<MerchantSummary> {
     const result = parseRequest(creationSchema, body, { format: 'messages' });
-    return this.merchants.create(result);
+    return this.merchants.create(result, administrator);
   }
 
   @Post(':id/activate-first-month')

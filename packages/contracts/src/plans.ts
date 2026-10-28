@@ -1,4 +1,9 @@
 export type PlanCurrency = 'EGP';
+export type SubscriptionMonths = 1 | 3 | 6 | 12 | 24;
+export interface PlanTerm {
+  months: Exclude<SubscriptionMonths, 1>;
+  price: string;
+}
 
 export interface MonthlyPlanSettings {
   name: string;
@@ -7,6 +12,9 @@ export interface MonthlyPlanSettings {
   monthlyPrice: string;
   currency: PlanCurrency;
   billingInterval: 'monthly';
+  /** Optional longer prepaid terms. The one-month price remains monthlyPrice. */
+  terms?: PlanTerm[] | undefined;
+  available?: boolean | undefined;
 }
 
 export interface CreateMonthlyPlanRequest extends MonthlyPlanSettings {

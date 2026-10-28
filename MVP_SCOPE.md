@@ -1,5 +1,7 @@
 # Waffarly (وفّرلي) — Restaurant MVP Scope
 
+> **2026-10-28 subscription update:** The owner approved and the app implements independent 1/3/6/12/24-month pricing, merchant assignment, manual collection, renewal, plan changes, suspension/resume, cancellation and expiry. [Merchant subscriptions](docs/features/super-admin/plans-subscriptions/SUBSCRIPTIONS.md) supersedes historical open questions and monthly-only restrictions below. Provider integration and automatic renewal remain excluded.
+
 > **Scope correction — 2026-10-13:** Restaurant-only platform scope has been superseded by the owner's multi-business clarification. This document now represents a restaurant workflow proposal. Clothing stores, supermarkets, and other businesses use the shared merchant foundation; restaurant-specific workflows must not be imposed on them. Their specialized operations remain subject to separate feature decisions.
 
 > **Document status:** Draft v0.1 — **not yet approved as final MVP scope**  

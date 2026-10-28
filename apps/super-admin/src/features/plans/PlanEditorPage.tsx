@@ -27,6 +27,8 @@ const emptyForm: FormValues = {
   description: '',
   monthlyPrice: '',
   billingInterval: 'monthly',
+  terms: [],
+  available: true,
 };
 
 function settingsFor(plan: MonthlyPlanSummary): FormValues {
@@ -35,13 +37,19 @@ function settingsFor(plan: MonthlyPlanSummary): FormValues {
     description: plan.description,
     monthlyPrice: plan.monthlyPrice,
     billingInterval: 'monthly',
+    terms: plan.terms ?? [],
+    available: plan.available ?? true,
   };
 }
 
 function sameSettings(left: FormValues, right: FormValues) {
-  return left.name === right.name &&
+  return (
+    left.name === right.name &&
     left.description === right.description &&
-    left.monthlyPrice === right.monthlyPrice;
+    left.monthlyPrice === right.monthlyPrice &&
+    left.available === right.available &&
+    JSON.stringify(left.terms) === JSON.stringify(right.terms)
+  );
 }
 
 export function PlanEditorPage() {
@@ -64,10 +72,9 @@ export function PlanEditorPage() {
   const recordPlan = basePlan ?? currentPlan;
   const isDirty = !sameSettings(form, initialForm);
 
-  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
-    isDirty &&
-    !allowNavigation.current &&
-    currentLocation.pathname !== nextLocation.pathname,
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isDirty && !allowNavigation.current && currentLocation.pathname !== nextLocation.pathname,
   );
 
   useEffect(() => {
@@ -100,7 +107,12 @@ export function PlanEditorPage() {
   }, [isDirty]);
 
   const savePlan = useMutation({
-    mutationFn: async ({ settings, planId: id, revision, requestId: idempotencyKey }: SavePlanInput) => {
+    mutationFn: async ({
+      settings,
+      planId: id,
+      revision,
+      requestId: idempotencyKey,
+    }: SavePlanInput) => {
       if (id && revision !== undefined) {
         const body: UpdateMonthlyPlanRequest = { ...settings, revision };
         return apiRequest<MonthlyPlanSummary>(`/admin/plans/${id}`, {
@@ -156,7 +168,8 @@ export function PlanEditorPage() {
 
   async function reloadLatestPlan() {
     if (!planId) return;
-    const confirmed = !isDirty || window.confirm(t('Discard your draft and load the latest plan values?'));
+    const confirmed =
+      !isDirty || window.confirm(t('Discard your draft and load the latest plan values?'));
     if (!confirmed) return;
     const result = await plans.refetch();
     const latest = result.data?.find((plan) => plan.id === planId);
@@ -174,7 +187,8 @@ export function PlanEditorPage() {
     setError('');
   }
 
-  const waitingForPlan = isEditing && (plans.isPending || (Boolean(currentPlan) && loadedPlanId !== planId));
+  const waitingForPlan =
+    isEditing && (plans.isPending || (Boolean(currentPlan) && loadedPlanId !== planId));
   const planNotFound = isEditing && plans.isSuccess && !currentPlan;
   const pageError = plans.isError && !plans.data;
 
@@ -182,12 +196,20 @@ export function PlanEditorPage() {
     <div className="grid gap-6">
       <PageHeader
         eyebrow={t('Plans & subscriptions')}
-        title={isEditing ? t('Edit monthly plan') : t('Create a monthly plan')}
-        description={isEditing ? t('Update the approved details for this monthly offer.') : t('Add an administrator-defined monthly offer to the plan catalog.')}
+        title={isEditing ? t('Edit plan') : t('Create plan')}
+        description={t('Manage plans and independent prices for each prepaid duration.')}
         actions={
-          <Button asChild variant="outline" className="border-waffarly-border bg-white text-waffarly-ink hover:bg-waffarly-input hover:text-waffarly-ink">
+          <Button
+            asChild
+            variant="outline"
+            className="border-waffarly-border bg-white text-waffarly-ink hover:bg-waffarly-input hover:text-waffarly-ink"
+          >
             <Link to="/plans">
-              {locale === 'ar' ? <ArrowRight size={16} aria-hidden="true" /> : <ArrowLeft size={16} aria-hidden="true" />}
+              {locale === 'ar' ? (
+                <ArrowRight size={16} aria-hidden="true" />
+              ) : (
+                <ArrowLeft size={16} aria-hidden="true" />
+              )}
               {t('Back to plan catalog')}
             </Link>
           </Button>
@@ -195,24 +217,43 @@ export function PlanEditorPage() {
       />
 
       {pageError && (
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger" role="alert">
+        <div
+          className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger"
+          role="alert"
+        >
           <div>
             <strong className="block">{t('Could not load plans.')}</strong>
-            <p className="mb-0 mt-1 text-xs">{errorText(plans.error instanceof Error ? plans.error.message : 'Something went wrong.')}</p>
+            <p className="mb-0 mt-1 text-xs">
+              {errorText(
+                plans.error instanceof Error ? plans.error.message : 'Something went wrong.',
+              )}
+            </p>
           </div>
-          <Button variant="outline" size="sm" className="border-waffarly-danger/20 bg-white text-waffarly-danger" onClick={() => void plans.refetch()}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-waffarly-danger/20 bg-white text-waffarly-danger"
+            onClick={() => void plans.refetch()}
+          >
             {t('Try again')}
           </Button>
         </div>
       )}
 
       {savePlan.isError && (
-        <div className="rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger" role="alert">
+        <div
+          className="rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger"
+          role="alert"
+        >
           <strong className="block">{t('The plan could not be saved.')}</strong>
           <p className="mb-0 mt-1 text-xs">{error}</p>
           {conflict && (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <p className="m-0 text-xs">{t('The plan changed after you opened it. Your draft is preserved; reload the latest values before saving again.')}</p>
+              <p className="m-0 text-xs">
+                {t(
+                  'The plan changed after you opened it. Your draft is preserved; reload the latest values before saving again.',
+                )}
+              </p>
               <Button
                 variant="outline"
                 size="sm"
@@ -231,13 +272,23 @@ export function PlanEditorPage() {
       {planNotFound ? (
         <Card className="grid justify-items-start gap-3 border-waffarly-border p-6">
           <h2 className="m-0 text-lg font-bold text-waffarly-ink">{t('Plan was not found.')}</h2>
-          <p className="m-0 text-sm text-waffarly-muted">{t('This plan may have been removed or is no longer available.')}</p>
-          <Button asChild variant="outline" className="border-waffarly-border bg-white text-waffarly-ink">
+          <p className="m-0 text-sm text-waffarly-muted">
+            {t('This plan may have been removed or is no longer available.')}
+          </p>
+          <Button
+            asChild
+            variant="outline"
+            className="border-waffarly-border bg-white text-waffarly-ink"
+          >
             <Link to="/plans">{t('Back to plan catalog')}</Link>
           </Button>
         </Card>
       ) : waitingForPlan ? (
-        <div className="grid gap-4 rounded-2xl border border-waffarly-border bg-white p-6" role="status" aria-label={t('Loading plan details…')}>
+        <div
+          className="grid gap-4 rounded-2xl border border-waffarly-border bg-white p-6"
+          role="status"
+          aria-label={t('Loading plan details…')}
+        >
           <div className="h-5 w-48 animate-pulse rounded bg-waffarly-input" />
           <div className="h-11 animate-pulse rounded-lg bg-waffarly-input" />
           <div className="h-11 animate-pulse rounded-lg bg-waffarly-input" />
@@ -245,17 +296,30 @@ export function PlanEditorPage() {
         </div>
       ) : pageError ? null : (
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)]">
-          <Card className="grid gap-6 border-waffarly-border p-5 shadow-[0_3px_12px_rgba(20,32,62,0.035)] md:p-7" aria-labelledby="plan-form-heading">
+          <Card
+            className="grid gap-6 border-waffarly-border p-5 shadow-[0_3px_12px_rgba(20,32,62,0.035)] md:p-7"
+            aria-labelledby="plan-form-heading"
+          >
             <div>
-              <div className="mb-3 grid size-10 place-items-center rounded-xl bg-waffarly-kpi-gold text-waffarly-ink" aria-hidden="true">
+              <div
+                className="mb-3 grid size-10 place-items-center rounded-xl bg-waffarly-kpi-gold text-waffarly-ink"
+                aria-hidden="true"
+              >
                 <CircleDollarSign size={19} />
               </div>
-              <h2 id="plan-form-heading" className="m-0 text-lg font-bold text-waffarly-ink">{isEditing ? t('Plan details') : t('Monthly offer details')}</h2>
-              <p className="mb-0 mt-1 text-xs leading-5 text-waffarly-muted">{t('Only enter the commercial details approved for this plan.')}</p>
+              <h2 id="plan-form-heading" className="m-0 text-lg font-bold text-waffarly-ink">
+                {t('Plan details')}
+              </h2>
+              <p className="mb-0 mt-1 text-xs leading-5 text-waffarly-muted">
+                {t('Only enter the commercial details approved for this plan.')}
+              </p>
             </div>
 
             <form onSubmit={submit} className="grid gap-5">
-              <fieldset disabled={savePlan.isPending || conflict || (isEditing && !currentPlan)} className="grid min-w-0 gap-5 border-0 p-0">
+              <fieldset
+                disabled={savePlan.isPending || conflict || (isEditing && !currentPlan)}
+                className="grid min-w-0 gap-5 border-0 p-0"
+              >
                 <label className="grid gap-1.5 text-xs font-semibold text-waffarly-ink">
                   {t('Plan name')}
                   <Input
@@ -268,7 +332,9 @@ export function PlanEditorPage() {
                 </label>
 
                 <label className="grid gap-1.5 text-xs font-semibold text-waffarly-ink">
-                  <span>{t('Monthly price')} ({t('EGP')})</span>
+                  <span>
+                    {t('Monthly price')} ({t('EGP')})
+                  </span>
                   <Input
                     required
                     type="text"
@@ -282,13 +348,51 @@ export function PlanEditorPage() {
                   />
                 </label>
 
-                <div className="flex items-center justify-between rounded-xl bg-waffarly-input px-4 py-3 text-xs text-waffarly-muted">
-                  <span>{t('Billing interval')}</span>
-                  <strong className="font-bold text-waffarly-ink">{t('Monthly')}</strong>
-                </div>
+                <fieldset className="grid gap-3 rounded-xl border border-waffarly-border p-4">
+                  <legend className="px-2 text-sm font-bold">{t('Prepaid duration prices')}</legend>
+                  <p className="m-0 text-xs text-waffarly-muted">
+                    {t(
+                      'Enter a total price for each duration. Leave blank to disable that duration.',
+                    )}
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {([3, 6, 12, 24] as const).map((months) => (
+                      <label key={months} className="grid gap-1.5 text-xs font-semibold">
+                        {t('{{months}} months', { months })} ({t('EGP')})
+                        <Input
+                          inputMode="decimal"
+                          pattern="(?:0|[1-9][0-9]{0,7})(?:\.[0-9]{1,2})?"
+                          value={form.terms?.find((term) => term.months === months)?.price ?? ''}
+                          placeholder={t('Unavailable')}
+                          onChange={(event) =>
+                            updateField(
+                              'terms',
+                              [
+                                ...(form.terms ?? []).filter((term) => term.months !== months),
+                                ...(event.target.value
+                                  ? [{ months, price: event.target.value }]
+                                  : []),
+                              ].sort((a, b) => a.months - b.months),
+                            )
+                          }
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <label className="flex w-fit max-w-full cursor-pointer items-center justify-start gap-2 text-start text-sm">
+                  <input
+                    type="checkbox"
+                    className="m-0 size-4 shrink-0 p-0 accent-waffarly-primary"
+                    checked={form.available ?? true}
+                    onChange={(event) => updateField('available', event.target.checked)}
+                  />
+                  <span>{t('Available for new subscriptions and renewals')}</span>
+                </label>
 
                 <label className="grid gap-1.5 text-xs font-semibold text-waffarly-ink">
-                  {t('Description')} <span className="font-normal text-waffarly-muted">{t('Optional')}</span>
+                  {t('Description')}{' '}
+                  <span className="font-normal text-waffarly-muted">{t('Optional')}</span>
                   <Textarea
                     rows={4}
                     maxLength={1000}
@@ -302,12 +406,24 @@ export function PlanEditorPage() {
               <div className="flex flex-wrap gap-2 border-t border-waffarly-border pt-5">
                 <Button
                   type="submit"
-                  disabled={savePlan.isPending || conflict || (isEditing && (!currentPlan || loadedPlanId !== planId))}
+                  disabled={
+                    savePlan.isPending ||
+                    conflict ||
+                    (isEditing && (!currentPlan || loadedPlanId !== planId))
+                  }
                   className="bg-waffarly-primary text-white hover:bg-waffarly-primary-hover"
                 >
-                  {savePlan.isPending ? t('Saving…') : isEditing ? t('Save changes') : t('Create plan')}
+                  {savePlan.isPending
+                    ? t('Saving…')
+                    : isEditing
+                      ? t('Save changes')
+                      : t('Create plan')}
                 </Button>
-                <Button asChild variant="outline" className="border-waffarly-border bg-white text-waffarly-ink hover:bg-waffarly-input hover:text-waffarly-ink">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="border-waffarly-border bg-white text-waffarly-ink hover:bg-waffarly-input hover:text-waffarly-ink"
+                >
                   <Link to="/plans">{t('Cancel')}</Link>
                 </Button>
               </div>
@@ -316,14 +432,26 @@ export function PlanEditorPage() {
 
           <aside className="grid content-start gap-4">
             <Card className="grid gap-3 border-waffarly-border p-5 shadow-[0_3px_12px_rgba(20,32,62,0.035)]">
-              <h2 className="m-0 text-sm font-bold text-waffarly-ink">{t('About plan definitions')}</h2>
-              <p className="m-0 text-xs leading-5 text-waffarly-muted">{t('Plan definitions do not change merchant access, subscriptions, or collected payments.')}</p>
+              <h2 className="m-0 text-sm font-bold text-waffarly-ink">
+                {t('About plan definitions')}
+              </h2>
+              <p className="m-0 text-xs leading-5 text-waffarly-muted">
+                {t(
+                  'Plan definitions do not change merchant access, subscriptions, or collected payments.',
+                )}
+              </p>
             </Card>
             {isEditing && recordPlan && (
               <Card className="grid gap-2 border-waffarly-border p-5 shadow-[0_3px_12px_rgba(20,32,62,0.035)]">
-                <h2 className="m-0 text-sm font-bold text-waffarly-ink">{t('Record information')}</h2>
-                <p className="m-0 text-xs text-waffarly-muted">{t('Created')} {formatDate(recordPlan.createdAt)}</p>
-                <p className="m-0 text-xs text-waffarly-muted">{t('Last updated')} {formatDate(recordPlan.updatedAt)}</p>
+                <h2 className="m-0 text-sm font-bold text-waffarly-ink">
+                  {t('Record information')}
+                </h2>
+                <p className="m-0 text-xs text-waffarly-muted">
+                  {t('Created')} {formatDate(recordPlan.createdAt)}
+                </p>
+                <p className="m-0 text-xs text-waffarly-muted">
+                  {t('Last updated')} {formatDate(recordPlan.updatedAt)}
+                </p>
               </Card>
             )}
           </aside>
@@ -342,14 +470,30 @@ export function PlanEditorPage() {
       >
         <div className="grid gap-4 p-5 md:p-6">
           <div>
-            <h2 id="discard-plan-title" className="m-0 text-lg font-bold text-waffarly-ink">{t('Leave without saving?')}</h2>
-            <p id="discard-plan-description" className="mb-0 mt-2 text-sm leading-6 text-waffarly-muted">{t('Your plan changes have not been saved. Leave and discard them?')}</p>
+            <h2 id="discard-plan-title" className="m-0 text-lg font-bold text-waffarly-ink">
+              {t('Leave without saving?')}
+            </h2>
+            <p
+              id="discard-plan-description"
+              className="mb-0 mt-2 text-sm leading-6 text-waffarly-muted"
+            >
+              {t('Your plan changes have not been saved. Leave and discard them?')}
+            </p>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
-            <Button variant="outline" type="button" className="border-waffarly-border bg-white text-waffarly-ink" onClick={() => blocker.state === 'blocked' && blocker.reset()}>
+            <Button
+              variant="outline"
+              type="button"
+              className="border-waffarly-border bg-white text-waffarly-ink"
+              onClick={() => blocker.state === 'blocked' && blocker.reset()}
+            >
               {t('Stay and keep editing')}
             </Button>
-            <Button variant="destructive" type="button" onClick={() => blocker.state === 'blocked' && blocker.proceed()}>
+            <Button
+              variant="destructive"
+              type="button"
+              onClick={() => blocker.state === 'blocked' && blocker.proceed()}
+            >
               {t('Discard changes')}
             </Button>
           </div>

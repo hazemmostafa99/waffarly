@@ -10,6 +10,7 @@ import { MerchantsModule } from './modules/merchants/index.js';
 import { OrdersModule } from './modules/orders/index.js';
 import { InventoryModule } from './modules/inventory/index.js';
 import { PlansModule } from './modules/plans/index.js';
+import { SubscriptionsModule } from './modules/subscriptions/index.js';
 import { PurchasingModule } from './modules/purchasing/index.js';
 import { ReportsModule } from './modules/reports/index.js';
 import { StorefrontModule } from './modules/storefront/index.js';
@@ -22,6 +23,7 @@ import { ShiftsModule } from './modules/shifts/index.js';
     HealthModule,
     MerchantsModule,
     PlansModule,
+    SubscriptionsModule,
     ActivitiesModule,
     StorefrontModule,
     CatalogModule,

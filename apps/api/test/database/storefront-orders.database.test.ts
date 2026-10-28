@@ -33,6 +33,7 @@ it(
               contactPhone: '01000000000',
               ownerName: 'Order verification',
               ownerMobile: '01100000000',
+              firstMonthActivatedAt: new Date(),
             },
           });
           const media = await transaction.mediaAsset.create({
