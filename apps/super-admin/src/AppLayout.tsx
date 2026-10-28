@@ -7,6 +7,7 @@ import { AdminTopbar } from './components/AdminTopbar.js';
 import { adminQueryKeys } from './app/query-keys.js';
 import { apiRequest } from './lib/api-client.js';
 import { adminThemeClass } from './lib/admin-theme.js';
+import { PageTitleProvider } from './components/PageTitleProvider.js';
 
 interface AdminProfile {
   username: string;
@@ -57,25 +58,27 @@ export function AppLayout() {
   }
 
   return (
-    <div className={adminThemeClass} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <a className="fixed -top-14 start-4 z-[100] rounded-lg border-2 border-waffarly-primary bg-white px-4 py-3 text-sm font-semibold text-waffarly-primary focus:top-3" href="#main-content">{t('Skip to content')}</a>
-      <div className="flex min-h-screen">
-        <AdminSidebar />
-        <main id="main-content" className="min-w-0 flex-1" tabIndex={-1}>
-          <AdminTopbar
-            adminName={profile.data?.username ?? ''}
-            onSignOut={() => {
-              setSignOutError('');
-              signOut.mutate();
-            }}
-            signingOut={signOut.isPending}
-          />
-          <div className="mx-auto w-full max-w-[1440px] space-y-6 p-4 md:p-6 xl:p-8">
-            {signOutError && <p className="rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger" role="alert">{errorText(signOutError)}</p>}
-            <Outlet />
-          </div>
-        </main>
+    <PageTitleProvider key={location.pathname}>
+      <div className={`${adminThemeClass} admin-workspace`} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+        <a className="fixed -top-14 start-4 z-[100] rounded-lg border-2 border-waffarly-primary bg-white px-4 py-3 text-sm font-semibold text-waffarly-primary focus:top-3" href="#main-content">{t('Skip to content')}</a>
+        <div className="flex min-h-screen">
+          <AdminSidebar />
+          <main id="main-content" className="min-w-0 flex-1" tabIndex={-1}>
+            <AdminTopbar
+              adminName={profile.data?.username ?? ''}
+              onSignOut={() => {
+                setSignOutError('');
+                signOut.mutate();
+              }}
+              signingOut={signOut.isPending}
+            />
+            <div className="admin-content mx-auto space-y-3">
+              {signOutError && <p className="rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger" role="alert">{errorText(signOutError)}</p>}
+              <Outlet />
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </PageTitleProvider>
   );
 }

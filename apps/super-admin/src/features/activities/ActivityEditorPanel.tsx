@@ -59,7 +59,7 @@ export function ActivityEditorPanel({ activity, modules, onClose, onSaved }: Act
   }
 
   return (
-    <Card className="grid content-start gap-4 rounded-2xl border-waffarly-border bg-white p-4 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)] md:p-5" aria-labelledby="activity-editor-heading" aria-busy={isSaving}>
+    <Card className="admin-panel grid content-start admin-stack rounded-2xl border-waffarly-border bg-white text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]" aria-labelledby="activity-editor-heading" aria-busy={isSaving}>
       <div>
         <span className="mb-3 grid size-9 place-items-center rounded-xl bg-waffarly-kpi-gold text-waffarly-gold" aria-hidden="true"><Pencil size={17} /></span>
         <h2 ref={headingRef} id="activity-editor-heading" tabIndex={-1} className="m-0 text-base font-bold">{t('Edit activity')}</h2>
@@ -82,7 +82,7 @@ export function ActivityEditorPanel({ activity, modules, onClose, onSaved }: Act
         </div>
       )}
 
-      <form className="grid gap-4" onSubmit={(event) => void save(event)}>
+      <form className="grid admin-stack" onSubmit={(event) => void save(event)}>
         <fieldset className="m-0 grid min-w-0 gap-3 border-0 p-0" disabled={isSaving || isConflict}>
           <label className="grid gap-1.5 text-xs font-semibold text-waffarly-ink">
             <span>{t('Display name')}</span>

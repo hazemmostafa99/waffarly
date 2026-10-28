@@ -21,7 +21,7 @@ export function ActivityCard({ activity, modules }: ActivityCardProps) {
   const compatibleModules = activity.moduleKeys.map((key) => modules.find((module) => module.key === key)).filter((module) => module !== undefined);
 
   return (
-    <article className="flex min-w-0 flex-col rounded-2xl border border-waffarly-border bg-white p-3.5 shadow-[0_3px_12px_rgba(20,32,62,0.035)] transition-shadow hover:shadow-[0_5px_20px_rgba(20,32,62,0.07)]">
+    <article className="admin-panel flex min-w-0 flex-col rounded-2xl border border-waffarly-border bg-white shadow-[0_3px_12px_rgba(20,32,62,0.035)] transition-shadow hover:shadow-[0_5px_20px_rgba(20,32,62,0.07)]">
       <div className="flex items-start gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-waffarly-kpi-mint text-waffarly-primary" aria-hidden="true">
           <Icon size={17} strokeWidth={1.9} />

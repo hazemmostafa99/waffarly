@@ -1,0 +1,207 @@
+/* Super Admin density tokens and reusable layout primitives. See docs/design/super-admin.md. */
+.admin-workspace {
+  --admin-space-1: 4px;
+  --admin-space-2: 8px;
+  --admin-space-3: 12px;
+  --admin-space-4: 16px;
+  --admin-page-padding: var(--admin-space-4);
+  --admin-section-gap: var(--admin-space-3);
+  --admin-panel-padding: var(--admin-space-3);
+  --admin-control-height: 34px;
+  --admin-control-padding: 12px;
+  --admin-header-height: 56px;
+  --admin-cell-padding-block: 8px;
+  --admin-cell-padding-inline: 12px;
+  --admin-radius: 12px;
+  --admin-radius-control: 8px;
+  --admin-font-body: 13px;
+  --admin-font-label: 12px;
+  --admin-font-caption: 11px;
+  --admin-font-value: 22px;
+  --admin-shadow: 0 2px 8px rgb(20 32 62 / 3%);
+}
+
+.admin-workspace .admin-content {
+  width: 100%;
+  min-width: 0;
+  padding: var(--admin-page-padding);
+}
+
+.admin-workspace .admin-page {
+  display: grid;
+  min-width: 0;
+  gap: var(--admin-section-gap);
+  align-content: start;
+}
+
+.admin-workspace .admin-stack {
+  gap: var(--admin-section-gap);
+}
+.admin-workspace .admin-section {
+  padding: var(--admin-panel-padding);
+}
+.admin-workspace .admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--admin-space-2);
+}
+
+.admin-workspace :is(.admin-panel, .admin-panel-flush) {
+  min-width: 0;
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow);
+}
+.admin-workspace .admin-panel {
+  padding: var(--admin-panel-padding);
+}
+.admin-workspace .admin-panel-flush {
+  padding: 0;
+}
+
+.admin-workspace [data-slot='button'] {
+  height: var(--admin-control-height);
+  min-height: var(--admin-control-height);
+  padding: 0 var(--admin-control-padding);
+  border-radius: var(--admin-radius-control);
+  font-size: var(--admin-font-label);
+  font-weight: 600;
+  line-height: 1.4;
+  box-shadow: none;
+}
+.admin-workspace :is([data-slot='input'], select) {
+  height: var(--admin-control-height);
+  min-height: var(--admin-control-height);
+  padding-block: 5px;
+  border-radius: var(--admin-radius-control);
+  font-size: var(--admin-font-body);
+  line-height: 1.4;
+}
+.admin-workspace textarea {
+  font-size: var(--admin-font-body);
+}
+
+.admin-workspace .admin-topbar {
+  min-height: var(--admin-header-height);
+  padding: var(--admin-space-2) var(--admin-page-padding);
+  gap: var(--admin-space-2);
+}
+.admin-workspace .admin-nav-link {
+  min-height: 36px;
+}
+.admin-workspace .admin-sidebar {
+  padding-block: var(--admin-space-3);
+}
+
+.admin-workspace .admin-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--admin-space-3);
+  min-height: 72px;
+  padding: var(--admin-panel-padding);
+  border-radius: var(--admin-radius);
+}
+.admin-workspace .admin-stat-value {
+  flex-shrink: 0;
+  font-size: var(--admin-font-value);
+  font-weight: 800;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-workspace :is(.admin-table, .wf-data-table) {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: start;
+  font-size: var(--admin-font-body);
+}
+.admin-workspace :is(.admin-table, .wf-data-table) th {
+  padding: var(--admin-cell-padding-block) var(--admin-cell-padding-inline);
+  text-align: start;
+  font-size: var(--admin-font-caption);
+  font-weight: 600;
+  line-height: 1.5;
+  background: var(--secondary);
+  color: var(--storefront-muted);
+  border-bottom: 1px solid var(--storefront-border);
+}
+.admin-workspace :is(.admin-table, .wf-data-table) td:not([colspan]) {
+  padding: var(--admin-cell-padding-block) var(--admin-cell-padding-inline);
+  vertical-align: middle;
+  line-height: 1.45;
+  border-bottom: 1px solid var(--storefront-border);
+}
+.admin-workspace :is(.admin-table, .wf-data-table) tr:last-child td {
+  border-bottom: 0;
+}
+.admin-workspace :is(.admin-table, .wf-data-table) tbody tr:hover {
+  background: var(--secondary);
+}
+.admin-workspace .admin-table-scroll {
+  min-width: 0;
+  overflow-x: auto;
+}
+.admin-workspace .admin-table-scroll:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+.admin-workspace .wf-table-state {
+  padding: 24px var(--admin-panel-padding);
+  text-align: center;
+  color: var(--storefront-muted);
+}
+.admin-workspace .wf-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.admin-workspace .admin-plans-table-wrap table {
+  min-width: 980px;
+}
+.admin-workspace .admin-plans-table-wrap td:first-child {
+  min-width: 180px;
+}
+.admin-workspace .admin-plans-table-wrap td:not(:first-child) {
+  white-space: nowrap;
+}
+.admin-workspace .admin-inline-note {
+  margin: 0;
+  color: var(--storefront-muted);
+  font-size: var(--admin-font-label);
+  line-height: 1.6;
+}
+
+@media (max-width: 600px) {
+  .admin-workspace {
+    --admin-page-padding: 12px;
+    --admin-control-height: 44px;
+    --admin-section-gap: 12px;
+  }
+  /* Keep mobile fields at 16px to prevent focus zoom on iOS. */
+  .admin-workspace :is([data-slot='input'], select, textarea) {
+    font-size: 16px;
+  }
+  .admin-workspace .admin-nav-link {
+    min-height: 44px;
+  }
+  .admin-workspace .admin-menu-toggle {
+    width: 44px;
+    height: 44px;
+  }
+  .admin-workspace .admin-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-workspace .admin-stats-grid .admin-stat {
+    gap: var(--admin-space-2);
+  }
+  .admin-workspace .admin-stats-grid .admin-stat small {
+    display: none;
+  }
+}

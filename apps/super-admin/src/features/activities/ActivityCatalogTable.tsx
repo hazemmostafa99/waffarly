@@ -33,7 +33,7 @@ export function ActivityCatalogTable({ activities, modules, onEdit }: ActivityCa
 
   return (
     <div className="overflow-x-auto rounded-xl border border-waffarly-border bg-white" role="region" aria-label={t('Business activity catalog table')} tabIndex={0}>
-      <table className="w-full min-w-[860px] border-collapse text-start text-sm">
+      <table className="admin-table w-full min-w-[860px] border-collapse text-start text-sm">
         <caption className="sr-only">{t('Business activity catalog table')}</caption>
         <thead className="bg-waffarly-input text-[10px] font-bold text-waffarly-muted">
           <tr className="border-b border-waffarly-border">

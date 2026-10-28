@@ -1,6 +1,8 @@
 import { Menu, ShieldCheck } from 'lucide-react';
 import { Button, LanguageSwitcher, useLocale } from '@waffarly/ui';
 import { useAdminUiStore } from '../stores/admin-ui-store.js';
+import { useContext } from 'react';
+import { PageTitleContext } from '../lib/page-title-context.js';
 
 interface AdminTopbarProps {
   adminName: string;
@@ -10,13 +12,14 @@ interface AdminTopbarProps {
 
 export function AdminTopbar({ adminName, onSignOut, signingOut }: AdminTopbarProps) {
   const { t } = useLocale();
+  const pageTitle = useContext(PageTitleContext);
   const setMobileNavigationOpen = useAdminUiStore((state) => state.setMobileNavigationOpen);
 
   return (
-    <header className="flex min-h-[65px] items-center justify-between gap-3 border-b border-waffarly-border bg-waffarly-surface px-4 md:px-6">
-      <div className="flex min-w-0 items-center gap-3">
+    <header className="admin-topbar flex flex-wrap items-center justify-between border-b border-waffarly-border bg-waffarly-surface">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         <button
-          className="grid size-9 shrink-0 place-items-center rounded-lg border border-waffarly-border bg-white text-waffarly-ink min-[901px]:hidden"
+          className="admin-menu-toggle grid size-9 shrink-0 place-items-center rounded-lg border border-waffarly-border bg-white text-waffarly-ink min-[901px]:hidden"
           type="button"
           aria-label={t('Open navigation')}
           onClick={() => setMobileNavigationOpen(true)}
@@ -25,7 +28,7 @@ export function AdminTopbar({ adminName, onSignOut, signingOut }: AdminTopbarPro
         </button>
         <div className="min-w-0">
           <span className="block truncate text-[10px] font-semibold text-waffarly-muted">{t('Waffarly platform')}</span>
-          <strong className="block truncate text-sm font-bold text-waffarly-ink">{t('Administration workspace')}</strong>
+          <h1 className="m-0 text-base font-bold leading-snug text-waffarly-ink md:text-lg">{pageTitle?.title ?? t('Administration workspace')}</h1>
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">

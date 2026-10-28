@@ -64,8 +64,8 @@ export function TemplateEditorPanel({ template, busy, onCancel, onSubmit, onRelo
   const isEditing = template !== null;
 
   return (
-    <Card className="grid min-w-0 gap-4 rounded-2xl border-waffarly-border bg-white p-4 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)] md:p-5" aria-busy={busy}>
-      <div className="flex items-start justify-between gap-4">
+    <Card className="admin-panel grid min-w-0 admin-stack rounded-2xl border-waffarly-border bg-white text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]" aria-busy={busy}>
+      <div className="flex items-start justify-between admin-stack">
         <div>
           <span className="mb-3 grid size-9 place-items-center rounded-xl bg-waffarly-kpi-gold text-waffarly-gold" aria-hidden="true">{isEditing ? <Pencil size={17} /> : <Plus size={18} />}</span>
           <h2 ref={headingRef} tabIndex={-1} className="m-0 text-base font-bold">{t(isEditing ? 'Edit template' : 'Create template')}</h2>
@@ -89,7 +89,7 @@ export function TemplateEditorPanel({ template, busy, onCancel, onSubmit, onRelo
         </div>
       )}
 
-      <form className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]" onSubmit={(event) => void submit(event)}>
+      <form className="grid min-w-0 admin-stack xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]" onSubmit={(event) => void submit(event)}>
         <fieldset className="m-0 grid min-w-0 gap-3 border-0 p-0 sm:grid-cols-2" disabled={busy || conflict}>
           <label className={`${fieldClass} sm:col-span-2`}>
             <span>{t('Display name')}</span>

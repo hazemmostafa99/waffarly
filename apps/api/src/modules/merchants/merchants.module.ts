@@ -12,15 +12,18 @@ import {
 } from './pos-appearance.controller.js';
 import { MerchantPosAppearanceService } from './merchant-pos-appearance.service.js';
 import { SubscriptionsModule } from '../subscriptions/index.js';
+import { MerchantAccountController } from './merchant-account.controller.js';
+import { MerchantAccountService } from './merchant-account.service.js';
 @Module({
   imports: [AuthModule, SubscriptionsModule],
   controllers: [
+    MerchantAccountController,
     MerchantController,
     OwnerPosAppearanceController,
     PosAppearanceController,
     AdminMerchantApplicationController,
     PublicMerchantApplicationController,
   ],
-  providers: [MerchantService, MerchantPosAppearanceService],
+  providers: [MerchantService, MerchantPosAppearanceService, MerchantAccountService],
 })
 export class MerchantsModule {}

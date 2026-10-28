@@ -95,11 +95,9 @@ export function ModulesPage() {
   const hasFilters = Boolean(search.trim()) || activityKey !== 'all' || relation !== 'all';
 
   return (
-    <div className="grid gap-5">
+    <div className="admin-page">
       <PageHeader
-        eyebrow={t('Platform catalog')}
         title={t('Modules and platform capabilities')}
-        description={t('Review code-supported activities and the catalog associations for each platform module.')}
         actions={(
           <div className="flex flex-wrap items-center gap-2">
             <Link to="/activities" className="inline-flex h-10 items-center gap-2 rounded-xl bg-waffarly-primary px-4 text-xs font-bold text-white transition hover:bg-waffarly-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-waffarly-primary/30">
@@ -121,7 +119,7 @@ export function ModulesPage() {
       />
 
       {catalog.isError && (
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger" role="alert">
+        <div className="flex flex-wrap items-center justify-between admin-stack rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger" role="alert">
           <div className="min-w-0">
             <strong className="block">{t('Could not load the modules matrix.')}</strong>
             <p className="mb-0 mt-1 text-xs">{errorText(catalog.error instanceof Error ? catalog.error.message : 'Something went wrong.')}</p>
@@ -132,7 +130,7 @@ export function ModulesPage() {
         </div>
       )}
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label={t('Modules matrix summary')}>
+      <section className="admin-stats-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label={t('Modules matrix summary')}>
         <CompactStatCard label={t('Platform modules')} value={catalog.data ? formatCount(allModules.length) : '—'} helper={t('Modules currently defined in code')} icon={Boxes} tone="mint" loading={catalog.isPending} />
         <CompactStatCard label={t('Business activities')} value={catalog.data ? formatCount(allActivities.length) : '—'} helper={t('Activity columns returned by the catalog')} icon={Store} tone="blue" loading={catalog.isPending} />
         <CompactStatCard label={t('Code-supported pairs')} value={catalog.data ? formatCount(supportedPairs) : '—'} helper={t('Module and activity pairs allowed by code')} icon={Network} tone="purple" loading={catalog.isPending} />
@@ -182,8 +180,8 @@ export function ModulesPage() {
         </label>
       </section>
 
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <Card className="grid min-w-0 content-start gap-4 rounded-2xl border-waffarly-border bg-waffarly-surface p-4 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)] md:p-5" aria-labelledby="module-matrix-heading" aria-busy={catalog.isPending}>
+      <div className="grid min-w-0 admin-stack xl:grid-cols-[minmax(0,1fr)_300px]">
+        <Card className="admin-panel grid min-w-0 content-start admin-stack rounded-2xl border-waffarly-border bg-waffarly-surface text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]" aria-labelledby="module-matrix-heading" aria-busy={catalog.isPending}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 id="module-matrix-heading" className="m-0 text-base font-bold">{t('Module and activity compatibility matrix')}</h2>
@@ -229,7 +227,7 @@ export function ModulesPage() {
           )}
         </Card>
 
-        <Card className="grid content-start gap-4 rounded-2xl border-waffarly-border bg-white p-4 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)] md:p-5" aria-labelledby="module-definition-heading">
+        <Card className="admin-panel grid content-start admin-stack rounded-2xl border-waffarly-border bg-white text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]" aria-labelledby="module-definition-heading">
           <div>
             <span className="mb-3 grid size-9 place-items-center rounded-xl bg-waffarly-kpi-blue text-waffarly-info" aria-hidden="true"><CircleHelp size={18} /></span>
             <h2 id="module-definition-heading" className="m-0 text-base font-bold">{t('Module boundaries')}</h2>

@@ -21,7 +21,7 @@ export function TemplateCard({ template, busy, onEdit, onToggleAvailability }: T
   const available = template.status === 'available';
 
   return (
-    <article className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-waffarly-border bg-white shadow-[0_3px_12px_rgba(20,32,62,0.035)] transition-shadow hover:shadow-[0_8px_26px_rgba(20,32,62,0.09)]">
+    <article className="admin-panel-flush group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-waffarly-border bg-white shadow-[0_3px_12px_rgba(20,32,62,0.035)] transition-shadow hover:shadow-[0_8px_26px_rgba(20,32,62,0.09)]">
       <Link
         to={`/templates/${template.id}`}
         className="relative block w-full overflow-hidden bg-waffarly-input text-start no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-waffarly-primary"
@@ -33,7 +33,7 @@ export function TemplateCard({ template, busy, onEdit, onToggleAvailability }: T
         </span>
       </Link>
 
-      <div className="flex flex-1 flex-col p-4">
+      <div className="admin-section flex flex-1 flex-col">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Badge variant={available ? 'success' : 'warning'} className="min-h-6 px-2 text-[10px]">
             <span className={`size-1.5 rounded-full ${available ? 'bg-waffarly-success' : 'bg-waffarly-gold'}`} aria-hidden="true" />
@@ -52,10 +52,10 @@ export function TemplateCard({ template, busy, onEdit, onToggleAvailability }: T
             </div>
             <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-waffarly-kpi-mint text-waffarly-primary" aria-hidden="true"><Store size={17} /></span>
           </div>
-          <p className="mb-0 mt-3 line-clamp-2 min-h-10 text-xs leading-5 text-waffarly-muted">{template.description || t('A business storefront design.')}</p>
+          <p className="mb-0 mt-2 line-clamp-2 text-xs leading-5 text-waffarly-muted">{template.description || t('A business storefront design.')}</p>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-waffarly-border pt-3">
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-waffarly-border pt-3">
           <span className="text-[10px] text-waffarly-muted">{t(activityName(template.activity))}</span>
           <span className="text-[10px] text-waffarly-muted">{t('Updated')} {formatDate(template.updatedAt)}</span>
         </div>

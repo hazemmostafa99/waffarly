@@ -1,10 +1,11 @@
 import { Navigate, Outlet, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { useLocale, LanguageSwitcher } from '@waffarly/ui';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { OwnerProfile } from '@waffarly/contracts';
 import { apiRequest } from './lib/api-client.js';
 import { Icon } from './Icons.js';
 import { dashboardCopy } from './dashboard-copy.js';
+import { SubscriptionStatusBadge } from './features/account/SubscriptionStatusBadge.js';
 
 const navigation = [
   { id: 'dashboard', label: 'Dashboard', icon: 'home' },
@@ -36,6 +37,9 @@ export function MerchantLayout() {
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [utilityPanel, setUtilityPanel] = useState<'help' | 'notifications' | null>(null);
+  const updateProfile = useCallback((changes: Partial<OwnerProfile>) => {
+    setProfile((current) => (current ? { ...current, ...changes } : current));
+  }, []);
 
   useEffect(() => {
     void apiRequest<OwnerProfile>('/auth/owner/me')
@@ -85,6 +89,7 @@ export function MerchantLayout() {
       '/pos-shift-reports',
       '/pos-item-returns',
       '/pos-operations',
+      '/account',
     ].includes(location.pathname) &&
     !isProductBuilder &&
     !location.pathname.startsWith('/inventory');
@@ -131,11 +136,21 @@ export function MerchantLayout() {
     <Navigate to="/login" replace state={{ from: location.pathname }} />
   ) : (
     <div className="merchant-layout">
-      {profile.subscriptionStatus && !['active', 'legacy'].includes(profile.subscriptionStatus) && (
-        <div role="status" style={{ position: 'fixed', bottom: 16, insetInline: 16, zIndex: 100, padding: 16, borderRadius: 12, background: '#fff3cd', color: '#573e00', boxShadow: '0 4px 20px #0002' }}>
-          {t('Your subscription is inactive. You can review records and finish existing work. Contact Waffarly to renew or reactivate.')}
-        </div>
-      )}
+      {location.pathname !== '/account' &&
+        profile.subscriptionStatus &&
+        !['active', 'legacy'].includes(profile.subscriptionStatus) && (
+          <div
+            role="status"
+            className="fixed inset-x-4 bottom-4 z-50 rounded-xl border border-warning/30 bg-waffarly-warning-bg p-4 text-sm text-waffarly-gold-ink shadow-lg"
+          >
+            {t(
+              'Your subscription is inactive. You can review records and finish existing work. Contact Waffarly to renew or reactivate.',
+            )}
+            <NavLink to="/account" className="ms-2 font-semibold underline">
+              {locale === 'ar' ? 'تفاصيل الاشتراك' : 'Subscription details'}
+            </NavLink>
+          </div>
+        )}
       <aside
         id="merchant-mobile-navigation"
         className={`merchant-sidebar ${menuOpen ? 'is-open' : ''}`}
@@ -198,8 +213,9 @@ export function MerchantLayout() {
           </button>
         </div>
         <div className="merchant-sidebar-footer">
-          <span className="merchant-online-dot" />
-          {t('Subscription active')}
+          <NavLink to="/account" className="min-w-0 no-underline">
+            <SubscriptionStatusBadge status={profile.subscriptionStatus} />
+          </NavLink>
         </div>
       </aside>
       <div className="merchant-body">
@@ -259,13 +275,14 @@ export function MerchantLayout() {
             </button>
           </div>
           <LanguageSwitcher />
-          <div className="merchant-user">
+          <NavLink
+            to="/account"
+            aria-label={locale === 'ar' ? 'فتح حسابي' : 'Open my account'}
+            title={profile.ownerName}
+            className="order-3 inline-flex size-11 shrink-0 items-center justify-center rounded-full text-foreground no-underline hover:bg-primary/5 focus-visible:ring-2 focus-visible:ring-ring"
+          >
             <span className="merchant-avatar">{profile.ownerName.slice(0, 1).toUpperCase()}</span>
-            <span>
-              <strong>{profile.ownerName}</strong>
-              <small>{t('Merchant Owner')}</small>
-            </span>
-          </div>
+          </NavLink>
           <button
             className="merchant-signout"
             type="button"
@@ -342,7 +359,7 @@ export function MerchantLayout() {
               {errorText(error)}
             </p>
           )}
-          <Outlet context={{ profile, search }} />
+          <Outlet context={{ profile, search, updateProfile }} />
           <footer className="merchant-content-footer">
             {t('Waffarly')} <span>·</span> {t('Everything your business needs, in one place.')}
           </footer>

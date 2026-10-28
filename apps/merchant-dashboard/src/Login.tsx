@@ -38,9 +38,7 @@ export function Login() {
       <LanguageSwitcher />
       <div className="eyebrow">{t('Waffarly · Merchant')}</div>
       <h1>{t('Merchant Dashboard')}</h1>
-      <p>
-        {t('Your account opens after Waffarly activates the first month of your subscription.')}
-      </p>
+      <p>{t('Sign in to manage your business account and review your subscription.')}</p>
       <form className="panel form" onSubmit={(event) => void signIn(event)}>
         <label>
           {t('Username')}{' '}

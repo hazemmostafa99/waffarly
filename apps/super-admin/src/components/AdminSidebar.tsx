@@ -116,7 +116,7 @@ export function AdminSidebar() {
       )}
       <aside
         ref={sidebarRef}
-        className={`flex flex-col border-e border-waffarly-border bg-waffarly-surface px-3 py-5 transition-[transform,width] duration-200 ease-out ${sidebarPosition} ${sidebarTransform}`}
+        className={`admin-sidebar flex flex-col border-e border-waffarly-border bg-waffarly-surface px-3 py-5 transition-[transform,width] duration-200 ease-out ${sidebarPosition} ${sidebarTransform}`}
         role={mobileNavigationActive ? 'dialog' : undefined}
         aria-modal={mobileNavigationActive || undefined}
         aria-label={mobileNavigationActive ? t('Platform navigation') : undefined}
@@ -124,7 +124,7 @@ export function AdminSidebar() {
         inert={isMobileLayout && !mobileOpen}
       >
         <div
-          className={`mb-6 border-b border-waffarly-border pb-4 ${isCollapsedDesktop ? 'grid justify-items-center gap-2' : 'flex min-h-12 items-center justify-between gap-2'}`}
+          className={`mb-3 border-b border-waffarly-border pb-3 ${isCollapsedDesktop ? 'grid justify-items-center gap-2' : 'flex min-h-12 items-center justify-between gap-2'}`}
         >
           <NavLink
             className={`flex min-w-0 items-center gap-2.5 text-inherit no-underline ${isCollapsedDesktop ? 'w-full justify-center' : 'flex-1'}`}
@@ -172,7 +172,7 @@ export function AdminSidebar() {
             {t('PLATFORM')}
           </p>
         )}
-        <nav className="grid gap-1.5" aria-label={t('Platform administration')}>
+        <nav className="grid gap-1" aria-label={t('Platform administration')}>
           {navigation.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -185,7 +185,7 @@ export function AdminSidebar() {
               }
               title={isCollapsedDesktop ? t(label) : undefined}
               className={({ isActive }) =>
-                `group flex min-h-11 items-center gap-3 rounded-xl px-3 text-[13px] font-semibold no-underline transition-colors ${isCollapsedDesktop ? 'justify-center px-0' : ''} ${isActive ? 'bg-waffarly-kpi-mint text-waffarly-primary' : 'text-waffarly-ink hover:bg-waffarly-input'}`
+                `admin-nav-link group flex items-center gap-3 rounded-xl px-3 text-[13px] font-semibold no-underline transition-colors ${isCollapsedDesktop ? 'justify-center px-0' : ''} ${isActive ? 'bg-waffarly-kpi-mint text-waffarly-primary' : 'text-waffarly-ink hover:bg-waffarly-input'}`
               }
               onClick={() => setMobileNavigationOpen(false)}
             >

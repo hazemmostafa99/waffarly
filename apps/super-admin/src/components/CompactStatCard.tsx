@@ -18,21 +18,17 @@ export function CompactStatCard({ label, value, helper, icon: Icon, tone, loadin
   }[tone];
 
   return (
-    <article className="rounded-2xl border border-waffarly-border bg-white p-2 shadow-[0_3px_12px_rgba(20,32,62,0.035)]" aria-busy={loading}>
-      <div className={`flex min-h-[106px] flex-col justify-between rounded-xl p-3.5 ${toneClasses}`}>
-        <div className="flex items-start justify-between gap-2">
-          <p className="m-0 text-xs font-semibold text-waffarly-muted">{label}</p>
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-current" aria-hidden="true">
-            <Icon size={17} strokeWidth={1.9} />
-          </span>
-        </div>
-        <div className="flex items-end justify-between gap-2">
-          <small className="max-w-[70%] text-[10px] leading-4 text-waffarly-muted">{helper}</small>
-          <strong className="text-[25px] font-extrabold leading-none text-waffarly-ink">
-            {loading ? <span className="inline-block h-6 w-9 animate-pulse rounded bg-white/80" /> : value}
-          </strong>
-        </div>
+    <article className={`admin-stat border border-waffarly-border ${toneClasses}`} aria-busy={loading}>
+      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-current" aria-hidden="true">
+        <Icon size={17} strokeWidth={1.9} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="m-0 text-xs font-semibold text-waffarly-ink">{label}</p>
+        <small className="block text-[11px] leading-4 text-waffarly-muted">{helper}</small>
       </div>
+      <strong className="admin-stat-value text-waffarly-ink">
+        {loading ? <span className="inline-block h-6 w-9 animate-pulse rounded bg-white/80" /> : value}
+      </strong>
     </article>
   );
 }

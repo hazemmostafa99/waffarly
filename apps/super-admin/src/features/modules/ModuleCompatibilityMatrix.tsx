@@ -52,7 +52,7 @@ export function ModuleCompatibilityMatrix({ activities, modules }: ModuleCompati
 
   return (
     <div className="overflow-x-auto rounded-xl border border-waffarly-border bg-white" role="region" aria-label={t('Module and activity compatibility matrix')} tabIndex={0}>
-      <table className="w-full min-w-[620px] border-collapse text-start text-sm">
+      <table className="admin-table w-full min-w-[620px] border-collapse text-start text-sm">
         <caption className="sr-only">{t('Module and activity compatibility matrix')}</caption>
         <thead className="bg-waffarly-input text-waffarly-muted">
           <tr className="border-b border-waffarly-border">

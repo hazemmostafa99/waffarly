@@ -16,6 +16,10 @@ import type {
   SubscriptionStatus,
   SubscriptionDashboard,
   SubscriptionMonths,
+  OwnerSubscriptionOverview,
+  CursorPage,
+  SubscriptionPeriodSummary,
+  SubscriptionEventSummary,
 } from '@waffarly/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { formatCents, toCents } from '../../common/money/money.js';
@@ -84,6 +88,53 @@ function summary(s: RecordValue, now = new Date()): SubscriptionSummary {
 @Injectable()
 export class SubscriptionService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+
+  async ownerOverview(
+    merchantId: string,
+    client: Client = this.prisma,
+  ): Promise<OwnerSubscriptionOverview> {
+    const now = new Date();
+    const validCoverage = { gt: client.subscriptionPeriod.fields.startsAt };
+    const [account, current, next, latest, coverage] = await Promise.all([
+      client.subscription.findUnique({
+        where: { merchantId },
+        select: {
+          status: true,
+          cancelAtEnd: true,
+          assignedMonths: true,
+          assignedPlan: { select: { name: true } },
+        },
+      }),
+      client.subscriptionPeriod.findFirst({
+        where: { merchantId, startsAt: { lte: now }, coverageEndsAt: { gt: now } },
+        orderBy: [{ startsAt: 'desc' }, { id: 'desc' }],
+      }),
+      client.subscriptionPeriod.findFirst({
+        where: { merchantId, startsAt: { gt: now }, coverageEndsAt: validCoverage },
+        orderBy: [{ startsAt: 'asc' }, { id: 'asc' }],
+      }),
+      client.subscriptionPeriod.findFirst({
+        where: { merchantId, startsAt: { lte: now } },
+        orderBy: [{ startsAt: 'desc' }, { id: 'desc' }],
+      }),
+      client.subscriptionPeriod.aggregate({
+        where: { merchantId, coverageEndsAt: validCoverage },
+        _max: { coverageEndsAt: true },
+      }),
+    ]);
+    return {
+      status: effectiveSubscriptionStatus(account?.status ?? 'pending', Boolean(current)),
+      currency: 'EGP',
+      cancelAtEnd: account?.cancelAtEnd ?? false,
+      assignedPlanName: account?.assignedPlan?.name ?? null,
+      assignedMonths: (account?.assignedMonths as SubscriptionMonths | null) ?? null,
+      currentPeriod: current ? mapPeriod(current) : null,
+      nextPeriod: next ? mapPeriod(next) : null,
+      latestPeriod: latest ? mapPeriod(latest) : null,
+      coverageEndsAt: coverage._max.coverageEndsAt?.toISOString() ?? null,
+      asOf: now.toISOString(),
+    };
+  }
 
   async assignOnboarding(
     tx: Client,
@@ -300,6 +351,21 @@ export class SubscriptionService {
     };
   }
 
+  async history(
+    merchantId: string,
+    kind: 'periods',
+    cursor?: string,
+  ): Promise<CursorPage<SubscriptionPeriodSummary>>;
+  async history(
+    merchantId: string,
+    kind: 'events',
+    cursor?: string,
+  ): Promise<CursorPage<SubscriptionEventSummary>>;
+  async history(
+    merchantId: string,
+    kind: 'periods' | 'events',
+    cursor?: string,
+  ): Promise<CursorPage<SubscriptionPeriodSummary> | CursorPage<SubscriptionEventSummary>>;
   async history(merchantId: string, kind: 'periods' | 'events', cursor?: string) {
     if (
       !(await this.prisma.subscription.findUnique({

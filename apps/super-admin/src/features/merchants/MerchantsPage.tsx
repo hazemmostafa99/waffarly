@@ -1,5 +1,14 @@
 import { useMemo } from 'react';
-import { ArrowLeft, ArrowRight, Clock3, Search, Store, Users } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Search,
+  Store,
+  Users,
+} from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   BUSINESS_ACTIVITY_KEYS,
@@ -9,7 +18,7 @@ import {
 } from '@waffarly/contracts';
 import { Button, Card, Input, useLocale } from '@waffarly/ui';
 import { PageHeader } from '../../components/PageHeader.js';
-import { StatCard } from '../../components/StatCard.js';
+import { CompactStatCard } from '../../components/CompactStatCard.js';
 import { StatusBadge } from '../../components/StatusBadge.js';
 import {
   merchantHasAccess,
@@ -24,6 +33,15 @@ import {
 
 const PAGE_SIZE = 10;
 type AccessFilter = 'all' | 'activated' | 'awaiting';
+
+function formatMerchantDate(value: string) {
+  const date = new Date(value);
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('/');
+}
 
 function isBusinessActivityKey(value: string | null): value is BusinessActivityKey {
   return value !== null && BUSINESS_ACTIVITY_KEYS.some((key) => key === value);
@@ -101,11 +119,9 @@ export function MerchantsPage() {
   const hasFilters = Boolean(businessQuery || activityFilter !== 'all' || accessFilter !== 'all');
 
   return (
-    <div className="grid gap-6">
+    <div className="admin-page">
       <PageHeader
-        eyebrow={t('Merchant management')}
         title={t('Businesses')}
-        description={t('Review registered businesses and their current subscription status.')}
         actions={
           <Button
             asChild
@@ -121,7 +137,7 @@ export function MerchantsPage() {
 
       {(merchants.isError || applications.isError) && (
         <div
-          className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger"
+          className="flex flex-wrap items-center justify-between admin-stack rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger"
           role="alert"
         >
           <div className="min-w-0">
@@ -148,10 +164,10 @@ export function MerchantsPage() {
       )}
 
       <section
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+        className="admin-stats-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
         aria-label={t('Business summary')}
       >
-        <StatCard
+        <CompactStatCard
           label={t('Businesses')}
           value={merchants.data?.length ?? '—'}
           helper={t('Businesses registered on Waffarly')}
@@ -159,7 +175,7 @@ export function MerchantsPage() {
           tone="mint"
           loading={merchants.isPending}
         />
-        <StatCard
+        <CompactStatCard
           label={t('Businesses with access')}
           value={merchants.data ? activatedCount : '—'}
           helper={t('Active subscriptions and preserved existing access')}
@@ -167,7 +183,7 @@ export function MerchantsPage() {
           tone="blue"
           loading={merchants.isPending}
         />
-        <StatCard
+        <CompactStatCard
           label={t('Restricted businesses')}
           value={merchants.data ? awaitingCount : '—'}
           helper={t('Businesses without active subscription access')}
@@ -177,22 +193,19 @@ export function MerchantsPage() {
         />
       </section>
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.34fr)]">
-        <Card className="min-w-0 overflow-hidden rounded-2xl border-waffarly-border bg-waffarly-surface p-0 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
-          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-waffarly-border p-4 md:p-5">
+      <div className="grid items-start admin-stack 2xl:grid-cols-[minmax(0,1fr)_minmax(280px,0.34fr)]">
+        <Card className="admin-panel-flush min-w-0 overflow-hidden rounded-2xl border-waffarly-border bg-waffarly-surface text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
+          <div className="admin-section flex flex-wrap items-start justify-between admin-stack border-b border-waffarly-border">
             <div>
               <h2 className="m-0 text-sm font-bold">{t('Registered businesses')}</h2>
-              <p className="mb-0 mt-1 text-xs text-waffarly-muted">
-                {t('Search and filter the businesses registered on Waffarly.')}
-              </p>
             </div>
             <span className="rounded-full bg-waffarly-kpi-mint px-3 py-1 text-xs font-bold text-waffarly-primary">
               {merchants.data?.length ?? '—'} {t('Businesses')}
             </span>
           </div>
 
-          <div className="grid gap-3 border-b border-waffarly-border p-4 md:grid-cols-[minmax(220px,1fr)_minmax(160px,auto)_minmax(170px,auto)_auto] md:items-end md:p-5">
-            <label className="grid gap-1.5 text-xs font-semibold text-waffarly-ink">
+          <div className="admin-section grid grid-cols-2 gap-3 border-b border-waffarly-border md:grid-cols-[minmax(220px,1fr)_minmax(160px,auto)_minmax(170px,auto)_auto] md:items-end">
+            <label className="col-span-2 grid gap-1.5 text-xs font-semibold text-waffarly-ink md:col-span-1">
               <span>{t('Search businesses')}</span>
               <span className="relative">
                 <Search
@@ -267,27 +280,34 @@ export function MerchantsPage() {
             aria-label={t('Registered businesses')}
             tabIndex={0}
           >
-            <table
-              className="w-full min-w-[760px] border-collapse text-start text-sm"
+            <table className="admin-table w-full min-w-[880px] table-fixed border-collapse text-start text-sm"
+              dir={locale === 'ar' ? 'rtl' : 'ltr'}
               aria-busy={merchants.isPending}
             >
               <caption className="sr-only">{t('Registered businesses')}</caption>
-              <thead className="bg-waffarly-input text-[10px] font-bold uppercase tracking-wide text-waffarly-muted">
+              <colgroup>
+                <col style={{ width: '22%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '27%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '19%' }} />
+              </colgroup>
+              <thead className="bg-[#f7f9fb] text-xs font-semibold text-[#607286]">
                 <tr className="border-b border-waffarly-border">
-                  <th className="px-4 py-3 text-start" scope="col">
+                  <th className="whitespace-nowrap px-5 py-3.5 text-start" scope="col">
                     {t('Business')}
                   </th>
-                  <th className="px-4 py-3 text-start" scope="col">
+                  <th className="whitespace-nowrap px-5 py-3.5 text-start" scope="col">
                     {t('Activity')}
                   </th>
-                  <th className="px-4 py-3 text-start" scope="col">
-                    {t('Business contact')}
+                  <th className="whitespace-nowrap px-5 py-3.5 text-start" scope="col">
+                    {t('Contacts')}
                   </th>
-                  <th className="px-4 py-3 text-start" scope="col">
-                    {t('Owner')}
-                  </th>
-                  <th className="px-4 py-3 text-start" scope="col">
+                  <th className="whitespace-nowrap px-5 py-3.5 text-start" scope="col">
                     {t('Subscription status')}
+                  </th>
+                  <th className="whitespace-nowrap px-5 py-3.5 text-start" scope="col">
+                    {t('Actions')}
                   </th>
                 </tr>
               </thead>
@@ -351,44 +371,77 @@ export function MerchantsPage() {
                     const status = accessStatus(merchant, t);
                     return (
                       <tr
-                        className="border-b border-waffarly-border last:border-0"
+                        className="border-b border-waffarly-border bg-white transition-colors hover:bg-[#fcfefd] last:border-0"
                         key={merchant.id}
                       >
-                        <td className="px-4 py-3.5">
-                          <Link
-                            to={`/merchants/${merchant.id}`}
-                            className="block font-semibold text-waffarly-ink underline-offset-4 hover:text-waffarly-primary hover:underline"
-                          >
-                            {merchant.name}
-                          </Link>
-                          <small className="mt-1 block text-[11px] text-waffarly-muted">
-                            {t('Added')} {formatDate(merchant.createdAt)}
-                          </small>
+                        <td className="px-5 py-5 align-middle">
+                          <div className="min-w-0 text-start">
+                            <Link
+                              to={`/merchants/${merchant.id}`}
+                              className="block truncate text-start text-[13px] font-bold text-waffarly-ink underline-offset-4 hover:text-waffarly-primary hover:underline"
+                            >
+                              <bdi dir="auto">{merchant.name}</bdi>
+                            </Link>
+                            <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] leading-5 text-[#607286]">
+                              <span>{t('Added')}</span>
+                              <time
+                                dateTime={merchant.createdAt}
+                                dir="ltr"
+                                className="tabular-nums"
+                              >
+                                {formatMerchantDate(merchant.createdAt)}
+                              </time>
+                            </div>
+                          </div>
                         </td>
-                        <td className="px-4 py-3.5 text-waffarly-muted">
+                        <td className="px-5 py-5 align-middle text-[13px] text-waffarly-ink">
                           {t(BUSINESS_ACTIVITY_LABELS[merchant.activity ?? 'other'])}
                         </td>
-                        <td className="px-4 py-3.5 text-waffarly-muted" dir="ltr">
-                          {merchant.contactPhone}
+                        <td className="px-5 py-5 align-middle">
+                          <div className="flex min-w-0 flex-col items-start gap-1 text-start">
+                            <span className="text-[13px] font-medium tabular-nums text-waffarly-ink">
+                              <bdi dir="ltr">{merchant.contactPhone}</bdi>
+                            </span>
+                            <span className="text-[11px] leading-4 text-[#607286]">
+                              {t('Owner')}: <bdi dir="auto">{merchant.ownerName}</bdi>
+                            </span>
+                            {merchant.ownerMobile !== merchant.contactPhone && (
+                              <span className="text-[11px] leading-4 text-[#607286]">
+                                {t('Owner mobile number')}:{' '}
+                                <bdi dir="ltr">{merchant.ownerMobile}</bdi>
+                              </span>
+                            )}
+                          </div>
                         </td>
-                        <td className="px-4 py-3.5">
-                          <strong className="block text-xs font-semibold text-waffarly-ink">
-                            {merchant.ownerName}
-                          </strong>
-                          <small className="mt-1 block text-[11px] text-waffarly-muted" dir="ltr">
-                            {merchant.ownerMobile}
-                          </small>
-                        </td>
-                        <td className="px-4 py-3.5">
+                        <td className="px-5 py-5 align-middle">
                           <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
                           {merchant.firstMonthActivatedAt && (
-                            <small className="mt-1 block text-[10px] text-waffarly-muted">
-                              {formatDate(merchant.firstMonthActivatedAt)}
-                            </small>
+                            <div className="mt-1 flex flex-wrap items-center gap-x-1 text-[11px] leading-4 text-[#607286]">
+                              <span>{t('Activation date')}</span>
+                              <time
+                                dateTime={merchant.firstMonthActivatedAt}
+                                dir="ltr"
+                                className="tabular-nums"
+                              >
+                                {formatMerchantDate(merchant.firstMonthActivatedAt)}
+                              </time>
+                            </div>
                           )}
-                          <Button asChild variant="outline" size="sm">
+                        </td>
+                        <td className="px-5 py-5 align-middle">
+                          <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="h-10 whitespace-nowrap rounded-xl border-waffarly-border bg-white px-3 text-xs font-bold text-waffarly-ink hover:border-waffarly-success/30 hover:bg-waffarly-kpi-mint/30 hover:text-waffarly-primary"
+                          >
                             <Link to={`/subscriptions?merchant=${merchant.id}`}>
                               {t('Manage subscription')}
+                              {locale === 'ar' ? (
+                                <ChevronLeft size={15} aria-hidden="true" />
+                              ) : (
+                                <ChevronRight size={15} aria-hidden="true" />
+                              )}
                             </Link>
                           </Button>
                         </td>
@@ -447,8 +500,8 @@ export function MerchantsPage() {
           )}
         </Card>
 
-        <Card className="overflow-hidden rounded-2xl border-waffarly-border bg-waffarly-surface p-0 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
-          <div className="flex items-start justify-between gap-3 border-b border-waffarly-border p-4 md:p-5">
+        <Card className="admin-panel-flush overflow-hidden rounded-2xl border-waffarly-border bg-waffarly-surface text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
+          <div className="admin-section flex items-start justify-between gap-3 border-b border-waffarly-border">
             <div>
               <h2 className="m-0 text-sm font-bold">{t('Applications to review')}</h2>
               <p className="mb-0 mt-1 text-xs text-waffarly-muted">
@@ -460,7 +513,7 @@ export function MerchantsPage() {
             </span>
           </div>
           {applications.isPending ? (
-            <div className="grid gap-3 p-4" role="status" aria-label={t('Loading applications')}>
+            <div className="admin-section grid gap-3" role="status" aria-label={t('Loading applications')}>
               <span className="h-10 animate-pulse rounded-lg bg-waffarly-input" />
               <span className="h-10 animate-pulse rounded-lg bg-waffarly-input" />
             </div>

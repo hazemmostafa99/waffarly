@@ -77,11 +77,9 @@ export function ActivitiesPage() {
   const hasSearch = Boolean(search.trim());
 
   return (
-    <div className="grid gap-5">
+    <div className="admin-page">
       <PageHeader
-        eyebrow={t('Business activity catalog')}
         title={t('Business activities')}
-        description={t('Classify the business activity types supported by Waffarly and review their platform capabilities.')}
         actions={(
           <Button
             type="button"
@@ -96,7 +94,7 @@ export function ActivitiesPage() {
       />
 
       {catalog.isError && (
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger" role="alert">
+        <div className="flex flex-wrap items-center justify-between admin-stack rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger" role="alert">
           <div className="min-w-0">
             <strong className="block">{t('Could not load the activity catalog.')}</strong>
             <p className="mb-0 mt-1 text-xs">{errorText(catalog.error instanceof Error ? catalog.error.message : 'Something went wrong.')}</p>
@@ -113,7 +111,7 @@ export function ActivitiesPage() {
         </p>
       )}
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label={t('Activity catalog summary')}>
+      <section className="admin-stats-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label={t('Activity catalog summary')}>
         <CompactStatCard label={t('Business activities')} value={catalog.data ? formatCount(allActivities.length) : '—'} helper={t('Activity types currently returned by the platform catalog.')} icon={Activity} tone="mint" loading={catalog.isPending} />
         <CompactStatCard label={t('Platform modules')} value={catalog.data ? formatCount(allModules.length) : '—'} helper={t('Modules currently defined in code')} icon={Boxes} tone="blue" loading={catalog.isPending} />
         <CompactStatCard label={t('Code-supported pairs')} value={catalog.data ? formatCount(codeSupportedPairs) : '—'} helper={t('Module and activity pairs allowed by code')} icon={Network} tone="gold" loading={catalog.isPending} />
@@ -163,8 +161,8 @@ export function ActivitiesPage() {
         )}
       </section>
 
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_310px]">
-        <Card className="grid min-w-0 content-start gap-4 rounded-2xl border-waffarly-border bg-waffarly-surface p-4 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)] md:p-5" aria-labelledby="activity-catalog-heading" aria-busy={catalog.isPending}>
+      <div className="grid min-w-0 admin-stack xl:grid-cols-[minmax(0,1fr)_310px]">
+        <Card className="admin-panel grid min-w-0 content-start admin-stack rounded-2xl border-waffarly-border bg-waffarly-surface text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]" aria-labelledby="activity-catalog-heading" aria-busy={catalog.isPending}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 id="activity-catalog-heading" className="m-0 text-base font-bold">{t('Business activity catalog')}</h2>
@@ -207,7 +205,7 @@ export function ActivitiesPage() {
 
         {editingActivity ? (
           <ActivityEditorPanel key={`${editingActivity.key}-${editingActivity.revision}`} activity={editingActivity} modules={allModules} onClose={closeEditor} onSaved={handleSaved} />
-        ) : <Card className="grid content-start gap-4 rounded-2xl border-waffarly-border bg-white p-4 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)] md:p-5" aria-labelledby="activity-definition-heading">
+        ) : <Card className="admin-panel grid content-start admin-stack rounded-2xl border-waffarly-border bg-white text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]" aria-labelledby="activity-definition-heading">
           <div>
             <span className="mb-3 grid size-9 place-items-center rounded-xl bg-waffarly-kpi-blue text-waffarly-info" aria-hidden="true"><ShieldCheck size={18} /></span>
             <h2 id="activity-definition-heading" className="m-0 text-base font-bold">{t('Standard definition')}</h2>

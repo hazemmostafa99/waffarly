@@ -4,7 +4,7 @@
   --subscription-ink: #14283c;
   --subscription-green: #08654e;
   display: grid;
-  gap: 24px;
+  gap: var(--admin-section-gap, 12px);
   min-width: 0;
   color: var(--subscription-ink);
 }
@@ -15,7 +15,7 @@
   min-width: 0;
   background: #fff;
   border: 1px solid var(--subscription-border);
-  border-radius: 18px;
+  border-radius: var(--admin-radius, 12px);
   box-shadow: 0 3px 14px #14283c04;
 }
 .subscription-stats {
@@ -27,11 +27,11 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 20px;
+  padding: var(--admin-panel-padding, 12px);
   min-width: 0;
   text-align: start;
   border: 1px solid var(--subscription-border);
-  border-radius: 16px;
+  border-radius: var(--admin-radius, 12px);
   background: #fff;
   color: var(--subscription-ink);
   transition:
@@ -80,7 +80,7 @@ button.subscription-stat:hover {
 }
 .subscription-stat-copy > strong {
   color: var(--subscription-ink);
-  font-size: 29px;
+  font-size: var(--admin-font-value, 22px);
   line-height: 1.2;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -102,7 +102,7 @@ button.subscription-stat:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 22px 24px 18px;
+  padding: var(--admin-panel-padding, 12px);
   gap: 16px;
 }
 .subscription-list-header h2 {
@@ -118,7 +118,7 @@ button.subscription-stat:hover {
 .subscription-status-tabs {
   display: flex;
   gap: 4px;
-  padding: 0 18px;
+  padding: 0 var(--admin-panel-padding, 12px);
   overflow-x: auto;
   border-bottom: 1px solid var(--subscription-border);
   scrollbar-width: thin;
@@ -157,7 +157,7 @@ button.subscription-stat:hover {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 18px 24px;
+  padding: var(--admin-panel-padding, 12px);
   background: #fcfdfd;
 }
 .subscription-search {
@@ -175,7 +175,7 @@ button.subscription-stat:hover {
 }
 .subscription-search input {
   padding-inline-start: 40px;
-  height: 42px;
+  height: var(--admin-control-height, 34px);
   background: #fff;
 }
 .subscription-filter-plan {
@@ -209,7 +209,7 @@ button.subscription-stat:hover {
   font-size: 12px;
 }
 .subscription-table-scroll th {
-  padding: 12px 24px;
+  padding: var(--admin-cell-padding-block, 8px) var(--admin-cell-padding-inline, 12px);
   background: #f7f9fb;
   color: #718096;
   text-align: start;
@@ -218,7 +218,7 @@ button.subscription-stat:hover {
   border-block: 1px solid var(--subscription-border);
 }
 .subscription-table-scroll td {
-  padding: 18px 24px;
+  padding: var(--admin-panel-padding, 12px);
   border-bottom: 1px solid #edf0f3;
 }
 .subscription-table-scroll tr:last-child td {
@@ -267,7 +267,7 @@ button.subscription-stat:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 24px;
+  padding: var(--admin-space-2, 8px) var(--admin-panel-padding, 12px);
   gap: 14px;
   border-top: 1px solid var(--subscription-border);
   color: var(--subscription-muted);
@@ -296,7 +296,7 @@ button.subscription-stat:hover {
 .subscription-editor {
   display: grid;
   min-width: 0;
-  gap: 18px;
+  gap: var(--admin-section-gap, 12px);
 }
 .subscription-back {
   width: fit-content;
@@ -307,7 +307,7 @@ button.subscription-stat:hover {
   font-size: 12px;
 }
 .subscription-customer {
-  padding: 22px 24px;
+  padding: var(--admin-panel-padding, 12px);
 }
 .subscription-customer-heading {
   display: flex;
@@ -344,7 +344,7 @@ button.subscription-stat:hover {
 .subscription-current-facts {
   display: grid;
   grid-template-columns: 1.5fr 1fr 1fr;
-  gap: 24px;
+  gap: var(--admin-section-gap, 12px);
   margin-top: 20px;
   padding-top: 18px;
   border-top: 1px solid var(--subscription-border);
@@ -401,18 +401,18 @@ button.subscription-stat:hover {
 .subscription-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
-  gap: 20px;
+  gap: var(--admin-section-gap, 12px);
   align-items: start;
 }
 .subscription-settings,
 .subscription-review {
-  padding: 24px;
+  padding: var(--admin-panel-padding, 12px);
 }
 .subscription-section-heading {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  margin-bottom: 24px;
+  margin-bottom: var(--admin-section-gap, 12px);
 }
 .subscription-step {
   display: grid;
@@ -440,7 +440,7 @@ button.subscription-stat:hover {
 }
 .subscription-settings-fields {
   display: grid;
-  gap: 23px;
+  gap: var(--admin-section-gap, 12px);
   margin: 0;
   padding: 0;
   min-width: 0;
@@ -470,7 +470,7 @@ button.subscription-stat:hover {
 .subscription-field input {
   width: 100%;
   min-width: 0;
-  min-height: 44px;
+  min-height: var(--admin-control-height, 34px);
   padding: 10px 13px;
   border: 1px solid #dfe6eb;
   border-radius: 10px;
@@ -522,7 +522,7 @@ button.subscription-stat:hover {
   position: relative;
   display: grid;
   gap: 9px;
-  padding: 14px 12px;
+  padding: var(--admin-panel-padding, 12px);
   border: 1px solid #e0e7ec;
   border-radius: 11px;
   background: #fff;
@@ -608,7 +608,7 @@ button.subscription-stat:hover {
 .subscription-amount-due {
   display: grid;
   gap: 10px;
-  padding: 20px 18px;
+  padding: var(--admin-panel-padding, 12px);
   background: #f0f8f3;
   border: 1px solid #d9eade;
   border-radius: 12px;
@@ -622,7 +622,7 @@ button.subscription-stat:hover {
 }
 .subscription-amount-due > strong {
   color: #075a42;
-  font-size: 28px;
+  font-size: var(--admin-font-value, 22px);
   font-weight: 800;
   line-height: 1.3;
   font-variant-numeric: tabular-nums;
@@ -684,7 +684,7 @@ button.subscription-stat:hover {
   align-items: flex-start;
   justify-content: flex-start;
   gap: 10px;
-  padding: 14px 12px;
+  padding: var(--admin-panel-padding, 12px);
   margin: 18px 0;
   border: 1px solid #e0e7ec;
   border-radius: 10px;
@@ -735,7 +735,7 @@ button.subscription-stat:hover {
 .subscription-action-summary {
   display: grid;
   gap: 12px;
-  padding: 20px;
+  padding: var(--admin-panel-padding, 12px);
   margin-bottom: 20px;
   border-radius: 12px;
   background: #f1f8f4;
@@ -799,7 +799,7 @@ button.subscription-stat:hover {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 18px 22px;
+  padding: var(--admin-panel-padding, 12px);
   cursor: pointer;
   list-style: none;
 }
@@ -837,7 +837,7 @@ button.subscription-stat:hover {
 .subscription-history-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 30px;
+  gap: var(--admin-section-gap, 12px);
   border-top: 1px solid var(--subscription-border);
   padding: 22px;
 }
@@ -911,7 +911,7 @@ button.subscription-stat:hover {
 }
 .subscription-editor-loading {
   display: grid;
-  gap: 20px;
+  gap: var(--admin-section-gap, 12px);
   padding: 30px;
   color: var(--subscription-muted);
   font-size: 12px;
@@ -933,7 +933,7 @@ button.subscription-stat:hover {
   }
   .subscription-settings,
   .subscription-review {
-    padding: 20px;
+    padding: var(--admin-panel-padding, 12px);
   }
   .subscription-duration-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -952,13 +952,13 @@ button.subscription-stat:hover {
 }
 @media (max-width: 600px) {
   .subscription-page {
-    gap: 18px;
+    gap: var(--admin-section-gap, 12px);
   }
   .subscription-stats {
     gap: 10px;
   }
   .subscription-stat {
-    padding: 14px 12px;
+    padding: var(--admin-panel-padding, 12px);
     gap: 9px;
   }
   .subscription-stat-icon {
@@ -977,13 +977,13 @@ button.subscription-stat:hover {
     display: none;
   }
   .subscription-stat-copy > strong {
-    font-size: 25px;
+    font-size: var(--admin-font-value, 22px);
   }
   .subscription-stat-copy > strong.subscription-stat-money {
     font-size: 15px;
   }
   .subscription-list-header {
-    padding: 18px 16px;
+    padding: var(--admin-panel-padding, 12px);
   }
   .subscription-list-header p {
     font-size: 11px;
@@ -992,7 +992,7 @@ button.subscription-stat:hover {
     padding-inline: 8px;
   }
   .subscription-filters {
-    padding: 14px 16px;
+    padding: var(--admin-panel-padding, 12px);
     flex-wrap: wrap;
     gap: 10px;
   }
@@ -1008,7 +1008,7 @@ button.subscription-stat:hover {
     flex-wrap: wrap;
   }
   .subscription-customer {
-    padding: 18px 16px;
+    padding: var(--admin-panel-padding, 12px);
   }
   .subscription-customer-heading h2 {
     font-size: 20px;
@@ -1018,7 +1018,7 @@ button.subscription-stat:hover {
   }
   .subscription-current-facts {
     grid-template-columns: 1fr 1fr;
-    gap: 18px;
+    gap: var(--admin-section-gap, 12px);
   }
   .subscription-current-facts > div:first-child {
     grid-column: 1 / -1;
@@ -1028,13 +1028,13 @@ button.subscription-stat:hover {
   }
   .subscription-settings,
   .subscription-review {
-    padding: 20px 16px;
+    padding: var(--admin-panel-padding, 12px);
   }
   .subscription-duration-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .subscription-duration {
-    padding: 13px 12px;
+    padding: var(--admin-panel-padding, 12px);
   }
   .subscription-legacy-note > div {
     display: grid;
@@ -1045,8 +1045,8 @@ button.subscription-stat:hover {
   }
   .subscription-history-columns {
     grid-template-columns: 1fr;
-    padding: 18px 16px;
-    gap: 24px;
+    padding: var(--admin-panel-padding, 12px);
+    gap: var(--admin-section-gap, 12px);
   }
   .subscription-review-placeholder {
     padding: 24px 16px;

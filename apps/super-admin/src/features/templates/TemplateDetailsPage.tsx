@@ -73,14 +73,11 @@ export function TemplateDetailsPage() {
     ? 'This template changed in another session. Reload the library before editing.'
     : updateError?.message ?? 'Could not save this template.');
   const title = template?.name ?? t('Template details');
-  const description = template?.description || t('Review the saved preview, merchant scope, and availability settings.');
 
   return (
-    <div className="grid min-w-0 gap-5">
+    <div className="admin-page">
       <PageHeader
-        eyebrow={t('Design library')}
         title={title}
-        description={description}
         actions={(
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="outline" asChild className="border-waffarly-border bg-white text-waffarly-ink hover:bg-waffarly-input hover:text-waffarly-ink">
@@ -98,7 +95,7 @@ export function TemplateDetailsPage() {
       {notice && <p className="m-0 rounded-xl border border-waffarly-success/15 bg-waffarly-kpi-mint px-4 py-3 text-sm font-semibold text-waffarly-primary" role="status">{t(notice)}</p>}
 
       {(loadFailed || updateTemplate.isError || actionError) && (
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger" role="alert">
+        <div className="flex flex-wrap items-center justify-between admin-stack rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger" role="alert">
           <div className="min-w-0">
             <strong className="block">{t(loadFailed ? 'Could not load templates.' : actionError ? 'Could not update template availability.' : 'Could not save this template.')}</strong>
             <p className="mb-0 mt-1 text-xs">{errorText(loadFailed ? (templatesQuery.error instanceof Error ? templatesQuery.error.message : 'Something went wrong.') : error)}</p>
@@ -112,18 +109,18 @@ export function TemplateDetailsPage() {
       )}
 
       {showPageLoading ? (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.8fr)]" role="status" aria-label={t('Loading template details…')}>
+        <div className="grid admin-stack xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.8fr)]" role="status" aria-label={t('Loading template details…')}>
           <div className="h-72 animate-pulse rounded-2xl border border-waffarly-border bg-waffarly-input" />
           <div className="h-72 animate-pulse rounded-2xl border border-waffarly-border bg-waffarly-input" />
         </div>
       ) : loadFailed ? (
-        <Card className="grid min-h-48 place-content-center justify-items-center gap-3 rounded-2xl border-waffarly-border bg-white p-6 text-center text-waffarly-ink">
+        <Card className="admin-panel grid min-h-48 place-content-center justify-items-center gap-3 rounded-2xl border-waffarly-border bg-white text-center text-waffarly-ink">
           <span className="grid size-11 place-items-center rounded-2xl bg-waffarly-kpi-gold text-waffarly-gold" aria-hidden="true"><RefreshCw size={20} /></span>
           <div><h2 className="m-0 text-sm font-bold">{t('Template library unavailable.')}</h2><p className="mb-0 mt-1 text-xs text-waffarly-muted">{t('Try again to load this template.')}</p></div>
           <Button type="button" onClick={() => void templatesQuery.refetch()} className="bg-waffarly-primary text-white hover:bg-waffarly-primary-hover">{t('Try again')}</Button>
         </Card>
       ) : isMissing ? (
-        <Card className="grid min-h-48 place-content-center justify-items-center gap-3 rounded-2xl border-waffarly-border bg-white p-6 text-center text-waffarly-ink">
+        <Card className="admin-panel grid min-h-48 place-content-center justify-items-center gap-3 rounded-2xl border-waffarly-border bg-white text-center text-waffarly-ink">
           <span className="grid size-11 place-items-center rounded-2xl bg-waffarly-kpi-blue text-waffarly-info" aria-hidden="true"><ShieldCheck size={20} /></span>
           <div><h2 className="m-0 text-sm font-bold">{t('This template is no longer in the library.')}</h2><p className="mb-0 mt-1 text-xs text-waffarly-muted">{t('Return to the design library to review the current templates.')}</p></div>
           <Button type="button" variant="outline" asChild className="border-waffarly-border bg-white text-waffarly-ink"><Link to="/templates">{t('Back to library')}</Link></Button>
@@ -132,8 +129,8 @@ export function TemplateDetailsPage() {
         <>
           {editing && <TemplateEditorPanel key={`${template.id}-${template.revision}`} template={template} busy={updateTemplate.isPending} onCancel={() => setEditing(false)} onSubmit={saveTemplate} onReload={() => { setEditing(false); updateTemplate.reset(); void templatesQuery.refetch(); }} />}
 
-          <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.8fr)]" aria-label={t('Template overview')}>
-            <Card className="min-w-0 overflow-hidden rounded-2xl border-waffarly-border bg-white p-0 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
+          <section className="grid min-w-0 admin-stack xl:grid-cols-[minmax(0,1.4fr)_minmax(300px,0.8fr)]" aria-label={t('Template overview')}>
+            <Card className="admin-panel-flush min-w-0 overflow-hidden rounded-2xl border-waffarly-border bg-white text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
               <div className="relative overflow-hidden bg-waffarly-input">
                 <TemplateArtwork template={template} />
                 <div className="absolute inset-x-3 top-3 flex items-start justify-between gap-3">
@@ -144,7 +141,7 @@ export function TemplateDetailsPage() {
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-white/70 bg-white/90 px-2.5 py-1.5 text-[10px] font-semibold text-waffarly-ink shadow-sm"><Check size={12} aria-hidden="true" />{t(template.layout === 'menu' ? 'Catalog first' : 'Welcome first')}</span>
                 </div>
               </div>
-              <div className="grid gap-2 p-4 md:p-5">
+              <div className="admin-section grid gap-2">
                 <code className="w-fit rounded-lg bg-waffarly-input px-2 py-1 text-[10px] text-waffarly-muted" dir="ltr">/{template.key}</code>
                 <h2 className="m-0 text-lg font-bold text-waffarly-ink">{template.name}</h2>
                 <p className="mb-0 text-sm leading-6 text-waffarly-muted">{template.description || t('A business storefront design.')}</p>
@@ -154,9 +151,9 @@ export function TemplateDetailsPage() {
             <TemplateMetadataPanel template={template} />
           </section>
 
-          <section className="grid min-w-0 gap-4 xl:grid-cols-2" aria-label={t('Template eligibility and availability')}>
+          <section className="grid min-w-0 admin-stack xl:grid-cols-2" aria-label={t('Template eligibility and availability')}>
             <TemplateEligibilityPanel template={template} />
-            <Card className="grid content-start gap-4 rounded-2xl border-waffarly-border bg-white p-4 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)] md:p-5" aria-labelledby="template-availability-heading">
+            <Card className="admin-panel grid content-start admin-stack rounded-2xl border-waffarly-border bg-white text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]" aria-labelledby="template-availability-heading">
               <div className="flex items-start gap-3">
                 <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-waffarly-kpi-mint text-waffarly-primary" aria-hidden="true"><ShieldCheck size={17} /></span>
                 <div>

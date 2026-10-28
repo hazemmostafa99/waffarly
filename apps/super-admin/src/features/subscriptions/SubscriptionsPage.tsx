@@ -105,9 +105,7 @@ export function SubscriptionsPage() {
   return (
     <div className="subscription-page">
       <PageHeader
-        eyebrow={t('Plans & subscriptions')}
         title={t('Subscription management')}
-        description={t('Manage coverage, renewals, and collections in one place.')}
         actions={
           <Button asChild variant="outline">
             <Link to="/plans">
@@ -271,7 +269,7 @@ export function SubscriptionsPage() {
             </p>
           )}
           <div className="subscription-table-scroll">
-            <table aria-busy={records.isFetching}>
+            <table className="admin-table" aria-busy={records.isFetching}>
               <thead>
                 <tr>
                   {['Business', 'Plan', 'Status', 'Ends at', 'Actions'].map((h) => (

@@ -122,11 +122,9 @@ export function TemplatesPage() {
   }
 
   return (
-    <div className="grid min-w-0 gap-5">
+    <div className="admin-page">
       <PageHeader
-        eyebrow={t('Storefront · businesses')}
         title={t('The design library')}
-        description={t('Curate the business designs merchants can discover.')}
         actions={(
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" onClick={openCreate} className="bg-waffarly-primary text-white hover:bg-waffarly-primary-hover">
@@ -139,7 +137,7 @@ export function TemplatesPage() {
         )}
       />
 
-      <section className="grid gap-3 sm:grid-cols-3" aria-label={t('Design library summary')}>
+      <section className="admin-stats-grid grid gap-3 sm:grid-cols-3" aria-label={t('Design library summary')}>
         <CompactStatCard label={t('All designs')} value={templatesQuery.data ? formatCount(templates.length) : '—'} helper={t('Storefront designs currently in the library.')} icon={LayoutTemplate} tone="mint" loading={templatesQuery.isPending} />
         <CompactStatCard label={t('Available')} value={templatesQuery.data ? formatCount(templates.filter((template) => template.status === 'available').length) : '—'} helper={t('Ready for future merchant selection.')} icon={Sparkles} tone="blue" loading={templatesQuery.isPending} />
         <CompactStatCard label={t('Drafts')} value={templatesQuery.data ? formatCount(templates.filter((template) => template.status === 'draft').length) : '—'} helper={t('Visible to platform administrators only.')} icon={Palette} tone="gold" loading={templatesQuery.isPending} />
@@ -148,7 +146,7 @@ export function TemplatesPage() {
       {notice && <p className="m-0 rounded-xl border border-waffarly-success/15 bg-waffarly-kpi-mint px-4 py-3 text-sm font-semibold text-waffarly-primary" role="status">{t(notice)}</p>}
 
       {(templatesQuery.isError || mutationError || actionError) && (
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger" role="alert">
+        <div className="flex flex-wrap items-center justify-between admin-stack rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger" role="alert">
           <div className="min-w-0">
             <strong className="block">{t(templatesQuery.isError ? 'Could not load templates.' : 'Could not save this template.')}</strong>
             <p className="mb-0 mt-1 text-xs">{errorText(templatesQuery.isError ? (templatesQuery.error instanceof Error ? templatesQuery.error.message : 'Something went wrong.') : errorMessage)}</p>
@@ -176,7 +174,7 @@ export function TemplatesPage() {
         />
       )}
 
-      <Card className="grid min-w-0 gap-4 rounded-2xl border-waffarly-border bg-white p-4 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)] md:p-5" aria-labelledby="templates-heading" aria-busy={templatesQuery.isPending}>
+      <Card className="admin-panel grid min-w-0 admin-stack rounded-2xl border-waffarly-border bg-white text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]" aria-labelledby="templates-heading" aria-busy={templatesQuery.isPending}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 id="templates-heading" className="m-0 text-base font-bold">{t('Storefront templates')}</h2>
@@ -211,7 +209,7 @@ export function TemplatesPage() {
 
         {templatesQuery.isPending ? (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="status" aria-label={t('Loading your design library…')}>
-            {[0, 1, 2].map((item) => <div key={item} className="overflow-hidden rounded-2xl border border-waffarly-border bg-white"><div className="aspect-[16/9] animate-pulse bg-waffarly-input" /><div className="grid gap-2 p-4"><div className="h-3 w-2/5 animate-pulse rounded bg-waffarly-input" /><div className="h-4 w-3/5 animate-pulse rounded bg-waffarly-input" /><div className="h-3 w-full animate-pulse rounded bg-waffarly-input" /></div></div>)}
+            {[0, 1, 2].map((item) => <div key={item} className="overflow-hidden rounded-2xl border border-waffarly-border bg-white"><div className="aspect-[16/9] animate-pulse bg-waffarly-input" /><div className="admin-section grid gap-2"><div className="h-3 w-2/5 animate-pulse rounded bg-waffarly-input" /><div className="h-4 w-3/5 animate-pulse rounded bg-waffarly-input" /><div className="h-3 w-full animate-pulse rounded bg-waffarly-input" /></div></div>)}
           </div>
         ) : templatesQuery.isError && !templatesQuery.data ? (
           <div className="grid min-h-40 place-content-center rounded-2xl border border-dashed border-waffarly-border bg-waffarly-input/50 px-6 py-8 text-center">

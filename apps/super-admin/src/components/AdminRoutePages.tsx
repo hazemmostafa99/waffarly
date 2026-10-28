@@ -12,9 +12,7 @@ export function BusinessesCompatibilityPage() {
   return (
     <LegacyPage>
       <PageHeader
-        eyebrow={t('Merchant management')}
         title={t('Businesses')}
-        description={t('Review applications, create businesses, and see their access status.')}
       />
       <Businesses />
     </LegacyPage>

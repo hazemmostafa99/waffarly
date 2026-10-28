@@ -1,5 +1,11 @@
 # API architecture
 
+Merchant account (2026-10-28): Merchants owns `/owner/account` profile reads and
+revisioned, attributable contact updates; it composes the owner-safe subscription
+projection through the existing Subscriptions public service. Subscriptions owns
+paid-period history and effective billing state. The dependency graph is unchanged.
+See [Merchant account](../features/merchant-account/FEATURE.md).
+
 Subscriptions (2026-10-28) owns merchant subscription accounts, paid period snapshots,
 manual collection administration, quotes, lifecycle, history and current eligibility.
 It has no Auth dependency. Auth imports Subscriptions for per-request eligibility;

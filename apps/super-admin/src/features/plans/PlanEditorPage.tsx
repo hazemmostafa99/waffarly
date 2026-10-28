@@ -193,11 +193,9 @@ export function PlanEditorPage() {
   const pageError = plans.isError && !plans.data;
 
   return (
-    <div className="grid gap-6">
+    <div className="admin-page">
       <PageHeader
-        eyebrow={t('Plans & subscriptions')}
         title={isEditing ? t('Edit plan') : t('Create plan')}
-        description={t('Manage plans and independent prices for each prepaid duration.')}
         actions={
           <Button
             asChild
@@ -218,7 +216,7 @@ export function PlanEditorPage() {
 
       {pageError && (
         <div
-          className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger"
+          className="flex flex-wrap items-center justify-between admin-stack rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger"
           role="alert"
         >
           <div>
@@ -270,7 +268,7 @@ export function PlanEditorPage() {
       )}
 
       {planNotFound ? (
-        <Card className="grid justify-items-start gap-3 border-waffarly-border p-6">
+        <Card className="admin-panel grid justify-items-start gap-3 border-waffarly-border">
           <h2 className="m-0 text-lg font-bold text-waffarly-ink">{t('Plan was not found.')}</h2>
           <p className="m-0 text-sm text-waffarly-muted">
             {t('This plan may have been removed or is no longer available.')}
@@ -285,7 +283,7 @@ export function PlanEditorPage() {
         </Card>
       ) : waitingForPlan ? (
         <div
-          className="grid gap-4 rounded-2xl border border-waffarly-border bg-white p-6"
+          className="admin-section grid admin-stack rounded-2xl border border-waffarly-border bg-white"
           role="status"
           aria-label={t('Loading plan details…')}
         >
@@ -295,9 +293,9 @@ export function PlanEditorPage() {
           <div className="h-24 animate-pulse rounded-lg bg-waffarly-input" />
         </div>
       ) : pageError ? null : (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)]">
+        <div className="grid admin-stack xl:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)]">
           <Card
-            className="grid gap-6 border-waffarly-border p-5 shadow-[0_3px_12px_rgba(20,32,62,0.035)] md:p-7"
+            className="admin-panel grid admin-stack border-waffarly-border shadow-[0_3px_12px_rgba(20,32,62,0.035)]"
             aria-labelledby="plan-form-heading"
           >
             <div>
@@ -315,10 +313,10 @@ export function PlanEditorPage() {
               </p>
             </div>
 
-            <form onSubmit={submit} className="grid gap-5">
+            <form onSubmit={submit} className="admin-page">
               <fieldset
                 disabled={savePlan.isPending || conflict || (isEditing && !currentPlan)}
-                className="grid min-w-0 gap-5 border-0 p-0"
+                className="grid min-w-0 admin-stack border-0 p-0"
               >
                 <label className="grid gap-1.5 text-xs font-semibold text-waffarly-ink">
                   {t('Plan name')}
@@ -348,7 +346,7 @@ export function PlanEditorPage() {
                   />
                 </label>
 
-                <fieldset className="grid gap-3 rounded-xl border border-waffarly-border p-4">
+                <fieldset className="admin-section grid gap-3 rounded-xl border border-waffarly-border">
                   <legend className="px-2 text-sm font-bold">{t('Prepaid duration prices')}</legend>
                   <p className="m-0 text-xs text-waffarly-muted">
                     {t(
@@ -430,8 +428,8 @@ export function PlanEditorPage() {
             </form>
           </Card>
 
-          <aside className="grid content-start gap-4">
-            <Card className="grid gap-3 border-waffarly-border p-5 shadow-[0_3px_12px_rgba(20,32,62,0.035)]">
+          <aside className="grid content-start admin-stack">
+            <Card className="admin-panel grid gap-3 border-waffarly-border shadow-[0_3px_12px_rgba(20,32,62,0.035)]">
               <h2 className="m-0 text-sm font-bold text-waffarly-ink">
                 {t('About plan definitions')}
               </h2>
@@ -442,7 +440,7 @@ export function PlanEditorPage() {
               </p>
             </Card>
             {isEditing && recordPlan && (
-              <Card className="grid gap-2 border-waffarly-border p-5 shadow-[0_3px_12px_rgba(20,32,62,0.035)]">
+              <Card className="admin-panel grid gap-2 border-waffarly-border shadow-[0_3px_12px_rgba(20,32,62,0.035)]">
                 <h2 className="m-0 text-sm font-bold text-waffarly-ink">
                   {t('Record information')}
                 </h2>
@@ -468,7 +466,7 @@ export function PlanEditorPage() {
         }}
         className="w-[min(28rem,calc(100%-2rem))] rounded-2xl border border-waffarly-border bg-white p-0 shadow-[0_20px_70px_rgba(20,32,62,0.24)] backdrop:bg-waffarly-ink/35"
       >
-        <div className="grid gap-4 p-5 md:p-6">
+        <div className="admin-section grid admin-stack">
           <div>
             <h2 id="discard-plan-title" className="m-0 text-lg font-bold text-waffarly-ink">
               {t('Leave without saving?')}

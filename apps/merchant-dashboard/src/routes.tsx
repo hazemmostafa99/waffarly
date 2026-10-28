@@ -10,6 +10,9 @@ const Dashboard = lazy(() =>
 const SettingsRoute = lazy(() =>
   import('./RoutedPages.js').then((module) => ({ default: module.SettingsRoute })),
 );
+const AccountPage = lazy(() =>
+  import('./features/account/AccountPage.js').then((module) => ({ default: module.AccountPage })),
+);
 const Login = lazy(() => import('./Login.js').then((module) => ({ default: module.Login })));
 const ProductsPage = lazy(() =>
   import('./ProductsPage.js').then((module) => ({ default: module.ProductsPage })),
@@ -167,6 +170,7 @@ export const router = createBrowserRouter([
       { path: 'pos-item-returns', element: loadOnRoute(<ItemReturnReportsPage />) },
       { path: 'pos-operations', element: loadOnRoute(<PosOperationsReportPage />) },
       { path: 'settings', element: loadOnRoute(<SettingsRoute />) },
+      { path: 'account', element: loadOnRoute(<AccountPage />) },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },

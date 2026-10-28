@@ -12,7 +12,7 @@ export function TemplateEligibilityPanel({ template }: { template: StorefrontTem
   const available = template.status === 'available';
 
   return (
-    <Card className="grid content-start gap-4 rounded-2xl border-waffarly-border bg-white p-4 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)] md:p-5" aria-labelledby="template-eligibility-heading">
+    <Card className="admin-panel grid content-start admin-stack rounded-2xl border-waffarly-border bg-white text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]" aria-labelledby="template-eligibility-heading">
       <div className="flex items-start gap-3">
         <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-waffarly-kpi-blue text-waffarly-info" aria-hidden="true"><ShieldCheck size={17} /></span>
         <div>

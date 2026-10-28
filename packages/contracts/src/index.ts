@@ -275,6 +275,15 @@ export type {
 } from './pos-delivery.js';
 export type { SubscriptionMonths, PlanTerm } from './plans.js';
 export type {
+  MerchantAccountProfile,
+  UpdateMerchantAccountRequest,
+  OwnerSubscriptionOverview,
+  MerchantAccountOverview,
+  OwnerSubscriptionHistory,
+} from './merchant-account.js';
+export type {
+  SubscriptionPeriodSummary,
+  SubscriptionEventSummary,
   SubscriptionStatus,
   SubscriptionSummary,
   SubscriptionDetail,

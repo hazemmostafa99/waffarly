@@ -8,7 +8,7 @@ import { useMerchantsQuery } from './merchant-queries.js';
 
 export function MerchantDetailsPage() {
   const { merchantId } = useParams();
-  const { t, formatDate, errorText, locale } = useLocale();
+  const { t, errorText, locale } = useLocale();
   const isArabic = locale === 'ar';
   const merchants = useMerchantsQuery();
   const [businessCodeCopyState, setBusinessCodeCopyState] = useState<'copied' | 'failed' | null>(
@@ -38,14 +38,12 @@ export function MerchantDetailsPage() {
 
   if (merchants.isError && !merchants.data) {
     return (
-      <div className="grid gap-5">
+      <div className="admin-page">
         <PageHeader
-          eyebrow={t('Merchant details')}
           title={t('Merchant record is unavailable.')}
-          description={t('The merchant details could not be loaded.')}
         />
         <div
-          className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger"
+          className="flex flex-wrap items-center justify-between admin-stack rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger"
           role="alert"
         >
           <span>
@@ -69,11 +67,9 @@ export function MerchantDetailsPage() {
   const merchant = merchants.data?.find((item) => item.id === merchantId);
   if (!merchant) {
     return (
-      <div className="grid gap-5">
+      <div className="admin-page">
         <PageHeader
-          eyebrow={t('Merchant details')}
           title={t('Merchant not found')}
-          description={t('No merchant record matches this address.')}
           actions={<BackToMerchants />}
         />
         {merchants.isError && (
@@ -89,11 +85,9 @@ export function MerchantDetailsPage() {
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="admin-page">
       <PageHeader
-        eyebrow={t('Merchant details')}
         title={merchant.name}
-        description={t('Created {{date}}', { date: formatDate(merchant.createdAt) })}
         actions={
           <>
             <BackToMerchants />
@@ -114,10 +108,10 @@ export function MerchantDetailsPage() {
       )}
 
       <section
-        className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]"
+        className="grid admin-stack xl:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]"
         aria-label={t('Merchant overview')}
       >
-        <Card className="grid gap-4 rounded-2xl border-waffarly-border bg-waffarly-surface p-4 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)] md:p-5">
+        <Card className="admin-panel grid admin-stack rounded-2xl border-waffarly-border bg-waffarly-surface text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
           <div className="flex items-start gap-3 border-b border-waffarly-border pb-4">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-waffarly-kpi-mint text-waffarly-primary">
               <Building2 size={19} aria-hidden="true" />
@@ -183,7 +177,7 @@ export function MerchantDetailsPage() {
           </dl>
         </Card>
 
-        <Card className="grid gap-4 rounded-2xl border-waffarly-border bg-waffarly-surface p-4 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)] md:p-5">
+        <Card className="admin-panel grid admin-stack rounded-2xl border-waffarly-border bg-waffarly-surface text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
           <div className="flex items-start gap-3 border-b border-waffarly-border pb-4">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-waffarly-kpi-blue text-waffarly-blue">
               <UserRound size={19} aria-hidden="true" />
@@ -195,7 +189,7 @@ export function MerchantDetailsPage() {
               </p>
             </div>
           </div>
-          <dl className="m-0 grid gap-4">
+          <dl className="m-0 grid admin-stack">
             <DetailField label={t('Owner name')} value={merchant.ownerName} />
             <DetailField
               label={t('Owner mobile number')}
@@ -206,7 +200,7 @@ export function MerchantDetailsPage() {
           </dl>
         </Card>
 
-        <Card className="grid gap-4 border-waffarly-border p-5 xl:col-span-2">
+        <Card className="admin-panel grid admin-stack border-waffarly-border xl:col-span-2">
           <h2 className="m-0 text-sm font-bold">{t('Subscription management')}</h2>
           <p className="m-0 text-sm text-waffarly-muted">
             {t('Review the current plan, coverage, collections, and subscription activity.')}

@@ -19,7 +19,7 @@ import {
 import { Button, Card, useLocale } from '@waffarly/ui';
 import { adminQueryKeys } from '../../app/query-keys.js';
 import { PageHeader } from '../../components/PageHeader.js';
-import { StatCard } from '../../components/StatCard.js';
+import { CompactStatCard } from '../../components/CompactStatCard.js';
 import { StatusBadge } from '../../components/StatusBadge.js';
 import { apiRequest } from '../../lib/api-client.js';
 import {
@@ -62,11 +62,9 @@ export function DashboardPage() {
   );
 
   return (
-    <div className="grid gap-6">
+    <div className="admin-page">
       <PageHeader
-        eyebrow={t('Waffarly platform')}
         title={t('Platform overview')}
-        description={t('A clear view of businesses, applications, plans, and storefront designs.')}
         actions={
           <Button
             className="bg-waffarly-primary text-white hover:bg-waffarly-primary-hover"
@@ -82,7 +80,7 @@ export function DashboardPage() {
 
       {failures.length > 0 && (
         <div
-          className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger"
+          className="flex flex-wrap items-center justify-between admin-stack rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger"
           role="alert"
         >
           <div className="min-w-0">
@@ -107,10 +105,10 @@ export function DashboardPage() {
       )}
 
       <section
-        className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        className="admin-stats-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
         aria-label={t('Platform summary')}
       >
-        <StatCard
+        <CompactStatCard
           label={t('Businesses')}
           value={merchants.data?.length ?? '—'}
           helper={t('Businesses registered on Waffarly')}
@@ -118,7 +116,7 @@ export function DashboardPage() {
           tone="mint"
           loading={merchants.isPending}
         />
-        <StatCard
+        <CompactStatCard
           label={t('Awaiting review')}
           value={applications.data ? pendingApplications.length : '—'}
           helper={t('Applications awaiting an admin decision')}
@@ -126,7 +124,7 @@ export function DashboardPage() {
           tone="gold"
           loading={applications.isPending}
         />
-        <StatCard
+        <CompactStatCard
           label={t('Businesses with access')}
           value={merchants.data?.filter(merchantHasAccess).length ?? '—'}
           helper={t('Active subscriptions and preserved existing access')}
@@ -134,7 +132,7 @@ export function DashboardPage() {
           tone="blue"
           loading={merchants.isPending}
         />
-        <StatCard
+        <CompactStatCard
           label={t('Available storefronts')}
           value={
             templates.data?.filter((template) => template.status === 'available').length ?? '—'
@@ -146,9 +144,9 @@ export function DashboardPage() {
         />
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(300px,0.9fr)]">
-        <Card className="min-w-0 overflow-hidden rounded-2xl border-waffarly-border bg-waffarly-surface p-0 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
-          <div className="flex items-start justify-between gap-4 border-b border-waffarly-border p-4 md:p-5">
+      <div className="grid admin-stack xl:grid-cols-[minmax(0,1.65fr)_minmax(300px,0.9fr)]">
+        <Card className="admin-panel-flush min-w-0 overflow-hidden rounded-2xl border-waffarly-border bg-waffarly-surface text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
+          <div className="admin-section flex items-start justify-between admin-stack border-b border-waffarly-border">
             <div>
               <h2 className="m-0 text-sm font-bold">{t('Recently added businesses')}</h2>
               <p className="mb-0 mt-1 text-xs text-waffarly-muted">
@@ -164,7 +162,7 @@ export function DashboardPage() {
           </div>
           {merchants.isPending ? (
             <div
-              className="grid gap-3 p-4 md:p-5"
+              className="admin-section grid gap-3"
               role="status"
               aria-label={t('Loading businesses')}
             >
@@ -184,7 +182,7 @@ export function DashboardPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[650px] border-collapse text-start text-xs">
+              <table className="admin-table w-full min-w-[650px] border-collapse text-start text-xs">
                 <thead className="bg-waffarly-input text-[10px] font-bold uppercase tracking-wide text-waffarly-muted">
                   <tr className="border-b border-waffarly-border">
                     <th className="px-4 py-3 text-start">{t('Business')}</th>
@@ -229,9 +227,9 @@ export function DashboardPage() {
           )}
         </Card>
 
-        <div className="grid content-start gap-5">
-          <Card className="overflow-hidden rounded-2xl border-waffarly-border bg-waffarly-surface p-0 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
-            <div className="flex items-start justify-between gap-4 border-b border-waffarly-border p-4 md:p-5">
+        <div className="grid content-start admin-stack">
+          <Card className="admin-panel-flush overflow-hidden rounded-2xl border-waffarly-border bg-waffarly-surface text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
+            <div className="admin-section flex items-start justify-between admin-stack border-b border-waffarly-border">
               <div>
                 <h2 className="m-0 text-sm font-bold">{t('Applications to review')}</h2>
                 <p className="mb-0 mt-1 text-xs text-waffarly-muted">
@@ -243,7 +241,7 @@ export function DashboardPage() {
               </span>
             </div>
             {applications.isPending ? (
-              <div className="grid gap-3 p-4" role="status" aria-label={t('Loading applications')}>
+              <div className="admin-section grid gap-3" role="status" aria-label={t('Loading applications')}>
                 <span className="h-12 animate-pulse rounded-lg bg-waffarly-input" />
                 <span className="h-12 animate-pulse rounded-lg bg-waffarly-input" />
               </div>
@@ -299,8 +297,8 @@ export function DashboardPage() {
             </Link>
           </Card>
 
-          <Card className="overflow-hidden rounded-2xl border-waffarly-border bg-waffarly-surface p-0 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
-            <div className="border-b border-waffarly-border p-4 md:p-5">
+          <Card className="admin-panel-flush overflow-hidden rounded-2xl border-waffarly-border bg-waffarly-surface text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
+            <div className="admin-section border-b border-waffarly-border">
               <div>
                 <h2 className="m-0 text-sm font-bold">{t('Platform catalog')}</h2>
                 <p className="mb-0 mt-1 text-xs text-waffarly-muted">

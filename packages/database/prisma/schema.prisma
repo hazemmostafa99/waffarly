@@ -29,6 +29,9 @@ model Merchant {
   firstMonthActivatedAt    DateTime?               @db.Timestamptz(6)
   firstMonthActivatedBy    String?                 @db.VarChar(80)
   createdAt                DateTime                @default(now()) @db.Timestamptz(6)
+  profileRevision          Int                     @default(1)
+  profileUpdatedAt         DateTime?               @db.Timestamptz(6)
+  profileUpdatedBy         String?                 @db.VarChar(80)
   owner                    OwnerAccount?
   posEmployees             PosEmployee[]
   application              MerchantApplication?

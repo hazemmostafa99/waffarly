@@ -111,13 +111,9 @@ export function CreateMerchantPage() {
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="admin-page">
       <PageHeader
-        eyebrow={t('Merchant management')}
         title={t('Create a business')}
-        description={t(
-          'Add a business and its owner account using the approved merchant setup details.',
-        )}
         actions={
           <Button
             asChild
@@ -134,7 +130,7 @@ export function CreateMerchantPage() {
 
       {createdCredentials && (
         <Card
-          className="grid gap-4 border-waffarly-primary/20 bg-waffarly-kpi-mint p-4 text-waffarly-ink md:p-5"
+          className="admin-panel grid admin-stack border-waffarly-primary/20 bg-waffarly-kpi-mint text-waffarly-ink"
           role="region"
           aria-labelledby="merchant-created-heading"
         >
@@ -184,8 +180,8 @@ export function CreateMerchantPage() {
         </Card>
       )}
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
-        <Card className="min-w-0 overflow-hidden rounded-2xl border-waffarly-border bg-waffarly-surface p-0 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
+      <div className="grid items-start admin-stack xl:grid-cols-[minmax(0,1fr)_280px]">
+        <Card className="admin-panel-flush min-w-0 overflow-hidden rounded-2xl border-waffarly-border bg-waffarly-surface text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
           <div className="border-b border-waffarly-border px-4 py-4 md:px-6 md:py-5">
             <div className="flex items-start gap-3">
               <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-waffarly-kpi-mint text-waffarly-primary">
@@ -221,7 +217,7 @@ export function CreateMerchantPage() {
             }}
           >
             <section
-              className="grid gap-4 p-4 md:grid-cols-2 md:p-6"
+              className="admin-section grid admin-stack md:grid-cols-2"
               aria-labelledby="business-details-heading"
             >
               <FormField id="subscription-plan" label={t('Subscription plan')}>
@@ -320,7 +316,7 @@ export function CreateMerchantPage() {
             </section>
 
             <section
-              className="grid gap-4 border-t border-waffarly-border p-4 md:grid-cols-2 md:p-6"
+              className="admin-section grid admin-stack border-t border-waffarly-border md:grid-cols-2"
               aria-labelledby="owner-account-heading"
             >
               <div className="flex items-start gap-3 md:col-span-2">
@@ -424,7 +420,7 @@ export function CreateMerchantPage() {
           </form>
         </Card>
 
-        <Card className="grid gap-4 rounded-2xl border-waffarly-border bg-waffarly-surface p-4 text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)] md:p-5">
+        <Card className="admin-panel grid admin-stack rounded-2xl border-waffarly-border bg-waffarly-surface text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
           <div>
             <h2 className="m-0 text-sm font-bold">{t('Approval and access')}</h2>
             <p className="mb-0 mt-1 text-xs leading-5 text-waffarly-muted">
