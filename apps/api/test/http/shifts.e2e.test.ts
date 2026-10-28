@@ -56,7 +56,11 @@ describe('POS register and shift endpoints', () => {
     currentEmployee = employee;
     calls.length = 0;
     const module = await Test.createTestingModule({
-      controllers: [OwnerPosRegistersController, OwnerPosShiftReportsController, PosShiftsController],
+      controllers: [
+        OwnerPosRegistersController,
+        OwnerPosShiftReportsController,
+        PosShiftsController,
+      ],
       providers: [
         OwnerGuard,
         PosEmployeeGuard,
@@ -100,6 +104,10 @@ describe('POS register and shift endpoints', () => {
               calls.push({ method: 'listForEmployee', args });
               return [];
             },
+            listDeliveryHandoverRecipients: async (...args: unknown[]) => {
+              calls.push({ method: 'listDeliveryHandoverRecipients', args });
+              return { items: [], nextCursor: null };
+            },
             getCurrentShift: async (...args: unknown[]) => {
               calls.push({ method: 'getCurrentShift', args });
               return null;
@@ -114,7 +122,11 @@ describe('POS register and shift endpoints', () => {
             },
             previewCloseShift: async (...args: unknown[]) => {
               calls.push({ method: 'previewCloseShift', args });
-              return { unsettledCheckCount: 0, requiresReason: false, requiresSupervisorApproval: true };
+              return {
+                unsettledCheckCount: 0,
+                requiresReason: false,
+                requiresSupervisorApproval: true,
+              };
             },
             getLatestCloseReport: async (...args: unknown[]) => {
               calls.push({ method: 'getLatestCloseReport', args });
@@ -224,6 +236,29 @@ describe('POS register and shift endpoints', () => {
     assert.equal(calls.length, 0);
   });
 
+  it('bounds handover recipient lists and uses the authenticated employee scope', async () => {
+    await request(app.getHttpServer())
+      .get('/pos/shifts/delivery-handover-recipients')
+      .query({ branchId, limit: 51 })
+      .expect(400);
+    await request(app.getHttpServer())
+      .get('/pos/shifts/delivery-handover-recipients')
+      .query({ branchId, merchantId })
+      .expect(400);
+    await request(app.getHttpServer())
+      .get('/pos/shifts/delivery-handover-recipients')
+      .query({ branchId })
+      .expect(200);
+    assert.deepEqual(calls, [
+      { method: 'listDeliveryHandoverRecipients', args: [employee, { branchId, limit: 25 }] },
+    ]);
+    employeeAuthorized = false;
+    await request(app.getHttpServer())
+      .get('/pos/shifts/delivery-handover-recipients')
+      .query({ branchId })
+      .expect(401);
+  });
+
   it('rejects malformed opening amounts and forwards the exact employee-scoped request', async () => {
     await request(app.getHttpServer())
       .post('/pos/shifts/open')
@@ -250,9 +285,7 @@ describe('POS register and shift endpoints', () => {
   });
 
   it('scopes reconciliation and verifies supervisor credentials before cash adjustments', async () => {
-    await request(app.getHttpServer())
-      .get(`/pos/shifts/${shiftId}/reconciliation`)
-      .expect(200);
+    await request(app.getHttpServer()).get(`/pos/shifts/${shiftId}/reconciliation`).expect(200);
     assert.deepEqual(calls.at(-1), { method: 'getReconciliation', args: [employee, shiftId] });
 
     const body = {
@@ -269,14 +302,16 @@ describe('POS register and shift endpoints', () => {
     assert.deepEqual(calls.at(-3), { method: 'getShiftBranch', args: [employee, shiftId] });
     assert.deepEqual(calls.at(-2), {
       method: 'verifyPosEmployeeApproval',
-      args: [{
-        merchantId,
-        branchId,
-        actingEmployeeId: employeeId,
-        username: 'shift-supervisor',
-        password: 'secret',
-        permission: 'manage_cash_movements',
-      }],
+      args: [
+        {
+          merchantId,
+          branchId,
+          actingEmployeeId: employeeId,
+          username: 'shift-supervisor',
+          password: 'secret',
+          permission: 'manage_cash_movements',
+        },
+      ],
     });
     assert.deepEqual(calls.at(-1), {
       method: 'recordManualCashMovement',
@@ -321,10 +356,7 @@ describe('POS register and shift endpoints', () => {
       reason: 'One pound variance',
       approval: { username: 'shift-supervisor', password: 'secret' },
     };
-    await request(app.getHttpServer())
-      .post(`/pos/shifts/${shiftId}/close`)
-      .send(body)
-      .expect(201);
+    await request(app.getHttpServer()).post(`/pos/shifts/${shiftId}/close`).send(body).expect(201);
     assert.deepEqual(calls.at(-3), { method: 'getShiftBranch', args: [employee, shiftId] });
     assert.equal(calls.at(-2)?.method, 'verifyPosEmployeeApproval');
     assert.deepEqual(calls.at(-1), {

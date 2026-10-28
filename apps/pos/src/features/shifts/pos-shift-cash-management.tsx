@@ -15,6 +15,9 @@ import {
 } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { PosCashCustody, PosSafeSelect } from './pos-cash-custody.js';
+import { isCorrectableShiftCloseRejection } from './shift-close-recovery.js';
+import { DeliveryHandoverRecipientSelect } from './delivery-handover-recipient-select.js';
 import { usePosWorkspaceStore } from '../../app/pos-workspace-store.js';
 import { PosButton } from '../../components/pos-button.js';
 import {
@@ -43,7 +46,7 @@ export function PosShiftCashManagement({
   shift,
   online,
 }: PosShiftCashManagementProps) {
-  const { t, errorText, formatNumber, formatDate } = useLocale();
+  const { t, locale, errorText, formatNumber, formatDate } = useLocale();
   const queryClient = useQueryClient();
   const workspace = usePosWorkspaceStore((state) => state.workspace);
   const savePendingShiftCashMovement = usePosWorkspaceStore(
@@ -63,6 +66,10 @@ export function PosShiftCashManagement({
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
   const [dropReference, setDropReference] = useState('');
+  const [safeId, setSafeId] = useState('');
+  useEffect(() => {
+    setSafeId('');
+  }, [branchId]);
   const [countedCash, setCountedCash] = useState('');
   const [closeReason, setCloseReason] = useState('');
   const [recipientUsername, setRecipientUsername] = useState('');
@@ -135,7 +142,15 @@ export function PosShiftCashManagement({
         queryClient.invalidateQueries({ queryKey: closeReportKey }),
       ]);
     },
-    onError: async (error) => {
+    onError: async (error, variables) => {
+      if (isCorrectableShiftCloseRejection(error)) {
+        removePendingShiftClose(employee.merchantId, employee.id, variables.request.requestId);
+        setSupervisorPassword('');
+        setRecipientUsername('');
+        setFormError(
+          'Shift close was rejected. Review the recipient and count, then submit again.',
+        );
+      }
       if (
         error instanceof Error &&
         error.message.includes('Supervisor approval is required for a cash variance.')
@@ -213,6 +228,10 @@ export function PosShiftCashManagement({
       return;
     }
     const saved = pendingMovement?.shiftId === shift.id ? pendingMovement.request : null;
+    if (!saved && kind === 'cash_drop' && !safeId) {
+      setFormError(locale === 'ar' ? 'اختر الخزنة المستلمة.' : 'Select a receiving safe.');
+      return;
+    }
     if (!saved && kind === 'cash_drop' && !dropReference.trim()) {
       setFormError('Enter a safe bag / drop reference.');
       return;
@@ -230,7 +249,7 @@ export function PosShiftCashManagement({
         kind,
         amount,
         reason: reason.trim(),
-        ...(kind === 'cash_drop' ? { dropReference: dropReference.trim() } : {}),
+        ...(kind === 'cash_drop' ? { dropReference: dropReference.trim(), safeId } : {}),
       },
     );
   }
@@ -513,6 +532,18 @@ export function PosShiftCashManagement({
                       />
                     </label>
                     {(kind === 'cash_drop' || pendingMovement?.request.kind === 'cash_drop') && (
+                      <div className="sm:col-span-3">
+                        <PosSafeSelect
+                          key={branchId}
+                          employee={employee}
+                          branchId={branchId}
+                          value={pendingMovement?.request.safeId ?? safeId}
+                          onChange={setSafeId}
+                          disabled={Boolean(pendingMovement) || movementMutation.isPending}
+                        />
+                      </div>
+                    )}
+                    {(kind === 'cash_drop' || pendingMovement?.request.kind === 'cash_drop') && (
                       <label className="grid gap-1.5 text-xs font-medium text-muted-foreground sm:col-span-3">
                         {t('Safe bag / drop reference')}
                         <Input
@@ -625,19 +656,20 @@ export function PosShiftCashManagement({
                   </label>
                 </div>
                 {(reconciliation.data.pendingDeliveryCount ?? 0) > 0 && (
-                  <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
-                    {t('Receiving employee username')}
-                    <Input
-                      required
-                      maxLength={80}
-                      value={
-                        pendingClose?.request.deliveryHandover?.recipientUsername ??
-                        recipientUsername
-                      }
-                      disabled={Boolean(pendingClose) || closeMutation.isPending}
-                      onChange={(event) => setRecipientUsername(event.target.value)}
-                    />
-                  </label>
+                  <DeliveryHandoverRecipientSelect
+                    key={`${employee.id}:${branchId}`}
+                    employee={employee}
+                    branchId={branchId}
+                    value={
+                      pendingClose?.request.deliveryHandover?.recipientUsername ?? recipientUsername
+                    }
+                    disabled={Boolean(pendingClose) || closeMutation.isPending}
+                    onChange={(value) => {
+                      setRecipientUsername(value);
+                      setFormError('');
+                      closeMutation.reset();
+                    }}
+                  />
                 )}
                 {((!canApproveClose && (requiresCloseApproval || pendingClose)) ||
                   (reconciliation.data.pendingDeliveryCount ?? 0) > 0) && (
@@ -844,6 +876,12 @@ export function PosShiftCashManagement({
           </PosButton>
         </section>
       )}
+      <PosCashCustody
+        key={`${employee.id}:${branchId}:${registerId}`}
+        employee={employee}
+        branchId={branchId}
+        registerId={registerId}
+      />
     </div>
   );
 

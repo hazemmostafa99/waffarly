@@ -6,11 +6,19 @@ import {
   PosShiftsController,
 } from './shifts.controller.js';
 import { ShiftsService } from './shifts.service.js';
+import { CashCustodyService } from './cash-custody.service.js';
+import { OwnerCashCustodyController, PosCashCustodyController } from './cash-custody.controller.js';
 
 @Module({
   imports: [AuthModule],
-  controllers: [OwnerPosRegistersController, OwnerPosShiftReportsController, PosShiftsController],
-  providers: [ShiftsService],
+  controllers: [
+    OwnerPosRegistersController,
+    OwnerPosShiftReportsController,
+    PosShiftsController,
+    OwnerCashCustodyController,
+    PosCashCustodyController,
+  ],
+  providers: [ShiftsService, CashCustodyService],
   exports: [ShiftsService],
 })
 export class ShiftsModule {}

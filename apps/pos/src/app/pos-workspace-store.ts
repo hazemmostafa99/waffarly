@@ -42,6 +42,7 @@ export interface PosOrderDraft {
 }
 
 export interface PendingPosShiftOpen {
+  sourceShiftId?: string | undefined;
   branchId: string;
   registerId: string;
   requestId: string;
@@ -354,6 +355,7 @@ function isPendingShiftOpen(value: unknown): value is PendingPosShiftOpen {
     typeof action.requestId === 'string' &&
     action.requestId.length > 0 &&
     typeof action.openingFloat === 'string' &&
+    (action.sourceShiftId === undefined || typeof action.sourceShiftId === 'string') &&
     /^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(action.openingFloat)
   );
 }
@@ -375,6 +377,7 @@ function isPendingShiftCashMovement(value: unknown): value is PendingPosShiftCas
   const request = command.request as Record<string, unknown>;
   return (
     !Object.hasOwn(request, 'approval') &&
+    (request.safeId === undefined || typeof request.safeId === 'string') &&
     typeof request.requestId === 'string' &&
     Boolean(request.requestId) &&
     (request.kind === 'cash_in' || request.kind === 'cash_out' || request.kind === 'cash_drop') &&
@@ -769,6 +772,9 @@ function parseWorkspace(
               reason: value.pendingShiftCashMovement.request.reason,
               ...(value.pendingShiftCashMovement.request.dropReference
                 ? { dropReference: value.pendingShiftCashMovement.request.dropReference }
+                : {}),
+              ...(value.pendingShiftCashMovement.request.safeId
+                ? { safeId: value.pendingShiftCashMovement.request.safeId }
                 : {}),
             },
           }

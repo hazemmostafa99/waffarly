@@ -2,6 +2,13 @@ import { z } from 'zod';
 import type { ClosePosShiftRequest, RecordPosShiftCashMovementRequest } from '@waffarly/contracts';
 
 const uuid = z.string().uuid();
+export const deliveryHandoverRecipientsSchema = z
+  .object({
+    branchId: uuid,
+    cursor: uuid.optional(),
+    limit: z.coerce.number().int().min(1).max(50).default(25),
+  })
+  .strict();
 const registerName = z.string().trim().min(1).max(80);
 
 export const ownerPosRegisterListSchema = z
@@ -60,6 +67,7 @@ export const updatePosRegisterSchema = z
 
 export const openPosShiftSchema = z
   .object({
+    sourceShiftId: uuid.optional(),
     registerId: uuid,
     requestId: uuid,
     openingFloat: z.string().regex(/^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/),
@@ -77,6 +85,7 @@ const deliveryHandoverSchema = z
 
 export const recordPosShiftCashMovementSchema = z
   .object({
+    safeId: uuid.optional(),
     requestId: uuid,
     kind: z.enum(['cash_in', 'cash_out', 'cash_drop']),
     amount: positiveAmount,
@@ -86,6 +95,13 @@ export const recordPosShiftCashMovementSchema = z
   })
   .strict()
   .superRefine((input, context) => {
+    if (input.safeId && input.kind !== 'cash_drop') {
+      context.addIssue({
+        code: 'custom',
+        path: ['safeId'],
+        message: 'Only cash drops can target a safe.',
+      });
+    }
     if (input.kind === 'cash_drop' && !input.dropReference) {
       context.addIssue({
         code: 'custom',
@@ -130,6 +146,7 @@ export function withoutShiftCashMovementApproval(
     amount: input.amount,
     reason: input.reason,
     ...(input.dropReference ? { dropReference: input.dropReference } : {}),
+    ...(input.safeId ? { safeId: input.safeId } : {}),
   };
 }
 

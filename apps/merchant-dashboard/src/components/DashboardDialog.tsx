@@ -8,6 +8,7 @@ export function DashboardDialog({
   children,
   busy = false,
   wide = false,
+  className = '',
 }: {
   title: string;
   closeLabel: string;
@@ -15,6 +16,7 @@ export function DashboardDialog({
   children: ReactNode;
   busy?: boolean;
   wide?: boolean;
+  className?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const openerRef = useRef<HTMLElement | null>(null);
@@ -33,7 +35,7 @@ export function DashboardDialog({
   return (
     <dialog
       ref={ref}
-      className={`products-dialog${wide ? ' inventory-workspace-dialog' : ''}`}
+      className={`products-dialog${wide ? ' inventory-workspace-dialog' : ''}${className ? ` ${className}` : ''}`}
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault();

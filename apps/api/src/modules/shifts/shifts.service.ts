@@ -10,6 +10,7 @@ import { readDeliveryBalances } from './delivery-reconciliation.js';
 import type { PosDeliveryHandoverSnapshot } from '@waffarly/contracts';
 import type {
   CursorPage,
+  PosDeliveryHandoverRecipient,
   PosEmployeeSession,
   PosRegisterOption,
   PosRegisterSummary,
@@ -35,6 +36,7 @@ import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { isPosEmployeeRole, resolvePosEmployeePermissions } from '@waffarly/contracts';
 import {
   closePosShiftSchema,
+  deliveryHandoverRecipientsSchema,
   createPosRegisterSchema,
   openPosShiftSchema,
   ownerPosRegisterListSchema,
@@ -50,12 +52,14 @@ import {
   type OwnerPosShiftCloseReportsInput,
 } from './shifts.schemas.js';
 import { normalizeOpeningFloat } from './shifts.rules.js';
+import { carryClosedCash, trackSafeDrop } from './cash-custody.persistence.js';
 
 const registerInclude = {
   branch: { select: { id: true, name: true } },
 } satisfies Prisma.PosRegisterInclude;
 
 const shiftInclude = {
+  incomingTransfer: { select: { sourceShiftId: true } },
   register: { select: { name: true } },
   openedBy: { select: { id: true, displayName: true } },
 } satisfies Prisma.PosShiftInclude;
@@ -120,6 +124,45 @@ type OwnerCloseReportRecord = Prisma.PosShiftCloseReportGetPayload<{
 @Injectable()
 export class ShiftsService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+
+  async listDeliveryHandoverRecipients(
+    employee: PosEmployeeSession,
+    input: unknown,
+  ): Promise<CursorPage<PosDeliveryHandoverRecipient>> {
+    this.requireShiftCapability(employee);
+    const q = parseRequest(deliveryHandoverRecipientsSchema, input);
+    this.assertAssignedBranch(employee, q.branchId);
+    const permissions = await this.currentEmployeePermissions(this.prisma, employee, q.branchId);
+    if (!permissions.includes('open_register_shift'))
+      throw new ForbiddenException('This employee is not authorized to use register shifts.');
+    const where: Prisma.PosEmployeeWhereInput = {
+      merchantId: employee.merchantId,
+      id: { not: employee.id },
+      active: true,
+      branches: { some: { branchId: q.branchId, branch: { archivedAt: null } } },
+      OR: [
+        { role: { in: ['cashier', 'supervisor', 'branch_manager'] } },
+        { role: null, permissions: { hasEvery: ['sell', 'open_register_shift'] } },
+      ],
+    };
+    if (q.cursor)
+      assertScopedCursor(
+        q.cursor,
+        !!(await this.prisma.posEmployee.findFirst({
+          where: { AND: [where, { id: q.cursor }] },
+          select: { id: true },
+        })),
+      );
+    const records = await this.prisma.posEmployee.findMany({
+      where,
+      select: { id: true, username: true, displayName: true },
+      orderBy: [{ displayName: 'asc' }, { id: 'asc' }],
+      take: q.limit + 1,
+      ...(q.cursor ? { cursor: { id: q.cursor }, skip: 1 } : {}),
+    });
+    const items = records.slice(0, q.limit);
+    return { items, nextCursor: records.length > q.limit ? (items.at(-1)?.id ?? null) : null };
+  }
 
   async listOwnerRegisters(
     merchantId: string,
@@ -536,6 +579,15 @@ export class ShiftsService {
               'manage_cash_movements',
             );
           }
+          if (request.kind === 'cash_drop' && request.safeId) {
+            const currentShift = await tx.posShift.findFirstOrThrow({
+              where: { id: shiftId, merchantId: employee.merchantId },
+              include: shiftInclude,
+            });
+            const cash = await buildShiftReconciliation(tx, currentShift);
+            if (toCents(request.amount) > toSignedCents(cash.expectedCash))
+              throw new ConflictException('The cash drop exceeds available drawer cash.');
+          }
           const movement = await tx.posShiftManualCashMovement.create({
             data: {
               merchantId: employee.merchantId,
@@ -551,6 +603,21 @@ export class ShiftsService {
             },
             include: manualCashMovementInclude,
           });
+          if (request.kind === 'cash_drop' && request.safeId) {
+            await trackSafeDrop(tx, {
+              merchantId: employee.merchantId,
+              branchId: shiftRow.branchId,
+              shiftId,
+              safeId: request.safeId,
+              movementId: movement.id,
+              requestId: request.requestId,
+              amount: request.amount,
+              reference: request.dropReference!,
+              reason: request.reason,
+              actor: `pos:${employee.id}`,
+              fingerprint,
+            });
+          }
           const shift = await tx.posShift.findFirstOrThrow({
             where: { id: shiftId, merchantId: employee.merchantId, status: 'open' },
             include: shiftInclude,
@@ -1055,7 +1122,14 @@ export class ShiftsService {
           where: { merchantId: employee.merchantId, openRequestId: parsed.requestId },
           include: shiftInclude,
         });
-        if (prior) return toMatchingRetry(prior, employee, parsed.registerId, openingFloat);
+        if (prior)
+          return toMatchingRetry(
+            prior,
+            employee,
+            parsed.registerId,
+            openingFloat,
+            parsed.sourceShiftId,
+          );
 
         const locked = await tx.$queryRaw<Array<{ id: string; branchId: string; active: boolean }>>`
           SELECT "id", "branchId", "active"
@@ -1067,13 +1141,29 @@ export class ShiftsService {
         if (!register || !register.active) throw new NotFoundException('Register was not found.');
         this.assertAssignedBranch(employee, register.branchId);
 
+        if (parsed.sourceShiftId) {
+          const permissions = await this.currentEmployeePermissions(
+            tx,
+            employee,
+            register.branchId,
+          );
+          if (!permissions.includes('open_register_shift'))
+            throw new ForbiddenException('Shift opening is no longer permitted.');
+        }
+
         // Another identical request may have committed while this transaction waited on the register lock.
         const committedRetry = await tx.posShift.findFirst({
           where: { merchantId: employee.merchantId, openRequestId: parsed.requestId },
           include: shiftInclude,
         });
         if (committedRetry) {
-          return toMatchingRetry(committedRetry, employee, parsed.registerId, openingFloat);
+          return toMatchingRetry(
+            committedRetry,
+            employee,
+            parsed.registerId,
+            openingFloat,
+            parsed.sourceShiftId,
+          );
         }
 
         const current = await tx.posShift.findFirst({
@@ -1099,6 +1189,18 @@ export class ShiftsService {
           },
           include: shiftInclude,
         });
+        if (parsed.sourceShiftId) {
+          await carryClosedCash(tx, {
+            merchantId: employee.merchantId,
+            branchId: register.branchId,
+            registerId: register.id,
+            sourceShiftId: parsed.sourceShiftId,
+            destinationShiftId: record.id,
+            requestId: parsed.requestId,
+            amount: openingFloat,
+            actor: `pos:${employee.id}`,
+          });
+        }
         return toShiftSummary(record);
       });
     } catch (error) {
@@ -1107,7 +1209,14 @@ export class ShiftsService {
         where: { merchantId: employee.merchantId, openRequestId: parsed.requestId },
         include: shiftInclude,
       });
-      if (prior) return toMatchingRetry(prior, employee, parsed.registerId, openingFloat);
+      if (prior)
+        return toMatchingRetry(
+          prior,
+          employee,
+          parsed.registerId,
+          openingFloat,
+          parsed.sourceShiftId,
+        );
       throw new ConflictException('A shift is already open on this register.');
     }
   }
@@ -1152,9 +1261,12 @@ async function lockOpenShiftForCashMovement(
   return shift;
 }
 
-async function buildShiftReconciliation(
+export async function buildShiftReconciliation(
   db: PrismaClient | Prisma.TransactionClient,
-  shift: ShiftRecord,
+  shift: Pick<
+    ShiftRecord,
+    'id' | 'merchantId' | 'branchId' | 'registerId' | 'register' | 'openingFloat'
+  >,
 ): Promise<PosShiftReconciliationSummary> {
   const where = { merchantId: shift.merchantId, shiftId: shift.id };
   const [
@@ -1357,6 +1469,7 @@ function toMatchingRetry(
   employee: PosEmployeeSession,
   registerId: string,
   openingFloat: string,
+  sourceShiftId?: string,
 ): PosShiftSummary {
   if (!employee.branches.some((branch) => branch.id === shift.branchId)) {
     throw new ForbiddenException('This employee is not assigned to the selected branch.');
@@ -1364,7 +1477,8 @@ function toMatchingRetry(
   if (
     shift.registerId !== registerId ||
     shift.openedByEmployeeId !== employee.id ||
-    shift.openingFloat.toFixed(2) !== openingFloat
+    shift.openingFloat.toFixed(2) !== openingFloat ||
+    (shift.incomingTransfer?.sourceShiftId ?? undefined) !== sourceShiftId
   ) {
     throw new ConflictException('This request ID was already used for a different shift opening.');
   }

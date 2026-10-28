@@ -39,7 +39,10 @@ const reconciliation = {
   manualMovements: [],
 };
 
-async function openCashManagementPage(page: Page, options: { unsettledCheckCount?: number } = {}) {
+async function openCashManagementPage(
+  page: Page,
+  options: { unsettledCheckCount?: number; pendingDeliveryCount?: number } = {},
+) {
   let activeShift: typeof openShift | null = openShift;
   let latestClose: Record<string, unknown> | null = null;
   let expectedCash = 1550.5;
@@ -47,10 +50,22 @@ async function openCashManagementPage(page: Page, options: { unsettledCheckCount
     ...reconciliation,
     unsettledCheckCount: options.unsettledCheckCount ?? 0,
     unsettledBalance: options.unsettledCheckCount ? '85.00' : '0.00',
+    pendingDeliveryCount: options.pendingDeliveryCount ?? 0,
+    pendingDeliveryBalance: options.pendingDeliveryCount ? '180.00' : '0.00',
   };
   const movementRequests: Array<Record<string, unknown>> = [];
   const closeRequests: Array<Record<string, unknown>> = [];
 
+  await page.route('**/pos/cash/**', (route) =>
+    route.fulfill({
+      json: {
+        items: route.request().url().includes('/safes')
+          ? [{ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', branchId, name: 'Main safe' }]
+          : [],
+        nextCursor: null,
+      },
+    }),
+  );
   await page.route('**/auth/pos/me', (route) =>
     route.fulfill({
       json: {
@@ -68,18 +83,38 @@ async function openCashManagementPage(page: Page, options: { unsettledCheckCount
     route.fulfill({ json: [{ id: registerId, branchId, name: 'Front register' }] }),
   );
   await page.route('**/pos/shifts/current**', (route) => route.fulfill({ json: activeShift }));
+  await page.route('**/pos/shifts/delivery-handover-recipients**', (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          {
+            id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+            username: 'manager',
+            displayName: 'Branch manager',
+          },
+        ],
+        nextCursor: null,
+      },
+    }),
+  );
   await page.route(`**/pos/shifts/${openShift.id}/reconciliation`, (route) =>
     route.fulfill({ json: currentReconciliation }),
   );
   await page.route('**/pos/shifts/latest-close**', (route) => route.fulfill({ json: latestClose }));
   await page.route(`**/pos/shifts/${openShift.id}/close-preview`, async (route) => {
-    const body = route.request().postDataJSON() as { countedCash: string; reason?: string };
+    const body = route.request().postDataJSON() as {
+      countedCash: string;
+      reason?: string;
+      deliveryHandover?: { recipientUsername: string };
+    };
     const hasVariance = Number(body.countedCash) !== expectedCash;
     await route.fulfill({
       json: {
         unsettledCheckCount: currentReconciliation.unsettledCheckCount,
         requiresReason: hasVariance && !body.reason,
-        requiresSupervisorApproval: hasVariance,
+        requiresSupervisorApproval: hasVariance || (options.pendingDeliveryCount ?? 0) > 0,
+        pendingDeliveryCount: options.pendingDeliveryCount ?? 0,
+        requiresDeliveryHandover: (options.pendingDeliveryCount ?? 0) > 0 && !body.deliveryHandover,
       },
     });
   });
@@ -152,6 +187,16 @@ async function openShiftPage(page: Page, options: ShiftPageOptions = {}) {
   let registerRequests = 0;
   let currentShiftRequests = 0;
 
+  await page.route('**/pos/cash/**', (route) =>
+    route.fulfill({
+      json: {
+        items: route.request().url().includes('/safes')
+          ? [{ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', branchId, name: 'Main safe' }]
+          : [],
+        nextCursor: null,
+      },
+    }),
+  );
   await page.route('**/auth/pos/me', (route) =>
     route.fulfill({
       json: {
@@ -191,6 +236,196 @@ async function openShiftPage(page: Page, options: ShiftPageOptions = {}) {
     getCurrentShiftRequests: () => currentShiftRequests,
   };
 }
+
+const closedCustody = {
+  id: '99999999-9999-4999-8999-999999999999',
+  branchId,
+  branchName: 'Main branch',
+  registerId,
+  registerName: 'Front register',
+  cashierName: 'Previous cashier',
+  status: 'closed',
+  openedAt: '2026-10-27T07:00:00Z',
+  closedAt: '2026-10-27T15:00:00Z',
+  expectedCash: '500.00',
+  countedCash: '500.00',
+  variance: '0.00',
+  remainingCash: '500.00',
+  pendingAmount: '0.00',
+  receivedInSafe: '0.00',
+  carriedForward: '0.00',
+  legacyDropAmount: '0.00',
+};
+
+test('cashier hands remaining closed-shift custody to a named safe', async ({ page }) => {
+  await openCashManagementPage(page);
+  let handed = false;
+  const commands: Record<string, unknown>[] = [];
+  await page.route('**/pos/cash/drawers**', (route) =>
+    route.fulfill({
+      json: {
+        items: [
+          {
+            ...closedCustody,
+            remainingCash: handed ? '0.00' : '500.00',
+            pendingAmount: handed ? '500.00' : '0.00',
+          },
+        ],
+        nextCursor: null,
+      },
+    }),
+  );
+  await page.route(`**/pos/cash/shifts/${closedCustody.id}/transfers`, (route) => {
+    commands.push(route.request().postDataJSON() as Record<string, unknown>);
+    handed = true;
+    return route.fulfill({ json: { id: 'new-transfer' } });
+  });
+  await page.reload();
+  const custody = page.getByRole('region', { name: 'Cash custody after shift close', exact: true });
+  await custody.getByRole('button', { name: 'Transfer to safe', exact: true }).click();
+  await custody.getByLabel('Receiving safe').selectOption('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+  await custody.getByLabel('Handoff reference').fill('AFTER-CLOSE-1');
+  await custody.getByLabel('Reason', { exact: true }).fill('End of shift handoff');
+  await custody.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect.poll(() => commands.length).toBe(1);
+  expect(commands[0]).toMatchObject({
+    safeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    amount: '500.00',
+    reference: 'AFTER-CLOSE-1',
+  });
+  await expect(custody.getByRole('button', { name: 'Transfer to safe', exact: true })).toHaveCount(
+    0,
+  );
+  await expect(custody).toContainText('Awaiting safe receipt');
+});
+
+test('next cashier explicitly accepts previous-shift float when opening', async ({ page }) => {
+  await openShiftPage(page);
+  const commands: Record<string, unknown>[] = [];
+  await page.route('**/pos/cash/carryover**', (route) =>
+    route.fulfill({ json: { items: [closedCustody], nextCursor: null } }),
+  );
+  await page.route('**/pos/shifts/open', (route) => {
+    const body = route.request().postDataJSON() as Record<string, unknown>;
+    commands.push(body);
+    return route.fulfill({
+      json: { ...openShift, openRequestId: body.requestId, openingFloat: body.openingFloat },
+    });
+  });
+  await page.reload();
+  await page.getByLabel('Opening cash source').selectOption(closedCustody.id);
+  await page.getByLabel('Opening cash float (EGP)').fill('500.00');
+  await page
+    .getByRole('checkbox', {
+      name: 'I physically received and counted the opening amount from this previous shift.',
+    })
+    .check();
+  await page.getByRole('button', { name: 'Open shift', exact: true }).click();
+  await expect.poll(() => commands.length).toBe(1);
+  expect(commands[0]).toMatchObject({
+    sourceShiftId: closedCustody.id,
+    openingFloat: '500.00',
+    registerId,
+  });
+});
+
+test('rejected saved delivery handover unlocks the recipient without losing the cash count', async ({
+  page,
+}) => {
+  const requests = await openCashManagementPage(page, { pendingDeliveryCount: 1 });
+  const rejectedRequestId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  await page.evaluate(
+    ({ merchantId, employeeId, branchId, registerId, shiftId, requestId }) => {
+      const key = Object.keys(localStorage).find(
+        (key) =>
+          key.startsWith('waffarly:pos:workspace:v1:') &&
+          key.includes(merchantId) &&
+          key.includes(employeeId),
+      );
+      if (!key) throw new Error('Expected cashier workspace');
+      const data = JSON.parse(localStorage.getItem(key)!);
+      data.workspace.pendingShiftClose = {
+        branchId,
+        registerId,
+        shiftId,
+        request: {
+          requestId,
+          countedCash: '1550.50',
+          deliveryHandover: { recipientUsername: 'essam' },
+        },
+      };
+      localStorage.setItem(key, JSON.stringify(data));
+    },
+    {
+      merchantId,
+      employeeId,
+      branchId,
+      registerId,
+      shiftId: openShift.id,
+      requestId: rejectedRequestId,
+    },
+  );
+  await page.route(`**/pos/shifts/${openShift.id}/close`, (route) => {
+    const body = route.request().postDataJSON();
+    return body.deliveryHandover?.recipientUsername === 'essam'
+      ? route.fulfill({
+          status: 403,
+          json: {
+            message: 'Choose a different active cashier or supervisor assigned to this branch.',
+          },
+        })
+      : route.fallback();
+  });
+  await page.reload();
+  const closeForm = page.locator('form').filter({ has: page.getByLabel('Counted cash (EGP)') });
+  const recipient = closeForm.getByLabel('Receiving employee username');
+  await expect(recipient).toBeDisabled();
+  await expect(recipient).toHaveValue('essam');
+  await closeForm.getByLabel('Supervisor username').fill('manager');
+  await closeForm.getByLabel('Supervisor password').fill('local-test-password');
+  await closeForm.getByRole('button', { name: 'Retry shift close', exact: true }).click();
+  await expect(recipient).toBeEnabled();
+  await expect(closeForm.getByLabel('Counted cash (EGP)')).toHaveValue('1550.50');
+  await expect(recipient.locator('option')).toHaveCount(2);
+  await recipient.selectOption('manager');
+  await closeForm.getByLabel('Supervisor password').fill('local-test-password');
+  await closeForm.getByRole('button', { name: 'Close shift and save report', exact: true }).click();
+  await expect.poll(() => requests.closeRequests.length).toBe(1);
+  expect(requests.closeRequests[0]).toMatchObject({
+    countedCash: '1550.50',
+    deliveryHandover: { recipientUsername: 'manager' },
+  });
+  expect(requests.closeRequests[0]!.requestId).not.toBe(rejectedRequestId);
+  await expect(page.getByRole('heading', { name: 'Last shift close' })).toBeVisible();
+});
+
+test('a lost close response preserves the exact delivery handover after reload', async ({
+  page,
+}) => {
+  const requests = await openCashManagementPage(page, { pendingDeliveryCount: 1 });
+  const attempts: Record<string, unknown>[] = [];
+  await page.route(`**/pos/shifts/${openShift.id}/close`, (route) => {
+    attempts.push(route.request().postDataJSON());
+    return attempts.length === 1 ? route.abort('failed') : route.fallback();
+  });
+  let closeForm = page.locator('form').filter({ has: page.getByLabel('Counted cash (EGP)') });
+  await closeForm.getByLabel('Counted cash (EGP)').fill('1550.50');
+  await closeForm.getByLabel('Receiving employee username').selectOption('manager');
+  await closeForm.getByLabel('Supervisor username').fill('manager');
+  await closeForm.getByLabel('Supervisor password').fill('local-test-password');
+  await closeForm.getByRole('button', { name: 'Close shift and save report', exact: true }).click();
+  await expect.poll(() => attempts.length).toBe(1);
+  await expect(closeForm.getByLabel('Receiving employee username')).toBeDisabled();
+  await page.reload();
+  closeForm = page.locator('form').filter({ has: page.getByLabel('Counted cash (EGP)') });
+  await expect(closeForm.getByLabel('Receiving employee username')).toHaveValue('manager');
+  await expect(closeForm.getByLabel('Counted cash (EGP)')).toHaveValue('1550.50');
+  await closeForm.getByLabel('Supervisor username').fill('manager');
+  await closeForm.getByLabel('Supervisor password').fill('local-test-password');
+  await closeForm.getByRole('button', { name: 'Retry shift close', exact: true }).click();
+  await expect.poll(() => requests.closeRequests.length).toBe(1);
+  expect(attempts[1]).toEqual(attempts[0]);
+});
 
 test('new shift form makes branch, register and opening float easy to scan', async ({ page }) => {
   await openShiftPage(page);
@@ -240,6 +475,16 @@ test('open shift shows register attribution and opening float in both themes', a
 
 test('missing branch assignment has its own actionable empty state', async ({ page }) => {
   let registerRequests = 0;
+  await page.route('**/pos/cash/**', (route) =>
+    route.fulfill({
+      json: {
+        items: route.request().url().includes('/safes')
+          ? [{ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', branchId, name: 'Main safe' }]
+          : [],
+        nextCursor: null,
+      },
+    }),
+  );
   await page.route('**/auth/pos/me', (route) =>
     route.fulfill({
       json: {
@@ -345,7 +590,9 @@ test('Arabic open-shift screen follows RTL and hides unreadable saved operator n
 test('blind count hides totals and an unpaid check blocks shift closing', async ({ page }) => {
   const requests = await openCashManagementPage(page, { unsettledCheckCount: 1 });
   const reconciliationCard = page.locator('main');
-  await expect(page.getByText('Count the cash physically present. Expected cash appears after closing.')).toBeVisible();
+  await expect(
+    page.getByText('Count the cash physically present. Expected cash appears after closing.'),
+  ).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Blind cash count' })).toHaveCount(0);
   const refreshedStatus = page.waitForRequest(`**/pos/shifts/${openShift.id}/reconciliation`);
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
@@ -377,9 +624,7 @@ test('cash movement requires supervisor credentials and updates drawer reconcili
     reason: 'Change fund top-up',
     approval: { username: 'supervisor', password: 'local-test-password' },
   });
-  await expect(page.locator('main')).not.toContainText(
-    '1,575.50',
-  );
+  await expect(page.locator('main')).not.toContainText('1,575.50');
   await page.getByText('Manual cash movements').click();
   await expect(page.getByText(/Change fund top-up/)).toBeVisible();
   await expect(movementForm.getByLabel('Supervisor password')).toHaveValue('');
@@ -391,6 +636,9 @@ test('cash drop requires a safe reference and is recorded separately from paid-o
   const requests = await openCashManagementPage(page);
   const movementForm = page.locator('form').filter({ has: page.getByLabel('Amount (EGP)') });
   await movementForm.getByLabel('Movement type').selectOption('cash_drop');
+  await movementForm
+    .getByLabel('Receiving safe')
+    .selectOption('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
   await movementForm.getByLabel('Amount (EGP)').fill('200.00');
   await movementForm.getByLabel('Reason', { exact: true }).fill('Mid-shift secure drop');
   await movementForm.getByRole('button', { name: 'Record movement' }).click();
@@ -411,6 +659,7 @@ test('cash drop requires a safe reference and is recorded separately from paid-o
     amount: '200.00',
     reason: 'Mid-shift secure drop',
     dropReference: 'SAFE-BAG-1042',
+    safeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   });
   const reconciliationCard = page.locator('main');
   await reconciliationCard.getByText('Manual cash movements').click();

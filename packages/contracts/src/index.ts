@@ -1,6 +1,12 @@
 export { BUSINESS_ACTIVITY_KEYS, BUSINESS_ACTIVITY_LABELS } from './activities-modules.js';
 export { POS_APPEARANCE_ACCENTS } from './pos-appearance.js';
 export type {
+  CashSafeSummary,
+  CashTransferSummary,
+  CashDrawerSummary,
+  CashSafeMovementSummary,
+} from './cash-custody.js';
+export type {
   PosAppearanceAccent,
   PosAppearanceSummary,
   UpdatePosAppearanceRequest,
@@ -9,6 +15,7 @@ export type { CursorPage } from './pagination.js';
 export type {
   PosRegisterSummary,
   PosRegisterOption,
+  PosDeliveryHandoverRecipient,
   PosShiftSummary,
   CreatePosRegisterRequest,
   UpdatePosRegisterRequest,

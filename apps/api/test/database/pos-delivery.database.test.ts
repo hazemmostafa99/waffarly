@@ -40,7 +40,7 @@ it(
       });
       const employee = async (
         name: string,
-        role: 'cashier' | 'supervisor',
+        role: 'cashier' | 'supervisor' | 'accountant',
       ): Promise<PosEmployeeSession> => {
         const row = await db.posEmployee.create({
           data: {
@@ -74,6 +74,35 @@ it(
       const mona = await employee('Mona', 'cashier');
       const supervisor = await employee('Supervisor', 'supervisor');
       const shifts = new ShiftsService(db as unknown as PrismaService);
+      await employee('Accountant', 'accountant');
+      const inactive = await employee('Inactive', 'cashier');
+      await db.posEmployee.update({ where: { id: inactive.id }, data: { active: false } });
+      const candidates = await shifts.listDeliveryHandoverRecipients(ahmed, {
+        branchId: branch.id,
+        limit: 1,
+      });
+      assert.equal(candidates.items[0]?.id, mona.id);
+      assert.equal(candidates.items[0]?.username, mona.username);
+      assert.ok(candidates.nextCursor);
+      const nextCandidates = await shifts.listDeliveryHandoverRecipients(ahmed, {
+        branchId: branch.id,
+        cursor: candidates.nextCursor,
+        limit: 1,
+      });
+      assert.equal(nextCandidates.items[0]?.id, supervisor.id);
+      assert.equal(nextCandidates.nextCursor, null);
+      await assert.rejects(
+        shifts.listDeliveryHandoverRecipients(ahmed, { branchId: branch.id, cursor: ahmed.id }),
+      );
+      await assert.rejects(
+        shifts.listDeliveryHandoverRecipients(
+          { ...ahmed, merchantId: randomUUID() },
+          { branchId: branch.id },
+        ),
+      );
+      await assert.rejects(
+        shifts.listDeliveryHandoverRecipients({ ...ahmed, branches: [] }, { branchId: branch.id }),
+      );
       const delivery = new PosDeliveryService(db as unknown as PrismaService, shifts);
       const orders = new PosOrdersService(
         db as unknown as PrismaService,

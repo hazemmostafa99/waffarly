@@ -1,4 +1,29 @@
 export const ar: Record<string, string> = {
+  'Shift close was rejected. Review the recipient and count, then submit again.':
+    'لم يتم إغلاق الشيفت. راجع الموظف المستلم وعدّ النقدية، ثم أعد الإرسال.',
+  'Select a receiving safe.': 'اختر الخزنة المستلمة.',
+  'Select a safe in the same branch.': 'اختر خزنة في نفس الفرع.',
+  'The cash drop exceeds available drawer cash.': 'مبلغ التوريد أكبر من النقدية المتاحة في الدرج.',
+  'The amount exceeds the remaining shift custody.': 'المبلغ أكبر من المتبقي بعهدة الشيفت.',
+  'A different person must confirm receipt.': 'لازم شخص تاني يؤكد استلام التوريد.',
+  'Explain the receipt difference.': 'اكتب سبب الفرق بين المبلغ المسلّم والمستلم.',
+  'This transfer was already received.': 'تم استلام التوريد ده بالفعل. حدّث الشاشة.',
+  'The safe does not have enough cash.': 'رصيد الخزنة مش كافي للصرف.',
+  'The previous shift does not have enough unallocated cash.':
+    'المتبقي بعهدة الشيفت السابق مش كافي للمبلغ ده.',
+  'Cash records changed. Refresh and retry the same saved request.':
+    'حركات النقدية اتغيرت. حدّث الشاشة وأعد إرسال نفس الطلب المحفوظ.',
+  'The request was already used with different values.': 'الطلب ده اتسجّل قبل كده ببيانات مختلفة.',
+  'Cash access is not permitted.': 'الحساب ده مش مصرح له بإجراء حركة النقدية دي.',
+  'Branch is not assigned.': 'الفرع مش ضمن الفروع المخصصة للحساب ده.',
+  'Select a closed shift on the same register.': 'اختر شيفت مقفول على نفس درج الكاشير.',
+  'Safe not found.': 'الخزنة مش موجودة.',
+  'Safe transfer not found.': 'توريد الخزنة مش موجود.',
+  'Transfer not found.': 'حركة التسليم مش موجودة.',
+  'Count and close this shift before settling its remaining cash.':
+    'عدّ النقدية واقفل الشيفت قبل تسليم العهدة المتبقية.',
+  'Use the cash-drop action for an open shift.':
+    'استخدم توريد للخزنة من حركات النقدية للشيفت المفتوح.',
   'Count the cash physically present. Expected cash appears after closing.':
     'عدّ النقد الموجود فعلًا؛ المتوقع هيظهر بعد الإقفال.',
   'Ordinary unpaid checks block closing; tracked deliveries require an approved handover.':

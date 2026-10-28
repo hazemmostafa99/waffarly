@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { ApiError } from '../lib/api-client.js';
+import { isCorrectableShiftCloseRejection } from '../features/shifts/shift-close-recovery.js';
 import {
   readPosWorkspace,
   posWorkspaceStorageKey,
@@ -33,6 +35,70 @@ class MemoryStorage {
     this.values.delete(key);
   }
 }
+
+test('shift close unlocks only an explicit business rejection and preserves uncertain outcomes', () => {
+  assert.equal(
+    isCorrectableShiftCloseRejection(
+      new ApiError('Choose a different active cashier or supervisor assigned to this branch.', 403),
+    ),
+    true,
+  );
+  assert.equal(
+    isCorrectableShiftCloseRejection(new ApiError('Enter a reason for the cash variance.', 409)),
+    true,
+  );
+  for (const error of [
+    new TypeError('Failed to fetch'),
+    new ApiError('Internal server error', 500),
+    new ApiError('Supervisor approval credentials are invalid.', 401),
+    new ApiError('The register shift is already closed.', 409),
+  ])
+    assert.equal(isCorrectableShiftCloseRejection(error), false);
+});
+
+test('cash-drop destination and carryover source survive persisted command recovery', () => {
+  const storage = new MemoryStorage();
+  const merchantId = 'treasury-merchant';
+  const employeeId = 'treasury-employee';
+  const deviceId = 'treasury-device';
+  const workspace = readPosWorkspace(merchantId, employeeId, deviceId, null, null);
+  const pendingShiftOpen = {
+    branchId: 'branch',
+    registerId: 'register',
+    requestId: 'open-request',
+    openingFloat: '500.00',
+    sourceShiftId: 'previous-closed-shift',
+  };
+  const pendingShiftCashMovement = {
+    branchId: 'branch',
+    registerId: 'register',
+    shiftId: 'current-shift',
+    request: {
+      requestId: 'drop-request',
+      kind: 'cash_drop',
+      amount: '100.00',
+      reason: 'Safe handoff',
+      dropReference: 'BAG-100',
+      safeId: 'named-safe',
+    },
+  };
+  storage.setItem(
+    posWorkspaceStorageKey(merchantId, employeeId, deviceId),
+    JSON.stringify({
+      version: 5,
+      workspace: {
+        ...workspace,
+        selectedBranchId: 'branch',
+        pendingShiftOpen,
+        pendingShiftCashMovement,
+      },
+    }),
+  );
+  const restored = readPosWorkspace(merchantId, employeeId, deviceId, storage, null);
+  assert.deepEqual(restored.pendingShiftOpen, pendingShiftOpen);
+  assert.deepEqual(restored.pendingShiftCashMovement, pendingShiftCashMovement);
+  assert.ok(!Object.hasOwn(restored.pendingShiftCashMovement!.request, 'approval'));
+});
 
 test('new drafts reuse only truly blank records; cleanup and deletion protect pending sales and other branches', () => {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');

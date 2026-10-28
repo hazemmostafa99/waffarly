@@ -18,6 +18,7 @@ const navigation = [
   { id: 'branches', label: 'Branches', icon: 'branches' },
   { id: 'employees', label: 'Employees', icon: 'customers' },
   { id: 'pos-registers', label: 'POS Registers', icon: 'orders' },
+  { id: 'pos-cash', label: 'Cash drawers & safes', icon: 'revenue' },
   { id: 'pos-tables', label: 'POS Tables', icon: 'grid' },
   { id: 'pos-shift-reports', label: 'POS Shift Reports', icon: 'receipt' },
   { id: 'pos-item-returns', label: 'POS Returns & Waste', icon: 'receipt' },
@@ -79,6 +80,7 @@ export function MerchantLayout() {
       '/branches',
       '/employees',
       '/pos-registers',
+      '/pos-cash',
       '/pos-tables',
       '/pos-shift-reports',
       '/pos-item-returns',
@@ -92,6 +94,7 @@ export function MerchantLayout() {
   function navigationLabel(item: (typeof navigation)[number]): string {
     if (item.id === 'inventory') return copy('Inventory');
     if (locale === 'ar') {
+      if (item.id === 'pos-cash') return 'النقدية والخزنة';
       if (item.id === 'pos-operations') return 'تقارير تشغيل POS';
       if (item.id === 'pos-registers') return 'نقاط البيع';
       if (item.id === 'pos-tables') return 'ترابيزات POS';
@@ -100,6 +103,24 @@ export function MerchantLayout() {
       if (item.id === 'employees') return 'الموظفون';
     }
     return t(item.label);
+  }
+
+  function navigationLink(item: (typeof navigation)[number]) {
+    return (
+      <NavLink
+        key={item.id}
+        to={item.id === 'dashboard' ? '/' : `/${item.id}`}
+        end={item.id !== 'inventory'}
+        className={({ isActive }) =>
+          `merchant-nav-item ${isActive || (item.id === 'products' && isProductBuilder) ? 'active' : ''}`
+        }
+        onClick={() => setMenuOpen(false)}
+      >
+        <Icon name={item.icon} />
+        <span>{navigationLabel(item)}</span>
+        {item.id === 'orders' && <small aria-hidden="true">{formatNumber(12)}</small>}
+      </NavLink>
+    );
   }
 
   return profile === undefined ? (
@@ -132,21 +153,27 @@ export function MerchantLayout() {
           <Icon name="close" />
         </button>
         <nav aria-label={t('Merchant navigation')}>
-          {navigation.map((item) => (
-            <NavLink
-              key={item.id}
-              to={item.id === 'dashboard' ? '/' : `/${item.id}`}
-              end={item.id !== 'inventory'}
-              className={({ isActive }) =>
-                `merchant-nav-item ${isActive || (item.id === 'products' && isProductBuilder) ? 'active' : ''}`
-              }
-              onClick={() => setMenuOpen(false)}
-            >
-              <Icon name={item.icon} />
-              <span>{navigationLabel(item)}</span>
-              {item.id === 'orders' && <small aria-hidden="true">{formatNumber(12)}</small>}
-            </NavLink>
-          ))}
+          {navigation.map((item) => {
+            if (item.id === 'pos-registers') {
+              return (
+                <details
+                  key={`pos-${current.id}`}
+                  className="merchant-pos-navigation"
+                  open={current.id.startsWith('pos-')}
+                >
+                  <summary className="merchant-nav-item">
+                    <Icon name="store" />
+                    <span>{locale === 'ar' ? 'إدارة نقاط البيع' : 'POS workspace'}</span>
+                    <Icon name="chevron" />
+                  </summary>
+                  <div className="merchant-pos-navigation-links">
+                    {navigation.filter((entry) => entry.id.startsWith('pos-')).map(navigationLink)}
+                  </div>
+                </details>
+              );
+            }
+            return item.id.startsWith('pos-') ? null : navigationLink(item);
+          })}
         </nav>
         <div className="merchant-sidebar-tip">
           <span className="merchant-tip-icon">

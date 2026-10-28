@@ -30,6 +30,11 @@
   padding: 18px 12px;
   border: 0;
   border-inline-end: 1px solid var(--dashboard-border);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+.merchant-sidebar > * {
+  flex-shrink: 0;
 }
 html[dir='rtl'] .merchant-sidebar {
   inset: 0 0 0 auto;
@@ -73,6 +78,35 @@ html[dir='rtl'] .merchant-sidebar {
   box-shadow: none;
   color: var(--dashboard-green);
   font-weight: 650;
+}
+.merchant-pos-navigation summary {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  list-style: none;
+}
+.merchant-pos-navigation summary::-webkit-details-marker {
+  display: none;
+}
+.merchant-pos-navigation summary > .merchant-icon:last-child {
+  margin-inline-start: auto;
+  width: 14px;
+  height: 14px;
+  transition: transform 150ms ease;
+}
+.merchant-pos-navigation[open] summary > .merchant-icon:last-child {
+  transform: rotate(180deg);
+}
+.merchant-pos-navigation-links {
+  display: grid;
+  gap: 4px;
+  margin: 4px 0 8px;
+  padding-inline-start: 12px;
+  border-inline-start: 1px solid var(--dashboard-border);
+}
+.merchant-pos-navigation summary:focus-visible {
+  outline: 2px solid var(--dashboard-green);
+  outline-offset: 2px;
 }
 .merchant-nav-item small {
   margin: 0;

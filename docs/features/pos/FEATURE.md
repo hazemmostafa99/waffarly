@@ -1068,6 +1068,11 @@ Pass requires owner-only access, tenant and branch isolation, bounded stable pag
 
 ## M8.3 — Cash drops to safe
 
+Named safes, independent receipt and post-close custody extend this workflow.
+See [Drawer custody and safe receipts](CASH_CUSTODY.md) for implementation,
+compatibility and verification. The earlier M8.3 behavior below describes
+untracked historical drops.
+
 Cash drops are a distinct, auditable drawer movement, not a petty-cash payout. An authorized cashier records a positive amount, reason and safe-bag/drop reference; the existing `manage_cash_movements` grant and current supervisor credential checks apply. The cashier remains the actor and the approving supervisor remains separately attributed. A drop reduces expected drawer cash just like cash paid out, while the immutable shift close report and owner report keep `cashDrop` separate from `cashOut`. Exact request recovery retains the reference and excludes credentials. This records the physical handoff; it does not integrate a safe, cash-count device or bank deposit.
 
 Automated verification for M8.3:

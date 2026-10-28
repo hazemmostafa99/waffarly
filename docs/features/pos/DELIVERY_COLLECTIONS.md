@@ -75,11 +75,22 @@ stock, storefront and dining tests. Test Arabic/English UI and mobile layout.
    remains unchanged. Direct drawer cash or confirmed manual-terminal payment uses
    the selected open same-branch shift. No payment-provider integration was added.
 4. In `/shift`, ordinary unpaid checks still block close. For pending tracked
-   deliveries, enter the receiving employee's username and different supervisor's
+   deliveries, select the receiving employee and enter a different supervisor's
    credentials, then submit the physical count. Outside cash is shown separately
    and is excluded from the drawer expectation. Up to 500 pending deliveries can be
    frozen into one handover; larger sets must be reduced before close. Count and
    exposure totals are SQL aggregates over the complete pending set, not the page.
+   The bounded `GET /pos/shifts/delivery-handover-recipients` selector includes only
+   active same-branch employees who can sell and open shifts, excluding the actor.
+   It exposes only ID, username and display name. The selected receiving manager
+   may also approve the handover, provided that manager is not the closing actor.
+   The close transaction still revalidates the recipient and approver.
+   Explicit invalid-recipient, missing-variance-reason and no-pending-deliveries
+   rejections release the saved close for correction while preserving the physical
+   count. Unknown network/server outcomes retain the exact saved command, including
+   its recipient and request ID. Previously saved invalid recipients unlock after
+   retry returns the explicit rejection. There is no blanket storage clearing or
+   automatic close/collection.
 5. The named employee signs in, opens the next shift, and accepts follow-up into
    that shift. Receive courier cash against the original payment, fully or partly.
    Only received cash increases that drawer. A branch supervisor may take over.

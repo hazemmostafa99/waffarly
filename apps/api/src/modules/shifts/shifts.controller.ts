@@ -36,6 +36,7 @@ import {
 } from '../auth/index.js';
 import {
   closePosShiftSchema,
+  deliveryHandoverRecipientsSchema,
   createPosRegisterSchema,
   openPosShiftSchema,
   ownerPosRegisterListSchema,
@@ -116,6 +117,18 @@ export class PosShiftsController {
   ): Promise<PosRegisterOption[]> {
     requireShiftPermission(employee);
     return this.shifts.listForEmployee(employee, parseRequest(posRegisterListSchema, query));
+  }
+
+  @Get('shifts/delivery-handover-recipients')
+  deliveryHandoverRecipients(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Query() query: unknown,
+  ) {
+    requireShiftPermission(employee);
+    return this.shifts.listDeliveryHandoverRecipients(
+      employee,
+      parseRequest(deliveryHandoverRecipientsSchema, query),
+    );
   }
 
   @Get('shifts/current')

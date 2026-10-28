@@ -13,6 +13,12 @@ export interface PosRegisterOption {
   name: string;
 }
 
+export interface PosDeliveryHandoverRecipient {
+  id: string;
+  username: string;
+  displayName: string;
+}
+
 export interface PosShiftSummary {
   id: string;
   branchId: string;
@@ -39,6 +45,7 @@ export interface UpdatePosRegisterRequest {
 }
 
 export interface OpenPosShiftRequest {
+  sourceShiftId?: string | undefined;
   registerId: string;
   requestId: string;
   openingFloat: string;
@@ -111,6 +118,7 @@ export interface PosShiftClosePreview {
 }
 
 export interface RecordPosShiftCashMovementRequest {
+  safeId?: string | undefined;
   requestId: string;
   kind: 'cash_in' | 'cash_out' | 'cash_drop';
   amount: string;

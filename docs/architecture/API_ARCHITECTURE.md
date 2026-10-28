@@ -13,6 +13,19 @@ Orders also exposes authenticated `GET /pos/orders/:id` for the selling workspac
 
 ## Ownership
 
+Shifts provides a bounded employee-scoped delivery-handover recipient list of
+active same-branch employees eligible to sell/open shifts, excluding the actor.
+POS releases only explicit pre-commit close rejections for editing; ambiguous
+outcomes keep the exact durable command. Existing transactional recipient and
+supervisor checks remain authoritative.
+
+Cash custody (2026-10-27) remains in Shifts: branch safes, pending handoffs,
+independent receipt, receipt differences, statements and post-close custody are
+separate from immutable close reports. Accepted same-register carryover allocates
+counted cash atomically with opening the next shift. Employee live reconciliation
+remains blind. No new cross-module dependency was introduced. See
+[Drawer custody and safe receipts](../features/pos/CASH_CUSTODY.md).
+
 Tracked POS delivery (2026-10-26) stays in Orders: dispatch, customer delivery/failure,
 responsibility, bounded cross-device queue and partial courier remittance.
 Payments adds explicit cash custody. Order-origin shift remains immutable; tracked

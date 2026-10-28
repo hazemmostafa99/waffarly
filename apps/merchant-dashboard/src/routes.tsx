@@ -63,6 +63,11 @@ const EmployeesPage = lazy(() =>
 const RegistersPage = lazy(() =>
   import('./features/pos/RegistersPage.js').then((module) => ({ default: module.RegistersPage })),
 );
+const CashCustodyPage = lazy(() =>
+  import('./features/pos/CashCustodyPage.js').then((module) => ({
+    default: module.CashCustodyPage,
+  })),
+);
 const TablesPage = lazy(() =>
   import('./features/pos/TablesPage.js').then((module) => ({ default: module.TablesPage })),
 );
@@ -156,6 +161,7 @@ export const router = createBrowserRouter([
       { path: 'branches', element: loadOnRoute(<BranchesPage />) },
       { path: 'employees', element: loadOnRoute(<EmployeesPage />) },
       { path: 'pos-registers', element: loadOnRoute(<RegistersPage />) },
+      { path: 'pos-cash', element: loadOnRoute(<CashCustodyPage />) },
       { path: 'pos-tables', element: loadOnRoute(<TablesPage />) },
       { path: 'pos-shift-reports', element: loadOnRoute(<ShiftReportsPage />) },
       { path: 'pos-item-returns', element: loadOnRoute(<ItemReturnReportsPage />) },
