@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,6 +20,8 @@ import { Button, Card, Input, useLocale } from '@waffarly/ui';
 import { PageHeader } from '../../components/PageHeader.js';
 import { CompactStatCard } from '../../components/CompactStatCard.js';
 import { StatusBadge } from '../../components/StatusBadge.js';
+import { CreatedMerchantDialog } from './CreatedMerchantDialog.js';
+import { useCreatedMerchantStore } from './created-merchant-store.js';
 import {
   merchantHasAccess,
   merchantSubscriptionStatus,
@@ -59,6 +61,13 @@ export function MerchantsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const merchants = useMerchantsQuery();
   const applications = useMerchantApplicationsQuery();
+  const [createdMerchant, setCreatedMerchant] = useState(
+    () => useCreatedMerchantStore.getState().result,
+  );
+
+  useEffect(() => {
+    useCreatedMerchantStore.getState().setResult(null);
+  }, []);
 
   const businessQuery = searchParams.get('q') ?? '';
   const requestedActivity = searchParams.get('activity');
@@ -106,7 +115,7 @@ export function MerchantsPage() {
           (accessFilter === 'activated' && hasActivated) ||
           (accessFilter === 'awaiting' && !hasActivated);
         return matchesQuery && matchesActivity && matchesAccess;
-      }),
+      }).sort((first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt)),
     [accessFilter, activityFilter, locale, merchants.data, normalizedQuery, t],
   );
 
@@ -120,6 +129,7 @@ export function MerchantsPage() {
 
   return (
     <div className="admin-page">
+      <CreatedMerchantDialog result={createdMerchant} onClose={() => setCreatedMerchant(null)} />
       <PageHeader
         title={t('Businesses')}
         actions={

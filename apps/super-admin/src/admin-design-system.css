@@ -60,6 +60,27 @@
   padding: 0;
 }
 
+.admin-workspace .admin-dialog {
+  border-radius: var(--admin-radius);
+}
+.admin-workspace .admin-dialog [data-slot='dialog-header'] {
+  align-items: center;
+  gap: var(--admin-space-3);
+  padding: var(--admin-panel-padding);
+}
+.admin-workspace .admin-dialog [data-slot='dialog-header'] h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.admin-workspace .admin-dialog [data-slot='dialog-header'] > button {
+  width: var(--admin-control-height);
+  height: var(--admin-control-height);
+  padding: 0;
+  border-radius: var(--admin-radius-control);
+}
+
 .admin-workspace [data-slot='button'] {
   height: var(--admin-control-height);
   min-height: var(--admin-control-height);

@@ -36,6 +36,8 @@ root font size or apply browser/CSS zoom to increase density.
 - `admin-table-scroll`: keyboard-focusable horizontal scrolling region for wide
   tables; label the region and keep scrolling inside the panel.
 - `admin-inline-note`: supporting information without a large standalone banner.
+- `admin-dialog`: compact shared dialog header and close control. Use `admin-section`
+  for its content and retain the shared dialog's focus and Escape behavior.
 - `CompactStatCard`: horizontal icon, label, helper, and value, replacing stacked
   metric cards.
 

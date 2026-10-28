@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
-import { ArrowLeft, CheckCircle2, ShieldCheck, Store } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Store } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   BUSINESS_ACTIVITY_KEYS,
   BUSINESS_ACTIVITY_LABELS,
@@ -15,6 +15,7 @@ import { PageHeader } from '../../components/PageHeader.js';
 import { adminQueryKeys } from '../../app/query-keys.js';
 import { apiRequest } from '../../lib/api-client.js';
 import { useMonthlyPlansQuery } from '../plans/plans-queries.js';
+import { useCreatedMerchantStore } from './created-merchant-store.js';
 
 const emptyMerchant: CreateMerchantRequest = {
   name: '',
@@ -24,14 +25,6 @@ const emptyMerchant: CreateMerchantRequest = {
   ownerMobile: '',
   username: '',
   password: '',
-};
-
-type CreatedCredentials = {
-  merchantId: string;
-  merchantName: string;
-  ownerMobile: string;
-  username: string;
-  password: string;
 };
 
 function FormField({
@@ -62,13 +55,13 @@ function FormField({
 
 export function CreateMerchantPage() {
   const { t, errorText } = useLocale();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const plans = useMonthlyPlansQuery();
   const [planId, setPlanId] = useState('');
   const [months, setMonths] = useState<SubscriptionMonths>(1);
   const [form, setForm] = useState<CreateMerchantRequest>(emptyMerchant);
   const [formError, setFormError] = useState('');
-  const [createdCredentials, setCreatedCredentials] = useState<CreatedCredentials | null>(null);
   const pendingRequest = useRef<CreateMerchantRequest | null>(null);
 
   const createMerchant = useMutation({
@@ -83,17 +76,14 @@ export function CreateMerchantPage() {
     onSuccess: (merchant) => {
       const request = pendingRequest.current;
       if (!request) return;
-      setCreatedCredentials({
-        merchantId: merchant.id,
-        merchantName: merchant.name,
-        ownerMobile: merchant.ownerMobile,
-        username: merchant.username,
-        password: request.password,
-      });
+      useCreatedMerchantStore.getState().setResult({ merchant, password: request.password });
       pendingRequest.current = null;
-      setForm(emptyMerchant);
-      setFormError('');
+      queryClient.setQueryData<MerchantSummary[]>(adminQueryKeys.merchants, (current) => [
+        merchant,
+        ...(current ?? []).filter((item) => item.id !== merchant.id),
+      ]);
       void queryClient.invalidateQueries({ queryKey: adminQueryKeys.merchants });
+      navigate('/merchants', { replace: true });
     },
     onError: (cause: unknown) => {
       pendingRequest.current = null;
@@ -127,58 +117,6 @@ export function CreateMerchantPage() {
           </Button>
         }
       />
-
-      {createdCredentials && (
-        <Card
-          className="admin-panel grid admin-stack border-waffarly-primary/20 bg-waffarly-kpi-mint text-waffarly-ink"
-          role="region"
-          aria-labelledby="merchant-created-heading"
-        >
-          <Button asChild variant="outline">
-            <Link to={`/subscriptions?merchant=${createdCredentials.merchantId}`}>
-              {t('Manage subscription')}
-            </Link>
-          </Button>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-waffarly-primary">
-                <CheckCircle2 size={20} aria-hidden="true" />
-              </span>
-              <div className="min-w-0">
-                <h2
-                  className="m-0 text-sm font-bold"
-                  id="merchant-created-heading"
-                  role="status"
-                  aria-live="polite"
-                >
-                  {t('Merchant created and approved. Subscription is not active yet.')}
-                </h2>
-                <p className="mb-0 mt-1 text-xs leading-5 text-waffarly-muted">
-                  {t('Verify the owner by phone, then send these details privately to')}{' '}
-                  <bdi dir="ltr" className="font-semibold text-waffarly-ink">
-                    {createdCredentials.ownerMobile}
-                  </bdi>
-                  {t('. The password is shown here only until this panel is dismissed.')}
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              className="border-waffarly-border bg-white text-waffarly-primary hover:bg-white/80 hover:text-waffarly-primary"
-              onClick={() => setCreatedCredentials(null)}
-            >
-              {t('Done — hide password')}
-            </Button>
-          </div>
-          <div className="grid gap-3 rounded-xl border border-waffarly-primary/10 bg-white p-3 sm:grid-cols-3">
-            <CredentialValue label={t('Business name')} value={createdCredentials.merchantName} />
-            <CredentialValue label={t('Username:')} value={createdCredentials.username} />
-            <CredentialValue label={t('Password:')} value={createdCredentials.password} sensitive />
-          </div>
-        </Card>
-      )}
 
       <div className="grid items-start admin-stack xl:grid-cols-[minmax(0,1fr)_280px]">
         <Card className="admin-panel-flush min-w-0 overflow-hidden rounded-2xl border-waffarly-border bg-waffarly-surface text-waffarly-ink shadow-[0_4px_16px_rgba(20,32,62,0.045)]">
@@ -452,28 +390,6 @@ export function CreateMerchantPage() {
           </Link>
         </Card>
       </div>
-    </div>
-  );
-}
-
-function CredentialValue({
-  label,
-  value,
-  sensitive = false,
-}: {
-  label: string;
-  value: string;
-  sensitive?: boolean;
-}) {
-  return (
-    <div className="grid min-w-0 gap-1">
-      <span className="text-[10px] font-semibold text-waffarly-muted">{label}</span>
-      <bdi
-        className="break-all text-sm font-semibold text-waffarly-ink"
-        dir={sensitive ? 'ltr' : 'auto'}
-      >
-        {value}
-      </bdi>
     </div>
   );
 }

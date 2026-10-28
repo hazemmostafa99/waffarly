@@ -781,6 +781,9 @@ export const ar: Record<string, string> = {
   'Change language': 'تغيير اللغة',
   'Skip to content': 'انتقل إلى المحتوى',
   'Something went wrong.': 'حدث خطأ غير متوقع.',
+  'Business created': 'تم إنشاء المتجر',
+  'View business': 'عرض المتجر',
+  Done: 'تم',
   'Merchant created and approved. Subscription is not active yet.':
     'تم إنشاء المتجر والموافقة عليه. لم يُفعّل الاشتراك بعد.',
   'Application approved. The business and owner account are created. Subscription access is still inactive.':
