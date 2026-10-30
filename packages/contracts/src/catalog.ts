@@ -361,6 +361,7 @@ export interface StorefrontOrderReceipt {
 }
 
 export interface StorefrontOrderSummary {
+  orderReference?: string | null;
   readyAt?: string | null;
   completedAt?: string | null;
   handoverEligible?: boolean;

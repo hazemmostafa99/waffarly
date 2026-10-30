@@ -1,5 +1,7 @@
 # API architecture
 
+POS selling recovery (2026-10-29): Orders assigns new POS sales an immutable branch/day sequence during the sale transaction, using Cairo calendar dates and a globally assigned branch code. An additive nullable order reference preserves existing historical references and receipt snapshots. Exact sale replay returns the original reference; serializable conflicts are retried within a bounded attempt count. Orders also provides the sell-authorized, assigned-active-branch `GET /pos/orders/active-sales` with active/history modes, server-side reference/customer/table search and cursor pagination. Active mode covers unpaid checks and undispatched dine-in rounds; kitchen and delivery queues remain responsible for their own operational states. POS maintains local drafts and protected recovery commands, while confirmed-order references are a bounded cache recoverable through this endpoint. No module dependency changed. Apply the migration before deploying this API, and deploy the API before the new POS client.
+
 Merchant account (2026-10-28): Merchants owns `/owner/account` profile reads and
 revisioned, attributable contact updates; it composes the owner-safe subscription
 projection through the existing Subscriptions public service. Subscriptions owns

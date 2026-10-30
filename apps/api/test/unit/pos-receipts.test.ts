@@ -11,6 +11,7 @@ describe('POS receipt snapshots', () => {
       merchantName: 'Waffarly Cafe',
       branchName: 'Main branch',
       orderId: '12345678-1234-4234-8234-123456789012',
+      orderReference: 'B1-20261018-0042',
       orderCreatedAt: new Date('2026-10-18T09:50:00.000Z'),
       fulfillmentType: 'dine_in',
       tableCode: '#04',
@@ -51,6 +52,7 @@ describe('POS receipt snapshots', () => {
     assert.equal(receipt.changeAmount, '2.50');
     assert.equal(receipt.items[0]?.total, '17.50');
     assert.equal(receipt.receiptNumber, 'POS-AB12CD34EF56AB78');
+    assert.equal(receipt.orderReference, 'B1-20261018-0042');
     assert.equal(receipt.fulfillmentType, 'dine_in');
   });
 

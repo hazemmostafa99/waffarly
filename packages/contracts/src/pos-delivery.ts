@@ -1,5 +1,6 @@
 export interface PosDeliverySummary {
   orderId: string;
+  orderReference?: string | null;
   branchId: string;
   sourceShiftId: string;
   followupShiftId: string | null;

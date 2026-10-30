@@ -100,6 +100,7 @@ export interface PosConfirmedOrderReference {
   orderId: string;
   branchId: string;
   createdAt: string;
+  orderReference?: string | null | undefined;
   lastOpenedAt?: string;
 }
 
@@ -149,8 +150,15 @@ interface WorkspaceState {
     employeeId: string,
     draftId: string,
     requestId: string,
-    order: { id: string; createdAt: string },
+    order: { id: string; createdAt: string; orderReference?: string | null },
   ) => void;
+  openServerOrder: (
+    merchantId: string,
+    employeeId: string,
+    order: PosConfirmedOrderReference,
+  ) => void;
+  pruneConfirmedOrders: (merchantId: string, employeeId: string) => void;
+  closeConfirmedOrder: (merchantId: string, employeeId: string, orderId: string) => void;
   completeKitchenAmendment: (
     merchantId: string,
     employeeId: string,
@@ -1084,10 +1092,94 @@ export const usePosWorkspaceStore = create<WorkspaceState>((set, get) => ({
         pendingSales,
         confirmedOrders: {
           ...current.confirmedOrders,
-          [order.id]: { orderId: order.id, branchId: draft.branchId, createdAt: order.createdAt },
+          [order.id]: {
+            orderId: order.id,
+            branchId: draft.branchId,
+            createdAt: order.createdAt,
+            orderReference: order.orderReference,
+          },
         },
         selectedConfirmedOrderId: draft.branchId === current.selectedBranchId ? order.id : null,
         selectedDraftId: current.selectedDraftId === draftId ? null : current.selectedDraftId,
+      },
+      set,
+    );
+  },
+  openServerOrder: (merchantId, employeeId, order) => {
+    const current = get().workspace;
+    if (
+      !current ||
+      current.merchantId !== merchantId ||
+      current.employeeId !== employeeId ||
+      current.selectedBranchId !== order.branchId
+    )
+      throw new Error('The POS workspace changed.');
+    commitWorkspace(
+      {
+        ...current,
+        selectedConfirmedOrderId: order.orderId,
+        selectedDraftId: null,
+        confirmedOrders: {
+          ...current.confirmedOrders,
+          [order.orderId]: { ...order, lastOpenedAt: new Date().toISOString() },
+        },
+      },
+      set,
+    );
+  },
+  pruneConfirmedOrders: (merchantId, employeeId) => {
+    const current = get().workspace;
+    if (!current || current.merchantId !== merchantId || current.employeeId !== employeeId) return;
+    const protectedIds = new Set([
+      current.selectedConfirmedOrderId,
+      ...Object.keys(current.pendingActions),
+      ...Object.keys(current.pendingPayments),
+      ...Object.keys(current.pendingItemReturns),
+      ...Object.keys(current.pendingKitchenAmendments),
+      ...Object.keys(current.pendingCancellations),
+      ...Object.keys(current.pendingRefunds).map((key) => key.split(':')[0]),
+    ]);
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const refs = Object.values(current.confirmedOrders).sort((a, b) =>
+      (b.lastOpenedAt ?? b.createdAt).localeCompare(a.lastOpenedAt ?? a.createdAt),
+    );
+    const kept = refs.filter(
+      (ref, index) =>
+        protectedIds.has(ref.orderId) ||
+        (index < 50 && Date.parse(ref.lastOpenedAt ?? ref.createdAt) >= cutoff),
+    );
+    if (kept.length !== refs.length)
+      commitWorkspace(
+        { ...current, confirmedOrders: Object.fromEntries(kept.map((ref) => [ref.orderId, ref])) },
+        set,
+      );
+  },
+  closeConfirmedOrder: (merchantId, employeeId, orderId) => {
+    const current = get().workspace;
+    if (
+      !current ||
+      current.merchantId !== merchantId ||
+      current.employeeId !== employeeId ||
+      current.confirmedOrders[orderId]?.branchId !== current.selectedBranchId
+    )
+      return;
+    if (
+      current.pendingActions[orderId] ||
+      current.pendingPayments[orderId] ||
+      current.pendingItemReturns[orderId] ||
+      current.pendingKitchenAmendments[orderId] ||
+      current.pendingCancellations[orderId] ||
+      Object.keys(current.pendingRefunds).some((key) => key.startsWith(`${orderId}:`))
+    )
+      throw new Error('Resolve the saved order action before closing this order.');
+    const confirmedOrders = { ...current.confirmedOrders };
+    delete confirmedOrders[orderId];
+    commitWorkspace(
+      {
+        ...current,
+        confirmedOrders,
+        selectedConfirmedOrderId:
+          current.selectedConfirmedOrderId === orderId ? null : current.selectedConfirmedOrderId,
       },
       set,
     );

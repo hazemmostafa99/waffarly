@@ -51,6 +51,7 @@ import {
   posOrderDetailKey,
   quotePosOrder,
   getPosOrder,
+  listPosSales,
 } from '../orders/pos-orders.api.js';
 import { getPosOrderPaymentState, posPaymentStateKey } from '../payments/pos-payments.api.js';
 import { formatMoneyCents, parseMoneyCents } from '../payments/payment-form-model.js';
@@ -95,6 +96,9 @@ export function POSCatalogScreen() {
     (state) => state.removePendingKitchenAmendment,
   );
   const selectConfirmedOrder = usePosWorkspaceStore((state) => state.selectConfirmedOrder);
+  const openServerOrder = usePosWorkspaceStore((state) => state.openServerOrder);
+  const pruneConfirmedOrders = usePosWorkspaceStore((state) => state.pruneConfirmedOrders);
+  const closeConfirmedOrder = usePosWorkspaceStore((state) => state.closeConfirmedOrder);
   const savePendingSale = usePosWorkspaceStore((state) => state.savePendingSale);
   const persistenceError = usePosWorkspaceStore((state) => state.persistenceError);
   const branches = useMemo(
@@ -106,6 +110,8 @@ export function POSCatalogScreen() {
     : (branches[0]?.id ?? '');
   const [registerId, setRegisterId] = useState('');
   const [search, setSearch] = useState('');
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderMode, setOrderMode] = useState<'active' | 'history'>('active');
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [configuringProduct, setConfiguringProduct] = useState<PublicStorefrontProduct | null>(
     null,
@@ -163,6 +169,27 @@ export function POSCatalogScreen() {
       Object.values(workspace?.drafts ?? {}).filter((draft) => draft.branchId === selectedBranchId),
     [selectedBranchId, workspace?.drafts],
   );
+  useEffect(() => {
+    if (!workspace || workspace.selectedBranchId !== selectedBranchId) return;
+    const amendmentDrafts = new Set(
+      Object.values(workspace.pendingKitchenAmendments).map((item) => item.draftId),
+    );
+    if (
+      !drafts.some(
+        (draft) =>
+          draft.id !== workspace.selectedDraftId &&
+          isBlankPosDraft(draft) &&
+          !workspace.pendingSales[draft.id] &&
+          !amendmentDrafts.has(draft.id),
+      )
+    )
+      return;
+    try {
+      discardEmptyDrafts(employee.merchantId, employee.id);
+    } catch {
+      /* retain drafts if storage is unavailable */
+    }
+  }, [workspace, drafts, selectedBranchId, discardEmptyDrafts, employee.merchantId, employee.id]);
   const activeDraft =
     drafts.find((draft) => draft.id === workspace?.selectedDraftId) ?? drafts[0] ?? null;
   const localCustomerErrors =
@@ -204,6 +231,39 @@ export function POSCatalogScreen() {
         : [],
     [workspace, employee.merchantId, employee.id, selectedBranchId],
   );
+  const salesQuery = useInfiniteQuery({
+    queryKey: [
+      'pos',
+      'orders',
+      'sales',
+      employee.merchantId,
+      employee.id,
+      selectedBranchId,
+      orderMode,
+      orderSearch,
+    ],
+    queryFn: ({ pageParam, signal }) =>
+      listPosSales(selectedBranchId, orderMode, orderSearch, pageParam, signal),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    enabled: Boolean(selectedBranchId && canSell && online),
+    staleTime: 5_000,
+  });
+  const serverOrders = salesQuery.data?.pages.flatMap((page) => page.items) ?? [];
+  useEffect(() => {
+    if (!salesQuery.isSuccess) return;
+    try {
+      pruneConfirmedOrders(employee.merchantId, employee.id);
+    } catch {
+      /* retain references when storage is unavailable */
+    }
+  }, [
+    salesQuery.isSuccess,
+    employee.merchantId,
+    employee.id,
+    pruneConfirmedOrders,
+    Object.keys(workspace?.confirmedOrders ?? {}).length,
+  ]);
   const confirmedOrder = confirmedOrders.find(
     (order) => order.orderId === workspace?.selectedConfirmedOrderId,
   );
@@ -872,7 +932,10 @@ export function POSCatalogScreen() {
       return {
         id: order.orderId,
         kind: 'confirmed',
-        reference: `ORD-${order.orderId.slice(0, 8).toUpperCase()}`,
+        reference:
+          cached?.orderReference ??
+          order.orderReference ??
+          `ORD-${order.orderId.slice(0, 8).toUpperCase()}`,
         title: cached?.customerName || t('Confirmed order'),
         subtitle: cached
           ? t('{{count}} items', {
@@ -1207,7 +1270,16 @@ export function POSCatalogScreen() {
                   });
               }}
               onCheckout={() => setCheckoutOrderId(confirmedOrder.orderId)}
-              onNewOrder={createDraft}
+              onNewOrder={(closeSettled) => {
+                if (closeSettled) {
+                  try {
+                    closeConfirmedOrder(employee.merchantId, employee.id, confirmedOrder.orderId);
+                  } catch {
+                    /* preserve any unresolved action */
+                  }
+                }
+                createDraft();
+              }}
             />
           ) : (
             <aside
@@ -1226,7 +1298,8 @@ export function POSCatalogScreen() {
                           {t('Add items to order')}
                         </span>
                         <h2 className="mt-1 truncate text-base font-semibold">
-                          ORD-{amendingOrderId.slice(0, 8).toUpperCase()}
+                          {amendmentOrder?.orderReference ??
+                            `ORD-${amendingOrderId.slice(0, 8).toUpperCase()}`}
                         </h2>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {t(
@@ -1800,6 +1873,35 @@ export function POSCatalogScreen() {
 
       <PosOrderSwitcher
         entries={switcherEntries}
+        serverEntries={
+          !online || salesQuery.isError
+            ? switcherEntries.filter((entry) => entry.kind === 'confirmed')
+            : serverOrders.map((order) => ({
+                id: order.id,
+                kind: 'confirmed' as const,
+                reference: order.orderReference ?? `ORD-${order.id.slice(0, 8).toUpperCase()}`,
+                title:
+                  order.customerName ||
+                  (order.tableCode ? `${t('Table')} ${order.tableCode}` : t('Confirmed order')),
+                subtitle: t('{{count}} items', {
+                  count: order.lines.reduce((sum, line) => sum + line.quantity, 0),
+                }),
+                total: formatNumber(Number(order.total), {
+                  style: 'currency',
+                  currency: order.currency,
+                }),
+                updatedAt: order.createdAt,
+                lastOpenedAt: order.createdAt,
+              }))
+        }
+        onServerModeChange={setOrderMode}
+        onSearchChange={setOrderSearch}
+        hasMore={salesQuery.hasNextPage}
+        loading={salesQuery.isFetching}
+        failed={salesQuery.isError || !online}
+        onLoadMore={() => {
+          void salesQuery.fetchNextPage();
+        }}
         selectedId={amendingOrderId ?? confirmedOrder?.orderId ?? activeDraft?.id ?? ''}
         emptyCount={
           drafts.filter(
@@ -1813,7 +1915,21 @@ export function POSCatalogScreen() {
           runWorkspaceAction(() => {
             setAmendingOrderId(null);
             if (entry.kind === 'draft') selectDraft(employee.merchantId, employee.id, entry.id);
-            else selectConfirmedOrder(employee.merchantId, employee.id, entry.id);
+            else {
+              const remote = serverOrders.find((order) => order.id === entry.id);
+              if (remote) {
+                queryClient.setQueryData(
+                  posOrderDetailKey(employee.merchantId, employee.id, remote.id),
+                  remote,
+                );
+                openServerOrder(employee.merchantId, employee.id, {
+                  orderId: remote.id,
+                  branchId: selectedBranchId,
+                  createdAt: remote.createdAt,
+                  orderReference: remote.orderReference,
+                });
+              } else selectConfirmedOrder(employee.merchantId, employee.id, entry.id);
+            }
             setMobileView('order');
             scrollPositions.current.order = 0;
           });
@@ -1823,6 +1939,9 @@ export function POSCatalogScreen() {
         }
         onCleanEmpty={() =>
           runWorkspaceAction(() => discardEmptyDrafts(employee.merchantId, employee.id))
+        }
+        onCloseConfirmed={(id) =>
+          runWorkspaceAction(() => closeConfirmedOrder(employee.merchantId, employee.id, id))
         }
       />
 

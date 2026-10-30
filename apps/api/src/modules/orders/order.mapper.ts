@@ -21,6 +21,7 @@ export function toReceipt(order: {
 }
 
 export function toSummary(order: {
+  orderReference?: string | null;
   branchId?: string | null;
   warehouseId?: string | null;
   branchName?: string | null;
@@ -78,6 +79,7 @@ export function toSummary(order: {
   }>;
 }): StorefrontOrderSummary {
   return {
+    ...(order.orderReference !== undefined ? { orderReference: order.orderReference } : {}),
     ...(order.cancelledAt !== undefined
       ? { cancelledAt: order.cancelledAt?.toISOString() ?? null }
       : {}),

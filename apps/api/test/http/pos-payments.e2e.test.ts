@@ -39,6 +39,7 @@ describe('POS payment endpoint', () => {
   const calls: unknown[][] = [];
   const stateCalls: unknown[][] = [];
   const detailCalls: unknown[][] = [];
+  const salesCalls: unknown[][] = [];
   const receiptCalls: unknown[][] = [];
   const receiptListCalls: unknown[][] = [];
   const kitchenCalls: unknown[][] = [];
@@ -52,6 +53,7 @@ describe('POS payment endpoint', () => {
     calls.length = 0;
     stateCalls.length = 0;
     detailCalls.length = 0;
+    salesCalls.length = 0;
     receiptCalls.length = 0;
     receiptListCalls.length = 0;
     kitchenCalls.length = 0;
@@ -109,6 +111,10 @@ describe('POS payment endpoint', () => {
         {
           provide: PosOrdersService,
           useValue: {
+            listActiveSales: async (...args: unknown[]) => {
+              salesCalls.push(args);
+              return { items: [], nextCursor: null };
+            },
             detail: async (...args: unknown[]) => {
               detailCalls.push(args);
               return { id: orderId, total: '8.50', lines: [] };
@@ -290,6 +296,23 @@ describe('POS payment endpoint', () => {
       .expect(({ body }) => assert.equal(body.id, orderId));
     assert.deepEqual(detailCalls, [[employee, orderId]]);
     assert.equal(calls.length, 0);
+  });
+
+  it('validates and routes bounded sales recovery before the order ID route', async () => {
+    authorized = false;
+    await request(app.getHttpServer())
+      .get(`/pos/orders/active-sales?branchId=${branchId}`)
+      .expect(401);
+    authorized = true;
+    await request(app.getHttpServer())
+      .get(`/pos/orders/active-sales?branchId=${branchId}&limit=101`)
+      .expect(400);
+    await request(app.getHttpServer())
+      .get(`/pos/orders/active-sales?branchId=${branchId}&mode=history&search=42&limit=25`)
+      .expect(200);
+    assert.deepEqual(salesCalls, [
+      [employee, { branchId, mode: 'history', search: '42', limit: 25 }],
+    ]);
   });
 
   it('requires an employee and loads the immutable receipt for a settled check', async () => {

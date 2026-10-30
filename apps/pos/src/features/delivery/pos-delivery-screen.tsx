@@ -21,7 +21,7 @@ import {
 import { recordPosCheckPayment } from '../payments/pos-payments.api.js';
 import { useDeliveryRecovery, type PendingDeliveryWrite } from './delivery-recovery.js';
 
-type ReadyDelivery = { id: string; revision: number; total: string; customerName: string | null };
+type ReadyDelivery = { id: string; orderReference?: string | null; revision: number; total: string; customerName: string | null };
 type DeliveryView = 'ready' | 'delivery' | 'cash' | 'history';
 
 export function PosDeliveryRecoveryNotice({ employee }: { employee: PosEmployeeSession }) {
@@ -635,7 +635,7 @@ function DispatchCard({
         <p className="text-xs text-muted-foreground">{text('Ready for dispatch', 'جاهز للتوصيل')}</p>
         <h3 className="truncate font-semibold">{order.customerName || text('Customer name unavailable', 'اسم العميل غير متاح')}</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          {text('Order', 'طلب')} <bdi dir="ltr">#{order.id.slice(0, 8)}</bdi>
+          {text('Order', 'طلب')} <bdi dir="ltr">{order.orderReference ?? `#${order.id.slice(0, 8)}`}</bdi>
           <span className="mx-2">·</span>
           {text('Total', 'الإجمالي')} <strong className="tabular-nums"><bdi dir="ltr">{order.total} {text('EGP', 'ج.م.')}</bdi></strong>
         </p>
@@ -727,7 +727,7 @@ function CourierCashOrder({
     <article className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] sm:items-center">
       <div className="min-w-0">
         <p className="font-semibold">
-          {text('Order', 'طلب')} <bdi dir="ltr">#{d.orderId.slice(0, 8)}</bdi>
+          {text('Order', 'طلب')} <bdi dir="ltr">{d.orderReference ?? `#${d.orderId.slice(0, 8)}`}</bdi>
           <span className="mx-2 text-muted-foreground">·</span>
           {d.status === 'delivered'
             ? text('Delivered', 'تم التوصيل')
@@ -879,7 +879,7 @@ function DeliveryCard({
       <header>
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="font-semibold">
-            {text('Order', 'طلب')} <bdi dir="ltr">#{d.orderId.slice(0, 8)}</bdi>
+            {text('Order', 'طلب')} <bdi dir="ltr">{d.orderReference ?? `#${d.orderId.slice(0, 8)}`}</bdi>
           </h3>
           <span className={`rounded-full px-2.5 py-1 text-xs ${d.status === 'failed' ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'}`}>
             {d.status === 'delivered'

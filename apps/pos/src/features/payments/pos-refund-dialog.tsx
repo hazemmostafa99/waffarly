@@ -246,7 +246,7 @@ export function PosRefundDialog({
             </header>
             <dl className="m-0 grid gap-2 border-b border-dashed border-neutral-300 py-3 text-xs">
               <ReceiptRow label={t('Receipt number')} value={receipt.receiptNumber} />
-              <ReceiptRow label={t('Order')} value={`ORD-${receipt.orderId.slice(0, 8).toUpperCase()}`} />
+              <ReceiptRow label={t('Order')} value={paymentState?.context?.order.orderReference ?? `ORD-${receipt.orderId.slice(0, 8).toUpperCase()}`} />
               <ReceiptRow label={t('Issued')} value={formatDate(receipt.issuedAt, true)} />
               <ReceiptRow label={t('Cashier')} value={receipt.issuedBy} />
               {receipt.approvedBy && <ReceiptRow label={t('Approved by')} value={receipt.approvedBy} />}

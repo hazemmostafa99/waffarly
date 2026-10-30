@@ -170,7 +170,7 @@ export class PosDeliveryService {
       where: { ...where, ...(query.cursor ? { id: { lt: query.cursor } } : {}) },
       orderBy: { id: 'desc' },
       take: query.limit + 1,
-      select: { id: true, revision: true, total: true, customerName: true },
+      select: { id: true, orderReference: true, revision: true, total: true, customerName: true },
     });
     return {
       items: rows.slice(0, query.limit).map((row) => ({ ...row, total: row.total.toFixed(2) })),
@@ -199,6 +199,11 @@ export class PosDeliveryService {
     tx: Prisma.TransactionClient | PrismaService = this.db,
   ): Promise<PosDeliverySummary[]> {
     if (!rows.length) return [];
+    const orderReferences = await tx.storefrontOrder.findMany({
+      where: { merchantId: employee.merchantId, id: { in: rows.map((row) => row.orderId) } },
+      select: { id: true, orderReference: true },
+    });
+    const references = new Map(orderReferences.map((order) => [order.id, order.orderReference]));
     const allChecks = await tx.posOrderCheck.findMany({
       where: {
         merchantId: employee.merchantId,
@@ -232,6 +237,7 @@ export class PosDeliveryService {
       const checks = allChecks.filter((check) => check.orderId === row.orderId);
       return {
         orderId: row.orderId,
+        orderReference: references.get(row.orderId) ?? null,
         branchId: row.branchId,
         sourceShiftId: row.sourceShiftId,
         followupShiftId: row.followupShiftId,

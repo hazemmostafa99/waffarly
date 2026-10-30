@@ -19,6 +19,7 @@ export interface PosReceiptSnapshotInput {
   merchantName: string;
   branchName: string | null;
   orderId: string;
+  orderReference?: string | null;
   orderCreatedAt: Date;
   fulfillmentType: PosReceipt['fulfillmentType'];
   tableCode: string | null;
@@ -50,7 +51,7 @@ export function buildPosReceiptSnapshot(input: PosReceiptSnapshotInput): PosRece
     merchantName: input.merchantName,
     branchName: input.branchName,
     orderId: input.orderId,
-    orderReference: `ORD-${input.orderId.slice(0, 8).toUpperCase()}`,
+    orderReference: input.orderReference ?? `ORD-${input.orderId.slice(0, 8).toUpperCase()}`,
     orderCreatedAt: input.orderCreatedAt.toISOString(),
     fulfillmentType: input.fulfillmentType,
     tableCode: input.tableCode,

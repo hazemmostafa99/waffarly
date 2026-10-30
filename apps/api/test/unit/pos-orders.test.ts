@@ -38,6 +38,101 @@ function quote(product: string, price: string) {
 }
 
 describe('POS sales', () => {
+  it('retries serialization conflicts without changing the sale request', async () => {
+    let attempts = 0;
+    const tx = { storefrontOrderAction: { findUnique: async () => null } };
+    const prisma = {
+      ...tx,
+      $transaction: async (run: (client: typeof tx) => Promise<unknown>) => run(tx),
+    };
+    const shifts = {
+      lockOpenShiftForSale: async () => {
+        attempts++;
+        if (attempts < 3) throw { code: 'P2034' };
+        throw new Error('reached third attempt');
+      },
+    };
+    const service = new PosOrdersService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      shifts as never,
+      {} as never,
+      {} as never,
+    );
+    await assert.rejects(
+      service.create(employee, {
+        requestId: '88888888-8888-4888-8888-888888888888',
+        registerId: '99999999-9999-4999-8999-999999999999',
+        fulfillmentType: 'takeaway',
+        items: [{ lineId, productId, selections: [], quantity: 1, expectedProductRevision: 3 }],
+      }),
+      /reached third attempt/,
+    );
+    assert.equal(attempts, 3);
+  });
+
+  it('scopes the paginated sales recovery list to an assigned active branch and sell permission', async () => {
+    const queries: Array<{
+      where: {
+        merchantId: string;
+        branchId: string;
+        source: string;
+        OR: Array<{ checks?: { some: { settledAt: null } } }>;
+        AND: Array<{ OR: Array<{ orderReference: { contains: string } }> }>;
+      };
+      take: number;
+    }> = [];
+    const prisma = {
+      storefrontOrder: {
+        findMany: async (input: unknown) => {
+          queries.push(input as (typeof queries)[number]);
+          return [];
+        },
+      },
+    };
+    const service = new PosOrdersService(
+      prisma as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    await assert.rejects(
+      service.listActiveSales(
+        { ...employee, permissions: [] },
+        { branchId, mode: 'active', limit: 25 },
+      ),
+      ForbiddenException,
+    );
+    await assert.rejects(
+      service.listActiveSales(
+        { ...employee, branches: [] },
+        { branchId, mode: 'active', limit: 25 },
+      ),
+      ForbiddenException,
+    );
+    assert.deepEqual(
+      await service.listActiveSales(employee, {
+        branchId,
+        mode: 'active',
+        search: '42',
+        limit: 25,
+      }),
+      { items: [], nextCursor: null },
+    );
+    const query = queries[0]!;
+    assert.equal(query.where.merchantId, merchantId);
+    assert.equal(query.where.branchId, branchId);
+    assert.equal(query.where.source, 'pos');
+    assert.equal(query.take, 26);
+    assert.ok(query.where.OR.some((item) => item.checks?.some?.settledAt === null));
+    assert.equal(query.where.AND[0]?.OR[0]?.orderReference.contains, '42');
+  });
+
   it('requires the assigned sell permission before quoting', async () => {
     const pricing = { quoteForMerchant: async () => quote(productId, '2.25') };
     const service = new PosOrdersService(

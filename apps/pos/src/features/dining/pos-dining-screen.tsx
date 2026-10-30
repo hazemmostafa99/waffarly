@@ -368,7 +368,7 @@ export function PosDiningScreen() {
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <strong className="text-sm">
-                          {t('Order')} #{order.id.slice(0, 8)}
+                          {t('Order')} {order.orderReference ?? `#${order.id.slice(0, 8)}`}
                         </strong>
                         <span className="text-sm font-semibold">
                           {formatNumber(Number(order.total), {

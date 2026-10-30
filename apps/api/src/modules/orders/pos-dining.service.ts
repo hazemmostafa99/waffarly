@@ -47,6 +47,7 @@ const sessionInclude = {
     orderBy: [{ createdAt: 'asc' as const }, { id: 'asc' as const }],
     select: {
       id: true,
+      orderReference: true,
       total: true,
       currency: true,
       status: true,
@@ -643,6 +644,7 @@ function toTableSummary(table: {
 function toSessionSummary(session: SessionRecord): PosDiningSessionSummary {
   const orders = session.orders.map((order) => ({
     id: order.id,
+    orderReference: order.orderReference,
     total: formatCents(toCents(order.total.toString())),
     currency: requireEgpCurrency(order.currency),
     status: order.status,

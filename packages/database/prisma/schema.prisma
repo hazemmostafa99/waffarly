@@ -15,6 +15,25 @@ model FoundationMarker {
   @@map("_waffarly_foundation_marker")
 }
 
+model PosOrderBranchCode {
+  merchantId String @db.Uuid
+  branchId String @db.Uuid
+  code Int @unique @default(autoincrement())
+  branch Branch @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  @@id([merchantId, branchId])
+  @@map("pos_order_branch_codes")
+}
+
+model PosOrderDailyCounter {
+  merchantId String @db.Uuid
+  branchId String @db.Uuid
+  businessDate DateTime @db.Date
+  lastNumber Int
+  branch Branch @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  @@id([merchantId, branchId, businessDate])
+  @@map("pos_order_daily_counters")
+}
+
 // A merchant is the tenant boundary across business activities.
 model Merchant {
   subscription Subscription?
@@ -127,6 +146,8 @@ model StockItemUnit {
 
 // A merchant location. Every branch has one active default consumption warehouse, enforced in the Inventory API.
 model Branch {
+  posOrderBranchCodes PosOrderBranchCode[]
+  posOrderDailyCounters PosOrderDailyCounter[]
   cashSafes PosCashSafe[]
   deliveries        PosDelivery[]
   id                String              @id @default(uuid()) @db.Uuid
@@ -1064,6 +1085,7 @@ model ProductCategory {
 model StorefrontOrder {
   delivery               PosDelivery?
   id                     String                      @id @default(uuid()) @db.Uuid
+  orderReference         String?                     @db.VarChar(64)
   merchantId             String                      @db.Uuid
   customerName           String?                     @db.VarChar(120)
   customerPhone          String?                     @db.VarChar(32)
@@ -1107,6 +1129,7 @@ model StorefrontOrder {
   kitchenTicket          PosKitchenTicket?
 
   @@unique([id, merchantId])
+  @@unique([merchantId, orderReference])
   @@unique([id, branchId, merchantId])
   @@unique([id, posShiftId, merchantId])
   @@index([merchantId, status, createdAt])

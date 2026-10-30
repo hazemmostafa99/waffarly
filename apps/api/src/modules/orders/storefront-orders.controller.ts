@@ -107,6 +107,10 @@ const posOrderPageSchema = z
     limit: z.coerce.number().int().min(1).max(100).default(25),
   })
   .strict();
+const posActiveSalesPageSchema = posOrderPageSchema.extend({
+  search: z.string().trim().max(120).optional(),
+  mode: z.enum(['active', 'history']).default('active'),
+});
 
 @Controller('catalog/stores/:slug/orders')
 export class PublicStorefrontOrdersController {
@@ -286,6 +290,11 @@ export class PosStorefrontOrdersController {
       withoutPosItemReturnApproval(input),
       approverEmployeeId,
     );
+  }
+
+  @Get('active-sales')
+  activeSales(@CurrentPosEmployee() employee: PosEmployeeSession, @Query() query: unknown) {
+    return this.posOrders.listActiveSales(employee, parseRequest(posActiveSalesPageSchema, query));
   }
 
   @Get(':id')

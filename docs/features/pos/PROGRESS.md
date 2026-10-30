@@ -1348,3 +1348,8 @@ shift remains separate; refresh the POS to load the updated client.
 - The page Refresh button now refreshes register, current shift, and active reconciliation/latest close data.
 - Unpaid-check and pending-delivery warnings remain conditional; manual cash movement history remains available.
 - Validation: POS typecheck, lint, production build, shared UI build; 38/38 shift/delivery browser tests passed on desktop/mobile. The added refresh request assertion also passed on both viewports (2/2).
+# 2026-10-29 — POS order numbers and recovery
+
+Local recovery: the migration file's UTF-8 BOM initially caused PostgreSQL to reject it before any steps ran. The BOM was removed, the zero-step attempt was marked rolled back, and the corrected migration was applied to the local `waffarly` database. Read-only delivery-ready, active-sales and history service queries succeeded for the affected branch; number allocation succeeded in an intentionally rolled-back transaction. Concurrent database verification remains pending.
+
+Orders allocates branch-scoped Cairo-day references transactionally with bounded serialization retries. The cashier switcher reads paginated active sales and history by assigned branch, keeps local drafts and exact pending commands, prunes old confirmed-reference cache entries, and supports closing local tabs. Kitchen, dining, delivery and new receipt views receive the reference; historical orders and frozen receipts retain legacy references. The migration must be applied before the API release. `test:pos-number-db` uses only an explicitly designated disposable migrated database; its execution and real-device cashier acceptance remain separate verification steps.

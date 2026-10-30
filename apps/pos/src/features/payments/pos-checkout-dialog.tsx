@@ -364,7 +364,10 @@ export function PosCheckoutDialog({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="m-0 truncate text-xs text-muted-foreground">
-                      <bdi dir="ltr">ORD-{orderId.slice(0, 8).toUpperCase()}</bdi>
+                      <bdi dir="ltr">
+                        {paymentState?.context?.order.orderReference ??
+                          `ORD-${orderId.slice(0, 8).toUpperCase()}`}
+                      </bdi>
                     </p>
                     <div className={cn(viewport.compact && 'hidden')}>
                       <PosCheckoutOrderIdentity state={paymentState} />

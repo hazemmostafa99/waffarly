@@ -1,5 +1,5 @@
 import { Dialog, Input, Popover, cn, useLocale } from '@waffarly/ui';
-import { Check, ChevronUp, FileText, Search, Trash2 } from 'lucide-react';
+import { Check, ChevronUp, FileText, Search, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { PosButton } from '../../components/pos-button.js';
 
@@ -22,19 +22,35 @@ export function PosOrderSwitcher({
   onSelect,
   onDelete,
   onCleanEmpty,
+  onCloseConfirmed,
   emptyCount,
+  serverEntries,
+  onServerModeChange,
+  onSearchChange,
+  hasMore,
+  loading,
+  failed,
+  onLoadMore,
 }: {
   entries: PosSwitcherEntry[];
   selectedId: string;
   onSelect: (entry: PosSwitcherEntry) => void;
   onDelete: (id: string) => void;
   onCleanEmpty: () => void;
+  onCloseConfirmed: (id: string) => void;
   emptyCount: number;
+  serverEntries: PosSwitcherEntry[];
+  onServerModeChange: (mode: 'active' | 'history') => void;
+  onSearchChange: (search: string) => void;
+  hasMore: boolean;
+  loading: boolean;
+  failed: boolean;
+  onLoadMore: () => void;
 }) {
   const { t, formatNumber } = useLocale();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
-  const [kind, setKind] = useState<'draft' | 'confirmed'>('draft');
+  const [kind, setKind] = useState<'draft' | 'active' | 'history'>('draft');
   const [deleting, setDeleting] = useState<PosSwitcherEntry | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [mobile, setMobile] = useState(() => window.matchMedia('(max-width: 767px)').matches);
@@ -54,11 +70,14 @@ export function PosOrderSwitcher({
     .filter((entry): entry is PosSwitcherEntry => Boolean(entry))
     .slice(0, 3);
   const query = search.trim().toLocaleLowerCase();
-  const matching = entries
+  const matching = (kind === 'draft' ? entries : serverEntries)
     .filter(
       (entry) =>
-        entry.kind === kind &&
-        `${entry.reference} ${entry.title} ${entry.subtitle}`.toLocaleLowerCase().includes(query),
+        (kind !== 'draft' || entry.kind === 'draft') &&
+        ((kind !== 'draft' && !failed) ||
+          `${entry.reference} ${entry.title} ${entry.subtitle}`
+            .toLocaleLowerCase()
+            .includes(query)),
     )
     .sort(
       (a, b) =>
@@ -75,7 +94,9 @@ export function PosOrderSwitcher({
   function changeOpen(value: boolean) {
     if (value) {
       setSearch('');
-      setKind(selected?.kind ?? 'draft');
+      onSearchChange('');
+      setKind(selected?.kind === 'confirmed' ? 'active' : 'draft');
+      onServerModeChange('active');
     }
     setOpen(value);
   }
@@ -95,7 +116,9 @@ export function PosOrderSwitcher({
           <div>
             <h2 className="text-sm font-semibold">{t('All orders')}</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              {t('Saved for this cashier on this device.')}
+              {t(
+                'Drafts are saved on this device; confirmed orders are available for this branch.',
+              )}
             </p>
           </div>
         )}
@@ -110,20 +133,26 @@ export function PosOrderSwitcher({
             aria-label={t('Search saved orders')}
             placeholder={t('Search reference, customer or table...')}
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              onSearchChange(event.target.value);
+            }}
           />
         </label>
         <div
-          className="grid grid-cols-2 gap-1 rounded-lg bg-secondary p-1"
+          className="grid grid-cols-3 gap-1 rounded-lg bg-secondary p-1"
           role="group"
           aria-label={t('Order type')}
         >
-          {(['draft', 'confirmed'] as const).map((value) => (
+          {(['draft', 'active', 'history'] as const).map((value) => (
             <button
               key={value}
               type="button"
               aria-pressed={kind === value}
-              onClick={() => setKind(value)}
+              onClick={() => {
+                setKind(value);
+                if (value !== 'draft') onServerModeChange(value);
+              }}
               className={cn(
                 'min-h-10 rounded-md px-2 text-xs font-semibold focus-visible:outline-2 focus-visible:outline-ring',
                 kind === value
@@ -131,9 +160,17 @@ export function PosOrderSwitcher({
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
-              {t(value === 'draft' ? 'Drafts' : 'Confirmed orders')}{' '}
+              {t(
+                value === 'draft'
+                  ? 'Drafts'
+                  : value === 'active'
+                    ? 'Active sales'
+                    : 'Order history',
+              )}{' '}
               <bdi className="ms-1 text-muted-foreground">
-                ({formatNumber(entries.filter((entry) => entry.kind === value).length)})
+                {value === 'draft'
+                  ? `(${formatNumber(entries.filter((entry) => entry.kind === 'draft').length)})`
+                  : ''}
               </bdi>
             </button>
           ))}
@@ -143,7 +180,12 @@ export function PosOrderSwitcher({
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2"
         data-testid="saved-orders-list"
       >
-        {matching.length === 0 && (
+        {kind !== 'draft' && failed && (
+          <p role="alert" className="p-3 text-sm">
+            {t('Could not load orders. Check your connection.')}
+          </p>
+        )}
+        {matching.length === 0 && !loading && !failed && (
           <p className="px-3 py-8 text-center text-sm text-muted-foreground" role="status">
             {t('No matching saved orders.')}
           </p>
@@ -219,6 +261,16 @@ export function PosOrderSwitcher({
             )}
           </div>
         ))}
+        {kind !== 'draft' && hasMore && (
+          <PosButton type="button" className="w-full" disabled={loading} onClick={onLoadMore}>
+            {t('Load more orders')}
+          </PosButton>
+        )}
+        {kind !== 'draft' && loading && (
+          <p className="p-3 text-sm" role="status">
+            {t('Loading...')}
+          </p>
+        )}
       </div>
       {kind === 'draft' && emptyCount > 0 && (
         <div className="border-t border-border p-3">
@@ -240,33 +292,44 @@ export function PosOrderSwitcher({
       >
         <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
           {recent.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              data-order-id={entry.id}
-              aria-pressed={entry.id === selectedId}
-              onClick={() => onSelect(entry)}
-              className={cn(
-                'pos-draft-tab flex min-h-11 min-w-40 max-w-64 shrink-0 items-center gap-2 rounded-lg border px-3 text-start focus-visible:outline-2 focus-visible:outline-ring',
-                entry.id === selectedId
-                  ? 'is-active border-primary bg-[var(--pos-active)] text-[var(--pos-active-ink)]'
-                  : 'border-border text-muted-foreground hover:bg-secondary',
-              )}
-            >
-              {entry.id === selectedId && (
-                <Check className="shrink-0" size={14} aria-hidden="true" />
-              )}
-              <span className="min-w-0">
-                <span className="block truncate text-xs font-semibold">{entry.title}</span>
-                <span className="mt-0.5 flex gap-2 text-xs">
-                  <bdi dir="ltr">{entry.reference}</bdi>
-                  <span className="truncate">{entry.subtitle}</span>
-                </span>
-                {entry.total && (
-                  <bdi className="block text-xs font-semibold text-primary">{entry.total}</bdi>
+            <div key={entry.id} className="relative shrink-0">
+              <button
+                type="button"
+                data-order-id={entry.id}
+                aria-pressed={entry.id === selectedId}
+                onClick={() => onSelect(entry)}
+                className={cn(
+                  'pos-draft-tab flex min-h-11 min-w-40 max-w-64 shrink-0 items-center gap-2 rounded-lg border px-3 text-start focus-visible:outline-2 focus-visible:outline-ring',
+                  entry.id === selectedId
+                    ? 'is-active border-primary bg-[var(--pos-active)] text-[var(--pos-active-ink)]'
+                    : 'border-border text-muted-foreground hover:bg-secondary',
                 )}
-              </span>
-            </button>
+              >
+                {entry.id === selectedId && (
+                  <Check className="shrink-0" size={14} aria-hidden="true" />
+                )}
+                <span className="min-w-0">
+                  <span className="block truncate text-xs font-semibold">{entry.title}</span>
+                  <span className="mt-0.5 flex gap-2 text-xs">
+                    <bdi dir="ltr">{entry.reference}</bdi>
+                    <span className="truncate">{entry.subtitle}</span>
+                  </span>
+                  {entry.total && (
+                    <bdi className="block text-xs font-semibold text-primary">{entry.total}</bdi>
+                  )}
+                </span>
+              </button>
+              {entry.kind === 'confirmed' && (
+                <button
+                  type="button"
+                  className="absolute end-1 top-1 rounded p-1 text-muted-foreground hover:bg-secondary"
+                  aria-label={`${t('Close order tab')} ${entry.reference}`}
+                  onClick={() => onCloseConfirmed(entry.id)}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
           ))}
         </div>
         {mobile ? (
@@ -316,7 +379,9 @@ export function PosOrderSwitcher({
           open
           onOpenChange={changeOpen}
           title={t('Saved orders')}
-          description={t('Saved for this cashier on this device.')}
+          description={t(
+            'Drafts are saved on this device; confirmed orders are available for this branch.',
+          )}
           closeLabel={t('Close')}
           className="mb-2 mt-auto flex max-h-[85dvh] flex-col overflow-hidden rounded-xl"
         >

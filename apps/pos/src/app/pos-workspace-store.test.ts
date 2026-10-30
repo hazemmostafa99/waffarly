@@ -36,6 +36,58 @@ class MemoryStorage {
   }
 }
 
+test('old order references are pruned only after protecting selection and recovery commands', () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const localStorage = new MemoryStorage();
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: { localStorage, sessionStorage: new MemoryStorage() },
+  });
+  const merchant = 'prune-merchant';
+  const employee = 'prune-employee';
+  try {
+    const store = usePosWorkspaceStore.getState();
+    store.hydrate(merchant, employee);
+    store.selectBranch(merchant, employee, 'branch');
+    const current = usePosWorkspaceStore.getState().workspace!;
+    const old = '2020-01-01T00:00:00.000Z';
+    const ref = (orderId: string) => ({ orderId, branchId: 'branch', createdAt: old });
+    usePosWorkspaceStore.setState({
+      workspace: {
+        ...current,
+        confirmedOrders: {
+          selected: ref('selected'),
+          pending: ref('pending'),
+          stale: ref('stale'),
+        },
+        selectedConfirmedOrderId: 'selected',
+        pendingActions: { pending: { action: 'prepare', requestId: 'retry' } },
+      },
+    });
+    store.pruneConfirmedOrders(merchant, employee);
+    assert.deepEqual(
+      Object.keys(usePosWorkspaceStore.getState().workspace!.confirmedOrders).sort(),
+      ['pending', 'selected'],
+    );
+    assert.throws(
+      () => store.closeConfirmedOrder(merchant, employee, 'pending'),
+      /Resolve the saved order action/,
+    );
+    store.closeConfirmedOrder(merchant, employee, 'selected');
+    assert.equal(usePosWorkspaceStore.getState().workspace!.selectedConfirmedOrderId, null);
+    assert.ok(usePosWorkspaceStore.getState().workspace!.pendingActions.pending);
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, 'window', previousWindow);
+    else Reflect.deleteProperty(globalThis, 'window');
+    usePosWorkspaceStore.setState({
+      activeScope: null,
+      workspace: null,
+      hydratedScope: null,
+      persistenceError: null,
+    });
+  }
+});
+
 test('shift close unlocks only an explicit business rejection and preserves uncertain outcomes', () => {
   assert.equal(
     isCorrectableShiftCloseRejection(

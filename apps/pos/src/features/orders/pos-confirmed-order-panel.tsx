@@ -40,7 +40,7 @@ export function PosConfirmedOrderPanel({
   orderId: string;
   online: boolean;
   onCheckout: () => void;
-  onNewOrder: () => void;
+  onNewOrder: (closeSettled: boolean) => void;
   hasPendingAmendment: boolean;
   onAddItems: () => void;
   onRetryPendingAmendment: () => void;
@@ -229,7 +229,7 @@ export function PosConfirmedOrderPanel({
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs font-medium text-muted-foreground">{t('Current order')}</span>
           <bdi className="text-xs font-semibold tabular-nums">
-            ORD-{orderId.slice(0, 8).toUpperCase()}
+            {order?.orderReference ?? `ORD-${orderId.slice(0, 8).toUpperCase()}`}
           </bdi>
         </div>
         <div className="flex items-center gap-2 text-sm font-semibold">
@@ -520,7 +520,12 @@ export function PosConfirmedOrderPanel({
             {t('Take payment')}
           </PosButton>
         )}
-        <PosButton type="button" variant="outline" className="w-full" onClick={onNewOrder}>
+        <PosButton
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={() => onNewOrder(settled && verified)}
+        >
           {t('Start another order')}
         </PosButton>
       </footer>

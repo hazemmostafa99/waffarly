@@ -51,6 +51,7 @@ import { PosDiningService } from './pos-dining.service.js';
 import { buildPosReceiptSnapshot } from './pos-receipt.mapper.js';
 import { createPosKitchenTicket, posKitchenTicketInclude } from './pos-kitchen.persistence.js';
 import { toSummary } from './order.mapper.js';
+import { allocatePosOrderReference } from './pos-order-number.persistence.js';
 import {
   consumeDirectOrderRequirements,
   freezeLineStockRequirements,
@@ -116,10 +117,269 @@ export class PosOrdersService {
     const request = parseCreatePosOrderRequest(input);
     const actor = `pos:${employee.id}`;
     const fingerprint = createHash('sha256').update(JSON.stringify(request)).digest('hex');
-    try {
-      return await this.prisma.$transaction(
-        async (tx) => {
-          const previous = await tx.storefrontOrderAction.findUnique({
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await this.prisma.$transaction(
+          async (tx) => {
+            const previous = await tx.storefrontOrderAction.findUnique({
+              where: {
+                merchantId_requestId: {
+                  merchantId: employee.merchantId,
+                  requestId: request.requestId,
+                },
+              },
+            });
+            if (previous) return this.replay(previous, actor, fingerprint);
+
+            const shift = await this.shifts.lockOpenShiftForSale(tx, employee, request.registerId);
+            const quote = await this.quoteItems(employee.merchantId, request, tx);
+            const orderTotalCents = toCents(quote.total);
+            const orderReference = await allocatePosOrderReference(
+              tx,
+              employee.merchantId,
+              shift.branchId,
+            );
+            const order = await tx.storefrontOrder.create({
+              data: {
+                merchantId: employee.merchantId,
+                orderReference,
+                customerName: request.customerName?.trim() || null,
+                customerPhone: request.customerPhone?.trim() || null,
+                deliveryAddress:
+                  request.fulfillmentType === 'delivery' ? request.deliveryAddress!.trim() : null,
+                fulfillmentType: request.fulfillmentType,
+                source: 'pos',
+                posShiftId: shift.id,
+                createdByPosEmployeeId: employee.id,
+                branchId: shift.branchId,
+                total: formatCents(orderTotalCents),
+                currency: 'EGP',
+              },
+              select: { id: true },
+            });
+            const quoteByLineId = new Map(quote.items.map((item) => [item.lineId, item.quote]));
+            const directRequirementsByLine = new Map<string, InventoryRequirement[]>();
+            let hasDirectStock = false;
+
+            for (const [position, item] of request.items.entries()) {
+              const product = await tx.product.findFirst({
+                where: { id: item.productId, merchantId: employee.merchantId, archivedAt: null },
+                select: {
+                  id: true,
+                  name: true,
+                  availability: true,
+                  revision: true,
+                  inventoryConfiguration: { select: { mode: true } },
+                  variants: {
+                    select: {
+                      id: true,
+                      name: true,
+                      availability: true,
+                      stockQuantity: true,
+                      attributeSelections: {
+                        orderBy: { attribute: { position: 'asc' } },
+                        select: {
+                          attributeId: true,
+                          valueId: true,
+                          attribute: { select: { id: true, name: true, position: true } },
+                          value: { select: { id: true, value: true } },
+                        },
+                      },
+                    },
+                  },
+                  modifierGroups: {
+                    orderBy: { position: 'asc' },
+                    select: {
+                      id: true,
+                      modifierGroupId: true,
+                      position: true,
+                      modifierGroup: { select: { name: true } },
+                      options: {
+                        orderBy: { option: { position: 'asc' } },
+                        select: {
+                          optionId: true,
+                          priceAdjustment: true,
+                          option: { select: { name: true, position: true } },
+                        },
+                      },
+                    },
+                  },
+                },
+              });
+              const lineQuote = quoteByLineId.get(item.lineId);
+              if (!product || product.availability !== 'available' || !lineQuote)
+                throw new ConflictException('A product in this order is no longer available.');
+              if (
+                product.revision !== item.expectedProductRevision ||
+                product.revision !== lineQuote.productRevision
+              )
+                throw new ConflictException(
+                  'A product changed. Review the updated quote before confirming.',
+                );
+
+              const variant = lineQuote.variantId
+                ? product.variants.find((candidate) => candidate.id === lineQuote.variantId)
+                : undefined;
+              if (product.variants.length > 0 && (!variant || variant.availability !== 'available'))
+                throw new ConflictException('A selected variant is no longer available.');
+
+              const mode = product.inventoryConfiguration?.mode ?? null;
+              if (mode && mode !== 'DIRECT' && mode !== 'RECIPE')
+                throw new ConflictException('The product stock handling is not supported.');
+              let stockHandling: string = 'legacy';
+              let requirements: InventoryRequirement[] = [];
+              if (mode === 'DIRECT' || mode === 'RECIPE') {
+                stockHandling = mode === 'DIRECT' ? 'direct_sale' : 'recipe_acceptance';
+                requirements = await this.consumption.requirements(
+                  tx,
+                  employee.merchantId,
+                  [
+                    {
+                      productId: product.id,
+                      variantId: variant?.id ?? null,
+                      quantity: item.quantity,
+                      selections: quoteSelectionsForRequirements(lineQuote.selections),
+                    },
+                  ],
+                  mode,
+                );
+                if (mode === 'DIRECT') {
+                  hasDirectStock = true;
+                  directRequirementsByLine.set(item.lineId, requirements);
+                }
+              }
+
+              let stockReserved = false;
+              if (
+                stockHandling === 'legacy' &&
+                variant?.stockQuantity !== null &&
+                variant?.stockQuantity !== undefined
+              ) {
+                const reservation = await tx.productVariant.updateMany({
+                  where: {
+                    id: variant.id,
+                    merchantId: employee.merchantId,
+                    productId: product.id,
+                    availability: 'available',
+                    stockQuantity: { gte: item.quantity },
+                  },
+                  data: { stockQuantity: { decrement: item.quantity } },
+                });
+                if (reservation.count !== 1)
+                  throw new ConflictException('A selected variant does not have enough stock.');
+                stockReserved = true;
+              }
+
+              const selectionSnapshots = createSelectionSnapshots(product, lineQuote.selections);
+              const lineTotalCents = toCents(lineQuote.totalPrice) * BigInt(item.quantity);
+              const savedLine = await tx.storefrontOrderLine.create({
+                data: {
+                  orderId: order.id,
+                  merchantId: employee.merchantId,
+                  productId: product.id,
+                  variantId: variant?.id ?? null,
+                  productName: product.name,
+                  variantName: variant?.name ?? null,
+                  basePrice: lineQuote.basePrice,
+                  modifierTotal: lineQuote.modifierTotal,
+                  quantity: item.quantity,
+                  unitPrice: lineQuote.totalPrice,
+                  lineTotal: formatCents(lineTotalCents),
+                  note: item.note?.trim() || null,
+                  stockHandling,
+                  stockReserved,
+                  position,
+                  selections: { create: selectionSnapshots },
+                  variantAttributes: {
+                    create: lineQuote.variantAttributes.map((attribute) => ({
+                      attributeId: attribute.attributeId,
+                      valueId: attribute.valueId,
+                      attributeName: attribute.attributeName,
+                      attributeValue: attribute.value,
+                      position: attribute.position,
+                    })),
+                  },
+                },
+                select: { id: true },
+              });
+              if (mode === 'DIRECT' || mode === 'RECIPE') {
+                await freezeLineStockRequirements(
+                  tx,
+                  employee.merchantId,
+                  savedLine.id,
+                  requirements,
+                );
+              }
+            }
+
+            if (orderTotalCents > MAX_ORDER_TOTAL_CENTS)
+              throw new BadRequestException('The order total is too large.');
+            await this.dining.attachOrder(
+              tx,
+              employee,
+              shift.branchId,
+              request.fulfillmentType === 'dine_in' ? request.tableId! : null,
+              order.id,
+              formatCents(orderTotalCents),
+            );
+            if (request.fulfillmentType !== 'dine_in') {
+              await createPosKitchenTicket(tx, {
+                merchantId: employee.merchantId,
+                branchId: shift.branchId,
+                orderId: order.id,
+                dispatchMode: 'automatic',
+                dispatchedByPosEmployeeId: employee.id,
+              });
+            }
+            if (hasDirectStock) {
+              const warehouse = await resolveConsumptionWarehouse(
+                tx,
+                employee.merchantId,
+                shift.branchId,
+              );
+              const requirements = [...directRequirementsByLine.values()].flat();
+              await consumeDirectOrderRequirements(
+                tx,
+                this.ledger,
+                employee.merchantId,
+                actor,
+                order.id,
+                warehouse.id,
+                requirements,
+              );
+              await tx.storefrontOrder.update({
+                where: { id: order.id },
+                data: {
+                  warehouseId: warehouse.id,
+                  branchName: warehouse.branch.name,
+                  warehouseName: warehouse.name,
+                },
+              });
+            }
+
+            const saved = await tx.storefrontOrder.findFirstOrThrow({
+              where: { id: order.id, merchantId: employee.merchantId },
+              include: orderSummaryInclude,
+            });
+            const summary = toSummary(saved);
+            await tx.storefrontOrderAction.create({
+              data: {
+                merchantId: employee.merchantId,
+                orderId: order.id,
+                requestId: request.requestId,
+                action: 'pos_sale',
+                fingerprint,
+                result: summary as unknown as Prisma.InputJsonValue,
+                createdBy: actor,
+              },
+            });
+            return summary;
+          },
+          { isolationLevel: 'Serializable' },
+        );
+      } catch (error) {
+        if (isUniqueConstraintError(error) || isSerializationConflict(error)) {
+          const previous = await this.prisma.storefrontOrderAction.findUnique({
             where: {
               merchantId_requestId: {
                 merchantId: employee.merchantId,
@@ -128,261 +388,14 @@ export class PosOrdersService {
             },
           });
           if (previous) return this.replay(previous, actor, fingerprint);
-
-          const shift = await this.shifts.lockOpenShiftForSale(tx, employee, request.registerId);
-          const quote = await this.quoteItems(employee.merchantId, request, tx);
-          const orderTotalCents = toCents(quote.total);
-          const order = await tx.storefrontOrder.create({
-            data: {
-              merchantId: employee.merchantId,
-              customerName: request.customerName?.trim() || null,
-              customerPhone: request.customerPhone?.trim() || null,
-              deliveryAddress:
-                request.fulfillmentType === 'delivery' ? request.deliveryAddress!.trim() : null,
-              fulfillmentType: request.fulfillmentType,
-              source: 'pos',
-              posShiftId: shift.id,
-              createdByPosEmployeeId: employee.id,
-              branchId: shift.branchId,
-              total: formatCents(orderTotalCents),
-              currency: 'EGP',
-            },
-            select: { id: true },
-          });
-          const quoteByLineId = new Map(quote.items.map((item) => [item.lineId, item.quote]));
-          const directRequirementsByLine = new Map<string, InventoryRequirement[]>();
-          let hasDirectStock = false;
-
-          for (const [position, item] of request.items.entries()) {
-            const product = await tx.product.findFirst({
-              where: { id: item.productId, merchantId: employee.merchantId, archivedAt: null },
-              select: {
-                id: true,
-                name: true,
-                availability: true,
-                revision: true,
-                inventoryConfiguration: { select: { mode: true } },
-                variants: {
-                  select: {
-                    id: true,
-                    name: true,
-                    availability: true,
-                    stockQuantity: true,
-                    attributeSelections: {
-                      orderBy: { attribute: { position: 'asc' } },
-                      select: {
-                        attributeId: true,
-                        valueId: true,
-                        attribute: { select: { id: true, name: true, position: true } },
-                        value: { select: { id: true, value: true } },
-                      },
-                    },
-                  },
-                },
-                modifierGroups: {
-                  orderBy: { position: 'asc' },
-                  select: {
-                    id: true,
-                    modifierGroupId: true,
-                    position: true,
-                    modifierGroup: { select: { name: true } },
-                    options: {
-                      orderBy: { option: { position: 'asc' } },
-                      select: {
-                        optionId: true,
-                        priceAdjustment: true,
-                        option: { select: { name: true, position: true } },
-                      },
-                    },
-                  },
-                },
-              },
-            });
-            const lineQuote = quoteByLineId.get(item.lineId);
-            if (!product || product.availability !== 'available' || !lineQuote)
-              throw new ConflictException('A product in this order is no longer available.');
-            if (
-              product.revision !== item.expectedProductRevision ||
-              product.revision !== lineQuote.productRevision
-            )
-              throw new ConflictException(
-                'A product changed. Review the updated quote before confirming.',
-              );
-
-            const variant = lineQuote.variantId
-              ? product.variants.find((candidate) => candidate.id === lineQuote.variantId)
-              : undefined;
-            if (product.variants.length > 0 && (!variant || variant.availability !== 'available'))
-              throw new ConflictException('A selected variant is no longer available.');
-
-            const mode = product.inventoryConfiguration?.mode ?? null;
-            if (mode && mode !== 'DIRECT' && mode !== 'RECIPE')
-              throw new ConflictException('The product stock handling is not supported.');
-            let stockHandling: string = 'legacy';
-            let requirements: InventoryRequirement[] = [];
-            if (mode === 'DIRECT' || mode === 'RECIPE') {
-              stockHandling = mode === 'DIRECT' ? 'direct_sale' : 'recipe_acceptance';
-              requirements = await this.consumption.requirements(
-                tx,
-                employee.merchantId,
-                [
-                  {
-                    productId: product.id,
-                    variantId: variant?.id ?? null,
-                    quantity: item.quantity,
-                    selections: quoteSelectionsForRequirements(lineQuote.selections),
-                  },
-                ],
-                mode,
-              );
-              if (mode === 'DIRECT') {
-                hasDirectStock = true;
-                directRequirementsByLine.set(item.lineId, requirements);
-              }
-            }
-
-            let stockReserved = false;
-            if (
-              stockHandling === 'legacy' &&
-              variant?.stockQuantity !== null &&
-              variant?.stockQuantity !== undefined
-            ) {
-              const reservation = await tx.productVariant.updateMany({
-                where: {
-                  id: variant.id,
-                  merchantId: employee.merchantId,
-                  productId: product.id,
-                  availability: 'available',
-                  stockQuantity: { gte: item.quantity },
-                },
-                data: { stockQuantity: { decrement: item.quantity } },
-              });
-              if (reservation.count !== 1)
-                throw new ConflictException('A selected variant does not have enough stock.');
-              stockReserved = true;
-            }
-
-            const selectionSnapshots = createSelectionSnapshots(product, lineQuote.selections);
-            const lineTotalCents = toCents(lineQuote.totalPrice) * BigInt(item.quantity);
-            const savedLine = await tx.storefrontOrderLine.create({
-              data: {
-                orderId: order.id,
-                merchantId: employee.merchantId,
-                productId: product.id,
-                variantId: variant?.id ?? null,
-                productName: product.name,
-                variantName: variant?.name ?? null,
-                basePrice: lineQuote.basePrice,
-                modifierTotal: lineQuote.modifierTotal,
-                quantity: item.quantity,
-                unitPrice: lineQuote.totalPrice,
-                lineTotal: formatCents(lineTotalCents),
-                note: item.note?.trim() || null,
-                stockHandling,
-                stockReserved,
-                position,
-                selections: { create: selectionSnapshots },
-                variantAttributes: {
-                  create: lineQuote.variantAttributes.map((attribute) => ({
-                    attributeId: attribute.attributeId,
-                    valueId: attribute.valueId,
-                    attributeName: attribute.attributeName,
-                    attributeValue: attribute.value,
-                    position: attribute.position,
-                  })),
-                },
-              },
-              select: { id: true },
-            });
-            if (mode === 'DIRECT' || mode === 'RECIPE') {
-              await freezeLineStockRequirements(
-                tx,
-                employee.merchantId,
-                savedLine.id,
-                requirements,
-              );
-            }
-          }
-
-          if (orderTotalCents > MAX_ORDER_TOTAL_CENTS)
-            throw new BadRequestException('The order total is too large.');
-          await this.dining.attachOrder(
-            tx,
-            employee,
-            shift.branchId,
-            request.fulfillmentType === 'dine_in' ? request.tableId! : null,
-            order.id,
-            formatCents(orderTotalCents),
-          );
-          if (request.fulfillmentType !== 'dine_in') {
-            await createPosKitchenTicket(tx, {
-              merchantId: employee.merchantId,
-              branchId: shift.branchId,
-              orderId: order.id,
-              dispatchMode: 'automatic',
-              dispatchedByPosEmployeeId: employee.id,
-            });
-          }
-          if (hasDirectStock) {
-            const warehouse = await resolveConsumptionWarehouse(
-              tx,
-              employee.merchantId,
-              shift.branchId,
-            );
-            const requirements = [...directRequirementsByLine.values()].flat();
-            await consumeDirectOrderRequirements(
-              tx,
-              this.ledger,
-              employee.merchantId,
-              actor,
-              order.id,
-              warehouse.id,
-              requirements,
-            );
-            await tx.storefrontOrder.update({
-              where: { id: order.id },
-              data: {
-                warehouseId: warehouse.id,
-                branchName: warehouse.branch.name,
-                warehouseName: warehouse.name,
-              },
-            });
-          }
-
-          const saved = await tx.storefrontOrder.findFirstOrThrow({
-            where: { id: order.id, merchantId: employee.merchantId },
-            include: orderSummaryInclude,
-          });
-          const summary = toSummary(saved);
-          await tx.storefrontOrderAction.create({
-            data: {
-              merchantId: employee.merchantId,
-              orderId: order.id,
-              requestId: request.requestId,
-              action: 'pos_sale',
-              fingerprint,
-              result: summary as unknown as Prisma.InputJsonValue,
-              createdBy: actor,
-            },
-          });
-          return summary;
-        },
-        { isolationLevel: 'Serializable' },
-      );
-    } catch (error) {
-      if (isUniqueConstraintError(error) || isSerializationConflict(error)) {
-        const previous = await this.prisma.storefrontOrderAction.findUnique({
-          where: {
-            merchantId_requestId: { merchantId: employee.merchantId, requestId: request.requestId },
-          },
-        });
-        if (previous) return this.replay(previous, actor, fingerprint);
-        if (isUniqueConstraintError(error))
-          throw new ConflictException('This sale request conflicts with an existing command.');
+          if (isUniqueConstraintError(error))
+            throw new ConflictException('This sale request conflicts with an existing command.');
+        }
+        if (isSerializationConflict(error) && attempt < 4) continue;
+        if (isSerializationConflict(error))
+          throw new ConflictException('The order or stock changed. Review the cart and retry.');
+        throw error;
       }
-      if (isSerializationConflict(error))
-        throw new ConflictException('The order or stock changed. Review the cart and retry.');
-      throw error;
     }
   }
 
@@ -1354,6 +1367,75 @@ export class PosOrdersService {
     return previous.result as RecordPosCheckRefundResponse;
   }
 
+  async listActiveSales(
+    employee: PosEmployeeSession,
+    input: CursorPageQuery & {
+      branchId: string;
+      search?: string | undefined;
+      mode: 'active' | 'history';
+    },
+  ) {
+    this.requireSellPermission(employee);
+    if (
+      !employee.branches.some(
+        (branch) => branch.id === input.branchId && branch.archivedAt === null,
+      )
+    )
+      throw new ForbiddenException('This employee is not assigned to the selected branch.');
+    const where: Prisma.StorefrontOrderWhereInput = {
+      merchantId: employee.merchantId,
+      branchId: input.branchId,
+      source: 'pos',
+      ...(input.mode === 'active'
+        ? {
+            status: { notIn: ['cancelled', 'rejected'] },
+            OR: [
+              { checks: { some: { settledAt: null, cancelledAt: null } } },
+              { fulfillmentType: 'dine_in', status: 'pending', kitchenTicket: { is: null } },
+            ],
+          }
+        : {}),
+      ...(input.search
+        ? {
+            AND: [
+              {
+                OR: [
+                  { orderReference: { contains: input.search, mode: 'insensitive' } },
+                  { customerName: { contains: input.search, mode: 'insensitive' } },
+                  {
+                    diningSession: {
+                      is: { table: { code: { contains: input.search, mode: 'insensitive' } } },
+                    },
+                  },
+                ],
+              },
+            ],
+          }
+        : {}),
+    };
+    if (input.cursor) {
+      const anchor = await this.prisma.storefrontOrder.findFirst({
+        where: {
+          merchantId: employee.merchantId,
+          branchId: input.branchId,
+          source: 'pos',
+          id: input.cursor,
+        },
+        select: { id: true },
+      });
+      assertScopedCursor(input.cursor, anchor !== null);
+    }
+    const orders = await this.prisma.storefrontOrder.findMany({
+      where,
+      include: orderSummaryInclude,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: input.limit + 1,
+      ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+    });
+    const items = orders.slice(0, input.limit).map(toSummary);
+    return { items, nextCursor: orders.length > input.limit ? (items.at(-1)?.id ?? null) : null };
+  }
+
   async detail(employee: PosEmployeeSession, orderId: string): Promise<StorefrontOrderSummary> {
     this.requireSellPermission(employee);
     const order = await this.prisma.storefrontOrder.findFirst({
@@ -1669,6 +1751,7 @@ export class PosOrdersService {
       merchantName: check.order.merchant.name,
       branchName: check.order.branch?.name ?? null,
       orderId: check.order.id,
+      orderReference: check.order.orderReference,
       orderCreatedAt: check.order.createdAt,
       fulfillmentType: check.order.fulfillmentType as PosReceipt['fulfillmentType'],
       tableCode: check.order.diningSession?.table.code ?? null,

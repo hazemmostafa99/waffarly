@@ -76,6 +76,19 @@ export function listPosOrders(
   return apiRequest(`/pos/orders?${params.toString()}`, { method: 'GET', signal });
 }
 
+export function listPosSales(
+  branchId: string,
+  mode: 'active' | 'history',
+  search: string,
+  cursor: string | undefined,
+  signal: AbortSignal,
+): Promise<CursorPage<StorefrontOrderSummary>> {
+  const params = new URLSearchParams({ branchId, mode, limit: '25' });
+  if (search.trim()) params.set('search', search.trim());
+  if (cursor) params.set('cursor', cursor);
+  return apiRequest(`/pos/orders/active-sales?${params.toString()}`, { method: 'GET', signal });
+}
+
 export function runPosOrderAction(
   orderId: string,
   action: PendingPosAction,
@@ -86,13 +99,13 @@ export function runPosOrderAction(
         ? 'accept'
         : action.action === 'cancel_ack'
           ? 'cancellation-acknowledgement'
-        : action.action === 'item_ready'
-          ? `items/${encodeURIComponent(action.lineId)}/ready`
-          : action.action === 'prepare'
-            ? 'start-preparation'
-            : action.action === 'ready'
-              ? 'ready'
-              : 'handover'
+          : action.action === 'item_ready'
+            ? `items/${encodeURIComponent(action.lineId)}/ready`
+            : action.action === 'prepare'
+              ? 'start-preparation'
+              : action.action === 'ready'
+                ? 'ready'
+                : 'handover'
     }`,
     {
       method: 'POST',

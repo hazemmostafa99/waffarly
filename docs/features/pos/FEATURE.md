@@ -1,5 +1,13 @@
 # Complete POS — Feature and Architecture Contract
 
+### POS order numbering and workspace recovery — 2026-10-29
+
+New confirmed POS sales receive `B<branch code>-YYYYMMDD-<daily number>` from Orders in the same transaction as the sale, based on midnight in `Africa/Cairo`; the branch code and full reference distinguish simultaneous branches. Numbers reset by branch and Cairo calendar day, not shift. The internal UUID remains the identity. Historical orders retain their legacy UUID-derived reference and existing immutable receipts are not rewritten. A configurable business-day cutoff and other time zones are not implemented. Serializable retries are bounded; an exact repeated sale command returns its original result.
+
+The selling picker uses the sell-authorized, tenant and assigned-branch scoped `GET /pos/orders/active-sales` with `mode=active|history`, optional `search`, and bounded cursor pages. Active covers unsettled checks and pending undispatched dine-in rounds; kitchen/delivery workflows continue separately. Search matches the full new reference, customer name, or dining table. Historical orders remain browsable; their legacy short reference is not searchable by this new endpoint. Drafts remain cashier/browser scoped. Nonselected truly blank drafts are cleaned; meaningful drafts and pending command envelopes remain. Confirmed references may be pruned after seven days or the newest 50, except selected and pending-action references; the server history restores them. Closing a confirmed tab removes only its local reference and blocks unresolved actions. Starting a new order from a verified settled order closes its local tab. A missing/offline server leaves existing local references available. Receipt snapshots and financial/order lifecycle records are never deleted by this cache policy.
+
+Verification: run API typecheck, lint, build, default tests, POS typecheck/lint/build and POS tests. `test:pos-number-db` requires `POS_NUMBER_TEST_DATABASE_URL` explicitly pointing to a disposable migrated database and tests concurrent allocation and rollback. Also test multi-device recovery, selected/pending retention, server pagination/search, old reference display and Arabic/English layouts in browser acceptance. Apply the additive migration before API deployment and API before POS deployment.
+
 ## Status and authority
 
 - Last reviewed: 2026-10-26.

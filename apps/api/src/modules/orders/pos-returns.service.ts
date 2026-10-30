@@ -85,6 +85,7 @@ export class PosReturnsService {
         order: {
           select: {
             id: true,
+            orderReference: true,
             branchId: true,
             branchName: true,
             fulfillmentType: true,
@@ -120,7 +121,8 @@ export class PosReturnsService {
         id: record.id,
         returnNumber: record.returnNumber,
         orderId: record.orderId,
-        orderReference: `ORD-${record.orderId.slice(0, 8).toUpperCase()}`,
+        orderReference:
+          record.order.orderReference ?? `ORD-${record.orderId.slice(0, 8).toUpperCase()}`,
         branchId,
         branchName: record.order.branchName ?? record.order.branch?.name ?? '',
         fulfillmentType,
@@ -376,6 +378,7 @@ export class PosReturnsService {
       },
       select: {
         id: true,
+        orderReference: true,
         status: true,
         completedAt: true,
         lines: {
@@ -403,7 +406,7 @@ export class PosReturnsService {
     });
     return {
       orderId,
-      orderReference: `ORD-${orderId.slice(0, 8).toUpperCase()}`,
+      orderReference: order.orderReference ?? `ORD-${orderId.slice(0, 8).toUpperCase()}`,
       orderStatus: order.status,
       eligible: order.status === 'completed' && order.completedAt !== null,
       items: order.lines.map((line) => {

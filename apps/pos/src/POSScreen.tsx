@@ -323,10 +323,10 @@ export function POSScreen() {
                 <header className="flex items-start justify-between gap-3 border-b border-border bg-secondary/40 px-4 py-3">
                   <div className="flex min-w-0 items-start gap-3">
                     <span
-                      className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-xs font-semibold tabular-nums"
+                      className="flex min-h-10 shrink-0 items-center justify-center rounded-lg bg-secondary px-2 text-xs font-semibold tabular-nums"
                       title={order.id}
                     >
-                      #{order.id.slice(0, 6).toUpperCase()}
+                      {order.orderReference ?? `#${order.id.slice(0, 6).toUpperCase()}`}
                     </span>
                     <div className="grid min-w-0 gap-1.5">
                       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
