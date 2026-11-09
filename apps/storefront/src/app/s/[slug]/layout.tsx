@@ -43,7 +43,7 @@ export default async function StorefrontLayout({ children, params }: StorefrontL
     if (error instanceof ApiError && error.statusCode === 404) notFound();
     throw error;
   }
-  const locale: Locale = cookieStore.get('waffarly-locale')?.value === 'ar' ? 'ar' : 'en';
+  const locale: Locale = cookieStore.get('waffarly-locale')?.value === 'en' ? 'en' : 'ar';
 
   return (
     <LocaleProvider initialLocale={locale}>

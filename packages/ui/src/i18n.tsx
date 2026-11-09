@@ -16,7 +16,7 @@ const LocaleContext = createContext<{ locale: Locale; setLocale: (locale: Locale
 
 export function LocaleProvider({
   children,
-  initialLocale = 'en',
+  initialLocale = 'ar',
 }: {
   children: ReactNode;
   initialLocale?: Locale;

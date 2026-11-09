@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
-  const locale = (await cookies()).get('waffarly-locale')?.value === 'ar' ? 'ar' : 'en';
+  const locale = (await cookies()).get('waffarly-locale')?.value === 'en' ? 'en' : 'ar';
   return (
     <html lang={locale} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <body>
