@@ -241,7 +241,11 @@ export function DashboardPage() {
               </span>
             </div>
             {applications.isPending ? (
-              <div className="admin-section grid gap-3" role="status" aria-label={t('Loading applications')}>
+              <div
+                className="admin-section grid gap-3"
+                role="status"
+                aria-label={t('Loading applications')}
+              >
                 <span className="h-12 animate-pulse rounded-lg bg-waffarly-input" />
                 <span className="h-12 animate-pulse rounded-lg bg-waffarly-input" />
               </div>
@@ -254,29 +258,34 @@ export function DashboardPage() {
               <ul className="m-0 grid list-none p-0">
                 {pendingApplications.slice(0, 4).map((application) => (
                   <li
-                    className="flex items-center gap-2.5 border-b border-waffarly-border px-4 py-3 last:border-0"
+                    className="border-b border-waffarly-border last:border-0"
                     key={application.id}
                   >
-                    <span
-                      className="grid size-8 shrink-0 place-items-center rounded-full bg-waffarly-gold-light text-xs font-bold text-waffarly-ink"
-                      aria-hidden="true"
+                    <Link
+                      to={`/applications?application=${encodeURIComponent(application.id)}`}
+                      className="flex min-w-0 items-center gap-2.5 px-4 py-3 text-inherit hover:bg-waffarly-input focus-visible:outline-2 focus-visible:outline-waffarly-primary"
                     >
-                      {application.name.trim().slice(0, 1).toLocaleUpperCase() || 'W'}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <strong className="block truncate text-xs font-semibold">
-                        {application.name}
-                      </strong>
-                      <small className="mt-1 block truncate text-[10px] text-waffarly-muted">
-                        {activityLabel(application.activity, t)} ·{' '}
-                        {formatDate(application.createdAt)}
-                      </small>
-                    </span>
-                    <ChevronRight
-                      className="shrink-0 text-waffarly-muted rtl:rotate-180"
-                      size={16}
-                      aria-hidden="true"
-                    />
+                      <span
+                        className="grid size-8 shrink-0 place-items-center rounded-full bg-waffarly-gold-light text-xs font-bold text-waffarly-ink"
+                        aria-hidden="true"
+                      >
+                        {application.name.trim().slice(0, 1).toLocaleUpperCase() || 'W'}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <strong className="block truncate text-xs font-semibold">
+                          {application.name}
+                        </strong>
+                        <small className="mt-1 block truncate text-[10px] text-waffarly-muted">
+                          {activityLabel(application.activity, t)} ·{' '}
+                          {formatDate(application.createdAt)}
+                        </small>
+                      </span>
+                      <ChevronRight
+                        className="shrink-0 text-waffarly-muted rtl:rotate-180"
+                        size={16}
+                        aria-hidden="true"
+                      />
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -291,7 +300,7 @@ export function DashboardPage() {
             )}
             <Link
               className="flex items-center justify-between border-t border-waffarly-border px-4 py-3 text-xs font-semibold text-waffarly-primary hover:bg-waffarly-input"
-              to="/"
+              to="/applications"
             >
               {t('Review applications')} <ArrowUpRight size={15} aria-hidden="true" />
             </Link>

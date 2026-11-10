@@ -13,6 +13,9 @@ const DashboardPage = lazy(() =>
 const MerchantsPage = lazy(() =>
   import('./features/merchants/MerchantsPage.js').then(({ MerchantsPage: page }) => ({ default: page })),
 );
+const ApplicationsPage = lazy(() =>
+  import('./features/merchants/ApplicationsPage.js').then(({ ApplicationsPage: page }) => ({ default: page })),
+);
 const CreateMerchantPage = lazy(() =>
   import('./features/merchants/CreateMerchantPage.js').then(({ CreateMerchantPage: page }) => ({ default: page })),
 );
@@ -64,6 +67,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: routeElement(DashboardPage), handle: { title: 'Platform overview' } },
       { path: 'dashboard', element: routeElement(DashboardPage), handle: { title: 'Platform overview' } },
+      { path: 'applications', element: routeElement(ApplicationsPage), handle: { title: 'Business applications' } },
       { path: 'merchants/new', element: routeElement(CreateMerchantPage), handle: { title: 'Create a business' } },
       { path: 'merchants', element: routeElement(MerchantsPage), handle: { title: 'Businesses' } },
       { path: 'merchants/:merchantId', element: routeElement(MerchantDetailsPage), handle: { title: 'Merchant details' } },
