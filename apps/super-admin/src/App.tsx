@@ -22,7 +22,7 @@ import { ActivitiesModules } from './ActivitiesModules.js';
 
 const emptyMerchant: CreateMerchantRequest = {
   name: '',
-  activity: 'other',
+  activity: 'restaurant',
   contactPhone: '',
   ownerName: '',
   ownerMobile: '',
@@ -425,7 +425,7 @@ export function App() {
                 {t('Business activity')}
                 <select
                   aria-label={t('Business activity')}
-                  value={merchantForm.activity ?? 'other'}
+                  value={merchantForm.activity ?? 'restaurant'}
                   onChange={(event) =>
                     setMerchantForm({
                       ...merchantForm,

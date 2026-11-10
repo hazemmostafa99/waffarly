@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { ArrowLeft, CheckCircle2, Clock3, ShieldCheck, Store, XCircle } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  Clock3,
+  ShieldCheck,
+  Store,
+  XCircle,
+} from 'lucide-react';
 import { StatusBadge } from '../../components/StatusBadge.js';
 import './applications.css';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -189,6 +197,71 @@ export function ApplicationsPage() {
                 <CheckCircle2 size={20} aria-hidden="true" />
                 {t('No applications are awaiting review.')}
               </p>
+            ) : !selectedId ? (
+              <div
+                className="overflow-x-auto"
+                role="region"
+                aria-label={t('Business applications')}
+                tabIndex={0}
+              >
+                <table className="admin-table w-full min-w-[660px] text-start">
+                  <thead>
+                    <tr>
+                      <th scope="col">{t('Business')}</th>
+                      <th scope="col">{t('Business activity')}</th>
+                      <th scope="col">{t('Owner')}</th>
+                      <th scope="col">{t('Submitted')}</th>
+                      <th scope="col">{t('Actions')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleApplications.map((application) => (
+                      <tr
+                        key={application.id}
+                        className="border-b border-waffarly-border last:border-0"
+                      >
+                        <td>
+                          <Link
+                            className="font-semibold text-waffarly-primary hover:underline"
+                            to={`/applications?application=${encodeURIComponent(application.id)}`}
+                          >
+                            <bdi>{application.name}</bdi>
+                          </Link>
+                          <div className="mt-1 text-[11px] text-waffarly-muted">
+                            <bdi dir="ltr">{application.contactPhone}</bdi>
+                          </div>
+                        </td>
+                        <td>{t(BUSINESS_ACTIVITY_LABELS[application.activity ?? 'other'])}</td>
+                        <td>
+                          <bdi>{application.ownerName}</bdi>
+                          <div className="mt-1 text-[11px] text-waffarly-muted">
+                            <bdi dir="ltr">{application.ownerMobile}</bdi>
+                          </div>
+                        </td>
+                        <td>
+                          <time dateTime={application.createdAt}>
+                            {formatDate(application.createdAt)}
+                          </time>
+                        </td>
+                        <td>
+                          <Button
+                            asChild
+                            variant="outline"
+                            className="border-waffarly-border bg-white text-waffarly-ink hover:bg-waffarly-input"
+                          >
+                            <Link
+                              to={`/applications?application=${encodeURIComponent(application.id)}`}
+                            >
+                              {t('Review applications')}
+                              <ArrowRight size={14} className="rtl:rotate-180" aria-hidden="true" />
+                            </Link>
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : (
               <div className="grid min-w-0">
                 {visibleApplications.map((application) => {

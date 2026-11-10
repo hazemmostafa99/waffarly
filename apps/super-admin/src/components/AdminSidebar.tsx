@@ -1,6 +1,7 @@
 import {
   Activity,
   BadgeCheck,
+  ClipboardList,
   LayoutDashboard,
   Network,
   PanelLeftClose,
@@ -19,6 +20,7 @@ import { useAdminUiStore } from '../stores/admin-ui-store.js';
 const navigation = [
   { to: '/dashboard', label: 'Platform overview', icon: LayoutDashboard },
   { to: '/merchants', label: 'Businesses', icon: Store },
+  { to: '/applications', label: 'Business applications', icon: ClipboardList },
   { to: '/plans', label: 'Subscription plans', icon: Tags },
   { to: '/subscriptions', label: 'Subscription management', icon: BadgeCheck },
   { to: '/activities', label: 'Business activities', icon: Activity },
@@ -42,7 +44,7 @@ export function AdminSidebar() {
   const ExpandIcon = locale === 'ar' ? PanelRightOpen : PanelLeftOpen;
   const sidebarPosition = isMobileLayout
     ? 'fixed inset-y-0 start-0 z-50 h-screen w-[min(84vw,280px)] shadow-xl'
-    : `sticky top-0 h-screen min-w-0 shrink-0 ${collapsed ? 'w-[72px]' : 'w-[206px]'} shadow-none`;
+    : `sticky top-0 h-screen min-w-0 shrink-0 ${collapsed ? 'w-[72px]' : 'w-[248px]'} shadow-none`;
   const sidebarTransform = mobileNavigationActive
     ? 'translate-x-0'
     : isMobileLayout && locale === 'ar'
@@ -116,7 +118,7 @@ export function AdminSidebar() {
       )}
       <aside
         ref={sidebarRef}
-        className={`admin-sidebar flex flex-col border-e border-waffarly-border bg-waffarly-surface px-3 py-5 transition-[transform,width] duration-200 ease-out ${sidebarPosition} ${sidebarTransform}`}
+        className={`admin-sidebar flex min-w-0 flex-col overflow-y-auto border-e border-waffarly-border bg-waffarly-surface px-3 py-5 transition-[transform,width] duration-200 ease-out ${sidebarPosition} ${sidebarTransform}`}
         role={mobileNavigationActive ? 'dialog' : undefined}
         aria-modal={mobileNavigationActive || undefined}
         aria-label={mobileNavigationActive ? t('Platform navigation') : undefined}
@@ -124,7 +126,7 @@ export function AdminSidebar() {
         inert={isMobileLayout && !mobileOpen}
       >
         <div
-          className={`mb-3 border-b border-waffarly-border pb-3 ${isCollapsedDesktop ? 'grid justify-items-center gap-2' : 'flex min-h-12 items-center justify-between gap-2'}`}
+          className={`mb-3 shrink-0 border-b border-waffarly-border pb-3 ${isCollapsedDesktop ? 'grid justify-items-center gap-2' : 'flex min-h-12 items-center justify-between gap-2'}`}
         >
           <NavLink
             className={`flex min-w-0 items-center gap-2.5 text-inherit no-underline ${isCollapsedDesktop ? 'w-full justify-center' : 'flex-1'}`}
@@ -172,7 +174,7 @@ export function AdminSidebar() {
             {t('PLATFORM')}
           </p>
         )}
-        <nav className="grid gap-1" aria-label={t('Platform administration')}>
+        <nav className="grid min-w-0 shrink-0 grid-cols-[minmax(0,1fr)] gap-1" aria-label={t('Platform administration')}>
           {navigation.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -183,9 +185,9 @@ export function AdminSidebar() {
                 to === '/activities' ||
                 to === '/modules'
               }
-              title={isCollapsedDesktop ? t(label) : undefined}
+              title={t(label)}
               className={({ isActive }) =>
-                `admin-nav-link group flex items-center gap-3 rounded-xl px-3 text-[13px] font-semibold no-underline transition-colors ${isCollapsedDesktop ? 'justify-center px-0' : ''} ${isActive ? 'bg-waffarly-kpi-mint text-waffarly-primary' : 'text-waffarly-ink hover:bg-waffarly-input'}`
+                `admin-nav-link group flex min-w-0 max-w-full items-center gap-3 rounded-xl px-3 text-[13px] font-semibold no-underline transition-colors ${isCollapsedDesktop ? 'justify-center px-0' : ''} ${isActive ? 'bg-waffarly-kpi-mint text-waffarly-primary' : 'text-waffarly-ink hover:bg-waffarly-input'}`
               }
               onClick={() => setMobileNavigationOpen(false)}
             >
@@ -197,7 +199,7 @@ export function AdminSidebar() {
                     strokeWidth={1.8}
                     aria-hidden="true"
                   />
-                  {!isCollapsedDesktop && <span className="min-w-0 truncate">{t(label)}</span>}
+                  {!isCollapsedDesktop && <span className="min-w-0 flex-1 truncate">{t(label)}</span>}
                 </>
               )}
             </NavLink>
@@ -205,7 +207,7 @@ export function AdminSidebar() {
         </nav>
 
         {!isCollapsedDesktop && (
-          <div className="mt-auto flex items-start gap-2.5 rounded-2xl bg-waffarly-gold-light p-3 text-waffarly-ink">
+          <div className="mt-auto flex shrink-0 items-start gap-2.5 rounded-2xl bg-waffarly-gold-light p-3 text-waffarly-ink">
             <div
               className="grid size-9 shrink-0 place-items-center rounded-xl bg-white text-waffarly-gold"
               aria-hidden="true"

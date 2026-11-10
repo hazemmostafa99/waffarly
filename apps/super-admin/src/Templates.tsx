@@ -15,7 +15,7 @@ const emptyTemplate: CreateStorefrontTemplateRequest = {
   key: '',
   name: '',
   description: '',
-  activity: 'general',
+  activity: 'restaurant',
   layout: 'menu',
   accentColor: '#315b43',
   status: 'draft',
@@ -134,7 +134,7 @@ function TemplateForm({
           {t('Business activity')}
           <select
             aria-label={t('Business activity')}
-            value={form.activity ?? 'other'}
+            value={form.activity ?? 'restaurant'}
             onChange={(event) =>
               update('activity', event.target.value as CreateStorefrontTemplateRequest['activity'])
             }

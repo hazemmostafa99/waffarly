@@ -19,7 +19,7 @@ import { useCreatedMerchantStore } from './created-merchant-store.js';
 
 const emptyMerchant: CreateMerchantRequest = {
   name: '',
-  activity: 'other',
+  activity: 'restaurant',
   contactPhone: '',
   ownerName: '',
   ownerMobile: '',
@@ -219,7 +219,7 @@ export function CreateMerchantPage() {
               <FormField id="business-activity" label={t('Business activity')}>
                 <select
                   id="business-activity"
-                  value={form.activity ?? 'other'}
+                  value={form.activity ?? 'restaurant'}
                   onChange={(event) =>
                     updateForm('activity', event.target.value as BusinessActivityKey)
                   }

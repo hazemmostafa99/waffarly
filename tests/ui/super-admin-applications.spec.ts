@@ -40,9 +40,13 @@ for (const locale of ['en', 'ar'] as const) {
       return route.fulfill({ json: [] });
     });
     await page.goto('http://127.0.0.1:5273/');
-    await page.locator('a[href="/applications"]').click();
+    await page.locator('main a[href="/applications"]').click();
     await expect(page).toHaveURL('http://127.0.0.1:5273/applications');
-    await expect(page.locator('article.application')).toHaveCount(2);
+    await expect(page.locator('tbody tr')).toHaveCount(2);
+    await expect(page.locator('form')).toHaveCount(0);
+    await page.getByRole('link', { name: 'first shop', exact: true }).click();
+    await expect(page.locator('article.application')).toHaveCount(1);
+    await page.goBack();
     await page.goBack();
     await page.getByRole('link').filter({ hasText: 'first shop' }).click();
     await expect(page).toHaveURL(/\/applications\?application=first$/);
@@ -70,7 +74,7 @@ for (const locale of ['en', 'ar'] as const) {
     await page.locator('form').nth(1).locator('button[type="submit"]').click();
     await expect(page.getByRole('heading', { name: 'second shop', exact: true })).toHaveCount(0);
     await page.goto('http://127.0.0.1:5273/');
-    await page.locator('a[href="/applications"]').click();
+    await page.locator('main a[href="/applications"]').click();
     await expect(page).toHaveURL('http://127.0.0.1:5273/applications');
     await expect(page.locator('article.application')).toHaveCount(0);
   });

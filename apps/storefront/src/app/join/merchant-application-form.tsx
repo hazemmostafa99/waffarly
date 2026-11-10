@@ -12,7 +12,7 @@ import { ApiError, apiPost } from '../../lib/api-client';
 
 const EMPTY_APPLICATION: SubmitMerchantApplicationRequest = {
   name: '',
-  activity: 'other',
+  activity: 'restaurant',
   contactPhone: '',
   ownerName: '',
   ownerMobile: '',
@@ -75,7 +75,7 @@ export function MerchantApplicationForm() {
         {t('Business activity')}
         <select
           aria-label={t('Business activity')}
-          value={application.activity ?? 'other'}
+          value={application.activity ?? 'restaurant'}
           onChange={(event) =>
             setApplication((current) => ({
               ...current,
