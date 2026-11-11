@@ -5,13 +5,13 @@ import {
   type PublicStorefrontCatalog,
 } from '@waffarly/contracts';
 import { headers } from 'next/headers';
-import { storefrontHostHandle } from '../../lib/storefront-address';
+import { storefrontRequestHandle } from '../../lib/storefront-address';
 import { notFound } from 'next/navigation';
 import { ApiError, apiGet } from '../../lib/api-client';
 
 export const getStorefrontCatalog = cache(async (slug: string) => {
   let technicalSlug = slug;
-  const handle = storefrontHostHandle((await headers()).get('host') ?? '');
+  const handle = storefrontRequestHandle(await headers());
   if (handle !== null) {
     if (!isStorefrontHandle(handle) || slug !== handle) notFound();
     const address = await apiGet<PublicStorefrontAddress>(

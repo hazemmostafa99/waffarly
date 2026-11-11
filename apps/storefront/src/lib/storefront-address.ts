@@ -16,6 +16,11 @@ export function storefrontHostHandle(hostname: string): string | null {
   return normalized.slice(0, -(domain.length + 1));
 }
 
+export function storefrontRequestHandle(headers: { get(name: string): string | null }): string | null {
+  // Proxy replaces this header on every request; internal rewrites may normalize Host.
+  return headers.get('x-waffarly-storefront-handle') ?? storefrontHostHandle(headers.get('host') ?? '');
+}
+
 export function storefrontHref(href: string, slug: string, hostBased: boolean): string {
   if (!hostBased) return href;
   const prefix = `/s/${encodeURIComponent(slug)}`;
