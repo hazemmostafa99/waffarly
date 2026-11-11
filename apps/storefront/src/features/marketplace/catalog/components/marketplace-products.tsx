@@ -3,6 +3,7 @@
 import { filterProducts } from '@/features/marketplace/catalog/model/catalog';
 import { FlashCountdown } from '@/features/marketplace/catalog/components/flash-countdown';
 import { ProductCard } from '@/features/marketplace/catalog/components/product-card';
+import Link from 'next/link';
 
 export function MarketplaceProducts({
   category,
@@ -29,9 +30,9 @@ export function MarketplaceProducts({
         </span>
         <strong>تنتهي خلال</strong>
         <FlashCountdown />
-        <a className={'more text-accent font-extrabold no-underline text-[13px] mr-auto'} href="#">
+        <Link className={'more text-accent font-extrabold no-underline text-[13px] mr-auto'} href="/marketplace/offers">
           عرض الكل ←
-        </a>
+        </Link>
       </div>
       <div
         className={

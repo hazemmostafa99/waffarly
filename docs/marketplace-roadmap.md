@@ -40,8 +40,11 @@ links preserve search/category. Local checkout and order list/detail are also pr
 The original product page does not establish additional option behavior. Store and
 restaurant detail routes now use the existing local records; the restaurant menu
 shown is an explicitly labeled UI sample because the fixture has no menu data.
-Order tracking/reorder, account and browser acceptance
-remain open. Historical checks apply only to the revisions recorded in
+Marketplace seller entry now uses the marketplace visual system with a local-only
+form confirmation. `/marketplace/stores` and `/marketplace/offers` use existing
+fixtures and product cards. Order tracking/reorder, account and browser acceptance
+remain open. No backend submission, tests or build were run for this slice, per
+user instruction. Historical checks apply only to the revisions recorded in
 [slice evidence](marketplace-product-details.md).
 
 Navigation slice implemented locally: header menu/shared destinations, mobile actions,
@@ -63,9 +66,9 @@ and remaining placeholder destinations are not complete. See [slice evidence](ma
 | 8     | Backend integration (deferred)       | Only after phase 7 completion and explicit user instruction; inventory existing contracts, settle production policies, connect one flow at a time                                   |
 
 Phases may be sliced into small, reviewable changes. Navigation, product details,
-cart, checkout, session-only favorites, order history/detail, and store/restaurant
-details now have local UI. The next practical slice is local order tracking, followed
-by the demo account journey. Do not build empty architecture layers for
+cart, checkout, session-only favorites, order history/detail, store/restaurant
+details, merchant entry, all stores and all offers now have local UI. The next
+practical slice is local order tracking, followed by the demo account journey. Do not build empty architecture layers for
 features that have no implementation yet.
 
 ## Local behavior and state rules
@@ -83,8 +86,8 @@ features that have no implementation yet.
 - Keep sensitive form inputs transient, clear them on exit/reset, never persist
   passwords/payment credentials/customer PII, and do not collect real card details.
 - Demo state is isolated from existing tenant/storefront carts, checkout and APIs.
-  Do not connect seller CTA submission to the existing `/join` backend flow now;
-  use a labeled local presentation if demonstrating it.
+  `/join` now uses a labeled local presentation and must not call the existing
+  merchant application API before the Marketplace UI phase is complete.
 - Preserve the reference design where observed. Quantity changes and newly built
   screens are explicit extensions, not claims about original reference behavior.
 - Mock failures are deliberate scenarios, not silent substitutes after production

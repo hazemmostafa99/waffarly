@@ -1,12 +1,15 @@
 import { cn } from '@waffarly/ui';
+import Link from 'next/link';
 export function SectionHeading({
   title,
   subtitle,
   more,
+  moreHref,
 }: {
   title: string;
   subtitle: string;
   more: string;
+  moreHref?: string;
 }) {
   return (
     <div
@@ -19,9 +22,11 @@ export function SectionHeading({
         <h2>{title}</h2>
         <p>{subtitle}</p>
       </div>
-      <a className={'more text-accent font-extrabold no-underline text-[13px]'} href="#">
-        {more} ←
-      </a>
+      {moreHref ? (
+        <Link className={'more text-accent font-extrabold no-underline text-[13px]'} href={moreHref}>
+          {more} ←
+        </Link>
+      ) : null}
     </div>
   );
 }

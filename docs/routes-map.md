@@ -32,6 +32,16 @@ IDs are URL-encoded fixture names for local navigation. These are UI extensions,
 not routes observed on the reference site. See
 [store and restaurant details](marketplace-store-and-restaurant-details.md).
 
+## Marketplace discovery and merchant entry
+
+- `/marketplace/stores` lists the local fixture stores, supports name/activity
+  search, and links each card to its existing store detail route.
+- `/marketplace/offers` lists fixture products with a populated previous price;
+  it reuses the product cards, cart and favorites interactions.
+- `/join` is linked from the Marketplace merchant CTA and uses the Marketplace
+  tokens and shell. Its application form validates locally and shows a demo
+  confirmation; it does not call `/merchant-applications` or create an account.
+
 Latest local flow: `/marketplace/checkout` now hosts details -> review -> explicit
 demo confirmation on the same route. Entry is the cart review CTA; empty baskets
 link to browsing. No server order/auth/payment routes were added. See
@@ -69,4 +79,4 @@ Existing local `/`, `/join` and `/s/[slug]` routes are preserved. Marketplace is
 
 ## Local navigation extension
 
-Submitted search and category now use `/marketplace?q=<text>&category=<local ID>#deals`. Direct URLs render filtered local fixture results. `mobiles` and `electronics` are distinct card IDs sharing the fixture electronics filter. Home resets owned filters; other section links preserve them. No HTTP mock endpoints or backend integration were added. Favorites and order links open local pages. Account and seller entry still show pending-page feedback; some footer/store/section-heading links remain placeholders. See [URL contract](marketplace-navigation.md).
+Submitted search and category now use `/marketplace?q=<text>&category=<local ID>#deals`. Direct URLs render filtered local fixture results. `mobiles` and `electronics` are distinct card IDs sharing the fixture electronics filter. Home resets owned filters; other section links preserve them. No HTTP mock endpoints or backend integration were added. Favorites and order links open local pages. Seller entry, all stores and all offers now open local pages; account remains pending. See [URL contract](marketplace-navigation.md).

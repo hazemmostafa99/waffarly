@@ -42,9 +42,12 @@ Evidence: saved public HTML/CSS/JS; not yet inspected through a rendered browser
 | MarketplaceProducts / ProductCard      | 5 products, filtering and add to cart; FavoriteButton belongs to the favorites feature           |
 | FavoriteButton                         | Shared favorite toggle owned by `features/marketplace/favorites`                                 |
 | FavoritesPage / FavoritesEmptyState    | Saved fixture products, favorite removal, add-to-cart and empty state                            |
-| StoreDetailPage / RestaurantDetailPage | Fixture profiles, matching products and an unavailable-menu state                                |
+| StoreDetailPage / RestaurantDetailPage | Fixture profiles, matching products and explicitly labeled local restaurant menu samples       |
 | FlashCountdown                         | Original 05:42:18 countdown, cleaned-up interval lifecycle                                       |
 | MarketplaceStores                      | 6 extracted stores, seller banner and app strip                                                  |
+| MarketplaceStoresIndexPage / StoreCard  | Searchable all-store listing linked to fixture store details                                     |
+| MarketplaceOffersPage                  | Discounted fixture products with existing product interactions                                  |
+| MerchantEntryPage / MerchantApplicationForm | Marketplace-styled seller page with local validation and an explicit demo confirmation      |
 | MarketplaceFooter                      | Original logo, copy, columns and placeholder links                                               |
 | MarketplaceCart                        | Merged quantity lines, unit counts/subtotals, overlay, focus management and Escape close         |
 | OrdersPage / OrderDetailPage           | Session-only product snapshot history, local demo status/details and empty/unavailable states    |

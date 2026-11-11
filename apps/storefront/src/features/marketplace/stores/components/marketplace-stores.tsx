@@ -14,6 +14,7 @@ export function MarketplaceStores() {
           title="متاجر مميزة على وفّرلي"
           subtitle="تسوّق مباشرة من بائعين معتمدين"
           more="كل المتاجر"
+          moreHref="/marketplace/stores"
         />
         <div
           className={
@@ -67,8 +68,9 @@ export function MarketplaceStores() {
               className={
                 'btn disabled:cursor-not-allowed disabled:opacity-[0.5] border-0 rounded-[11px] py-[13px] px-5 font-extrabold'
               }
+              asChild
             >
-              سجّل كتاجر
+              <Link href="/join">سجّل كتاجر</Link>
             </Button>
           </aside>
         </div>

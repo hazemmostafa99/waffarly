@@ -5,7 +5,7 @@ Mode: UI-only; existing `reference.json` data; no backend/API/database requests 
 ## Delivered
 
 - Header menu opens a native modal containing the same navigation definitions as the desktop navigation. Choosing a destination closes the menu.
-- Primary navigation goes to actual homepage sections or applies a catalog category. Seller entry shows a pending-page notice; it does not open the backend-connected `/join` flow.
+- Primary navigation goes to actual homepage sections, applies a catalog category, or opens the local-only `/join` merchant form. The form does not call the merchant application API.
 - Mobile Home resets the filter and scrolls to the homepage, Categories scrolls to the category collection, Search focuses the input, Cart opens the existing drawer, and Account shows an honest pending-page notice.
 - Header Account/Orders also show pending-page notices instead of unrelated store/deal anchors.
 - Modal Escape, backdrop dismissal, focus containment/return and scroll locking use the native dialog plus a shared wrapper. Browser verification of those behaviors remains pending.
@@ -54,4 +54,4 @@ Cart/favorites remain in the existing provider-scoped Zustand store; menu, draft
 
 ## Remaining in this milestone
 
-Browser-test menu dismissal, focus return, mobile search focus, scroll, modified link clicks, direct URLs and actual Back/Forward at 375/390/768/1024/1440 widths. Sorting, pagination, footer links, store detail links, section-heading links, seller-banner CTA and full account/order/checkout screens are not completed by this slice. They stay on the local-data roadmap; backend absence is not a blocker for building them.
+Browser review of menu dismissal, focus return, mobile search focus, scroll, modified link clicks, direct URLs and actual Back/Forward at 375/390/768/1024/1440 widths remains pending. Sorting, pagination and the account journey are still open. Store detail links, all-store/all-offer pages, footer destinations and the seller-banner CTA now have local destinations. Backend absence is not a blocker for remaining UI work.

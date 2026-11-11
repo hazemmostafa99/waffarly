@@ -20,7 +20,7 @@ export function MarketplaceNavigationLinks({
       return;
     // Let Next Link change route trees from a detail page. History-only updates
     // must never intercept a cross-page destination and leave stale product UI.
-    if (window.location.pathname.replace(/\/+$/, '') !== '/marketplace') return;
+    if (target.kind === 'route' || window.location.pathname.replace(/\/+$/, '') !== '/marketplace') return;
     event.preventDefault();
     onNavigate(target);
   }

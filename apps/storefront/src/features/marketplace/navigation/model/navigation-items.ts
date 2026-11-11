@@ -3,6 +3,7 @@ import type { CategoryId } from '@/features/marketplace/search/model/search-stat
 export type NavigationTarget =
   | { kind: 'category'; category: CategoryId }
   | { kind: 'section'; section: string }
+  | { kind: 'route'; href: string }
   | { kind: 'pending'; title: string };
 
 export const marketplaceNavigation: { label: string; target: NavigationTarget }[] = [
@@ -16,5 +17,5 @@ export const marketplaceNavigation: { label: string; target: NavigationTarget }[
   { label: 'المنزل والمطبخ', target: { kind: 'category', category: 'home' } },
   { label: 'السوبر ماركت', target: { kind: 'category', category: 'grocery' } },
   { label: 'المطاعم', target: { kind: 'section', section: 'restaurants' } },
-  { label: 'بيع على وفّرلي', target: { kind: 'pending', title: 'بيع على وفّرلي' } },
+  { label: 'بيع على وفّرلي', target: { kind: 'route', href: '/join' } },
 ];

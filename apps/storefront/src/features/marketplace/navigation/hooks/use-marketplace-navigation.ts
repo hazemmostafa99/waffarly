@@ -1,10 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { useMarketplaceSearch } from '@/features/marketplace/search/hooks/use-marketplace-search';
 import type { NavigationTarget } from '@/features/marketplace/navigation/model/navigation-items';
 
 export function useMarketplaceNavigation(search: ReturnType<typeof useMarketplaceSearch>) {
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [pendingTitle, setPendingTitle] = useState('');
 
@@ -12,6 +14,10 @@ export function useMarketplaceNavigation(search: ReturnType<typeof useMarketplac
     setMenuOpen(false);
     if (target.kind === 'pending') {
       setPendingTitle(target.title);
+      return;
+    }
+    if (target.kind === 'route') {
+      router.push(target.href);
       return;
     }
     if (target.kind === 'category') {
@@ -25,6 +31,7 @@ export function useMarketplaceNavigation(search: ReturnType<typeof useMarketplac
   }
 
   function hrefFor(target: NavigationTarget) {
+    if (target.kind === 'route') return target.href;
     if (target.kind === 'category')
       return search.href({ ...search.state, category: target.category });
     if (target.kind === 'section')

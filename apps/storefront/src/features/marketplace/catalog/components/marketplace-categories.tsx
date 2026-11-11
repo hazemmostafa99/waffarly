@@ -21,6 +21,7 @@ export function MarketplaceCategories({
         title="تسوّق حسب القسم"
         subtitle="كل نشاط له متجره وتجربته الخاصة"
         more="عرض كل الأقسام"
+        moreHref="#categories"
       />
       <div
         className={

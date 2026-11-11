@@ -16,6 +16,7 @@ export function MarketplaceRestaurants() {
         title="مطاعم قريبة منك"
         subtitle="واجهات حقيقية ومطاعم متنوعة — اختر مطعمك واطلب مباشرة"
         more="عرض كل المطاعم"
+        moreHref="/marketplace#restaurants"
       />
       <div
         className={
