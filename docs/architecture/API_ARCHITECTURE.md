@@ -1,5 +1,13 @@
 # API architecture
 
+Restaurant reference preparation (2026-11-11): Storefront owns the additive
+RestaurantProfile settings, timezone-aware opening-state derivation, owner settings
+and public restaurant projections. Catalog adds ordered Marketplace menu reads
+including unavailable items, preserving existing public/POS listing behavior.
+The dependency graph is unchanged. Dedicated reference tenants were seeded locally;
+existing order creation does not yet enforce the new operating/delivery settings.
+See [delivery notes](../marketplace-restaurant-backend-delivery.md).
+
 Direct storefront addresses (2026-11-11): Merchants owns optional immutable public
 handles, admin assignment/creation validation and the public identifier-only
 resolver. Technical storefront slugs and POS business codes stay unchanged.

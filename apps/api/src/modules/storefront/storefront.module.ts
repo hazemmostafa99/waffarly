@@ -1,3 +1,5 @@
+import { RestaurantProfileService } from './restaurant-profile.service.js';
+import { OwnerRestaurantProfileController, PublicRestaurantProfileController } from './restaurant-profile.controller.js';
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/index.js';
 import { CatalogModule } from '../catalog/index.js';
@@ -8,7 +10,7 @@ import { TemplateController } from './template.controller.js';
 import { TemplateService } from './template.service.js';
 @Module({
   imports: [AuthModule, CatalogModule],
-  controllers: [StorefrontController, TemplateController, PublicStorefrontController],
-  providers: [StorefrontService, TemplateService],
+  controllers: [OwnerRestaurantProfileController, PublicRestaurantProfileController, StorefrontController, TemplateController, PublicStorefrontController],
+  providers: [RestaurantProfileService, StorefrontService, TemplateService],
 })
 export class StorefrontModule {}

@@ -293,3 +293,5 @@ export type {
   SubscriptionQuote,
   SubscriptionDashboard,
 } from './subscriptions.js';
+
+export type { RestaurantImage, RestaurantPeriod, RestaurantDay, RestaurantException, RestaurantArea, RestaurantSettingsInput, RestaurantOperatingState } from './restaurant.js';

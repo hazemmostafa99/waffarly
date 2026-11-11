@@ -57,6 +57,7 @@ model Merchant {
   owner                    OwnerAccount?
   posEmployees             PosEmployee[]
   application              MerchantApplication?
+  restaurantProfile        RestaurantProfile?
   storefront               MerchantStorefront?
   mediaAssets              MediaAsset[]
   categories               Category[]
@@ -801,6 +802,8 @@ model MediaAsset {
 }
 
 model Category {
+  menuProducts Product[] @relation("MenuSection")
+  displayOrder Int @default(0)
   id           String            @id @default(uuid()) @db.Uuid
   merchantId   String            @db.Uuid
   name         String            @db.VarChar(160)
@@ -827,6 +830,10 @@ model Category {
 }
 
 model Product {
+  referenceKey String? @unique @db.VarChar(160)
+  displayOrder Int @default(0)
+  menuSectionId String? @db.Uuid
+  menuSection Category? @relation("MenuSection", fields: [menuSectionId, merchantId], references: [id, merchantId], onDelete: Restrict, map: "products_menu_section_tenant")
   id                             String                           @id @default(uuid()) @db.Uuid
   merchantId                     String                           @db.Uuid
   name                           String                           @db.VarChar(160)
@@ -1745,4 +1752,35 @@ model PosCashSafeMovement {
   @@unique([merchantId, requestId])
   @@index([merchantId, safeId, createdAt, id])
   @@map("pos_cash_safe_movements")
+}
+
+// Storefront-owned public restaurant settings. Reference metadata is explicitly demo-only.
+model RestaurantProfile {
+  merchantId String @id @db.Uuid
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  description String @default("") @db.VarChar(1000)
+  cuisines String[] @default([])
+  logoImage Json?
+  coverImage Json?
+  published Boolean @default(false)
+  displayOrder Int @default(0)
+  timezone String @default("Africa/Cairo") @db.VarChar(80)
+  alwaysOpen Boolean @default(false)
+  openingHours Json @default("[]")
+  scheduleExceptions Json @default("[]")
+  ordersPaused Boolean @default(false)
+  pauseReason String? @db.VarChar(500)
+  deliveryEnabled Boolean @default(true)
+  pickupEnabled Boolean @default(true)
+  deliveryFee Decimal @default(0) @db.Decimal(12,2)
+  minimumDeliveryOrder Decimal @default(0) @db.Decimal(12,2)
+  deliveryTimeMinMinutes Int @default(0)
+  deliveryTimeMaxMinutes Int @default(0)
+  deliveryAreas Json @default("[]")
+  referenceData Json?
+  revision Int @default(1)
+  updatedBy String @db.VarChar(80)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  @@index([published, displayOrder, merchantId])
+  @@map("restaurant_profiles")
 }

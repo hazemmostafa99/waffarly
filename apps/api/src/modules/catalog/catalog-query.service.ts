@@ -64,6 +64,27 @@ export class CatalogQueryService {
     return this.listPublicProducts(merchantId, cursor);
   }
 
+  async getMarketplaceMenu(slug: string, cursor?: string, productId?: string) {
+    const merchantId = await this.findPublicMerchantId(slug);
+    if (cursor && !await this.prisma.product.findFirst({ where: { id: cursor, merchantId, archivedAt: null }, select: { id: true } })) throw new BadRequestException('Invalid product cursor.');
+    const records = await this.prisma.product.findMany({
+      where: { merchantId, ...(productId ? { id: productId } : {}), archivedAt: null, menuSection: { availability: 'available', archivedAt: null } },
+      include: sellableInclude, orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }], take: 41,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+    return { items: records.slice(0,40).map((record) => {
+      const product = toSellableResponse(record);
+      return { id: product.id, referenceKey: record.referenceKey, name: product.name, description: product.description,
+        basePrice: product.basePrice, currency: 'EGP' as const, availability: product.availability,
+        displayOrder: record.displayOrder, menuSectionId: record.menuSectionId,
+        images: product.images.map(({ publicUrl, isPrimary, position }) => ({ publicUrl, isPrimary, position })),
+        categories: product.categories.filter((category) => category.availability === 'available'),
+        modifierGroups: product.modifierGroups,
+        variants: product.variants.map(({ id, name, price, availability, position, attributes, stockQuantity }) => ({ id, name, price, availability: availability === 'available' && stockQuantity !== 0 ? 'available' : 'unavailable', position, attributes })),
+      };
+    }), nextCursor: records.length > 40 ? records[39]!.id : null };
+  }
+
   private async findPublicMerchant(slug: string) {
     const merchant = await this.prisma.merchant.findUnique({
       where: { storefrontSlug: slug },
