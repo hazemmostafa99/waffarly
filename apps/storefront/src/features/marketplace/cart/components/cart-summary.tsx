@@ -6,10 +6,12 @@ export function CartSummary({
   total,
   quantity,
   productCount,
+  restaurantName,
 }: {
   total: number;
   quantity: number;
   productCount: number;
+  restaurantName?: string;
 }) {
   return (
     <aside
@@ -22,6 +24,7 @@ export function CartSummary({
       aria-labelledby="cart-summary-title"
     >
       <h2 id="cart-summary-title">ملخص السلة</h2>
+      {restaurantName && <p className="text-sm font-bold text-accent">{restaurantName} · طلب تجريبي من مطعم واحد</p>}
       <dl>
         <div>
           <dt>المنتجات المختلفة</dt>
@@ -41,7 +44,7 @@ export function CartSummary({
         </div>
       </dl>
       <p className={'detail-note text-[12px] leading-[1.8] text-muted-foreground'}>
-        الشحن وأي رسوم إضافية غير محسوبة في هذه التجربة.
+        {restaurantName ? 'الإجمالي يشمل اختيارات الوجبات. رسوم التوصيل التجريبية تظهر في الخطوة التالية؛ الاستلام بدون رسوم توصيل.' : 'الشحن وأي رسوم إضافية غير محسوبة في هذه التجربة.'}
       </p>
       <Link
         className={cn(
@@ -57,9 +60,9 @@ export function CartSummary({
       </p>
       <Link
         className={'cart-continue-link block text-center text-accent no-underline text-[13px] pt-2'}
-        href="/#deals"
+        href={restaurantName ? `/restaurants/${encodeURIComponent(restaurantName)}` : '/#deals'}
       >
-        متابعة التسوق ←
+        {restaurantName ? 'كمّل من منيو المطعم ←' : 'متابعة التسوق ←'}
       </Link>
     </aside>
   );

@@ -15,7 +15,7 @@ export function RestaurantDetailPage({
       <MarketplaceEntityNotFound
         title="المطعم غير متاح"
         description="الرابط ده مش لمطعم موجود في البيانات المحلية الحالية."
-        href="/#restaurants"
+        href="/restaurants"
         linkLabel="العودة للمطاعم"
       />
     );
@@ -32,7 +32,7 @@ export function RestaurantDetailPage({
             الرئيسية
           </Link>
           <span aria-hidden="true">/</span>
-          <Link className="text-accent no-underline" href="/#restaurants">
+          <Link className="text-accent no-underline" href="/restaurants">
             المطاعم
           </Link>
           <span aria-hidden="true">/</span>
@@ -84,7 +84,7 @@ export function RestaurantDetailPage({
           </Suspense>
           <Link
             className="mt-5 inline-block text-[12px] font-bold text-accent"
-            href="/#restaurants"
+            href="/restaurants"
           >
             العودة للمطاعم
           </Link>

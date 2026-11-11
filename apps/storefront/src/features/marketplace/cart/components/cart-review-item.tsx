@@ -15,7 +15,7 @@ export function CartReviewItem({
   onQuantityChange,
   onRemove,
 }: {
-  product: MarketplaceProduct & { quantity: number };
+  product: MarketplaceProduct & { quantity: number; optionsLabel?: string };
   onQuantityChange: (quantity: number) => void;
   onRemove: () => void;
 }) {
@@ -52,6 +52,7 @@ export function CartReviewItem({
         <h2>
           <Link href={href}>{product.name}</Link>
         </h2>
+        {product.optionsLabel && <p className="text-xs text-accent">{product.optionsLabel}</p>}
         <p className={'cart-review-unit-price text-[12px] text-muted-foreground mt-0 mx-0 mb-3.5'}>
           {money(product.price)} للقطعة
         </p>

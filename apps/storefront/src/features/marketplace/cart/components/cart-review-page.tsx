@@ -88,10 +88,10 @@ export function CartReviewPage() {
               <ul>
                 {products.map((product) => (
                   <CartReviewItem
-                    key={product.id}
+                    key={product.lineId}
                     product={product}
-                    onQuantityChange={(quantity) => setQuantity(product.id, quantity)}
-                    onRemove={() => removeProduct(product.id, product.cartName)}
+                    onQuantityChange={(quantity) => setQuantity(product.lineId, quantity)}
+                    onRemove={() => removeProduct(product.lineId, product.cartName)}
                   />
                 ))}
               </ul>
@@ -100,6 +100,7 @@ export function CartReviewPage() {
               total={cartTotal(lines)}
               quantity={cartQuantity(lines)}
               productCount={products.length}
+              restaurantName={products[0]?.merchantType === 'restaurant' ? products[0].merchantName : undefined}
             />
           </div>
         ) : (

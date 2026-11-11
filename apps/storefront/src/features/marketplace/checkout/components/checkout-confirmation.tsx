@@ -71,7 +71,7 @@ export function CheckoutConfirmation({ receipt }: { receipt: DemoOrder }) {
           </Link>
         </div>
       </div>
-      <CheckoutOrderSummary items={receipt.items} />
+      <CheckoutOrderSummary items={receipt.items} fulfillment={receipt.fulfillment} />
     </section>
   );
 }

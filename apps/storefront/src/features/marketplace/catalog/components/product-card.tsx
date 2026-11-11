@@ -5,6 +5,7 @@ import { cn } from '@waffarly/ui';
 import { MarketplaceButton as Button } from '@/components/marketplace/marketplace-button';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
   productHref,
@@ -26,6 +27,7 @@ export function ProductCard({
   onAdded: () => void;
   homeSection?: HomeProductSection;
 }) {
+  const [notice, setNotice] = useState('');
   const params = useSearchParams();
   const pathname = usePathname();
   const href = productHref(p.id, params.toString(), pathname ?? '', homeSection);
@@ -84,7 +86,9 @@ export function ProductCard({
         <ProductRating rating={p.rating} demo={p.origin === 'local-mock'} />
         <ProductPrice product={p} />
         <div className={'delivery text-success text-[10px] font-extrabold'}>{p.delivery}</div>
-        <Button
+        {p.merchantType === 'restaurant' ? (
+          <Link href={href} className="mt-3 flex min-h-10 items-center justify-center rounded-xl bg-waffarly-gold text-sm font-bold text-primary no-underline">اختار وجبتك</Link>
+        ) : <Button
           className={cn(
             'add disabled:cursor-not-allowed disabled:opacity-[0.5] w-full border-0 rounded-[9px] bg-waffarly-gold text-[#30113a]',
             'p-2.5 font-black mt-2.5 hover:bg-[#ffd353]',
@@ -92,10 +96,12 @@ export function ProductCard({
           disabled={atLimit}
           onClick={() => {
             if (addToCart(p.id)) onAdded();
+            else setNotice('السلة فيها طلب مطعم؛ راجعها قبل إضافة منتج متجر.');
           }}
         >
           أضف للسلة
-        </Button>
+        </Button>}
+        {notice && <p role="status" className="text-xs leading-5 text-destructive">{notice} <Link href="/cart">السلة</Link></p>}
       </div>
     </article>
   );

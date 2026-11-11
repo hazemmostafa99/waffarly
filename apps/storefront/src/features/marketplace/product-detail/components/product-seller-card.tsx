@@ -1,6 +1,7 @@
 import { cn } from '@waffarly/ui';
 import { MarketplaceCard as Card } from '@/components/marketplace/marketplace-card';
 import { type MarketplaceProduct } from '@/features/marketplace/catalog/model/catalog';
+import Link from 'next/link';
 
 export function ProductSellerCard({ product }: { product: MarketplaceProduct }) {
   const seller = product.seller.replace('✓', '').trim();
@@ -32,6 +33,7 @@ export function ProductSellerCard({ product }: { product: MarketplaceProduct }) 
           }
         >
           <strong>{seller}</strong>
+          {product.merchantType === 'restaurant' && product.merchantName && <Link className="text-xs text-accent" href={`/restaurants/${encodeURIComponent(product.merchantName)}`}>منيو المطعم</Link>}
           {!product.origin && (
             <span
               className={

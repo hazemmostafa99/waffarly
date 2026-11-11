@@ -7,6 +7,8 @@ export function OrderStatusBadge({ status }: { status: DemoOrderStatus }) {
     'demo-in-transit': 'في الطريق — محاكاة',
     'demo-ready-for-pickup': 'جاهز للاستلام — محاكاة',
     'demo-completed': 'اكتمل العرض التجريبي',
+    'demo-cancelled': 'تم الإلغاء — تجربة محلية',
+    'demo-rejected': 'رفض المطعم — تجربة محلية',
   };
 
   return (

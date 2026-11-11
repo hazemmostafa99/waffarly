@@ -16,6 +16,6 @@ export const marketplaceNavigation: { label: string; target: NavigationTarget }[
   { label: 'الموضة', target: { kind: 'category', category: 'fashion' } },
   { label: 'المنزل والمطبخ', target: { kind: 'category', category: 'home' } },
   { label: 'السوبر ماركت', target: { kind: 'category', category: 'grocery' } },
-  { label: 'المطاعم', target: { kind: 'section', section: 'restaurants' } },
+  { label: 'المطاعم', target: { kind: 'route', href: '/restaurants' } },
   { label: 'بيع على وفّرلي', target: { kind: 'route', href: '/join' } },
 ];

@@ -13,6 +13,7 @@ import { OrderStatusBadge } from '@/features/marketplace/orders/components/order
 export function OrderTrackingPage({ orderId }: { orderId: string }) {
   const order = useOrdersStore((state) => state.orders.find((item) => item.id === orderId));
   const advanceStatus = useOrdersStore((state) => state.advanceDemoOrderStatus);
+  const stopOrder = useOrdersStore((state) => state.stopDemoOrder);
 
   if (!order) {
     return (
@@ -45,6 +46,7 @@ export function OrderTrackingPage({ orderId }: { orderId: string }) {
   }
 
   const steps = demoOrderTrackingSteps(order.fulfillment);
+  const stopped = order.status === 'demo-cancelled' || order.status === 'demo-rejected';
   const currentIndex = Math.max(steps.findIndex((step) => step.status === order.status), 0);
   const currentStep = steps[currentIndex];
   const isComplete = currentIndex === steps.length - 1;
@@ -91,7 +93,8 @@ export function OrderTrackingPage({ orderId }: { orderId: string }) {
             <OrderStatusBadge status={order.status} />
           </div>
 
-          <ol className="m-0 list-none p-0" aria-label="حالات الطلب التجريبية">
+          {order.restaurantName && <p className="font-bold text-primary">{order.restaurantName}</p>}
+          {stopped ? <p role="status" className="rounded-xl bg-secondary p-4 text-sm leading-6">{order.status === 'demo-rejected' ? 'المطعم رفض الطلب في المحاكاة.' : 'تم إلغاء الطلب في المحاكاة.'} مفيش طلب أو مبلغ فعلي. تقدر ترجع لتفاصيل الطلب وتعيد الأصناف للسلة.</p> : <ol className="m-0 list-none p-0" aria-label="حالات الطلب التجريبية">
             {steps.map((step, index) => {
               const isCurrent = index === currentIndex;
               const isPast = index < currentIndex;
@@ -131,21 +134,26 @@ export function OrderTrackingPage({ orderId }: { orderId: string }) {
                 </li>
               );
             })}
-          </ol>
+          </ol>}
 
           <div className="mt-5 grid gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
             <p role="status" className="m-0 text-xs leading-5 text-muted-foreground">
-              {currentStep.label}. وقت بدء العرض: {formatDemoOrderDate(order.createdAt)}.
+              {stopped ? 'انتهت المحاكاة بالإلغاء أو الرفض' : currentStep.label}. وقت بدء العرض: {formatDemoOrderDate(order.createdAt)}.
             </p>
             <MarketplaceButton
               type="button"
-              disabled={isComplete}
+              disabled={isComplete || stopped}
               onClick={() => advanceStatus(order.id)}
               className="min-h-10 rounded-xl bg-waffarly-gold px-4 text-sm font-black text-primary hover:bg-[#ffd353] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isComplete ? 'اكتمل العرض التجريبي' : 'الخطوة التجريبية التالية'}
+              {stopped ? 'انتهت المحاكاة' : isComplete ? 'اكتمل العرض التجريبي' : 'الخطوة التجريبية التالية'}
             </MarketplaceButton>
           </div>
+          {order.restaurantName && (order.status === 'demo-confirmed' || order.status === 'demo-preparing') && <div className="mt-4 flex flex-wrap gap-3">
+            <MarketplaceButton onClick={() => stopOrder(order.id, 'demo-cancelled')} className="min-h-10 rounded-xl border border-border px-4 text-sm text-destructive">محاكاة إلغاء الطلب</MarketplaceButton>
+            <MarketplaceButton onClick={() => stopOrder(order.id, 'demo-rejected')} className="min-h-10 rounded-xl border border-border px-4 text-sm text-destructive">محاكاة رفض المطعم</MarketplaceButton>
+          </div>}
+          <Link href={`/orders/${order.id}`} className="mt-5 block text-sm text-accent">تفاصيل الطلب وإعادة الطلب</Link>
         </section>
       </MarketplaceContainer>
     </main>

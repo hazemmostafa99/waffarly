@@ -1,4 +1,5 @@
 import { type MarketplaceProduct } from '@/features/marketplace/catalog/model/catalog';
+import type { MealSelection } from '@/features/marketplace/restaurants/model/meal-options';
 
 export type Fulfillment = 'delivery' | 'pickup';
 export interface CheckoutDraft {
@@ -8,7 +9,7 @@ export interface CheckoutDraft {
   address: string;
 }
 export type CheckoutErrors = Partial<Record<'name' | 'phone' | 'address', string>>;
-export type CheckoutItem = MarketplaceProduct & { quantity: number };
+export type CheckoutItem = MarketplaceProduct & { quantity: number; lineId?: string; selection?: MealSelection; optionsLabel?: string };
 export const EMPTY_CHECKOUT: CheckoutDraft = {
   name: '',
   phone: '',

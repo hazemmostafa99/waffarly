@@ -88,6 +88,7 @@ export function MarketplaceCart() {
           </Button>
         </div>
         <div className={'cart-list p-3.5 overflow-auto [flex:1]'}>
+          {products[0]?.merchantType === 'restaurant' && <p className="rounded-xl bg-secondary p-3 text-xs font-bold text-accent">{products[0].merchantName} · طلب من مطعم واحد · رسوم التوصيل التجريبية في إتمام الطلب</p>}
           {products.length === 0 ? (
             <p className={'text-center text-muted-foreground py-[35px] px-2.5'}>
               السلة فارغة حاليًا
@@ -99,7 +100,7 @@ export function MarketplaceCart() {
                   'cart-item grid grid-cols-[58px_1fr_auto] gap-2.5 items-center p-[11px] [border-bottom-width:1px] [border-bottom-style:solid]',
                   '[border-bottom-color:var(--line)] [&_b]:text-[12px] [&_b]:block [&_span]:text-[11px] [&_span]:text-accent [&_.quantity-selector]:mt-2 [&_.quantity-selector_button]:w-7 [&_.quantity-selector_button]:h-7',
                 )}
-                key={p.id}
+                key={p.lineId}
               >
                 <img
                   className={'cart-thumb w-14.5 h-14.5 rounded-[10px] object-cover'}
@@ -108,12 +109,13 @@ export function MarketplaceCart() {
                 />
                 <div>
                   <b>{p.cartName}</b>
+                  {p.optionsLabel && <p className="my-1 text-xs text-accent">{p.optionsLabel}</p>}
                   <span>
                     {money(p.price)} للقطعة · الإجمالي {money(p.price * p.quantity)}
                   </span>
                   <QuantitySelector
                     value={p.quantity}
-                    onChange={(quantity) => setQuantity(p.id, quantity)}
+                    onChange={(quantity) => setQuantity(p.lineId, quantity)}
                     label={`كمية ${p.cartName}`}
                   />
                 </div>
@@ -122,7 +124,7 @@ export function MarketplaceCart() {
                     'remove disabled:cursor-not-allowed disabled:opacity-[0.5] border-0 bg-transparent text-destructive text-[18px]'
                   }
                   onClick={() => {
-                    remove(p.id);
+                    remove(p.lineId);
                     closeButton.current?.focus();
                   }}
                   aria-label={`حذف ${p.cartName}`}

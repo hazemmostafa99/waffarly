@@ -21,6 +21,15 @@ were extracted pixel-perfect from an unavailable original screen.
 
 ## UI delivery order
 
+Restaurant-first UI extension now adds `/restaurants` discovery, local sectioned
+menus, required/optional meal choices, configuration-aware cart lines,
+single-restaurant replacement confirmation, mock delivery fees/minimums,
+cancellation/rejection tracking scenarios and configuration-preserving reorder.
+The broad homepage remains intact. These are implemented local demonstrations,
+not completed acceptance or a live restaurant launch. No tests, browser suites,
+typecheck, lint or build were run, per user instruction; user manual review remains
+open. See [restaurant implementation and manual handoff](marketplace-restaurants-local.md).
+
 Local checkout slice implemented at `/checkout`: transient demo contact
 fields, pickup/delivery selection, review/edit, pending/double-click handling,
 changed-cart protection and explicit simulated confirmation. A product-only demo

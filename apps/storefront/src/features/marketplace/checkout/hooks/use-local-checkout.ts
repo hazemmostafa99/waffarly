@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type { MarketplaceCartLine } from '@/features/marketplace/cart/model/cart';
+import { cartProducts } from '@/features/marketplace/cart/model/cart';
+import { restaurantCheckout } from '@/features/marketplace/checkout/model/restaurant-checkout';
 import {
   EMPTY_CHECKOUT,
   validateCheckout,
@@ -46,12 +48,16 @@ export function useLocalCheckout(
     const nextErrors = validateCheckout(draft);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length || !lines.length) return;
+    const summary = restaurantCheckout(cartProducts(lines), draft.fulfillment);
+    if (summary.issue) { setNotice(summary.issue); return; }
     setStep('review');
     setNotice('');
   }
 
   function confirm() {
     if (busy.current || !lines.length) return;
+    const summary = restaurantCheckout(cartProducts(lines), draft.fulfillment);
+    if (summary.issue) { setNotice(summary.issue); return; }
     const nextErrors = validateCheckout(draft);
     if (Object.keys(nextErrors).length) {
       setErrors(nextErrors);

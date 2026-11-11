@@ -5,7 +5,9 @@ export type DemoOrderStatus =
   | 'demo-preparing'
   | 'demo-in-transit'
   | 'demo-ready-for-pickup'
-  | 'demo-completed';
+  | 'demo-completed'
+  | 'demo-cancelled'
+  | 'demo-rejected';
 
 export interface DemoOrderTrackingStep {
   status: DemoOrderStatus;
@@ -20,10 +22,12 @@ export interface DemoOrder {
   status: DemoOrderStatus;
   fulfillment: Fulfillment;
   items: CheckoutItem[];
+  deliveryFee?: number;
+  restaurantName?: string;
 }
 
-export function demoOrderTotal(order: Pick<DemoOrder, 'items'>) {
-  return order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+export function demoOrderTotal(order: Pick<DemoOrder, 'items' | 'deliveryFee'>) {
+  return order.items.reduce((sum, item) => sum + item.price * item.quantity, 0) + (order.deliveryFee ?? 0);
 }
 
 export function demoOrderTrackingSteps(
@@ -63,5 +67,6 @@ export function formatDemoOrderDate(value: string) {
   return new Intl.DateTimeFormat('ar-EG-u-nu-latn', {
     dateStyle: 'medium',
     timeStyle: 'short',
+    timeZone: 'Africa/Cairo',
   }).format(new Date(value));
 }

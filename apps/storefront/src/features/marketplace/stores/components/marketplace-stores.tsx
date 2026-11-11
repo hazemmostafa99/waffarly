@@ -5,6 +5,7 @@ import data from '@/features/marketplace/data/reference.json';
 import { SectionHeading } from '@/components/marketplace/section-heading';
 import Link from 'next/link';
 import { storeHref } from '@/features/marketplace/stores/model/stores';
+import { AppStoreBadges } from './app-store-badges';
 
 export function MarketplaceStores() {
   return (
@@ -86,22 +87,7 @@ export function MarketplaceStores() {
           <h2>خلّي وفّرلي على موبايلك</h2>
           <p>ثبّت التطبيق وتابع عروض المتاجر القريبة وطلباتك أولًا بأول.</p>
         </div>
-        <div className={'app-actions flex gap-2.5 max-[700px]:mt-4.5'}>
-          <span
-            className={
-              'app-btn bg-white text-[#25102d] rounded-[10px] py-[11px] px-4 font-extrabold text-[12px] whitespace-nowrap'
-            }
-          >
-            ▶ Google Play
-          </span>
-          <span
-            className={
-              'app-btn bg-white text-[#25102d] rounded-[10px] py-[11px] px-4 font-extrabold text-[12px] whitespace-nowrap'
-            }
-          >
-             App Store
-          </span>
-        </div>
+        <AppStoreBadges />
       </section>
     </>
   );

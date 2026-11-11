@@ -2,15 +2,20 @@ import { cn } from '@waffarly/ui';
 import Link from 'next/link';
 import { money } from '@/features/marketplace/shared/lib/format-money';
 import type { CheckoutItem } from '@/features/marketplace/checkout/model/checkout';
+import type { Fulfillment } from '@/features/marketplace/checkout/model/checkout';
+import { restaurantCheckout } from '@/features/marketplace/checkout/model/restaurant-checkout';
 
 export function CheckoutOrderSummary({
   items,
   editable = false,
+  fulfillment = 'pickup',
 }: {
   items: CheckoutItem[];
   editable?: boolean;
+  fulfillment?: Fulfillment;
 }) {
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const summary = restaurantCheckout(items, fulfillment);
+  const total = summary.total;
   return (
     <aside
       className={cn(
@@ -30,6 +35,8 @@ export function CheckoutOrderSummary({
         <h2 id="checkout-summary-title">ملخص المنتجات</h2>
         {editable && <Link href="/cart">تعديل السلة</Link>}
       </div>
+      {summary.name && <p className="text-sm font-bold text-accent">{summary.name} · {fulfillment === 'delivery' ? 'توصيل تجريبي' : 'استلام تجريبي'}</p>}
+      {summary.issue && <p role="status" className="text-sm text-destructive">{summary.issue}</p>}
       <ul
         className={cn(
           'checkout-summary-items list-none my-6 mx-0 p-0 [&_li]:grid [&_li]:grid-cols-[42px_minmax(0,1fr)_auto] [&_li]:items-center',
@@ -39,10 +46,11 @@ export function CheckoutOrderSummary({
         )}
       >
         {items.map((item) => (
-          <li key={item.id}>
+          <li key={item.lineId ?? item.id}>
             <img src={item.cartImage} alt="" />
             <div>
               <b>{item.cartName}</b>
+              {item.optionsLabel && <span>{item.optionsLabel}</span>}
               <span>
                 {item.quantity} × {money(item.price)}
               </span>
@@ -52,6 +60,10 @@ export function CheckoutOrderSummary({
         ))}
       </ul>
       <dl>
+        {summary.name && <>
+          <div><dt>إجمالي الوجبات</dt><dd>{money(summary.subtotal)}</dd></div>
+          <div><dt>رسوم التوصيل التجريبية</dt><dd>{money(summary.deliveryFee)}</dd></div>
+        </>}
         <div>
           <dt>عدد القطع</dt>
           <dd>{items.reduce((sum, item) => sum + item.quantity, 0)}</dd>
@@ -61,12 +73,12 @@ export function CheckoutOrderSummary({
             'cart-summary-total [&_dd]:text-[22px] [&_dd]:text-primary [&_dt]:text-foreground'
           }
         >
-          <dt>إجمالي المنتجات</dt>
+          <dt>{summary.name ? 'إجمالي الطلب التجريبي' : 'إجمالي المنتجات'}</dt>
           <dd>{money(total)}</dd>
         </div>
       </dl>
       <p className={'detail-note text-[12px] leading-[1.8] text-muted-foreground'}>
-        بدون احتساب شحن أو ضرائب أو رسوم إضافية. لا يوجد دفع فعلي في التجربة.
+        {summary.name ? 'رسوم توضيحية محلية فقط؛ لا يوجد دفع فعلي أو ضرائب إضافية في التجربة.' : 'بدون احتساب شحن أو ضرائب أو رسوم إضافية. لا يوجد دفع فعلي في التجربة.'}
       </p>
     </aside>
   );

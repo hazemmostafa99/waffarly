@@ -87,6 +87,7 @@ export function CheckoutPage() {
                 </li>
               ))}
             </ol>
+            {checkout.step === 'details' && checkout.notice && <p role="alert" className="rounded-xl border border-destructive p-3 text-sm text-destructive">{checkout.notice}</p>}
             <div
               className={
                 'cart-review-layout grid grid-cols-[minmax(0,1fr)_330px] items-start gap-6 max-[1000px]:grid-cols-[minmax(0,1fr)_290px] max-[1000px]:gap-4 max-[768px]:grid-cols-[1fr]'
@@ -108,7 +109,7 @@ export function CheckoutPage() {
                   onConfirm={checkout.confirm}
                 />
               )}
-              <CheckoutOrderSummary items={products} editable />
+              <CheckoutOrderSummary items={products} fulfillment={checkout.draft.fulfillment} editable />
             </div>
             <p
               className={
