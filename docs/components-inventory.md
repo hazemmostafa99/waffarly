@@ -1,5 +1,10 @@
 # Marketplace components inventory
 
+Current revision: the Marketplace has been migrated to Tailwind component utilities,
+shared @waffarly/ui adapters and feature-owned folders. No automated verification
+was run for this refactor, per user instruction; earlier checks below are historical.
+See [current architecture](marketplace-architecture.md) and [refactor scope](marketplace-tailwind-refactor.md).
+
 Checkout components are grouped under `components/checkout`: CheckoutPage,
 CheckoutContactForm, CheckoutFulfillmentFields, CheckoutReview, CheckoutOrderSummary,
 CheckoutConfirmation and useLocalCheckout. UI types/validation live in
@@ -7,7 +12,7 @@ CheckoutConfirmation and useLocalCheckout. UI types/validation live in
 No automated validation was run for this slice; see [local checkout](marketplace-local-checkout.md).
 
 Cart-review additions: CartReviewPage, CartReviewItem, CartSummary and CartEmptyState
-are grouped under `features/marketplace/components/cart`. They reuse QuantitySelector,
+are grouped under `features/marketplace/cart/components`. They reuse QuantitySelector,
 the shared money/cart helpers and the existing store. Drawer footer now links to
 the full review page. This slice is awaiting user manual QA, without automated checks.
 

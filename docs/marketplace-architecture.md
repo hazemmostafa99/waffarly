@@ -1,135 +1,69 @@
 # Marketplace architecture and component design
 
-Status: current local reconstruction, followed by an explicit growth plan. Entry point: [implementation plan](marketplace-implementation-plan.md). Product backlog: [roadmap](marketplace-roadmap.md).
+Current structure after the Tailwind/shared-UI refactor. See [refactor details](marketplace-tailwind-refactor.md), [UI roadmap](marketplace-roadmap.md), and [implementation guide](marketplace-implementation-plan.md).
 
-## Active implementation policy
+## Product boundaries
 
-UI-first with local data only, by explicit user instruction. Complete all Marketplace
-journeys before backend integration. Existing reference data is the starting point;
-additional states use labeled mock scenarios, not invented original-site records.
-Use local functions/state to simulate asynchronous results where useful, without
-HTTP requests, Next route handlers, database services or existing storefront APIs.
-Keep demo transactions/accounts distinguishable from real operations. Do not
-persist customer PII, passwords or payment credentials. The integration directions
-below describe a future phase and are not authorization to implement it now.
-Backend work begins only after UI-flow completion and an explicit user request.
+Marketplace lives under `/marketplace`; the business pages `/` and `/join` and tenant storefronts `/s/[slug]` remain separate. Root layout owns global providers/document markup. Business routes use `(business)/layout.tsx`; Marketplace layout owns its scoped theme, provider and single shared cart drawer. No pathname-based SiteChrome remains.
 
-## Boundaries
+All current Marketplace work is UI-first with local reference data. No backend/API/database integration, real customer session, order or payment is authorized. Contact data stays transient. Integration starts only after UI-flow completion and explicit user instruction.
 
-`apps/storefront` contains two separate product surfaces: the Marketplace under `/marketplace`, and tenant storefronts under `/s/[slug]`. The business landing page `/` and merchant application `/join` also remain active. Marketplace cleanup does not retire these routes, their fonts, assets, shared components, or API integrations.
-
-Next.js App Router owns routing. `app/marketplace` contains thin route files and layout wiring. The Marketplace feature owns its compositions, fixture data, state, and provider. Only components shared by multiple Marketplace compositions belong in `src/components/marketplace`. Generic primitives shared across applications belong in `packages/ui` only when a real reuse case exists.
-
-## Current folder structure
+## Folders
 
 ```text
 apps/storefront/src/
-  app/marketplace/
-    layout.tsx                         # Theme, metadata, RTL and provider boundary
-    page.tsx                           # Route entry
-  components/marketplace/
-    marketplace-container.tsx          # Container primitive
-    section-heading.tsx                # Shared heading primitive
-    marketplace-dialog.tsx             # Native modal lifecycle and dismissal
-    quantity-selector.tsx              # Shared bounded quantity controls
+  app/marketplace/                 # Thin route entries and layout
+    products/[productId]/
+    cart/
+    checkout/
+  components/marketplace/          # Shared Marketplace primitives/adapters
+    marketplace-button.tsx        # Uses @waffarly/ui Button
+    marketplace-form-controls.tsx # Uses Input and Textarea
+    marketplace-card.tsx          # Uses Card
+    marketplace-dialog.tsx        # Uses Dialog; no duplicate modal implementation
+    marketplace-container.tsx
+    section-heading.tsx
+    quantity-selector.tsx
   features/marketplace/
-    components/
-      home/
-        marketplace-home.tsx           # Composition and local search/toast coordination
-        marketplace-hero.tsx            # Hero and trust strip
-        marketplace-stores.tsx         # Stores, seller promotion and app strip
-      navigation/
-        marketplace-header.tsx         # Search form, navigation and cart entry
-        marketplace-footer.tsx
-        marketplace-mobile-nav.tsx
-        marketplace-menu.tsx
-        marketplace-navigation-links.tsx
-        marketplace-pending-feature.tsx
-        navigation-items.ts
-        use-marketplace-navigation.ts
-      catalog/
-        marketplace-categories.tsx
-        marketplace-restaurants.tsx
-        marketplace-products.tsx       # Filtered collection and empty state
-        product-card.tsx               # Product rendering and user actions
-        flash-countdown.tsx            # Timer lifecycle
-      product-detail/
-        product-detail-page.tsx        # Server composition from existing fixture
-        product-breadcrumbs.tsx        # Category context and filtered return link
-        product-seller-card.tsx        # Existing seller/delivery grouping
-        product-media.tsx
-        product-info.tsx
-        product-purchase.tsx
-      cart/
-        marketplace-cart.tsx           # Drawer, removal, totals and focus management
-    data/reference.json                # Extracted reference content, not production records
-    search/
-      search-state.ts                  # Pure URL parsing/serialization and category mapping
-      use-marketplace-search.ts        # URL state and native History integration
-      marketplace-search-form.tsx      # Local draft form
-    model/
-      catalog.ts                       # Fixture filtering/lookup, quantity validation and totals
-      product-navigation.ts            # Normalized detail/back URL helpers
-      marketplace-store.ts             # Cart IDs, favorites IDs, drawer state
-      marketplace.test.ts              # Search/cart/favorites behavior tests
-    providers/
-      marketplace-providers.tsx        # QueryClient + scoped Zustand context and hook
-  styles/marketplace.css                # Scoped reference CSS and Tailwind token mapping
+    home/components/
+    navigation/{components,hooks,model}/
+    search/{components,hooks,model}/
+    catalog/{components,model}/
+    product-detail/{components,model}/
+    cart/{components,model}/
+    checkout/{components,hooks,model}/
+    state/marketplace-store.ts
+    shared/lib/format-money.ts
+    providers/marketplace-providers.tsx
+    data/reference.json
+    tests/marketplace.test.ts
+  styles/marketplace-tokens.css    # Palette, shadcn aliases and base rules only
 ```
 
-The folder split follows existing responsibilities; it does not create empty checkout, auth, repository, service, or API layers in advance. `model/catalog.ts` remains small. Extract cart selectors/formatting when production cart contracts make that boundary meaningful.
+Only folders with actual code exist. Feature presentation stays in components, React coordination in hooks, and pure types/validation/calculation in model. Shared application state spans cart/favorites/drawer in state; reusable primitives stay outside feature-specific folders. Generic cross-application primitives remain in packages/ui.
 
-Business pages use `app/(business)/layout.tsx` to render WorkspaceChrome, with `/` in `(business)/page.tsx` and `/join` under `(business)/join`. The group name is not part of either URL. Root layout owns global providers and document markup; Marketplace and tenant storefront layouts own their respective surfaces. The old SiteChrome component and pathname-based chrome switching have been removed.
+## Composition and state
 
-## Component composition
+Pages compose features. MarketplaceSiteHeader composes the shared header, search, primary/mobile navigation, menu and pending feedback on listing/detail/cart/checkout routes. Home composes hero, category/restaurant/product/store collections. ProductDetailPage composes breadcrumbs, image, info, seller, purchase and recommendations. CartReviewPage composes editable items, totals and empty state. CheckoutPage composes local details, review and explicit demo confirmation.
 
-```mermaid
-flowchart TD
-  Route[Marketplace page - Server Component] --> Home[MarketplaceHome - Client composition]
-  Layout[Marketplace layout] --> Providers[MarketplaceProviders]
-  Providers --> Route
-  Home --> Header[Header and search]
-  Home --> Hero[Hero and trust strip]
-  Home --> Categories[Category collection]
-  Home --> Restaurants[Restaurant collection]
-  Home --> Products[Deals collection]
-  Products --> Countdown[FlashCountdown]
-  Products --> Card[ProductCard]
-  Home --> Stores[Stores and promotions]
-  Home --> Footer[Footer]
-  Providers --> Drawer[Shared cart drawer]
-  Home --> Mobile[Mobile navigation]
-```
+| State                                               | Owner                                                                   |
+| --------------------------------------------------- | ----------------------------------------------------------------------- |
+| Initial product/catalog content                     | Read-only data/reference.json                                           |
+| Submitted search/category                           | URL; search hooks and pure parser/model                                 |
+| Draft input, menus, toasts and local checkout       | Component state/hooks                                                   |
+| Shared product ID/quantity lines, favorites, drawer | Scoped Zustand store                                                    |
+| Basket counts/subtotals                             | Pure derived functions in cart/model                                    |
+| Western-digit money formatting                      | shared/lib/format-money.ts                                              |
+| Interactive server cache                            | React Query provisioned, unused until separately authorized integration |
 
-Header composes the search form; it does not own catalog data. Search drafts stay in the form, while submitted search/category state comes from the URL. Category selection retains the committed query; unsubmitted typing does not affect it. Categories receive an active local category ID and selection callback. Shared typed destinations power desktop and modal navigation. ProductCard receives a product and add-feedback callback, and reads only the store slices it needs. Cart derives entries and totals; no separate total is stored. See [navigation slice](marketplace-navigation.md) for current behavior and QA limits.
+Store and QueryClient are created once per mounted provider, not mutable module-level singletons. Local state survives client navigation under Marketplace layout but is not persisted on reload. Checkout clears contact fields on success and keeps a product-only demo summary. Basket snapshot comparison prevents clearing changed selections during demo confirmation.
 
-Static sections currently sit below the Home client boundary. A future server-data slice can pass static server-rendered sections as slots or props while retaining search, cart, favorite, countdown and form islands as Client Components. Merely moving a file does not make it a Server Component; avoid claiming a bundle reduction until measured. Preserve the reference DOM/classes during extraction.
+## Styling and UI primitives
 
-## State ownership
+Tailwind styles live in components, including responsive/hover/active variants. Shared UI adapters use the existing shadcn-style library, with scoped standard tokens for purple/gold/Tahoma identity. Existing semantic class names may remain as DOM/state hooks; they no longer refer to a component stylesheet. CSS is limited to tokens and base normalization/focus rules. Do not rebuild a giant CSS file or move styles into an opaque class-map module.
 
-| State                                       | Current owner                           | Production direction                                                                |
-| ------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------- |
-| Extracted catalog                           | Read-only reference.json                | Initial public reads in Next server data layer; typed adapters                      |
-| Search draft and submitted filter           | Form local draft / URL filter           | Draft stays local; submitted search/category/sort/page in URL                       |
-| Drawer open, cart quantities, favorites IDs | Per-provider Zustand store              | Non-sensitive client preferences and drafts; IDs/quantity only for persistence      |
-| Cart total                                  | Derived local preview value             | Server quote/order totals authoritative; decimal strings at transport boundary      |
-| Countdown                                   | Component timer                         | Server offer deadline when a real promotion contract exists                         |
-| Toast and focused element                   | Local component lifecycle               | Remain local                                                                        |
-| Interactive remote data/mutations           | QueryClient provisioned; no queries yet | React Query for quote, mutation, retry and invalidation; never duplicate in Zustand |
-| Customer identity/orders                    | Not implemented                         | Approved customer session/API; never fixtures represented as live account data      |
+Use a reusable component when multiple consumers share its behavior/structure, as with quantity, price, rating and favorites. Product, restaurant and store cards remain distinct. Do not create a large generic component with many behavior flags to force reuse. Native select/radio controls are acceptable until a real shared primitive is needed.
 
-Both store and QueryClient are created once per mounted provider, not as module-level mutable singletons. Cart resets on reload. The approved product-details slice now merges repeated additions into product ID/quantity lines, with local unit-count/subtotal derivation and explicit removal. This deliberately extends the original duplicate-row reference behavior. MarketplaceLayout mounts the cart once so listing/detail client navigation shares the same provider state. See [product slice](marketplace-product-details.md).
+## Verification policy
 
-## Data and backend integration
-
-Current reference content is not an API contract. Its numeric IDs must never be sent to production order endpoints. Introduce API-specific mapping only after the endpoint and shared transport types exist. Keep fixture mode explicit and separated from live checkout; no fallback from failed production API calls to fabricated products or successful orders.
-
-Existing public catalog/quote routes are owned by Storefront composition and Catalog pricing; order creation is owned by Orders. Extend the owning module through its public exports and preserve dependency direction. Frontends must not import Prisma or API implementations. See [API architecture](architecture/API_ARCHITECTURE.md), [API instructions](../apps/api/AGENTS.md), and the [integration inventory in the roadmap](marketplace-roadmap.md).
-
-## Styling and change rules
-
-- Marketplace variables/styles remain scoped under `.marketplace-theme`; Tailwind utilities map to the same tokens.
-- The inspected Tahoma stack, original images, emoji/symbol icons and authored CSS preserve this reference. The restaurant storefront has its own approved design and must not be converted to this theme.
-- Extract a repeated card only when its structure and behavior really match. Restaurant, product and store cards are separate compositions.
-- Retain reports and the raw `docs/reference/marketplace/source.html` snapshot for visual validation. The one-off extractor and duplicate asset URL list have been removed. Maintain the extracted app data and scoped stylesheet directly, using the snapshot and assets manifest as evidence.
-- New API work must identify owner, tenant scope, transaction rules, transport types, pending/error states and verification before implementation.
+The user currently performs manual QA. No tests, typecheck, build or browser suite ran for this refactor; source formatting is not runtime validation. Earlier test evidence applies to earlier revisions. Review listing/detail navigation, menus, cart quantities and checkout manually after this change. No visual equality is claimed without measurement.

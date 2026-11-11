@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --test",
-    "test:marketplace": "node --import tsx --test src/features/marketplace/model/marketplace.test.ts"
+    "test:marketplace": "node --import tsx --test src/features/marketplace/tests/marketplace.test.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "5.104.2",

@@ -1,8 +1,9 @@
+import { cn } from '@waffarly/ui';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { MarketplaceProviders } from '@/features/marketplace/providers/marketplace-providers';
-import '@/styles/marketplace.css';
-import { MarketplaceCart } from '@/features/marketplace/components/cart/marketplace-cart';
+import '@/styles/marketplace-tokens.css';
+import { MarketplaceCart } from '@/features/marketplace/cart/components/marketplace-cart';
 
 export const metadata: Metadata = {
   title: 'وفّرلي | كل اللي محتاجه من أكتر من بائع',
@@ -12,9 +13,12 @@ export const metadata: Metadata = {
 
 export default function MarketplaceLayout({ children }: { children: ReactNode }) {
   return (
-    <div lang="ar" dir="rtl" className="marketplace-theme font-marketplace">
+    <div lang="ar" dir="rtl" className={'marketplace-theme'}>
       <a
-        className="marketplace-skip-link rounded-lg bg-marketplace-surface px-4 py-2 text-marketplace-primary"
+        className={cn(
+          'marketplace-skip-link rounded-lg bg-card px-4 py-2 text-primary fixed top-2.5',
+          'right-[10px] z-[60] p-3 bg-[white] [transform:translateY(-200%)] focus:[transform:none]',
+        )}
         href="#marketplace-main"
       >
         الانتقال إلى المحتوى

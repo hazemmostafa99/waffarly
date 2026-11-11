@@ -1,5 +1,10 @@
 # Marketplace design system
 
+Current revision: the Marketplace has been migrated to Tailwind component utilities,
+shared @waffarly/ui adapters and feature-owned folders. No automated verification
+was run for this refactor, per user instruction; earlier checks below are historical.
+See [current architecture](marketplace-architecture.md) and [refactor scope](marketplace-tailwind-refactor.md).
+
 Current detail layout follow-up: content maximum 1240px; image uses contain with
 340-480px desktop height, 380px at <=900px and 320px at <=700px. Breadcrumbs align
 with the card. Seller and purchase cards use existing surface/purple/border tokens.
@@ -35,7 +40,7 @@ Source: public HTML downloaded from https://wafarly-marketplace.rassameldeeb.cha
 | bg / card                          | #f5f3f6 / #ffffff                               |
 | green / red                        | #16845b / #d93a50                               |
 
-All variables are scoped to `.marketplace-theme` in `apps/storefront/src/styles/marketplace.css`. Tailwind semantic utilities map directly to these variables through `@theme inline`. Source CSS is preserved and scoped rather than approximated through the nearest Tailwind defaults. Existing storefront themes remain independent.
+All variables are scoped to `.marketplace-theme` in `apps/storefront/src/styles/marketplace-tokens.css`. Tailwind semantic utilities map directly to these variables through `@theme inline`. Source CSS is preserved and scoped rather than approximated through the nearest Tailwind defaults. Existing storefront themes remain independent.
 
 ## Typography and layout
 

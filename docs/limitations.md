@@ -1,5 +1,10 @@
 # Marketplace limitations
 
+Current revision: the Marketplace has been migrated to Tailwind component utilities,
+shared @waffarly/ui adapters and feature-owned folders. No automated verification
+was run for this refactor, per user instruction; earlier checks below are historical.
+See [current architecture](marketplace-architecture.md) and [refactor scope](marketplace-tailwind-refactor.md).
+
 Current cart review and checkout slices are implemented for manual QA only; no
 automated test, typecheck, build, screenshot or browser run was performed for them
 at the user's request. Checkout is an explicit local demo, with transient contact

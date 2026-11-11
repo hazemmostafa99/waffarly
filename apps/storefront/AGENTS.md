@@ -10,6 +10,24 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Marketplace implementation mode
 
+### Component and styling conventions
+
+- Group related work under `features/marketplace/<feature>/components`, `hooks`,
+  and `model` as needed; do not put hooks in component folders or create empty layers.
+- Cross-feature client state belongs in `features/marketplace/state`; shared money
+  formatting belongs in `features/marketplace/shared/lib`. Keep data separate.
+- Style Marketplace components with Tailwind utilities in TSX. The only Marketplace
+  stylesheet is `styles/marketplace-tokens.css`, for scoped colors/shadcn token
+  aliases and base rules. Do not reintroduce component selectors or an @apply-based
+  duplicate stylesheet. Keep exact arbitrary values when needed for the reference.
+- Reuse the project primitives from `@waffarly/ui` through thin Marketplace wrappers
+  for Button, Input, Textarea, Card and Dialog. Do not duplicate their DOM/focus logic.
+  Native select/radio controls may remain when no shared equivalent exists.
+- Existing semantic classes are retained as state/DOM hooks; their styling is in
+  Tailwind classes, not a stylesheet. Do not change interactions during style refactors.
+- The user currently wants manual QA. Do not run tests, browser suites, typechecks
+  or builds unless asked; report that this work remains manually unverified.
+
 Display all Marketplace prices using Western digits `0-9`, including product prices,
 line totals and cart totals. Use the shared `money` formatter; keep Arabic currency
 labels and RTL layout. Do not use Arabic-Indic digits for prices.

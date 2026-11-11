@@ -1,5 +1,10 @@
 # Marketplace visual comparison
 
+Current revision: the Marketplace has been migrated to Tailwind component utilities,
+shared @waffarly/ui adapters and feature-owned folders. No automated verification
+was run for this refactor, per user instruction; earlier checks below are historical.
+See [current architecture](marketplace-architecture.md) and [refactor scope](marketplace-tailwind-refactor.md).
+
 Product layout follow-up responds to the user-provided screenshot: full shared
 header restored, media/card size constrained, breadcrumbs/seller grouping added,
 and purchase controls grouped. This has passed nonvisual checks only; no after

@@ -21,6 +21,10 @@ The existing Next.js app, business landing `/`, merchant application `/join` and
 
 ## Read next
 
+Latest structural slice: [Tailwind/shared UI migration](marketplace-tailwind-refactor.md).
+CSS now contains only scoped tokens/base rules, with styling in components and
+feature-owned hooks/models. Manual acceptance is pending; no automated checks ran.
+
 Latest slice: [local checkout demo](marketplace-local-checkout.md). The user is
 performing manual QA; no automated tests/typecheck/build were run for this change.
 

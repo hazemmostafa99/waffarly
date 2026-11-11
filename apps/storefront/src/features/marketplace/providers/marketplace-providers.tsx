@@ -6,7 +6,7 @@ import { useStore } from 'zustand';
 import {
   createMarketplaceStore,
   type MarketplaceState,
-} from '@/features/marketplace/model/marketplace-store';
+} from '@/features/marketplace/state/marketplace-store';
 
 function createMarketplaceQueryClient() {
   return new QueryClient({

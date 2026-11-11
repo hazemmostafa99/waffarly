@@ -1,6 +1,9 @@
 'use client';
 
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { cn } from '@waffarly/ui';
+
+import { useEffect, type ReactNode } from 'react';
+import { Dialog } from '@waffarly/ui';
 
 export function MarketplaceDialog({
   open,
@@ -15,42 +18,37 @@ export function MarketplaceDialog({
   id?: string;
   children: ReactNode;
 }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const titleId = useId();
   useEffect(() => {
-    const element = dialog.current;
-    if (!open || !element) return;
-    const previousOverflow = document.body.style.overflow;
-    element.showModal();
+    if (!open) return;
+    const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     return () => {
-      element.close();
-      document.body.style.overflow = previousOverflow;
+      document.body.style.overflow = previous;
     };
   }, [open]);
+
   return (
-    <dialog
-      ref={dialog}
+    <div
       id={id}
-      className="marketplace-dialog"
-      aria-labelledby={titleId}
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
-      }}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
+      onClickCapture={(event) => {
+        if (event.target instanceof HTMLDialogElement) onClose();
       }}
     >
-      <div className="marketplace-dialog-panel">
-        <div className="drawer-head">
-          <h2 id={titleId}>{title}</h2>
-          <button type="button" className="close" aria-label="إغلاق" onClick={onClose}>
-            ×
-          </button>
-        </div>
-        <div className="marketplace-dialog-body">{children}</div>
-      </div>
-    </dialog>
+      <Dialog
+        open={open}
+        onOpenChange={(value) => {
+          if (!value) onClose();
+        }}
+        title={title}
+        closeLabel="إغلاق"
+        className={cn(
+          'marketplace-dialog fixed inset-0 m-auto max-h-[calc(100dvh-32px)] w-[min(430px,calc(100vw-32px))] rounded-[18px] border-0',
+          'bg-card p-0 text-foreground shadow-[var(--shadow)] backdrop:bg-[rgba(20,5,27,.5)] [&_[data-slot=dialog-header]]:items-center [&_[data-slot=dialog-header]]:p-5 [&_[data-slot=dialog-header]_h2]:m-0',
+          '[&_[data-slot=dialog-header]_h2]:text-[20px] [&_[data-slot=dialog-header]_h2]:font-bold [&_[data-slot=dialog-header]_button]:size-[38px] [&_[data-slot=dialog-header]_button]:border-0 [&_[data-slot=dialog-header]_button]:rounded-[10px] [&_[data-slot=dialog-header]_button]:text-[21px] [&_[data-slot=dialog-header]_button]:bg-secondary',
+        )}
+      >
+        <div className={'p-4.5 [&_p]:mt-0 [&_p]:leading-[1.8]'}>{children}</div>
+      </Dialog>
+    </div>
   );
 }

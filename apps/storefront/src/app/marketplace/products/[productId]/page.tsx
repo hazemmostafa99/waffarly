@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { findProduct } from '@/features/marketplace/model/catalog';
-import { productBackHref } from '@/features/marketplace/model/product-navigation';
-import { ProductDetailPage } from '@/features/marketplace/components/product-detail/product-detail-page';
+import { findProduct } from '@/features/marketplace/catalog/model/catalog';
+import { productBackHref } from '@/features/marketplace/product-detail/model/product-navigation';
+import { ProductDetailPage } from '@/features/marketplace/product-detail/components/product-detail-page';
 
 type Props = {
   params: Promise<{ productId: string }>;

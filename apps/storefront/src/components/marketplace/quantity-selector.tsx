@@ -1,6 +1,10 @@
 'use client';
 
-import { MAX_CART_QUANTITY } from '@/features/marketplace/model/catalog';
+import { cn } from '@waffarly/ui';
+
+import { MarketplaceButton as Button } from '@/components/marketplace/marketplace-button';
+
+import { MAX_CART_QUANTITY } from '@/features/marketplace/cart/model/cart';
 
 export function QuantitySelector({
   value,
@@ -12,26 +16,36 @@ export function QuantitySelector({
   label?: string;
 }) {
   return (
-    <div className="quantity-selector" role="group" aria-label={label}>
-      <button
+    <div
+      className={cn(
+        'quantity-selector inline-flex items-center border border-solid border-border rounded-[9px] overflow-hidden',
+        '[&_button]:w-9 [&_button]:h-9 [&_button]:border-0 [&_button]:bg-[var(--purple-50)] [&_button]:text-primary [&_button]:text-[18px] [&_output]:min-w-9 [&_output]:text-center',
+        '[&_output]:text-[14px]',
+      )}
+      role="group"
+      aria-label={label}
+    >
+      <Button
         type="button"
         aria-label={`تقليل ${label}`}
         disabled={value <= 1}
         onClick={() => onChange(value - 1)}
+        className={'disabled:cursor-not-allowed disabled:opacity-[0.5]'}
       >
         −
-      </button>
+      </Button>
       <output aria-label={label} aria-live="polite">
         {value}
       </output>
-      <button
+      <Button
         type="button"
         aria-label={`زيادة ${label}`}
         disabled={value >= MAX_CART_QUANTITY}
         onClick={() => onChange(value + 1)}
+        className={'disabled:cursor-not-allowed disabled:opacity-[0.5]'}
       >
         +
-      </button>
+      </Button>
     </div>
   );
 }

@@ -50,7 +50,7 @@ The temporary extraction script and duplicate asset URL JSON were removed after 
 Post-cleanup verification passed:
 
 - Storefront, super-admin, merchant-dashboard and shared UI TypeScript checks using `node node_modules/typescript/bin/tsc -p <workspace>/tsconfig.json --noEmit`.
-- `node --import tsx --test apps/storefront/src/features/marketplace/model/marketplace.test.ts`: 3 tests passed.
+- `node --import tsx --test apps/storefront/src/features/marketplace/tests/marketplace.test.ts`: 3 tests passed.
 - Production `next build`: passed after the existing-version security-advisory pause/retry.
 - Production HTTP smoke test: status 200; 8 categories, 12 restaurants, 5 products, 6 stores, cart drawer and mobile navigation present in SSR HTML.
 - Prettier and `git diff --check`: passed.
