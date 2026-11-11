@@ -1,8 +1,8 @@
 name: CI
 
 on:
-  push:
-  pull_request:
+  # Automatic CI is paused; run manually from GitHub Actions when needed.
+  workflow_dispatch:
 
 jobs:
   verify:

@@ -54,7 +54,7 @@ No source approves an uploadable executable template, page builder, third-party 
 ### 2.3 Implementation Evidence
 
 - [Super Admin App](../../../../apps/super-admin/src/App.tsx) contains sign-in, merchant creation/listing, application review/approval, and first-month activation. It has no template library controls.
-- [Storefront home](../../../../apps/storefront/src/app/page.tsx) is a Next.js foundation page with a restaurant application link. It does not resolve or render a merchant-selected template.
+- [Storefront home](<../../../../apps/storefront/src/app/(business)/page.tsx>) is a Next.js foundation page with a restaurant application link. It does not resolve or render a merchant-selected template.
 - [Merchant Dashboard App](../../../../apps/merchant-dashboard/src/App.tsx) now provides owner login, a contact profile, and a tenant-scoped design and branding editor. It has no public storefront publishing flow.
 - [Prisma schema](../../../../packages/database/prisma/schema.prisma) and [shared contracts](../../../../packages/contracts/src/index.ts) include platform templates and per-merchant design settings; public publishing records remain out of scope.
 
@@ -98,12 +98,12 @@ Administrator permission, tenant context, compatibility, commercial entitlement 
 
 Parent IDs remain stable. Capabilities below are discovery topics, not implementation tickets.
 
-| Feature ID | Feature                                      | Decision status                         | MVP boundary / questions                                                                                                       |
-| ---------- | -------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| SA-T01 | Storefront template library and metadata | Two initial designs implemented; broader release scope OPEN | Shared design update/rollout policy and broader release scope remain OPEN. |
-| SA-T02     | Template/activity compatibility              | CONFIRMED platform vision; rules OPEN   | Restaurant support first. One or multiple activities per design, validation, and governance remain OPEN.                       |
-| SA-T03 | Platform availability and merchant selection | Initial availability and owner selection implemented | Public visibility and withdrawal effects remain OPEN. |
-| SA-T04 | Customization, versioning, and activation | Tenant logo and accent color implemented; publication/versioning OPEN | Shared updates, public storefront publication, switching, and rollback remain OPEN. |
+| Feature ID | Feature                                      | Decision status                                                       | MVP boundary / questions                                                                                 |
+| ---------- | -------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| SA-T01     | Storefront template library and metadata     | Two initial designs implemented; broader release scope OPEN           | Shared design update/rollout policy and broader release scope remain OPEN.                               |
+| SA-T02     | Template/activity compatibility              | CONFIRMED platform vision; rules OPEN                                 | Restaurant support first. One or multiple activities per design, validation, and governance remain OPEN. |
+| SA-T03     | Platform availability and merchant selection | Initial availability and owner selection implemented                  | Public visibility and withdrawal effects remain OPEN.                                                    |
+| SA-T04     | Customization, versioning, and activation    | Tenant logo and accent color implemented; publication/versioning OPEN | Shared updates, public storefront publication, switching, and rollback remain OPEN.                      |
 
 ### Initial Implemented Slice
 

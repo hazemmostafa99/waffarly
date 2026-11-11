@@ -8,7 +8,7 @@ import { useLocale, Input, Button } from '@waffarly/ui';
 
 import { useState, type FormEvent } from 'react';
 import type { SubmitMerchantApplicationRequest } from '@waffarly/contracts';
-import { ApiError, apiPost } from '../../lib/api-client';
+import { ApiError, apiPost } from '@/lib/api-client';
 
 const EMPTY_APPLICATION: SubmitMerchantApplicationRequest = {
   name: '',

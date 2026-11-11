@@ -9,7 +9,8 @@
     "start": "next start --hostname 0.0.0.0 --port 3000",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test"
+    "test": "node --test",
+    "test:marketplace": "node --import tsx --test src/features/marketplace/model/marketplace.test.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "5.104.2",
