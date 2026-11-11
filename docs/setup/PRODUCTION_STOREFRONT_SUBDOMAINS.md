@@ -29,6 +29,10 @@ unique, validated and attributed by Merchants. Existing `/s/<technical-slug>`
 links on the main domain continue to work. Unknown handles and reserved
 application names do not open another tenant. The proxy uses the preserved Host,
 never arbitrary forwarded-host headers, and the server resolves the saved handle.
+Proxy also replaces a private request-context header before forwarding it to the
+page loader. `skipProxyUrlNormalize` and a raw URL preserve the loopback origin;
+otherwise Next normalizes `127.0.0.1` to `localhost`, treats the rewrite as external
+and loses tenant context. A regression test covers that case and header spoofing.
 
 Dynamic production CORS accepts only HTTPS origins under the configured domain
 whose handles exist. Public catalog/quote/order access is checked against the
@@ -42,3 +46,28 @@ the database, environment files, Nginx configuration and previous build artifact
 before switching builds. Verify root/menu/cart/login, unknown handles, old URLs,
 customer-auth preflight and rejected cross-tenant/admin requests. No schema change
 or automatic assignment of customer merchants is needed for this rollout.
+
+## Demo VPS rollout, 2026-11-12
+
+The user-selected `demo-restaurant.wfarly.com` is assigned to the dedicated
+`reference-restaurant-1` tenant (بيت البرجر) through Merchants' existing assignment
+service, with deployment-operator attribution. No customer merchant was changed.
+Nginx and application environments are configured; the pre-existing wildcard
+origin certificate is retained. Database/configuration and old build backups are
+under `/var/backups/waffarly`; the tested build checkout is under
+`/var/www/waffarly-releases/20261111T221804Z-subdomains`.
+
+All eight workspace builds passed on the VPS. Five origin-policy HTTP tests and
+the host/rewrite regression test passed. Public HTTPS checks passed for root,
+menu, product, cart, checkout, login and account; clean menu links were verified.
+Unknown hosts and cross-store paths returned 404. Own-catalog CORS and
+customer-auth preflight/unauthenticated session CORS passed; cross-tenant quote,
+admin write and unregistered customer-auth requests returned 403. Empty quote
+validation returned 400 without creating an order. Legacy store URLs and all
+existing application domains remained available.
+
+Limits: interactive browser verification was unavailable in this session. No real
+customer account, order or payment was created. The full API suite had 231/233
+passing tests, with two existing discount-schema fixture failures (`maximum: ''`
+does not satisfy the unchanged money schema). API-wide lint still reports six
+existing restaurant-service errors; modified API files pass targeted lint.
