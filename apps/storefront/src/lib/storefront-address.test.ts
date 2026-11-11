@@ -27,6 +27,10 @@ test('production storefront routing uses the configured domain and preserves cle
       headers: { host: 'wfarly.com', 'x-waffarly-storefront-handle': 'another-store' },
     }));
     assert.equal(main.headers.get('x-middleware-request-x-waffarly-storefront-handle'), null);
+    const legacy = proxy(new NextRequest('http://127.0.0.1:3000/marketplace', {
+      headers: { host: 'wfarly.com', 'x-forwarded-proto': 'https' },
+    }));
+    assert.equal(legacy.headers.get('location'), 'https://wfarly.com/');
     assert.equal(storefrontRequestHandle(new Headers({ host: 'localhost:3000', 'x-waffarly-storefront-handle': 'abo-ali' })), 'abo-ali');
     delete process.env.STOREFRONT_BASE_DOMAIN;
     assert.equal(storefrontHostHandle('abo-ali.wfarly.com'), null);

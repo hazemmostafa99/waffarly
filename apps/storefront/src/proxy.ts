@@ -7,6 +7,7 @@ const legacyMarketplacePath = /^\/marketplace(?:\/|$)/;
 function redirectLegacyMarketplacePath(request: NextRequest, path: string) {
   const url = new URL(request.url);
   url.host = request.headers.get('host') ?? url.host;
+  url.port = new URL(`${url.protocol}//${request.headers.get('host') ?? url.host}`).port;
   if (request.headers.get('x-forwarded-proto') === 'https') url.protocol = 'https:';
   url.pathname = path.replace(legacyMarketplacePath, '') || '/';
   return NextResponse.redirect(url, 308);
