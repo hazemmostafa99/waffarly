@@ -11,7 +11,7 @@ export function restaurantCheckout(items: CheckoutItem[], fulfillment: Fulfillme
   const deliveryFee = fulfillment === 'delivery' ? scenario.deliveryFee : 0;
   let issue = '';
   if (items.some((item) => item.merchantType !== 'restaurant' || item.merchantName !== name)) issue = 'طلب المطاعم لازم يكون من مطعم واحد.';
-  else if (items.some((item) => !mealAvailable(item) || !validMealSelection(item.selection ?? {}))) issue = 'فيه وجبة غير متاحة أو اختيارات ناقصة. راجع السلة.';
+  else if (items.some((item) => !mealAvailable(item) || !validMealSelection(item.selection ?? {}, item))) issue = 'فيه وجبة غير متاحة أو اختيارات ناقصة. راجع السلة.';
   else if (fulfillment === 'delivery' && subtotal < scenario.minimumOrder) issue = `لم تصل للحد الأدنى للتوصيل التجريبي. أضف وجبات أو اختار الاستلام.`;
   return { name, subtotal, deliveryFee, total: subtotal + deliveryFee, issue };
 }

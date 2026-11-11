@@ -13,7 +13,7 @@ export function reorderCart(order: DemoOrder, current: MarketplaceCartLine[], re
   for (const item of order.items) {
     const product = findProduct(item.id);
     if (!product || !mealAvailable(product) || !validQuantity(item.quantity) ||
-      (product.merchantType === 'restaurant' && !validMealSelection(item.selection ?? {}))) return { result: 'unavailable' };
+      (product.merchantType === 'restaurant' && !validMealSelection(item.selection ?? {}, product))) return { result: 'unavailable' };
     if (conflictsWithRestaurant(cart, item.id)) return { result: 'unavailable' };
     const line: MarketplaceCartLine = { productId: item.id, quantity: item.quantity,
       ...(item.selection ? { selection: Object.fromEntries(Object.entries(item.selection).map(([id, values]) => [id, [...values]])) } : {}) };

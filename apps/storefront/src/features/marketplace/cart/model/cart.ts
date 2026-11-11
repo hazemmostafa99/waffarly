@@ -18,7 +18,7 @@ export function validQuantity(quantity: number) {
 export function cartProducts(lines: MarketplaceCartLine[]) {
   return lines.flatMap((line) => {
     const product = findProduct(line.productId);
-    const configuration = mealConfiguration(line.selection ?? {});
+    const configuration = mealConfiguration(line.selection ?? {}, product);
     return product ? [{ ...product, price: product.price + configuration.extraPrice,
       quantity: line.quantity, selection: line.selection, lineId: cartLineId(line),
       optionsLabel: configuration.label }] : [];

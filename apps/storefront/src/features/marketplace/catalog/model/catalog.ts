@@ -16,9 +16,10 @@ type MerchantScenarioProduct = ProductRecord & {
 export type MarketplaceProduct = ProductRecord & Partial<MerchantScenarioProduct> & {
   menuSection?: string;
   available?: boolean;
+  description?: string;
 };
 
-export const merchantScenarioProducts: (MerchantScenarioProduct & { menuSection?: string; available?: boolean })[] = [
+export const merchantScenarioProducts: (MerchantScenarioProduct & { menuSection?: string; available?: boolean; description?: string })[] = [
   ...merchantScenarios.storeProducts.map((product) => ({
     ...product,
     merchantType: 'store' as const,

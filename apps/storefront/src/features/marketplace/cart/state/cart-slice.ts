@@ -30,7 +30,7 @@ export const createCartSlice: StateCreator<MarketplaceState, [], [], CartSlice> 
   addToCart: (productId, quantity = 1, selection, replace = false) => {
     const product = findProduct(productId);
     if (!product || !validQuantity(quantity) || !mealAvailable(product)) return false;
-    if (product.merchantType === 'restaurant' && !validMealSelection(selection ?? {})) return false;
+    if (product.merchantType === 'restaurant' && !validMealSelection(selection ?? {}, product)) return false;
     if (product.merchantType !== 'restaurant' && selection && Object.keys(selection).length) return false;
     const conflict = conflictsWithRestaurant(get().cart, productId);
     if (conflict && !replace) return false;

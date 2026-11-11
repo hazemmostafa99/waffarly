@@ -1,11 +1,16 @@
-import { mealOptionGroups, restaurantScenario } from '@/features/marketplace/data/restaurant-scenarios';
+import { mealOptionGroups, drinkOptionGroups, restaurantScenario } from '@/features/marketplace/data/restaurant-scenarios';
 import type { MarketplaceProduct } from '@/features/marketplace/catalog/model/catalog';
 
 export type MealSelection = Record<string, string[]>;
 
-export function validMealSelection(selection: MealSelection) {
-  return Object.keys(selection).every((id) => mealOptionGroups.some((group) => group.id === id)) &&
-    mealOptionGroups.every((group) => {
+export function mealGroups(product?: Pick<MarketplaceProduct, 'menuSection'>) {
+  return product?.menuSection === 'مشروبات' ? drinkOptionGroups : mealOptionGroups;
+}
+
+export function validMealSelection(selection: MealSelection, product?: Pick<MarketplaceProduct, 'menuSection'>) {
+  const groups = mealGroups(product);
+  return Object.keys(selection).every((id) => groups.some((group) => group.id === id)) &&
+    groups.every((group) => {
       const selected = selection[group.id] ?? [];
       return (!group.required || selected.length === 1) &&
         new Set(selected).size === selected.length &&
@@ -13,8 +18,8 @@ export function validMealSelection(selection: MealSelection) {
     });
 }
 
-export function mealConfiguration(selection: MealSelection) {
-  const choices = mealOptionGroups.flatMap((group) =>
+export function mealConfiguration(selection: MealSelection, product?: Pick<MarketplaceProduct, 'menuSection'>) {
+  const choices = mealGroups(product).flatMap((group) =>
     group.choices.filter((choice) => selection[group.id]?.includes(choice.id)),
   );
   return { extraPrice: choices.reduce((sum, choice) => sum + choice.price, 0),

@@ -36,7 +36,8 @@ builds clearly identified sample menus from the existing local meal templates.
 Menus outside the burger example use generic demonstration dish names, not
 claimed restaurant menus. The last reference restaurant is closed; the burger
 example's side dish is unavailable. Other examples have available side dishes.
-Every size/extra group is illustrative and intentionally shares one mock template.
+Size/extra groups are illustrative: food uses one mock template and drinks use a
+separate size/milk/caramel example. These are not actual merchant configurations.
 
 Delivery costs 25 EGP in this scenario; pickup has no delivery fee. Delivery has a
 100 EGP meal subtotal minimum. Reference promotion badges do not apply to these
@@ -48,6 +49,24 @@ and orders. No API, route-handler backend, database integration or payment added
 No sensitive form input is recorded in the order snapshot.
 
 ## Manual review handoff — not executed
+
+Visual refinement: menu items now use compact horizontal cards with square
+thumbnails and a short selection action. The meal dialog has a product summary,
+side-by-side size choices, separate extras, an independently scrollable options
+area and a fixed cart-action footer. Marketplace buttons expose explicit gold,
+primary and neutral tones with hover/active states, used by these restaurant
+controls so the wrapper's transparent default hover cannot hide their fill.
+This visual revision has not been run or checked in a browser.
+
+The subsequent reference-led layout uses a compact restaurant identity row, an
+image-backed menu banner, section icons and thumbnail-first cards. Cards now use a
+fixed 280px width, capped by available space, and wrap without expanding to fill
+the row. Selecting a meal opens the shared modal on every viewport, capped at
+360px wide with 12px viewport gutters. The modal uses a landscape meal
+image, description, size/extra controls and a separate total/cart footer. Existing
+local photos are reused. The burger menu also includes explicitly local additional
+meal, side and drink examples to demonstrate the section layout. These examples
+are not extracted restaurant records. No checks or builds were run for this update.
 
 Per user instruction, no tests, browser suites, typecheck, lint or build were run.
 All browser, responsive, RTL and keyboard acceptance remains open for user review.
