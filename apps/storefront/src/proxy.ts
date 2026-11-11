@@ -5,7 +5,9 @@ const reservedTenantPaths = /^\/(?:s|marketplace|join)(?:\/|$)/;
 const legacyMarketplacePath = /^\/marketplace(?:\/|$)/;
 
 function redirectLegacyMarketplacePath(request: NextRequest, path: string) {
-  const url = request.nextUrl.clone();
+  const url = new URL(request.url);
+  url.host = request.headers.get('host') ?? url.host;
+  if (request.headers.get('x-forwarded-proto') === 'https') url.protocol = 'https:';
   url.pathname = path.replace(legacyMarketplacePath, '') || '/';
   return NextResponse.redirect(url, 308);
 }
@@ -58,7 +60,8 @@ export function proxy(request: NextRequest) {
 
   if (isStorefrontHandle(handle)) {
     if (!reservedTenantPaths.test(path)) {
-      const url = request.nextUrl.clone();
+      // Preserve the raw origin so a loopback bind remains an internal rewrite.
+      const url = new URL(request.url);
       // Only carry the public handle here; resolve it through the API in the page loader.
       url.pathname = '/s/' + encodeURIComponent(handle) + (path === '/' ? '' : path);
       requestHeaders.set('x-waffarly-storefront-handle', handle);
