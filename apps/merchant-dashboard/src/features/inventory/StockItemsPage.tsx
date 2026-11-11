@@ -184,15 +184,74 @@ export function StockItemsPage() {
     if (status === 'archived') setStatus('active');
   }
 
+  const stockFilters = (
+        <div className="inventory-filters">
+          <form className="inventory-search" onSubmit={applySearch}>
+            <label htmlFor="inventory-search">{text('Search stock items')}</label>
+            <div>
+              <Input
+                id="inventory-search"
+                value={searchDraft}
+                maxLength={160}
+                onChange={(event) => setSearchDraft(event.target.value)}
+                placeholder={text('Search by item name')}
+              />
+              <Button type="submit" variant="outline">
+                {text('Search')}
+              </Button>
+            </div>
+          </form>
+          <label className="inventory-filter-status">
+            {text('Status')}
+            <select
+              value={status}
+              onChange={(event) => {
+                setStatus(event.target.value as typeof status);
+                setHistory([]);
+              }}
+            >
+              <option value="active">{text('Active')}</option>
+              <option value="archived">{text('Archived')}</option>
+              <option value="all">{text('All items')}</option>
+            </select>
+          </label>
+          {(searchDraft || search || status !== 'active') && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setSearch('');
+                setSearchDraft('');
+                setStatus('active');
+                setHistory([]);
+                setNextCursor(null);
+              }}
+            >
+              {text('Clear filters')}
+            </Button>
+          )}
+        </div>
+  );
+
   return (
     <div className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <InventoryHeader
         title="Stock items"
         description="Manage the items and units you use in purchases and recipes."
+        filters={stockFilters}
         actions={
-          <Button type="button" onClick={() => setEditor({ item: null, key: crypto.randomUUID() })}>
-            {text('New stock item')}
-          </Button>
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => navigate('/inventory/purchases/new')}
+            >
+              {text('Record purchase')}
+            </Button>
+            <Button type="button" onClick={() => setEditor({ item: null, key: crypto.randomUUID() })}>
+              {text('New stock item')}
+            </Button>
+          </>
         }
       />
 
@@ -249,52 +308,6 @@ export function StockItemsPage() {
             </span>
           </div>
         )}
-        <div className="inventory-filters">
-          <form className="inventory-search" onSubmit={applySearch}>
-            <label htmlFor="inventory-search">{text('Search stock items')}</label>
-            <div>
-              <Input
-                id="inventory-search"
-                value={searchDraft}
-                maxLength={160}
-                onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder={text('Search by item name')}
-              />
-              <Button type="submit" variant="outline">
-                {text('Search')}
-              </Button>
-            </div>
-          </form>
-          <label className="inventory-filter-status">
-            {text('Status')}
-            <select
-              value={status}
-              onChange={(event) => {
-                setStatus(event.target.value as typeof status);
-                setHistory([]);
-              }}
-            >
-              <option value="active">{text('Active')}</option>
-              <option value="archived">{text('Archived')}</option>
-              <option value="all">{text('All items')}</option>
-            </select>
-          </label>
-          {(searchDraft || search || status !== 'active') && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setSearch('');
-                setSearchDraft('');
-                setStatus('active');
-                setHistory([]);
-                setNextCursor(null);
-              }}
-            >
-              {text('Clear filters')}
-            </Button>
-          )}
-        </div>
         <DataTable
           columns={columns}
           rows={items}

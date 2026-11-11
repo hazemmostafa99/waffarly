@@ -55,6 +55,19 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
     };
   }, []);
 
+  const handle = settings?.storefrontHandle ?? profile.storefrontHandle;
+  const customerUrl = settings ? storefrontUrl(settings.storefrontSlug, handle) : '';
+
+  async function copyStorefrontUrl() {
+    try {
+      await navigator.clipboard.writeText(customerUrl);
+      setError('');
+      setNotice(locale === 'ar' ? 'تم نسخ رابط المتجر.' : 'Store link copied.');
+    } catch {
+      setError(locale === 'ar' ? 'تعذر النسخ. يمكنك نسخ الرابط مباشرة.' : 'Could not copy. Select and copy the link directly.');
+    }
+  }
+
   function uploadLogo(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
     if (!file || !draft) return;
@@ -123,9 +136,8 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
             <Icon name="store" />
           </span>
           <div>
-            <div className="settings-eyebrow">{t('STORE BRANDING')}</div>
             <h2 id="merchant-design-heading">{t('Storefront design')}</h2>
-            <p>{t('Manage your store logo, description, and customer-facing identity.')}</p>
+            <p>{locale === 'ar' ? 'شعار المتجر والقالب الذي يراه عملاؤك على رابطك الخاص.' : 'Your logo and design on your customer storefront.'}</p>
           </div>
         </div>
       </div>
@@ -146,10 +158,15 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
       ) : !settings || !draft ? null : (
         <form className="settings-identity-form" onSubmit={(event) => void save(event)}>
           <div className="settings-public-storefront">
-            <span>{locale === 'ar' ? 'رابط المتجر للعملاء' : 'Customer storefront'}</span>
-            <a href={storefrontUrl(settings.storefrontSlug, settings.storefrontHandle)} target="_blank" rel="noreferrer">
-              {storefrontUrl(settings.storefrontSlug, settings.storefrontHandle)}
-            </a>
+            <div className="settings-storefront-address">
+              <span>{locale === 'ar' ? 'رابط المتجر للعملاء' : 'Customer storefront'}</span>
+              <a href={customerUrl} dir="ltr" target="_blank" rel="noreferrer">{customerUrl}</a>
+              {!handle && <small>{locale === 'ar' ? 'هذا هو الرابط الحالي. يمكن تعيين عنوان فرعي للمتجر من الإدارة.' : 'Current address. An administrator can assign a storefront subdomain.'}</small>}
+            </div>
+            <div className="settings-storefront-actions">
+              <Button type="button" variant="outline" onClick={() => void copyStorefrontUrl()}>{locale === 'ar' ? 'نسخ الرابط' : 'Copy link'}</Button>
+              <a className="settings-open-store" href={customerUrl} target="_blank" rel="noreferrer">{locale === 'ar' ? 'فتح المتجر' : 'Open store'} <Icon name="arrow" /></a>
+            </div>
           </div>
           <div className="settings-identity-grid">
             <div className="settings-logo-column">
@@ -160,7 +177,7 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
                 ) : (
                   <div className="settings-logo-wordmark">
                     <span aria-hidden="true">♨</span>
-                    <strong>Waffarly</strong>
+                    <strong>{profile.merchantName}</strong>
                   </div>
                 )}
               </div>
@@ -190,7 +207,7 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
               )}
             </div>
 
-            <label className="settings-description-field">
+            {profile.activity !== 'restaurant' && (<label className="settings-description-field">
               <span>{t('Store description')}</span>
               <textarea
                 value={description}
@@ -199,7 +216,7 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
               />
               <small>{t('A short description customers will see on your storefront.')}</small>
               <em>{formatNumber(description.length)}/{formatNumber(300)}</em>
-            </label>
+            </label>)}
           </div>
 
           {settings.templates.length > 0 && (

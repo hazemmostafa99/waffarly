@@ -1,7 +1,7 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useStore } from 'zustand';
 import { createMarketplaceStore } from '@/features/marketplace/state/create-marketplace-store';
 import type { MarketplaceState } from '@/features/marketplace/state/marketplace-state';
@@ -22,6 +22,10 @@ const MarketplaceStoreContext = createContext<ReturnType<typeof createMarketplac
 export function MarketplaceProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(createMarketplaceQueryClient);
   const [store] = useState(createMarketplaceStore);
+
+  useEffect(() => {
+    void store.persist.rehydrate();
+  }, [store]);
 
   return (
     <QueryClientProvider client={queryClient}>

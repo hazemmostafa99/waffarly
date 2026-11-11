@@ -165,21 +165,7 @@ export function RegistersPage() {
 
   return (
     <section className="register-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <header className="products-heading register-heading">
-        <div>
-          <h1>{text('POS registers', 'نقاط البيع')}</h1>
-          <p>
-            {text(
-              'Set up a cashier station for each counter or cash drawer. Each station can have one open shift at a time.',
-              'أنشئ نقطة بيع لكل كاشير أو درج نقدية في الفرع. يمكن فتح وردية واحدة فقط لكل نقطة في الوقت نفسه.',
-            )}
-          </p>
-        </div>
-        <button className="products-button primary" type="button" onClick={startCreate}>
-          <Icon name="plus" />
-          {text('Add register', 'إضافة نقطة بيع')}
-        </button>
-      </header>
+      <h1 className="sr-only">{text('POS registers', 'نقاط البيع')}</h1>
 
       {error && !editorOpen && (
         <div className="products-error register-message" role="alert">
@@ -200,11 +186,10 @@ export function RegistersPage() {
         </p>
       )}
 
-      <PosAppearanceSettings />
-
-      <div className="products-filters register-filters">
+      <div className="register-page-toolbar">
+        <div className="products-filters register-filters">
         <label className="register-branch-filter">
-          <span>{text('Branch', 'الفرع')}</span>
+          <span className="sr-only">{text('Branch', 'الفرع')}</span>
           <PagedEntitySelect<InventoryBranch>
             path="/owner/inventory/branches"
             value={branchId}
@@ -219,7 +204,7 @@ export function RegistersPage() {
           />
         </label>
         <label className="register-status-filter">
-          <span>{text('Status', 'الحالة')}</span>
+          <span className="sr-only">{text('Status', 'الحالة')}</span>
           <select
             value={status}
             onChange={(event) => {
@@ -233,6 +218,16 @@ export function RegistersPage() {
           </select>
         </label>
       </div>
+        <div className="register-page-toolbar-actions">
+          <button className="products-button primary" type="button" onClick={startCreate}>
+          <Icon name="plus" />
+          {text('Add register', 'إضافة نقطة بيع')}
+        </button>
+        </div>
+      </div>
+      <PosAppearanceSettings />
+
+
 
       <DashboardCard
         className="register-table-card"

@@ -68,8 +68,8 @@ export class CatalogQueryService {
     const merchantId = await this.findPublicMerchantId(slug);
     if (cursor && !await this.prisma.product.findFirst({ where: { id: cursor, merchantId, archivedAt: null }, select: { id: true } })) throw new BadRequestException('Invalid product cursor.');
     const records = await this.prisma.product.findMany({
-      where: { merchantId, ...(productId ? { id: productId } : {}), archivedAt: null, menuSection: { availability: 'available', archivedAt: null } },
-      include: sellableInclude, orderBy: [{ displayOrder: 'asc' }, { id: 'asc' }], take: 41,
+      where: { merchantId, ...(productId ? { id: productId } : {}), archivedAt: null, OR: [{ menuSection: { availability: 'available', archivedAt: null } }, { menuSectionId: null, categoryLinks: { some: { merchantId, category: { availability: 'available', archivedAt: null } } } }] },
+      include: sellableInclude, orderBy: [{ menuSection: { displayOrder: 'asc' } }, { displayOrder: 'asc' }, { id: 'asc' }], take: 41,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
     return { items: records.slice(0,40).map((record) => {

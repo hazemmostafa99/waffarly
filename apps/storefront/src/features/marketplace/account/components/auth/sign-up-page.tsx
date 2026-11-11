@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import { useCustomerAuth } from '@/features/marketplace/account/hooks/use-customer-auth';
+import { customerAuthError } from '@/features/account/data/customer-auth-api';
 import { MarketplaceButton } from '@/components/marketplace/marketplace-button';
 import {
   AuthInput,
@@ -17,132 +19,137 @@ export function SignUpPage() {
   const [confirmation, setConfirmation] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const { signUp } = useCustomerAuth();
+  const submitting = useRef(false);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting.current) return;
     setError('');
     if (password !== confirmation) {
       setError('كلمتا المرور غير متطابقتين. راجع الحقلين وحاول مرة أخرى.');
       return;
     }
 
-    setMessage('تم التحقق من الحقول محليًا. إنشاء الحساب الفعلي غير متصل في هذه الواجهة.');
-    setName('');
-    setEmail('');
-    setPhone('');
-    setPassword('');
-    setConfirmation('');
+    submitting.current = true;
+    try {
+      await signUp.mutateAsync({ name, email, phone, password });
+    } catch {
+      // Keep non-password fields available for correction and retry.
+    } finally {
+      setPassword('');
+      setConfirmation('');
+      submitting.current = false;
+    }
   }
 
   return (
     <AuthPageShell
       eyebrow="إنشاء حساب"
       title="خلّي تجربتك أسهل"
-      description="أنشئ حسابك عشان تجمع طلباتك ومفضلاتك في مكان واحد."
+      description="أنشئ حسابك بالبريد الإلكتروني ورقم الموبايل وكلمة المرور."
     >
-      <form className="grid gap-4" onSubmit={submit}>
-        <AuthInput
-          autoComplete="name"
-          label="الاسم بالكامل"
-          onChange={(event) => {
-            setName(event.target.value);
-            setMessage('');
-          }}
-          placeholder="اكتب اسمك"
-          required
-          type="text"
-          value={name}
-        />
-        <div className="grid gap-4 sm:grid-cols-2">
+      <form className="grid gap-4" onSubmit={submit} aria-busy={signUp.isPending}>
+        <fieldset disabled={signUp.isPending} className="m-0 grid min-w-0 gap-4 border-0 p-0">
           <AuthInput
-            autoComplete="email"
-            label="البريد الإلكتروني"
+            autoComplete="name"
+            maxLength={120}
+            label="الاسم بالكامل"
             onChange={(event) => {
-              setEmail(event.target.value);
-              setMessage('');
+              setName(event.target.value);
+              signUp.reset();
             }}
-            placeholder="name@example.com"
+            placeholder="اكتب اسمك"
             required
-            type="email"
-            value={email}
+            type="text"
+            value={name}
           />
-          <AuthInput
-            autoComplete="tel"
-            inputMode="tel"
-            label="رقم الهاتف"
-            maxLength={32}
-            onChange={(event) => {
-              setPhone(event.target.value);
-              setMessage('');
-            }}
-            placeholder="01xxxxxxxxx"
-            required
-            type="tel"
-            value={phone}
-          />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <AuthInput
-            autoComplete="new-password"
-            label="كلمة المرور"
-            action={
-              <PasswordVisibilityButton
-                visible={passwordVisible}
-                onToggle={() => setPasswordVisible((value) => !value)}
-              />
-            }
-            minLength={8}
-            onChange={(event) => {
-              setPassword(event.target.value);
-              setError('');
-              setMessage('');
-            }}
-            placeholder="8 أحرف على الأقل"
-            required
-            type={passwordVisible ? 'text' : 'password'}
-            value={password}
-          />
-          <AuthInput
-            autoComplete="new-password"
-            label="تأكيد كلمة المرور"
-            minLength={8}
-            onChange={(event) => {
-              setConfirmation(event.target.value);
-              setError('');
-              setMessage('');
-            }}
-            placeholder="أعد كتابة كلمة المرور"
-            required
-            type={passwordVisible ? 'text' : 'password'}
-            value={confirmation}
-          />
-        </div>
-        {error && (
-          <p
-            className="m-0 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-xs leading-5 text-red-800"
-            role="alert"
+          <div className="grid gap-4 sm:grid-cols-2">
+            <AuthInput
+              autoComplete="email"
+              maxLength={254}
+              label="البريد الإلكتروني"
+              onChange={(event) => {
+                setEmail(event.target.value);
+                signUp.reset();
+              }}
+              placeholder="name@example.com"
+              required
+              type="email"
+              value={email}
+            />
+            <AuthInput
+              autoComplete="tel"
+              inputMode="tel"
+              label="رقم الهاتف"
+              maxLength={32}
+              onChange={(event) => {
+                setPhone(event.target.value);
+                signUp.reset();
+              }}
+              placeholder="01xxxxxxxxx"
+              required
+              type="tel"
+              value={phone}
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <AuthInput
+              autoComplete="new-password"
+              label="كلمة المرور"
+              action={
+                <PasswordVisibilityButton
+                  visible={passwordVisible}
+                  onToggle={() => setPasswordVisible((value) => !value)}
+                />
+              }
+              minLength={8}
+              maxLength={128}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setError('');
+                signUp.reset();
+              }}
+              placeholder="8 أحرف على الأقل"
+              required
+              type={passwordVisible ? 'text' : 'password'}
+              value={password}
+            />
+            <AuthInput
+              autoComplete="new-password"
+              label="تأكيد كلمة المرور"
+              minLength={8}
+              maxLength={128}
+              onChange={(event) => {
+                setConfirmation(event.target.value);
+                setError('');
+                signUp.reset();
+              }}
+              placeholder="أعد كتابة كلمة المرور"
+              required
+              type={passwordVisible ? 'text' : 'password'}
+              value={confirmation}
+            />
+          </div>
+          {(error || signUp.isError) && (
+            <p
+              className="m-0 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-xs leading-5 text-red-800"
+              role="alert"
+            >
+              {error || customerAuthError(signUp.error)}
+            </p>
+          )}
+          <MarketplaceButton
+            type="submit"
+            disabled={signUp.isPending}
+            className="min-h-12 w-full rounded-xl bg-waffarly-gold px-5 text-sm font-black text-primary transition-colors hover:bg-[#ffd353]"
           >
-            {error}
+            {signUp.isPending ? 'جارٍ إنشاء الحساب…' : 'إنشاء حساب'}
+          </MarketplaceButton>
+          <p className="m-0 text-center text-[11px] leading-5 text-muted-foreground">
+            سيتم إنشاء حساب فعلي. تأكيد البريد والموبايل واستعادة كلمة المرور غير متاحين حاليًا.
           </p>
-        )}
-        <MarketplaceButton
-          type="submit"
-          className="min-h-12 w-full rounded-xl bg-waffarly-gold px-5 text-sm font-black text-primary transition-colors hover:bg-[#ffd353]"
-        >
-          إنشاء حساب
-        </MarketplaceButton>
-        {message && (
-          <p
-            className="m-0 rounded-xl border border-border bg-secondary/60 px-3.5 py-3 text-xs leading-5 text-primary"
-            role="status"
-          >
-            {message}
-          </p>
-        )}
-        <p className="m-0 text-center text-[11px] leading-5 text-muted-foreground">
-          هذه واجهة تجريبية. بياناتك لا تُرسل أو تُحفظ، وكلمة المرور تُمسح بعد الإرسال.
-        </p>
+        </fieldset>
       </form>
       <p className="mb-0 mt-5 border-t border-border pt-4 text-center text-sm text-muted-foreground">
         عندك حساب؟{' '}

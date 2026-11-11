@@ -8,6 +8,8 @@ import type { LucideIcon } from 'lucide-react';
 import { Button, Input, useLocale } from '@waffarly/ui';
 import { accountCopy } from './account-copy';
 import { AccountPreviewShell } from './account-preview-shell';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { customerSessionKey, loadCustomer, signOutCustomer } from './data/customer-auth-api';
 
 type AccountFieldProps = {
   id: string;
@@ -36,6 +38,13 @@ export function StorefrontAccountOverviewPage() {
   const { locale } = useLocale();
   const params = useParams<{ slug: string }>();
   const t = accountCopy(locale);
+  const queryClient = useQueryClient();
+  const session = useQuery({ queryKey: customerSessionKey, queryFn: loadCustomer, retry: false });
+  const signOut = useMutation({
+    mutationFn: signOutCustomer,
+    onSuccess: () => queryClient.setQueryData(customerSessionKey, null),
+    gcTime: 0,
+  });
   const baseHref = `/s/${encodeURIComponent(params.slug)}`;
   const shortcuts: { href: string; label: string; icon: LucideIcon }[] = [
     { href: `${baseHref}/account/profile`, label: t.profile, icon: UserRound },
@@ -44,25 +53,69 @@ export function StorefrontAccountOverviewPage() {
   ];
 
   return (
-    <AccountPreviewShell active="overview" title={t.overview} description={t.overviewIntro}>
+    <AccountPreviewShell
+      active="overview"
+      isPreview={!session.data && !session.isPending}
+      title={t.overview}
+      description={t.overviewIntro}
+    >
       <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
         <section className="grid content-start gap-4 rounded-2xl border border-store-border bg-store-page p-4 sm:p-5">
           <span className="grid size-12 place-items-center rounded-2xl bg-store-cream text-store-primary">
             <BadgeCheck className="size-6" aria-hidden="true" />
           </span>
           <div>
-            <h2 className="font-heading text-storefront-section font-extrabold text-store-ink">{t.guestTitle}</h2>
-            <p className="mt-1 text-storefront-support leading-5 text-store-secondary">{t.guestDescription}</p>
+            <h2 className="font-heading text-storefront-section font-extrabold text-store-ink">
+              {session.isPending
+                ? t.loadingAccount
+                : session.data
+                  ? `${t.signedInAs} ${session.data.displayName ?? session.data.email ?? session.data.phone}`
+                  : t.guestTitle}
+            </h2>
+            <p className="mt-1 text-storefront-support leading-5 text-store-secondary">
+              {session.data ? t.connectedAccountNotice : t.guestDescription}
+            </p>
           </div>
-          <Button asChild className="w-full bg-store-primary text-white hover:bg-store-primary-dark">
-            <Link href={`${baseHref}/login`}>{t.signIn}</Link>
-          </Button>
+          {session.data ? (
+            <Button
+              className="w-full"
+              disabled={signOut.isPending}
+              variant="outline"
+              onClick={() => signOut.mutate()}
+            >
+              {signOut.isPending ? t.signingOut : t.signOut}
+            </Button>
+          ) : (
+            <Button
+              asChild
+              disabled={session.isPending}
+              className="w-full bg-store-primary text-white hover:bg-store-primary-dark"
+            >
+              <Link href={`${baseHref}/login`}>{t.signIn}</Link>
+            </Button>
+          )}
+          {(session.isError || signOut.isError) && (
+            <p role="alert" className="text-storefront-support font-bold text-red-700">
+              {t.sessionError}
+            </p>
+          )}
+          {signOut.isSuccess && (
+            <p role="status" className="text-storefront-support text-store-primary-deep">
+              {t.signedOut}
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <Button asChild variant="outline">
-              <Link href={`${baseHref}/favorites`}><Heart className="me-2 size-4" aria-hidden="true" />{t.favorites}</Link>
+              <Link href={`${baseHref}/favorites`}>
+                <Heart className="me-2 size-4" aria-hidden="true" />
+                {t.favorites}
+              </Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href={`${baseHref}/cart`}><ShoppingBag className="me-2 size-4" aria-hidden="true" />{t.basket}</Link>
+              <Link href={`${baseHref}/cart`}>
+                <ShoppingBag className="me-2 size-4" aria-hidden="true" />
+                {t.basket}
+              </Link>
             </Button>
           </div>
         </section>
@@ -78,9 +131,15 @@ export function StorefrontAccountOverviewPage() {
                 <Icon className="size-5" aria-hidden="true" />
               </span>
               <span className="flex items-center justify-between gap-2 font-heading text-storefront-subsection font-extrabold text-store-ink">
-                {label}<ArrowUpRight className="size-4 shrink-0 text-store-muted transition group-hover:text-store-primary" aria-hidden="true" />
+                {label}
+                <ArrowUpRight
+                  className="size-4 shrink-0 text-store-muted transition group-hover:text-store-primary"
+                  aria-hidden="true"
+                />
               </span>
-              <span className="text-storefront-support leading-5 text-store-muted">{t.previewDescription}</span>
+              <span className="text-storefront-support leading-5 text-store-muted">
+                {t.previewDescription}
+              </span>
             </Link>
           ))}
         </nav>
@@ -114,7 +173,9 @@ export function StorefrontProfilePreviewPage() {
             <UserRound className="size-6" aria-hidden="true" />
           </span>
           <div>
-            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">{t.profile}</h2>
+            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
+              {t.profile}
+            </h2>
             <p className="text-storefront-support text-store-muted">{t.profileIntro}</p>
           </div>
         </div>
@@ -133,12 +194,23 @@ export function StorefrontProfilePreviewPage() {
             <Button className="min-h-11" onClick={clearFields} type="button" variant="outline">
               {t.clearFields}
             </Button>
-            <Button className="min-h-11 bg-store-primary text-white hover:bg-store-primary-dark" type="submit">
+            <Button
+              className="min-h-11 bg-store-primary text-white hover:bg-store-primary-dark"
+              type="submit"
+            >
               {t.reviewProfile}
             </Button>
           </div>
         </form>
-        {feedback && <p aria-live="polite" className="rounded-xl bg-store-info px-4 py-3 text-storefront-support text-store-primary-deep" role="status">{feedback}</p>}
+        {feedback && (
+          <p
+            aria-live="polite"
+            className="rounded-xl bg-store-info px-4 py-3 text-storefront-support text-store-primary-deep"
+            role="status"
+          >
+            {feedback}
+          </p>
+        )}
       </div>
     </AccountPreviewShell>
   );

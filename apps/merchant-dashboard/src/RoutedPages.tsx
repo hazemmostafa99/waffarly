@@ -1,5 +1,6 @@
+import { RestaurantSettingsWorkspace } from './features/restaurant/RestaurantSettingsWorkspace.js';
+import type { MerchantOutletContext } from './lib/merchant-context.js';
 import { Link, useOutletContext } from 'react-router-dom';
-import type { OwnerProfile } from '@waffarly/contracts';
 import { Button, Card, useLocale } from '@waffarly/ui';
 import { CatalogWorkspace } from './CatalogWorkspace.js';
 import { StorefrontSettings } from './StorefrontSettings.js';
@@ -11,9 +12,10 @@ export function CatalogRoute({ section }: { section: 'products' | 'categories' |
 }
 
 export function SettingsRoute() {
-  const { profile } = useOutletContext<{ profile: OwnerProfile }>();
+  const { profile, updateProfile } = useOutletContext<MerchantOutletContext>();
   const { t, locale } = useLocale();
   const text = (en: string, ar: string) => (locale === 'ar' ? ar : en);
+  if (profile.activity === 'restaurant') return <RestaurantSettingsWorkspace key={profile.merchantId} profile={profile} onNameSaved={(merchantName)=>updateProfile({merchantName})}/>;
   return (
     <div className="merchant-settings-page">
       <nav className="settings-secondary-nav" aria-label={t('Settings sections')}>

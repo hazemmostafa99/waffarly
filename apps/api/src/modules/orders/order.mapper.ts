@@ -2,11 +2,13 @@ import type {
   StorefrontOrderReceipt,
   StorefrontOrderSummary,
   StorefrontOrderStatus,
+  OrderDiscountSnapshot,
 } from '@waffarly/contracts';
 import { formatCents, toCents } from '../../common/money/money.js';
 export function toReceipt(order: {
   subtotal?: { toString(): string } | null;
   deliveryFee?: { toString(): string } | null;
+  discountRedemption?: { code: string; name: string; type: string; value: { toString(): string }; amount: { toString(): string }; terms: string } | null;
   id: string;
   status: string;
   total: { toString(): string };
@@ -18,6 +20,7 @@ export function toReceipt(order: {
     status: order.status as StorefrontOrderStatus,
     currency: 'EGP',
     ...(order.subtotal != null && order.deliveryFee != null ? { subtotal: formatCents(toCents(order.subtotal.toString())), deliveryFee: formatCents(toCents(order.deliveryFee.toString())) } : {}),
+    ...(order.discountRedemption ? { discount: { code: order.discountRedemption.code, name: order.discountRedemption.name, type: order.discountRedemption.type as OrderDiscountSnapshot['type'], value: order.discountRedemption.value.toString(), amount: order.discountRedemption.amount.toString(), terms: order.discountRedemption.terms } } : {}),
     total: formatCents(toCents(order.total.toString())),
     createdAt: order.createdAt.toISOString(),
   };

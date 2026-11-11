@@ -1,6 +1,8 @@
 'use client';
 
 import { Suspense } from 'react';
+import { useCustomerSession } from '../hooks/use-customer-session';
+import { CustomerAccountPanel } from './customer-account-panel';
 import Link from 'next/link';
 import { MarketplaceButton } from '@/components/marketplace/marketplace-button';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
@@ -26,9 +28,7 @@ function AccountEntry() {
         <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold text-waffarly-gold">
           حساب وفّرلي
         </span>
-        <h1 className="sr-only">
-          أهلاً بيك في حسابك
-        </h1>
+        <h1 className="sr-only">أهلاً بيك في حسابك</h1>
         <p className="mb-0 mt-2 max-w-2xl text-sm leading-6 text-white/80">
           تابع طلباتك والمنتجات اللي حفظتها في مكان واحد.
         </p>
@@ -103,7 +103,7 @@ function AccountEntry() {
         </div>
       </div>
       <p className="m-0 border-t border-border px-5 py-3 text-xs leading-5 text-muted-foreground sm:px-8">
-        تجربة محلية فقط: حالة الحساب موجودة في الذاكرة خلال الجلسة، ولا تُرسل بيانات إلى خادم.
+        تسجيل الدخول وإنشاء الحساب متصلان بالخادم. متابعة الضيف تفتح تجربة محلية منفصلة.
       </p>
     </section>
   );
@@ -194,9 +194,7 @@ function AccountDashboard() {
               <span className="inline-flex rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-accent">
                 حساب تجريبي
               </span>
-              <h1 className="sr-only">
-                أهلاً بيك، ضيف وفّرلي
-              </h1>
+              <h1 className="sr-only">أهلاً بيك، ضيف وفّرلي</h1>
             </div>
           </div>
           <MarketplaceButton
@@ -287,6 +285,7 @@ function AccountDashboard() {
 }
 
 export function AccountPage() {
+  const session = useCustomerSession();
   const isDemoAccountActive = useAccountStore((state) => state.isDemoAccountActive);
 
   return (
@@ -306,7 +305,25 @@ export function AccountPage() {
             <span aria-hidden="true">/</span>
             <span aria-current="page">حسابي</span>
           </nav>
-          {isDemoAccountActive ? <AccountDashboard /> : <AccountEntry />}
+          {session.isPending ? (
+            <p role="status">جارٍ تحميل حسابك…</p>
+          ) : session.isError ? (
+            <section className="rounded-3xl border border-border bg-white p-5">
+              <p role="alert">تعذّر تحميل الحساب. تحقق من الاتصال وحاول مرة أخرى.</p>
+              <MarketplaceButton type="button" onClick={() => void session.refetch()}>
+                إعادة المحاولة
+              </MarketplaceButton>
+              <Link href="/account/sign-in" className="mx-4 text-accent">
+                تسجيل الدخول
+              </Link>
+            </section>
+          ) : session.data ? (
+            <CustomerAccountPanel customer={session.data} />
+          ) : isDemoAccountActive ? (
+            <AccountDashboard />
+          ) : (
+            <AccountEntry />
+          )}
         </MarketplaceContainer>
       </main>
       <MarketplaceFooter />

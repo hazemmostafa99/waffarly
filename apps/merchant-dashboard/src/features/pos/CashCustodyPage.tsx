@@ -583,27 +583,7 @@ export function CashCustodyPage() {
 
   return (
     <div className="inventory-page cash-custody-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <header className="cash-page-heading">
-        <div>
-          <span className="cash-eyebrow">{text('CASH CONTROL', 'متابعة النقدية')}</span>
-          <h1>{text('Cash drawers & safes', 'النقدية والخزنة')}</h1>
-          <p>
-            {text(
-              'Follow every handoff, from the cashier drawer to confirmed safe receipt.',
-              'تابع الفلوس من درج الكاشير لحد تأكيد استلامها في الخزنة.',
-            )}
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setSafeBranch(branch);
-            openAction({ kind: 'safe' });
-          }}
-          disabled={busy || !!pending}
-        >
-          {text('Create safe', 'إضافة خزنة')}
-        </Button>
-      </header>
+      <h1 className="sr-only">{text('Cash drawers & safes', 'النقدية والخزنة')}</h1>
       {error && (
         <p role="alert" className="cash-alert">
           {error}
@@ -717,6 +697,16 @@ export function CashCustodyPage() {
             />
           </div>
         )}
+        <Button
+          className="cash-create-action"
+          onClick={() => {
+            setSafeBranch(branch);
+            openAction({ kind: 'safe' });
+          }}
+          disabled={busy || !!pending}
+        >
+          {text('Create safe', 'إضافة خزنة')}
+        </Button>
       </div>
       {loading ? (
         <p role="status">{text('Loading cash records…', 'جارٍ تحميل النقدية…')}</p>

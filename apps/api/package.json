@@ -14,6 +14,8 @@
     "lint": "eslint src test",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsx --test test/http/*.test.ts test/unit/*.test.ts",
+    "test:customers-db": "tsx --test test/database/customers.database.test.ts",
+    "test:customer-auth-db": "tsx --test test/database/customer-auth.database.test.ts",
     "test:catalog-db": "tsx --test test/database/catalog.database.test.ts test/database/catalog-seed.database.test.ts test/database/pagination.database.test.ts test/database/product-inventory.database.test.ts test/database/modifier-effects.database.test.ts",
     "test:inventory-db": "tsx --test test/database/inventory.database.test.ts test/database/inventory-ledger.database.test.ts test/database/inventory-visibility.database.test.ts",
     "test:purchasing-db": "tsx --test test/database/purchasing.database.test.ts",

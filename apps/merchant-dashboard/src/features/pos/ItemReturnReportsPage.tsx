@@ -204,15 +204,15 @@ export function ItemReturnReportsPage() {
           'راجع مرتجعات الأصناف والهالك المسجل حسب الفرع والتاريخ.',
         )}
         showInventoryNavigation={false}
+      />
+
+      <PosReportFilters
         actions={
           <Button type="button" disabled={loading} onClick={() => setRefresh((value) => value + 1)}>
             <Icon name="refresh" />
             {text('Refresh', 'تحديث')}
           </Button>
         }
-      />
-
-      <PosReportFilters
         footer={
           hasFilters ? (
             <div className="pos-report-filter-actions">

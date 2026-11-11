@@ -276,25 +276,8 @@ export function MediaPage() {
 
   return (
     <div className="media-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <header className="products-heading media-heading">
-        <div>
-          <h1>{copy('Media Library')}</h1>
-          <p>{copy('Manage all your product images and marketing media in one place.')}</p>
-        </div>
-        <button
-          type="button"
-          className="products-button primary"
-          onClick={() => {
-            setDialog('add');
-            setAddMode('upload');
-            setSelectedFile(null);
-            setFormError('');
-          }}
-        >
-          <Icon name="upload" />
-          {copy('Add media')}
-        </button>
-      </header>
+      <h1 className="sr-only">{copy('Media Library')}</h1>
+      <div className="media-toolbar">
       <div className="media-filters">
         <label className="products-search">
           <Icon name="search" />
@@ -339,6 +322,22 @@ export function MediaPage() {
             </option>
           ))}
         </select>
+      </div>
+        <div className="media-toolbar-actions">
+        <button
+          type="button"
+          className="products-button primary"
+          onClick={() => {
+            setDialog('add');
+            setAddMode('upload');
+            setSelectedFile(null);
+            setFormError('');
+          }}
+        >
+          <Icon name="upload" />
+          {copy('Add media')}
+        </button>
+        </div>
       </div>
       {notice && (
         <p className="media-notice" role="status">

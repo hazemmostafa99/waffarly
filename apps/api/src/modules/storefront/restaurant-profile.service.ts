@@ -13,7 +13,8 @@ export class RestaurantProfileService {
   async get(merchantId: string) {
     const record = await this.prisma.restaurantProfile.findUnique({ where: { merchantId } });
     if (!record) throw new NotFoundException('Restaurant profile was not found.');
-    return this.map(record);
+    const merchant = await this.prisma.merchant.findUniqueOrThrow({ where: { id: merchantId }, select: { name: true } });
+    return { ...this.map(record), name: merchant.name };
   }
   private map(record: Prisma.RestaurantProfileGetPayload<{}>) {
     const { merchantId, updatedBy, updatedAt, referenceData, ...fields } = record;
@@ -25,10 +26,11 @@ export class RestaurantProfileService {
       deliveryFeeTo: formatCents(fees.reduce((a, c) => a > c ? a : c)), referenceData };
   }
   async save(merchantId: string, actor: string, body: unknown) {
-    const { revision, ...settings } = restaurantSettingsSchema.parse(body);
+    const { revision, name, ...settings } = restaurantSettingsSchema.parse(body);
     await this.prisma.$transaction(async (db) => {
-      const merchant = await db.merchant.findFirst({ where: { id: merchantId, activity: 'restaurant' }, select: { id: true } });
+      const merchant = await db.merchant.findFirst({ where: { id: merchantId, activity: 'restaurant' }, select: { id: true, name: true } });
       if (!merchant) throw new NotFoundException('Restaurant was not found.');
+      if (name !== undefined && name !== merchant.name) await db.merchant.update({ where: { id: merchantId }, data: { name, profileRevision: { increment: 1 }, profileUpdatedBy: actor, profileUpdatedAt: new Date() } });
       const current = await db.restaurantProfile.findUnique({ where: { merchantId } });
       if (!current) {
         if (revision !== 0) throw new ConflictException('Reload restaurant settings.');

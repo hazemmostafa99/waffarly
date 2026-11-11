@@ -4,6 +4,8 @@ import rootConfig from '../../eslint.config.mjs';
 
 const sourceRoot = fileURLToPath(new URL('./src/', import.meta.url));
 const dependencies = {
+  customers: ['auth'],
+  discounts: ['auth'],
   auth: ['subscriptions'],
   subscriptions: [],
   health: [],
@@ -14,7 +16,16 @@ const dependencies = {
   inventory: ['auth'],
   purchasing: ['auth', 'inventory'],
   storefront: ['auth', 'catalog'],
-  orders: ['storefront', 'auth', 'catalog', 'inventory', 'shifts', 'payments', 'subscriptions'],
+  orders: [
+    'customers',
+    'storefront',
+    'auth',
+    'catalog',
+    'inventory',
+    'shifts',
+    'payments',
+    'subscriptions',
+  ],
   media: ['auth'],
   reports: ['auth'],
   shifts: ['auth'],

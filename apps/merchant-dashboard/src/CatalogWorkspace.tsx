@@ -175,11 +175,8 @@ export function CatalogWorkspace({
       className={`panel catalog-workspace catalog-section-${section}`}
       aria-labelledby="catalog-heading"
     >
-      <div className="section-heading">
-        <div>
-          <div className="eyebrow">{t('CATALOG')}</div>
-          <h2 id="catalog-heading">{t('Products and categories')}</h2>
-        </div>
+      <div className="section-heading catalog-actions-only">
+        <h2 id="catalog-heading" className="sr-only">{t('Products and categories')}</h2>
         <Button
           type="button"
           variant="outline"
@@ -190,7 +187,6 @@ export function CatalogWorkspace({
           {t('Refresh')}
         </Button>
       </div>
-      <p>{t('Keep your catalog organized, complete, and easy to manage.')}</p>
       {error && (
         <p className="error" role="alert">
           {errorText(error)}

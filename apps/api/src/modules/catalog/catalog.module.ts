@@ -1,3 +1,4 @@
+import { MenuSettingsService } from './menu-settings.service.js';
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/index.js';
 import { InventoryModule } from '../inventory/index.js';
@@ -22,6 +23,7 @@ import { ProductService } from './products/product.service.js';
     ProductQuoteController,
   ],
   providers: [
+    MenuSettingsService,
     CategoryService,
     ModifierGroupService,
     ProductService,
@@ -29,6 +31,6 @@ import { ProductService } from './products/product.service.js';
     ProductConsumptionService,
     CatalogQueryService,
   ],
-  exports: [ProductPricingService, ProductConsumptionService, CatalogQueryService],
+  exports: [MenuSettingsService, ProductPricingService, ProductConsumptionService, CatalogQueryService],
 })
 export class CatalogModule {}

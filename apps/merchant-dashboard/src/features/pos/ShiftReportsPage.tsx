@@ -330,15 +330,15 @@ export function ShiftReportsPage() {
           'راجع جرد النقد والمدفوعات واعتمادات الورديات المغلقة خلال فترة محددة.',
         )}
         showInventoryNavigation={false}
+      />
+
+      <PosReportFilters
         actions={
           <Button type="button" disabled={loading} onClick={() => setRefresh((value) => value + 1)}>
             <Icon name="refresh" />
             {text('Refresh', 'تحديث')}
           </Button>
         }
-      />
-
-      <PosReportFilters
         footer={
           <>
             {(customEditing || period === 'custom') && (

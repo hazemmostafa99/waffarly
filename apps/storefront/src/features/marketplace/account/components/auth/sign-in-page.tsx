@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import Link from 'next/link';
+import { useCustomerAuth } from '@/features/marketplace/account/hooks/use-customer-auth';
+import { customerAuthError } from '@/features/account/data/customer-auth-api';
 import { MarketplaceButton } from '@/components/marketplace/marketplace-button';
 import {
   AuthInput,
@@ -13,32 +15,42 @@ export function SignInPage() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [message, setMessage] = useState('');
+  const { signIn } = useCustomerAuth();
+  const submitting = useRef(false);
   const [forgotPasswordMessage, setForgotPasswordMessage] = useState(false);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage('تم التحقق من الحقول محليًا. تسجيل الدخول الفعلي غير متصل في هذه الواجهة.');
-    setIdentifier('');
-    setPassword('');
+    if (submitting.current) return;
+    submitting.current = true;
+    try {
+      await signIn.mutateAsync({ identifier, password });
+    } catch {
+      // Render the translated error below; keep the identifier for retry.
+    } finally {
+      setPassword('');
+      submitting.current = false;
+    }
   }
 
   return (
     <AuthPageShell
       eyebrow="تسجيل الدخول"
       title="أهلاً بعودتك"
-      description="سجّل دخولك لمتابعة طلباتك والمنتجات اللي حفظتها."
+      description="ادخل لحسابك بالبريد الإلكتروني أو رقم الموبايل وكلمة المرور."
     >
-      <form className="grid gap-4" onSubmit={submit}>
+      <form className="grid gap-4" onSubmit={submit} aria-busy={signIn.isPending}>
         <AuthInput
           autoComplete="username"
           label="البريد الإلكتروني أو رقم الهاتف"
           onChange={(event) => {
             setIdentifier(event.target.value);
-            setMessage('');
+            signIn.reset();
           }}
           placeholder="اكتب بريدك أو رقم هاتفك"
           required
+          disabled={signIn.isPending}
+          maxLength={254}
           type="text"
           value={identifier}
         />
@@ -51,10 +63,12 @@ export function SignInPage() {
               onToggle={() => setPasswordVisible((value) => !value)}
             />
           }
-          minLength={6}
+          minLength={1}
+          maxLength={128}
+          disabled={signIn.isPending}
           onChange={(event) => {
             setPassword(event.target.value);
-            setMessage('');
+            signIn.reset();
           }}
           placeholder="اكتب كلمة المرور"
           required
@@ -76,21 +90,22 @@ export function SignInPage() {
             className="m-0 rounded-xl bg-secondary px-3.5 py-3 text-xs leading-5 text-primary"
             role="status"
           >
-            استعادة كلمة المرور ستتوفر بعد ربط خدمة الحسابات.
+            استعادة كلمة المرور غير متاحة حاليًا. خدمة إرسال رسائل الاستعادة لم تُفعّل بعد.
           </p>
         )}
         <MarketplaceButton
           type="submit"
+          disabled={signIn.isPending}
           className="min-h-12 w-full rounded-xl bg-waffarly-gold px-5 text-sm font-black text-primary transition-colors hover:bg-[#ffd353]"
         >
-          تسجيل الدخول
+          {signIn.isPending ? 'جارٍ تسجيل الدخول…' : 'تسجيل الدخول'}
         </MarketplaceButton>
-        {message && (
+        {signIn.isError && (
           <p
             className="m-0 rounded-xl border border-border bg-secondary/60 px-3.5 py-3 text-xs leading-5 text-primary"
-            role="status"
+            role="alert"
           >
-            {message}
+            {customerAuthError(signIn.error)}
           </p>
         )}
       </form>

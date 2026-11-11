@@ -6,6 +6,7 @@ import { Input } from '@waffarly/ui';
 type AuthInputProps = Pick<
   InputHTMLAttributes<HTMLInputElement>,
   | 'autoComplete'
+  | 'disabled'
   | 'inputMode'
   | 'maxLength'
   | 'minLength'

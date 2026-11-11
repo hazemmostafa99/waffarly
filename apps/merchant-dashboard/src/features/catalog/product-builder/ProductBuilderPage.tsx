@@ -748,35 +748,10 @@ export function ProductBuilderPage() {
 
   return (
     <div className="product-builder-page" dir={isArabic ? 'rtl' : 'ltr'}>
-      <header className="product-builder-topbar">
-        <div>
-          <nav
-            className="product-builder-breadcrumb"
-            aria-label={text('Breadcrumb', 'مسار التنقل')}
-          >
-            <Link to="/products">{text('Products', 'المنتجات')}</Link>
-            <span>/</span>
-            <span>
-              {isEditing ? text('Edit product', 'تعديل المنتج') : text('New product', 'منتج جديد')}
-            </span>
-          </nav>
-          <h1>
-            {isEditing
-              ? text('Edit product', 'تعديل المنتج')
-              : text('Create a product', 'إضافة منتج')}
-          </h1>
-          <p>
-            {isEditing
-              ? text(
-                  'Update the product details, choices, and catalog preview.',
-                  'حدّث تفاصيل المنتج وخياراته ومعاينته في الكتالوج.',
-                )
-              : text(
-                  'Add the product, its choices, then review how it will appear in your catalog.',
-                  'أضف المنتج وخياراته، ثم راجع طريقة ظهوره في الكتالوج.',
-                )}
-          </p>
-        </div>
+      <header className="product-builder-topbar product-builder-actions-only">
+        <h1 className="sr-only">
+          {isEditing ? text('Edit product', 'تعديل المنتج') : text('Create a product', 'إضافة منتج')}
+        </h1>
         <Link className="builder-button ghost" to="/products">
           {text('Cancel', 'إلغاء')}
         </Link>

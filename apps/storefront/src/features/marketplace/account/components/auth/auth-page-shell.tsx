@@ -33,10 +33,7 @@ export function AuthPageShell({
               الرئيسية
             </Link>
             <span aria-hidden="true">/</span>
-            <Link
-              href="/account"
-              className="text-accent no-underline hover:text-primary"
-            >
+            <Link href="/account" className="text-accent no-underline hover:text-primary">
               حسابي
             </Link>
             <span aria-hidden="true">/</span>
@@ -56,26 +53,27 @@ export function AuthPageShell({
                   تسوّقك وطلباتك ومفضلاتك في مكان واحد
                 </h2>
                 <p className="mb-0 mt-2 max-w-md text-sm leading-6 text-white/75">
-                  واجهة حساب تجريبية لاستكشاف تجربة العميل. بيانات الدخول هنا لا تُرسل ولا تُحفظ.
+                  حسابك على وفّرلي بالبريد والموبايل وكلمة المرور. التطبيق لا يخزن كلمة المرور
+                  محليًا.
                 </p>
                 <ul className="mt-5 grid gap-2.5 p-0 text-xs font-bold leading-5 text-white/90 sm:text-sm">
                   <li className="flex items-center gap-2">
                     <span className="text-waffarly-gold" aria-hidden="true">
                       ✓
                     </span>
-                    تابع طلبات الجلسة الحالية
+                    ادخل بالبريد الإلكتروني أو الموبايل
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="text-waffarly-gold" aria-hidden="true">
                       ✓
                     </span>
-                    ارجع لمنتجاتك المفضلة
+                    احتفظ بجلسة حسابك عند تحديث الصفحة
                   </li>
                   <li className="flex items-center gap-2">
                     <span className="text-waffarly-gold" aria-hidden="true">
                       ✓
                     </span>
-                    جرّب الواجهة من غير حساب فعلي
+                    الطلبات والعناوين التجريبية تظل منفصلة عن حسابك
                   </li>
                 </ul>
               </div>

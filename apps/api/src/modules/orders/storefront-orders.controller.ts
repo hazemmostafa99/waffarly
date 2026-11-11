@@ -66,6 +66,7 @@ const createOrderSchema = z
   .object({
     requestId: z.uuid().optional(),
     reviewedTotal: z.string().regex(/^(0|[1-9]\d{0,9})(\.\d{1,2})?$/).optional(),
+    discountCode: z.string().trim().toUpperCase().regex(/^[A-Z0-9][A-Z0-9_-]{2,31}$/).optional(),
     deliveryAreaId: z.string().trim().min(1).max(80).optional(),
     restaurantSettingsRevision: z.number().int().positive().optional(),
     customerName: z.string().trim().min(2).max(120),

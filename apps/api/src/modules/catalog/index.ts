@@ -11,3 +11,5 @@ export type {
 } from './products/product-inventory.calculator.js';
 
 export { ProductConsumptionService } from './products/product-consumption.service.js';
+
+export { MenuSettingsService, menuSettingsSchema } from './menu-settings.service.js';

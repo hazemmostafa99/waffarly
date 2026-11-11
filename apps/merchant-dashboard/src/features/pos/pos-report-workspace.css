@@ -13,6 +13,15 @@
   gap: 12px;
 }
 
+.pos-report-filters--with-actions {
+  grid-template-columns: minmax(220px, 1.3fr) repeat(2, minmax(200px, 1fr)) auto;
+}
+
+.pos-report-filter-actions-inline {
+  display: flex;
+  align-self: end;
+}
+
 .pos-report-field {
   display: grid;
   gap: 6px;

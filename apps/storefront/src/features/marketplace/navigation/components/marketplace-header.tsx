@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { cartQuantity } from '@/features/marketplace/cart/model/cart';
 import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
 import { useAccountStore } from '@/features/marketplace/account/hooks/use-account-store';
+import { useCustomerSession } from '@/features/marketplace/account/hooks/use-customer-session';
 import { MarketplaceSearchForm } from '@/features/marketplace/search/components/marketplace-search-form';
 import type { MarketplaceSearchState } from '@/features/marketplace/search/model/search-state';
 
@@ -29,6 +30,9 @@ export function MarketplaceHeader({
   const cartCount = useCartStore((s) => cartQuantity(s.cart));
   const setCartOpen = useCartStore((s) => s.setCartOpen);
   const isDemoAccountActive = useAccountStore((state) => state.isDemoAccountActive);
+  const customerSession = useCustomerSession();
+  const isCustomerSignedIn = Boolean(customerSession.data);
+  const isDemoSessionActive = isDemoAccountActive && !isCustomerSignedIn;
   const leaveDemoAccount = useAccountStore((state) => state.leaveDemoAccount);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
@@ -145,7 +149,11 @@ export function MarketplaceHeader({
               >
                 <span className="grid min-w-0 gap-0.5 text-start">
                   <small className="text-[11px] font-medium leading-none text-[#d9cfe0]">
-                    {isDemoAccountActive ? 'أنت في حساب تجريبي' : 'جرّب حساب وفّرلي'}
+                    {isCustomerSignedIn
+                      ? `أهلاً ${customerSession.data?.displayName ?? 'بيك'}`
+                      : isDemoSessionActive
+                        ? 'أنت في حساب تجريبي'
+                        : 'حساب وفّرلي'}
                   </small>
                   <strong className="text-[13px] font-extrabold leading-tight">
                     حسابي وقوائمي
@@ -178,12 +186,18 @@ export function MarketplaceHeader({
                 >
                   <div className="border-b border-border px-3 py-2.5">
                     <p className="m-0 text-sm font-extrabold">
-                      {isDemoAccountActive ? 'حساب تجريبي' : 'أهلاً بيك في وفّرلي'}
+                      {isCustomerSignedIn
+                        ? (customerSession.data?.displayName ?? 'حسابك على وفّرلي')
+                        : isDemoSessionActive
+                          ? 'حساب تجريبي'
+                          : 'أهلاً بيك في وفّرلي'}
                     </p>
                     <p className="mb-0 mt-1 text-xs text-muted-foreground">
-                      {isDemoAccountActive
-                        ? 'جلسة مؤقتة على هذا الجهاز'
-                        : 'اختار طريقة الدخول أو أنشئ حسابك'}
+                      {isCustomerSignedIn
+                        ? 'جلسة حسابك محفوظة على الخادم'
+                        : isDemoSessionActive
+                          ? 'جلسة مؤقتة على هذا الجهاز'
+                          : 'اختار طريقة الدخول أو أنشئ حسابك'}
                     </p>
                   </div>
                   <nav aria-label="روابط الحساب" className="grid gap-0.5 py-1.5">
@@ -194,7 +208,7 @@ export function MarketplaceHeader({
                     >
                       نظرة عامة على الحساب
                     </Link>
-                    {!isDemoAccountActive && (
+                    {!isCustomerSignedIn && !isDemoSessionActive && (
                       <>
                         <Link
                           href="/account/sign-in"
@@ -226,7 +240,7 @@ export function MarketplaceHeader({
                     >
                       المفضلة
                     </Link>
-                    {isDemoAccountActive && (
+                    {isDemoSessionActive && (
                       <button
                         type="button"
                         onClick={() => {

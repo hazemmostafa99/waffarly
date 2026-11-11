@@ -37,3 +37,5 @@ export interface MarketplaceMenuProduct extends PublicStorefrontProduct {
   menuSectionId: string | null; displayOrder: number;
 }
 export interface MarketplaceMenuPage { items: MarketplaceMenuProduct[]; nextCursor: string | null }
+
+export interface OwnerRestaurantSettings extends RestaurantSettingsInput { revision: number; name: string }

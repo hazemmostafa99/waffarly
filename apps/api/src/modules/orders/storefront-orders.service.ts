@@ -14,6 +14,7 @@ import type {
   StorefrontOrderReceipt,
   StorefrontOrderStatus,
   StorefrontOrderSummary,
+  OrderDiscountSnapshot,
 } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { assertScopedCursor, type CursorPageQuery } from '../../common/http/pagination.js';
@@ -29,6 +30,10 @@ import { posKitchenTicketInclude } from './pos-kitchen.persistence.js';
 import { freezeLineStockRequirements, restoreOrderConsumption } from './order-stock.persistence.js';
 
 const MAX_ORDER_TOTAL_CENTS = 999_999_999_999n;
+function cairoToday() {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts();
+  return `${parts.find((part) => part.type === 'year')!.value}-${parts.find((part) => part.type === 'month')!.value}-${parts.find((part) => part.type === 'day')!.value}`;
+}
 
 @Injectable()
 export class StorefrontOrdersService {
@@ -60,13 +65,15 @@ export class StorefrontOrdersService {
         unitPrices.push(quote.totalPrice);
         subtotal += toCents(quote.totalPrice) * BigInt(item.quantity);
       }
+      const coupon = await this.quoteDiscount(db, merchant.id, input.discountCode, subtotal);
       const policy = await this.restaurantPolicy.assess(db, merchant.id, input.fulfillmentType, subtotal, input.deliveryAreaId);
       const profile = await db.restaurantProfile.findUnique({ where: { merchantId: merchant.id }, select: { referenceData: true } });
       const reference = profile?.referenceData;
       const demo = reference !== null && typeof reference === 'object' && !Array.isArray(reference) && reference?.origin === 'local-mock';
-      const total = subtotal + (policy?.fee ?? 0n);
+      const total = subtotal - (coupon?.snapshot.amount ? toCents(coupon.snapshot.amount) : 0n) + (policy?.fee ?? 0n);
       if (total > MAX_ORDER_TOTAL_CENTS) throw new BadRequestException('Order total exceeds the supported range.');
       return { unitPrices, subtotal: formatCents(subtotal), deliveryFee: formatCents(policy?.fee ?? 0n), total: formatCents(total), currency: 'EGP' as const,
+        ...(coupon ? { discount: coupon.snapshot } : {}),
         ...(policy ? { restaurantSettingsRevision: policy.snapshot.revision } : {}), demo };
     }, { isolationLevel: 'Serializable' });
   }
@@ -81,7 +88,7 @@ export class StorefrontOrdersService {
     const fingerprint = createHash('sha256').update(JSON.stringify({ ...input, requestId: undefined })).digest('hex');
     const replay = async () => {
       if (!input.requestId) return null;
-      const existing = await this.prisma.storefrontOrder.findUnique({ where: { merchantId_requestId: { merchantId: merchant.id, requestId: input.requestId } } });
+      const existing = await this.prisma.storefrontOrder.findUnique({ where: { merchantId_requestId: { merchantId: merchant.id, requestId: input.requestId } }, include: { discountRedemption: true } });
       if (!existing) return null;
       if (existing.requestFingerprint !== fingerprint) throw new ConflictException('This request ID was used for another checkout.');
       return toReceipt(existing);
@@ -109,7 +116,7 @@ export class StorefrontOrdersService {
               deliveryAddress:
                 input.fulfillmentType === 'delivery' ? input.deliveryAddress!.trim() : null,
               total: '0.00',
-              requestId: input.requestId, requestFingerprint: input.requestId ? fingerprint : undefined,
+              ...(input.requestId ? { requestId: input.requestId, requestFingerprint: fingerprint } : {}),
             },
             select: { id: true },
           });
@@ -294,14 +301,23 @@ export class StorefrontOrdersService {
             }
           }
 
+          const coupon = await this.quoteDiscount(transaction, merchant.id, input.discountCode, orderTotalCents);
+          const discountCents = coupon?.snapshot.amount ? toCents(coupon.snapshot.amount) : 0n;
           const policy = await this.restaurantPolicy.assess(transaction, merchant.id, input.fulfillmentType, orderTotalCents, input.deliveryAreaId, input.restaurantSettingsRevision);
           const deliveryFeeCents = policy?.fee ?? 0n;
-          if (input.reviewedTotal !== undefined && toCents(input.reviewedTotal) !== orderTotalCents + deliveryFeeCents) throw new ConflictException('Checkout total changed. Review the new price before confirming.');
-          if (orderTotalCents + deliveryFeeCents > MAX_ORDER_TOTAL_CENTS) throw new BadRequestException('Order total exceeds the supported range.');
+          const totalCents = orderTotalCents - discountCents + deliveryFeeCents;
+          if (input.reviewedTotal !== undefined && toCents(input.reviewedTotal) !== totalCents) throw new ConflictException('Checkout total changed. Review the new price before confirming.');
+          if (totalCents > MAX_ORDER_TOTAL_CENTS) throw new BadRequestException('Order total exceeds the supported range.');
+          if (coupon && discountCents > 0n) {
+            const today = cairoToday();
+            const changed = await transaction.merchantDiscount.updateMany({ where: { id: coupon.row.id, merchantId: merchant.id, revision: coupon.row.revision, usedCount: coupon.row.usedCount, state: 'published', startDate: { lte: new Date(`${today}T00:00:00.000Z`) }, endDate: { gte: new Date(`${today}T00:00:00.000Z`) }, ...(coupon.row.usageLimit === null ? {} : { usageLimit: { gt: coupon.row.usedCount } }) }, data: { usedCount: { increment: 1 } } });
+            if (changed.count !== 1) throw new ConflictException('Discount code is no longer available. Review your order and try again.');
+            await transaction.merchantDiscountRedemption.create({ data: { merchantId: merchant.id, discountId: coupon.row.id, orderId: order.id, ...coupon.snapshot, value: coupon.row.value } });
+          }
           const saved = await transaction.storefrontOrder.update({
             where: { id: order.id },
-            data: { total: formatCents(orderTotalCents + deliveryFeeCents), ...(policy ? { subtotal: formatCents(orderTotalCents), deliveryFee: formatCents(deliveryFeeCents), fulfillmentPolicy: policy.snapshot } : {}) },
-            select: { id: true, status: true, total: true, currency: true, createdAt: true, subtotal: true, deliveryFee: true },
+            data: { total: formatCents(totalCents), ...(policy ? { subtotal: formatCents(orderTotalCents), deliveryFee: formatCents(deliveryFeeCents), fulfillmentPolicy: policy.snapshot } : {}) },
+            include: { discountRedemption: true },
           });
           return toReceipt(saved);
         },
@@ -315,6 +331,23 @@ export class StorefrontOrdersService {
       }
       throw error;
     }
+  }
+
+  private async quoteDiscount(db: Prisma.TransactionClient, merchantId: string, code: string | undefined, subtotal: bigint) {
+    if (!code) return null;
+    const normalized = code.trim().toUpperCase();
+    const row = await db.merchantDiscount.findFirst({ where: { merchantId, code: normalized }, include: { branches: { select: { branchId: true } } } });
+    const unavailable = () => new BadRequestException('Discount code is not available for this order.');
+    const today = cairoToday();
+    if (!row || row.state !== 'published' || row.startDate.toISOString().slice(0, 10) > today || row.endDate.toISOString().slice(0, 10) < today || (row.usageLimit !== null && row.usedCount >= row.usageLimit) || row.branches.length > 0) throw unavailable();
+    if (subtotal < toCents(row.minimum.toString())) throw new BadRequestException('Order does not meet the discount minimum.');
+    const value = toCents(row.value.toString());
+    let amount = row.type === 'fixed' ? value : (subtotal * value + 5_000n) / 10_000n;
+    if (row.maximum !== null) amount = amount < toCents(row.maximum.toString()) ? amount : toCents(row.maximum.toString());
+    if (amount > subtotal) amount = subtotal;
+    if (amount <= 0n) throw unavailable();
+    const snapshot: OrderDiscountSnapshot = { code: row.code, name: row.name, type: row.type as OrderDiscountSnapshot['type'], value: row.value.toString(), amount: formatCents(amount), terms: row.terms };
+    return { row, snapshot };
   }
 
   async listForOwner(

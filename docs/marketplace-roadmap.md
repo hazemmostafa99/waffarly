@@ -1,5 +1,23 @@
 # Marketplace completion roadmap
 
+Customer authentication authorization (2026-11-11): the user authorized live
+Marketplace customer registration and sign-in using email, mobile and password,
+with either email or mobile accepted at sign-in. Auth provides registration,
+login, current-session and logout routes backed by an HttpOnly cookie. Phone/email
+verification and password recovery are deferred. This decision authorizes account
+API integration despite the earlier local-only phase rule; checkout, payment,
+addresses, order history and tracking keep their separately documented demo state.
+The customer-auth migration was applied to the local database. The API suite passed
+(229 tests) and the customer-auth database test passed. The API build and typecheck
+passed; API-wide lint still reports six existing restaurant-file errors. Storefront
+manual/browser acceptance remains open.
+
+Tenant storefront customer authentication authorization (2026-11-11): the user
+also authorized connecting customer sign-in/sign-up at `/s/[slug]/login`. It uses
+the same global customer account endpoints and session as Marketplace. The store
+account overview reports the signed-in account and supports logout; orders, saved
+addresses and profile editing remain preview/demo flows.
+
 Restaurant integration authorization (2026-11-11): following user manual review,
 the user explicitly authorized backend preparation/seed and then restaurant
 browsing/configuration pricing integration. This supersedes local-only mode for
@@ -8,13 +26,14 @@ local demonstrations; other Marketplace surfaces keep their existing sources.
 See [integration delivery](marketplace-restaurant-integration.md). No tests or
 builds were run; manual integration acceptance remains open.
 
-## Active decision: UI first, backend later
+## Active decision: UI first, with explicit integration exceptions
 
 The user explicitly requires completing every Marketplace screen and user flow
 with the existing local data before backend integration. This supersedes the
 previous integration-first phase order. Missing APIs are not blockers for the UI.
 Backend integration starts only after UI-flow completion and a separate explicit
-user instruction; it must not begin automatically.
+user instruction; it must not begin automatically. Restaurant integration and
+customer authentication are specifically authorized exceptions recorded above.
 
 Use `apps/storefront/src/features/marketplace/data/reference.json` as the current
 data source. Additional scenarios may be created locally to exercise empty/error,
@@ -83,7 +102,7 @@ pending; remaining placeholder destinations are not complete. See
 | 2     | Store/restaurant and product details | Existing local records linked to local detail views; explicit mock options where absent; direct URL and not-found states                                                            |
 | 3     | Cart and favorites                   | Cart review and favorite list/removal are implemented; explicit product options remain absent from fixture data; empty/unavailable states still need manual review                  |
 | 4     | Local checkout and confirmation      | Demo contact/fulfillment/review steps, validation, pending/error/retry/success, duplicate-click prevention and mock receipt; no real order or payment                               |
-| 5     | Local account and order journey      | Demo account hub, separate sign-in/sign-up screens, mock address selection, local tracking progression and reorder-to-cart; no real PII, credentials or session                      |
+| 5     | Local account and order journey      | Demo account hub, separate sign-in/sign-up screens, mock address selection, local tracking progression and reorder-to-cart; no real PII, credentials or session                     |
 | 6     | Complete local flow and polish       | Every navigation entry has a deliberate outcome; notifications/payment-status UI if included is simulated; seller-entry flow cannot submit to the existing live application API     |
 | 7     | UI acceptance                        | Browse -> details/options -> cart -> checkout -> demo confirmation -> tracking/account journey verified; responsive/RTL/keyboard checks, typecheck/build and honest visual evidence |
 | 8     | Backend integration (deferred)       | Only after phase 7 completion and explicit user instruction; inventory existing contracts, settle production policies, connect one flow at a time                                   |
@@ -101,6 +120,8 @@ Do not build empty architecture layers for features that have no implementation 
 - Use component state for forms and transient presentation, URL state for shareable
   navigation, and feature-owned Zustand slices for non-sensitive cart, favorites
   and local demo orders.
+- Persist only Marketplace cart lines in browser local storage and hydrate them
+  after client mount; account, address, checkout and order demo state stays transient.
 - React Query remains available; use it only if asynchronous local scenario behavior
   benefits from it. An in-process mock function is sufficient; do not add network
   calls merely to exercise a library. Do not duplicate query results in Zustand.

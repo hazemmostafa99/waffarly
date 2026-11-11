@@ -4,6 +4,15 @@ export function inventoryCopy(
   translate: (text: string) => string,
 ) {
   const arabic: Record<string, string> = {
+    'Inventory navigation': 'التنقل في المخزون',
+    'Stock overview': 'نظرة المخزون',
+    'Stock health': 'حالة المخزون',
+    Items: 'الأصناف',
+    Purchases: 'المشتريات',
+    'Movement history': 'سجل الحركات',
+    'Opening stock': 'الرصيد الافتتاحي',
+    'Inventory settings': 'إعدادات المخزون',
+    'Stock items': 'أصناف المخزون',
     'Items on this page': 'أصناف في هذه الصفحة',
     'Filter by item': 'تصفية حسب الصنف',
     'Movement type': 'نوع الحركة',

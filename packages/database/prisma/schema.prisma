@@ -3,6 +3,68 @@ generator client {
   output   = "../generated/client"
 }
 
+model MerchantDiscount {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  name String @db.VarChar(100)
+  description String @default("") @db.VarChar(200)
+  code String @db.VarChar(32)
+  type String @db.VarChar(16)
+  value Decimal @db.Decimal(12, 2)
+  minimum Decimal @db.Decimal(12, 2)
+  maximum Decimal? @db.Decimal(12, 2)
+  startDate DateTime @db.Date
+  endDate DateTime @db.Date
+  usageLimit Int?
+  usedCount Int @default(0)
+  terms String @default("") @db.VarChar(2000)
+  state String @db.VarChar(16)
+  revision Int @default(1)
+  creationRequest String @db.Uuid
+  creationFingerprint String @db.VarChar(64)
+  createdBy String @db.VarChar(80)
+  updatedBy String @db.VarChar(80)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  branches MerchantDiscountBranch[]
+  redemptions MerchantDiscountRedemption[]
+  @@unique([id, merchantId])
+  @@unique([merchantId, code])
+  @@unique([merchantId, creationRequest])
+  @@index([merchantId, createdAt, id])
+  @@map("merchant_discounts")
+}
+
+model MerchantDiscountBranch {
+  merchantId String @db.Uuid
+  discountId String @db.Uuid
+  branchId String @db.Uuid
+  discount MerchantDiscount @relation(fields: [discountId, merchantId], references: [id, merchantId], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  @@id([merchantId, discountId, branchId])
+  @@map("merchant_discount_branches")
+}
+
+model MerchantDiscountRedemption {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  discountId String @db.Uuid
+  orderId String @db.Uuid
+  code String @db.VarChar(32)
+  name String @db.VarChar(100)
+  type String @db.VarChar(16)
+  value Decimal @db.Decimal(12, 2)
+  amount Decimal @db.Decimal(12, 2)
+  terms String @db.VarChar(2000)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  discount MerchantDiscount @relation(fields: [discountId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  order StorefrontOrder @relation(fields: [orderId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  @@unique([orderId, merchantId])
+  @@index([merchantId, discountId])
+  @@map("merchant_discount_redemptions")
+}
+
 datasource db {
   provider = "postgresql"
 }
@@ -36,6 +98,8 @@ model PosOrderDailyCounter {
 
 // A merchant is the tenant boundary across business activities.
 model Merchant {
+  discounts MerchantDiscount[]
+  customers MerchantCustomer[]
   subscription Subscription?
   cashSafes PosCashSafe[]
   id                       String                  @id @default(uuid()) @db.Uuid
@@ -100,6 +164,63 @@ model Merchant {
   @@map("merchants")
 }
 
+// Auth-owned identity. Unverified contact details never authorize historical-record claims.
+model CustomerAccount {
+  id String @id @default(uuid()) @db.Uuid
+  phone String @unique @db.VarChar(16)
+  phoneVerifiedAt DateTime? @db.Timestamptz(6)
+  email String? @unique @db.VarChar(254)
+  emailVerifiedAt DateTime? @db.Timestamptz(6)
+  passwordHash String? @db.VarChar(255)
+  displayName String? @db.VarChar(120)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  merchantCustomers MerchantCustomer[]
+
+  @@map("customer_accounts")
+}
+
+// Shared across API instances; keys contain hashes, never raw IPs or identifiers.
+model CustomerAuthLimit {
+  key String @id @db.VarChar(64)
+  attempts Int
+  expiresAt DateTime @db.Timestamptz(6)
+
+  @@index([expiresAt])
+  @@map("customer_auth_limits")
+}
+
+// Contact records can exist without a login; phone/email are not proof of identity.
+model MerchantCustomer {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  accountId String? @db.Uuid
+  name String @db.VarChar(120)
+  phone String? @db.VarChar(32)
+  email String? @db.VarChar(254)
+  notes String @default("") @db.VarChar(2000)
+  segment String @default("regular") @db.VarChar(16)
+  firstChannel String @default("manual") @db.VarChar(16)
+  archivedAt DateTime? @db.Timestamptz(6)
+  revision Int @default(1)
+  creationRequest String @db.Uuid
+  creationFingerprint String @db.VarChar(64)
+  createdBy String @db.VarChar(80)
+  updatedBy String @db.VarChar(80)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  account CustomerAccount? @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  orders StorefrontOrder[]
+
+  @@unique([id, merchantId])
+  @@unique([merchantId, accountId])
+  @@unique([merchantId, creationRequest])
+  @@index([merchantId, createdAt, id])
+  @@index([merchantId, phone])
+  @@map("merchant_customers")
+}
+
 // Inventory identities only; item creation does not establish stock balances.
 model StockItem {
   id                    String                                @id @default(uuid()) @db.Uuid
@@ -150,6 +271,7 @@ model StockItemUnit {
 
 // A merchant location. Every branch has one active default consumption warehouse, enforced in the Inventory API.
 model Branch {
+  discountScopes MerchantDiscountBranch[]
   posOrderBranchCodes PosOrderBranchCode[]
   posOrderDailyCounters PosOrderDailyCounter[]
   cashSafes PosCashSafe[]
@@ -1093,6 +1215,11 @@ model ProductCategory {
 
 // Public storefront checkouts are snapshots so order history remains readable if catalog data changes.
 model StorefrontOrder {
+  discountRedemption MerchantDiscountRedemption?
+  merchantCustomerId String? @db.Uuid
+  customerLinkedBy String? @db.VarChar(80)
+  customerLinkedAt DateTime? @db.Timestamptz(6)
+  merchantCustomer MerchantCustomer? @relation(fields: [merchantCustomerId, merchantId], references: [id, merchantId], onDelete: Restrict)
   requestId String? @db.Uuid
   requestFingerprint String? @db.VarChar(64)
   @@unique([merchantId, requestId])
@@ -1153,6 +1280,7 @@ model StorefrontOrder {
   @@index([merchantId, warehouseId, status])
   @@index([merchantId, branchId, status])
   @@index([merchantId, source, createdAt])
+  @@index([merchantId, merchantCustomerId, createdAt])
   @@index([merchantId, posShiftId, createdAt])
   @@index([merchantId, posDiningSessionId, createdAt])
   @@map("storefront_orders")

@@ -299,3 +299,9 @@ export type { RestaurantImage, RestaurantPeriod, RestaurantDay, RestaurantExcept
 export type { PublicRestaurantProfile, MarketplaceMenuProduct, MarketplaceMenuPage } from './restaurant.js';
 
 export type { StorefrontCheckoutQuoteRequest, StorefrontCheckoutQuote } from './catalog.js';
+
+export type { OwnerRestaurantSettings } from './restaurant.js';
+export { CUSTOMER_CHANNELS } from './customers.js';
+export type { CustomerProfile, CustomerSignUpRequest, CustomerSignInRequest } from './customer-auth.js';
+export type { CustomerChannel, MerchantCustomer, CreateMerchantCustomerRequest, UpdateMerchantCustomerRequest, LinkOrderCustomerRequest, OrderCustomerLink, OrderCustomerContext, CustomerOrderSummary } from './customers.js';
+export type { MerchantDiscount, MerchantDiscountInput, MerchantDiscountState, MerchantDiscountStatus, MerchantDiscountType, MerchantDiscountStats, OrderDiscountSnapshot } from './discounts.js';

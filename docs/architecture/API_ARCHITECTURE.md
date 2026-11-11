@@ -1,5 +1,34 @@
 # API architecture
 
+Discounts (2026-11-11): Discounts owns merchant-scoped coupon definitions,
+revisioned updates, branch scope, and redemption reporting. Owner APIs derive
+tenant identity from Auth. Monetary fields cross the API as decimal strings;
+Cairo calendar dates determine schedule state. See [Merchant discounts](../features/discounts.md).
+
+Customer authentication (2026-11-11): Auth owns Marketplace `CustomerAccount`
+credentials, email/mobile sign-in, hashed database-backed attempt limits and
+customer sessions. Registration allows 5 attempts per IP per hour; login allows
+20 attempts per identifier and 100 per IP per 15 minutes. Registration does not
+verify contact ownership. Customers continues to own tenant-local contact records; account linking and historical-order
+claims require a later explicit verified-ownership flow. Orders retains existing
+association ownership. No new module dependency was added. See
+[customer authentication](../marketplace-customer-authentication.md).
+
+Customers foundation (2026-11-11): Customers owns tenant-scoped guest/contact
+profiles, owner directory APIs and private notes. CustomerAccount provides a
+global verified-phone identity foundation; OTP verification/sessions remain
+Auth work and are not enabled. Orders owns explicit, attributable, revisioned
+same-tenant customer associations and bounded customer history. Customers imports
+Auth; Orders additionally imports Customers. Existing checkout/POS submission and
+order snapshots remain unchanged. See [Customers](../features/customers.md).
+
+Restaurant owner settings (2026-11-11): Storefront owner settings now support an
+attributable merchant-name edit alongside profile settings. Catalog exports a
+bounded, revisioned MenuSettingsService for transactional section/product order,
+primary section and availability updates; Storefront exposes it to the current
+restaurant owner. The dependency graph is unchanged. Marketplace reads respect
+menu ordering. See [owner settings delivery](../marketplace-restaurant-owner-settings.md).
+
 Storefront checkout retries (2026-11-11): Orders adds a public basket quote,
 tenant/request unique order IDs with payload fingerprints, reviewed-total checks
 and matching replay receipts. Existing clients may omit the additive request
@@ -97,23 +126,24 @@ preserve stored amounts and never relabel or convert historical money.
 
 The Orders-owned payment-state response includes optional checkout `context` (the existing frozen order summary and current dining table code) plus check `splitMethod` and `allocations` using the existing check-summary allocation shape. Its tenant/POS/sell filters also exclude archived assigned branches. Context and balances are returned together from the scoped order read; no new persistence schema or write behavior is introduced. POS uses allocations for item checks, while equal/custom checks show full-order items only as reference. Optional metadata preserves compatibility with older responses, which receive an explicit unavailable-context message. Roll out contracts/API before the new UI for complete details.
 
-| Module     | Responsibility                                                                                                                                         | Application dependencies                   |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
-| auth       | Owner/Admin/POS employee credentials, sessions, guards, employee records, and branch assignments                                                       | Configuration, database, subscriptions |
-| merchants  | Merchant profiles, applications, onboarding plan assignment, and revisioned tenant-level POS accent configuration                                          | Auth, subscriptions |
-| plans      | Plan definitions, duration prices and subscription administration controllers                                                                           | Auth, subscriptions                        |
-| subscriptions | Merchant paid coverage, manual collections, lifecycle, quotes, history and eligibility                                                              | Database                                   |
-| activities | Business activity and capability definitions/metadata                                                                                                  | Auth                                       |
-| storefront | Owner design settings, templates, public storefront composition                                                                                        | Auth, catalog                              |
-| catalog    | Products, categories, reusable modifiers, authoritative pricing, and product inventory configurations                                                  | Auth, inventory                            |
-| inventory  | Merchant-owned Stock Items/units, branches/warehouses, policy, balances, and transactional movement ledger                                             | Auth                                       |
-| purchasing | Merchant-owned supplier directory and draft/confirmed purchase invoices                                                                                | Auth, inventory                            |
-| orders     | Storefront and POS order submission/snapshots, stock compatibility, dining tables/sessions/checks, tenders, ordinary POS receipts and recipe lifecycle | Auth, catalog, inventory, shifts, payments, subscriptions |
-| shifts     | Merchant-owned POS registers, opening shifts, register/branch attribution and cash journal                                                             | Auth                                       |
-| payments   | Immutable POS cash/manual-terminal tenders, exact tender/change rules and check balances                                                               | Auth, shifts                               |
-| media      | Tenant-owned image metadata and upload orchestration                                                                                                   | Auth, storage adapter                      |
-| reports    | Product configuration and owner POS operations aggregates from POS order, tender, refund and employee-attribution records                              | Auth                                       |
-| health     | Liveness and database readiness                                                                                                                        | Database                                   |
+| Module        | Responsibility                                                                                                                                         | Application dependencies                                  |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| auth          | Owner/Admin/POS employee credentials, sessions, guards, employee records, and branch assignments                                                       | Configuration, database, subscriptions                    |
+| customers     | Merchant-private customer directory, guest contacts and global customer identity persistence foundation; customer authentication remains deferred      | Auth                                                      |
+| merchants     | Merchant profiles, applications, onboarding plan assignment, and revisioned tenant-level POS accent configuration                                      | Auth, subscriptions                                       |
+| plans         | Plan definitions, duration prices and subscription administration controllers                                                                          | Auth, subscriptions                                       |
+| subscriptions | Merchant paid coverage, manual collections, lifecycle, quotes, history and eligibility                                                                 | Database                                                  |
+| activities    | Business activity and capability definitions/metadata                                                                                                  | Auth                                                      |
+| storefront    | Owner design settings, templates, public storefront composition                                                                                        | Auth, catalog                                             |
+| catalog       | Products, categories, reusable modifiers, authoritative pricing, and product inventory configurations                                                  | Auth, inventory                                           |
+| inventory     | Merchant-owned Stock Items/units, branches/warehouses, policy, balances, and transactional movement ledger                                             | Auth                                                      |
+| purchasing    | Merchant-owned supplier directory and draft/confirmed purchase invoices                                                                                | Auth, inventory                                           |
+| orders        | Storefront and POS order submission/snapshots, stock compatibility, dining tables/sessions/checks, tenders, ordinary POS receipts and recipe lifecycle | Auth, catalog, inventory, shifts, payments, subscriptions |
+| shifts        | Merchant-owned POS registers, opening shifts, register/branch attribution and cash journal                                                             | Auth                                                      |
+| payments      | Immutable POS cash/manual-terminal tenders, exact tender/change rules and check balances                                                               | Auth, shifts                                              |
+| media         | Tenant-owned image metadata and upload orchestration                                                                                                   | Auth, storage adapter                                     |
+| reports       | Product configuration and owner POS operations aggregates from POS order, tender, refund and employee-attribution records                              | Auth                                                      |
+| health        | Liveness and database readiness                                                                                                                        | Database                                                  |
 
 Modules import other modules through their `index.ts` entry points. Each Nest
 module exports only deliberately shared providers. `AppModule` composes features;

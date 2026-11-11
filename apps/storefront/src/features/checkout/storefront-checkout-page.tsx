@@ -9,6 +9,7 @@ import type {
   CreateStorefrontOrderRequest,
   PublicStorefrontCatalog,
   StorefrontOrderReceipt,
+  StorefrontCheckoutQuote,
 } from '@waffarly/contracts';
 import { Button, Card, Input, Textarea } from '@waffarly/ui';
 import { useLocale } from '@waffarly/ui';
@@ -23,6 +24,7 @@ type CheckoutFields = {
   customerPhone: string;
   fulfillmentType: 'pickup' | 'delivery';
   deliveryAddress: string;
+  discountCode: string;
 };
 
 export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontCatalog }) {
@@ -36,7 +38,18 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
     customerPhone: '',
     fulfillmentType: 'pickup',
     deliveryAddress: '',
+    discountCode: '',
   });
+  const [quote, setQuote] = useState<StorefrontCheckoutQuote | null>(null);
+  const [quoteError, setQuoteError] = useState('');
+
+  function quoteRequest() {
+    return apiPost<StorefrontCheckoutQuote>(`/catalog/stores/${encodeURIComponent(catalog.slug)}/orders/quote`, {
+      fulfillmentType: fields.fulfillmentType,
+      items: cart.map((line) => ({ productId: line.productId, ...(line.variantId ? { variantId: line.variantId } : {}), selections: line.selections, quantity: line.quantity })),
+      ...(fields.discountCode.trim() ? { discountCode: fields.discountCode.trim().toUpperCase() } : {}),
+    });
+  }
 
   const orderMutation = useMutation({
     mutationKey: storefrontQueryKeys.order(catalog.slug),
@@ -59,6 +72,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
         customerName: checkout.customerName.trim(),
         customerPhone: checkout.customerPhone.trim(),
         fulfillmentType: checkout.fulfillmentType,
+        ...(checkout.discountCode.trim() ? { discountCode: checkout.discountCode.trim().toUpperCase() } : {}),
         ...(checkout.fulfillmentType === 'delivery'
           ? { deliveryAddress: checkout.deliveryAddress.trim() }
           : {}),
@@ -69,6 +83,9 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
           quantity: line.quantity,
         })),
       };
+      const reviewedQuote = await quoteRequest();
+      request.reviewedTotal = reviewedQuote.total;
+      if (reviewedQuote.restaurantSettingsRevision) request.restaurantSettingsRevision = reviewedQuote.restaurantSettingsRevision;
 
       return apiPost<StorefrontOrderReceipt>(
         `/catalog/stores/${encodeURIComponent(catalog.slug)}/orders`,
@@ -80,6 +97,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
 
   function update<K extends keyof CheckoutFields>(key: K, value: CheckoutFields[K]) {
     setFields((current) => ({ ...current, [key]: value }));
+    if (key === 'discountCode' || key === 'fulfillmentType') { setQuote(null); setQuoteError(''); }
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -107,6 +125,10 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
               {orderMutation.data.id.slice(0, 8).toLocaleUpperCase()}
             </strong>
           </div>
+          {orderMutation.data.discount && <div className="flex items-center justify-between gap-4 border-t border-store-border pt-4 text-store-primary">
+            <span className="text-sm font-bold">{t.discountApplied} ({orderMutation.data.discount.code})</span>
+            <strong>−<bdi dir="auto">{formatStorefrontPrice(orderMutation.data.discount.amount, locale)}</bdi></strong>
+          </div>}
           <div className="flex items-center justify-between gap-4 border-t border-store-border pt-4">
             <span className="text-sm font-bold text-store-muted">{t.orderTotal}</span>
             <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
@@ -177,6 +199,16 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                 dir="ltr"
               />
             </label>
+          </Card>
+
+          <Card className="grid gap-3 rounded-3xl border-store-border bg-white p-4 sm:p-5">
+            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">{t.discountCode}</h2>
+            <div className="flex flex-wrap gap-2">
+              <Input aria-label={t.discountCode} dir="ltr" autoCapitalize="characters" maxLength={32} value={fields.discountCode} onChange={(event) => update('discountCode', event.currentTarget.value.toUpperCase())} placeholder={t.discountCodePlaceholder} className="h-12 min-w-0 flex-1 rounded-xl border-store-border bg-white text-base" />
+              <Button type="button" variant="outline" disabled={orderMutation.isPending || !fields.discountCode.trim()} onClick={() => { setQuoteError(''); void quoteRequest().then(setQuote).catch(() => { setQuote(null); setQuoteError(t.discountUnavailable); }); }} className="h-12 rounded-xl border-store-border font-bold text-store-primary">{t.applyDiscount}</Button>
+            </div>
+            {quoteError && <p className="m-0 text-sm font-bold text-store-error" role="alert">{quoteError}</p>}
+            {quote?.discount && <p className="m-0 text-sm font-bold text-store-primary" role="status">{quote.discount.code} · {t.discountApplied} · −<bdi dir="auto">{formatStorefrontPrice(quote.discount.amount, locale)}</bdi></p>}
           </Card>
 
           <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
@@ -250,6 +282,13 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
               })}
             </ul>
             <p className="mt-4 rounded-xl bg-store-cream px-3 py-3 text-xs leading-5 text-store-muted">{t.priceNote}</p>
+            {quote && <div className="mt-4 grid gap-2 border-t border-store-border pt-4 text-sm">
+              <div className="flex justify-between gap-3"><span className="text-store-muted">{t.orderTotal}</span><strong><bdi dir="auto">{formatStorefrontPrice(quote.subtotal, locale)}</bdi></strong></div>
+              {quote.discount && <div className="flex justify-between gap-3 text-store-primary"><span>{t.discountApplied} ({quote.discount.code})</span><strong>−<bdi dir="auto">{formatStorefrontPrice(quote.discount.amount, locale)}</bdi></strong></div>}
+              {Number(quote.deliveryFee) > 0 && <div className="flex justify-between gap-3"><span className="text-store-muted">{t.delivery}</span><strong><bdi dir="auto">{formatStorefrontPrice(quote.deliveryFee, locale)}</bdi></strong></div>}
+              <div className="flex justify-between gap-3 border-t border-store-border pt-2 font-extrabold"><span>{t.finalTotal}</span><strong><bdi dir="auto">{formatStorefrontPrice(quote.total, locale)}</bdi></strong></div>
+            </div>}
+            {quote?.demo && <p className="mt-2 text-xs text-store-muted">{t.demoDiscountQuote}</p>}
             <Button asChild variant="outline" className="mt-3 h-11 w-full rounded-xl border-store-border font-bold text-store-primary hover:bg-store-cream">
               <Link href={`/s/${catalog.slug}/cart`}>{locale === 'ar' ? 'العودة إلى السلة' : 'Back to basket'}</Link>
             </Button>

@@ -22,7 +22,9 @@ export function AccountPreviewDisclosure() {
       <Info className="mt-0.5 size-5 shrink-0 text-store-primary" aria-hidden="true" />
       <div>
         <p className="text-storefront-body font-bold">{t.previewTitle}</p>
-        <p className="mt-0.5 text-storefront-support leading-5 text-store-secondary">{t.previewDescription}</p>
+        <p className="mt-0.5 text-storefront-support leading-5 text-store-secondary">
+          {t.previewDescription}
+        </p>
       </div>
     </aside>
   );
@@ -32,11 +34,13 @@ export function AccountPreviewShell({
   active,
   title,
   description,
+  isPreview = true,
   children,
 }: {
   active: AccountPreviewSection;
   title: string;
   description: string;
+  isPreview?: boolean;
   children: ReactNode;
 }) {
   const { locale } = useLocale();
@@ -52,13 +56,18 @@ export function AccountPreviewShell({
 
   return (
     <main className="mx-auto w-[calc(100%-2rem)] max-w-[1240px] py-6 sm:py-9 lg:py-11">
-      <AccountPreviewDisclosure />
+      {isPreview && <AccountPreviewDisclosure />}
       <header className="mb-5 flex flex-col gap-1.5 sm:mb-6">
         <h1 className="font-heading text-storefront-page font-extrabold text-store-ink">{title}</h1>
-        <p className="max-w-2xl text-storefront-body leading-6 text-store-secondary">{description}</p>
+        <p className="max-w-2xl text-storefront-body leading-6 text-store-secondary">
+          {description}
+        </p>
       </header>
 
-      <nav aria-label={t.accountNavigation} className="mb-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+      <nav
+        aria-label={t.accountNavigation}
+        className="mb-5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"
+      >
         {links.map(({ key, href, label }) => (
           <Link
             aria-current={active === key ? 'page' : undefined}
