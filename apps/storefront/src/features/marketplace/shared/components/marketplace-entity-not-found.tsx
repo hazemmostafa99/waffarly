@@ -15,7 +15,7 @@ export function MarketplaceEntityNotFound({
   return (
     <main id="marketplace-main" tabIndex={-1} className="min-h-[60vh] py-20 text-center">
       <MarketplaceContainer>
-        <h1 className="mb-3 mt-0 text-[28px]">{title}</h1>
+        <h1 className="sr-only">{title}</h1>
         <p className="mb-6 mt-0 leading-[1.8] text-muted-foreground">{description}</p>
         <Link
           href={href}

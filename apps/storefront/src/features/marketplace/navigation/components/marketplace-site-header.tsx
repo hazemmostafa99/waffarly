@@ -19,7 +19,6 @@ export function MarketplaceSiteHeader() {
         onSearch={(state) => search.navigate(state)}
         menuOpen={navigation.menuOpen}
         onOpenMenu={() => navigation.setMenuOpen(true)}
-        onPending={navigation.setPendingTitle}
         navigation={
           <MarketplaceNavigationLinks
             activeCategory={search.state.category}
@@ -32,7 +31,7 @@ export function MarketplaceSiteHeader() {
         onHome={() => navigation.navigate({ kind: 'section', section: 'marketplace-main' })}
         onCategories={() => navigation.navigate({ kind: 'section', section: 'categories' })}
         onSearch={navigation.focusSearch}
-        onAccount={() => navigation.setPendingTitle('account')}
+        onAccount={() => navigation.navigate({ kind: 'route', href: '/marketplace/account' })}
       />
       <MarketplaceMenu
         open={navigation.menuOpen}

@@ -21,7 +21,9 @@ export function MarketplaceMobileNav({
 }) {
   const setCartOpen = useCartStore((s) => s.setCartOpen);
   const cartOpen = useCartStore((s) => s.cartOpen);
-  const onCartPage = usePathname() === '/marketplace/cart';
+  const pathname = usePathname();
+  const onCartPage = pathname === '/marketplace/cart';
+  const onAccountPage = pathname === '/marketplace/account';
   const actions = [onHome, onCategories, onSearch, () => setCartOpen(true), onAccount];
   return (
     <nav
@@ -44,7 +46,9 @@ export function MarketplaceMobileNav({
           key={label}
           type="button"
           className={cn(
-            (cartOpen || onCartPage ? i === 3 : i === 0) ? 'active' : undefined,
+            (cartOpen || onCartPage ? i === 3 : onAccountPage ? i === 4 : i === 0)
+              ? 'active'
+              : undefined,
             'disabled:cursor-not-allowed disabled:opacity-[0.5]',
           )}
           onClick={actions[i]}

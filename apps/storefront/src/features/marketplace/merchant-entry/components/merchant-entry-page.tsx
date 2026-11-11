@@ -36,7 +36,7 @@ export function MerchantEntryPage() {
                 <span className="inline-flex rounded-full border border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.08)] px-2.5 py-1 text-[11px] font-bold text-waffarly-gold">
                   {isArabic ? 'لأصحاب المتاجر والمطاعم' : 'For stores and restaurants'}
                 </span>
-                <h1 className="mb-0 mt-2 text-2xl font-black leading-tight sm:text-3xl">
+                <h1 className="sr-only">
                   {isArabic ? 'ابدأ البيع على وفّرلي' : 'Start selling on Waffarly'}
                 </h1>
                 <p className="mb-0 mt-1.5 max-w-2xl text-xs leading-6 text-[#e4d8e9] sm:text-sm">

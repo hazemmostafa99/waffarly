@@ -9,10 +9,10 @@ export function MarketplaceStoresSkeleton() {
       <MarketplaceHeaderSkeleton announce={false} />
       <main className="pb-16">
         <MarketplaceContainer>
-          <div className="mb-5 mt-6 grid gap-4 sm:grid-cols-[1fr_300px] sm:items-end">
+          <MarketplaceSkeleton className="mb-3 mt-5 h-3 w-40" />
+          <div className="mb-5 mt-0 grid gap-4 sm:grid-cols-[1fr_300px] sm:items-end">
             <div className="grid gap-2">
-              <MarketplaceSkeleton className="h-3 w-40" />
-              <MarketplaceSkeleton className="h-8 w-44" />
+              <MarketplaceSkeleton className="h-3 w-32" />
               <MarketplaceSkeleton className="h-3 w-72 max-w-full" />
             </div>
             <MarketplaceSkeleton className="h-11 w-full rounded-xl" />

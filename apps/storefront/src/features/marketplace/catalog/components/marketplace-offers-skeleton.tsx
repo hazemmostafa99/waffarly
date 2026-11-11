@@ -9,9 +9,9 @@ export function MarketplaceOffersSkeleton() {
       <MarketplaceHeaderSkeleton announce={false} />
       <main className="pb-16">
         <MarketplaceContainer>
-          <header className="mb-5 mt-6 grid gap-2">
-            <MarketplaceSkeleton className="h-3 w-32" />
-            <MarketplaceSkeleton className="h-8 w-36" />
+          <MarketplaceSkeleton className="mb-3 mt-5 h-3 w-40" />
+          <header className="mb-3 mt-0 grid gap-2">
+            <MarketplaceSkeleton className="h-3 w-28" />
             <MarketplaceSkeleton className="h-3 w-80 max-w-full" />
           </header>
           <div className="grid grid-cols-5 gap-3 max-[1100px]:grid-cols-3 max-[700px]:flex max-[700px]:overflow-hidden">

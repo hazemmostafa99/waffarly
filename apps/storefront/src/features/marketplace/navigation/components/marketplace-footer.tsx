@@ -29,20 +29,35 @@ export function MarketplaceFooter() {
           {[
             ['اعرف أكثر', 'عن وفّرلي', 'بيع على وفّرلي', 'كل المتاجر', 'كل العروض'],
             ['مساعدة', 'تواصل معنا', 'الإرجاع والاستبدال', 'تتبّع طلبك'],
-            ['حسابك', 'تسجيل الدخول', 'طلباتك', 'المفضلة'],
+            ['حسابك', 'تسجيل الدخول', 'إنشاء حساب', 'طلباتك', 'المفضلة'],
           ].map(([title, ...links]) => (
             <div key={title}>
               <h4>{title}</h4>
               {links.map((label) =>
-                label === 'طلباتك' || label === 'تتبّع طلبك' || label === 'المفضلة' || label === 'بيع على وفّرلي' || label === 'كل المتاجر' || label === 'كل العروض' ? (
+                label === 'طلباتك' ||
+                label === 'تتبّع طلبك' ||
+                label === 'المفضلة' ||
+                label === 'تسجيل الدخول' ||
+                label === 'إنشاء حساب' ||
+                label === 'بيع على وفّرلي' ||
+                label === 'كل المتاجر' ||
+                label === 'كل العروض' ? (
                   <Link
                     key={label}
                     href={
-                      label === 'المفضلة' ? '/marketplace/favorites'
-                        : label === 'بيع على وفّرلي' ? '/join'
-                          : label === 'كل المتاجر' ? '/marketplace/stores'
-                            : label === 'كل العروض' ? '/marketplace/offers'
-                              : '/marketplace/orders'
+                      label === 'المفضلة'
+                        ? '/marketplace/favorites'
+                        : label === 'تسجيل الدخول'
+                          ? '/marketplace/account/sign-in'
+                          : label === 'إنشاء حساب'
+                            ? '/marketplace/account/sign-up'
+                            : label === 'بيع على وفّرلي'
+                              ? '/join'
+                              : label === 'كل المتاجر'
+                                ? '/marketplace/stores'
+                                : label === 'كل العروض'
+                                  ? '/marketplace/offers'
+                                  : '/marketplace/orders'
                     }
                   >
                     {label}

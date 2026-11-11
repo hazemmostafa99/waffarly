@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
 import { ProductCard } from '@/features/marketplace/catalog/components/product-card';
 import { MarketplaceSiteHeader } from '@/features/marketplace/navigation/components/marketplace-site-header';
@@ -14,10 +15,22 @@ export function MarketplaceOffersPage() {
       <MarketplaceSiteHeader />
       <main id="marketplace-main" tabIndex={-1} className="pb-20">
         <MarketplaceContainer>
-          <header className="mb-5 mt-7">
-            <p className="mb-2 text-sm font-bold text-accent">وفر على اختياراتك</p>
-            <h1 className="m-0 text-3xl font-black text-primary">كل العروض</h1>
-            <p className="mb-0 mt-2 text-sm text-muted-foreground">العروض هنا مبنية على المنتجات التي تحتوي بياناتها المحلية على سعر سابق.</p>
+          <nav
+            aria-label="مسار التنقل"
+            className="mb-3 mt-5 flex items-center gap-2 text-xs text-muted-foreground"
+          >
+            <Link className="text-accent no-underline hover:text-primary" href="/marketplace">
+              الرئيسية
+            </Link>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page">كل العروض</span>
+          </nav>
+          <h1 className="sr-only">كل العروض</h1>
+          <header className="mb-3 mt-0">
+            <p className="mb-1 text-xs font-bold text-accent">وفر على اختياراتك</p>
+            <p className="mb-0 mt-0.5 text-sm text-muted-foreground">
+              العروض هنا مبنية على المنتجات التي تحتوي بياناتها المحلية على سعر سابق.
+            </p>
           </header>
           <p className="mb-4 text-sm text-muted-foreground">{offers.length} عروض</p>
           {offers.length ? (

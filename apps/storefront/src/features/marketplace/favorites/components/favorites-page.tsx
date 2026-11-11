@@ -18,7 +18,7 @@ export function FavoritesPage() {
       <MarketplaceContainer>
         <nav
           aria-label="مسار التنقل"
-          className="mb-6 flex items-center gap-2.5 text-[12px] text-muted-foreground"
+          className="mb-3 flex items-center gap-2.5 text-[12px] text-muted-foreground"
         >
           <Link className="text-accent no-underline" href="/marketplace">
             الرئيسية
@@ -26,19 +26,7 @@ export function FavoritesPage() {
           <span aria-hidden="true">/</span>
           <span aria-current="page">المفضلة</span>
         </nav>
-        <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="mb-2 mt-0 text-[30px] leading-[1.4] max-[700px]:text-[25px]">
-              المنتجات المفضلة
-            </h1>
-            <p className="m-0 text-[13px] leading-[1.8] text-muted-foreground">
-              المنتجات اللي حفظتها عشان ترجع لها بسهولة.
-            </p>
-          </div>
-          <span className="whitespace-nowrap rounded-lg bg-secondary px-2.5 py-[7px] text-[11px] text-accent">
-            {products.length} {products.length === 1 ? 'منتج' : 'منتجات'}
-          </span>
-        </header>
+        <h1 className="sr-only">المنتجات المفضلة</h1>
         <p className="mb-5 mt-0 rounded-[10px] bg-secondary px-4 py-3 text-[12px] leading-[1.8] text-accent">
           القائمة مؤقتة في الجلسة الحالية، ومش محفوظة بعد تحديث الصفحة.
         </p>

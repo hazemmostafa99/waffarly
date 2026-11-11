@@ -38,6 +38,11 @@ not routes observed on the reference site. See
   search, and links each card to its existing store detail route.
 - `/marketplace/offers` lists fixture products with a populated previous price;
   it reuses the product cards, cart and favorites interactions.
+- `/marketplace/account` starts as a guest and supports entering/leaving a demo
+  account. The account view links to current-session orders and favorites.
+- `/marketplace/account/sign-in` and `/marketplace/account/sign-up` are separate
+  styled UI pages. Their local validation messages never authenticate/create a
+  real account; password fields are cleared after valid submission.
 - Route transitions for merchant entry, all stores and all offers use responsive
   page-shaped skeletons and a shared Marketplace header skeleton.
 - `/join` is linked from the Marketplace merchant CTA and uses the Marketplace
@@ -81,4 +86,4 @@ Existing local `/`, `/join` and `/s/[slug]` routes are preserved. Marketplace is
 
 ## Local navigation extension
 
-Submitted search and category now use `/marketplace?q=<text>&category=<local ID>#deals`. Direct URLs render filtered local fixture results. `mobiles` and `electronics` are distinct card IDs sharing the fixture electronics filter. Home resets owned filters; other section links preserve them. No HTTP mock endpoints or backend integration were added. Favorites and order links open local pages. Seller entry, all stores and all offers now open local pages; account remains pending. See [URL contract](marketplace-navigation.md).
+Submitted search and category now use `/marketplace?q=<text>&category=<local ID>#deals`. Direct URLs render filtered local fixture results. `mobiles` and `electronics` are distinct card IDs sharing the fixture electronics filter. Home resets owned filters; other section links preserve them. No HTTP mock endpoints or backend integration were added. Favorites and order links open local pages. Seller entry, all stores, all offers and the demo account now open local flows. See [URL contract](marketplace-navigation.md).

@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@waffarly/ui';
+import { useEffect, useRef, useState } from 'react';
 
 import { MarketplaceButton as Button } from '@/components/marketplace/marketplace-button';
 
@@ -8,6 +9,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { cartQuantity } from '@/features/marketplace/cart/model/cart';
 import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
+import { useAccountStore } from '@/features/marketplace/account/hooks/use-account-store';
 import { MarketplaceSearchForm } from '@/features/marketplace/search/components/marketplace-search-form';
 import type { MarketplaceSearchState } from '@/features/marketplace/search/model/search-state';
 
@@ -16,18 +18,49 @@ export function MarketplaceHeader({
   searchState,
   menuOpen,
   onOpenMenu,
-  onPending,
   navigation,
 }: {
   onSearch: (state: MarketplaceSearchState) => void;
   searchState: MarketplaceSearchState;
   menuOpen: boolean;
   onOpenMenu: () => void;
-  onPending: (title: string) => void;
   navigation: ReactNode;
 }) {
   const cartCount = useCartStore((s) => cartQuantity(s.cart));
   const setCartOpen = useCartStore((s) => s.setCartOpen);
+  const isDemoAccountActive = useAccountStore((state) => state.isDemoAccountActive);
+  const leaveDemoAccount = useAccountStore((state) => state.leaveDemoAccount);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const accountTriggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+
+    function closeOnOutsidePointer(event: PointerEvent) {
+      if (!accountMenuRef.current?.contains(event.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setAccountMenuOpen(false);
+        accountTriggerRef.current?.focus();
+      }
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [accountMenuOpen]);
+
+  function closeAccountMenu() {
+    setAccountMenuOpen(false);
+  }
   return (
     <>
       <div
@@ -50,7 +83,7 @@ export function MarketplaceHeader({
               type="button"
               className={cn(
                 'menu-btn disabled:cursor-not-allowed disabled:opacity-[0.5] w-10.5 h-10.5 border border-solid [border-color:rgba(255,_255,_255,_0.2)]',
-                'bg-transparent text-[#fff] rounded-[10px] text-[23px] max-[700px]:w-9.5 max-[700px]:h-9.5',
+                'bg-transparent text-[#fff] rounded-[10px] text-[23px] max-[700px]:w-9.5 max-[700px]:h-9.5 min-[1101px]:hidden',
               )}
               aria-label="القائمة"
               aria-expanded={menuOpen}
@@ -89,17 +122,126 @@ export function MarketplaceHeader({
               'actions flex items-center gap-2 max-[1100px]:hidden [&_button.action]:border-0 [&_button.action]:bg-transparent [&_button.action]:text-start [&_button.action:hover]:bg-[rgba(255,_255,_255,_0.1)]'
             }
           >
-            <Button
-              type="button"
-              className={cn(
-                'action account disabled:cursor-not-allowed disabled:opacity-[0.5] text-[#fff] no-underline py-2.5 px-[11px]',
-                'rounded-[10px] whitespace-nowrap hover:bg-[rgba(255,_255,_255,_0.1)] [&_strong]:text-[13px] [&_small]:block [&_small]:text-[#d9cfe0] [&_small]:text-[11px]',
-              )}
-              onClick={() => onPending('account')}
+            <div
+              ref={accountMenuRef}
+              className="relative"
+              onBlurCapture={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  closeAccountMenu();
+                }
+              }}
             >
-              <small>مرحبًا، سجل دخولك</small>
-              <strong>حسابي وقوائمي⌄</strong>
-            </Button>
+              <Button
+                ref={accountTriggerRef}
+                type="button"
+                aria-haspopup="true"
+                aria-expanded={accountMenuOpen}
+                aria-controls="marketplace-account-menu"
+                className={cn(
+                  `action account inline-flex items-center gap-1.5 rounded-[10px] px-[11px] py-2.5 text-white transition-colors ${accountMenuOpen ? 'text-waffarly-gold' : ''}`,
+                  'whitespace-nowrap hover:bg-[rgba(255,_255,_255,_0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-waffarly-gold focus-visible:ring-offset-2 focus-visible:ring-offset-primary',
+                )}
+                onClick={() => setAccountMenuOpen((open) => !open)}
+              >
+                <span className="grid min-w-0 gap-0.5 text-start">
+                  <small className="text-[11px] font-medium leading-none text-[#d9cfe0]">
+                    {isDemoAccountActive ? 'أنت في حساب تجريبي' : 'جرّب حساب وفّرلي'}
+                  </small>
+                  <strong className="text-[13px] font-extrabold leading-tight">
+                    حسابي وقوائمي
+                  </strong>
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="grid size-4 shrink-0 place-items-center text-white/70"
+                >
+                  <svg
+                    viewBox="0 0 16 16"
+                    className={cn(
+                      'size-3 transition-transform duration-200 ease-out',
+                      accountMenuOpen ? 'rotate-180' : '',
+                    )}
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="m3.5 5.75 4.5 4.5 4.5-4.5" />
+                  </svg>
+                </span>
+              </Button>
+              {accountMenuOpen && (
+                <div
+                  id="marketplace-account-menu"
+                  className="absolute start-0 top-[calc(100%+8px)] z-50 w-64 rounded-2xl border border-border bg-white p-2 text-primary [box-shadow:var(--shadow)]"
+                >
+                  <div className="border-b border-border px-3 py-2.5">
+                    <p className="m-0 text-sm font-extrabold">
+                      {isDemoAccountActive ? 'حساب تجريبي' : 'أهلاً بيك في وفّرلي'}
+                    </p>
+                    <p className="mb-0 mt-1 text-xs text-muted-foreground">
+                      {isDemoAccountActive
+                        ? 'جلسة مؤقتة على هذا الجهاز'
+                        : 'اختار طريقة الدخول أو أنشئ حسابك'}
+                    </p>
+                  </div>
+                  <nav aria-label="روابط الحساب" className="grid gap-0.5 py-1.5">
+                    <Link
+                      href="/marketplace/account"
+                      onClick={closeAccountMenu}
+                      className="rounded-lg px-3 py-2.5 text-sm font-bold text-primary no-underline hover:bg-secondary"
+                    >
+                      نظرة عامة على الحساب
+                    </Link>
+                    {!isDemoAccountActive && (
+                      <>
+                        <Link
+                          href="/marketplace/account/sign-in"
+                          onClick={closeAccountMenu}
+                          className="rounded-lg px-3 py-2.5 text-sm font-bold text-primary no-underline hover:bg-secondary"
+                        >
+                          تسجيل الدخول
+                        </Link>
+                        <Link
+                          href="/marketplace/account/sign-up"
+                          onClick={closeAccountMenu}
+                          className="rounded-lg px-3 py-2.5 text-sm font-bold text-primary no-underline hover:bg-secondary"
+                        >
+                          إنشاء حساب جديد
+                        </Link>
+                      </>
+                    )}
+                    <Link
+                      href="/marketplace/orders"
+                      onClick={closeAccountMenu}
+                      className="rounded-lg px-3 py-2.5 text-sm font-bold text-primary no-underline hover:bg-secondary"
+                    >
+                      طلباتي
+                    </Link>
+                    <Link
+                      href="/marketplace/favorites"
+                      onClick={closeAccountMenu}
+                      className="rounded-lg px-3 py-2.5 text-sm font-bold text-primary no-underline hover:bg-secondary"
+                    >
+                      المفضلة
+                    </Link>
+                    {isDemoAccountActive && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          leaveDemoAccount();
+                          closeAccountMenu();
+                        }}
+                        className="rounded-lg border-0 bg-transparent px-3 py-2.5 text-start text-sm font-bold text-destructive hover:bg-red-50"
+                      >
+                        إنهاء الجلسة التجريبية
+                      </button>
+                    )}
+                  </nav>
+                </div>
+              )}
+            </div>
             <Link
               href="/marketplace/orders"
               className={cn(

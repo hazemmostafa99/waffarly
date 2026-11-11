@@ -39,7 +39,7 @@ export function CheckoutPage() {
       <MarketplaceContainer>
         <nav
           className={
-            'cart-breadcrumbs flex items-center gap-2.5 text-muted-foreground text-[12px] mb-6 [&_a]:text-accent [&_a]:no-underline'
+            'cart-breadcrumbs flex items-center gap-2.5 text-muted-foreground text-[12px] mb-3 [&_a]:text-accent [&_a]:no-underline'
           }
           aria-label="مسار التنقل"
         >
@@ -49,27 +49,12 @@ export function CheckoutPage() {
           <span aria-hidden="true">/</span>
           <span aria-current="page">إتمام الطلب التجريبي</span>
         </nav>
-        <div
-          className={cn(
-            'cart-review-heading flex items-center justify-between gap-4 mb-6 [&_h1]:text-[30px] [&_h1]:leading-[1.4]',
-            '[&_h1]:mt-0 [&_h1]:mx-0 [&_h1]:mb-2 [&_p]:m-0 [&_p]:text-muted-foreground [&_p]:text-[13px] [&_p]:leading-[1.8] max-[700px]:items-start',
-            'max-[700px]:[&_h1]:text-[25px] max-[700px]:[&_p]:text-[12px]',
-          )}
-        >
-          <div>
-            <h1 ref={heading} tabIndex={-1}>
-              {checkout.step === 'confirmed' ? 'تأكيد التجربة' : 'إتمام الطلب'}
-            </h1>
-            <p>رحلة تجريبية بالكامل — بدون إرسال بيانات أو دفع حقيقي.</p>
-          </div>
-          <span
-            className={
-              'cart-demo-label whitespace-nowrap py-[7px] px-2.5 rounded-[8px] bg-secondary text-accent text-[11px]'
-            }
-          >
-            تجربة محلية
-          </span>
-        </div>
+        <h1 ref={heading} tabIndex={-1} className="sr-only">
+          {checkout.step === 'confirmed' ? 'تأكيد التجربة' : 'إتمام الطلب'}
+        </h1>
+        <p className="mb-4 mt-0 rounded-[10px] bg-secondary px-4 py-3 text-xs leading-5 text-accent">
+          رحلة تجريبية بالكامل — بدون إرسال بيانات أو دفع حقيقي.
+        </p>
         {checkout.step === 'confirmed' && checkout.receipt ? (
           <CheckoutConfirmation receipt={checkout.receipt} />
         ) : !products.length ? (

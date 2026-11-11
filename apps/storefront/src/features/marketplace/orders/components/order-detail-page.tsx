@@ -19,7 +19,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
         <MarketplaceContainer>
           <nav
             aria-label="مسار التنقل"
-            className="mb-6 flex items-center gap-2.5 text-[12px] text-muted-foreground"
+            className="mb-3 flex items-center gap-2.5 text-[12px] text-muted-foreground"
           >
             <Link className="text-accent no-underline" href="/marketplace">
               الرئيسية
@@ -33,7 +33,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
             className="rounded-[18px] border border-solid border-border bg-card p-8 text-center"
             aria-labelledby="order-unavailable-title"
           >
-            <h1 id="order-unavailable-title" className="mt-0 text-[24px]">
+            <h1 id="order-unavailable-title" className="sr-only">
               تفاصيل الطلب مش متاحة في الجلسة دي
             </h1>
             <p className="leading-[1.8] text-muted-foreground">
@@ -54,7 +54,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
       <MarketplaceContainer>
         <nav
           aria-label="مسار التنقل"
-          className="mb-6 flex items-center gap-2.5 text-[12px] text-muted-foreground"
+          className="mb-3 flex items-center gap-2.5 text-[12px] text-muted-foreground"
         >
           <Link className="text-accent no-underline" href="/marketplace">
             الرئيسية
@@ -66,9 +66,9 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
           <span aria-hidden="true">/</span>
           <span aria-current="page">تفاصيل الطلب</span>
         </nav>
-        <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <header className="mb-3 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="mb-2 mt-0 text-[28px] leading-[1.4] max-[700px]:text-[23px]">
+            <h1 className="sr-only">
               تفاصيل الطلب
             </h1>
             <p className="m-0 text-[13px] text-muted-foreground" dir="ltr">

@@ -42,9 +42,11 @@ restaurant detail routes now use the existing local records; the restaurant menu
 shown is an explicitly labeled UI sample because the fixture has no menu data.
 Marketplace seller entry now uses the marketplace visual system with a local-only
 form confirmation. `/marketplace/stores` and `/marketplace/offers` use existing
-fixtures and product cards. Order tracking/reorder, account and browser acceptance
-remain open. No backend submission, tests or build were run for this slice, per
-user instruction. Historical checks apply only to the revisions recorded in
+fixtures and product cards. Order tracking/reorder and browser acceptance remain
+open. The demo account flow includes a local account hub plus separate sign-in and
+sign-up UI pages; demo session state links to current-session orders/favorites, while
+credentials and profile PII are not persisted. No backend submission,
+tests or build were run for this slice, per user instruction. Historical checks apply only to the revisions recorded in
 [slice evidence](marketplace-product-details.md).
 
 Navigation slice implemented locally: header menu/shared destinations, mobile actions,
@@ -60,16 +62,16 @@ and remaining placeholder destinations are not complete. See [slice evidence](ma
 | 2     | Store/restaurant and product details | Existing local records linked to local detail views; explicit mock options where absent; direct URL and not-found states                                                            |
 | 3     | Cart and favorites                   | Cart review and favorite list/removal are implemented; explicit product options remain absent from fixture data; empty/unavailable states still need manual review                  |
 | 4     | Local checkout and confirmation      | Demo contact/fulfillment/review steps, validation, pending/error/retry/success, duplicate-click prevention and mock receipt; no real order or payment                               |
-| 5     | Local account and order journey      | Demo sign-in/out, profile/address forms, local order list/detail/tracking, empty/error states and local reorder; no real session or customer record                                 |
+| 5     | Local account and order journey      | Demo account hub and separate sign-in/sign-up screens; tracking and reorder remain deferred; no PII, credentials or real session                                                    |
 | 6     | Complete local flow and polish       | Every navigation entry has a deliberate outcome; notifications/payment-status UI if included is simulated; seller-entry flow cannot submit to the existing live application API     |
 | 7     | UI acceptance                        | Browse -> details/options -> cart -> checkout -> demo confirmation -> tracking/account journey verified; responsive/RTL/keyboard checks, typecheck/build and honest visual evidence |
 | 8     | Backend integration (deferred)       | Only after phase 7 completion and explicit user instruction; inventory existing contracts, settle production policies, connect one flow at a time                                   |
 
 Phases may be sliced into small, reviewable changes. Navigation, product details,
 cart, checkout, session-only favorites, order history/detail, store/restaurant
-details, merchant entry, all stores and all offers now have local UI. The next
-practical slice is local order tracking, followed by the demo account journey. Do not build empty architecture layers for
-features that have no implementation yet.
+details, merchant entry, all stores, all offers and the demo account journey now
+have local UI. Order tracking and reorder remain deferred. Do not build empty
+architecture layers for features that have no implementation yet.
 
 ## Local behavior and state rules
 
