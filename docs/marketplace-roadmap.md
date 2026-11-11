@@ -21,6 +21,17 @@ were extracted pixel-perfect from an unavailable original screen.
 
 ## UI delivery order
 
+Cart-review slice implemented locally at `/marketplace/cart`, with named item,
+summary and empty-state components, reused quantity/cart functions and drawer entry.
+Checkout remains the next separate UI-only step. No automated checks were run for
+this slice, per user instruction; manual acceptance is pending. See [cart review](marketplace-cart-review.md).
+
+Product details slice delivered locally: existing product cards link to details,
+quantity controls and merged cart lines are implemented, and return links preserve
+search/category. 8 focused tests, TypeScript, build and valid/missing route HTTP
+checks passed. Store/restaurant details, product options not present in fixtures,
+checkout, persistence and browser acceptance remain open. See [slice evidence](marketplace-product-details.md).
+
 Navigation slice implemented locally: header menu/shared destinations, mobile actions,
 URL-backed query/category, direct-link filtering and pending-page feedback. TypeScript,
 6 focused tests, production build and direct HTTP query checks passed. Actual browser

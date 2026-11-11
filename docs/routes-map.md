@@ -1,5 +1,20 @@
 # Marketplace routes map
 
+## Local cart review
+
+`/marketplace/cart` now provides a full review of the existing in-memory basket:
+quantity updates, removal, item subtotal and empty state. The shared drawer links
+to it via Next Link. Checkout is visibly pending, with no new backend integration.
+Manual QA only for this slice; see [cart review](marketplace-cart-review.md).
+
+## Local product detail extension
+
+`/marketplace/products/[productId]` now resolves existing local IDs `0` through `4`,
+with product-specific metadata and a custom 404 for unknown IDs. Image/title links
+retain normalized `q` and `category`; return links restore `/marketplace?...#deals`.
+This route is an approved local UI extension, not an extracted original-site route.
+See [product slice](marketplace-product-details.md) for behavior and verification.
+
 Inspected public source URL: https://wafarly-marketplace.rassameldeeb.chatgpt.site/
 
 The downloaded HTML contains one page and fragment links, with no additional page routes exposed. This does not prove the host has no other routes. No speculative route probing was performed.

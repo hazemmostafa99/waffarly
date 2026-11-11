@@ -1,14 +1,31 @@
 # Marketplace interactions
 
+Cart review: the drawer's Review Cart link closes the drawer and navigates to
+`/marketplace/cart`. The page shares quantity/removal state and derived totals with
+the drawer, and renders an empty state after the last removal. Checkout is visibly
+disabled pending the next local-only flow. No automated verification was run for
+this slice, per user request; see [manual review notes](marketplace-cart-review.md).
+
+## Current product/cart extension (supersedes duplicate-row behavior below)
+
+Image/title links now open the local product detail route, retaining submitted
+search/category for return navigation. Details support a local quantity selector,
+shared favorites and add-to-cart. Cart lines now merge by product ID, support
+quantity updates and removal, and derive subtotals and badge unit counts. Limits
+are UI-only; no stock/fees/backend is inferred. The drawer is shared in the layout.
+Checkout is visibly disabled pending its own local-only UI slice. The source
+behavior table below describes the original reference; current approved changes
+and test evidence are in [product details](marketplace-product-details.md).
+
 Evidence level: behavior inferred directly from the downloaded inline JavaScript. It has not been exercised in a browser yet. No original backend is contacted.
 
 | Source behavior                                                                            | Local implementation                                                                |
 | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
 | Search on form submit, selected category AND trimmed case-sensitive substring of data-name | Local React filter over extracted searchName/category; typing alone does not filter |
 | Category click activates that card, filters using current input text and scrolls to deals  | URL category ID + submitted query; keyboard Enter/Space added                       |
-| Each add click appends one cart line, including duplicates                                 | Zustand product ID array; no grouping or quantity controls invented                 |
-| Cart count equals line count; total sums item prices                                       | Derived from extracted prices, formatted through Intl ar-EG                         |
-| Remove deletes clicked line                                                                | Zustand index removal                                                               |
+| Each add click appends one cart line, including duplicates                                 | Zustand product ID/quantity lines; repeated additions merge                         |
+| Cart count equals line count; total sums item prices                                       | Derived quantity count/subtotals, formatted through Intl ar-EG                      |
+| Remove deletes clicked line                                                                | Zustand product ID removal                                                          |
 | Favorite toggles outline/filled heart                                                      | Zustand favorites IDs and aria-pressed                                              |
 | Cart link/mobile cart opens left drawer; close/overlay closes                              | Zustand cartOpen; original transitions retained                                     |
 | Add displays toast for 1800ms                                                              | React timer with cleanup; role=status                                               |

@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react';
+import Link from 'next/link';
 import { marketplaceNavigation, type NavigationTarget } from './navigation-items';
 
 export function MarketplaceNavigationLinks({
@@ -13,6 +14,9 @@ export function MarketplaceNavigationLinks({
   function click(event: MouseEvent<HTMLAnchorElement>, target: NavigationTarget) {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
       return;
+    // Let Next Link change route trees from a detail page. History-only updates
+    // must never intercept a cross-page destination and leave stale product UI.
+    if (window.location.pathname.replace(/\/+$/, '') !== '/marketplace') return;
     event.preventDefault();
     onNavigate(target);
   }
@@ -28,7 +32,7 @@ export function MarketplaceNavigationLinks({
         {label}
       </button>
     ) : (
-      <a
+      <Link
         key={label}
         href={hrefFor(target)}
         className={active ? 'active' : undefined}
@@ -36,7 +40,7 @@ export function MarketplaceNavigationLinks({
         onClick={(event) => click(event, target)}
       >
         {label}
-      </a>
+      </Link>
     );
   });
 }

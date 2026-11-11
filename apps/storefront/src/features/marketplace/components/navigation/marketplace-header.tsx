@@ -1,6 +1,8 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import Link from 'next/link';
+import { cartQuantity } from '../../model/catalog';
 import { useMarketplaceStore } from '@/features/marketplace/providers/marketplace-providers';
 import { MarketplaceSearchForm } from '../../search/marketplace-search-form';
 import type { MarketplaceSearchState } from '../../search/search-state';
@@ -20,7 +22,7 @@ export function MarketplaceHeader({
   onPending: (title: string) => void;
   navigation: ReactNode;
 }) {
-  const cartCount = useMarketplaceStore((s) => s.cart.length);
+  const cartCount = useMarketplaceStore((s) => cartQuantity(s.cart));
   const setCartOpen = useMarketplaceStore((s) => s.setCartOpen);
   return (
     <>
@@ -40,7 +42,9 @@ export function MarketplaceHeader({
             >
               ☰
             </button>
-            <img className="logo" src="/marketplace-assets/wafarly-logo.png" alt="وفّرلي" />
+            <Link href="/marketplace" aria-label="وفّرلي — الرئيسية">
+              <img className="logo" src="/marketplace-assets/wafarly-logo.png" alt="وفّرلي" />
+            </Link>
             <div className="deliver">
               <span>📍</span>
               <div>

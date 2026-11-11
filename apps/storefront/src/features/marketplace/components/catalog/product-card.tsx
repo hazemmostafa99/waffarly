@@ -1,7 +1,13 @@
 'use client';
 
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { productHref } from '../../model/product-navigation';
+import { ProductPrice } from './product-price';
+import { ProductRating } from './product-rating';
+import { FavoriteButton } from './favorite-button';
 import { useMarketplaceStore } from '@/features/marketplace/providers/marketplace-providers';
-import type { MarketplaceProduct } from '../../model/catalog';
+import { MAX_CART_QUANTITY, type MarketplaceProduct } from '../../model/catalog';
 
 export function ProductCard({
   product: p,
@@ -10,44 +16,37 @@ export function ProductCard({
   product: MarketplaceProduct;
   onAdded: () => void;
 }) {
-  const favorite = useMarketplaceStore((s) => s.favorites.includes(p.id));
-  const toggleFavorite = useMarketplaceStore((s) => s.toggleFavorite);
+  const params = useSearchParams();
+  const href = productHref(p.id, params.toString());
   const addToCart = useMarketplaceStore((s) => s.addToCart);
-  const rating = p.rating.split(' ')[0] ?? '';
-  const reviews = p.rating.slice(rating.length).trim();
+  const atLimit = useMarketplaceStore(
+    (s) => (s.cart.find((line) => line.productId === p.id)?.quantity ?? 0) >= MAX_CART_QUANTITY,
+  );
   return (
     <article className="product">
       <div className="product-image">
-        <img {...p.image} loading="lazy" />
+        <Link href={href} aria-label={p.name}>
+          <img {...p.image} loading="lazy" />
+        </Link>
         <span className="discount">{p.discount}</span>
-        <button
-          className={`wish${favorite ? ' on' : ''}`}
-          aria-label={`المفضلة: ${p.cartName}`}
-          aria-pressed={favorite}
-          onClick={() => toggleFavorite(p.id)}
-        >
-          {favorite ? '♥' : '♡'}
-        </button>
+        <FavoriteButton productId={p.id} name={p.cartName} />
       </div>
       <div className="product-body">
         <div className="seller">
           <span className="verified">✓</span>
           {p.seller.replace('✓', '').trim()}
         </div>
-        <h3>{p.name}</h3>
-        <div className="rating">
-          {rating} <span>{reviews}</span>
-        </div>
-        <div className="price-row">
-          <span className="price">{p.displayPrice}</span>
-          <span className="old">{p.oldPrice}</span>
-        </div>
+        <h3>
+          <Link href={href}>{p.name}</Link>
+        </h3>
+        <ProductRating rating={p.rating} />
+        <ProductPrice product={p} />
         <div className="delivery">{p.delivery}</div>
         <button
           className="add"
+          disabled={atLimit}
           onClick={() => {
-            addToCart(p.id);
-            onAdded();
+            if (addToCart(p.id)) onAdded();
           }}
         >
           أضف للسلة

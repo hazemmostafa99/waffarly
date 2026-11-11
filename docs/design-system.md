@@ -1,5 +1,22 @@
 # Marketplace design system
 
+Current detail layout follow-up: content maximum 1240px; image uses contain with
+340-480px desktop height, 380px at <=900px and 320px at <=700px. Breadcrumbs align
+with the card. Seller and purchase cards use existing surface/purple/border tokens.
+Shared full Marketplace header replaces the removed minimal detail header. These
+local detail choices supersede the initial detail dimensions below.
+
+User requirement: all displayed prices use Western digits `0-9` (for example,
+`8,750 ج.م`). The shared `money` formatter uses explicit Latin numbering and is
+shared by product prices, purchase subtotals and cart totals; Arabic currency text
+and RTL remain. Original old-price strings already contain Western digits.
+
+Product details extension: local two-column layout switches to one column at
+700px, with the existing purple/gold/Tahoma system, 24px desktop/18px mobile card
+radius, original single product image, 30px/24px heading and shared quantity controls.
+These are local UI choices, not extracted product-detail measurements. Listing
+cards retain their existing appearance; image/name are now links.
+
 Local navigation extension: the new native menu/pending dialogs use existing
 purple/gold/surface/shadow tokens, 18px radius and a maximum width of 430px with
 16px viewport gutters. These dialog dimensions are local UI choices, not extracted

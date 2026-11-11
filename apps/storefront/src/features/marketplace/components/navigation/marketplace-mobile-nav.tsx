@@ -1,5 +1,7 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
+
 import { useMarketplaceStore } from '@/features/marketplace/providers/marketplace-providers';
 
 export function MarketplaceMobileNav({
@@ -15,6 +17,7 @@ export function MarketplaceMobileNav({
 }) {
   const setCartOpen = useMarketplaceStore((s) => s.setCartOpen);
   const cartOpen = useMarketplaceStore((s) => s.cartOpen);
+  const onCartPage = usePathname() === '/marketplace/cart';
   const actions = [onHome, onCategories, onSearch, () => setCartOpen(true), onAccount];
   return (
     <nav className="mobile-nav" aria-label="تنقل الموبايل">
@@ -28,7 +31,7 @@ export function MarketplaceMobileNav({
         <button
           key={label}
           type="button"
-          className={(cartOpen ? i === 3 : i === 0) ? 'active' : undefined}
+            className={((cartOpen || onCartPage) ? i === 3 : i === 0) ? 'active' : undefined}
           onClick={actions[i]}
         >
           <span>{icon}</span>

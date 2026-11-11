@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { MarketplaceProviders } from '@/features/marketplace/providers/marketplace-providers';
 import '@/styles/marketplace.css';
+import { MarketplaceCart } from '@/features/marketplace/components/cart/marketplace-cart';
 
 export const metadata: Metadata = {
   title: 'وفّرلي | كل اللي محتاجه من أكتر من بائع',
@@ -18,7 +19,10 @@ export default function MarketplaceLayout({ children }: { children: ReactNode })
       >
         الانتقال إلى المحتوى
       </a>
-      <MarketplaceProviders>{children}</MarketplaceProviders>
+      <MarketplaceProviders>
+        {children}
+        <MarketplaceCart />
+      </MarketplaceProviders>
     </div>
   );
 }

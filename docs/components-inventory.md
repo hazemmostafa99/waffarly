@@ -1,5 +1,21 @@
 # Marketplace components inventory
 
+Cart-review additions: CartReviewPage, CartReviewItem, CartSummary and CartEmptyState
+are grouped under `features/marketplace/components/cart`. They reuse QuantitySelector,
+the shared money/cart helpers and the existing store. Drawer footer now links to
+the full review page. This slice is awaiting user manual QA, without automated checks.
+
+Layout follow-up: shared MarketplaceSiteHeader owns full header/menu/mobile
+composition on both listing and details; the minimal ProductDetailHeader was
+removed. ProductBreadcrumbs and ProductSellerCard are grouped with product details.
+
+Latest product slice: ProductDetailPage, ProductDetailHeader, ProductMedia,
+ProductInfo and ProductPurchase are grouped under `components/product-detail`.
+ProductPrice/ProductRating/FavoriteButton are reused by cards and details;
+QuantitySelector is shared by purchase and cart. The single Cart drawer is mounted
+in MarketplaceLayout, and its quantity-aware lines are shared across client route
+changes. See [product component responsibilities](marketplace-product-details.md).
+
 Evidence: saved public HTML/CSS/JS; not yet inspected through a rendered browser.
 
 | Component                         | Implemented responsibility                                                                       |
@@ -13,7 +29,7 @@ Evidence: saved public HTML/CSS/JS; not yet inspected through a rendered browser
 | FlashCountdown                    | Original 05:42:18 countdown, cleaned-up interval lifecycle                                       |
 | MarketplaceStores                 | 6 extracted stores, seller banner and app strip                                                  |
 | MarketplaceFooter                 | Original logo, copy, columns and placeholder links                                               |
-| MarketplaceCart                   | Duplicate cart lines, removal, total, overlay, focus management and Escape close                 |
+| MarketplaceCart                   | Merged quantity lines, unit counts/subtotals, overlay, focus management and Escape close         |
 | MarketplaceHome mobile nav        | Reference mobile navigation; only cart has a handler in original source                          |
 | MarketplaceProviders              | Per-provider Zustand and QueryClient instances                                                   |
 | MarketplaceContainer              | Reference container dimensions                                                                   |

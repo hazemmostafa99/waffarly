@@ -1,5 +1,14 @@
 # Marketplace limitations
 
+## Latest product detail slice
+
+Product details and quantity-aware cart use the existing local fixture only.
+One image per product; no additional specifications, options, stock or real reviews
+were invented. Cart merges IDs/quantities, has no reload persistence, and checkout
+is disabled pending the local demo flow. Quantity limit 99 is not verified stock.
+8 focused tests, TypeScript/build and 200/404 HTTP checks passed; browser interaction
+and responsive/visual validation remain unavailable. See [product evidence](marketplace-product-details.md).
+
 ## Latest local navigation slice
 
 Header menu, shared category/section destinations, mobile actions and URL-backed

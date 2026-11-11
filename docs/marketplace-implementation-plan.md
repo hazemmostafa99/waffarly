@@ -21,6 +21,11 @@ The existing Next.js app, business landing `/`, merchant application `/join` and
 
 ## Read next
 
+Latest slice: [local cart review](marketplace-cart-review.md), implemented without
+automated checks per the user's manual-testing preference. Local checkout is next.
+
+Latest slice: [local product details and quantity-aware cart](marketplace-product-details.md).
+
 Latest local-data slice: [navigation and URL search](marketplace-navigation.md), including
 implemented controls, URL rules, verification results and remaining browser checks.
 

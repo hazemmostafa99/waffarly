@@ -10,6 +10,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Marketplace implementation mode
 
+Display all Marketplace prices using Western digits `0-9`, including product prices,
+line totals and cart totals. Use the shared `money` formatter; keep Arabic currency
+labels and RTL layout. Do not use Arabic-Indic digits for prices.
+
 Complete all Marketplace UI and user journeys with existing local reference data
 and clearly labeled local mock scenarios first. No backend/API/database dependency
 or integration is allowed in this phase, including existing storefront APIs or a

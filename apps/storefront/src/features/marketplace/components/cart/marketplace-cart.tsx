@@ -1,14 +1,17 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { useMarketplaceStore } from '@/features/marketplace/providers/marketplace-providers';
-import { cartProducts, money } from '../../model/catalog';
+import { cartProducts, cartTotal, money } from '../../model/catalog';
+import { QuantitySelector } from '@/components/marketplace/quantity-selector';
 
 export function MarketplaceCart() {
   const open = useMarketplaceStore((s) => s.cartOpen);
   const setOpen = useMarketplaceStore((s) => s.setCartOpen);
   const ids = useMarketplaceStore((s) => s.cart);
   const remove = useMarketplaceStore((s) => s.removeCartItem);
+  const setQuantity = useMarketplaceStore((s) => s.setCartQuantity);
   const drawer = useRef<HTMLElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const products = cartProducts(ids);
@@ -19,7 +22,8 @@ export function MarketplaceCart() {
     function onKey(event: KeyboardEvent) {
       if (event.key === 'Escape') setOpen(false);
       if (event.key === 'Tab') {
-        const buttons = drawer.current?.querySelectorAll<HTMLButtonElement>('button');
+        const buttons =
+          drawer.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href]');
         if (!buttons?.length) return;
         const first = buttons[0],
           last = buttons[buttons.length - 1];
@@ -35,7 +39,8 @@ export function MarketplaceCart() {
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
-      if (previous instanceof HTMLElement) previous.focus();
+      if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
+      else document.getElementById('marketplace-main')?.focus();
     };
   }, [open, setOpen]);
   return (
@@ -70,16 +75,26 @@ export function MarketplaceCart() {
               السلة فارغة حاليًا
             </p>
           ) : (
-            products.map((p, index) => (
-              <div className="cart-item" key={`${p.id}-${index}`}>
+            products.map((p) => (
+              <div className="cart-item" key={p.id}>
                 <img className="cart-thumb" src={p.cartImage} alt="" />
                 <div>
                   <b>{p.cartName}</b>
-                  <span>{money(p.price)}</span>
+                  <span>
+                    {money(p.price)} للقطعة · الإجمالي {money(p.price * p.quantity)}
+                  </span>
+                  <QuantitySelector
+                    value={p.quantity}
+                    onChange={(quantity) => setQuantity(p.id, quantity)}
+                    label={`كمية ${p.cartName}`}
+                  />
                 </div>
                 <button
                   className="remove"
-                  onClick={() => remove(index)}
+                  onClick={() => {
+                    remove(p.id);
+                    closeButton.current?.focus();
+                  }}
                   aria-label={`حذف ${p.cartName}`}
                 >
                   ×
@@ -91,9 +106,14 @@ export function MarketplaceCart() {
         <div className="drawer-foot">
           <div className="total">
             <span>الإجمالي</span>
-            <span>{money(products.reduce((sum, p) => sum + p.price, 0))}</span>
+            <span>{money(cartTotal(ids))}</span>
           </div>
-          <button className="checkout">إتمام الطلب</button>
+          <p className="detail-note">
+            سلة تجريبية محلية — إتمام الطلب لسه قيد التجهيز. الإجمالي لا يشمل رسومًا إضافية.
+          </p>
+          <Link href="/marketplace/cart" className="checkout" onClick={() => setOpen(false)}>
+            مراجعة السلة
+          </Link>
         </div>
       </aside>
     </>

@@ -1,5 +1,17 @@
 # Marketplace visual comparison
 
+Product layout follow-up responds to the user-provided screenshot: full shared
+header restored, media/card size constrained, breadcrumbs/seller grouping added,
+and purchase controls grouped. This has passed nonvisual checks only; no after
+screenshot or measured layout improvement is available while browser initialization
+is blocked. Desktop/mobile appearance still requires comparison.
+
+Product details is a new local UI extension, not a reference-extracted screen.
+Its layout reuses the existing tokens, font and original product assets. No browser
+screenshots or visual diff were captured for it. Source/HTTP/unit checks do not
+establish rendered fidelity or interactive route-state preservation. See
+[product slice evidence](marketplace-product-details.md).
+
 Latest navigation additions: original homepage styling is retained, with new
 token-based menu/dialog styles and functional header/mobile actions. No new visual
 comparison or screenshot is available because browser initialization still fails.

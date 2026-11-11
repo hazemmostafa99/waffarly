@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   marketplaceSearchHref,
   parseMarketplaceSearch,
@@ -8,16 +8,20 @@ import {
 } from './search-state';
 
 export function useMarketplaceSearch() {
-  const pathname = usePathname();
+  const router = useRouter();
   const params = useSearchParams();
   const state = parseMarketplaceSearch(params);
 
   function href(next: MarketplaceSearchState, section = 'deals') {
-    return marketplaceSearchHref(pathname, params.toString(), next, section);
+    return marketplaceSearchHref('/marketplace', params.toString(), next, section);
   }
 
   function navigate(next: MarketplaceSearchState, section = 'deals') {
-    const url = marketplaceSearchHref(pathname, window.location.search, next, section);
+    const url = marketplaceSearchHref('/marketplace', window.location.search, next, section);
+    if (window.location.pathname.replace(/\/+$/, '') !== '/marketplace') {
+      router.push(url);
+      return;
+    }
     // Next's native History integration updates useSearchParams without a data request.
     if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== url) {
       window.history.pushState(null, '', url);

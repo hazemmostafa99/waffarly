@@ -31,6 +31,7 @@ apps/storefront/src/
     marketplace-container.tsx          # Container primitive
     section-heading.tsx                # Shared heading primitive
     marketplace-dialog.tsx             # Native modal lifecycle and dismissal
+    quantity-selector.tsx              # Shared bounded quantity controls
   features/marketplace/
     components/
       home/
@@ -52,6 +53,13 @@ apps/storefront/src/
         marketplace-products.tsx       # Filtered collection and empty state
         product-card.tsx               # Product rendering and user actions
         flash-countdown.tsx            # Timer lifecycle
+      product-detail/
+        product-detail-page.tsx        # Server composition from existing fixture
+        product-breadcrumbs.tsx        # Category context and filtered return link
+        product-seller-card.tsx        # Existing seller/delivery grouping
+        product-media.tsx
+        product-info.tsx
+        product-purchase.tsx
       cart/
         marketplace-cart.tsx           # Drawer, removal, totals and focus management
     data/reference.json                # Extracted reference content, not production records
@@ -60,7 +68,8 @@ apps/storefront/src/
       use-marketplace-search.ts        # URL state and native History integration
       marketplace-search-form.tsx      # Local draft form
     model/
-      catalog.ts                       # Current fixture filtering, cart lookup and formatting
+      catalog.ts                       # Fixture filtering/lookup, quantity validation and totals
+      product-navigation.ts            # Normalized detail/back URL helpers
       marketplace-store.ts             # Cart IDs, favorites IDs, drawer state
       marketplace.test.ts              # Search/cart/favorites behavior tests
     providers/
@@ -88,7 +97,7 @@ flowchart TD
   Products --> Card[ProductCard]
   Home --> Stores[Stores and promotions]
   Home --> Footer[Footer]
-  Home --> Drawer[Cart drawer]
+  Providers --> Drawer[Shared cart drawer]
   Home --> Mobile[Mobile navigation]
 ```
 
@@ -98,18 +107,18 @@ Static sections currently sit below the Home client boundary. A future server-da
 
 ## State ownership
 
-| State                                | Current owner                           | Production direction                                                                |
-| ------------------------------------ | --------------------------------------- | ----------------------------------------------------------------------------------- |
-| Extracted catalog                    | Read-only reference.json                | Initial public reads in Next server data layer; typed adapters                      |
-| Search draft and submitted filter    | Form local draft / URL filter           | Draft stays local; submitted search/category/sort/page in URL                       |
-| Drawer open, cart IDs, favorites IDs | Per-provider Zustand store              | Non-sensitive client preferences and drafts; IDs/quantity only for persistence      |
-| Cart total                           | Derived local preview value             | Server quote/order totals authoritative; decimal strings at transport boundary      |
-| Countdown                            | Component timer                         | Server offer deadline when a real promotion contract exists                         |
-| Toast and focused element            | Local component lifecycle               | Remain local                                                                        |
-| Interactive remote data/mutations    | QueryClient provisioned; no queries yet | React Query for quote, mutation, retry and invalidation; never duplicate in Zustand |
-| Customer identity/orders             | Not implemented                         | Approved customer session/API; never fixtures represented as live account data      |
+| State                                       | Current owner                           | Production direction                                                                |
+| ------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------- |
+| Extracted catalog                           | Read-only reference.json                | Initial public reads in Next server data layer; typed adapters                      |
+| Search draft and submitted filter           | Form local draft / URL filter           | Draft stays local; submitted search/category/sort/page in URL                       |
+| Drawer open, cart quantities, favorites IDs | Per-provider Zustand store              | Non-sensitive client preferences and drafts; IDs/quantity only for persistence      |
+| Cart total                                  | Derived local preview value             | Server quote/order totals authoritative; decimal strings at transport boundary      |
+| Countdown                                   | Component timer                         | Server offer deadline when a real promotion contract exists                         |
+| Toast and focused element                   | Local component lifecycle               | Remain local                                                                        |
+| Interactive remote data/mutations           | QueryClient provisioned; no queries yet | React Query for quote, mutation, retry and invalidation; never duplicate in Zustand |
+| Customer identity/orders                    | Not implemented                         | Approved customer session/API; never fixtures represented as live account data      |
 
-Both store and QueryClient are created once per mounted provider, not as module-level mutable singletons. Cart currently resets on reload and retains separate duplicate lines to match the reference. Changing to quantity-based lines is a planned product behavior change, not part of this cleanup.
+Both store and QueryClient are created once per mounted provider, not as module-level mutable singletons. Cart resets on reload. The approved product-details slice now merges repeated additions into product ID/quantity lines, with local unit-count/subtotal derivation and explicit removal. This deliberately extends the original duplicate-row reference behavior. MarketplaceLayout mounts the cart once so listing/detail client navigation shares the same provider state. See [product slice](marketplace-product-details.md).
 
 ## Data and backend integration
 

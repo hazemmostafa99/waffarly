@@ -1,7 +1,24 @@
 import assert from 'node:assert/strict';
+import { productHref, productBackHref } from './product-navigation';
+import { productRecommendations } from './product-recommendations';
+
+test('recommendations exclude the current product, prioritize real category matches and avoid duplicates', () => {
+  const phone = findProduct('1')!;
+  const recommendations = productRecommendations(phone);
+  assert.equal(recommendations.length, 4);
+  assert.equal(recommendations[0]?.id, '0');
+  assert.ok(recommendations.every((item) => item.id !== phone.id));
+  assert.equal(new Set(recommendations.map((item) => item.id)).size, recommendations.length);
+  assert.equal(productRecommendations(phone, 1)[0]?.category, phone.category);
+  assert.deepEqual(productRecommendations(phone, 0), []);
+  const fragrance = findProduct('4')!;
+  assert.ok(
+    productRecommendations(fragrance).every((item) => item.category !== fragrance.category),
+  );
+});
 import { test } from 'node:test';
 import { createMarketplaceStore } from './marketplace-store';
-import { cartProducts, filterProducts } from './catalog';
+import { cartProducts, filterProducts, findProduct, cartTotal, cartQuantity } from './catalog';
 import {
   marketplaceSearchHref,
   parseMarketplaceSearch,
@@ -69,25 +86,50 @@ test('search combines source category and trimmed Arabic data-name, including em
   assert.equal(filterProducts('food', '').length, 0);
 });
 
-test('cart preserves duplicate lines, removes the selected occurrence and isolates stores', () => {
+test('cart merges quantities, derives counts/totals, updates and removes by product identity', () => {
   const store = createMarketplaceStore();
-  const otherStore = createMarketplaceStore();
-  const headphone = filterProducts('all', 'سماعة')[0]!;
-  const phone = filterProducts('all', 'هاتف')[0]!;
-  store.getState().addToCart(headphone.id);
-  store.getState().addToCart(phone.id);
-  store.getState().addToCart(headphone.id);
-  assert.equal(
-    cartProducts(store.getState().cart).reduce((sum, p) => sum + p.price, 0),
-    11348,
-  );
-  store.getState().removeCartItem(1);
-  assert.deepEqual(store.getState().cart, [headphone.id, headphone.id]);
-  assert.equal(
-    cartProducts(store.getState().cart).reduce((sum, p) => sum + p.price, 0),
-    2598,
-  );
-  assert.deepEqual(otherStore.getState().cart, []);
+  const other = createMarketplaceStore();
+  assert.equal(store.getState().addToCart('0', 2), true);
+  store.getState().addToCart('1');
+  store.getState().addToCart('0', 3);
+  assert.deepEqual(store.getState().cart, [
+    { productId: '0', quantity: 5 },
+    { productId: '1', quantity: 1 },
+  ]);
+  assert.equal(cartQuantity(store.getState().cart), 6);
+  assert.equal(cartTotal(store.getState().cart), 15245);
+  store.getState().setCartQuantity('0', 3);
+  assert.equal(cartTotal(store.getState().cart), 12647);
+  store.getState().removeCartItem('1');
+  assert.equal(cartTotal(store.getState().cart), 3897);
+  assert.equal(cartProducts(store.getState().cart)[0]?.quantity, 3);
+  assert.deepEqual(other.getState().cart, []);
+  store.getState().removeCartItem('0');
+  assert.equal(cartTotal(store.getState().cart), 0);
+});
+
+test('invalid IDs, fractional quantities and UI-limit overflow never mutate the basket', () => {
+  const store = createMarketplaceStore();
+  assert.equal(store.getState().addToCart('missing'), false);
+  for (const value of [0, -1, 1.5, NaN, Infinity, 100])
+    assert.equal(store.getState().addToCart('0', value), false);
+  assert.deepEqual(store.getState().cart, []);
+  store.getState().addToCart('0', 99);
+  assert.equal(store.getState().addToCart('0'), false);
+  store.getState().setCartQuantity('0', 0);
+  store.getState().setCartQuantity('0', 100);
+  assert.equal(cartQuantity(store.getState().cart), 99);
+  assert.equal(findProduct('missing'), undefined);
+});
+
+test('product links preserve normalized browse context without accepting redirect destinations', () => {
+  const href = productHref('0', 'category=mobiles&q=phone&redirect=https://example.com');
+  const url = new URL(href, 'http://localhost');
+  assert.equal(url.pathname, '/marketplace/products/0');
+  assert.equal(url.searchParams.get('category'), 'mobiles');
+  assert.equal(url.searchParams.has('redirect'), false);
+  assert.equal(productBackHref(url.search), '/marketplace?category=mobiles&q=phone#deals');
+  assert.equal(productBackHref('category=invalid&redirect=//example.com'), '/marketplace#deals');
 });
 
 test('favorites toggle independently of the cart', () => {
