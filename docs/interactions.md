@@ -5,7 +5,7 @@ Evidence level: behavior inferred directly from the downloaded inline JavaScript
 | Source behavior                                                                            | Local implementation                                                                |
 | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
 | Search on form submit, selected category AND trimmed case-sensitive substring of data-name | Local React filter over extracted searchName/category; typing alone does not filter |
-| Category click activates that card, filters using current input text and scrolls to deals  | React category index + filter state; keyboard Enter/Space added                     |
+| Category click activates that card, filters using current input text and scrolls to deals  | URL category ID + submitted query; keyboard Enter/Space added                       |
 | Each add click appends one cart line, including duplicates                                 | Zustand product ID array; no grouping or quantity controls invented                 |
 | Cart count equals line count; total sums item prices                                       | Derived from extracted prices, formatted through Intl ar-EG                         |
 | Remove deletes clicked line                                                                | Zustand index removal                                                               |
@@ -17,8 +17,8 @@ Evidence level: behavior inferred directly from the downloaded inline JavaScript
 
 Accessibility additions: category keyboard activation, named favorite/remove controls, cart dialog semantics, focus trap, Escape close and focus return. Closed drawer hidden from focus. These are local improvements, not claims about original behavior.
 
-Original menu button, checkout, seller signup, most mobile-nav buttons, app badges and href=# links have no functional handler in inspected source. They remain visually present with the same limitations; no authentication/payment/order flow is invented. Account action points to #stores and orders action to #deals, matching source. There is no persistence across reloads in the reference or this reconstruction. QueryClient is configured, but no fake catalog network calls are added.
+The source menu, checkout, seller signup, most mobile-nav controls, app badges and href=# links had no handlers. Local navigation now deliberately extends that behavior: the header menu works; mobile home/categories/search/cart have actions; header account/orders, mobile account and menu seller entry show pending-page notices. Other checkout/footer/store/banner placeholders remain for later local-only slices. No real authentication, payment or order flow is implied. There is no cart persistence across reloads yet; QueryClient remains provisioned without fake network requests.
 
 ## Cleanup boundary
 
-The component/provider refactor preserves these source interactions. Unused speculative mobile-menu state was removed; the menu remains a known reference placeholder. Full navigation, quantity-based carts, checkout and account work are planned separately in [the functional roadmap](marketplace-roadmap.md), rather than silently added during cleanup.
+The earlier component/provider cleanup preserved source behavior. The newer [navigation slice](marketplace-navigation.md) explicitly extends it: query/category are URL-owned, category navigation uses the committed search query rather than unsubmitted draft text, and mobile/header controls have deliberate outcomes. Menu/modal state stays local. Native dialog provides keyboard containment, Escape/backdrop dismissal and focus return by implementation; browser confirmation is still pending. Full account/order/checkout flows remain on the local-data roadmap, not backend prerequisites.

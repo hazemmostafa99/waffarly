@@ -1,23 +1,27 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import type { ReactNode } from 'react';
 import { useMarketplaceStore } from '@/features/marketplace/providers/marketplace-providers';
+import { MarketplaceSearchForm } from '../../search/marketplace-search-form';
+import type { MarketplaceSearchState } from '../../search/search-state';
 
 export function MarketplaceHeader({
   onSearch,
-  onTermChange,
+  searchState,
+  menuOpen,
+  onOpenMenu,
+  onPending,
+  navigation,
 }: {
-  onSearch: (category: string, term: string) => void;
-  onTermChange: (term: string) => void;
+  onSearch: (state: MarketplaceSearchState) => void;
+  searchState: MarketplaceSearchState;
+  menuOpen: boolean;
+  onOpenMenu: () => void;
+  onPending: (title: string) => void;
+  navigation: ReactNode;
 }) {
-  const [category, setCategory] = useState('all');
-  const [term, setTerm] = useState('');
   const cartCount = useMarketplaceStore((s) => s.cart.length);
   const setCartOpen = useMarketplaceStore((s) => s.setCartOpen);
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    onSearch(category, term);
-  }
   return (
     <>
       <div className="promo">
@@ -26,7 +30,14 @@ export function MarketplaceHeader({
       <header className="top">
         <div className="container top-main">
           <div className="brand">
-            <button type="button" className="menu-btn" aria-label="القائمة">
+            <button
+              type="button"
+              className="menu-btn"
+              aria-label="القائمة"
+              aria-expanded={menuOpen}
+              aria-controls="marketplace-menu"
+              onClick={onOpenMenu}
+            >
               ☰
             </button>
             <img className="logo" src="/marketplace-assets/wafarly-logo.png" alt="وفّرلي" />
@@ -38,73 +49,32 @@ export function MarketplaceHeader({
               </div>
             </div>
           </div>
-          <form className="search" id="searchForm" onSubmit={submit}>
-            <select
-              aria-label="القسم"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <option value="all">كل الأقسام</option>
-              <option value="electronics">إلكترونيات</option>
-              <option value="fashion">موضة</option>
-              <option value="home">المنزل</option>
-              <option value="food">مطاعم</option>
-            </select>
-            <input
-              id="searchInput"
-              type="search"
-              value={term}
-              onChange={(e) => {
-                setTerm(e.target.value);
-                onTermChange(e.target.value);
-              }}
-              placeholder="ابحث عن منتج، ماركة أو متجر..."
-              aria-label="ابحث في وفّرلي"
-            />
-            <button aria-label="بحث">⌕</button>
-          </form>
+          <MarketplaceSearchForm
+            key={`${searchState.category}:${searchState.term}`}
+            initialState={searchState}
+            onSearch={onSearch}
+          />
           <div className="actions">
-            <a className="action account" href="#stores">
+            <button type="button" className="action account" onClick={() => onPending('account')}>
               <small>مرحبًا، سجل دخولك</small>
               <strong>حسابي وقوائمي⌄</strong>
-            </a>
-            <a className="action" href="#deals">
+            </button>
+            <button type="button" className="action" onClick={() => onPending('orders')}>
               <strong>طلباتي</strong>
-            </a>
-            <a
+            </button>
+            <button
+              type="button"
               className="action cart"
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                setCartOpen(true);
-              }}
+              onClick={() => setCartOpen(true)}
               aria-label="السلة"
             >
               🛒<em>{cartCount}</em>
-            </a>
+            </button>
           </div>
         </div>
       </header>
       <nav className="nav" aria-label="التنقل الرئيسي">
-        <div className="container nav-row">
-          {[
-            ['الرئيسية', '#'],
-            ['عروض اليوم', '#deals'],
-            ['الأقسام', '#categories'],
-            ['المتاجر', '#stores'],
-            ['الأجهزة', '#'],
-            ['الموبايلات', '#'],
-            ['الموضة', '#'],
-            ['المنزل والمطبخ', '#'],
-            ['السوبر ماركت', '#'],
-            ['المطاعم', '#'],
-            ['بيع على وفّرلي', '#'],
-          ].map(([label, href], i) => (
-            <a className={i === 0 ? 'active' : undefined} href={href} key={label}>
-              {label}
-            </a>
-          ))}
-        </div>
+        <div className="container nav-row">{navigation}</div>
       </nav>
     </>
   );

@@ -18,7 +18,9 @@ Evidence: saved public HTML/CSS/JS; not yet inspected through a rendered browser
 | MarketplaceProviders              | Per-provider Zustand and QueryClient instances                                                   |
 | MarketplaceContainer              | Reference container dimensions                                                                   |
 
-Data is separated into `apps/storefront/src/features/marketplace/data/reference.json`. Search draft/filter state stays local; cart/favorites/drawer state uses Zustand. React Query remains available but unused because the inspected source has no catalog API.
+Data is separated into `apps/storefront/src/features/marketplace/data/reference.json`. Search drafts stay local; submitted category/query state comes from the URL. Cart/favorites/drawer state uses Zustand. React Query remains available but unused because the inspected source has no catalog API.
+
+The navigation slice adds MarketplaceSearchForm, MarketplaceNavigationLinks, MarketplaceMenu, MarketplacePendingFeature and shared MarketplaceDialog. Header/menu reuse typed destinations; mobile controls now navigate/focus/open the drawer or show pending-page feedback. Pure URL helpers and navigation/search hooks are separated from presentation. See [navigation implementation](marketplace-navigation.md); interactive browser verification is still pending.
 
 ## Current organization
 

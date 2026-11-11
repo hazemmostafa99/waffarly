@@ -1,4 +1,5 @@
 /* Extracted from public reference source.html. Runtime pixel validation pending. */
+/* Navigation/dialog additions extend the reference without backend dependencies. */
 @theme inline {
   --color-marketplace-primary: var(--purple-900);
   --color-marketplace-background: var(--bg);
@@ -1198,4 +1199,83 @@
 }
 .marketplace-theme .cart-drawer:not(.open) {
   visibility: hidden;
+}
+
+.marketplace-theme .actions button.action {
+  border: 0;
+  background: transparent;
+  text-align: start;
+}
+.marketplace-theme .actions button.action:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.marketplace-theme .nav .nav-pending {
+  color: #fff;
+  background: transparent;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.marketplace-theme .nav .nav-pending:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-bottom-color: var(--gold);
+}
+.marketplace-theme .marketplace-dialog {
+  position: fixed;
+  inset: 0;
+  width: min(430px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  overflow: auto;
+}
+.marketplace-theme .marketplace-dialog::backdrop {
+  background: rgba(20, 5, 27, 0.5);
+}
+.marketplace-theme .marketplace-dialog-panel {
+  min-width: 0;
+}
+.marketplace-theme .marketplace-dialog .drawer-head h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.marketplace-theme .marketplace-dialog-body {
+  padding: 18px;
+}
+.marketplace-theme .marketplace-dialog-body p {
+  line-height: 1.8;
+  margin-top: 0;
+}
+.marketplace-theme .marketplace-menu-links {
+  display: grid;
+  gap: 4px;
+}
+.marketplace-theme .marketplace-menu-links :is(a, button) {
+  display: block;
+  color: var(--purple-900);
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: start;
+  font-size: 14px;
+}
+.marketplace-theme .marketplace-menu-links :is(a, button):hover,
+.marketplace-theme .marketplace-menu-links .active {
+  background: var(--purple-100);
+}
+@media (max-width: 700px) {
+  .marketplace-theme .nav .nav-pending {
+    padding: 10px 11px;
+    font-size: 11px;
+  }
 }

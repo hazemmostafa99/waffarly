@@ -1,5 +1,11 @@
 # Marketplace visual comparison
 
+Latest navigation additions: original homepage styling is retained, with new
+token-based menu/dialog styles and functional header/mobile actions. No new visual
+comparison or screenshot is available because browser initialization still fails.
+See [navigation verification](marketplace-navigation.md) for nonvisual checks and
+the outstanding keyboard/history/responsive checklist.
+
 ## Current evidence
 
 The public HTML/CSS/JS was fetched successfully on 2026-11-11 (Africa/Cairo), after an elevated read-only request bypassed a blocked sandbox proxy. The original logo was downloaded. Full source snapshot: `reference/marketplace/source.html`; asset URLs: [assets manifest](assets-manifest.md).

@@ -21,6 +21,12 @@ were extracted pixel-perfect from an unavailable original screen.
 
 ## UI delivery order
 
+Navigation slice implemented locally: header menu/shared destinations, mobile actions,
+URL-backed query/category, direct-link filtering and pending-page feedback. TypeScript,
+6 focused tests, production build and direct HTTP query checks passed. Actual browser
+Back/Forward, keyboard and responsive/visual checks remain pending. Sorting, pagination
+and remaining placeholder destinations are not complete. See [slice evidence](marketplace-navigation.md).
+
 | Phase | Deliverable                          | Completion evidence using local data only                                                                                                                                           |
 | ----- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 0     | Structure and visual baseline        | Small components grouped by feature, reusable functions, scoped tokens; reference comparison at 1440/1024/768/390/375 when browser works                                            |

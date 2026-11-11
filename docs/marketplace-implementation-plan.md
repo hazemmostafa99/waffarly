@@ -21,6 +21,9 @@ The existing Next.js app, business landing `/`, merchant application `/join` and
 
 ## Read next
 
+Latest local-data slice: [navigation and URL search](marketplace-navigation.md), including
+implemented controls, URL rules, verification results and remaining browser checks.
+
 1. [Architecture and component design](marketplace-architecture.md): actual folders, component tree, responsibilities and state ownership.
 2. [Functional roadmap](marketplace-roadmap.md): dependency-ordered phases, user journeys, integration inventory, decisions and completion criteria.
 3. [Cleanup audit](marketplace-cleanup.md): removed files/state/dependency declarations, retained packages and installation notes.

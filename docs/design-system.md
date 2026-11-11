@@ -1,5 +1,10 @@
 # Marketplace design system
 
+Local navigation extension: the new native menu/pending dialogs use existing
+purple/gold/surface/shadow tokens, 18px radius and a maximum width of 430px with
+16px viewport gutters. These dialog dimensions are local UI choices, not extracted
+reference components. Original homepage rules and 700/1100px breakpoints remain.
+
 Source: public HTML downloaded from https://wafarly-marketplace.rassameldeeb.chatgpt.site/ on 2026-11-11 (Africa/Cairo). Evidence: `reference/marketplace/source.html`. These are authored CSS values, not browser-measured computed styles. The original provisional green palette and Tajawal font have been replaced.
 
 ## Colors

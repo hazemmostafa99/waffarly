@@ -2,8 +2,20 @@
 
 import { useMarketplaceStore } from '@/features/marketplace/providers/marketplace-providers';
 
-export function MarketplaceMobileNav() {
+export function MarketplaceMobileNav({
+  onHome,
+  onCategories,
+  onSearch,
+  onAccount,
+}: {
+  onHome: () => void;
+  onCategories: () => void;
+  onSearch: () => void;
+  onAccount: () => void;
+}) {
   const setCartOpen = useMarketplaceStore((s) => s.setCartOpen);
+  const cartOpen = useMarketplaceStore((s) => s.cartOpen);
+  const actions = [onHome, onCategories, onSearch, () => setCartOpen(true), onAccount];
   return (
     <nav className="mobile-nav" aria-label="تنقل الموبايل">
       {[
@@ -15,8 +27,9 @@ export function MarketplaceMobileNav() {
       ].map(([icon, label], i) => (
         <button
           key={label}
-          className={i === 0 ? 'active' : undefined}
-          onClick={i === 3 ? () => setCartOpen(true) : undefined}
+          type="button"
+          className={(cartOpen ? i === 3 : i === 0) ? 'active' : undefined}
+          onClick={actions[i]}
         >
           <span>{icon}</span>
           {label}

@@ -30,6 +30,7 @@ apps/storefront/src/
   components/marketplace/
     marketplace-container.tsx          # Container primitive
     section-heading.tsx                # Shared heading primitive
+    marketplace-dialog.tsx             # Native modal lifecycle and dismissal
   features/marketplace/
     components/
       home/
@@ -40,6 +41,11 @@ apps/storefront/src/
         marketplace-header.tsx         # Search form, navigation and cart entry
         marketplace-footer.tsx
         marketplace-mobile-nav.tsx
+        marketplace-menu.tsx
+        marketplace-navigation-links.tsx
+        marketplace-pending-feature.tsx
+        navigation-items.ts
+        use-marketplace-navigation.ts
       catalog/
         marketplace-categories.tsx
         marketplace-restaurants.tsx
@@ -49,6 +55,10 @@ apps/storefront/src/
       cart/
         marketplace-cart.tsx           # Drawer, removal, totals and focus management
     data/reference.json                # Extracted reference content, not production records
+    search/
+      search-state.ts                  # Pure URL parsing/serialization and category mapping
+      use-marketplace-search.ts        # URL state and native History integration
+      marketplace-search-form.tsx      # Local draft form
     model/
       catalog.ts                       # Current fixture filtering, cart lookup and formatting
       marketplace-store.ts             # Cart IDs, favorites IDs, drawer state
@@ -82,7 +92,7 @@ flowchart TD
   Home --> Mobile[Mobile navigation]
 ```
 
-Header emits submitted search and draft-text changes; it does not own catalog data. Home preserves the reference behavior: typing alone does not filter, while a category selection uses the current draft text. Categories receive an active index and selection callback. ProductCard receives a product and add-feedback callback, and reads only the store slices it needs. Cart derives displayed entries and totals from stored IDs and the fixture catalog. No separate total is stored.
+Header composes the search form; it does not own catalog data. Search drafts stay in the form, while submitted search/category state comes from the URL. Category selection retains the committed query; unsubmitted typing does not affect it. Categories receive an active local category ID and selection callback. Shared typed destinations power desktop and modal navigation. ProductCard receives a product and add-feedback callback, and reads only the store slices it needs. Cart derives entries and totals; no separate total is stored. See [navigation slice](marketplace-navigation.md) for current behavior and QA limits.
 
 Static sections currently sit below the Home client boundary. A future server-data slice can pass static server-rendered sections as slots or props while retaining search, cart, favorite, countdown and form islands as Client Components. Merely moving a file does not make it a Server Component; avoid claiming a bundle reduction until measured. Preserve the reference DOM/classes during extraction.
 
@@ -91,7 +101,7 @@ Static sections currently sit below the Home client boundary. A future server-da
 | State                                | Current owner                           | Production direction                                                                |
 | ------------------------------------ | --------------------------------------- | ----------------------------------------------------------------------------------- |
 | Extracted catalog                    | Read-only reference.json                | Initial public reads in Next server data layer; typed adapters                      |
-| Search draft and submitted filter    | Header/Home local state                 | Draft stays local; submitted search/category/sort/page in URL                       |
+| Search draft and submitted filter    | Form local draft / URL filter           | Draft stays local; submitted search/category/sort/page in URL                       |
 | Drawer open, cart IDs, favorites IDs | Per-provider Zustand store              | Non-sensitive client preferences and drafts; IDs/quantity only for persistence      |
 | Cart total                           | Derived local preview value             | Server quote/order totals authoritative; decimal strings at transport boundary      |
 | Countdown                            | Component timer                         | Server offer deadline when a real promotion contract exists                         |

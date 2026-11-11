@@ -2,6 +2,64 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createMarketplaceStore } from './marketplace-store';
 import { cartProducts, filterProducts } from './catalog';
+import {
+  marketplaceSearchHref,
+  parseMarketplaceSearch,
+  productCategory,
+} from '../search/search-state';
+
+test('URL parsing normalizes defaults, invalid categories and Arabic query whitespace', () => {
+  assert.deepEqual(parseMarketplaceSearch(new URLSearchParams()), { category: 'all', term: '' });
+  assert.deepEqual(parseMarketplaceSearch(new URLSearchParams('category=invalid&q=++')), {
+    category: 'all',
+    term: '',
+  });
+  const query = new URLSearchParams({ category: 'mobiles', q: '  هاتف  ' });
+  assert.deepEqual(parseMarketplaceSearch(query), { category: 'mobiles', term: 'هاتف' });
+  assert.equal(productCategory('mobiles'), 'electronics');
+  assert.equal(productCategory('electronics'), 'electronics');
+});
+
+test('search URLs round-trip Arabic, preserve unrelated params and reset owned params', () => {
+  const href = marketplaceSearchHref('/marketplace', 'campaign=local&q=old&category=home', {
+    category: 'electronics',
+    term: '  سماعة  ',
+  });
+  const url = new URL(href, 'http://localhost');
+  assert.equal(url.searchParams.get('campaign'), 'local');
+  assert.equal(url.hash, '#deals');
+  assert.deepEqual(parseMarketplaceSearch(url.searchParams), {
+    category: 'electronics',
+    term: 'سماعة',
+  });
+  assert.equal(
+    marketplaceSearchHref(
+      '/marketplace',
+      url.search,
+      { category: 'all', term: '' },
+      'marketplace-main',
+    ),
+    '/marketplace?campaign=local#marketplace-main',
+  );
+});
+
+test('independent history URLs restore previous and next filter results without draft state', () => {
+  const searches = [
+    '/marketplace',
+    marketplaceSearchHref('/marketplace', '', { category: 'mobiles', term: 'هاتف' }),
+    marketplaceSearchHref('/marketplace', '', { category: 'fashion', term: '' }),
+  ];
+  const results = [1, 2, 1, 0].map((index) => {
+    const state = parseMarketplaceSearch(
+      new URL(searches[index]!, 'http://localhost').searchParams,
+    );
+    return filterProducts(productCategory(state.category), state.term).map((p) => p.cartName);
+  });
+  assert.equal(results[0]?.length, 1);
+  assert.deepEqual(results[0], results[2]);
+  assert.equal(results[1]?.length, 1);
+  assert.equal(results[3]?.length, 5);
+});
 
 test('search combines source category and trimmed Arabic data-name, including empty results', () => {
   assert.equal(filterProducts('all', '').length, 5);

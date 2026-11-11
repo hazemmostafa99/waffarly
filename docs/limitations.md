@@ -1,5 +1,19 @@
 # Marketplace limitations
 
+## Latest local navigation slice
+
+Header menu, shared category/section destinations, mobile actions and URL-backed
+search are implemented with local fixtures only. Header account/orders, mobile
+account and menu seller entry show pending-page feedback. No new API or server
+mock is connected. Category navigation retains committed query text; unsubmitted
+draft text is deliberately excluded from navigation state.
+
+6 focused tests, TypeScript, production build and direct HTTP filter checks passed.
+Browser initialization still fails with missing sandboxPolicy: actual clicking,
+Back/Forward, focus/keyboard behavior, responsive screenshots and console checks
+remain unverified. Other footer/store/checkout/detail/account destinations remain
+on the UI-only roadmap. See [navigation evidence](marketplace-navigation.md).
+
 ## Reference access
 
 - Public source HTML/CSS/JS and the original logo are now accessible through elevated read-only HTTP requests. Earlier network-tool failures did not mean the site was unavailable.
