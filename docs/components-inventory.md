@@ -1,5 +1,11 @@
 # Marketplace components inventory
 
+Checkout components are grouped under `components/checkout`: CheckoutPage,
+CheckoutContactForm, CheckoutFulfillmentFields, CheckoutReview, CheckoutOrderSummary,
+CheckoutConfirmation and useLocalCheckout. UI types/validation live in
+`model/checkout.ts`; the store adds atomic unchanged-snapshot basket clearing.
+No automated validation was run for this slice; see [local checkout](marketplace-local-checkout.md).
+
 Cart-review additions: CartReviewPage, CartReviewItem, CartSummary and CartEmptyState
 are grouped under `features/marketplace/components/cart`. They reuse QuantitySelector,
 the shared money/cart helpers and the existing store. Drawer footer now links to

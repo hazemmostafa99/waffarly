@@ -21,6 +21,9 @@ The existing Next.js app, business landing `/`, merchant application `/join` and
 
 ## Read next
 
+Latest slice: [local checkout demo](marketplace-local-checkout.md). The user is
+performing manual QA; no automated tests/typecheck/build were run for this change.
+
 Latest slice: [local cart review](marketplace-cart-review.md), implemented without
 automated checks per the user's manual-testing preference. Local checkout is next.
 

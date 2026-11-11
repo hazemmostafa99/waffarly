@@ -1,5 +1,12 @@
 # Marketplace limitations
 
+Current cart review and checkout slices are implemented for manual QA only; no
+automated test, typecheck, build, screenshot or browser run was performed for them
+at the user's request. Checkout is an explicit local demo, with transient contact
+data, no real order/payment, no fees/branches/dates inferred, and no persistence.
+Earlier passing checks below apply only to their historical slices. See
+[local checkout limits](marketplace-local-checkout.md).
+
 ## Latest product detail slice
 
 Product details and quantity-aware cart use the existing local fixture only.

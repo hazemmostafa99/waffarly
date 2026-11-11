@@ -1,5 +1,10 @@
 # Marketplace routes map
 
+Latest local flow: `/marketplace/checkout` now hosts details -> review -> explicit
+demo confirmation on the same route. Entry is the cart review CTA; empty baskets
+link to browsing. No server order/auth/payment routes were added. See
+[local checkout](marketplace-local-checkout.md); this slice awaits manual QA.
+
 ## Local cart review
 
 `/marketplace/cart` now provides a full review of the existing in-memory basket:

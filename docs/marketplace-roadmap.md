@@ -21,6 +21,12 @@ were extracted pixel-perfect from an unavailable original screen.
 
 ## UI delivery order
 
+Local checkout slice implemented at `/marketplace/checkout`: transient demo contact
+fields, pickup/delivery selection, review/edit, pending/double-click handling,
+changed-cart protection and explicit simulated confirmation. No automated checks
+were run per user request; manual acceptance is pending. Backend integration is
+still deferred. See [local checkout](marketplace-local-checkout.md).
+
 Cart-review slice implemented locally at `/marketplace/cart`, with named item,
 summary and empty-state components, reused quantity/cart functions and drawer entry.
 Checkout remains the next separate UI-only step. No automated checks were run for

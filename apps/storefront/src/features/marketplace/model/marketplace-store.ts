@@ -8,6 +8,7 @@ export interface MarketplaceState {
   addToCart: (productId: string, quantity?: number) => boolean;
   setCartQuantity: (productId: string, quantity: number) => void;
   removeCartItem: (productId: string) => void;
+  clearCartIfUnchanged: (snapshot: MarketplaceCartLine[]) => boolean;
   favorites: string[];
   toggleFavorite: (productId: string) => void;
 }
@@ -47,6 +48,11 @@ export function createMarketplaceStore() {
     },
     removeCartItem: (productId) =>
       set((state) => ({ cart: state.cart.filter((line) => line.productId !== productId) })),
+    clearCartIfUnchanged: (snapshot) => {
+      if (!snapshot.length || JSON.stringify(get().cart) !== JSON.stringify(snapshot)) return false;
+      set({ cart: [], cartOpen: false });
+      return true;
+    },
     favorites: [],
     toggleFavorite: (productId) =>
       set((state) => ({

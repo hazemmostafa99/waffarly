@@ -11,8 +11,8 @@ export function CartSummary({ total, quantity, productCount }: { total: number; 
         <div className="cart-summary-total"><dt>إجمالي المنتجات</dt><dd>{money(total)}</dd></div>
       </dl>
       <p className="detail-note">الشحن وأي رسوم إضافية غير محسوبة في هذه التجربة.</p>
-      <button className="add" type="button" disabled aria-describedby="checkout-pending-note">متابعة لإتمام الطلب</button>
-      <p id="checkout-pending-note" className="cart-checkout-note">إتمام الطلب التجريبي لسه قيد التجهيز. لم يتم إرسال أي طلب.</p>
+      <Link className="add cart-checkout-link" href="/marketplace/checkout">متابعة لإتمام الطلب</Link>
+      <p className="cart-checkout-note">الخطوة التالية تجربة محلية فقط، بدون إرسال طلب أو دفع حقيقي.</p>
       <Link className="cart-continue-link" href="/marketplace#deals">متابعة التسوق ←</Link>
     </aside>
   );

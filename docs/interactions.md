@@ -1,5 +1,12 @@
 # Marketplace interactions
 
+The cart review CTA now opens `/marketplace/checkout`. The local demo validates
+contact/address fields, supports pickup/delivery and editing before review, guards
+duplicate confirmation, detects a basket changed during the local delay, and shows
+explicit demo success without personal data. Only an unchanged basket is cleared.
+No real order/payment is sent, and no automated checks ran for this slice. See
+[checkout behavior and manual checklist](marketplace-local-checkout.md).
+
 Cart review: the drawer's Review Cart link closes the drawer and navigates to
 `/marketplace/cart`. The page shares quantity/removal state and derived totals with
 the drawer, and renders an empty state after the last removal. Checkout is visibly

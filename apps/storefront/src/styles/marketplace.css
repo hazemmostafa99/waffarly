@@ -1675,3 +1675,60 @@
  .marketplace-theme .cart-summary { padding:20px; }
  .marketplace-theme .cart-review-controls { gap:12px; }
 }
+
+/* Local-only checkout: transient demo fields, no backend or payment form. */
+.marketplace-theme .cart-checkout-link { display:block; text-align:center; text-decoration:none; }
+.marketplace-theme .checkout-steps { display:flex; gap:20px; list-style:none; margin:0 0 28px; padding:0; }
+.marketplace-theme .checkout-steps li { display:flex; align-items:center; gap:10px; color:var(--muted); font-size:13px; }
+.marketplace-theme .checkout-steps li > span { display:grid; place-items:center; flex-shrink:0; width:32px; height:32px; border:1px solid var(--line); border-radius:50%; background:var(--card); }
+.marketplace-theme .checkout-steps li.active { color:var(--purple-900); font-weight:700; }
+.marketplace-theme .checkout-steps li.active > span { background:var(--purple-900); color:var(--card); border-color:var(--purple-900); }
+.marketplace-theme .checkout-panel { min-width:0; background:var(--card); border:1px solid var(--line); border-radius:18px; padding:28px; }
+.marketplace-theme .checkout-panel h2 { margin:0 0 18px; font-size:22px; }
+.marketplace-theme .checkout-field { display:grid; gap:8px; margin-top:20px; color:var(--ink); font-size:13px; font-weight:700; }
+.marketplace-theme .checkout-field input,.marketplace-theme .checkout-field textarea { box-sizing:border-box; display:block; width:100%; min-width:0; border:1px solid var(--line); border-radius:10px; padding:12px 14px; background:var(--card); color:var(--ink); font:inherit; font-weight:400; line-height:1.6; }
+.marketplace-theme .checkout-field textarea { resize:vertical; }
+.marketplace-theme .checkout-field [aria-invalid="true"] { border-color:var(--red); }
+.marketplace-theme .checkout-field-error { color:var(--red); font-size:12px; line-height:1.7; font-weight:400; }
+.marketplace-theme .checkout-field-error:empty { display:none; }
+.marketplace-theme .checkout-fieldset { min-width:0; margin:28px 0 12px; padding:20px 0 0; border:0; border-top:1px solid var(--line); }
+.marketplace-theme .checkout-fieldset legend { font-size:16px; font-weight:700; padding-inline-end:12px; }
+.marketplace-theme .checkout-fulfillment-options { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.marketplace-theme .checkout-fulfillment-options label { display:flex; align-items:center; gap:10px; border:1px solid var(--line); border-radius:12px; padding:16px 12px; font-size:13px; cursor:pointer; }
+.marketplace-theme .checkout-fulfillment-options label.selected { border-color:var(--purple-700); background:var(--purple-50); }
+.marketplace-theme .checkout-fulfillment-options input { margin:0; accent-color:var(--purple-700); }
+.marketplace-theme .checkout-panel > .add { margin-top:20px; padding:14px; }
+.marketplace-theme .checkout-error { border:1px solid var(--red); border-radius:10px; padding:12px; color:var(--red); font-size:13px; line-height:1.8; }
+.marketplace-theme .checkout-demo-notice { background:var(--purple-50); border-radius:10px; padding:14px; color:var(--purple-700); font-size:13px; line-height:1.8; }
+.marketplace-theme .checkout-review-details { margin:0 0 24px; }
+.marketplace-theme .checkout-review-details > div { display:grid; grid-template-columns:110px minmax(0,1fr); gap:12px; padding:14px 0; border-bottom:1px solid var(--line); font-size:14px; line-height:1.8; }
+.marketplace-theme .checkout-review-details dt { color:var(--muted); }
+.marketplace-theme .checkout-review-details dd { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
+.marketplace-theme .checkout-secondary-actions { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:18px; font-size:13px; }
+.marketplace-theme .checkout-secondary-actions button { border:0; padding:0; background:transparent; color:var(--purple-700); }
+.marketplace-theme .checkout-secondary-actions a { color:var(--purple-700); text-decoration:none; }
+.marketplace-theme .checkout-summary-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.marketplace-theme .checkout-summary-heading h2 { margin:0; }
+.marketplace-theme .checkout-summary-heading a { color:var(--purple-700); text-decoration:none; font-size:12px; }
+.marketplace-theme .checkout-summary-items { list-style:none; margin:24px 0; padding:0; }
+.marketplace-theme .checkout-summary-items li { display:grid; grid-template-columns:42px minmax(0,1fr) auto; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid var(--line); }
+.marketplace-theme .checkout-summary-items img { width:42px; height:42px; object-fit:cover; border-radius:8px; }
+.marketplace-theme .checkout-summary-items b { display:block; font-size:11px; line-height:1.6; }
+.marketplace-theme .checkout-summary-items span { display:block; color:var(--muted); font-size:10px; margin-top:4px; }
+.marketplace-theme .checkout-summary-items strong { color:var(--purple-900); font-size:11px; white-space:nowrap; }
+.marketplace-theme .checkout-confirmation { display:grid; grid-template-columns:minmax(0,1fr) 330px; gap:24px; align-items:start; }
+.marketplace-theme .checkout-success-panel { text-align:center; padding:44px 28px; }
+.marketplace-theme .checkout-success-icon { display:grid; place-items:center; width:68px; height:68px; margin:0 auto 24px; background:var(--purple-100); color:var(--purple-700); border-radius:50%; font-size:30px; }
+.marketplace-theme .checkout-success-panel > p { line-height:1.9; }
+.marketplace-theme .checkout-success-panel .cart-demo-label { display:block; width:fit-content; margin:20px auto; }
+.marketplace-theme .checkout-success-panel > a { display:inline-block; text-decoration:none; }
+@media(max-width:1000px) { .marketplace-theme .checkout-confirmation { grid-template-columns:minmax(0,1fr) 290px; gap:16px; } }
+@media(max-width:768px) { .marketplace-theme .checkout-confirmation { grid-template-columns:1fr; } }
+@media(max-width:700px) {
+ .marketplace-theme .checkout-panel { padding:20px 16px; }
+ .marketplace-theme .checkout-steps { gap:10px; }
+ .marketplace-theme .checkout-steps li { flex:1; flex-direction:column; text-align:center; font-size:10px; line-height:1.6; gap:6px; }
+ .marketplace-theme .checkout-fulfillment-options { grid-template-columns:1fr; }
+ .marketplace-theme .checkout-review-details > div { grid-template-columns:80px minmax(0,1fr); font-size:13px; }
+ .marketplace-theme .checkout-success-panel { padding:32px 20px; }
+}

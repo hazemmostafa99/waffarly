@@ -109,7 +109,7 @@ export function MarketplaceCart() {
             <span>{money(cartTotal(ids))}</span>
           </div>
           <p className="detail-note">
-            سلة تجريبية محلية — إتمام الطلب لسه قيد التجهيز. الإجمالي لا يشمل رسومًا إضافية.
+            سلة تجريبية محلية — راجع المنتجات للمتابعة إلى التأكيد التجريبي. الإجمالي لا يشمل رسومًا إضافية.
           </p>
           <Link href="/marketplace/cart" className="checkout" onClick={() => setOpen(false)}>
             مراجعة السلة

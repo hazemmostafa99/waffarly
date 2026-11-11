@@ -1,5 +1,9 @@
 # Local cart review page
 
+Follow-up: the checkout CTA is now enabled and links to the separate
+`/marketplace/checkout` local demonstration. The pending-checkout statements below
+describe the initial cart slice. See [current checkout](marketplace-local-checkout.md).
+
 Route: `/marketplace/cart`. UI-only, using the existing provider-scoped local basket
 and fixture products. No backend, new package, persistence, order submission or
 payment integration was introduced.
