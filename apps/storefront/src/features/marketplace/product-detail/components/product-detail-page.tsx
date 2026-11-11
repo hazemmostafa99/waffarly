@@ -10,6 +10,7 @@ import { ProductInfo } from '@/features/marketplace/product-detail/components/pr
 import { ProductPurchase } from '@/features/marketplace/product-detail/components/product-purchase';
 import { ProductRecommendations } from '@/features/marketplace/product-detail/components/product-recommendations';
 import { MarketplaceFooter } from '@/features/marketplace/navigation/components/marketplace-footer';
+import { RestaurantProductDetail } from './restaurant-product-detail';
 
 export function ProductDetailPage({
   product,
@@ -26,6 +27,7 @@ export function ProductDetailPage({
       <main id="marketplace-main" tabIndex={-1} className={'pb-20'}>
         <MarketplaceContainer>
           <ProductBreadcrumbs product={product} backHref={backHref} />
+          {product.merchantType === 'restaurant' ? <RestaurantProductDetail product={product} /> : <>
           <article
             className={cn(
               'product-detail grid grid-cols-[minmax(0,_1fr)_minmax(0,_1.1fr)] gap-9 max-w-310 mt-0 mx-auto mb-8',
@@ -46,6 +48,7 @@ export function ProductDetailPage({
           <Suspense fallback={null}>
             <ProductRecommendations product={product} />
           </Suspense>
+          </>}
         </MarketplaceContainer>
       </main>
       <MarketplaceFooter />

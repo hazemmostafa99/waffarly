@@ -7,6 +7,13 @@ export function mealGroups(product?: Pick<MarketplaceProduct, 'menuSection'>) {
   return product?.menuSection === 'مشروبات' ? drinkOptionGroups : mealOptionGroups;
 }
 
+export function defaultMealSelection(product?: Pick<MarketplaceProduct, 'menuSection'>): MealSelection {
+  return Object.fromEntries(mealGroups(product).flatMap((group) => {
+    const first = group.choices[0];
+    return group.required && first ? [[group.id, [first.id]]] : [];
+  }));
+}
+
 export function validMealSelection(selection: MealSelection, product?: Pick<MarketplaceProduct, 'menuSection'>) {
   const groups = mealGroups(product);
   return Object.keys(selection).every((id) => groups.some((group) => group.id === id)) &&

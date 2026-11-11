@@ -50,6 +50,17 @@ No sensitive form input is recorded in the order snapshot.
 
 ## Manual review handoff — not executed
 
+Restaurant product details now align with the main Marketplace container (1480px maximum):
+bounded meal photo/favorites on the right and description, restaurant link, base
+price and shared meal configuration on the left. The page presentation removes
+the selector's repeated image/description/base-price block and groups quantity,
+total and cart action in one compact footer on wider screens. Image/details columns
+use a near-even split from 1024px up, with the main image capped at 520px high.
+Smaller screens stack
+the content. Restaurant breadcrumbs return to the menu, and related links stay
+within the same restaurant. Other Marketplace product types retain their layout.
+All of this remains unverified in a browser, with no automated checks or build.
+
 Visual refinement: menu items now use compact horizontal cards with square
 thumbnails and a short selection action. The meal dialog has a product summary,
 side-by-side size choices, separate extras, an independently scrollable options
@@ -58,8 +69,11 @@ primary and neutral tones with hover/active states, used by these restaurant
 controls so the wrapper's transparent default hover cannot hide their fill.
 This visual revision has not been run or checked in a browser.
 
-The subsequent reference-led layout uses a compact restaurant identity row, an
-image-backed menu banner, section icons and thumbnail-first cards. Cards now use a
+The restaurant page now opens with a compact identity summary: name/logo, local
+demo label, opening state, delivery fee, displayed time and delivery minimum.
+The decorative menu banner, photo and introductory copy have been removed;
+search, category controls and thumbnail-first cards follow the summary directly.
+Cards now use a
 fixed 280px width, capped by available space, and wrap without expanding to fill
 the row. Selecting a meal opens the shared modal on every viewport, capped at
 360px wide with 12px viewport gutters. The modal uses a landscape meal
@@ -73,7 +87,9 @@ All browser, responsive, RTL and keyboard acceptance remains open for user revie
 
 1. Start at `/restaurants`. Search, filter, sort, reset; exercise Back/Forward,
    reload with a query URL and a query with no results.
-2. Open بيت البرجر. Try adding without selecting a size, then add a regular
+2. Open بيت البرجر. The first choice in each required variant group is selected
+   by default in both the menu dialog and product page; optional extras start
+   unselected. Add without changing the default, then change size/extras. Add a regular
    classic burger and a large classic burger with cheese. They should remain
    separate; matching choices should merge. The sample subtotal for one of each
    is 430 EGP, delivery total 455 EGP, pickup total 430 EGP.
