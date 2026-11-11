@@ -67,7 +67,16 @@ node --import tsx scripts/seed-marketplace-restaurants.mts --apply-reference-dem
 ```
 
 Requires Node 24, migrated local database and root DATABASE_URL loaded internally;
-the script does not print its value. Production NODE_ENV is rejected. Re-running
+the script does not print its value. Production NODE_ENV requires the additional
+explicit `--allow-production-reference-demo` flag. For the deployed demo server,
+take and validate a database backup first, then run:
+
+```bash
+NODE_ENV=production node --import tsx scripts/seed-marketplace-restaurants.mts --apply-reference-demo --allow-production-reference-demo
+```
+
+This imports demonstration data; it does not create real owner credentials or
+activate subscriptions. Re-running
 updates only this dedicated reference dataset; it intentionally restores its
 reference values, not merchant edits made to those demo records.
 
