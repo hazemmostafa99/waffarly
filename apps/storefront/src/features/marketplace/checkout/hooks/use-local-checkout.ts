@@ -16,9 +16,13 @@ export function useLocalCheckout(
     snapshot: MarketplaceCartLine[],
     fulfillment: CheckoutDraft['fulfillment'],
   ) => DemoOrder | null,
+  initialAddress = '',
 ) {
   const [step, setStep] = useState<'details' | 'review' | 'confirmed'>('details');
-  const [draft, setDraft] = useState<CheckoutDraft>({ ...EMPTY_CHECKOUT });
+  const [draft, setDraft] = useState<CheckoutDraft>(() => ({
+    ...EMPTY_CHECKOUT,
+    address: initialAddress,
+  }));
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [notice, setNotice] = useState('');
   const [pending, setPending] = useState(false);

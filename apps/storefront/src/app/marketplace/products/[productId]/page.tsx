@@ -19,7 +19,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
   if (!product) notFound();
   const search = await searchParams;
   const values = new URLSearchParams();
-  for (const key of ['q', 'category']) {
+  for (const key of ['q', 'category', 'returnTo', 'sort', 'page']) {
     const value = search[key];
     if (typeof value === 'string') values.set(key, value);
   }

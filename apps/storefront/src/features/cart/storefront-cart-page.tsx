@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '../../components/storefront/storefront-link';
 import Image from 'next/image';
 import { useQueries } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, Minus, Plus, ShoppingBag, Trash2, Utensils } from 'lucide-react';

@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import Link from 'next/link';
+import Link from '../../components/storefront/storefront-link';
 import { useParams } from 'next/navigation';
 import { Info } from 'lucide-react';
 import { Card, useLocale } from '@waffarly/ui';

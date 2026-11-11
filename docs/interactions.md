@@ -10,6 +10,20 @@ real order/payment is sent. Both routes clearly explain that refresh clears hist
 No tests, browser runs, typecheck or build were run for this slice, per user instruction.
 See [checkout behavior and manual checklist](marketplace-local-checkout.md).
 
+Order detail now links to `/marketplace/orders/[orderId]/tracking`, where a local
+timeline advances one demo stage per click and reflects the new status in order
+history. The order detail also supports adding each still-eligible item and its
+original quantity back into the current cart; capped or unavailable products are
+reported as skipped. These actions remain provider-scoped, reset on reload and do
+not claim real shipping or fulfillment. See
+[local tracking and reorder](marketplace-order-tracking.md).
+
+The demo account page includes a selectable address book populated only with
+fictional sample addresses. The selected sample prefills delivery checkout for an
+active demo account; the checkout field remains editable and transient. No address
+entry form, customer address, browser persistence or backend request is involved.
+See [demo address book](marketplace-address-book.md).
+
 Cart review: the drawer's Review Cart link closes the drawer and navigates to
 `/marketplace/cart`. The page shares quantity/removal state and derived totals with
 the drawer, and renders an empty state after the last removal. The checkout CTA
@@ -26,6 +40,14 @@ pages show fixture products by seller match plus clearly labeled local sample it
 بيت البرجر has a sample menu with example prices; it is separate from reference data.
 Unknown local IDs show not-found pages. See
 [store/restaurant details](marketplace-store-and-restaurant-details.md).
+
+The home product section links to /marketplace/products for the complete local
+reference catalog and /marketplace/offers for products with a previous price.
+Both listings support search, category, price/discount sorting and pagination;
+category, query, sort and page are represented in the URL. Product detail links
+preserve the source listing and its selection for the return link. The full
+catalog currently contains five records from reference.json; no products or
+backend requests were added. Browser review remains pending.
 
 ## Current product/cart extension (supersedes duplicate-row behavior below)
 

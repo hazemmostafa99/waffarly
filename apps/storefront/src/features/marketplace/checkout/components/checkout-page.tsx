@@ -5,6 +5,8 @@ import { cn } from '@waffarly/ui';
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
+import { useAccountStore } from '@/features/marketplace/account/hooks/use-account-store';
+import { findDemoAddress } from '@/features/marketplace/account/model/demo-addresses';
 import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
 import { useCheckoutStore } from '@/features/marketplace/checkout/hooks/use-checkout-store';
 import { cartProducts } from '@/features/marketplace/cart/model/cart';
@@ -20,7 +22,10 @@ const steps = ['بيانات التواصل والاستلام', 'مراجعة �
 export function CheckoutPage() {
   const lines = useCartStore((state) => state.cart);
   const complete = useCheckoutStore((state) => state.completeDemoCheckout);
-  const checkout = useLocalCheckout(lines, complete);
+  const isDemoAccountActive = useAccountStore((state) => state.isDemoAccountActive);
+  const selectedAddressId = useAccountStore((state) => state.selectedDemoAddressId);
+  const selectedAddress = isDemoAccountActive ? findDemoAddress(selectedAddressId) : undefined;
+  const checkout = useLocalCheckout(lines, complete, selectedAddress?.address);
   const products = cartProducts(lines);
   const heading = useRef<HTMLHeadingElement>(null);
   const activeStep = checkout.step === 'details' ? 0 : checkout.step === 'review' ? 1 : 2;

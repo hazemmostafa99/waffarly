@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import Link from 'next/link';
+import Link from '../../components/storefront/storefront-link';
 import { useMutation } from '@tanstack/react-query';
 import { Minus, Plus, X } from 'lucide-react';
 import type {

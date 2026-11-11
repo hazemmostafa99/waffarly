@@ -8,6 +8,7 @@ import { MarketplaceFooter } from '@/features/marketplace/navigation/components/
 import { MarketplaceHeaderSkeleton } from '@/features/marketplace/navigation/components/marketplace-header-skeleton';
 import { MarketplaceSiteHeader } from '@/features/marketplace/navigation/components/marketplace-site-header';
 import { useAccountStore } from '@/features/marketplace/account/hooks/use-account-store';
+import { demoAddresses } from '@/features/marketplace/account/model/demo-addresses';
 import { useFavoritesStore } from '@/features/marketplace/favorites/hooks/use-favorites-store';
 import { useOrdersStore } from '@/features/marketplace/orders/hooks/use-orders-store';
 import { money } from '@/features/marketplace/shared/lib/format-money';
@@ -58,6 +59,26 @@ function AccountEntry() {
             </span>
             المنتجات المفضلة
           </div>
+          <div className="flex items-center gap-3 text-sm font-bold text-primary">
+            <span
+              className="grid size-9 place-items-center rounded-xl bg-white text-accent"
+              aria-hidden="true"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="size-[18px]"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M19 10c0 5-7 11-7 11S5 15 5 10a7 7 0 1 1 14 0Z" />
+                <circle cx="12" cy="10" r="2.25" />
+              </svg>
+            </span>
+            عناوين تجريبية للتوصيل
+          </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <Link
               href="/marketplace/account/sign-in"
@@ -83,6 +104,70 @@ function AccountEntry() {
       </div>
       <p className="m-0 border-t border-border px-5 py-3 text-xs leading-5 text-muted-foreground sm:px-8">
         تجربة محلية فقط: حالة الحساب موجودة في الذاكرة خلال الجلسة، ولا تُرسل بيانات إلى خادم.
+      </p>
+    </section>
+  );
+}
+
+function DemoAddressBook() {
+  const selectedAddressId = useAccountStore((state) => state.selectedDemoAddressId);
+  const selectDemoAddress = useAccountStore((state) => state.selectDemoAddress);
+
+  return (
+    <section
+      className="rounded-3xl border border-border bg-white p-5 shadow-[var(--shadow)] sm:p-7"
+      aria-labelledby="demo-addresses-title"
+    >
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="demo-addresses-title" className="m-0 text-lg font-black text-primary">
+            عناوين التوصيل التجريبية
+          </h2>
+          <p className="mb-0 mt-1 text-xs leading-5 text-muted-foreground">
+            اختار عنوانًا توضيحيًا عشان يظهر تلقائيًا في إتمام الطلب.
+          </p>
+        </div>
+        <span className="rounded-full bg-secondary px-2.5 py-1 text-[11px] font-bold text-accent">
+          بيانات مثال
+        </span>
+      </div>
+      <fieldset className="m-0 grid min-w-0 gap-3 border-0 p-0 sm:grid-cols-2">
+        <legend className="sr-only">العنوان المستخدم في تجربة التوصيل</legend>
+        {demoAddresses.map((address) => {
+          const selected = address.id === selectedAddressId;
+
+          return (
+            <label
+              key={address.id}
+              className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors ${
+                selected
+                  ? 'border-accent bg-secondary/60'
+                  : 'border-border bg-white hover:border-accent/60'
+              }`}
+            >
+              <input
+                type="radio"
+                name="demo-address"
+                value={address.id}
+                checked={selected}
+                onChange={() => selectDemoAddress(address.id)}
+                className="mt-1 shrink-0 accent-primary"
+              />
+              <span className="grid min-w-0 flex-1 gap-1">
+                <span className="flex flex-wrap items-center justify-between gap-2">
+                  <strong className="text-sm text-primary">{address.label}</strong>
+                  {selected && (
+                    <span className="text-[11px] font-bold text-accent">محدد للتجربة</span>
+                  )}
+                </span>
+                <span className="text-xs leading-5 text-muted-foreground">{address.address}</span>
+              </span>
+            </label>
+          );
+        })}
+      </fieldset>
+      <p className="mb-0 mt-4 text-[11px] leading-5 text-muted-foreground">
+        العناوين خيالية ومحفوظة في ذاكرة الجلسة فقط. لا تدخل عنوانك الحقيقي.
       </p>
     </section>
   );
@@ -153,6 +238,8 @@ function AccountDashboard() {
           </span>
         </Link>
       </section>
+
+      <DemoAddressBook />
 
       <section className="rounded-3xl border border-border bg-white p-5 shadow-[var(--shadow)] sm:p-7">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

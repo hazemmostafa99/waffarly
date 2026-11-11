@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
+import Link from './storefront-link';
 import { Sparkles } from 'lucide-react';
 import { useLocale } from '@waffarly/ui';
 import type { PublicStorefrontCatalog } from '@waffarly/contracts';

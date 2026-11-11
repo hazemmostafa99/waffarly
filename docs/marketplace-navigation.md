@@ -55,4 +55,9 @@ Cart/favorites remain in the existing provider-scoped Zustand store; menu, draft
 
 ## Remaining in this milestone
 
-Browser review of menu dismissal, focus return, mobile search focus, scroll, modified link clicks, direct URLs and actual Back/Forward at 375/390/768/1024/1440 widths remains pending. Sorting, pagination and order tracking remain open. The account journey, store detail links, all-store/all-offer pages, footer destinations and the seller-banner CTA now have local destinations. Backend absence is not a blocker for remaining UI work.
+Browser review of menu dismissal, focus return, mobile search focus, scroll, modified
+link clicks, direct URLs and actual Back/Forward at 375/390/768/1024/1440 widths
+remains pending. The all-offers page now has local URL-backed search, category,
+sorting and pagination; order tracking is covered in the local order flow. Remaining
+placeholder destinations and manual UI acceptance are still open. Backend absence is
+not a blocker for the remaining UI work.

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
+import Link from '../../components/storefront/storefront-link';
 import { ChevronLeft, ChevronRight, Utensils } from 'lucide-react';
 import type { PublicStorefrontCatalog, PublicStorefrontProduct } from '@waffarly/contracts';
 import { Badge, Card } from '@waffarly/ui';

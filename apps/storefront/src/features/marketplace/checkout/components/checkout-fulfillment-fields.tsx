@@ -49,35 +49,40 @@ export function CheckoutFulfillmentFields({
         </label>
       </div>
       {draft.fulfillment === 'delivery' ? (
-        <label
-          className={cn(
-            'checkout-field grid gap-2 mt-5 text-foreground text-[13px] font-bold [&_input]:[box-sizing:border-box]',
-            '[&_input]:block [&_input]:w-full [&_input]:min-w-0 [&_input]:border [&_input]:border-solid [&_input]:border-border [&_input]:rounded-[10px] [&_input]:py-3',
-            '[&_input]:px-3.5 [&_input]:bg-card [&_input]:text-foreground  [&_input]:font-normal [&_input]:leading-[1.6] [&_textarea]:[box-sizing:border-box] [&_textarea]:block',
-            '[&_textarea]:w-full [&_textarea]:min-w-0 [&_textarea]:border [&_textarea]:border-solid [&_textarea]:border-border [&_textarea]:rounded-[10px] [&_textarea]:py-3 [&_textarea]:px-3.5',
-            "[&_textarea]:bg-card [&_textarea]:text-foreground  [&_textarea]:font-normal [&_textarea]:leading-[1.6] [&_textarea]:resize-y [&_[aria-invalid='true']]:border-destructive",
-          )}
-        >
-          العنوان التجريبي
-          <Textarea
-            name="address"
-            rows={3}
-            maxLength={300}
-            autoComplete="off"
-            value={draft.address}
-            onChange={(event) => onChange({ address: event.target.value })}
-            aria-invalid={Boolean(errors.address)}
-            aria-describedby={errors.address ? 'checkout-address-error' : undefined}
-          />
-          <span
-            id="checkout-address-error"
-            className={
-              'checkout-field-error text-destructive text-[12px] leading-[1.7] font-normal empty:hidden'
-            }
+        <>
+          <p className="mb-0 mt-4 text-xs leading-5 text-muted-foreground">
+            عنوان الحساب التجريبي يظهر هنا تلقائيًا عند استخدامه، وتقدر تعدّله قبل المتابعة.
+          </p>
+          <label
+            className={cn(
+              'checkout-field grid gap-2 mt-3 text-foreground text-[13px] font-bold [&_input]:[box-sizing:border-box]',
+              '[&_input]:block [&_input]:w-full [&_input]:min-w-0 [&_input]:border [&_input]:border-solid [&_input]:border-border [&_input]:rounded-[10px] [&_input]:py-3',
+              '[&_input]:px-3.5 [&_input]:bg-card [&_input]:text-foreground  [&_input]:font-normal [&_input]:leading-[1.6] [&_textarea]:[box-sizing:border-box] [&_textarea]:block',
+              '[&_textarea]:w-full [&_textarea]:min-w-0 [&_textarea]:border [&_textarea]:border-solid [&_textarea]:border-border [&_textarea]:rounded-[10px] [&_textarea]:py-3 [&_textarea]:px-3.5',
+              "[&_textarea]:bg-card [&_textarea]:text-foreground  [&_textarea]:font-normal [&_textarea]:leading-[1.6] [&_textarea]:resize-y [&_[aria-invalid='true']]:border-destructive",
+            )}
           >
-            {errors.address}
-          </span>
-        </label>
+            العنوان التجريبي
+            <Textarea
+              name="address"
+              rows={3}
+              maxLength={300}
+              autoComplete="off"
+              value={draft.address}
+              onChange={(event) => onChange({ address: event.target.value })}
+              aria-invalid={Boolean(errors.address)}
+              aria-describedby={errors.address ? 'checkout-address-error' : undefined}
+            />
+            <span
+              id="checkout-address-error"
+              className={
+                'checkout-field-error text-destructive text-[12px] leading-[1.7] font-normal empty:hidden'
+              }
+            >
+              {errors.address}
+            </span>
+          </label>
+        </>
       ) : (
         <p className={'detail-note text-[12px] leading-[1.8] text-muted-foreground'}>
           الاستلام هنا للتجربة فقط؛ لم يتم تحديد فرع أو موعد حقيقي.

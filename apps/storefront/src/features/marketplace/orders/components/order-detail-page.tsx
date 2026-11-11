@@ -1,7 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
+import { MarketplaceButton } from '@/components/marketplace/marketplace-button';
+import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
 import { useOrdersStore } from '@/features/marketplace/orders/hooks/use-orders-store';
 import { OrderStatusBadge } from '@/features/marketplace/orders/components/order-status-badge';
 import {
@@ -12,6 +15,20 @@ import { money } from '@/features/marketplace/shared/lib/format-money';
 
 export function OrderDetailPage({ orderId }: { orderId: string }) {
   const order = useOrdersStore((state) => state.orders.find((item) => item.id === orderId));
+  const addToCart = useCartStore((state) => state.addToCart);
+  const [reorderResult, setReorderResult] = useState<{ added: number; skipped: number } | null>(
+    null,
+  );
+
+  function handleReorder() {
+    if (!order) return;
+
+    let added = 0;
+    for (const item of order.items) {
+      if (addToCart(item.id, item.quantity)) added += 1;
+    }
+    setReorderResult({ added, skipped: order.items.length - added });
+  }
 
   if (!order) {
     return (
@@ -145,9 +162,47 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
             <p className="mb-0 mt-5 text-[11px] leading-[1.8] text-muted-foreground">
               الإجمالي لا يشمل رسومًا إضافية، ولا يوجد دفع فعلي.
             </p>
-            <Link className="mt-5 inline-block text-[13px] text-accent" href="/marketplace/orders">
-              كل طلباتي
-            </Link>
+            <div className="mt-5 grid gap-2">
+              <Link
+                className="inline-flex min-h-10 items-center justify-center rounded-xl border border-border bg-white px-4 text-sm font-bold text-primary no-underline hover:border-accent"
+                href={`/marketplace/orders/${order.id}/tracking`}
+              >
+                متابعة حالة الطلب التجريبية
+              </Link>
+              <MarketplaceButton
+                type="button"
+                onClick={handleReorder}
+                className="min-h-11 w-full rounded-xl bg-waffarly-gold px-4 text-sm font-black text-primary hover:bg-[#ffd353]"
+              >
+                إعادة المنتجات إلى السلة
+              </MarketplaceButton>
+              <Link
+                className="text-center text-[13px] text-accent no-underline"
+                href="/marketplace/orders"
+              >
+                كل طلباتي
+              </Link>
+            </div>
+            {reorderResult && (
+              <p
+                role="status"
+                className="mb-0 mt-3 rounded-xl bg-secondary px-3 py-2.5 text-xs leading-5 text-accent"
+              >
+                {reorderResult.added > 0
+                  ? `تمت إضافة ${reorderResult.added} ${reorderResult.added === 1 ? 'منتج' : 'منتجات'} إلى السلة التجريبية.`
+                  : 'لم نتمكن من إضافة منتجات هذا الطلب إلى السلة.'}
+                {reorderResult.skipped > 0 &&
+                  ` تعذرت إضافة ${reorderResult.skipped} ${reorderResult.skipped === 1 ? 'منتج' : 'منتجات'} بسبب حدود الكمية أو عدم توفرها.`}
+                {reorderResult.added > 0 && (
+                  <>
+                    {' '}
+                    <Link className="font-bold text-primary" href="/marketplace/cart">
+                      عرض السلة
+                    </Link>
+                  </>
+                )}
+              </p>
+            )}
           </aside>
         </div>
       </MarketplaceContainer>

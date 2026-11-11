@@ -5,7 +5,7 @@ import { cn } from '@waffarly/ui';
 import { MarketplaceButton as Button } from '@/components/marketplace/marketplace-button';
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { productHref } from '@/features/marketplace/product-detail/model/product-navigation';
 import { ProductPrice } from '@/features/marketplace/catalog/components/product-price';
 import { ProductRating } from '@/features/marketplace/catalog/components/product-rating';
@@ -22,7 +22,8 @@ export function ProductCard({
   onAdded: () => void;
 }) {
   const params = useSearchParams();
-  const href = productHref(p.id, params.toString());
+  const pathname = usePathname();
+  const href = productHref(p.id, params.toString(), pathname ?? '');
   const addToCart = useCartStore((s) => s.addToCart);
   const atLimit = useCartStore(
     (s) => (s.cart.find((line) => line.productId === p.id)?.quantity ?? 0) >= MAX_CART_QUANTITY,

@@ -1,5 +1,5 @@
-import { MarketplaceOffersSkeleton } from '@/features/marketplace/catalog/components/marketplace-offers-skeleton';
+import { MarketplaceProductListingSkeleton } from '@/features/marketplace/catalog/components/marketplace-product-listing-skeleton';
 
 export default function MarketplaceOffersLoading() {
-  return <MarketplaceOffersSkeleton />;
+  return <MarketplaceProductListingSkeleton label="العروض" />;
 }

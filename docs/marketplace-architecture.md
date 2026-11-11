@@ -13,12 +13,17 @@ All current Marketplace work is UI-first with local reference data. No backend/A
 ```text
 apps/storefront/src/
   app/marketplace/                 # Thin route entries and layout
+    products/page.tsx              # All local reference products
     products/[productId]/
     cart/
     checkout/
     favorites/
     orders/
     orders/[orderId]/
+    orders/[orderId]/tracking/
+    account/
+    account/sign-in/
+    account/sign-up/
     stores/[storeId]/
     restaurants/[restaurantId]/
   components/marketplace/          # Shared Marketplace primitives/adapters
@@ -35,6 +40,8 @@ apps/storefront/src/
     search/{components,hooks,model}/
     catalog/{components,model}/
     favorites/{components,hooks,state}/
+    account/{components,hooks,model,state}/
+      components/auth/
     restaurants/{components,model}/
     stores/{components,model}/
     product-detail/{components,model}/
@@ -55,14 +62,21 @@ Only folders with actual code exist. Feature presentation stays in components, R
 
 ## Composition and state
 
-Pages compose features. MarketplaceSiteHeader composes the shared header, search, primary/mobile navigation, menu and pending feedback on listing/detail/cart/checkout routes. Home composes hero, category/restaurant/product/store collections. MerchantEntryPage composes the shared Marketplace shell with a responsive local-only application form. AccountPage composes guest entry, the ephemeral demo account dashboard, and links to existing orders/favorites. ProductDetailPage composes breadcrumbs, image, info, seller, purchase and recommendations. CartReviewPage composes editable items, totals and empty state. CheckoutPage composes local details, review and explicit demo confirmation.
+Pages compose features. MarketplaceSiteHeader composes the shared header, search, primary/mobile navigation, menu and pending feedback on listing/detail/cart/checkout routes. Home composes hero, category/restaurant/product/store collections. MerchantEntryPage composes the shared Marketplace shell with a responsive local-only application form. AccountPage composes guest entry, the ephemeral demo account dashboard, a selectable fictional address book, and links to existing orders/favorites. The selected address ID is stored only in the provider-scoped account slice, and checkout resolves it against local address examples. ProductDetailPage composes breadcrumbs, image, info, seller, purchase and recommendations. CartReviewPage composes editable items, totals and empty state. CheckoutPage composes local details, review and explicit demo confirmation. OrderTrackingPage renders a delivery/pickup-specific local status timeline, and order details can add the saved product snapshot back to the cart.
 
-Route loading states reuse the `MarketplaceSkeleton` primitive and compose page-shaped placeholders for the header, merchant entry, stores and offers. These are used for Next route loading and Suspense boundaries; synchronous local fixtures do not get an artificial delay.
+The homepage product section links to /marketplace/products for the full local
+reference catalog and /marketplace/offers for discounted products. Both compose
+MarketplaceProductListingPage, ProductListingFilters, product cards and pagination.
+Category, search, sort and page state is URL-backed; product details preserve the
+originating listing for their return link. The full catalog contains the five
+records in reference.json; merchant-detail mock examples are kept out of it.
+
+Route loading states reuse the `MarketplaceSkeleton` primitive and compose page-shaped placeholders for the header, merchant entry, stores and product listings. These are used for Next route loading and Suspense boundaries; synchronous local fixtures do not get an artificial delay.
 
 | State                                         | Owner                                                                   |
 | --------------------------------------------- | ----------------------------------------------------------------------- |
 | Initial product/catalog content               | Read-only data/reference.json                                           |
-| Submitted search/category                     | URL; search hooks and pure parser/model                                 |
+| Submitted search/category and product listings | URL; search hooks and catalog listing model                           |
 | Draft input, menus, toasts and local checkout | Component state/hooks                                                   |
 | Product ID/quantity lines and drawer          | Cart Zustand slice                                                      |
 | Favorite product IDs                          | Favorites Zustand slice                                                 |

@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
+import Link from '../../components/storefront/storefront-link';
 import { useParams } from 'next/navigation';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import type { ComponentProps } from 'react';

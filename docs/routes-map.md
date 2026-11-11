@@ -7,6 +7,9 @@
 - `/marketplace/orders/[orderId]` shows the selected demo order's item snapshot,
   total, local confirmation time and delivery/pickup choice. Unknown or refreshed
   session IDs show an honest unavailable state because this history is in memory.
+- `/marketplace/orders/[orderId]/tracking` shows a local timeline that advances
+  only when the shopper presses the demo control. Order details can add eligible
+  items from that order back into the current cart.
 
 These are UI-only flows backed by the local Zustand store. They contain no contact
 details, account identity, backend request, actual fulfillment, or real order status.
@@ -37,14 +40,23 @@ not routes observed on the reference site. See
 - `/marketplace/stores` lists the local fixture stores, supports name/activity
   search, and links each card to its existing store detail route.
 - `/marketplace/offers` lists fixture products with a populated previous price;
-  it reuses the product cards, cart and favorites interactions.
+  it reuses the product cards, cart and favorites interactions. Search, category,
+  price/discount sorting and pagination are local and URL-backed; product details
+  return to the same offers selection.
+- /marketplace/products lists all five products currently present in the local
+  reference fixture. Search, category, price/discount sorting and pagination are
+  local and URL-backed; product details return to that same catalog selection.
+- The home product section links to the complete catalog and to the separate
+  discounted-products route.
 - `/marketplace/account` starts as a guest and supports entering/leaving a demo
-  account. The account view links to current-session orders and favorites.
+  account. Its address book selects a fictional address that prefills local checkout;
+  the account view also links to current-session orders and favorites. See
+  [demo address book](marketplace-address-book.md).
 - `/marketplace/account/sign-in` and `/marketplace/account/sign-up` are separate
   styled UI pages. Their local validation messages never authenticate/create a
   real account; password fields are cleared after valid submission.
-- Route transitions for merchant entry, all stores and all offers use responsive
-  page-shaped skeletons and a shared Marketplace header skeleton.
+- Route transitions for merchant entry, all stores, products and offers use
+  responsive page-shaped skeletons and a shared Marketplace header skeleton.
 - `/join` is linked from the Marketplace merchant CTA and uses the Marketplace
   tokens and shell. Its application form validates locally and shows a demo
   confirmation; it does not call `/merchant-applications` or create an account.
@@ -68,6 +80,12 @@ with product-specific metadata and a custom 404 for unknown IDs. Image/title lin
 retain normalized `q` and `category`; return links restore `/marketplace?...#deals`.
 This route is an approved local UI extension, not an extracted original-site route.
 See [product slice](marketplace-product-details.md) for behavior and verification.
+When opened from the products or offers listing, the detail return link restores
+that listing and its active filters; homepage product cards return to the products
+section.
+When a product opens from the full products or offers listing, its return link restores
+that listing and its active filters; homepage product cards return to the products
+section instead.
 
 Inspected public source URL: https://wafarly-marketplace.rassameldeeb.chatgpt.site/
 
@@ -86,4 +104,7 @@ Existing local `/`, `/join` and `/s/[slug]` routes are preserved. Marketplace is
 
 ## Local navigation extension
 
-Submitted search and category now use `/marketplace?q=<text>&category=<local ID>#deals`. Direct URLs render filtered local fixture results. `mobiles` and `electronics` are distinct card IDs sharing the fixture electronics filter. Home resets owned filters; other section links preserve them. No HTTP mock endpoints or backend integration were added. Favorites and order links open local pages. Seller entry, all stores, all offers and the demo account now open local flows. See [URL contract](marketplace-navigation.md).
+See [product listing details](marketplace-product-listing.md) for the shared local
+catalog and offers behavior.
+
+Submitted search and category now use `/marketplace?q=<text>&category=<local ID>#deals`. Direct URLs render filtered local fixture results. `mobiles` and `electronics` are distinct card IDs sharing the fixture electronics filter. Home resets owned filters; other section links preserve them. No HTTP mock endpoints or backend integration were added. Favorites and order links open local pages. Seller entry, all stores, all products, all offers and the demo account now open local flows. See [URL contract](marketplace-navigation.md).

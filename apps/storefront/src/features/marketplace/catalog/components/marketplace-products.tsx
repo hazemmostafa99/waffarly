@@ -3,6 +3,7 @@
 import { filterProducts } from '@/features/marketplace/catalog/model/catalog';
 import { FlashCountdown } from '@/features/marketplace/catalog/components/flash-countdown';
 import { ProductCard } from '@/features/marketplace/catalog/components/product-card';
+import { SectionHeading } from '@/components/marketplace/section-heading';
 import Link from 'next/link';
 
 export function MarketplaceProducts({
@@ -20,6 +21,12 @@ export function MarketplaceProducts({
       className={'section deal-panel mt-7 bg-white rounded-[20px] p-5 [box-shadow:var(--shadow)]'}
       id="deals"
     >
+      <SectionHeading
+        title="منتجات السوق"
+        subtitle="تصفّح المنتجات المتاحة، واستخدم البحث والتصفية للوصول لما تريده."
+        more="كل المنتجات"
+        moreHref="/marketplace/products"
+      />
       <div className={'deal-top flex items-center gap-3 mb-[17px]'}>
         <span
           className={
@@ -31,7 +38,7 @@ export function MarketplaceProducts({
         <strong>تنتهي خلال</strong>
         <FlashCountdown />
         <Link className={'more text-accent font-extrabold no-underline text-[13px] mr-auto'} href="/marketplace/offers">
-          عرض الكل ←
+          كل العروض ←
         </Link>
       </div>
       <div

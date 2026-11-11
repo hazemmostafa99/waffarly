@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, type FormEvent } from 'react';
-import Link from 'next/link';
+import Link from '../../components/storefront/storefront-link';
 import { useParams } from 'next/navigation';
 import { ArrowUpRight, BadgeCheck, Heart, MapPin, ShoppingBag, UserRound } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
