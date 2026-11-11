@@ -28,7 +28,7 @@ export function ProductDetailPage({
       <main id="marketplace-main" tabIndex={-1} className={'pb-20'}>
         <MarketplaceContainer>
           <ProductBreadcrumbs product={product} backHref={backHref} />
-          {product.merchantType === 'restaurant' ? <RestaurantProductDetail product={product} relatedProducts={relatedProducts} /> : <>
+          {product.merchantType === 'restaurant' ? <RestaurantProductDetail product={product} {...(relatedProducts !== undefined ? { relatedProducts } : {})} /> : <>
           <article
             className={cn(
               'product-detail grid grid-cols-[minmax(0,_1fr)_minmax(0,_1.1fr)] gap-9 max-w-310 mt-0 mx-auto mb-8',
