@@ -1,5 +1,13 @@
 # Marketplace completion roadmap
 
+Restaurant integration authorization (2026-11-11): following user manual review,
+the user explicitly authorized backend preparation/seed and then restaurant
+browsing/configuration pricing integration. This supersedes local-only mode for
+those restaurant reads and quotes. Checkout/accounts/payment/tracking remain
+local demonstrations; other Marketplace surfaces keep their existing sources.
+See [integration delivery](marketplace-restaurant-integration.md). No tests or
+builds were run; manual integration acceptance remains open.
+
 ## Active decision: UI first, backend later
 
 The user explicitly requires completing every Marketplace screen and user flow

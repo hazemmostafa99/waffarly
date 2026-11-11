@@ -295,3 +295,5 @@ export type {
 } from './subscriptions.js';
 
 export type { RestaurantImage, RestaurantPeriod, RestaurantDay, RestaurantException, RestaurantArea, RestaurantSettingsInput, RestaurantOperatingState } from './restaurant.js';
+
+export type { PublicRestaurantProfile, MarketplaceMenuProduct, MarketplaceMenuPage } from './restaurant.js';

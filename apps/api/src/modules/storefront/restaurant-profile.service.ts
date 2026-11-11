@@ -47,7 +47,10 @@ export class RestaurantProfileService {
     const records = await this.prisma.restaurantProfile.findMany({ where: { published: true, merchant: { activity: 'restaurant', ...(term ? { name: { contains: term, mode: 'insensitive' } } : {}) } },
       include: { merchant: { select: { name: true, storefrontSlug: true } } }, orderBy: [{ displayOrder: 'asc' }, { merchantId: 'asc' }],
       take: 25, ...(cursor ? { cursor: { merchantId: cursor }, skip: 1 } : {}) });
-    return { items: records.slice(0, 24).map((record) => ({ ...this.map(record), name: record.merchant.name, slug: record.merchant.storefrontSlug })), nextCursor: records.length > 24 ? records[23]!.merchantId : null };
+    return { items: records.slice(0, 24).map((record) => {
+      const { merchant, ...profile } = record;
+      return { ...this.map(profile), name: merchant.name, slug: merchant.storefrontSlug };
+    }), nextCursor: records.length > 24 ? records[23]!.merchantId : null };
   }
   async product(slug: string, productId: string) {
     await this.menu(slug);

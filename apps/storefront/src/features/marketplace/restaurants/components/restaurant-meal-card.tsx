@@ -23,7 +23,7 @@ export function RestaurantMealCard({ product, restaurantOpen, onSelect, selected
       </div>
       <div className="flex min-w-0 flex-col items-start py-1 pe-1">
         <h4 className="mb-1 mt-0 text-[13px] font-bold leading-5 text-foreground">
-          <Link href={`/products/${product.id}`} className="text-inherit no-underline transition-colors hover:text-accent">{product.name}</Link>
+          <Link href={`/products/${product.id}${product.restaurantSlug ? `?restaurant=${encodeURIComponent(product.restaurantSlug)}` : ''}`} className="text-inherit no-underline transition-colors hover:text-accent">{product.name}</Link>
         </h4>
         <p className="mb-2 mt-0 line-clamp-2 text-[10px] leading-[1.7] text-muted-foreground">{product.description ?? 'وجبة توضيحية بحجم وإضافات حسب اختيارك.'}</p>
         <div className="mt-auto flex w-full flex-col items-start gap-2">

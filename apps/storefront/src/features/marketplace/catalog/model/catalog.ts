@@ -1,3 +1,4 @@
+import type { PublicRestaurantProfile, PublicStorefrontProduct } from '@waffarly/contracts';
 import data from '@/features/marketplace/data/reference.json';
 import merchantScenarios from '@/features/marketplace/data/merchant-detail-scenarios.json';
 import { restaurantScenarioProducts } from '@/features/marketplace/data/restaurant-scenarios';
@@ -14,6 +15,10 @@ type MerchantScenarioProduct = ProductRecord & {
 };
 
 export type MarketplaceProduct = ProductRecord & Partial<MerchantScenarioProduct> & {
+  restaurantSlug?: string;
+  restaurantSettings?: PublicRestaurantProfile;
+  apiVariants?: PublicStorefrontProduct['variants'];
+  apiModifierGroups?: PublicStorefrontProduct['modifierGroups'];
   menuSection?: string;
   available?: boolean;
   description?: string;

@@ -8,12 +8,12 @@ import { restaurantScenario } from '@/features/marketplace/data/restaurant-scena
 import { mealAvailable } from '@/features/marketplace/restaurants/model/meal-options';
 import { money } from '@/features/marketplace/shared/lib/format-money';
 
-export function RestaurantProductDetail({ product }: { product: MarketplaceProduct }) {
+export function RestaurantProductDetail({ product, relatedProducts }: { product: MarketplaceProduct; relatedProducts?: MarketplaceProduct[] }) {
   const name = product.merchantName ?? product.seller;
-  const restaurantUrl = `/restaurants/${encodeURIComponent(name)}`;
-  const scenario = restaurantScenario(name);
+  const restaurantUrl = `/restaurants/${encodeURIComponent(product.restaurantSlug ?? name)}`;
+  const scenario = product.restaurantSettings ? { open: product.restaurantSettings.isOpen, deliveryFee: Number(product.restaurantSettings.deliveryFee) } : restaurantScenario(name);
   const available = mealAvailable(product);
-  const related = productsForRestaurant({ name }).filter((item) => item.id !== product.id).slice(0, 3);
+  const related = (relatedProducts ?? productsForRestaurant({ name })).filter((item) => item.id !== product.id).slice(0, 3);
 
   return <>
     <article className="mx-auto grid w-full max-w-[1480px] items-start gap-5 rounded-[24px] border border-border/70 bg-card p-4 shadow-[var(--shadow)] md:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-8">
@@ -49,7 +49,7 @@ export function RestaurantProductDetail({ product }: { product: MarketplaceProdu
     </article>
     {related.length > 0 && <section aria-label="أصناف أخرى من المطعم" className="mx-auto mt-5 w-full max-w-[1480px]">
       <h2 className="mb-3 mt-0 text-[16px] font-bold text-primary">كمان من نفس المطعم</h2>
-      <div className="flex flex-wrap gap-3">{related.map((item) => <Link key={item.id} href={`/products/${encodeURIComponent(item.id)}`} className="flex w-[260px] max-w-full items-center gap-3 rounded-2xl border border-border bg-card p-2 text-inherit no-underline transition-colors hover:border-accent">
+      <div className="flex flex-wrap gap-3">{related.map((item) => <Link key={item.id} href={`/products/${encodeURIComponent(item.id)}${product.restaurantSlug ? `?restaurant=${encodeURIComponent(product.restaurantSlug)}` : ''}`} className="flex w-[260px] max-w-full items-center gap-3 rounded-2xl border border-border bg-card p-2 text-inherit no-underline transition-colors hover:border-accent">
         <img {...item.image} className="block size-14 shrink-0 rounded-xl object-cover" /><div className="min-w-0"><h3 className="mb-1 mt-0 text-[12px] font-bold leading-5">{item.name}</h3><span className="text-[11px] font-bold text-accent">من {money(item.price)}</span></div>
       </Link>)}</div>
     </section>}

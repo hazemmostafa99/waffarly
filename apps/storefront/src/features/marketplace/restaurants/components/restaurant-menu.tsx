@@ -1,5 +1,6 @@
 'use client';
 
+import type { PublicRestaurantProfile } from '@waffarly/contracts';
 import { useRef, useState } from 'react';
 import { Search, LayoutGrid, UtensilsCrossed, Sandwich, Coffee } from 'lucide-react';
 import Link from 'next/link';
@@ -17,13 +18,13 @@ function sectionIcon(section: string) {
   return section === 'all' ? LayoutGrid : section === 'أطباق جانبية' ? UtensilsCrossed : section === 'مشروبات' ? Coffee : Sandwich;
 }
 
-export function RestaurantMenu({ restaurantName }: { restaurantName: string }) {
+export function RestaurantMenu({ restaurantName, products: suppliedProducts, settings }: { restaurantName: string; products?: MarketplaceProduct[]; settings?: PublicRestaurantProfile }) {
   const [query, setQuery] = useState('');
   const [section, setSection] = useState('all');
   const [selected, setSelected] = useState<MarketplaceProduct | null>(null);
   const trigger = useRef<HTMLElement | null>(null);
-  const products = productsForRestaurant({ name: restaurantName });
-  const scenario = restaurantScenario(restaurantName);
+  const products = suppliedProducts ?? productsForRestaurant({ name: restaurantName });
+  const scenario = settings ? { open: settings.acceptingOrders } : restaurantScenario(restaurantName);
   const sections = [...new Set(products.map((product) => product.menuSection ?? 'الوجبات'))];
   const filtered = products.filter((product) => (section === 'all' || product.menuSection === section) && product.name.includes(query.trim()));
   function selectMeal(product: MarketplaceProduct) {

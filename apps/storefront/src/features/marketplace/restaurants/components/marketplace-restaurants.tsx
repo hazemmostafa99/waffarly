@@ -1,10 +1,15 @@
+'use client';
 import { cn } from '@waffarly/ui';
-import data from '@/features/marketplace/data/reference.json';
+import { useRestaurants } from '../hooks/use-restaurants';
 import { SectionHeading } from '@/components/marketplace/section-heading';
 import Link from 'next/link';
 import { restaurantHref } from '@/features/marketplace/restaurants/model/restaurants';
 
 export function MarketplaceRestaurants() {
+  const remote = useRestaurants();
+  const data = { restaurants: remote.data ?? [] };
+  if (remote.isPending) return <p role="status" className="p-5 text-sm">جارٍ تحميل المطاعم…</p>;
+  if (remote.isError) return <div role="alert" className="p-5 text-sm"><p>تعذر تحميل المطاعم من الخادم.</p><button type="button" onClick={() => remote.refetch()}>إعادة المحاولة</button></div>;
   return (
     <section
       className={

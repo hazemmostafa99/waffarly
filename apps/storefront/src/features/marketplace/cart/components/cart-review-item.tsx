@@ -19,7 +19,7 @@ export function CartReviewItem({
   onQuantityChange: (quantity: number) => void;
   onRemove: () => void;
 }) {
-  const href = productHref(product.id);
+  const href = productHref(product.id) + (product.restaurantSlug ? `?restaurant=${encodeURIComponent(product.restaurantSlug)}` : '');
   return (
     <li
       className={cn(

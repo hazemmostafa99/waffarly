@@ -1,5 +1,13 @@
 # Restaurant fields and reference seed delivery
 
+Development runtime correction: API `dev` now enables the `waffarly-source`
+condition, which resolves `@waffarly/database` to its source entry and the current
+generated Prisma client instead of stale `dist` artifacts. Production imports
+remain compiled. Restart the API dev command to activate this condition. Public
+restaurant listing also removes the joined `merchant` field before validating
+the strict settings projection. Neither change was exercised through HTTP or
+automated checks, per the user's no-testing instruction.
+
 Implemented and applied locally on 2026-11-11. No tests, typecheck, lint or build
 were run, as requested. HTTP behavior and UI integration remain unverified.
 

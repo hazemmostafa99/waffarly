@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { MarketplaceProduct } from '@/features/marketplace/catalog/model/catalog';
 import { Suspense } from 'react';
 import { Clock3, Truck, Tag } from 'lucide-react';
 import { restaurantScenario } from '@/features/marketplace/data/restaurant-scenarios';
@@ -9,9 +10,10 @@ import type { MarketplaceRestaurant } from '@/features/marketplace/restaurants/m
 import { RestaurantMenu } from '@/features/marketplace/restaurants/components/restaurant-menu';
 
 export function RestaurantDetailPage({
-  restaurant,
+  restaurant, products,
 }: {
   restaurant: MarketplaceRestaurant | undefined;
+  products?: MarketplaceProduct[];
 }) {
   if (!restaurant) {
     return (
@@ -24,7 +26,7 @@ export function RestaurantDetailPage({
     );
   }
 
-  const scenario = restaurantScenario(restaurant.name);
+  const scenario = restaurant.settings ? { open: restaurant.settings.isOpen, deliveryFee: Number(restaurant.settings.deliveryFee), minimumOrder: Number(restaurant.settings.minimumDeliveryOrder) } : restaurantScenario(restaurant.name);
 
   return (
     <main id="marketplace-main" tabIndex={-1} className="min-h-[60vh] pb-16 pt-6">
@@ -63,7 +65,7 @@ export function RestaurantDetailPage({
         </article>
         <section aria-label="منيو المطعم التجريبي" className="rounded-[20px] border border-border/70 bg-card p-3 sm:p-5">
           <Suspense fallback={<p aria-busy="true">جارٍ تحميل الأمثلة…</p>}>
-            <RestaurantMenu restaurantName={restaurant.name} />
+            <RestaurantMenu restaurantName={restaurant.name} products={products} settings={restaurant.settings} />
           </Suspense>
           <Link
             className="mt-5 inline-block text-[12px] font-bold text-accent"

@@ -13,7 +13,7 @@ export function ProductBreadcrumbs({
 }) {
   const category = marketplaceCategories.find((item) => item.id === product.category);
   const restaurant = product.merchantType === 'restaurant';
-  const menuHref = `/restaurants/${encodeURIComponent(product.merchantName ?? product.seller)}`;
+  const menuHref = `/restaurants/${encodeURIComponent(product.restaurantSlug ?? product.merchantName ?? product.seller)}`;
   const categoryHref = restaurant ? '/restaurants' : marketplaceSearchHref('/', '', {
     category: category?.id ?? 'all',
     term: '',

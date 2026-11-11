@@ -7,7 +7,7 @@ export function restaurantCheckout(items: CheckoutItem[], fulfillment: Fulfillme
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   if (!restaurant) return { name: '', subtotal, deliveryFee: 0, total: subtotal, issue: '' };
   const name = restaurant.merchantName ?? '';
-  const scenario = restaurantScenario(name);
+  const scenario = restaurant.restaurantSettings ? { deliveryFee: Number(restaurant.restaurantSettings.deliveryFee), minimumOrder: Number(restaurant.restaurantSettings.minimumDeliveryOrder) } : restaurantScenario(name);
   const deliveryFee = fulfillment === 'delivery' ? scenario.deliveryFee : 0;
   let issue = '';
   if (items.some((item) => item.merchantType !== 'restaurant' || item.merchantName !== name)) issue = 'طلب المطاعم لازم يكون من مطعم واحد.';

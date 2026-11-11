@@ -25,3 +25,15 @@ export interface RestaurantSettingsInput {
   deliveryAreas: RestaurantArea[];
 }
 export interface RestaurantOperatingState { isOpen: boolean; acceptingOrders: boolean; reason: 'open' | 'closed' | 'paused' | 'unpublished' }
+
+import type { PublicStorefrontProduct } from './catalog.js';
+export interface PublicRestaurantProfile extends RestaurantSettingsInput, RestaurantOperatingState {
+  merchantId: string; name: string; slug: string; revision: number;
+  deliveryFeeFrom: string; deliveryFeeTo: string;
+  referenceData: { origin?: string; rating?: string; offer?: string; time?: string } | null;
+}
+export interface MarketplaceMenuProduct extends PublicStorefrontProduct {
+  referenceKey: string | null; availability: 'available' | 'unavailable';
+  menuSectionId: string | null; displayOrder: number;
+}
+export interface MarketplaceMenuPage { items: MarketplaceMenuProduct[]; nextCursor: string | null }

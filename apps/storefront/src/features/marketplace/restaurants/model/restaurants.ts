@@ -1,7 +1,8 @@
 import data from '@/features/marketplace/data/reference.json';
 import { merchantScenarioProducts } from '@/features/marketplace/catalog/model/catalog';
 
-export type MarketplaceRestaurant = (typeof data.restaurants)[number];
+import type { PublicRestaurantProfile } from '@waffarly/contracts';
+export type MarketplaceRestaurant = (typeof data.restaurants)[number] & { slug?: string; settings?: PublicRestaurantProfile };
 
 function decodeRestaurantId(restaurantId: string) {
   try {
@@ -16,8 +17,8 @@ export function findRestaurant(restaurantId: string) {
   return data.restaurants.find((restaurant) => restaurant.name === name);
 }
 
-export function restaurantHref(restaurant: Pick<MarketplaceRestaurant, 'name'>) {
-  return `/restaurants/${encodeURIComponent(restaurant.name)}`;
+export function restaurantHref(restaurant: Pick<MarketplaceRestaurant, 'name' | 'slug'>) {
+  return `/restaurants/${encodeURIComponent(restaurant.slug ?? restaurant.name)}`;
 }
 
 export function productsForRestaurant(restaurant: Pick<MarketplaceRestaurant, 'name'>) {

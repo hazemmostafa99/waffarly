@@ -1,4 +1,7 @@
 'use client';
+import { useQuery } from '@tanstack/react-query';
+import type { CatalogProductQuoteResponse } from '@waffarly/contracts';
+import { apiPost } from '@/lib/api-client';
 
 import { useState } from 'react';
 import { cn } from '@waffarly/ui';
@@ -28,13 +31,27 @@ export function MealPurchase({ product, onAdded, presentation = 'inline' }: {
   const openCart = useCartStore((state) => state.setCartOpen);
   const configuration = mealConfiguration(selection, product);
   const available = mealAvailable(product);
+  const serverProduct = Boolean(product.restaurantSlug);
+  const quote = useQuery({
+    queryKey: ['marketplace', 'meal-quote', product.restaurantSlug, product.id, selection],
+    enabled: serverProduct && available && validMealSelection(selection, product),
+    retry: false,
+    queryFn: () => apiPost<CatalogProductQuoteResponse>(`catalog/stores/${encodeURIComponent(product.restaurantSlug!)}/products/${product.id}/quote`, {
+      ...(selection.size?.[0] ? { variantId: selection.size[0] } : {}),
+      selections: (product.apiModifierGroups ?? []).filter((group) => mealGroups(product, selection).some((availableGroup) => availableGroup.id === group.id)).map((group) => ({ groupId: group.id, optionIds: selection[group.id] ?? [] })),
+    }),
+  });
+  const quoteReady = !serverProduct || (quote.isSuccess && !quote.isFetching);
+  const total = serverProduct ? (quote.data ? Number(quote.data.totalPrice) * quantity : null) : (product.price + configuration.extraPrice) * quantity;
+
 
   function addMeal(replace = false) {
+    if (!quoteReady) return;
     if (!validMealSelection(selection, product)) { setNotice('اختار الحجم المطلوب الأول.'); return; }
     const existing = cart.find((line) => cartLineId(line) === cartLineId({ productId: product.id, selection }));
     if ((existing?.quantity ?? 0) + quantity > MAX_CART_QUANTITY) { setNotice('الكمية دي هتتجاوز الحد التجريبي للصنف بنفس الاختيارات.'); return; }
-    if (!replace && conflictsWithRestaurant(cart, product.id)) { setReplaceOpen(true); return; }
-    if (!add(product.id, quantity, selection, replace)) { setNotice('تعذرت الإضافة. راجع توفر الوجبة والكمية.'); setReplaceOpen(false); return; }
+    if (!replace && conflictsWithRestaurant(cart, product.id, product)) { setReplaceOpen(true); return; }
+    if (!add(product.id, quantity, selection, replace, serverProduct ? product : undefined, quote.data ? Number(quote.data.totalPrice) : undefined)) { setNotice('تعذرت الإضافة. راجع توفر الوجبة والكمية.'); setReplaceOpen(false); return; }
     setReplaceOpen(false);
     setNotice('اتضافت الوجبة باختياراتك.');
     onAdded?.();
@@ -55,7 +72,7 @@ export function MealPurchase({ product, onAdded, presentation = 'inline' }: {
         </div>}
         {!available && <p role="status" className="mb-4 rounded-xl bg-secondary p-3 text-xs leading-5 text-destructive">الوجبة غير متاحة أو المطعم مغلق في السيناريو التجريبي.</p>}
         <div className="space-y-4">
-          {mealGroups(product).map((group) => (
+          {mealGroups(product, selection).map((group) => (
             <fieldset key={group.id} disabled={!available} className={cn('m-0 min-w-0 border-0 p-0', presentation === 'page' && '[&+fieldset]:border-t [&+fieldset]:border-border/70 [&+fieldset]:pt-3')}>
               <legend className="mb-2.5 w-full p-0">
                 <span className="flex items-center justify-between gap-3">
@@ -75,11 +92,12 @@ export function MealPurchase({ product, onAdded, presentation = 'inline' }: {
                       !available && 'cursor-not-allowed opacity-50',
                     )}>
                       <span className="flex items-center gap-2 text-[13px] font-medium">
-                        <input type={group.required ? 'radio' : 'checkbox'} name={`${product.id}-${group.id}`}
+                        <input type={group.selectionMode === 'single' ? 'radio' : 'checkbox'} name={`${product.id}-${group.id}`}
                           className="m-0 size-4 shrink-0 accent-[var(--purple-700)]" checked={checked}
                           onChange={(event) => {
                             const nextChecked = event.target.checked;
-                            setSelection((current) => ({ ...current, [group.id]: group.required ? [choice.id]
+                            if (serverProduct && group.id === 'size') { setSelection({ size: [choice.id] }); setNotice(''); return; }
+                            setSelection((current) => ({ ...current, [group.id]: group.selectionMode === 'single' ? [choice.id]
                               : nextChecked ? [...(current[group.id] ?? []), choice.id] : (current[group.id] ?? []).filter((id) => id !== choice.id) }));
                             setNotice('');
                           }} />
@@ -95,13 +113,14 @@ export function MealPurchase({ product, onAdded, presentation = 'inline' }: {
         </div>
       </div>
       <div className={cn('shrink-0 border-t border-border bg-card px-4 pb-4 pt-3', presentation === 'page' && 'bg-[var(--purple-50)] sm:grid sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-x-4 sm:py-3')}>
+        {serverProduct && quote.isError && <p role="alert" className="mb-2 text-xs text-destructive">تعذر تسعير الاختيارات من الخادم. <Button type="button" onClick={() => quote.refetch()} className="underline">إعادة المحاولة</Button></p>}
         {notice && <p role="status" className="mb-3 rounded-lg bg-[var(--purple-50)] px-3 py-2 text-[12px] text-accent sm:col-span-2">{notice}</p>}
         <div className={cn('mb-2.5 flex items-center justify-between gap-3 rounded-xl bg-[var(--purple-50)] px-3 py-2.5', presentation === 'page' && 'sm:m-0 sm:flex-col sm:items-start sm:gap-0.5 sm:rounded-none sm:border-e sm:border-[var(--purple-100)] sm:bg-transparent sm:p-0 sm:pe-4')}>
           <div><span className="block text-[13px] font-bold text-primary">الإجمالي</span><span className="mt-0.5 block text-[10px] text-muted-foreground">شامل اختياراتك</span></div>
-          <strong className={cn('font-extrabold text-accent', presentation === 'page' ? 'text-[19px]' : 'text-[21px]')}>{money((product.price + configuration.extraPrice) * quantity)}</strong>
+          <strong className={cn('font-extrabold text-accent', presentation === 'page' ? 'text-[19px]' : 'text-[21px]')}>{total === null ? 'جارٍ حساب السعر…' : money(total)}</strong>
         </div>
         <div className={cn('flex items-center gap-3', presentation === 'page' && 'sm:flex-row-reverse')}>
-          <Button type="button" tone="gold" disabled={!available} onClick={() => addMeal()} className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-[13px] font-bold transition-colors disabled:cursor-not-allowed"><ShoppingBag size={17} aria-hidden="true" />أضف للسلة</Button>
+          <Button type="button" tone="gold" disabled={!available || !quoteReady} onClick={() => addMeal()} className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-[13px] font-bold transition-colors disabled:cursor-not-allowed"><ShoppingBag size={17} aria-hidden="true" />أضف للسلة</Button>
           <div className="shrink-0 [&_.quantity-selector]:rounded-xl [&_.quantity-selector]:border-[var(--purple-100)] [&_.quantity-selector_button]:size-9 [&_.quantity-selector_button:hover]:bg-secondary [&_.quantity-selector_output]:min-w-7"><QuantitySelector value={quantity} onChange={setQuantity} /></div>
         </div>
       </div>

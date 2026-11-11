@@ -5,11 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
 import { MarketplaceInput } from '@/components/marketplace/marketplace-form-controls';
 import { MarketplaceButton } from '@/components/marketplace/marketplace-button';
-import reference from '@/features/marketplace/data/reference.json';
-import { restaurantScenario } from '@/features/marketplace/data/restaurant-scenarios';
+import { useRestaurants } from '../hooks/use-restaurants';
 import { restaurantHref } from '@/features/marketplace/restaurants/model/restaurants';
 
 export function RestaurantsIndexPage() {
+  const remote = useRestaurants();
+  const data = { restaurants: remote.data ?? [] };
+  const reference = data;
   const params = useSearchParams();
   const router = useRouter();
   const query = params.get('q') ?? '';
@@ -27,9 +29,11 @@ export function RestaurantsIndexPage() {
   const restaurants = reference.restaurants.filter((restaurant) =>
     `${restaurant.name} ${restaurant.meta}`.includes(query.trim()) &&
     (cuisine === 'all' || restaurant.meta.split('•')[0]!.trim() === cuisine) &&
-    (!openOnly || restaurantScenario(restaurant.name).open),
+    (!openOnly || restaurant.settings?.isOpen === true),
   ).sort((a, b) => sort === 'name' ? a.name.localeCompare(b.name, 'ar') : 0);
 
+  if (remote.isPending) return <p role="status" className="p-5 text-sm">جارٍ تحميل المطاعم…</p>;
+  if (remote.isError) return <div role="alert" className="p-5 text-sm"><p>تعذر تحميل المطاعم من الخادم.</p><button type="button" onClick={() => remote.refetch()}>إعادة المحاولة</button></div>;
   return <main id="marketplace-main" tabIndex={-1} className="min-h-[60vh] py-7">
     <MarketplaceContainer>
       <Link href="/" className="text-sm text-accent">الرئيسية</Link>
@@ -49,7 +53,7 @@ export function RestaurantsIndexPage() {
       {restaurants.length ? <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {restaurants.map((restaurant) => <Link key={restaurant.name} href={restaurantHref(restaurant)} className="overflow-hidden rounded-2xl border border-border bg-card text-inherit no-underline hover:shadow-lg">
           <img {...restaurant.cover} loading="lazy" className="h-40 w-full object-cover" />
-          <div className="space-y-2 p-4"><h2 className="m-0 text-lg font-bold">{restaurant.name}</h2><p className="m-0 text-sm text-muted-foreground">{restaurant.meta}</p><span className="block text-xs text-accent">{restaurantScenario(restaurant.name).open ? 'مفتوح — سيناريو محلي' : 'مغلق — سيناريو محلي'}</span><span className="block text-sm font-bold text-primary">تصفح المنيو ←</span></div>
+          <div className="space-y-2 p-4"><h2 className="m-0 text-lg font-bold">{restaurant.name}</h2><p className="m-0 text-sm text-muted-foreground">{restaurant.meta}</p><span className="block text-xs text-accent">{restaurant.settings?.isOpen ?? false ? 'مفتوح — سيناريو محلي' : 'مغلق — سيناريو محلي'}</span><span className="block text-sm font-bold text-primary">تصفح المنيو ←</span></div>
         </Link>)}
       </div> : <div className="rounded-2xl bg-secondary p-8 text-center"><p>مفيش مطاعم مطابقة. جرّب اسم تاني أو امسح الفلاتر.</p><Link href="/restaurants" className="font-bold text-accent">عرض كل المطاعم</Link></div>}
     </MarketplaceContainer>
