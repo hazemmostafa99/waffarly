@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { MarketplaceFooter } from '@/features/marketplace/navigation/components/marketplace-footer';
 import { MarketplaceSiteHeader } from '@/features/marketplace/navigation/components/marketplace-site-header';
+import { MarketplaceHeaderSkeleton } from '@/features/marketplace/navigation/components/marketplace-header-skeleton';
 import { FavoritesPage } from '@/features/marketplace/favorites/components/favorites-page';
 
 export const metadata: Metadata = { title: 'المفضلة | وفّرلي' };
@@ -9,7 +10,7 @@ export const metadata: Metadata = { title: 'المفضلة | وفّرلي' };
 export default function MarketplaceFavoritesPage() {
   return (
     <>
-      <Suspense fallback={<div className="min-h-40 bg-primary" aria-busy="true" />}>
+      <Suspense fallback={<MarketplaceHeaderSkeleton />}>
         <MarketplaceSiteHeader />
       </Suspense>
       <Suspense

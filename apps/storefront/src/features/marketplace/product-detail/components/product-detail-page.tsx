@@ -3,6 +3,7 @@ import { MarketplaceContainer } from '@/components/marketplace/marketplace-conta
 import { type MarketplaceProduct } from '@/features/marketplace/catalog/model/catalog';
 import { Suspense } from 'react';
 import { MarketplaceSiteHeader } from '@/features/marketplace/navigation/components/marketplace-site-header';
+import { MarketplaceHeaderSkeleton } from '@/features/marketplace/navigation/components/marketplace-header-skeleton';
 import { ProductBreadcrumbs } from '@/features/marketplace/product-detail/components/product-breadcrumbs';
 import { ProductMedia } from '@/features/marketplace/product-detail/components/product-media';
 import { ProductInfo } from '@/features/marketplace/product-detail/components/product-info';
@@ -19,11 +20,7 @@ export function ProductDetailPage({
 }) {
   return (
     <>
-      <Suspense
-        fallback={
-          <div className={'top header-loading bg-primary text-[#fff] min-h-40'} aria-busy="true" />
-        }
-      >
+      <Suspense fallback={<MarketplaceHeaderSkeleton />}>
         <MarketplaceSiteHeader />
       </Suspense>
       <main id="marketplace-main" tabIndex={-1} className={'pb-20'}>

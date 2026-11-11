@@ -57,6 +57,8 @@ Only folders with actual code exist. Feature presentation stays in components, R
 
 Pages compose features. MarketplaceSiteHeader composes the shared header, search, primary/mobile navigation, menu and pending feedback on listing/detail/cart/checkout routes. Home composes hero, category/restaurant/product/store collections. MerchantEntryPage composes the shared Marketplace shell with a responsive local-only application form. ProductDetailPage composes breadcrumbs, image, info, seller, purchase and recommendations. CartReviewPage composes editable items, totals and empty state. CheckoutPage composes local details, review and explicit demo confirmation.
 
+Route loading states reuse the `MarketplaceSkeleton` primitive and compose page-shaped placeholders for the header, merchant entry, stores and offers. These are used for Next route loading and Suspense boundaries; synchronous local fixtures do not get an artificial delay.
+
 | State                                         | Owner                                                                   |
 | --------------------------------------------- | ----------------------------------------------------------------------- |
 | Initial product/catalog content               | Read-only data/reference.json                                           |

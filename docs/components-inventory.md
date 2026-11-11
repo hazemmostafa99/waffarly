@@ -54,6 +54,11 @@ Evidence: saved public HTML/CSS/JS; not yet inspected through a rendered browser
 | MarketplaceHome mobile nav             | Reference mobile navigation; only cart has a handler in original source                          |
 | MarketplaceProviders                   | Per-provider Zustand and QueryClient instances                                                   |
 | MarketplaceContainer                   | Reference container dimensions                                                                   |
+| MarketplaceSkeleton                    | Shared animated placeholder primitive with reduced-motion support                                |
+| MarketplaceHeaderSkeleton              | Promo, brand/search/actions and navigation placeholders matching the Marketplace header          |
+| MerchantEntrySkeleton                  | Compact hero, form and helper-panel loading layout                                               |
+| MarketplaceStoresSkeleton              | Search and responsive store-card loading layout                                                  |
+| MarketplaceOffersSkeleton              | Responsive product-card loading layout                                                           |
 
 Data is separated into `apps/storefront/src/features/marketplace/data/reference.json`. Search drafts stay local; submitted category/query state comes from the URL. Cart, favorites and orders use feature-owned Zustand slices composed into one provider-scoped store. React Query remains available but unused because the inspected source has no catalog API.
 

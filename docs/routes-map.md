@@ -38,6 +38,8 @@ not routes observed on the reference site. See
   search, and links each card to its existing store detail route.
 - `/marketplace/offers` lists fixture products with a populated previous price;
   it reuses the product cards, cart and favorites interactions.
+- Route transitions for merchant entry, all stores and all offers use responsive
+  page-shaped skeletons and a shared Marketplace header skeleton.
 - `/join` is linked from the Marketplace merchant CTA and uses the Marketplace
   tokens and shell. Its application form validates locally and shows a demo
   confirmation; it does not call `/merchant-applications` or create an account.

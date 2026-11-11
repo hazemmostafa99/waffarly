@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import { MarketplaceSiteHeader } from '@/features/marketplace/navigation/components/marketplace-site-header';
 import { MarketplaceFooter } from '@/features/marketplace/navigation/components/marketplace-footer';
 import { OrderDetailPage } from '@/features/marketplace/orders/components/order-detail-page';
+import { MarketplaceHeaderSkeleton } from '@/features/marketplace/navigation/components/marketplace-header-skeleton';
 
 export const metadata: Metadata = { title: 'تفاصيل الطلب | وفّرلي' };
 
@@ -14,7 +15,7 @@ export default async function MarketplaceOrderDetailPage({
   const { orderId } = await params;
   return (
     <>
-      <Suspense fallback={<div className="min-h-40 bg-primary" aria-busy="true" />}>
+      <Suspense fallback={<MarketplaceHeaderSkeleton />}>
         <MarketplaceSiteHeader />
       </Suspense>
       <OrderDetailPage orderId={orderId} />

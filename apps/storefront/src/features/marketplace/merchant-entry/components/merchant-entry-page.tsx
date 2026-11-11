@@ -7,6 +7,7 @@ import { MarketplaceContainer } from '@/components/marketplace/marketplace-conta
 import { MarketplaceProviders } from '@/features/marketplace/providers/marketplace-providers';
 import { MarketplaceCart } from '@/features/marketplace/cart/components/marketplace-cart';
 import { MarketplaceSiteHeader } from '@/features/marketplace/navigation/components/marketplace-site-header';
+import { MarketplaceHeaderSkeleton } from '@/features/marketplace/navigation/components/marketplace-header-skeleton';
 import { MarketplaceFooter } from '@/features/marketplace/navigation/components/marketplace-footer';
 import { MerchantApplicationForm } from '@/features/marketplace/merchant-entry/components/merchant-application-form';
 
@@ -17,7 +18,7 @@ export function MerchantEntryPage() {
   return (
     <MarketplaceProviders>
       <div lang={locale} dir={isArabic ? 'rtl' : 'ltr'} className="marketplace-theme">
-        <Suspense fallback={<div className="h-32 bg-primary" aria-busy="true" />}>
+        <Suspense fallback={<MarketplaceHeaderSkeleton />}>
           <MarketplaceSiteHeader />
         </Suspense>
         <main id="marketplace-main" tabIndex={-1} className="pb-16">
