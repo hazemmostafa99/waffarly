@@ -64,6 +64,10 @@ const orderSelectionSchema = z
 
 const createOrderSchema = z
   .object({
+    requestId: z.uuid().optional(),
+    reviewedTotal: z.string().regex(/^(0|[1-9]\d{0,9})(\.\d{1,2})?$/).optional(),
+    deliveryAreaId: z.string().trim().min(1).max(80).optional(),
+    restaurantSettingsRevision: z.number().int().positive().optional(),
     customerName: z.string().trim().min(2).max(120),
     customerPhone: z
       .string()
@@ -116,6 +120,13 @@ const posActiveSalesPageSchema = posOrderPageSchema.extend({
 export class PublicStorefrontOrdersController {
   constructor(@Inject(StorefrontOrdersService) private readonly orders: StorefrontOrdersService) {}
 
+  @Post('quote')
+  @HttpCode(HttpStatus.OK)
+  async quote(@Param('slug') slug: string, @Body() body: unknown) {
+    assertValidStorefrontSlug(slug);
+    const parsed = parseRequest(createOrderSchema, { ...(body && typeof body === 'object' ? body : {}), customerName: 'Quote', customerPhone: '00000000', deliveryAddress: 'Quote address' });
+    return this.orders.quoteCheckout(slug, parsed);
+  }
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Param('slug') slug: string, @Body() body: unknown) {

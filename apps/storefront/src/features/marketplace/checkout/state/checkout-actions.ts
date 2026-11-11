@@ -9,6 +9,7 @@ export interface CheckoutActions {
   completeDemoCheckout: (
     snapshot: MarketplaceCartLine[],
     fulfillment: Fulfillment,
+    pricing?: { unitPrices: string[]; deliveryFee: string },
   ) => DemoOrder | null;
 }
 
@@ -16,11 +17,19 @@ export const createCheckoutActions: StateCreator<MarketplaceState, [], [], Check
   set,
   get,
 ) => ({
-  completeDemoCheckout: (snapshot, fulfillment) => {
+  completeDemoCheckout: (snapshot, fulfillment, pricing) => {
     const state = get();
     if (!snapshot.length || JSON.stringify(state.cart) !== JSON.stringify(snapshot)) return null;
     if (snapshot.some((line) => !validQuantity(line.quantity))) return null;
     const items = cartProducts(snapshot);
+    if (pricing) {
+      if (pricing.unitPrices.length !== items.length || !Number.isFinite(Number(pricing.deliveryFee)) || Number(pricing.deliveryFee) < 0) return null;
+      for (const [index, item] of items.entries()) {
+        const price = Number(pricing.unitPrices[index]);
+        if (!Number.isFinite(price) || price < 0) return null;
+        item.price = price;
+      }
+    }
     if (items.length !== snapshot.length) return null;
     const summary = restaurantCheckout(items, fulfillment);
     if (summary.issue) return null;
@@ -31,7 +40,7 @@ export const createCheckoutActions: StateCreator<MarketplaceState, [], [], Check
       status: 'demo-confirmed',
       fulfillment,
       items,
-      deliveryFee: summary.deliveryFee,
+      deliveryFee: pricing ? Number(pricing.deliveryFee) : summary.deliveryFee,
       restaurantName: summary.name,
     };
     set((current) => ({

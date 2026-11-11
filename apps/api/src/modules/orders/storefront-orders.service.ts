@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { RestaurantOrderPolicyService } from '../storefront/index.js';
 import {
   BadRequestException,
   ConflictException,
@@ -41,9 +43,32 @@ export class StorefrontOrdersService {
     @Optional()
     @Inject(SubscriptionService)
     private readonly subscriptions: SubscriptionService = new SubscriptionService(prisma),
+    @Optional() @Inject(RestaurantOrderPolicyService) private readonly restaurantPolicy: RestaurantOrderPolicyService = new RestaurantOrderPolicyService(),
   ) {
     this.consumption = consumption ?? new ProductConsumptionService();
     this.ledger = ledger ?? new InventoryLedgerService(prisma);
+  }
+
+  async quoteCheckout(slug: string, input: CreateStorefrontOrderRequest) {
+    const merchant = await this.prisma.merchant.findUnique({ where: { storefrontSlug: slug }, select: { id: true } });
+    if (!merchant) throw new NotFoundException('Storefront was not found.');
+    return this.prisma.$transaction(async (db) => {
+      let subtotal = 0n;
+      const unitPrices: string[] = [];
+      for (const item of input.items) {
+        const quote = await this.products.quoteForMerchant(merchant.id, item.productId, item.selections, item.variantId, item.quantity, db);
+        unitPrices.push(quote.totalPrice);
+        subtotal += toCents(quote.totalPrice) * BigInt(item.quantity);
+      }
+      const policy = await this.restaurantPolicy.assess(db, merchant.id, input.fulfillmentType, subtotal, input.deliveryAreaId);
+      const profile = await db.restaurantProfile.findUnique({ where: { merchantId: merchant.id }, select: { referenceData: true } });
+      const reference = profile?.referenceData;
+      const demo = reference !== null && typeof reference === 'object' && !Array.isArray(reference) && reference?.origin === 'local-mock';
+      const total = subtotal + (policy?.fee ?? 0n);
+      if (total > MAX_ORDER_TOTAL_CENTS) throw new BadRequestException('Order total exceeds the supported range.');
+      return { unitPrices, subtotal: formatCents(subtotal), deliveryFee: formatCents(policy?.fee ?? 0n), total: formatCents(total), currency: 'EGP' as const,
+        ...(policy ? { restaurantSettingsRevision: policy.snapshot.revision } : {}), demo };
+    }, { isolationLevel: 'Serializable' });
   }
 
   async create(slug: string, input: CreateStorefrontOrderRequest): Promise<StorefrontOrderReceipt> {
@@ -52,6 +77,17 @@ export class StorefrontOrdersService {
       select: { id: true },
     });
     if (!merchant) throw new NotFoundException('Storefront was not found.');
+
+    const fingerprint = createHash('sha256').update(JSON.stringify({ ...input, requestId: undefined })).digest('hex');
+    const replay = async () => {
+      if (!input.requestId) return null;
+      const existing = await this.prisma.storefrontOrder.findUnique({ where: { merchantId_requestId: { merchantId: merchant.id, requestId: input.requestId } } });
+      if (!existing) return null;
+      if (existing.requestFingerprint !== fingerprint) throw new ConflictException('This request ID was used for another checkout.');
+      return toReceipt(existing);
+    };
+    const previous = await replay();
+    if (previous) return previous;
 
     // The browser never supplies prices. Reuse the catalog quote validator for every line.
     const quotes = await Promise.all(
@@ -73,6 +109,7 @@ export class StorefrontOrdersService {
               deliveryAddress:
                 input.fulfillmentType === 'delivery' ? input.deliveryAddress!.trim() : null,
               total: '0.00',
+              requestId: input.requestId, requestFingerprint: input.requestId ? fingerprint : undefined,
             },
             select: { id: true },
           });
@@ -257,16 +294,22 @@ export class StorefrontOrdersService {
             }
           }
 
+          const policy = await this.restaurantPolicy.assess(transaction, merchant.id, input.fulfillmentType, orderTotalCents, input.deliveryAreaId, input.restaurantSettingsRevision);
+          const deliveryFeeCents = policy?.fee ?? 0n;
+          if (input.reviewedTotal !== undefined && toCents(input.reviewedTotal) !== orderTotalCents + deliveryFeeCents) throw new ConflictException('Checkout total changed. Review the new price before confirming.');
+          if (orderTotalCents + deliveryFeeCents > MAX_ORDER_TOTAL_CENTS) throw new BadRequestException('Order total exceeds the supported range.');
           const saved = await transaction.storefrontOrder.update({
             where: { id: order.id },
-            data: { total: formatCents(orderTotalCents) },
-            select: { id: true, status: true, total: true, currency: true, createdAt: true },
+            data: { total: formatCents(orderTotalCents + deliveryFeeCents), ...(policy ? { subtotal: formatCents(orderTotalCents), deliveryFee: formatCents(deliveryFeeCents), fulfillmentPolicy: policy.snapshot } : {}) },
+            select: { id: true, status: true, total: true, currency: true, createdAt: true, subtotal: true, deliveryFee: true },
           });
           return toReceipt(saved);
         },
         { isolationLevel: 'Serializable' },
       );
     } catch (error) {
+      const completed = await replay();
+      if (completed) return completed;
       if (isSerializationConflict(error)) {
         throw new ConflictException('Stock or product configuration changed. Please try again.');
       }

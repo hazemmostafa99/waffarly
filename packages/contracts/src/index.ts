@@ -297,3 +297,5 @@ export type {
 export type { RestaurantImage, RestaurantPeriod, RestaurantDay, RestaurantException, RestaurantArea, RestaurantSettingsInput, RestaurantOperatingState } from './restaurant.js';
 
 export type { PublicRestaurantProfile, MarketplaceMenuProduct, MarketplaceMenuPage } from './restaurant.js';
+
+export type { StorefrontCheckoutQuoteRequest, StorefrontCheckoutQuote } from './catalog.js';

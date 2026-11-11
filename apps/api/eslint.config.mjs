@@ -14,7 +14,7 @@ const dependencies = {
   inventory: ['auth'],
   purchasing: ['auth', 'inventory'],
   storefront: ['auth', 'catalog'],
-  orders: ['auth', 'catalog', 'inventory', 'shifts', 'payments', 'subscriptions'],
+  orders: ['storefront', 'auth', 'catalog', 'inventory', 'shifts', 'payments', 'subscriptions'],
   media: ['auth'],
   reports: ['auth'],
   shifts: ['auth'],

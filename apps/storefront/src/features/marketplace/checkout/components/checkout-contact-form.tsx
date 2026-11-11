@@ -7,12 +7,13 @@ import type { CheckoutDraft, CheckoutErrors } from '@/features/marketplace/check
 import { CheckoutFulfillmentFields } from '@/features/marketplace/checkout/components/checkout-fulfillment-fields';
 
 export function CheckoutContactForm({
-  draft,
+  draft, demo = true,
   errors,
   onChange,
   onContinue,
 }: {
   draft: CheckoutDraft;
+  demo?: boolean;
   errors: CheckoutErrors;
   onChange: (values: Partial<CheckoutDraft>) => void;
   onContinue: () => void;
@@ -37,7 +38,7 @@ export function CheckoutContactForm({
     >
       <h2>بيانات التواصل</h2>
       <p className={'detail-note text-[12px] leading-[1.8] text-muted-foreground'}>
-        استخدم بيانات تجريبية فقط. لن يتم إرسالها أو حفظها بعد مغادرة الصفحة.
+        {demo ? 'استخدم بيانات تجريبية فقط. لن يتم إرسالها أو حفظها بعد مغادرة الصفحة.' : 'بيانات التواصل تُرسل للمطعم عند تأكيد الطلب، ولا تُحفظ في تخزين المتصفح.'}
       </p>
       {Object.keys(errors).length > 0 && (
         <p
@@ -58,7 +59,7 @@ export function CheckoutContactForm({
           "[&_textarea]:bg-card [&_textarea]:text-foreground  [&_textarea]:font-normal [&_textarea]:leading-[1.6] [&_textarea]:resize-y [&_[aria-invalid='true']]:border-destructive",
         )}
       >
-        الاسم التجريبي
+        {demo ? 'الاسم التجريبي' : 'الاسم'}
         <Input
           name="name"
           maxLength={80}
@@ -85,7 +86,7 @@ export function CheckoutContactForm({
           "[&_textarea]:bg-card [&_textarea]:text-foreground  [&_textarea]:font-normal [&_textarea]:leading-[1.6] [&_textarea]:resize-y [&_[aria-invalid='true']]:border-destructive",
         )}
       >
-        رقم الموبايل التجريبي
+        {demo ? 'رقم الموبايل التجريبي' : 'رقم الموبايل'}
         <Input
           name="phone"
           type="tel"
@@ -106,7 +107,7 @@ export function CheckoutContactForm({
           {errors.phone}
         </span>
       </label>
-      <CheckoutFulfillmentFields draft={draft} errors={errors} onChange={onChange} />
+      <CheckoutFulfillmentFields demo={demo} draft={draft} errors={errors} onChange={onChange} />
       <Button
         type="submit"
         className={cn(

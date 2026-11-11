@@ -1,9 +1,10 @@
 'use client';
 
+import { RestaurantCheckoutPage } from './restaurant-checkout-page';
 import { cn } from '@waffarly/ui';
 
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
 import { useAccountStore } from '@/features/marketplace/account/hooks/use-account-store';
 import { findDemoAddress } from '@/features/marketplace/account/model/demo-addresses';
@@ -20,6 +21,12 @@ import { CheckoutConfirmation } from '@/features/marketplace/checkout/components
 const steps = ['بيانات التواصل والاستلام', 'مراجعة الطلب', 'تأكيد تجريبي'];
 
 export function CheckoutPage() {
+  const remote = useCartStore((state) => state.cart.some((line) => Boolean(line.snapshot?.restaurantSlug)));
+  const [remoteFlow, setRemoteFlow] = useState(remote);
+  useEffect(() => { if (remote) setRemoteFlow(true); }, [remote]);
+  return remote || remoteFlow ? <RestaurantCheckoutPage /> : <LocalCheckoutPage />;
+}
+function LocalCheckoutPage() {
   const lines = useCartStore((state) => state.cart);
   const complete = useCheckoutStore((state) => state.completeDemoCheckout);
   const isDemoAccountActive = useAccountStore((state) => state.isDemoAccountActive);

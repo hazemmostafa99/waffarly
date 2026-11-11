@@ -16,6 +16,7 @@ export function conflictsWithRestaurant(cart: MarketplaceCartLine[], productId: 
 }
 
 export interface CartSlice {
+  clearCartIfMatches: (snapshot: MarketplaceCartLine[]) => void;
   cartOpen: boolean;
   setCartOpen: (open: boolean) => void;
   cart: MarketplaceCartLine[];
@@ -25,6 +26,7 @@ export interface CartSlice {
 }
 
 export const createCartSlice: StateCreator<MarketplaceState, [], [], CartSlice> = (set, get) => ({
+  clearCartIfMatches: (snapshot) => { if (JSON.stringify(get().cart) === JSON.stringify(snapshot)) set({ cart: [], cartOpen: false }); },
   cartOpen: false,
   setCartOpen: (cartOpen) => set({ cartOpen }),
   cart: [],

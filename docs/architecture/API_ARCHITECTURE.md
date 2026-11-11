@@ -1,5 +1,20 @@
 # API architecture
 
+Storefront checkout retries (2026-11-11): Orders adds a public basket quote,
+tenant/request unique order IDs with payload fingerprints, reviewed-total checks
+and matching replay receipts. Existing clients may omit the additive request
+fields; Marketplace supplies them for non-demo confirmation. Reference tenants
+remain local-confirmation demos. No additional module dependency was introduced.
+See [checkout integration](../marketplace-checkout-integration.md).
+
+Restaurant order eligibility (2026-11-11): Orders now imports Storefront's public
+RestaurantOrderPolicyService to assess restaurant operating/fulfillment rules on
+its active transaction and freeze delivery fee/policy snapshots. Storefront still
+depends on Auth/Catalog, with no reverse Orders dependency. Existing tenants
+without RestaurantProfile keep their previous storefront behavior. See
+[order policy delivery](../marketplace-restaurant-order-policy.md). Marketplace
+order submission remains a demonstration; idempotency is still pending.
+
 Restaurant reference preparation (2026-11-11): Storefront owns the additive
 RestaurantProfile settings, timezone-aware opening-state derivation, owner settings
 and public restaurant projections. Catalog adds ordered Marketplace menu reads

@@ -1,3 +1,4 @@
+import { StorefrontModule } from '../storefront/index.js';
 import { Module } from '@nestjs/common';
 import { PosDeliveryController } from './pos-delivery.controller.js';
 import { PosDeliveryService } from './pos-delivery.service.js';
@@ -27,6 +28,7 @@ import { PosReturnsService } from './pos-returns.service.js';
 import { OwnerPosItemReturnsController } from './pos-returns.controller.js';
 @Module({
   imports: [
+    StorefrontModule,
     AuthModule,
     CatalogModule,
     InventoryModule,

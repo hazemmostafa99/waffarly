@@ -309,6 +309,10 @@ export interface PosSellableCatalog {
 }
 
 export interface CreateStorefrontOrderRequest {
+  requestId?: string | undefined;
+  reviewedTotal?: string | undefined;
+  deliveryAreaId?: string | undefined;
+  restaurantSettingsRevision?: number | undefined;
   customerName: string;
   customerPhone: string;
   fulfillmentType: 'pickup' | 'delivery';
@@ -353,6 +357,8 @@ export interface DispatchPosKitchenOrderRequest {
 export type PosKitchenDispatchMode = 'automatic' | 'manual' | 'legacy';
 
 export interface StorefrontOrderReceipt {
+  subtotal?: string;
+  deliveryFee?: string;
   id: string;
   status: StorefrontOrderStatus;
   currency: 'EGP';
@@ -361,6 +367,8 @@ export interface StorefrontOrderReceipt {
 }
 
 export interface StorefrontOrderSummary {
+  subtotal?: string;
+  deliveryFee?: string;
   orderReference?: string | null;
   readyAt?: string | null;
   completedAt?: string | null;
@@ -537,4 +545,11 @@ export type UpdateCatalogProductRequest = Partial<CatalogProductFields> & { revi
 
 export interface CatalogRevisionRequest {
   revision: number;
+}
+
+export type StorefrontCheckoutQuoteRequest = Pick<CreateStorefrontOrderRequest, 'items' | 'fulfillmentType' | 'deliveryAreaId'>;
+export interface StorefrontCheckoutQuote {
+  unitPrices: string[];
+  subtotal: string; deliveryFee: string; total: string; currency: 'EGP';
+  restaurantSettingsRevision?: number | undefined; demo: boolean;
 }

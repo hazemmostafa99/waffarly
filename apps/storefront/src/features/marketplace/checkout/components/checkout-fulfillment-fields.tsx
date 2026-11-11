@@ -4,11 +4,12 @@ import { MarketplaceTextarea as Textarea } from '@/components/marketplace/market
 import type { CheckoutDraft, CheckoutErrors } from '@/features/marketplace/checkout/model/checkout';
 
 export function CheckoutFulfillmentFields({
-  draft,
+  draft, demo = true,
   errors,
   onChange,
 }: {
   draft: CheckoutDraft;
+  demo?: boolean;
   errors: CheckoutErrors;
   onChange: (values: Partial<CheckoutDraft>) => void;
 }) {
@@ -19,7 +20,7 @@ export function CheckoutFulfillmentFields({
         'border-0 [border-top-width:1px] [border-top-style:solid] [border-top-color:var(--line)] [&_legend]:text-[16px] [&_legend]:font-bold [&_legend]:pe-3',
       )}
     >
-      <legend>طريقة الاستلام التجريبية</legend>
+      <legend>{demo ? 'طريقة الاستلام التجريبية' : 'طريقة الاستلام'}</legend>
       <div
         className={cn(
           'checkout-fulfillment-options grid grid-cols-[1fr_1fr] gap-3 [&_label]:flex [&_label]:items-center [&_label]:gap-2.5 [&_label]:border',
@@ -62,7 +63,7 @@ export function CheckoutFulfillmentFields({
               "[&_textarea]:bg-card [&_textarea]:text-foreground  [&_textarea]:font-normal [&_textarea]:leading-[1.6] [&_textarea]:resize-y [&_[aria-invalid='true']]:border-destructive",
             )}
           >
-            العنوان التجريبي
+            {demo ? 'العنوان التجريبي' : 'عنوان التوصيل'}
             <Textarea
               name="address"
               rows={3}
@@ -85,7 +86,7 @@ export function CheckoutFulfillmentFields({
         </>
       ) : (
         <p className={'detail-note text-[12px] leading-[1.8] text-muted-foreground'}>
-          الاستلام هنا للتجربة فقط؛ لم يتم تحديد فرع أو موعد حقيقي.
+          {demo ? 'الاستلام هنا للتجربة فقط؛ لم يتم تحديد فرع أو موعد حقيقي.' : 'استلام الطلب من المطعم بعد قبول الطلب وتجهيزه.'}
         </p>
       )}
     </fieldset>
