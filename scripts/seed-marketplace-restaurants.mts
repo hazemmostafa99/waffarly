@@ -5,7 +5,9 @@ import { config } from '../apps/api/node_modules/dotenv/lib/main.js';
 import { PrismaClient, createPostgresAdapter } from '../packages/database/src/index.js';
 config({ path: fileURLToPath(new URL('../.env', import.meta.url)), quiet: true });
 if (!process.argv.includes('--apply-reference-demo')) throw new Error('Use --apply-reference-demo to import dedicated reference tenants.');
-if (process.env.NODE_ENV === 'production') throw new Error('Reference seed is development/demo only.');
+if (process.env.NODE_ENV === 'production' && !process.argv.includes('--allow-production-reference-demo')) {
+  throw new Error('Production reference import requires --allow-production-reference-demo. This restores dedicated demo records, including any edits to them.');
+}
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required.');
 const data = JSON.parse(await readFile(new URL('./data/marketplace-restaurants-v1.json', import.meta.url), 'utf8'));
 const id = (key: string) => { const h = createHash('sha256').update('waffarly-reference-v1:'+key).digest('hex'); return `${h.slice(0,8)}-${h.slice(8,12)}-4${h.slice(13,16)}-a${h.slice(17,20)}-${h.slice(20,32)}`; };
