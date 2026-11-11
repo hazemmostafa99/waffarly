@@ -109,6 +109,13 @@ export function MarketplaceHeader({
             >
               <strong>طلباتي</strong>
             </Link>
+            <Link
+              href="/marketplace/favorites"
+              className="action inline-block whitespace-nowrap rounded-[10px] px-[11px] py-2.5 text-[#fff] no-underline hover:bg-[rgba(255,_255,_255,_0.1)]"
+              aria-label="المفضلة"
+            >
+              <strong>♡ المفضلة</strong>
+            </Link>
             <Button
               type="button"
               className={cn(

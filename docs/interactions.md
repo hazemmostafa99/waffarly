@@ -12,9 +12,14 @@ See [checkout behavior and manual checklist](marketplace-local-checkout.md).
 
 Cart review: the drawer's Review Cart link closes the drawer and navigates to
 `/marketplace/cart`. The page shares quantity/removal state and derived totals with
-the drawer, and renders an empty state after the last removal. Checkout is visibly
-disabled pending the next local-only flow. No automated verification was run for
-this slice, per user request; see [manual review notes](marketplace-cart-review.md).
+the drawer, and renders an empty state after the last removal. The checkout CTA
+continues through the local demo checkout. See [manual review notes](marketplace-cart-review.md).
+
+Favorites: the product heart toggles an ID in the feature-owned Zustand slice.
+`/marketplace/favorites` resolves those IDs against the fixture catalog; the shared
+heart control removes an item from that page. Header, menu and footer links open the
+page, and its empty state returns to product browsing. Favorites remain in memory
+until refresh. See [favorites flow](marketplace-favorites.md).
 
 ## Current product/cart extension (supersedes duplicate-row behavior below)
 
@@ -23,9 +28,10 @@ search/category for return navigation. Details support a local quantity selector
 shared favorites and add-to-cart. Cart lines now merge by product ID, support
 quantity updates and removal, and derive subtotals and badge unit counts. Limits
 are UI-only; no stock/fees/backend is inferred. The drawer is shared in the layout.
-Checkout is visibly disabled pending its own local-only UI slice. The source
-behavior table below describes the original reference; current approved changes
-and test evidence are in [product details](marketplace-product-details.md).
+Checkout is a local-only flow with demo confirmation and session-only order history.
+The source behavior table below describes the original reference; implementation
+notes are in [product details](marketplace-product-details.md) and
+[local checkout](marketplace-local-checkout.md).
 
 Evidence level: behavior inferred directly from the downloaded inline JavaScript. It has not been exercised in a browser yet. No original backend is contacted.
 
@@ -44,7 +50,7 @@ Evidence level: behavior inferred directly from the downloaded inline JavaScript
 
 Accessibility additions: category keyboard activation, named favorite/remove controls, cart dialog semantics, focus trap, Escape close and focus return. Closed drawer hidden from focus. These are local improvements, not claims about original behavior.
 
-The source menu, checkout, seller signup, most mobile-nav controls, app badges and href=# links had no handlers. Local navigation now deliberately extends that behavior: the header menu works; mobile home/categories/search/cart have actions; order links open the local history/detail flow; account and seller entry remain pending. Other footer/store/banner placeholders remain for later local-only slices. No real authentication, payment or fulfillment is implied. Cart and demo orders are not persisted across reloads; QueryClient remains provisioned without fake network requests.
+The source menu, checkout, seller signup, most mobile-nav controls, app badges and href=# links had no handlers. Local navigation now deliberately extends that behavior: the header menu works; mobile home/categories/search/cart have actions; order and favorites links open local pages; account and seller entry remain pending. Other footer/store/banner placeholders remain for later local-only slices. No real authentication, payment or fulfillment is implied. Cart, favorites and demo orders are not persisted across reloads; QueryClient remains provisioned without fake network requests.
 
 ## Cleanup boundary
 

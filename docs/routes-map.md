@@ -11,16 +11,25 @@
 These are UI-only flows backed by the local Zustand store. They contain no contact
 details, account identity, backend request, actual fulfillment, or real order status.
 
+## Local favorites
+
+- `/marketplace/favorites` lists saved fixture products and supports removing them
+  with the shared heart control. The header, navigation menu and footer link here.
+- An empty list offers a return link to the marketplace product section.
+
+Favorites use the feature-owned Zustand slice and remain in memory for the current
+Marketplace session only. See [favorites flow](marketplace-favorites.md).
+
 Latest local flow: `/marketplace/checkout` now hosts details -> review -> explicit
 demo confirmation on the same route. Entry is the cart review CTA; empty baskets
 link to browsing. No server order/auth/payment routes were added. See
-[local checkout](marketplace-local-checkout.md); this slice awaits manual QA.
+[local checkout](marketplace-local-checkout.md); manual QA remains pending.
 
 ## Local cart review
 
 `/marketplace/cart` now provides a full review of the existing in-memory basket:
 quantity updates, removal, item subtotal and empty state. The shared drawer links
-to it via Next Link. Checkout is visibly pending, with no new backend integration.
+to it via Next Link. Checkout uses the local demo flow; no backend integration exists.
 Manual QA only for this slice; see [cart review](marketplace-cart-review.md).
 
 ## Local product detail extension
@@ -48,4 +57,4 @@ Existing local `/`, `/join` and `/s/[slug]` routes are preserved. Marketplace is
 
 ## Local navigation extension
 
-Submitted search and category now use `/marketplace?q=<text>&category=<local ID>#deals`. Direct URLs render filtered local fixture results. `mobiles` and `electronics` are distinct card IDs sharing the fixture electronics filter. Home resets owned filters; other section links preserve them. No new page routes, HTTP mock endpoints or backend integration were added. Header/mobile account/order controls and the menu seller entry show pending-page feedback rather than call real services. Footer/store/section-heading placeholders remain outside this slice. See [URL contract](marketplace-navigation.md).
+Submitted search and category now use `/marketplace?q=<text>&category=<local ID>#deals`. Direct URLs render filtered local fixture results. `mobiles` and `electronics` are distinct card IDs sharing the fixture electronics filter. Home resets owned filters; other section links preserve them. No HTTP mock endpoints or backend integration were added. Favorites and order links open local pages. Account and seller entry still show pending-page feedback; some footer/store/section-heading links remain placeholders. See [URL contract](marketplace-navigation.md).

@@ -16,6 +16,8 @@ apps/storefront/src/
     products/[productId]/
     cart/
     checkout/
+    favorites/
+    orders/
     orders/[orderId]/
   components/marketplace/          # Shared Marketplace primitives/adapters
     marketplace-button.tsx        # Uses @waffarly/ui Button

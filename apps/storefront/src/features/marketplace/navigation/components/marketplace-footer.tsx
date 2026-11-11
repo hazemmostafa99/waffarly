@@ -34,8 +34,11 @@ export function MarketplaceFooter() {
             <div key={title}>
               <h4>{title}</h4>
               {links.map((label) =>
-                label === 'طلباتك' || label === 'تتبّع طلبك' ? (
-                  <Link key={label} href="/marketplace/orders">
+                label === 'طلباتك' || label === 'تتبّع طلبك' || label === 'المفضلة' ? (
+                  <Link
+                    key={label}
+                    href={label === 'المفضلة' ? '/marketplace/favorites' : '/marketplace/orders'}
+                  >
                     {label}
                   </Link>
                 ) : (

@@ -25,7 +25,7 @@ export function MarketplaceMenu({
           'marketplace-menu-links grid gap-1 [&_:is(a,_button)]:block [&_:is(a,_button)]:text-primary [&_:is(a,_button)]:no-underline [&_:is(a,_button)]:bg-transparent [&_:is(a,_button)]:border-0',
           '[&_:is(a,_button)]:rounded-[10px] [&_:is(a,_button)]:p-3 [&_:is(a,_button)]:text-start [&_:is(a,_button)]:text-[14px] [&_:is(a,_button):hover]:bg-secondary [&_.active]:bg-secondary',
         )}
-        aria-label="قائمة الأقسام والمتاجر"
+        aria-label="قائمة السوق والطلبات والمفضلة"
       >
         <MarketplaceNavigationLinks
           activeCategory={activeCategory}
@@ -37,6 +37,9 @@ export function MarketplaceMenu({
         />
         <Link href="/marketplace/orders" onClick={onClose}>
           طلباتي
+        </Link>
+        <Link href="/marketplace/favorites" onClick={onClose}>
+          المفضلة
         </Link>
       </nav>
     </MarketplaceDialog>

@@ -35,10 +35,12 @@ summary and empty-state components, reused quantity/cart functions and drawer en
 See [cart review](marketplace-cart-review.md).
 
 Product details slice delivered locally: existing product cards link to details,
-quantity controls and merged cart lines are implemented, and return links preserve
-search/category. 8 focused tests, TypeScript, build and valid/missing route HTTP
-checks passed. Store/restaurant details, product options not present in fixtures,
-checkout, persistence and browser acceptance remain open. See [slice evidence](marketplace-product-details.md).
+quantity controls, related products and merged cart lines are implemented, and return
+links preserve search/category. Local checkout and order list/detail are also present.
+The original product page does not establish additional option behavior. Store and
+restaurant details, order tracking/reorder, account and browser acceptance remain
+open. Historical checks apply only to the revisions recorded in
+[slice evidence](marketplace-product-details.md).
 
 Navigation slice implemented locally: header menu/shared destinations, mobile actions,
 URL-backed query/category, direct-link filtering and pending-page feedback. TypeScript,
@@ -51,23 +53,26 @@ and remaining placeholder destinations are not complete. See [slice evidence](ma
 | 0     | Structure and visual baseline        | Small components grouped by feature, reusable functions, scoped tokens; reference comparison at 1440/1024/768/390/375 when browser works                                            |
 | 1     | Navigation and discovery             | Header/mobile menu, category/search/filter/sort URLs, back/forward/reload, working local destinations and clear unavailable states                                                  |
 | 2     | Store/restaurant and product details | Existing local records linked to local detail views; explicit mock options where absent; direct URL and not-found states                                                            |
-| 3     | Cart and favorites                   | Add/remove/quantity/options-aware lines, derived mock totals, favorites view, empty basket and unavailable-item scenarios                                                           |
+| 3     | Cart and favorites                   | Cart review and favorite list/removal are implemented; explicit product options remain absent from fixture data; empty/unavailable states still need manual review                  |
 | 4     | Local checkout and confirmation      | Demo contact/fulfillment/review steps, validation, pending/error/retry/success, duplicate-click prevention and mock receipt; no real order or payment                               |
 | 5     | Local account and order journey      | Demo sign-in/out, profile/address forms, local order list/detail/tracking, empty/error states and local reorder; no real session or customer record                                 |
 | 6     | Complete local flow and polish       | Every navigation entry has a deliberate outcome; notifications/payment-status UI if included is simulated; seller-entry flow cannot submit to the existing live application API     |
 | 7     | UI acceptance                        | Browse -> details/options -> cart -> checkout -> demo confirmation -> tracking/account journey verified; responsive/RTL/keyboard checks, typecheck/build and honest visual evidence |
 | 8     | Backend integration (deferred)       | Only after phase 7 completion and explicit user instruction; inventory existing contracts, settle production policies, connect one flow at a time                                   |
 
-Phases may be sliced into small, reviewable changes. The next practical slice is
-mobile navigation and URL-backed search. Do not build empty architecture layers
-for features that have no implementation yet.
+Phases may be sliced into small, reviewable changes. Navigation, product details,
+cart, checkout, session-only favorites, and order history/detail now have local UI.
+The next practical slice is store/restaurant details, followed by local order
+tracking and the demo account journey. Do not build empty architecture layers for
+features that have no implementation yet.
 
 ## Local behavior and state rules
 
 - Components render UI; pure functions handle filtering/formatting/calculations;
   hooks coordinate related local interactions. Keep related files together.
 - Use component state for forms and transient presentation, URL state for shareable
-  navigation, and Zustand for shared non-sensitive local cart/favorites preferences.
+  navigation, and feature-owned Zustand slices for non-sensitive cart, favorites
+  and local demo orders.
 - React Query remains available; use it only if asynchronous local scenario behavior
   benefits from it. An in-process mock function is sufficient; do not add network
   calls merely to exercise a library. Do not duplicate query results in Zustand.
