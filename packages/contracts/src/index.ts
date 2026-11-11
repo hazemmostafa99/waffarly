@@ -1,4 +1,6 @@
 export { BUSINESS_ACTIVITY_KEYS, BUSINESS_ACTIVITY_LABELS } from './activities-modules.js';
+export { RESERVED_STOREFRONT_HANDLES, isStorefrontHandle } from './storefront-address.js';
+export type { AssignStorefrontHandleRequest, PublicStorefrontAddress } from './storefront-address.js';
 export { POS_APPEARANCE_ACCENTS } from './pos-appearance.js';
 export type {
   CashSafeSummary,

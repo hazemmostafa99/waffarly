@@ -28,7 +28,7 @@ export function CheckoutOrderSummary({
         }
       >
         <h2 id="checkout-summary-title">ملخص المنتجات</h2>
-        {editable && <Link href="/marketplace/cart">تعديل السلة</Link>}
+        {editable && <Link href="/cart">تعديل السلة</Link>}
       </div>
       <ul
         className={cn(

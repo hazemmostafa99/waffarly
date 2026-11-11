@@ -20,7 +20,7 @@ export function findStore(storeId: string) {
 }
 
 export function storeHref(store: Pick<MarketplaceStore, 'name'>) {
-  return `/marketplace/stores/${encodeURIComponent(store.name)}`;
+  return `/stores/${encodeURIComponent(store.name)}`;
 }
 
 export function productsForStore(store: Pick<MarketplaceStore, 'name'>): MarketplaceProduct[] {

@@ -39,7 +39,8 @@ Evidence: saved public HTML/CSS/JS; not yet inspected through a rendered browser
 | SectionHeading                              | Shared section headings and reference placeholder links                                                       |
 | MarketplaceHome categories                  | 8 extracted categories with active state and keyboard support                                                 |
 | MarketplaceRestaurants                      | 12 restaurant cards with original images, offers, ratings, times                                              |
-| MarketplaceProducts / ProductCard           | Home product section, links to full catalog and offers, local filtering and add to cart                     |
+| MarketplaceProducts / ProductCard           | Home catalog preview, local filtering and add to cart; links to all products                                |
+| MarketplaceOffersSection                     | Separate home grid of up to five discounted products, countdown and all-offers link                          |
 | FavoriteButton                              | Shared favorite toggle owned by `features/marketplace/favorites`                                              |
 | FavoritesPage / FavoritesEmptyState         | Saved fixture products, favorite removal, add-to-cart and empty state                                         |
 | StoreDetailPage / RestaurantDetailPage      | Fixture profiles, matching products and explicitly labeled local restaurant menu samples                      |

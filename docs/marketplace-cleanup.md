@@ -4,9 +4,9 @@ Scope: marketplace feature, its documentation, and confirmed redundant root pack
 
 ## Removed or consolidated
 
-Follow-up layout cleanup: removed `app/site-chrome.tsx`. WorkspaceChrome is now applied by `app/(business)/layout.tsx` to the moved home and join pages. Root layout no longer reads the pathname to choose a shell. `/`, `/join`, `/marketplace` and `/s/[slug]` keep their existing URLs.
+Follow-up layout cleanup: removed `app/site-chrome.tsx`. WorkspaceChrome was applied by `app/(business)/layout.tsx` at that revision. A later route-group migration moved Marketplace to `/`; the unused business landing page and `(business)` route group have since been removed. `/join` remains separate.
 
-Layout verification: production build and standalone TypeScript passed after route types were regenerated. Production HTTP checks returned 200 for `/`, `/join` and `/marketplace`; the first two include WorkspaceChrome and Marketplace excludes it. Browser visual checks remain pending. The existing Next.js security advisory persists; no dependency upgrade was included in this layout-only change.
+Historical layout verification: production build and standalone TypeScript passed after route types were regenerated. HTTP checks at that revision returned 200 for `/`, `/join` and `/marketplace`. Browser visual checks remain pending. The existing Next.js security advisory persists; no dependency upgrade was included in that layout-only change.
 
 | Item                                                 | Reason/evidence                                                                                                                                       |
 | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |

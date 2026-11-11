@@ -42,7 +42,7 @@ test('URL parsing normalizes defaults, invalid categories and Arabic query white
 });
 
 test('search URLs round-trip Arabic, preserve unrelated params and reset owned params', () => {
-  const href = marketplaceSearchHref('/marketplace', 'campaign=local&q=old&category=home', {
+  const href = marketplaceSearchHref('/', 'campaign=local&q=old&category=home', {
     category: 'electronics',
     term: '  سماعة  ',
   });
@@ -54,21 +54,20 @@ test('search URLs round-trip Arabic, preserve unrelated params and reset owned p
     term: 'سماعة',
   });
   assert.equal(
-    marketplaceSearchHref(
-      '/marketplace',
+    marketplaceSearchHref('/',
       url.search,
       { category: 'all', term: '' },
       'marketplace-main',
     ),
-    '/marketplace?campaign=local#marketplace-main',
+    '/?campaign=local#marketplace-main',
   );
 });
 
 test('independent history URLs restore previous and next filter results without draft state', () => {
   const searches = [
-    '/marketplace',
-    marketplaceSearchHref('/marketplace', '', { category: 'mobiles', term: 'هاتف' }),
-    marketplaceSearchHref('/marketplace', '', { category: 'fashion', term: '' }),
+    '',
+    marketplaceSearchHref('/', '', { category: 'mobiles', term: 'هاتف' }),
+    marketplaceSearchHref('/', '', { category: 'fashion', term: '' }),
   ];
   const results = [1, 2, 1, 0].map((index) => {
     const state = parseMarketplaceSearch(
@@ -129,11 +128,11 @@ test('invalid IDs, fractional quantities and UI-limit overflow never mutate the 
 test('product links preserve normalized browse context without accepting redirect destinations', () => {
   const href = productHref('0', 'category=mobiles&q=phone&redirect=https://example.com');
   const url = new URL(href, 'http://localhost');
-  assert.equal(url.pathname, '/marketplace/products/0');
+  assert.equal(url.pathname, '/products/0');
   assert.equal(url.searchParams.get('category'), 'mobiles');
   assert.equal(url.searchParams.has('redirect'), false);
-  assert.equal(productBackHref(url.search), '/marketplace?category=mobiles&q=phone#deals');
-  assert.equal(productBackHref('category=invalid&redirect=//example.com'), '/marketplace#deals');
+  assert.equal(productBackHref(url.search), '/?category=mobiles&q=phone#deals');
+  assert.equal(productBackHref('category=invalid&redirect=//example.com'), '/#deals');
 });
 
 test('favorites toggle independently of the cart', () => {

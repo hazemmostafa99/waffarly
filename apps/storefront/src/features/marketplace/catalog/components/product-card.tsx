@@ -6,7 +6,10 @@ import { MarketplaceButton as Button } from '@/components/marketplace/marketplac
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { productHref } from '@/features/marketplace/product-detail/model/product-navigation';
+import {
+  productHref,
+  type HomeProductSection,
+} from '@/features/marketplace/product-detail/model/product-navigation';
 import { ProductPrice } from '@/features/marketplace/catalog/components/product-price';
 import { ProductRating } from '@/features/marketplace/catalog/components/product-rating';
 import { FavoriteButton } from '@/features/marketplace/favorites/components/favorite-button';
@@ -17,13 +20,15 @@ import { type MarketplaceProduct } from '@/features/marketplace/catalog/model/ca
 export function ProductCard({
   product: p,
   onAdded,
+  homeSection,
 }: {
   product: MarketplaceProduct;
   onAdded: () => void;
+  homeSection?: HomeProductSection;
 }) {
   const params = useSearchParams();
   const pathname = usePathname();
-  const href = productHref(p.id, params.toString(), pathname ?? '');
+  const href = productHref(p.id, params.toString(), pathname ?? '', homeSection);
   const addToCart = useCartStore((s) => s.addToCart);
   const atLimit = useCartStore(
     (s) => (s.cart.find((line) => line.productId === p.id)?.quantity ?? 0) >= MAX_CART_QUANTITY,

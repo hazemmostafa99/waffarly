@@ -8,9 +8,9 @@ import type {
 import { StorefrontDesignPreview, useLocale, Button, Input, Card } from '@waffarly/ui';
 import { apiRequest } from './lib/api-client.js';
 import { Icon } from './Icons.js';
+import { storefrontUrl } from './lib/storefront-url.js';
 
 const maxLogoBytes = 48 * 1024;
-const storefrontBaseUrl = (import.meta.env.VITE_STOREFRONT_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
 
 export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
   const { t, errorText, locale, formatNumber } = useLocale();
@@ -147,8 +147,8 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
         <form className="settings-identity-form" onSubmit={(event) => void save(event)}>
           <div className="settings-public-storefront">
             <span>{locale === 'ar' ? 'رابط المتجر للعملاء' : 'Customer storefront'}</span>
-            <a href={`${storefrontBaseUrl}/s/${settings.storefrontSlug}`} target="_blank" rel="noreferrer">
-              {storefrontBaseUrl}/s/{settings.storefrontSlug}
+            <a href={storefrontUrl(settings.storefrontSlug, settings.storefrontHandle)} target="_blank" rel="noreferrer">
+              {storefrontUrl(settings.storefrontSlug, settings.storefrontHandle)}
             </a>
           </div>
           <div className="settings-identity-grid">

@@ -92,7 +92,7 @@ export function MarketplaceHeader({
             >
               ☰
             </Button>
-            <Link href="/marketplace" aria-label="وفّرلي — الرئيسية">
+            <Link href="/" aria-label="وفّرلي — الرئيسية">
               <img
                 className={'logo w-40 h-12.5 object-contain block max-[700px]:w-[125px]'}
                 src="/marketplace-assets/wafarly-logo.png"
@@ -188,7 +188,7 @@ export function MarketplaceHeader({
                   </div>
                   <nav aria-label="روابط الحساب" className="grid gap-0.5 py-1.5">
                     <Link
-                      href="/marketplace/account"
+                      href="/account"
                       onClick={closeAccountMenu}
                       className="rounded-lg px-3 py-2.5 text-sm font-bold text-primary no-underline hover:bg-secondary"
                     >
@@ -197,14 +197,14 @@ export function MarketplaceHeader({
                     {!isDemoAccountActive && (
                       <>
                         <Link
-                          href="/marketplace/account/sign-in"
+                          href="/account/sign-in"
                           onClick={closeAccountMenu}
                           className="rounded-lg px-3 py-2.5 text-sm font-bold text-primary no-underline hover:bg-secondary"
                         >
                           تسجيل الدخول
                         </Link>
                         <Link
-                          href="/marketplace/account/sign-up"
+                          href="/account/sign-up"
                           onClick={closeAccountMenu}
                           className="rounded-lg px-3 py-2.5 text-sm font-bold text-primary no-underline hover:bg-secondary"
                         >
@@ -213,14 +213,14 @@ export function MarketplaceHeader({
                       </>
                     )}
                     <Link
-                      href="/marketplace/orders"
+                      href="/orders"
                       onClick={closeAccountMenu}
                       className="rounded-lg px-3 py-2.5 text-sm font-bold text-primary no-underline hover:bg-secondary"
                     >
                       طلباتي
                     </Link>
                     <Link
-                      href="/marketplace/favorites"
+                      href="/favorites"
                       onClick={closeAccountMenu}
                       className="rounded-lg px-3 py-2.5 text-sm font-bold text-primary no-underline hover:bg-secondary"
                     >
@@ -243,7 +243,7 @@ export function MarketplaceHeader({
               )}
             </div>
             <Link
-              href="/marketplace/orders"
+              href="/orders"
               className={cn(
                 'action inline-block text-[#fff] no-underline py-2.5 px-[11px] rounded-[10px] hover:bg-[rgba(255,_255,_255,_0.1)]',
                 'whitespace-nowrap hover:bg-[rgba(255,_255,_255,_0.1)] [&_strong]:text-[13px]',
@@ -252,7 +252,7 @@ export function MarketplaceHeader({
               <strong>طلباتي</strong>
             </Link>
             <Link
-              href="/marketplace/favorites"
+              href="/favorites"
               className="action inline-block whitespace-nowrap rounded-[10px] px-[11px] py-2.5 text-[#fff] no-underline hover:bg-[rgba(255,_255,_255,_0.1)]"
               aria-label="المفضلة"
             >

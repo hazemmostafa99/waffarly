@@ -1,6 +1,6 @@
 # Local favorites flow
 
-Route: `/marketplace/favorites`.
+Route: `/favorites`.
 
 The page lists the existing reference products selected with the shared heart
 control. Toggling a heart removes that product from the list immediately; toggling

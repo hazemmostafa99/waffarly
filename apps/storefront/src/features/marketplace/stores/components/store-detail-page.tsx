@@ -23,11 +23,11 @@ export function StoreDetailPage({
           aria-label="مسار التنقل"
           className="mb-6 flex items-center gap-2.5 text-[12px] text-muted-foreground"
         >
-          <Link className="text-accent no-underline" href="/marketplace">
+          <Link className="text-accent no-underline" href="/">
             الرئيسية
           </Link>
           <span aria-hidden="true">/</span>
-          <Link className="text-accent no-underline" href="/marketplace#stores">
+          <Link className="text-accent no-underline" href="/#stores">
             المتاجر
           </Link>
           <span aria-hidden="true">/</span>

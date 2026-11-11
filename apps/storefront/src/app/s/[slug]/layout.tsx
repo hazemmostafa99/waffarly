@@ -12,7 +12,6 @@ import { StorefrontHeader } from '../../../components/storefront/storefront-head
 import { StorefrontProviders } from '../../../providers/storefront-providers';
 import { StorefrontAddressProvider } from '../../../components/storefront/storefront-link';
 import { localStorefrontHandle } from '../../../lib/storefront-address';
-import { localStorefrontAliases } from '../../../lib/local-storefront-aliases';
 
 type StorefrontRouteProps = {
   params: Promise<{ slug: string }>;
@@ -43,7 +42,7 @@ export default async function StorefrontLayout({ children, params }: StorefrontL
   const host = requestHeaders.get('host') ?? '';
   const handle = localStorefrontHandle(host);
   const hostBased = process.env.NODE_ENV === 'development' && handle !== null &&
-    localStorefrontAliases()[handle] === slug;
+    handle === slug;
   let catalog;
   try {
     catalog = await getStorefrontCatalog(slug);
@@ -55,8 +54,8 @@ export default async function StorefrontLayout({ children, params }: StorefrontL
 
   return (
     <LocaleProvider initialLocale={locale}>
-      <StorefrontProviders key={slug} slug={slug}>
-        <StorefrontAddressProvider slug={slug} hostBased={hostBased}>
+      <StorefrontProviders key={catalog.slug} slug={catalog.slug}>
+        <StorefrontAddressProvider slug={catalog.slug} routeSlug={slug} hostBased={hostBased}>
           <div
             className={`${cairo.variable} ${tajawal.variable} storefront-theme min-h-screen bg-store-page font-body text-store-ink`}
           >

@@ -35,13 +35,13 @@ export function MarketplaceMenu({
             onNavigate(target);
           }}
         />
-        <Link href="/marketplace/account" onClick={onClose}>
+        <Link href="/account" onClick={onClose}>
           حسابي
         </Link>
-        <Link href="/marketplace/orders" onClick={onClose}>
+        <Link href="/orders" onClick={onClose}>
           طلباتي
         </Link>
-        <Link href="/marketplace/favorites" onClick={onClose}>
+        <Link href="/favorites" onClick={onClose}>
           المفضلة
         </Link>
       </nav>

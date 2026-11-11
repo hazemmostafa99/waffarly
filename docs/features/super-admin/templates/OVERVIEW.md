@@ -54,7 +54,7 @@ No source approves an uploadable executable template, page builder, third-party 
 ### 2.3 Implementation Evidence
 
 - [Super Admin App](../../../../apps/super-admin/src/App.tsx) contains sign-in, merchant creation/listing, application review/approval, and first-month activation. It has no template library controls.
-- [Storefront home](<../../../../apps/storefront/src/app/(business)/page.tsx>) is a Next.js foundation page with a restaurant application link. It does not resolve or render a merchant-selected template.
+- [Marketplace home](<../../../../apps/storefront/src/app/(marketplace)/page.tsx>) renders the local reference catalog. It does not resolve or render a merchant-selected template.
 - [Merchant Dashboard App](../../../../apps/merchant-dashboard/src/App.tsx) now provides owner login, a contact profile, and a tenant-scoped design and branding editor. It has no public storefront publishing flow.
 - [Prisma schema](../../../../packages/database/prisma/schema.prisma) and [shared contracts](../../../../packages/contracts/src/index.ts) include platform templates and per-merchant design settings; public publishing records remain out of scope.
 

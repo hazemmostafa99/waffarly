@@ -16,6 +16,7 @@ import { adminQueryKeys } from '../../app/query-keys.js';
 import { apiRequest } from '../../lib/api-client.js';
 import { useMonthlyPlansQuery } from '../plans/plans-queries.js';
 import { useCreatedMerchantStore } from './created-merchant-store.js';
+import { StorefrontHandleField } from './StorefrontHandleField.js';
 
 const emptyMerchant: CreateMerchantRequest = {
   name: '',
@@ -150,7 +151,11 @@ export function CreateMerchantPage() {
             onSubmit={(event) => {
               event.preventDefault();
               setFormError('');
-              pendingRequest.current = { ...form, subscription: { planId, months } };
+              pendingRequest.current = {
+                ...form,
+                storefrontHandle: form.storefrontHandle?.trim() || undefined,
+                subscription: { planId, months },
+              };
               createMerchant.mutate();
             }}
           >
@@ -216,6 +221,11 @@ export function CreateMerchantPage() {
                   className="h-10 rounded-xl border-waffarly-border bg-white text-sm text-waffarly-ink invalid:border-waffarly-danger"
                 />
               </FormField>
+              <StorefrontHandleField
+                value={form.storefrontHandle ?? ''}
+                onChange={(value) => updateForm('storefrontHandle', value)}
+                disabled={createMerchant.isPending}
+              />
               <FormField id="business-activity" label={t('Business activity')}>
                 <select
                   id="business-activity"

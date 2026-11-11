@@ -17,7 +17,7 @@ export function findRestaurant(restaurantId: string) {
 }
 
 export function restaurantHref(restaurant: Pick<MarketplaceRestaurant, 'name'>) {
-  return `/marketplace/restaurants/${encodeURIComponent(restaurant.name)}`;
+  return `/restaurants/${encodeURIComponent(restaurant.name)}`;
 }
 
 export function productsForRestaurant(restaurant: Pick<MarketplaceRestaurant, 'name'>) {

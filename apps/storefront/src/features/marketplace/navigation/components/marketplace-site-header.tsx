@@ -31,7 +31,7 @@ export function MarketplaceSiteHeader() {
         onHome={() => navigation.navigate({ kind: 'section', section: 'marketplace-main' })}
         onCategories={() => navigation.navigate({ kind: 'section', section: 'categories' })}
         onSearch={navigation.focusSearch}
-        onAccount={() => navigation.navigate({ kind: 'route', href: '/marketplace/account' })}
+        onAccount={() => navigation.navigate({ kind: 'route', href: '/account' })}
       />
       <MarketplaceMenu
         open={navigation.menuOpen}

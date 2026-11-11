@@ -81,13 +81,13 @@ function AccountEntry() {
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <Link
-              href="/marketplace/account/sign-in"
+              href="/account/sign-in"
               className="inline-flex min-h-11 items-center justify-center rounded-xl bg-waffarly-gold px-4 text-sm font-black text-primary no-underline transition-colors hover:bg-[#ffd353]"
             >
               تسجيل الدخول
             </Link>
             <Link
-              href="/marketplace/account/sign-up"
+              href="/account/sign-up"
               className="inline-flex min-h-11 items-center justify-center rounded-xl border border-border bg-white px-4 text-sm font-bold text-primary no-underline transition-colors hover:bg-secondary"
             >
               إنشاء حساب
@@ -214,7 +214,7 @@ function AccountDashboard() {
 
       <section aria-label="ملخص الحساب" className="grid gap-3 sm:grid-cols-2">
         <Link
-          href="/marketplace/orders"
+          href="/orders"
           className="group rounded-2xl border border-border bg-white p-5 text-inherit no-underline shadow-[var(--shadow)] transition-colors hover:border-accent"
         >
           <span className="text-xs font-bold text-muted-foreground">طلباتي</span>
@@ -226,7 +226,7 @@ function AccountDashboard() {
           </span>
         </Link>
         <Link
-          href="/marketplace/favorites"
+          href="/favorites"
           className="group rounded-2xl border border-border bg-white p-5 text-inherit no-underline shadow-[var(--shadow)] transition-colors hover:border-accent"
         >
           <span className="text-xs font-bold text-muted-foreground">المفضلة</span>
@@ -250,7 +250,7 @@ function AccountDashboard() {
             </p>
           </div>
           {orders.length > 0 && (
-            <Link href="/marketplace/orders" className="text-sm font-bold text-accent no-underline">
+            <Link href="/orders" className="text-sm font-bold text-accent no-underline">
               كل الطلبات ←
             </Link>
           )}
@@ -260,7 +260,7 @@ function AccountDashboard() {
             {recentOrders.map((order) => (
               <li key={order.id}>
                 <Link
-                  href={`/marketplace/orders/${order.id}`}
+                  href={`/orders/${order.id}`}
                   className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border px-4 py-3 text-inherit no-underline hover:bg-secondary/50"
                 >
                   <span>
@@ -300,7 +300,7 @@ export function AccountPage() {
             aria-label="مسار التنقل"
             className="mb-4 flex items-center gap-2 text-xs text-muted-foreground"
           >
-            <Link href="/marketplace" className="text-accent no-underline">
+            <Link href="/" className="text-accent no-underline">
               الرئيسية
             </Link>
             <span aria-hidden="true">/</span>

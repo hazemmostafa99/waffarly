@@ -2,8 +2,8 @@
 
 The home store and restaurant cards now open local detail routes:
 
-- `/marketplace/stores/[storeId]`
-- `/marketplace/restaurants/[restaurantId]`
+- `/stores/[storeId]`
+- `/restaurants/[restaurantId]`
 
 Route IDs are URL-encoded names from the existing fixture records. They are local
 navigation identifiers, not extracted production IDs. Invalid IDs use each route's

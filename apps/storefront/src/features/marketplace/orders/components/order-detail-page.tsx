@@ -38,11 +38,11 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
             aria-label="مسار التنقل"
             className="mb-3 flex items-center gap-2.5 text-[12px] text-muted-foreground"
           >
-            <Link className="text-accent no-underline" href="/marketplace">
+            <Link className="text-accent no-underline" href="/">
               الرئيسية
             </Link>
             <span aria-hidden="true">/</span>
-            <Link className="text-accent no-underline" href="/marketplace/orders">
+            <Link className="text-accent no-underline" href="/orders">
               طلباتي
             </Link>
           </nav>
@@ -57,7 +57,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
               سجل الطلبات تجريبي وموجود في ذاكرة الصفحة فقط. افتح تفاصيله من «طلباتي» قبل تحديث
               الصفحة.
             </p>
-            <Link className="text-accent" href="/marketplace/orders">
+            <Link className="text-accent" href="/orders">
               العودة إلى طلباتي
             </Link>
           </section>
@@ -73,11 +73,11 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
           aria-label="مسار التنقل"
           className="mb-3 flex items-center gap-2.5 text-[12px] text-muted-foreground"
         >
-          <Link className="text-accent no-underline" href="/marketplace">
+          <Link className="text-accent no-underline" href="/">
             الرئيسية
           </Link>
           <span aria-hidden="true">/</span>
-          <Link className="text-accent no-underline" href="/marketplace/orders">
+          <Link className="text-accent no-underline" href="/orders">
             طلباتي
           </Link>
           <span aria-hidden="true">/</span>
@@ -165,7 +165,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
             <div className="mt-5 grid gap-2">
               <Link
                 className="inline-flex min-h-10 items-center justify-center rounded-xl border border-border bg-white px-4 text-sm font-bold text-primary no-underline hover:border-accent"
-                href={`/marketplace/orders/${order.id}/tracking`}
+                href={`/orders/${order.id}/tracking`}
               >
                 متابعة حالة الطلب التجريبية
               </Link>
@@ -178,7 +178,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
               </MarketplaceButton>
               <Link
                 className="text-center text-[13px] text-accent no-underline"
-                href="/marketplace/orders"
+                href="/orders"
               >
                 كل طلباتي
               </Link>
@@ -196,7 +196,7 @@ export function OrderDetailPage({ orderId }: { orderId: string }) {
                 {reorderResult.added > 0 && (
                   <>
                     {' '}
-                    <Link className="font-bold text-primary" href="/marketplace/cart">
+                    <Link className="font-bold text-primary" href="/cart">
                       عرض السلة
                     </Link>
                   </>

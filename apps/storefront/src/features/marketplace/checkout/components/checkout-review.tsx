@@ -98,7 +98,7 @@ export function CheckoutReview({
         >
           تعديل البيانات
         </Button>
-        <Link href="/marketplace/cart">الرجوع للسلة</Link>
+        <Link href="/cart">الرجوع للسلة</Link>
       </div>
     </Card>
   );

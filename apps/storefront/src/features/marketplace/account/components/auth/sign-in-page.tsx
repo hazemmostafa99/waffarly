@@ -97,7 +97,7 @@ export function SignInPage() {
       <p className="mb-0 mt-5 border-t border-border pt-4 text-center text-sm text-muted-foreground">
         معندكش حساب؟{' '}
         <Link
-          href="/marketplace/account/sign-up"
+          href="/account/sign-up"
           className="font-extrabold text-accent underline-offset-4 hover:underline"
         >
           أنشئ حساب جديد

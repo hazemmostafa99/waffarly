@@ -22,8 +22,8 @@ export function MarketplaceMobileNav({
   const setCartOpen = useCartStore((s) => s.setCartOpen);
   const cartOpen = useCartStore((s) => s.cartOpen);
   const pathname = usePathname();
-  const onCartPage = pathname === '/marketplace/cart';
-  const onAccountPage = pathname === '/marketplace/account';
+  const onCartPage = pathname === '/cart';
+  const onAccountPage = pathname === '/account';
   const actions = [onHome, onCategories, onSearch, () => setCartOpen(true), onAccount];
   return (
     <nav

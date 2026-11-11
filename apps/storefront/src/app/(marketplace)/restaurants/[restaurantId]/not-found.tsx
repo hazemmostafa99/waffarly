@@ -5,7 +5,7 @@ export default function RestaurantNotFound() {
     <MarketplaceEntityNotFound
       title="المطعم غير موجود"
       description="الرابط ده مش لمطعم موجود في البيانات المحلية الحالية."
-      href="/marketplace#restaurants"
+      href="/#restaurants"
       linkLabel="العودة للمطاعم"
     />
   );

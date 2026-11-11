@@ -1,10 +1,13 @@
 'use client';
 
 import { cn } from '@waffarly/ui';
+import { useRouter } from 'next/navigation';
 
 import { MarketplaceButton as Button } from '@/components/marketplace/marketplace-button';
 
 export function MarketplaceHero() {
+  const router = useRouter();
+
   return (
     <>
       <section
@@ -37,9 +40,7 @@ export function MarketplaceHero() {
                 'btn btn-gold disabled:cursor-not-allowed disabled:opacity-[0.5] border-0 rounded-[11px] py-[13px] px-5',
                 'font-extrabold bg-waffarly-gold text-[#2d1038]',
               )}
-              onClick={() =>
-                document.getElementById('deals')?.scrollIntoView({ behavior: 'smooth' })
-              }
+              onClick={() => router.push('/offers')}
             >
               تسوّق العروض
             </Button>

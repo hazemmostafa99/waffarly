@@ -1,16 +1,16 @@
 # Marketplace interactions
 
-The cart review CTA opens `/marketplace/checkout`. The local demo validates
+The cart review CTA opens `/checkout`. The local demo validates
 contact/address fields, supports pickup/delivery and editing before review, guards
 duplicate confirmation, and atomically verifies the basket before it is cleared.
 Successful confirmation adds a product-only demo record to the in-memory Zustand
-store. Header/menu/footer and confirmation link to `/marketplace/orders`, with
-`/marketplace/orders/[orderId]` for details. No contact details are recorded and no
+store. Header/menu/footer and confirmation link to `/orders`, with
+`/orders/[orderId]` for details. No contact details are recorded and no
 real order/payment is sent. Both routes clearly explain that refresh clears history.
 No tests, browser runs, typecheck or build were run for this slice, per user instruction.
 See [checkout behavior and manual checklist](marketplace-local-checkout.md).
 
-Order detail now links to `/marketplace/orders/[orderId]/tracking`, where a local
+Order detail now links to `/orders/[orderId]/tracking`, where a local
 timeline advances one demo stage per click and reflects the new status in order
 history. The order detail also supports adding each still-eligible item and its
 original quantity back into the current cart; capped or unavailable products are
@@ -25,12 +25,12 @@ entry form, customer address, browser persistence or backend request is involved
 See [demo address book](marketplace-address-book.md).
 
 Cart review: the drawer's Review Cart link closes the drawer and navigates to
-`/marketplace/cart`. The page shares quantity/removal state and derived totals with
+`/cart`. The page shares quantity/removal state and derived totals with
 the drawer, and renders an empty state after the last removal. The checkout CTA
 continues through the local demo checkout. See [manual review notes](marketplace-cart-review.md).
 
 Favorites: the product heart toggles an ID in the feature-owned Zustand slice.
-`/marketplace/favorites` resolves those IDs against the fixture catalog; the shared
+`/favorites` resolves those IDs against the fixture catalog; the shared
 heart control removes an item from that page. Header, menu and footer links open the
 page, and its empty state returns to product browsing. Favorites remain in memory
 until refresh. See [favorites flow](marketplace-favorites.md).
@@ -41,9 +41,11 @@ pages show fixture products by seller match plus clearly labeled local sample it
 Unknown local IDs show not-found pages. See
 [store/restaurant details](marketplace-store-and-restaurant-details.md).
 
-The home product section links to /marketplace/products for the complete local
-reference catalog and /marketplace/offers for products with a previous price.
-Both listings support search, category, price/discount sorting and pagination;
+The home has distinct products and offers sections; their product links return
+to the same section after detail. The products section links to
+/products, and the offers section, hero CTA and “عروض اليوم”
+navigation item open /offers. Both listings support search, category,
+price/discount sorting and pagination;
 category, query, sort and page are represented in the URL. Product detail links
 preserve the source listing and its selection for the return link. The full
 catalog currently contains five records from reference.json; no products or

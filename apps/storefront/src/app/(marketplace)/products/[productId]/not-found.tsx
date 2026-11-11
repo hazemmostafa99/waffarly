@@ -11,7 +11,7 @@ export default function ProductNotFound() {
       <h1>المنتج غير موجود</h1>
       <p>الرابط ده مش لمنتج موجود في البيانات المحلية الحالية.</p>
       <Link
-        href="/marketplace"
+        href="/"
         className={
           'btn btn-gold border-0 rounded-[11px] py-[13px] px-5 font-extrabold bg-waffarly-gold text-[#2d1038]'
         }

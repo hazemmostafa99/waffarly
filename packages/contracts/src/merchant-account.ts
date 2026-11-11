@@ -12,6 +12,7 @@ export interface MerchantAccountProfile {
   ownerName: string;
   ownerMobile: string;
   storefrontSlug: string;
+  storefrontHandle?: string | null;
   logoData: string | null;
   createdAt: string;
   revision: number;

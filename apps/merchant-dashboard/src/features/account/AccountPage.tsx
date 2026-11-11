@@ -14,9 +14,7 @@ import { ApiError, apiRequest, apiRequestSingle } from '../../lib/api-client.js'
 import type { MerchantOutletContext } from '../../lib/merchant-context.js';
 import { SubscriptionStatusBadge } from './SubscriptionStatusBadge.js';
 
-const storefrontBaseUrl = (
-  import.meta.env.VITE_STOREFRONT_BASE_URL || 'http://localhost:3000'
-).replace(/\/$/, '');
+import { storefrontUrl as buildStorefrontUrl } from '../../lib/storefront-url.js';
 const supportPhone = (import.meta.env.VITE_SUPPORT_WHATSAPP || '201044280822').replace(/\D/g, '');
 const supportUrl = `https://wa.me/${supportPhone}`;
 
@@ -262,7 +260,7 @@ export function AccountPage() {
   const current = subscription.currentPeriod;
   const displayedPeriod = current ?? subscription.latestPeriod;
   const canEdit = subscription.status === 'active' || subscription.status === 'legacy';
-  const storefrontUrl = `${storefrontBaseUrl}/s/${encodeURIComponent(profile.storefrontSlug)}`;
+  const storefrontUrl = buildStorefrontUrl(profile.storefrontSlug, profile.storefrontHandle);
   const remainingMs = subscription.coverageEndsAt
     ? new Date(subscription.coverageEndsAt).getTime() - clock
     : 0;

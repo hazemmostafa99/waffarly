@@ -5,7 +5,7 @@ export default function StoreNotFound() {
     <MarketplaceEntityNotFound
       title="المتجر غير موجود"
       description="الرابط ده مش لمتجر موجود في البيانات المحلية الحالية."
-      href="/marketplace#stores"
+      href="/#stores"
       linkLabel="العودة للمتاجر"
     />
   );

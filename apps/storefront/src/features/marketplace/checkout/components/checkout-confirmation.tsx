@@ -59,13 +59,13 @@ export function CheckoutConfirmation({ receipt }: { receipt: DemoOrder }) {
             className={
               'btn btn-gold border-0 rounded-[11px] py-[13px] px-5 font-extrabold bg-waffarly-gold text-[#2d1038]'
             }
-            href={`/marketplace/orders/${receipt.id}`}
+            href={`/orders/${receipt.id}`}
           >
             عرض تفاصيل الطلب
           </Link>
           <Link
             className="rounded-[11px] border border-border px-5 py-3 text-primary no-underline"
-            href="/marketplace/orders"
+            href="/orders"
           >
             كل طلباتي
           </Link>

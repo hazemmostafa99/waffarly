@@ -5,6 +5,7 @@ import { BUSINESS_ACTIVITY_LABELS } from '@waffarly/contracts';
 import { Button, Card, useLocale } from '@waffarly/ui';
 import { PageHeader } from '../../components/PageHeader.js';
 import { useMerchantsQuery } from './merchant-queries.js';
+import { StorefrontAddressPanel } from './StorefrontAddressPanel.js';
 
 export function MerchantDetailsPage() {
   const { merchantId } = useParams();
@@ -200,6 +201,7 @@ export function MerchantDetailsPage() {
           </dl>
         </Card>
 
+        <StorefrontAddressPanel key={merchant.id} merchant={merchant} />
         <Card className="admin-panel grid admin-stack border-waffarly-border xl:col-span-2">
           <h2 className="m-0 text-sm font-bold">{t('Subscription management')}</h2>
           <p className="m-0 text-sm text-waffarly-muted">

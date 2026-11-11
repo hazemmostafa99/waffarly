@@ -1,91 +1,93 @@
-# Local merchant hostnames
+# Saved storefront addresses in local development
 
-The first development slice supports merchant hostnames on the existing Next
-storefront server. It does not provision production domains or reserve handles.
+Updated 2026-11-11. Merchant addresses are now stored through the API/database.
+`LOCAL_STOREFRONT_ALIASES` is obsolete and is no longer read. There is no automatic
+import of old aliases: an administrator explicitly assigns the desired handle.
 
-## Configure two merchants
+## Try an existing merchant
 
-Use merchants that already work at `http://localhost:3000/s/<business-code>`.
-The Business Code is shown in Super Admin merchant details and is the existing
-technical storefront slug. Do not change it, because POS uses it too.
+1. Restart the API and storefront development processes after pulling these changes.
+2. Open Super Admin at its usual localhost:5173 entry and open merchant details.
+3. In Direct storefront address, enter a handle such as `abo-ali` and save.
+4. Use Open storefront or visit `http://abo-ali.localhost:3000`.
+5. Refresh, navigate menu/products/cart/account and verify the host stays the same.
 
-Add this entry to `apps/storefront/.env.local`, replacing both example values:
+New merchant creation also accepts an optional storefront address. Merchants
+approved through applications can receive an address from their details page.
+The POS Business Code remains unchanged. Existing merchants without an address
+continue to use `/s/<business-code>`; the old URLs remain available after assignment.
 
-```dotenv
-LOCAL_STOREFRONT_ALIASES='{"abo-ali":"existing-merchant-slug-one","pizza-house":"existing-merchant-slug-two"}'
-```
+A preview does not reserve a name. The API validates and atomically reserves it
+when saving. Duplicate names return 409; invalid/reserved names return 400.
+Addresses cannot currently be renamed or removed. Repeating the same assignment
+is safe and does not overwrite the original assignment actor/time.
 
-Restart the existing storefront dev process after changing aliases. Then open:
+## Local applications
 
-- `http://abo-ali.localhost:3000`
-- `http://pizza-house.localhost:3000`
-- `http://marketplace.localhost:3000` for the separate local Marketplace.
+- Merchant store: `http://<handle>.localhost:3000`
+- Marketplace: `http://localhost:3000/` or `http://marketplace.localhost:3000`
+- Super Admin: existing localhost:5173 entry
+- Merchant Dashboard: existing localhost:5174 entry
+- POS: existing localhost:5175 entry
 
-The two aliases above are configuration examples, not seeded merchants. Without
-configured aliases, merchant hostnames return 404. An alias pointing to a missing
-merchant retains the existing catalog not-found behavior; there is no mock fallback.
-Alias routing is enabled only with `NODE_ENV=development`, and only under
-`.localhost`. Deployment needs its own domain/host configuration later.
+Super Admin and Merchant Dashboard use `VITE_STOREFRONT_BASE_URL` (locally
+`http://localhost:3000`) for public links. A hostname does not choose an application
+port. No Cloudflare records, hosts-file edits or reverse proxy are normally needed
+with Chrome/Edge localhost support. If name resolution fails, explicitly map the
+individual `.localhost` names to 127.0.0.1 in Windows hosts; wildcard entries are
+not supported there.
 
-Routing reads the browser's HTTP `Host` header, including its optional port,
-rather than Next's internal URL, which can contain the dev server bind hostname.
-Invalid individual alias entries are ignored with a configuration warning; a
-valid merchant entry continues to work. Invalid JSON or a non-object configuration
-still reports a configuration error.
+## Request flow
 
-Names use 3–63 lowercase ASCII letters/digits with internal hyphens. Names reserved
-for applications cannot be assigned. A configured alias can point to a longer
-technical slug (up to the existing 120-character limit).
+Proxy reads the original HTTP Host header and rewrites a merchant request to the
+existing `/s/<handle>/...` page tree. Proxy does not fetch merchant data. The server
+page loader resolves the handle through `GET /storefront-handles/:handle`, then
+loads the existing catalog by its unchanged technical slug. Handle resolution is
+not cached between requests; React request memoization deduplicates layout/page
+work. Existing catalog cache tags remain based on the technical slug.
 
-## Behavior
+The address context carries both route handle and technical slug, so old component
+links render as clean `/menu`, `/cart`, `/checkout`, etc. Tenant cart storage and
+query keys use the technical slug. Browser storage remains origin-specific: an old
+localhost basket does not automatically move to a merchant subdomain.
 
-Merchant URLs rewrite internally to the existing `/s/<technical-slug>` pages.
-Navigation exposes `/menu`, `/products/...`, `/cart`, `/checkout` and account/order
-paths on the merchant host. Query parameters are retained. The same components
-retain their original links when entered through the legacy localhost path.
+Unknown handles render not-found. Reserved application hosts and merchant-host
+access to `/s/...`, `/join` or the legacy
+`/marketplace` prefix are rejected. The former Marketplace prefix redirects
+to the corresponding root-based route on localhost. Framework/public asset paths
+bypass tenant routing. Marketplace remains local-data-only and does not use the new
+resolver or tenant APIs.
 
-Merchant hosts cannot open `/s/<another-merchant>`, `/marketplace` or `/join`.
-Unknown handles and reserved application names on port 3000 return 404.
-Next internals and public asset directories bypass tenant routing.
+## Browser API requests
 
-The bare `localhost:3000` business homepage and `/marketplace` stay available.
-Marketplace-host navigation retains `/marketplace/...` paths for this transitional
-slice; `/join` remains the existing local merchant-entry demonstration. Marketplace
-continues to use local reference data, with no added backend requests.
+In API development mode only, a registered `<handle>.localhost` origin may access
+its own public catalog/quote/checkout paths. Its scheme/port must correspond to an
+explicitly configured trusted localhost origin in `CORS_ORIGINS` (normally
+`http://localhost:3000`). The API checks the saved handle maps to the requested
+technical slug. These dynamic origins receive no credentialed CORS access and
+cannot use this exception for admin/owner/POS requests or other merchants.
+The normal trusted application origin list and unsafe-method checks remain in
+place. No production-origin allowance was added.
 
-Super Admin (5173), Merchant Dashboard (5174) and POS (5175) retain their existing
-entry URLs. A hostname does not automatically choose one of these ports.
+## Database and validation evidence
 
-Chrome/Edge can be used for local hostnames. If local resolution fails, explicitly
-map `abo-ali.localhost`, `pizza-house.localhost` and `marketplace.localhost` to
-`127.0.0.1` in the Windows hosts file. Hosts files do not accept wildcard entries.
-No Cloudflare settings or public DNS changes are needed for this setup.
+Migration `20261111120000_storefront_handles` adds nullable public handle and
+assignment attribution fields, a unique index and a SQL validation constraint.
+It was applied to the local development database in this session. It preserves
+all existing merchant slugs and does not assign any production/customer handles.
 
-## Data, state and verification limits
+The first migration attempt failed before changing schema because the SQL used
+the Prisma model name instead of its mapped table name. The failed state was
+marked rolled back, the new unapplied migration corrected to `merchants`, and
+then successfully deployed. No historical migration was changed.
 
-The existing tenant storefront still uses its existing API. This is not a new
-Marketplace integration or a new local server. Rendering depends on the configured
-API and those merchants already being available.
+API regression suite: 223 tests passed. Focused real-database verification passed
+for concurrent duplicate reservation, same-merchant competing assignments,
+idempotency/attribution, invalid/missing addresses, unchanged POS codes and
+atomic merchant creation/rollback. Merchant account database regression also
+passed. Isolated test fixtures were cleaned up.
 
-The API currently checks an explicit origin list, including a separate guard for
-unsafe methods. A merchant subdomain is a new browser origin. API-dependent browser
-operations may be rejected until that compatibility is addressed separately; do
-not disable the checks or assume that homepage rendering proves checkout works.
-No CORS, API, authentication or database changes were made in this slice.
-
-Browser storage is origin-specific. An old localhost cart does not automatically
-appear on its merchant subdomain. Existing slug-specific cart keys remain intact.
-
-Implementation review only: no dev server/browser acceptance, tests, typechecks or
-builds were run for this slice. Manual checks remain pending:
-
-1. Open both configured merchants and verify branding/products.
-2. Follow menu, product, cart, checkout and account links; inspect visible host/path.
-3. Refresh a nested route with query parameters and use Back/Forward.
-4. Confirm unknown/reserved names and cross-merchant paths return 404.
-5. Confirm existing localhost routes and the other applications remain available.
-6. Confirm Marketplace retains its local demo state and does not call the API.
-
-Next planned slices: Dashboard public-link generation and explicitly labeled
-Super Admin address previews. Real create-and-open handle persistence is deferred
-to a separately authorized backend phase. See the [plan](local-storefront-subdomains-plan.md).
+Frontend automated checks and browser acceptance have not been run, per repository
+manual-QA preference. Manually verify the create/details form, duplicate errors,
+copy/open actions, two merchants, nested refresh and legacy links. Cloudflare/VPS
+host routing and production HTTPS remain a separate deployment step.

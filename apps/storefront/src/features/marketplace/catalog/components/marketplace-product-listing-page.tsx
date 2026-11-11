@@ -29,7 +29,7 @@ const pageCopy = {
     description: 'تصفّح المنتجات المتاحة في بيانات السوق المحلية، وابحث أو رتّب النتائج حسب احتياجك.',
     countLabel: 'منتجات',
     empty: 'مفيش منتجات مطابقة للاختيارات دي.',
-    pathname: '/marketplace/products',
+    pathname: '/products',
   },
   offers: {
     title: 'كل العروض',
@@ -38,7 +38,7 @@ const pageCopy = {
     description: 'تصفّح المنتجات المخفّضة وابحث داخل العروض المتاحة في البيانات المحلية.',
     countLabel: 'عروض',
     empty: 'مفيش عروض مطابقة للاختيارات دي.',
-    pathname: '/marketplace/offers',
+    pathname: '/offers',
   },
 } satisfies Record<ProductListingMode, {
   title: string;
@@ -99,7 +99,7 @@ export function MarketplaceProductListingPage({ mode }: { mode: ProductListingMo
             aria-label="مسار التنقل"
             className="mb-3 mt-5 flex items-center gap-2 text-xs text-muted-foreground"
           >
-            <Link className="text-accent no-underline hover:text-primary" href="/marketplace">
+            <Link className="text-accent no-underline hover:text-primary" href="/">
               الرئيسية
             </Link>
             <span aria-hidden="true">/</span>

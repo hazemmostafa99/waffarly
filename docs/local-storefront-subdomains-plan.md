@@ -1,20 +1,21 @@
 # Local storefront subdomains: review and implementation plan
 
-Status: first local routing/navigation slice implemented, 2026-11-11; runtime acceptance pending. Remaining slices below are proposed. No deployment changes.
-Scope: frontend development preparation; Marketplace remains local-data-only.
+Status: saved merchant handles, Super Admin assignment and API-backed local routing implemented, 2026-11-11. Frontend manual acceptance pending; no deployment changes.
+Scope expanded by explicit user authorization to persist direct-storefront addresses through the API/database. Marketplace remains local-data-only.
 
 Implementation notes: [local setup and pending acceptance](local-storefront-subdomains.md).
-Aliases are explicitly configured through `LOCAL_STOREFRONT_ALIASES`, rather than
-inventing merchant records or assuming fixture slugs exist in the database. Two
-configuration examples are documented; they must be mapped to actual existing
-merchant codes before runtime acceptance. Dashboard and Super Admin previews
-remain subsequent slices.
+The original frontend-only proposal below is retained as planning history. Its
+alias-fixture and frontend-only persistence restrictions are superseded for this
+direct-storefront feature by the subsequent explicit authorization. Handles are
+now assigned in Super Admin, persisted uniquely in the database, resolved by the
+server page loader and shown in Dashboard links. No per-merchant `.env` mapping
+is used. See current setup documentation for supported behavior and limitations.
 
 ## Findings from the repository
 
 - `apps/storefront` is Next.js 16.4.0 on port 3000. There is no current host-routing Proxy. The installed Next docs describe `src/proxy.ts` and internal rewrites. Their `allowedDevOrigins` docs say localhost and its subdomains are already allowed; do not add permissive origin settings unnecessarily.
 - Merchant routes live under `/s/[slug]`. The layout and catalog loader resolve the existing slug through the existing API. This existing tenant storefront is distinct from Marketplace's local fixtures.
-- Marketplace lives under `/marketplace`; `/` currently renders a business landing page. Moving Marketplace to `/` also requires preserving a deliberate destination for that landing page.
+- Marketplace now serves at `/` from the invisible `(marketplace)` route group. The unused business landing page and route group are removed; the separate `/join` and tenant routes remain.
 - Storefront header, footer, product, cart and checkout navigation embed `/s/...` (24 matching source lines at review). Host routing alone would leave these links exposing the old path.
 - Super Admin runs on 5173, Merchant Dashboard on 5174, POS on 5175; Vite configs currently only register plugins. Keep these ports initially; a hostname alone does not select an application port.
 - Super Admin creation and application approval do not accept a public URL handle. Creation posts the existing `CreateMerchantRequest`; the result exposes `businessCode`.
@@ -49,8 +50,7 @@ remain subsequent slices.
 - Skip Next internals, public assets and framework navigation requests as appropriate. Prevent rewrite loops, merchant-host access to another `/s/<slug>` and accidental Marketplace exposure on merchant hosts.
 - Reject reserved application hosts arriving at storefront's port; do not interpret `admin` or `pos` as merchants or silently redirect to a different app.
 - Unknown handles receive a clear unavailable/not-found outcome.
-- Initially preserve `/s/[slug]` and `/marketplace` for compatibility. Use `marketplace.localhost:3000` as an optional local Marketplace entry while retaining the current business homepage at `localhost:3000`. Route its pages within `/marketplace`; keep navigation consistent with this transitional arrangement.
-- Moving the bare root to Marketplace is a later explicit slice: move the business landing to `/business`, review shared `/join` and layouts, update Marketplace links and retain legacy entry links.
+- Route-group migration is complete: the canonical Marketplace entry is `localhost:3000/`; its route files live under `app/(marketplace)` without a URL segment. `marketplace.localhost:3000` remains an optional local entry. The unused business landing route has been removed; `/join` remains a separate merchant-entry page.
 
 ### 3. Public navigation and Merchant Dashboard links
 

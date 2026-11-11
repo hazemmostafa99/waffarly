@@ -24,7 +24,7 @@ export function MerchantEntryPage() {
         <main id="marketplace-main" tabIndex={-1} className="pb-16">
           <MarketplaceContainer>
             <div className="flex justify-end pt-3 sm:pt-4">
-              <Link href="/marketplace" className="inline-flex min-h-9 items-center gap-2 text-sm font-bold text-accent no-underline hover:text-primary">
+              <Link href="/" className="inline-flex min-h-9 items-center gap-2 text-sm font-bold text-accent no-underline hover:text-primary">
                 <span aria-hidden="true">→</span>
                 {isArabic ? 'العودة إلى السوق' : 'Back to marketplace'}
               </Link>

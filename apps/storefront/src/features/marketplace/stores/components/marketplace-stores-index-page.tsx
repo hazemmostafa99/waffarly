@@ -24,7 +24,7 @@ export function MarketplaceStoresIndexPage() {
             aria-label="مسار التنقل"
             className="mb-3 mt-5 flex items-center gap-2 text-xs text-muted-foreground"
           >
-            <Link className="text-accent no-underline hover:text-primary" href="/marketplace">
+            <Link className="text-accent no-underline hover:text-primary" href="/">
               الرئيسية
             </Link>
             <span aria-hidden="true">/</span>

@@ -40,7 +40,7 @@ export function CartReviewPage() {
           }
           aria-label="مسار التنقل"
         >
-          <Link href="/marketplace">الرئيسية</Link>
+          <Link href="/">الرئيسية</Link>
           <span aria-hidden="true">/</span>
           <span aria-current="page">سلة التسوق</span>
         </nav>

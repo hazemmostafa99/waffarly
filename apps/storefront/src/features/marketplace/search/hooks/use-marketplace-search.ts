@@ -13,12 +13,13 @@ export function useMarketplaceSearch() {
   const state = parseMarketplaceSearch(params);
 
   function href(next: MarketplaceSearchState, section = 'deals') {
-    return marketplaceSearchHref('/marketplace', params.toString(), next, section);
+    return marketplaceSearchHref('/', params.toString(), next, section);
   }
 
   function navigate(next: MarketplaceSearchState, section = 'deals') {
-    const url = marketplaceSearchHref('/marketplace', window.location.search, next, section);
-    if (window.location.pathname.replace(/\/+$/, '') !== '/marketplace') {
+    const url = marketplaceSearchHref('/', window.location.search, next, section);
+    const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+    if (currentPath !== '/') {
       router.push(url);
       return;
     }

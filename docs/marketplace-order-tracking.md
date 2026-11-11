@@ -1,6 +1,6 @@
 # Local order tracking and reorder
 
-Route: `/marketplace/orders/[orderId]/tracking`, linked from the local order detail.
+Route: `/orders/[orderId]/tracking`, linked from the local order detail.
 This is an interactive UI demonstration over the current provider-scoped Zustand
 store. It does not represent an actual merchant, shipment, pickup location or
 fulfillment update.

@@ -1,6 +1,7 @@
 import { MarketplaceButton as Button } from '@/components/marketplace/marketplace-button';
 import type { MouseEvent } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   marketplaceNavigation,
   type NavigationTarget,
@@ -15,22 +16,30 @@ export function MarketplaceNavigationLinks({
   onNavigate: (target: NavigationTarget) => void;
   hrefFor: (target: NavigationTarget) => string;
 }) {
+  const pathname = usePathname() ?? '';
+  const currentPathname = pathname.replace(/\/+$/, '') || '/';
+  const isMarketplaceHome = currentPathname === '/';
+
   function click(event: MouseEvent<HTMLAnchorElement>, target: NavigationTarget) {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
       return;
     // Let Next Link change route trees from a detail page. History-only updates
     // must never intercept a cross-page destination and leave stale product UI.
-    if (target.kind === 'route' || window.location.pathname.replace(/\/+$/, '') !== '/marketplace') return;
+    const currentPath = window.location.pathname.replace(/\/+$/, '') || '/';
+    if (target.kind === 'route' || currentPath !== '/') return;
     event.preventDefault();
     onNavigate(target);
   }
   return marketplaceNavigation.map(({ label, target }) => {
     const active =
-      target.kind === 'category'
-        ? target.category === activeCategory
-        : activeCategory === 'all' &&
-          target.kind === 'section' &&
-          target.section === 'marketplace-main';
+      target.kind === 'route'
+        ? target.href === pathname
+        : target.kind === 'category'
+          ? isMarketplaceHome && target.category === activeCategory
+          : isMarketplaceHome &&
+            activeCategory === 'all' &&
+            target.kind === 'section' &&
+            target.section === 'marketplace-main';
     return target.kind === 'pending' ? (
       <Button
         type="button"

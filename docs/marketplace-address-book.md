@@ -1,6 +1,6 @@
 # Demo address book
 
-The active demo account at `/marketplace/account` shows two fictional address
+The active demo account at `/account` shows two fictional address
 examples. Choosing one updates the provider-scoped `selectedDemoAddressId`; no
 typed name, phone number or real address is collected by this address book.
 

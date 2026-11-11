@@ -20,7 +20,7 @@ export function FavoritesPage() {
           aria-label="مسار التنقل"
           className="mb-3 flex items-center gap-2.5 text-[12px] text-muted-foreground"
         >
-          <Link className="text-accent no-underline" href="/marketplace">
+          <Link className="text-accent no-underline" href="/">
             الرئيسية
           </Link>
           <span aria-hidden="true">/</span>

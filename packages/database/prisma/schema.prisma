@@ -41,6 +41,9 @@ model Merchant {
   id                       String                  @id @default(uuid()) @db.Uuid
   name                     String                  @db.VarChar(160)
   storefrontSlug           String                  @unique @db.VarChar(120)
+  storefrontHandle         String?                 @unique @db.VarChar(63)
+  storefrontHandleAssignedAt DateTime?             @db.Timestamptz(6)
+  storefrontHandleAssignedBy String?               @db.VarChar(80)
   activity                 String                  @default("other") @db.VarChar(32)
   contactPhone             String                  @db.VarChar(32)
   ownerName                String                  @db.VarChar(160)

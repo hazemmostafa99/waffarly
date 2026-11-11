@@ -21,16 +21,16 @@ were extracted pixel-perfect from an unavailable original screen.
 
 ## UI delivery order
 
-Local checkout slice implemented at `/marketplace/checkout`: transient demo contact
+Local checkout slice implemented at `/checkout`: transient demo contact
 fields, pickup/delivery selection, review/edit, pending/double-click handling,
 changed-cart protection and explicit simulated confirmation. A product-only demo
-record now feeds the local `/marketplace/orders` history and
-`/marketplace/orders/[orderId]` detail view. Contact fields are not recorded; the
+record now feeds the local `/orders` history and
+`/orders/[orderId]` detail view. Contact fields are not recorded; the
 history is cleared on refresh. No automated checks were run per user request; manual
 acceptance is pending. Backend integration is still deferred. See
 [local checkout](marketplace-local-checkout.md) and [routes](routes-map.md).
 
-Cart-review slice implemented locally at `/marketplace/cart`, with named item,
+Cart-review slice implemented locally at `/cart`, with named item,
 summary and empty-state components, reused quantity/cart functions and drawer entry.
 See [cart review](marketplace-cart-review.md).
 
@@ -41,7 +41,7 @@ The original product page does not establish additional option behavior. Store a
 restaurant detail routes now use the existing local records; the restaurant menu
 shown is an explicitly labeled UI sample because the fixture has no menu data.
 Marketplace seller entry now uses the marketplace visual system with a local-only
-form confirmation. `/marketplace/stores` and `/marketplace/offers` use existing
+form confirmation. `/stores` and `/offers` use existing
 fixtures and product cards. Order tracking and reorder now work as explicitly
 interactive local demonstrations; browser acceptance remains open. The demo account
 flow includes a local account hub plus separate sign-in and
@@ -53,7 +53,7 @@ tests or build were run for this slice, per user instruction. Historical checks 
 Navigation slice implemented locally: header menu/shared destinations, mobile actions,
 URL-backed query/category, direct-link filtering and pending-page feedback. The all-offers
 listing now adds URL-backed search, category, sorting and pagination using existing local
-products. A separate /marketplace/products route lists every reference-fixture product,
+products. A separate /products route lists every reference-fixture product,
 and the homepage links to the catalog and all offers separately. Actual browser
 Back/Forward, keyboard and responsive/visual checks remain
 pending; remaining placeholder destinations are not complete. See

@@ -22,11 +22,11 @@ export function OrderTrackingPage({ orderId }: { orderId: string }) {
             aria-label="مسار التنقل"
             className="mb-3 flex items-center gap-2.5 text-[12px] text-muted-foreground"
           >
-            <Link className="text-accent no-underline" href="/marketplace">
+            <Link className="text-accent no-underline" href="/">
               الرئيسية
             </Link>
             <span aria-hidden="true">/</span>
-            <Link className="text-accent no-underline" href="/marketplace/orders">
+            <Link className="text-accent no-underline" href="/orders">
               طلباتي
             </Link>
           </nav>
@@ -35,7 +35,7 @@ export function OrderTrackingPage({ orderId }: { orderId: string }) {
             <p className="mb-4 mt-0 text-sm leading-[1.8] text-muted-foreground">
               سجل الطلبات وحالات التتبع تجريبية وموجودة في ذاكرة الجلسة الحالية فقط.
             </p>
-            <Link className="font-bold text-accent no-underline" href="/marketplace/orders">
+            <Link className="font-bold text-accent no-underline" href="/orders">
               العودة إلى طلباتي
             </Link>
           </section>
@@ -56,15 +56,15 @@ export function OrderTrackingPage({ orderId }: { orderId: string }) {
           aria-label="مسار التنقل"
           className="mb-3 flex items-center gap-2.5 text-[12px] text-muted-foreground"
         >
-          <Link className="text-accent no-underline" href="/marketplace">
+          <Link className="text-accent no-underline" href="/">
             الرئيسية
           </Link>
           <span aria-hidden="true">/</span>
-          <Link className="text-accent no-underline" href="/marketplace/orders">
+          <Link className="text-accent no-underline" href="/orders">
             طلباتي
           </Link>
           <span aria-hidden="true">/</span>
-          <Link className="text-accent no-underline" href={`/marketplace/orders/${order.id}`}>
+          <Link className="text-accent no-underline" href={`/orders/${order.id}`}>
             تفاصيل الطلب
           </Link>
           <span aria-hidden="true">/</span>

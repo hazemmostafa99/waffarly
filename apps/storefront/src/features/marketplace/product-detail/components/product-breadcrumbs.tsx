@@ -12,7 +12,7 @@ export function ProductBreadcrumbs({
   backHref: string;
 }) {
   const category = marketplaceCategories.find((item) => item.id === product.category);
-  const categoryHref = marketplaceSearchHref('/marketplace', '', {
+  const categoryHref = marketplaceSearchHref('/', '', {
     category: category?.id ?? 'all',
     term: '',
   });
@@ -28,7 +28,7 @@ export function ProductBreadcrumbs({
     >
       <ol>
         <li>
-          <Link href="/marketplace">الرئيسية</Link>
+          <Link href="/">الرئيسية</Link>
         </li>
         <li>
           <span aria-hidden="true">/</span>

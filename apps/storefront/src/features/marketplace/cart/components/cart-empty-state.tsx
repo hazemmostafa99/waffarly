@@ -24,7 +24,7 @@ export function CartEmptyState() {
       <h2 id="empty-cart-title">سلتك لسه فاضية</h2>
       <p>تصفّح المنتجات وأضف اللي يعجبك، وهتلاقيه هنا جاهز للمراجعة.</p>
       <Link
-        href="/marketplace#deals"
+        href="/#deals"
         className={
           'btn btn-gold border-0 rounded-[11px] py-[13px] px-5 font-extrabold bg-waffarly-gold text-[#2d1038]'
         }

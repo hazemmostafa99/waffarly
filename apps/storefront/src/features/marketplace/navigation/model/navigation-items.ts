@@ -8,7 +8,7 @@ export type NavigationTarget =
 
 export const marketplaceNavigation: { label: string; target: NavigationTarget }[] = [
   { label: 'الرئيسية', target: { kind: 'section', section: 'marketplace-main' } },
-  { label: 'عروض اليوم', target: { kind: 'section', section: 'deals' } },
+  { label: 'عروض اليوم', target: { kind: 'route', href: '/offers' } },
   { label: 'الأقسام', target: { kind: 'section', section: 'categories' } },
   { label: 'المتاجر', target: { kind: 'section', section: 'stores' } },
   { label: 'الأجهزة', target: { kind: 'category', category: 'electronics' } },

@@ -46,18 +46,18 @@ export function MarketplaceFooter() {
                     key={label}
                     href={
                       label === 'المفضلة'
-                        ? '/marketplace/favorites'
+                        ? '/favorites'
                         : label === 'تسجيل الدخول'
-                          ? '/marketplace/account/sign-in'
+                          ? '/account/sign-in'
                           : label === 'إنشاء حساب'
-                            ? '/marketplace/account/sign-up'
+                            ? '/account/sign-up'
                             : label === 'بيع على وفّرلي'
                               ? '/join'
                               : label === 'كل المتاجر'
-                                ? '/marketplace/stores'
+                                ? '/stores'
                                 : label === 'كل العروض'
-                                  ? '/marketplace/offers'
-                                  : '/marketplace/orders'
+                                  ? '/offers'
+                                  : '/orders'
                     }
                   >
                     {label}

@@ -29,12 +29,12 @@ export function AuthPageShell({
             aria-label="مسار التنقل"
             className="mb-3 flex items-center gap-2 text-xs text-muted-foreground"
           >
-            <Link href="/marketplace" className="text-accent no-underline hover:text-primary">
+            <Link href="/" className="text-accent no-underline hover:text-primary">
               الرئيسية
             </Link>
             <span aria-hidden="true">/</span>
             <Link
-              href="/marketplace/account"
+              href="/account"
               className="text-accent no-underline hover:text-primary"
             >
               حسابي

@@ -1,6 +1,6 @@
 # Local checkout demo
 
-Route: `/marketplace/checkout`, reached from the cart review CTA. This entire
+Route: `/checkout`, reached from the cart review CTA. This entire
 flow is in-process UI simulation over the current local basket. No backend/API,
 mock HTTP server, database, real order, payment, inventory reservation or notification
 is involved. No package was added.

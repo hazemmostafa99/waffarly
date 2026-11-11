@@ -147,7 +147,7 @@ export function MarketplaceCart() {
             إضافية.
           </p>
           <Link
-            href="/marketplace/cart"
+            href="/cart"
             className={
               'checkout w-full border-0 bg-[var(--purple-800)] text-[#fff] p-3.5 rounded-[11px] font-black'
             }

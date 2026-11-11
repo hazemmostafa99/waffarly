@@ -14,7 +14,7 @@ export function MarketplaceStores() {
           title="متاجر مميزة على وفّرلي"
           subtitle="تسوّق مباشرة من بائعين معتمدين"
           more="كل المتاجر"
-          moreHref="/marketplace/stores"
+          moreHref="/stores"
         />
         <div
           className={

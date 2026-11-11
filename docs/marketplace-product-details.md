@@ -27,8 +27,8 @@ UI-only implementation using the existing five products in `reference.json`. No 
 
 ## Journey
 
-1. Click a product image/title on `/marketplace`; each links to `/marketplace/products/[productId]`.
-2. The URL carries normalized local `category` and `q` context. Return links restore the filtered browse view at `#deals`; arbitrary redirect URLs are ignored.
+1. Click a product image/title on `/`; each links to `/products/[productId]`.
+2. The URL carries normalized local `category` and `q` context. Return links restore the originating home section or filtered products/offers listing; arbitrary redirect URLs are ignored.
 3. Details show the original single image, name, seller, rating, old/current price, discount and delivery copy. A visible local-data disclosure and delivery label avoid presenting fixture claims as current live facts.
 4. Select an integer quantity from 1 to 99. This is a local UI limit, not an inventory assertion. Displayed totals are item subtotals only, excluding any fees; no new delivery-fee or tax policy is inferred.
 5. Add opens the shared cart. Repeated additions merge by product ID. The cart supports quantity changes and explicit removal, displays each line subtotal and the combined subtotal, and counts total units in header badges.

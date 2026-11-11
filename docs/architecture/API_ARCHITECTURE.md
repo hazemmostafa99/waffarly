@@ -1,5 +1,13 @@
 # API architecture
 
+Direct storefront addresses (2026-11-11): Merchants owns optional immutable public
+handles, admin assignment/creation validation and the public identifier-only
+resolver. Technical storefront slugs and POS business codes stay unchanged.
+The existing module dependency graph is unchanged; Merchants exports its service
+to HTTP bootstrap for a development-only, tenant-scoped public-origin check.
+See [storefront addresses](../features/storefront-addresses.md). Marketplace
+integration is still deferred and its local UI does not call this resolver.
+
 POS selling recovery (2026-10-29): Orders assigns new POS sales an immutable branch/day sequence during the sale transaction, using Cairo calendar dates and a globally assigned branch code. An additive nullable order reference preserves existing historical references and receipt snapshots. Exact sale replay returns the original reference; serializable conflicts are retried within a bounded attempt count. Orders also provides the sell-authorized, assigned-active-branch `GET /pos/orders/active-sales` with active/history modes, server-side reference/customer/table search and cursor pagination. Active mode covers unpaid checks and undispatched dine-in rounds; kitchen and delivery queues remain responsible for their own operational states. POS maintains local drafts and protected recovery commands, while confirmed-order references are a bounded cache recoverable through this endpoint. No module dependency changed. Apply the migration before deploying this API, and deploy the API before the new POS client.
 
 Merchant account (2026-10-28): Merchants owns `/owner/account` profile reads and

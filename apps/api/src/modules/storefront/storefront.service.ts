@@ -39,7 +39,7 @@ export class StorefrontService {
   async getSettings(merchantId: string): Promise<MerchantStorefrontSettings> {
     const merchant = await this.prisma.merchant.findUniqueOrThrow({
       where: { id: merchantId },
-      select: { activity: true, storefrontSlug: true },
+      select: { activity: true, storefrontSlug: true, storefrontHandle: true },
     });
     const [selected, available] = await Promise.all([
       this.prisma.merchantStorefront.findUnique({ where: { merchantId } }),
@@ -54,6 +54,7 @@ export class StorefrontService {
     return {
       merchantId,
       storefrontSlug: merchant.storefrontSlug,
+      storefrontHandle: merchant.storefrontHandle ?? null,
       templateId: selected?.templateId ?? null,
       accentColor: selected?.accentColor ?? defaultAccent,
       logoData: selected?.logoData ?? null,

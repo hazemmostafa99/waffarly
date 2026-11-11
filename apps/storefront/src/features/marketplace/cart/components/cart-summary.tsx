@@ -48,7 +48,7 @@ export function CartSummary({
           'add cart-checkout-link w-full border-0 rounded-[9px] bg-waffarly-gold text-[#30113a] p-2.5',
           'font-black mt-2.5 hover:bg-[#ffd353] block text-center no-underline',
         )}
-        href="/marketplace/checkout"
+        href="/checkout"
       >
         متابعة لإتمام الطلب
       </Link>
@@ -57,7 +57,7 @@ export function CartSummary({
       </p>
       <Link
         className={'cart-continue-link block text-center text-accent no-underline text-[13px] pt-2'}
-        href="/marketplace#deals"
+        href="/#deals"
       >
         متابعة التسوق ←
       </Link>

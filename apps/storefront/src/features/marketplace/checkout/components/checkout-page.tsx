@@ -48,9 +48,9 @@ export function CheckoutPage() {
           }
           aria-label="مسار التنقل"
         >
-          <Link href="/marketplace">الرئيسية</Link>
+          <Link href="/">الرئيسية</Link>
           <span aria-hidden="true">/</span>
-          <Link href="/marketplace/cart">السلة</Link>
+          <Link href="/cart">السلة</Link>
           <span aria-hidden="true">/</span>
           <span aria-current="page">إتمام الطلب التجريبي</span>
         </nav>

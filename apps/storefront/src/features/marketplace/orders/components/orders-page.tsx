@@ -21,7 +21,7 @@ export function OrdersPage() {
           aria-label="مسار التنقل"
           className="mb-3 flex items-center gap-2.5 text-[12px] text-muted-foreground"
         >
-          <Link className="text-accent no-underline" href="/marketplace">
+          <Link className="text-accent no-underline" href="/">
             الرئيسية
           </Link>
           <span aria-hidden="true">/</span>
@@ -84,7 +84,7 @@ export function OrdersPage() {
                     </div>
                     <Link
                       className="whitespace-nowrap rounded-[10px] border border-solid border-border px-4 py-2.5 text-[12px] font-bold text-primary no-underline hover:border-accent"
-                      href={`/marketplace/orders/${order.id}`}
+                      href={`/orders/${order.id}`}
                     >
                       تفاصيل الطلب
                     </Link>

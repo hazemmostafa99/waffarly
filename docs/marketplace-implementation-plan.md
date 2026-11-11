@@ -15,9 +15,9 @@ unchanged. This decision supersedes earlier backend-first sequencing.
 
 ## Current status
 
-The local page at `/marketplace` reconstructs the public reference homepage from saved HTML/CSS/JS: original purple/gold theme, Tahoma font stack, logo, 8 categories, 12 restaurants, 5 products and 6 stores. Filtering, favorites, duplicate cart lines, removal, totals, drawer and countdown work locally. Reference code was inspected; rendered browser comparison is still pending. No live marketplace catalog/customer/payment API is connected.
+The local page at `/` reconstructs the public reference homepage from saved HTML/CSS/JS: original purple/gold theme, Tahoma font stack, logo, 8 categories, 12 restaurants, 5 products and 6 stores. Filtering, favorites, duplicate cart lines, removal, totals, drawer and countdown work locally. Reference code was inspected; rendered browser comparison is still pending. No live marketplace catalog/customer/payment API is connected.
 
-The existing Next.js app, business landing `/`, merchant application `/join` and tenant storefront `/s/[slug]` are preserved. There is no new standalone app and no change to API/database/shared contracts in this cleanup.
+The existing Next.js app, merchant application `/join` and tenant storefront `/s/[slug]` remain. The unused business landing page and its route group have been removed. There is no new standalone app and no change to API/database/shared contracts in this cleanup.
 
 ## Read next
 
@@ -52,7 +52,7 @@ pnpm --filter @waffarly/storefront test:marketplace
 pnpm --filter @waffarly/storefront build
 ```
 
-Open `http://localhost:3000/marketplace`. Keep this development route noindex until its production URL, content/data readiness and release checks are agreed. The installed Next.js security advisory needs a separate dependency remediation before publication.
+Open `http://localhost:3000/`. Keep this development route noindex until its production URL, content/data readiness and release checks are agreed. The installed Next.js security advisory needs a separate dependency remediation before publication.
 
 ## Source and verification reports
 

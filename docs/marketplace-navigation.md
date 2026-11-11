@@ -14,7 +14,7 @@ Mode: UI-only; existing `reference.json` data; no backend/API/database requests 
 
 ## URL contract
 
-`/marketplace?category=mobiles&q=<encoded Arabic text>#deals`
+`/?category=mobiles&q=<encoded Arabic text>#deals`
 
 | Part                               | Meaning                                                                                                          |
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------- |

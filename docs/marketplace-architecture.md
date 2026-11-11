@@ -4,7 +4,7 @@ Current structure after the Tailwind/shared-UI refactor. See [refactor details](
 
 ## Product boundaries
 
-Marketplace lives under `/marketplace`; the business pages `/` and `/join` and tenant storefronts `/s/[slug]` remain separate. Root layout owns global providers/document markup. Business routes use `(business)/layout.tsx`; Marketplace layout owns its scoped theme, provider and single shared cart drawer. No pathname-based SiteChrome remains.
+Marketplace serves from `/` inside the invisible `(marketplace)` route group. The unused business landing page and its `(business)` route group have been removed. `/join` remains a separate Marketplace merchant-entry flow, and tenant storefronts `/s/[slug]` stay separate. Root layout owns global providers/document markup; Marketplace layout owns its scoped theme, provider and single shared cart drawer. No pathname-based SiteChrome remains.
 
 All current Marketplace work is UI-first with local reference data. No backend/API/database integration, real customer session, order or payment is authorized. Contact data stays transient. Integration starts only after UI-flow completion and explicit user instruction.
 
@@ -12,7 +12,7 @@ All current Marketplace work is UI-first with local reference data. No backend/A
 
 ```text
 apps/storefront/src/
-  app/marketplace/                 # Thin route entries and layout
+  app/(marketplace)/               # Thin route entries; group name does not appear in URLs
     products/page.tsx              # All local reference products
     products/[productId]/
     cart/
@@ -64,12 +64,14 @@ Only folders with actual code exist. Feature presentation stays in components, R
 
 Pages compose features. MarketplaceSiteHeader composes the shared header, search, primary/mobile navigation, menu and pending feedback on listing/detail/cart/checkout routes. Home composes hero, category/restaurant/product/store collections. MerchantEntryPage composes the shared Marketplace shell with a responsive local-only application form. AccountPage composes guest entry, the ephemeral demo account dashboard, a selectable fictional address book, and links to existing orders/favorites. The selected address ID is stored only in the provider-scoped account slice, and checkout resolves it against local address examples. ProductDetailPage composes breadcrumbs, image, info, seller, purchase and recommendations. CartReviewPage composes editable items, totals and empty state. CheckoutPage composes local details, review and explicit demo confirmation. OrderTrackingPage renders a delivery/pickup-specific local status timeline, and order details can add the saved product snapshot back to the cart.
 
-The homepage product section links to /marketplace/products for the full local
-reference catalog and /marketplace/offers for discounted products. Both compose
-MarketplaceProductListingPage, ProductListingFilters, product cards and pagination.
-Category, search, sort and page state is URL-backed; product details preserve the
-originating listing for their return link. The full catalog contains the five
-records in reference.json; merchant-detail mock examples are kept out of it.
+The homepage shows separate full-products and daily-offers sections. The first
+links to /products; the offers section and “عروض اليوم” navigation
+link to /offers. Product detail links from either homepage section
+return to their originating section. Both listing routes compose
+MarketplaceProductListingPage, ProductListingFilters, product cards and
+pagination. Category, search, sort and page state is URL-backed. The full catalog
+contains the five records in reference.json; merchant-detail mock examples are
+kept out of it.
 
 Route loading states reuse the `MarketplaceSkeleton` primitive and compose page-shaped placeholders for the header, merchant entry, stores and product listings. These are used for Next route loading and Suspense boundaries; synchronous local fixtures do not get an artificial delay.
 

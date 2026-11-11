@@ -15,7 +15,7 @@ export function OrdersEmptyState() {
         الطلبات التجريبية بتظهر هنا بعد إكمال الـCheckout، وبتتمسح لما تحدّث الصفحة.
       </p>
       <Link
-        href="/marketplace"
+        href="/"
         className="inline-block rounded-[11px] bg-waffarly-gold px-5 py-[13px] font-extrabold text-[#2d1038] no-underline"
       >
         ابدأ التسوق

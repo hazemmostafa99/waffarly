@@ -8,6 +8,7 @@ import {
   subscriptionStatusLabels,
 } from '../subscriptions/subscription-status.js';
 import type { CreatedMerchantResult } from './created-merchant-store.js';
+import { storefrontUrl } from '../../lib/storefront-url.js';
 
 export function CreatedMerchantDialog({
   result,
@@ -16,7 +17,7 @@ export function CreatedMerchantDialog({
   result: CreatedMerchantResult | null;
   onClose: () => void;
 }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   if (!result) return null;
   const { merchant, password } = result;
 
@@ -47,6 +48,13 @@ export function CreatedMerchantDialog({
         </div>
         <dl className="m-0 grid gap-3 sm:grid-cols-2">
           <CredentialValue label={t('Business name')} value={merchant.name} direction="auto" />
+          {merchant.storefrontHandle && (
+            <CredentialValue
+              label={locale === 'ar' ? 'عنوان المتجر' : 'Storefront address'}
+              value={storefrontUrl(merchant.storefrontHandle) ?? merchant.storefrontHandle}
+              direction="ltr"
+            />
+          )}
           <div className="grid min-w-0 gap-1">
             <dt className="text-xs text-waffarly-muted">{t('Subscription status')}</dt>
             <dd className="m-0">
