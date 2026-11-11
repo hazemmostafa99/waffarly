@@ -1,5 +1,12 @@
 # Direct storefront addresses
 
+Production rollout (2026-11-12): host routing and tenant-scoped HTTPS origins are
+enabled only with a configured `STOREFRONT_BASE_DOMAIN`. Registered storefronts
+can use the existing customer-auth endpoints with credentials; tenant public
+catalog/checkout permissions still require the matching technical slug.
+See [production setup](../setup/PRODUCTION_STOREFRONT_SUBDOMAINS.md). Existing
+application-origin permissions and module dependencies are unchanged.
+
 User authorized persistent public handles on 2026-11-11 after reviewing local
 subdomain routing. This authorization covers the direct tenant storefront only;
 Marketplace remains local-only under its existing roadmap.

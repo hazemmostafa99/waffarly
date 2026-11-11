@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import { AppConfiguration } from './config/app-configuration.js';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 import { StructuredLogger } from './common/logging/structured-logger.js';
-import { MerchantService, localStorefrontRequestScope } from './modules/merchants/index.js';
+import { MerchantService, storefrontRequestScope } from './modules/merchants/index.js';
 
 export function configureHttpApplication(
   app: INestApplication,
@@ -18,17 +18,19 @@ export function configureHttpApplication(
     const cached = decisions.get(request);
     if (cached) return cached;
     const decision = (async () => {
-      if (!config.isDevelopment || !request.headers.origin) return false;
-      const scope = localStorefrontRequestScope(
+      if (!request.headers.origin) return false;
+      const scope = storefrontRequestScope(
         request.headers.origin,
         request.method,
         request.path,
         config.corsOrigins,
+        config.storefrontBaseDomain,
+        config.isDevelopment,
       );
       if (!scope) return false;
       try {
         const address = await app.get(MerchantService).resolveStorefrontHandle(scope.handle);
-        return address.storefrontSlug === scope.slug;
+        return scope.slug === null || address.storefrontSlug === scope.slug;
       } catch {
         return false;
       } // Fail closed, including unavailable database/unknown handle.
@@ -45,7 +47,7 @@ export function configureHttpApplication(
       void registeredStorefrontRequest(request).then((allowed) =>
         callback(null, {
           origin: allowed ? request.headers.origin! : false,
-          credentials: false,
+          credentials: allowed && request.path.startsWith('/auth/customer/'),
           methods: ['GET', 'HEAD', 'POST', 'OPTIONS'],
           allowedHeaders: ['Content-Type'],
         }),

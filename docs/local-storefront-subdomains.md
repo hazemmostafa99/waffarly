@@ -1,5 +1,10 @@
 # Saved storefront addresses in local development
 
+Production rollout is now supported through an explicit base-domain setting.
+See [production storefront subdomains](setup/PRODUCTION_STOREFRONT_SUBDOMAINS.md)
+for DNS, TLS, Nginx, environment and origin-policy requirements. The local setup
+below still applies; its earlier production limitations are superseded there.
+
 Updated 2026-11-11. Merchant addresses are now stored through the API/database.
 `LOCAL_STOREFRONT_ALIASES` is obsolete and is no longer read. There is no automatic
 import of old aliases: an administrator explicitly assigns the desired handle.
