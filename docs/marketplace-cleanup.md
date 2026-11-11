@@ -21,6 +21,11 @@ Layout verification: production build and standalone TypeScript passed after rou
 | Misleading UI-only store names                       | Renamed to MarketplaceState/createMarketplaceStore/useMarketplaceStore because it owns cart and favorites too                                         |
 | Historical foundation plan                           | Replaced with a current documentation entry point plus architecture and phased functional roadmap                                                     |
 
+The Marketplace store has since been decomposed into feature-owned Zustand slices:
+cart, favorites, orders and checkout actions. `state/create-marketplace-store.ts`
+composes those slices into one provider-scoped store so cross-feature checkout
+updates remain atomic; feature hooks expose only their own state/action types.
+
 No package version was upgraded. Lockfile regenerated offline with pnpm 10.34.5. Besides root importer removal, pnpm removes an optional react-dom peer binding from react-i18next's snapshot when no root react-dom resolution remains; React/React DOM are still declared by consuming apps. Router package snapshots remain because dashboards use them.
 
 ## Retained dependencies

@@ -20,7 +20,7 @@ test('recommendations exclude the current product, prioritize real category matc
   );
 });
 import { test } from 'node:test';
-import { createMarketplaceStore } from '@/features/marketplace/state/marketplace-store';
+import { createMarketplaceStore } from '@/features/marketplace/state/create-marketplace-store';
 import { cartProducts, cartTotal, cartQuantity } from '@/features/marketplace/cart/model/cart';
 import { filterProducts, findProduct } from '@/features/marketplace/catalog/model/catalog';
 import {

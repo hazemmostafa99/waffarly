@@ -14,8 +14,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - Group related work under `features/marketplace/<feature>/components`, `hooks`,
   and `model` as needed; do not put hooks in component folders or create empty layers.
-- Cross-feature client state belongs in `features/marketplace/state`; shared money
-  formatting belongs in `features/marketplace/shared/lib`. Keep data separate.
+- Keep Zustand state/actions with their owning feature in `features/marketplace/<feature>/state`.
+  Compose feature slices and shared store types in `features/marketplace/state`; keep the
+  provider in `features/marketplace/providers`. Cross-feature workflows belong to the
+  coordinating feature (for example, checkout atomically updates cart and orders).
+  Shared money formatting belongs in `features/marketplace/shared/lib`. Keep data separate.
 - Style Marketplace components with Tailwind utilities in TSX. The only Marketplace
   stylesheet is `styles/marketplace-tokens.css`, for scoped colors/shadcn token
   aliases and base rules. Do not reintroduce component selectors or an @apply-based

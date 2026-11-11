@@ -1,6 +1,7 @@
 import { cn } from '@waffarly/ui';
 import { MarketplaceDialog } from '@/components/marketplace/marketplace-dialog';
 import { MarketplaceNavigationLinks } from '@/features/marketplace/navigation/components/marketplace-navigation-links';
+import Link from 'next/link';
 import type { CategoryId } from '@/features/marketplace/search/model/search-state';
 import type { NavigationTarget } from '@/features/marketplace/navigation/model/navigation-items';
 
@@ -34,6 +35,9 @@ export function MarketplaceMenu({
             onNavigate(target);
           }}
         />
+        <Link href="/marketplace/orders" onClick={onClose}>
+          طلباتي
+        </Link>
       </nav>
     </MarketplaceDialog>
   );

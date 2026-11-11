@@ -55,7 +55,9 @@ features/marketplace/
     components/
     hooks/
     model/
-  state/marketplace-store.ts
+  state/create-marketplace-store.ts + state/marketplace-state.ts
+  cart/state/cart-slice.ts + favorites/state/favorites-slice.ts
+  orders/state/orders-slice.ts + checkout/state/checkout-actions.ts
   shared/lib/format-money.ts
   providers/marketplace-providers.tsx
   data/reference.json

@@ -9,8 +9,8 @@ import { useSearchParams } from 'next/navigation';
 import { productHref } from '@/features/marketplace/product-detail/model/product-navigation';
 import { ProductPrice } from '@/features/marketplace/catalog/components/product-price';
 import { ProductRating } from '@/features/marketplace/catalog/components/product-rating';
-import { FavoriteButton } from '@/features/marketplace/catalog/components/favorite-button';
-import { useMarketplaceStore } from '@/features/marketplace/providers/marketplace-providers';
+import { FavoriteButton } from '@/features/marketplace/favorites/components/favorite-button';
+import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
 import { MAX_CART_QUANTITY } from '@/features/marketplace/cart/model/cart';
 import { type MarketplaceProduct } from '@/features/marketplace/catalog/model/catalog';
 
@@ -23,8 +23,8 @@ export function ProductCard({
 }) {
   const params = useSearchParams();
   const href = productHref(p.id, params.toString());
-  const addToCart = useMarketplaceStore((s) => s.addToCart);
-  const atLimit = useMarketplaceStore(
+  const addToCart = useCartStore((s) => s.addToCart);
+  const atLimit = useCartStore(
     (s) => (s.cart.find((line) => line.productId === p.id)?.quantity ?? 0) >= MAX_CART_QUANTITY,
   );
   return (

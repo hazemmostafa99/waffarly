@@ -7,7 +7,7 @@ import { MarketplaceButton as Button } from '@/components/marketplace/marketplac
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { cartQuantity } from '@/features/marketplace/cart/model/cart';
-import { useMarketplaceStore } from '@/features/marketplace/providers/marketplace-providers';
+import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
 import { MarketplaceSearchForm } from '@/features/marketplace/search/components/marketplace-search-form';
 import type { MarketplaceSearchState } from '@/features/marketplace/search/model/search-state';
 
@@ -26,8 +26,8 @@ export function MarketplaceHeader({
   onPending: (title: string) => void;
   navigation: ReactNode;
 }) {
-  const cartCount = useMarketplaceStore((s) => cartQuantity(s.cart));
-  const setCartOpen = useMarketplaceStore((s) => s.setCartOpen);
+  const cartCount = useCartStore((s) => cartQuantity(s.cart));
+  const setCartOpen = useCartStore((s) => s.setCartOpen);
   return (
     <>
       <div
@@ -100,16 +100,15 @@ export function MarketplaceHeader({
               <small>مرحبًا، سجل دخولك</small>
               <strong>حسابي وقوائمي⌄</strong>
             </Button>
-            <Button
-              type="button"
+            <Link
+              href="/marketplace/orders"
               className={cn(
-                'action disabled:cursor-not-allowed disabled:opacity-[0.5] text-[#fff] no-underline py-2.5 px-[11px] rounded-[10px]',
+                'action inline-block text-[#fff] no-underline py-2.5 px-[11px] rounded-[10px] hover:bg-[rgba(255,_255,_255,_0.1)]',
                 'whitespace-nowrap hover:bg-[rgba(255,_255,_255,_0.1)] [&_strong]:text-[13px]',
               )}
-              onClick={() => onPending('orders')}
             >
               <strong>طلباتي</strong>
-            </Button>
+            </Link>
             <Button
               type="button"
               className={cn(

@@ -52,7 +52,7 @@ Cart and favorites stay in the provider mounted in the Marketplace layout, so cl
 | `src/components/marketplace/quantity-selector.tsx`                                  | Shared decrement/output/increment controls, labels and bounds                           |
 | `model/product-navigation.ts`                                                       | Safe product and back URLs retaining only known browse context                          |
 | `model/catalog.ts`                                                                  | Local lookup, quantity validation, unit count and subtotal derivation                   |
-| `model/marketplace-store.ts`                                                        | `{productId, quantity}` lines, merged add/update/remove and scoped favorites            |
+| `cart/state/cart-slice.ts` / `favorites/state/favorites-slice.ts`                   | `{productId, quantity}` lines, merged add/update/remove and scoped favorites            |
 
 Changing from duplicate reference cart rows to merged quantity lines is an explicit approved UI extension. There is no persistent schema migration, shared API contract change or stock claim.
 

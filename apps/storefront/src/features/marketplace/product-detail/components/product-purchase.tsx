@@ -6,18 +6,18 @@ import { MarketplaceButton as Button } from '@/components/marketplace/marketplac
 
 import { useState } from 'react';
 import { QuantitySelector } from '@/components/marketplace/quantity-selector';
-import { useMarketplaceStore } from '@/features/marketplace/providers/marketplace-providers';
+import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
 import { MAX_CART_QUANTITY } from '@/features/marketplace/cart/model/cart';
 import { money } from '@/features/marketplace/shared/lib/format-money';
 import { type MarketplaceProduct } from '@/features/marketplace/catalog/model/catalog';
 
 export function ProductPurchase({ product }: { product: MarketplaceProduct }) {
   const [quantity, setQuantity] = useState(1);
-  const existing = useMarketplaceStore(
+  const existing = useCartStore(
     (state) => state.cart.find((line) => line.productId === product.id)?.quantity ?? 0,
   );
-  const add = useMarketplaceStore((state) => state.addToCart);
-  const open = useMarketplaceStore((state) => state.setCartOpen);
+  const add = useCartStore((state) => state.addToCart);
+  const open = useCartStore((state) => state.setCartOpen);
   const remaining = MAX_CART_QUANTITY - existing;
   const allowed = quantity <= remaining;
   return (

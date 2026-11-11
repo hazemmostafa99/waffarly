@@ -1,25 +1,28 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { cartProducts, type MarketplaceCartLine } from '@/features/marketplace/cart/model/cart';
+import type { MarketplaceCartLine } from '@/features/marketplace/cart/model/cart';
 import {
   EMPTY_CHECKOUT,
   validateCheckout,
   type CheckoutDraft,
   type CheckoutErrors,
-  type DemoReceipt,
 } from '@/features/marketplace/checkout/model/checkout';
+import type { DemoOrder } from '@/features/marketplace/orders/model/demo-order';
 
 export function useLocalCheckout(
   lines: MarketplaceCartLine[],
-  clearCartIfUnchanged: (snapshot: MarketplaceCartLine[]) => boolean,
+  completeDemoCheckout: (
+    snapshot: MarketplaceCartLine[],
+    fulfillment: CheckoutDraft['fulfillment'],
+  ) => DemoOrder | null,
 ) {
   const [step, setStep] = useState<'details' | 'review' | 'confirmed'>('details');
   const [draft, setDraft] = useState<CheckoutDraft>({ ...EMPTY_CHECKOUT });
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [notice, setNotice] = useState('');
   const [pending, setPending] = useState(false);
-  const [receipt, setReceipt] = useState<DemoReceipt | null>(null);
+  const [receipt, setReceipt] = useState<DemoOrder | null>(null);
   const busy = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(
@@ -52,10 +55,6 @@ export function useLocalCheckout(
       return;
     }
     const snapshot = lines.map((line) => ({ ...line }));
-    const nextReceipt: DemoReceipt = {
-      items: cartProducts(snapshot),
-      fulfillment: draft.fulfillment,
-    };
     busy.current = true;
     setPending(true);
     setNotice('');
@@ -63,11 +62,12 @@ export function useLocalCheckout(
     timer.current = setTimeout(() => {
       busy.current = false;
       setPending(false);
-      if (!clearCartIfUnchanged(snapshot)) {
+      const order = completeDemoCheckout(snapshot, draft.fulfillment);
+      if (!order) {
         setNotice('السلة اتغيّرت أثناء المراجعة. راجع المنتجات والإجمالي وأكد التجربة مرة تانية.');
         return;
       }
-      setReceipt(nextReceipt);
+      setReceipt(order);
       setDraft({ ...EMPTY_CHECKOUT });
       setStep('confirmed');
     }, 600);

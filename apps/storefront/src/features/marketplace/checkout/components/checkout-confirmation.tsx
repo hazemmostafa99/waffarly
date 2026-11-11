@@ -1,9 +1,10 @@
 import { cn } from '@waffarly/ui';
 import Link from 'next/link';
-import type { DemoReceipt } from '@/features/marketplace/checkout/model/checkout';
+import type { DemoOrder } from '@/features/marketplace/orders/model/demo-order';
 import { CheckoutOrderSummary } from '@/features/marketplace/checkout/components/checkout-order-summary';
+import { formatDemoOrderDate } from '@/features/marketplace/orders/model/demo-order';
 
-export function CheckoutConfirmation({ receipt }: { receipt: DemoReceipt }) {
+export function CheckoutConfirmation({ receipt }: { receipt: DemoOrder }) {
   return (
     <section
       className={
@@ -31,9 +32,21 @@ export function CheckoutConfirmation({ receipt }: { receipt: DemoReceipt }) {
         <h2 id="checkout-success-title">اكتملت التجربة بنجاح</h2>
         <p role="status">ده تأكيد تجريبي فقط — مفيش طلب حقيقي اتبعت، ومفيش مبلغ اتخصم.</p>
         <p className={'detail-note text-[12px] leading-[1.8] text-muted-foreground'}>
-          تم تفريغ سلة التجربة ومسح بيانات التواصل من الشاشة. الملخص هنا محلي ومؤقت، ومفيش رقم طلب
-          أو موعد استلام حقيقي.
+          تم تفريغ سلة التجربة. بيانات التواصل لا تُحفظ، والملخص يظل متاحًا في «طلباتي» طوال الجلسة
+          الحالية فقط.
         </p>
+        <dl className="my-5 grid gap-2 text-[13px]">
+          <div className="flex justify-center gap-2">
+            <dt className="text-muted-foreground">رقم تجريبي</dt>
+            <dd className="m-0 font-bold" dir="ltr">
+              {receipt.id}
+            </dd>
+          </div>
+          <div className="flex justify-center gap-2">
+            <dt className="text-muted-foreground">وقت التجربة</dt>
+            <dd className="m-0">{formatDemoOrderDate(receipt.createdAt)}</dd>
+          </div>
+        </dl>
         <span
           className={
             'cart-demo-label whitespace-nowrap py-[7px] px-2.5 rounded-[8px] bg-secondary text-accent text-[11px]'
@@ -41,14 +54,22 @@ export function CheckoutConfirmation({ receipt }: { receipt: DemoReceipt }) {
         >
           {receipt.fulfillment === 'delivery' ? 'توصيل تجريبي' : 'استلام تجريبي'}
         </span>
-        <Link
-          className={
-            'btn btn-gold border-0 rounded-[11px] py-[13px] px-5 font-extrabold bg-waffarly-gold text-[#2d1038]'
-          }
-          href="/marketplace"
-        >
-          العودة للتسوق
-        </Link>
+        <div className="mt-5 flex flex-wrap justify-center gap-3">
+          <Link
+            className={
+              'btn btn-gold border-0 rounded-[11px] py-[13px] px-5 font-extrabold bg-waffarly-gold text-[#2d1038]'
+            }
+            href={`/marketplace/orders/${receipt.id}`}
+          >
+            عرض تفاصيل الطلب
+          </Link>
+          <Link
+            className="rounded-[11px] border border-border px-5 py-3 text-primary no-underline"
+            href="/marketplace/orders"
+          >
+            كل طلباتي
+          </Link>
+        </div>
       </div>
       <CheckoutOrderSummary items={receipt.items} />
     </section>

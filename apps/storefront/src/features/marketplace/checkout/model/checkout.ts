@@ -9,10 +9,6 @@ export interface CheckoutDraft {
 }
 export type CheckoutErrors = Partial<Record<'name' | 'phone' | 'address', string>>;
 export type CheckoutItem = MarketplaceProduct & { quantity: number };
-export interface DemoReceipt {
-  items: CheckoutItem[];
-  fulfillment: Fulfillment;
-}
 export const EMPTY_CHECKOUT: CheckoutDraft = {
   name: '',
   phone: '',

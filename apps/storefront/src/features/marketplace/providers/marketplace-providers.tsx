@@ -3,10 +3,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { useStore } from 'zustand';
-import {
-  createMarketplaceStore,
-  type MarketplaceState,
-} from '@/features/marketplace/state/marketplace-store';
+import { createMarketplaceStore } from '@/features/marketplace/state/create-marketplace-store';
+import type { MarketplaceState } from '@/features/marketplace/state/marketplace-state';
 
 function createMarketplaceQueryClient() {
   return new QueryClient({

@@ -5,7 +5,8 @@ import { cn } from '@waffarly/ui';
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
-import { useMarketplaceStore } from '@/features/marketplace/providers/marketplace-providers';
+import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
+import { useCheckoutStore } from '@/features/marketplace/checkout/hooks/use-checkout-store';
 import { cartProducts } from '@/features/marketplace/cart/model/cart';
 import { CartEmptyState } from '@/features/marketplace/cart/components/cart-empty-state';
 import { useLocalCheckout } from '@/features/marketplace/checkout/hooks/use-local-checkout';
@@ -17,8 +18,8 @@ import { CheckoutConfirmation } from '@/features/marketplace/checkout/components
 const steps = ['بيانات التواصل والاستلام', 'مراجعة الطلب', 'تأكيد تجريبي'];
 
 export function CheckoutPage() {
-  const lines = useMarketplaceStore((state) => state.cart);
-  const complete = useMarketplaceStore((state) => state.clearCartIfUnchanged);
+  const lines = useCartStore((state) => state.cart);
+  const complete = useCheckoutStore((state) => state.completeDemoCheckout);
   const checkout = useLocalCheckout(lines, complete);
   const products = cartProducts(lines);
   const heading = useRef<HTMLHeadingElement>(null);

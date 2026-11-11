@@ -16,12 +16,16 @@ is involved. No package was added.
   explicitly simulated confirmation. No payment card fields exist.
 - `checkout-order-summary.tsx`: existing fixture products/quantities, item subtotals,
   unit count and fee-exclusion notice; reused by review and confirmation.
-- `checkout-confirmation.tsx`: explicit demo success and temporary product-only
-  summary, without fabricated order number, delivery deadline or payment claim.
+- `checkout-confirmation.tsx`: explicit demo success, local demo ID, time and links
+  to order history/details. These values identify only an in-memory demonstration.
 - `use-local-checkout.ts`: local state machine, validation, synchronous double-click
   guard, short cancellable in-process delay and sensitive-draft clearing.
 - `model/checkout.ts`: local UI types/defaults and validation; not a shared production
-  transport contract. `marketplace-store.ts` clears only an unchanged basket snapshot.
+  transport contract. `checkout/state/checkout-actions.ts` atomically checks the
+  unchanged basket, stores a product-only demo order and clears that basket.
+- `features/marketplace/orders`: session-local history and order-detail screens. The
+  record contains only fixture item snapshots, fulfillment choice, local time and a
+  visibly demo-prefixed ID/status. Contact data is excluded.
 
 Demo validation: name at least 2 characters; phone 7-15 Western digits with optional
 plus/spaces/parentheses/hyphens; delivery address at least 8 characters. These are
@@ -32,8 +36,10 @@ local UX rules, not verified production fulfillment/contact requirements.
 Contact data stays in component state only, never URLs, Zustand, browser storage,
 logs or a server. Forms ask for fake data and disable autocomplete. Leaving the
 route/unmounting or reloading drops the draft; successful demo confirmation clears
-it. The temporary receipt retains only fixture products, quantities and fulfillment
-type. The delay is cancelled on unmount, preserving the cart if the user exits.
+it. The order history retains only fixture products, quantities, fulfillment type,
+local confirmation time and an explicitly demo-prefixed ID/status. It lives in the
+mounted Zustand provider; refreshing clears it. The delay is cancelled on unmount,
+preserving the cart if the user exits.
 
 During review, totals reflect the current shared cart. Confirm captures a snapshot;
 if the cart changes during the local pending delay, it is not cleared and an error
@@ -54,7 +60,10 @@ per the user's instruction. Manual acceptance remains pending.
 
 Manual journey: add a product -> Review Cart -> Continue -> try missing/invalid
 fields -> use fake details -> switch pickup/delivery -> Review -> Edit -> Confirm
-Demo. Confirm the no-real-order message, cleared cart and absence of personal data
-in confirmation. Also try an empty cart, refresh/route exit, rapid double-clicks,
-and changing cart quantity in the drawer while confirmation is pending. Check mobile
-layout and Western price digits. Nothing should contact a backend or charge money.
+Demo -> open order history -> open order details. Confirm the demo-only notice,
+cleared cart, product/quantity snapshot and absence of contact data. Confirm header,
+menu, footer and success links reach the history page. Also try an empty list, unknown
+ID and refresh; after refresh the history should be empty and old detail unavailable.
+Try rapid double-clicks and changing cart quantity in the drawer while confirmation
+is pending. Check mobile layout and Western price digits. Nothing should contact a
+backend or charge money.

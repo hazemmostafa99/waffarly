@@ -1,4 +1,5 @@
 import { cn } from '@waffarly/ui';
+import Link from 'next/link';
 export function MarketplaceFooter() {
   return (
     <footer className={'bg-[#21102a] text-[#fff] pt-10.5 px-0 pb-[95px]'}>
@@ -32,11 +33,17 @@ export function MarketplaceFooter() {
           ].map(([title, ...links]) => (
             <div key={title}>
               <h4>{title}</h4>
-              {links.map((label) => (
-                <a key={label} href="#">
-                  {label}
-                </a>
-              ))}
+              {links.map((label) =>
+                label === 'طلباتك' || label === 'تتبّع طلبك' ? (
+                  <Link key={label} href="/marketplace/orders">
+                    {label}
+                  </Link>
+                ) : (
+                  <a key={label} href="#">
+                    {label}
+                  </a>
+                ),
+              )}
             </div>
           ))}
         </div>

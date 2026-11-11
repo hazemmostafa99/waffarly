@@ -6,7 +6,7 @@ import { cn } from '@waffarly/ui';
 
 import { usePathname } from 'next/navigation';
 
-import { useMarketplaceStore } from '@/features/marketplace/providers/marketplace-providers';
+import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
 
 export function MarketplaceMobileNav({
   onHome,
@@ -19,8 +19,8 @@ export function MarketplaceMobileNav({
   onSearch: () => void;
   onAccount: () => void;
 }) {
-  const setCartOpen = useMarketplaceStore((s) => s.setCartOpen);
-  const cartOpen = useMarketplaceStore((s) => s.cartOpen);
+  const setCartOpen = useCartStore((s) => s.setCartOpen);
+  const cartOpen = useCartStore((s) => s.cartOpen);
   const onCartPage = usePathname() === '/marketplace/cart';
   const actions = [onHome, onCategories, onSearch, () => setCartOpen(true), onAccount];
   return (

@@ -1,6 +1,6 @@
 import { cn } from '@waffarly/ui';
 import { type MarketplaceProduct } from '@/features/marketplace/catalog/model/catalog';
-import { FavoriteButton } from '@/features/marketplace/catalog/components/favorite-button';
+import { FavoriteButton } from '@/features/marketplace/favorites/components/favorite-button';
 
 export function ProductMedia({ product }: { product: MarketplaceProduct }) {
   return (

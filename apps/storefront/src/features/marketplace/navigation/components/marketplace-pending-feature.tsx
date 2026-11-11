@@ -10,7 +10,7 @@ export function MarketplacePendingFeature({
   feature: string;
   onClose: () => void;
 }) {
-  const title = feature === 'account' ? 'حسابي' : feature === 'orders' ? 'طلباتي' : feature;
+  const title = feature === 'account' ? 'حسابي' : feature;
   return (
     <MarketplaceDialog open={Boolean(feature)} onClose={onClose} title={title || 'قريبًا'}>
       <p>الصفحة دي لسه قيد التجهيز. تقدر تكمّل تصفّح المنتجات والمتاجر دلوقتي.</p>

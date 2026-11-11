@@ -1,5 +1,16 @@
 # Marketplace routes map
 
+## Local order history and detail
+
+- `/marketplace/orders` lists product-only demo orders created during the current
+  mounted session. The header, menu, footer, and checkout confirmation link here.
+- `/marketplace/orders/[orderId]` shows the selected demo order's item snapshot,
+  total, local confirmation time and delivery/pickup choice. Unknown or refreshed
+  session IDs show an honest unavailable state because this history is in memory.
+
+These are UI-only flows backed by the local Zustand store. They contain no contact
+details, account identity, backend request, actual fulfillment, or real order status.
+
 Latest local flow: `/marketplace/checkout` now hosts details -> review -> explicit
 demo confirmation on the same route. Entry is the cart review CTA; empty baskets
 link to browsing. No server order/auth/payment routes were added. See

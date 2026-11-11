@@ -1,13 +1,12 @@
 'use client';
 
 import { MarketplaceButton as Button } from '@/components/marketplace/marketplace-button';
-
 import { cn } from '@waffarly/ui';
+import { useFavoritesStore } from '@/features/marketplace/favorites/hooks/use-favorites-store';
 
-import { useMarketplaceStore } from '@/features/marketplace/providers/marketplace-providers';
 export function FavoriteButton({ productId, name }: { productId: string; name: string }) {
-  const favorite = useMarketplaceStore((state) => state.favorites.includes(productId));
-  const toggle = useMarketplaceStore((state) => state.toggleFavorite);
+  const favorite = useFavoritesStore((state) => state.favorites.includes(productId));
+  const toggle = useFavoritesStore((state) => state.toggleFavorite);
   return (
     <Button
       type="button"

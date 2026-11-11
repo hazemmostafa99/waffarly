@@ -6,17 +6,17 @@ import { cn } from '@waffarly/ui';
 
 import { useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useMarketplaceStore } from '@/features/marketplace/providers/marketplace-providers';
+import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
 import { cartProducts, cartTotal } from '@/features/marketplace/cart/model/cart';
 import { money } from '@/features/marketplace/shared/lib/format-money';
 import { QuantitySelector } from '@/components/marketplace/quantity-selector';
 
 export function MarketplaceCart() {
-  const open = useMarketplaceStore((s) => s.cartOpen);
-  const setOpen = useMarketplaceStore((s) => s.setCartOpen);
-  const ids = useMarketplaceStore((s) => s.cart);
-  const remove = useMarketplaceStore((s) => s.removeCartItem);
-  const setQuantity = useMarketplaceStore((s) => s.setCartQuantity);
+  const open = useCartStore((s) => s.cartOpen);
+  const setOpen = useCartStore((s) => s.setCartOpen);
+  const ids = useCartStore((s) => s.cart);
+  const remove = useCartStore((s) => s.removeCartItem);
+  const setQuantity = useCartStore((s) => s.setCartQuantity);
   const drawer = useRef<HTMLElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const products = cartProducts(ids);

@@ -5,16 +5,16 @@ import { cn } from '@waffarly/ui';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
-import { useMarketplaceStore } from '@/features/marketplace/providers/marketplace-providers';
+import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
 import { cartProducts, cartQuantity, cartTotal } from '@/features/marketplace/cart/model/cart';
 import { CartReviewItem } from '@/features/marketplace/cart/components/cart-review-item';
 import { CartSummary } from '@/features/marketplace/cart/components/cart-summary';
 import { CartEmptyState } from '@/features/marketplace/cart/components/cart-empty-state';
 
 export function CartReviewPage() {
-  const lines = useMarketplaceStore((state) => state.cart);
-  const setQuantity = useMarketplaceStore((state) => state.setCartQuantity);
-  const remove = useMarketplaceStore((state) => state.removeCartItem);
+  const lines = useCartStore((state) => state.cart);
+  const setQuantity = useCartStore((state) => state.setCartQuantity);
+  const remove = useCartStore((state) => state.removeCartItem);
   const products = cartProducts(lines);
   const heading = useRef<HTMLHeadingElement>(null);
   const [notice, setNotice] = useState('');

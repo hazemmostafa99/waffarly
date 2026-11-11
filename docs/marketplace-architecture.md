@@ -16,6 +16,7 @@ apps/storefront/src/
     products/[productId]/
     cart/
     checkout/
+    orders/[orderId]/
   components/marketplace/          # Shared Marketplace primitives/adapters
     marketplace-button.tsx        # Uses @waffarly/ui Button
     marketplace-form-controls.tsx # Uses Input and Textarea
@@ -29,10 +30,13 @@ apps/storefront/src/
     navigation/{components,hooks,model}/
     search/{components,hooks,model}/
     catalog/{components,model}/
+    favorites/{components,hooks,state}/
     product-detail/{components,model}/
-    cart/{components,model}/
-    checkout/{components,hooks,model}/
-    state/marketplace-store.ts
+    cart/{components,hooks,model,state}/
+    checkout/{components,hooks,model,state}/
+      state/checkout-actions.ts
+    orders/{components,hooks,model,state}/
+    state/{marketplace-state,create-marketplace-store}.ts
     shared/lib/format-money.ts
     providers/marketplace-providers.tsx
     data/reference.json
@@ -40,23 +44,26 @@ apps/storefront/src/
   styles/marketplace-tokens.css    # Palette, shadcn aliases and base rules only
 ```
 
-Only folders with actual code exist. Feature presentation stays in components, React coordination in hooks, and pure types/validation/calculation in model. Shared application state spans cart/favorites/drawer in state; reusable primitives stay outside feature-specific folders. Generic cross-application primitives remain in packages/ui.
+Only folders with actual code exist. Feature presentation stays in components, React coordination in hooks, and pure types/validation/calculation in model. Each feature owns its Zustand slice beside its state and actions. The central state folder contains only the combined state type and the factory that composes slices; the provider creates one store instance per mounted Marketplace layout. Checkout owns the cross-feature action that verifies the cart snapshot, adds an order and clears the cart in one store update. Reusable primitives stay outside feature-specific folders. Generic cross-application primitives remain in packages/ui.
 
 ## Composition and state
 
 Pages compose features. MarketplaceSiteHeader composes the shared header, search, primary/mobile navigation, menu and pending feedback on listing/detail/cart/checkout routes. Home composes hero, category/restaurant/product/store collections. ProductDetailPage composes breadcrumbs, image, info, seller, purchase and recommendations. CartReviewPage composes editable items, totals and empty state. CheckoutPage composes local details, review and explicit demo confirmation.
 
-| State                                               | Owner                                                                   |
-| --------------------------------------------------- | ----------------------------------------------------------------------- |
-| Initial product/catalog content                     | Read-only data/reference.json                                           |
-| Submitted search/category                           | URL; search hooks and pure parser/model                                 |
-| Draft input, menus, toasts and local checkout       | Component state/hooks                                                   |
-| Shared product ID/quantity lines, favorites, drawer | Scoped Zustand store                                                    |
-| Basket counts/subtotals                             | Pure derived functions in cart/model                                    |
-| Western-digit money formatting                      | shared/lib/format-money.ts                                              |
-| Interactive server cache                            | React Query provisioned, unused until separately authorized integration |
+| State                                         | Owner                                                                   |
+| --------------------------------------------- | ----------------------------------------------------------------------- |
+| Initial product/catalog content               | Read-only data/reference.json                                           |
+| Submitted search/category                     | URL; search hooks and pure parser/model                                 |
+| Draft input, menus, toasts and local checkout | Component state/hooks                                                   |
+| Product ID/quantity lines and drawer          | Cart Zustand slice                                                      |
+| Favorite product IDs                          | Favorites Zustand slice                                                 |
+| Session-only demo order records               | Orders Zustand slice                                                    |
+| Checkout completion across cart/orders        | Checkout action, composed into the same store for one atomic update     |
+| Basket counts/subtotals                       | Pure derived functions in cart/model                                    |
+| Western-digit money formatting                | shared/lib/format-money.ts                                              |
+| Interactive server cache                      | React Query provisioned, unused until separately authorized integration |
 
-Store and QueryClient are created once per mounted provider, not mutable module-level singletons. Local state survives client navigation under Marketplace layout but is not persisted on reload. Checkout clears contact fields on success and keeps a product-only demo summary. Basket snapshot comparison prevents clearing changed selections during demo confirmation.
+The composed store and QueryClient are created once per mounted provider, not mutable module-level singletons. Local state survives client navigation under Marketplace layout but is not persisted on reload. Checkout clears contact fields on success and keeps a product-only demo summary. Basket snapshot comparison prevents clearing changed selections during demo confirmation.
 
 ## Styling and UI primitives
 
