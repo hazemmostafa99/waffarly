@@ -7,6 +7,15 @@ export function localStorefrontHandle(hostname: string): string | null {
   return normalized.slice(0, -'.localhost'.length);
 }
 
+export function storefrontHostHandle(hostname: string): string | null {
+  if (process.env.NODE_ENV === 'development') return localStorefrontHandle(hostname);
+  const domain = process.env.STOREFRONT_BASE_DOMAIN?.trim().toLowerCase();
+  if (!domain) return null;
+  const normalized = hostname.trim().toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
+  if (!normalized.endsWith(`.${domain}`)) return null;
+  return normalized.slice(0, -(domain.length + 1));
+}
+
 export function storefrontHref(href: string, slug: string, hostBased: boolean): string {
   if (!hostBased) return href;
   const prefix = `/s/${encodeURIComponent(slug)}`;
