@@ -23,7 +23,7 @@ export function cartProducts(lines: MarketplaceCartLine[]) {
     const product = line.snapshot ?? findProduct(line.productId);
     const configuration = mealConfiguration(line.selection ?? {}, product);
     return product ? [{ ...product, price: line.quotedUnitPrice ?? product.price + configuration.extraPrice,
-      quantity: line.quantity, selection: line.selection, lineId: cartLineId(line),
+      quantity: line.quantity, ...(line.selection !== undefined ? { selection: line.selection } : {}), lineId: cartLineId(line),
       optionsLabel: configuration.label }] : [];
   });
 }

@@ -15,7 +15,7 @@ const baseRestaurantProducts = reference.restaurants.flatMap((restaurant, index)
     searchName: `${restaurant.name} ${template.searchName} وجبة تجريبية`,
     menuSection: itemIndex === 2 ? 'أطباق جانبية' : 'الوجبات',
     description: index === 0
-      ? ['برجر مشوي مع الخضار والصوص، بالحجم اللي يناسبك.', 'برجر بطبقة جبنة وصوص، مع إضافات من اختيارك.', 'بطاطس مقرمشة كطبق جانبي مع وجبتك.'][itemIndex]
+      ? ['برجر مشوي مع الخضار والصوص، بالحجم اللي يناسبك.', 'برجر بطبقة جبنة وصوص، مع إضافات من اختيارك.', 'بطاطس مقرمشة كطبق جانبي مع وجبتك.'][itemIndex] ?? ''
       : 'صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك.',
     available: itemIndex !== 2 || index !== 0,
   })),
