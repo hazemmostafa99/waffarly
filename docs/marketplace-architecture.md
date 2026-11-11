@@ -2,6 +2,18 @@
 
 Status: current local reconstruction, followed by an explicit growth plan. Entry point: [implementation plan](marketplace-implementation-plan.md). Product backlog: [roadmap](marketplace-roadmap.md).
 
+## Active implementation policy
+
+UI-first with local data only, by explicit user instruction. Complete all Marketplace
+journeys before backend integration. Existing reference data is the starting point;
+additional states use labeled mock scenarios, not invented original-site records.
+Use local functions/state to simulate asynchronous results where useful, without
+HTTP requests, Next route handlers, database services or existing storefront APIs.
+Keep demo transactions/accounts distinguishable from real operations. Do not
+persist customer PII, passwords or payment credentials. The integration directions
+below describe a future phase and are not authorization to implement it now.
+Backend work begins only after UI-flow completion and an explicit user request.
+
 ## Boundaries
 
 `apps/storefront` contains two separate product surfaces: the Marketplace under `/marketplace`, and tenant storefronts under `/s/[slug]`. The business landing page `/` and merchant application `/join` also remain active. Marketplace cleanup does not retire these routes, their fonts, assets, shared components, or API integrations.

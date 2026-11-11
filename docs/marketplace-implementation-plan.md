@@ -2,6 +2,17 @@
 
 This is the entry point for the current Marketplace architecture, source evidence and remaining work. It replaces the historical foundation-only plan.
 
+## Active user decision: finish the UI before backend integration
+
+Build every Marketplace screen and complete user flow using the existing local
+`reference.json` and explicitly labeled local mock scenarios. Do not call backend
+APIs, require API/database processes, create mock HTTP servers or change backend
+contracts in this phase. Missing endpoints do not block UI completion. Simulated
+orders, accounts, payments and tracking must be visibly identified as demos.
+Backend integration is deferred until the UI flows are complete and the user
+explicitly requests that separate phase. Existing non-Marketplace routes remain
+unchanged. This decision supersedes earlier backend-first sequencing.
+
 ## Current status
 
 The local page at `/marketplace` reconstructs the public reference homepage from saved HTML/CSS/JS: original purple/gold theme, Tahoma font stack, logo, 8 categories, 12 restaurants, 5 products and 6 stores. Filtering, favorites, duplicate cart lines, removal, totals, drawer and countdown work locally. Reference code was inspected; rendered browser comparison is still pending. No live marketplace catalog/customer/payment API is connected.

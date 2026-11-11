@@ -7,3 +7,17 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Marketplace implementation mode
+
+Complete all Marketplace UI and user journeys with existing local reference data
+and clearly labeled local mock scenarios first. No backend/API/database dependency
+or integration is allowed in this phase, including existing storefront APIs or a
+new Next.js route-handler/mock server. Keep code organized by related feature and
+separate data/local behavior from presentation. Mock checkout, account, payment,
+confirmation and tracking screens must be visibly identifiable as demonstrations;
+do not imply real orders, sessions or charges. Do not persist sensitive form data.
+
+Backend integration starts only after the UI flows are complete and the user
+explicitly asks to start that phase. Preserve other existing app surfaces. Follow
+the root Marketplace policy and [roadmap](../../docs/marketplace-roadmap.md).

@@ -1,42 +1,80 @@
 # Marketplace completion roadmap
 
-This is an implementation plan, not a claim that the original site contains these routes or working flows. The inspected reference exposes a homepage, fragments, local filtering/cart/favorites and a timer. Checkout, account, location selection and most navigation destinations are placeholders. New screens require approved behavior and design that extends the established identity; do not describe them as extracted pixel-perfect screens.
+## Active decision: UI first, backend later
 
-Current delivery: the page at `/marketplace` reproduces source content with local interactions. Backend connectivity, persistent customer data and visual browser verification remain open. Preserve existing `/`, `/join` and `/s/[slug]` behavior throughout.
+The user explicitly requires completing every Marketplace screen and user flow
+with the existing local data before backend integration. This supersedes the
+previous integration-first phase order. Missing APIs are not blockers for the UI.
+Backend integration starts only after UI-flow completion and a separate explicit
+user instruction; it must not begin automatically.
 
-## Delivery order
+Use `apps/storefront/src/features/marketplace/data/reference.json` as the current
+data source. Additional scenarios may be created locally to exercise empty/error,
+product options, checkout, account and tracking states; label them as mock scenarios,
+never as extracted original-site records or production facts. No backend fetches,
+API/database startup, schema/contract edits, new Next route handlers or mock HTTP
+servers are needed. Existing external reference image URLs may remain.
 
-| Phase | Deliverable and owner                                                | Depends on                                                              | Completion evidence                                                                                                                                                                    |
-| ----- | -------------------------------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0     | Frontend baseline and reference verification                         | Working browser connection                                              | Screenshots at 1440/1024/768/390/375, measured diffs, RTL and keyboard tests; current Next.js security advisory reviewed in a separate dependency change                               |
-| 1     | Frontend navigation and discoverability                              | Agreed destinations for placeholder controls                            | Header/mobile navigation, categories, submitted search, filters/sorting/pagination, back/forward and reload restoration; every control has a destination or explicit unavailable state |
-| 2     | Public discovery/catalog integration; Storefront composes Catalog    | Approved discovery contracts and public merchant visibility policy      | Bounded server-side search/listing, initial server rendering, loading/empty/unavailable/error/retry states, no private/archived/foreign-tenant leakage, correct cache/query keys       |
-| 3     | Store/restaurant and product detail journeys; Frontend + Catalog     | Real merchant slug/product/variant/modifier identifiers and public data | Store visit opens correct seller; product details/options quote correctly; invalid combinations and unavailable products handled; links survive direct navigation                      |
-| 4     | Production cart/favorites; Frontend + Catalog pricing                | Phase 3 and seller/cart policy                                          | Quantity updates/removal, options-aware line identity, stock/price revalidation, reload recovery, stale/missing items reconciled, favorite page; local totals never trusted by server  |
-| 5     | Guest checkout/order confirmation; Orders + Frontend                 | Valid quote, fulfillment rules and order request contract               | Address/contact validation, review, pending/error states, duplicate-click/retry handling, confirmed order receipt, cart cleared only after confirmed creation; no false success        |
-| 6     | Tracking and customer account; Orders + Auth + Frontend              | Customer actor/session, access policy and authorized read contracts     | Login/logout, profile/address book, order list/detail and tracking with real data; access-denied/not-found/expired-session states and cross-customer tests                             |
-| 7     | Payments, notifications and operational fulfillment, where supported | Explicit payment/provider/fulfillment decisions                         | Payment pending/success/failure/cancel reconciliation, authorized callbacks, delivery/pickup updates and selected notification channels; unsupported services visibly unavailable      |
-| 8     | Release hardening and deployment                                     | Required phases above verified                                          | Complete browse-to-order E2E, API tests, responsive visual checks, accessibility, performance and asset checks, observability, production configuration and rollback readiness         |
+The reference only proves the homepage and its local interactions. New detail,
+checkout and account screens extend the established identity; do not claim they
+were extracted pixel-perfect from an unavailable original screen.
 
-Phase 6 can progress alongside later catalog work once its contracts are settled. Online payment is not assumed to be required for the first checkout release; do not invent cash/card options until supported by the order/payment model. Seller onboarding should link to the existing `/join` application flow after copy/navigation approval, rather than implement a duplicate form.
+## UI delivery order
 
-## Main journeys and required states
+| Phase | Deliverable                          | Completion evidence using local data only                                                                                                                                           |
+| ----- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0     | Structure and visual baseline        | Small components grouped by feature, reusable functions, scoped tokens; reference comparison at 1440/1024/768/390/375 when browser works                                            |
+| 1     | Navigation and discovery             | Header/mobile menu, category/search/filter/sort URLs, back/forward/reload, working local destinations and clear unavailable states                                                  |
+| 2     | Store/restaurant and product details | Existing local records linked to local detail views; explicit mock options where absent; direct URL and not-found states                                                            |
+| 3     | Cart and favorites                   | Add/remove/quantity/options-aware lines, derived mock totals, favorites view, empty basket and unavailable-item scenarios                                                           |
+| 4     | Local checkout and confirmation      | Demo contact/fulfillment/review steps, validation, pending/error/retry/success, duplicate-click prevention and mock receipt; no real order or payment                               |
+| 5     | Local account and order journey      | Demo sign-in/out, profile/address forms, local order list/detail/tracking, empty/error states and local reorder; no real session or customer record                                 |
+| 6     | Complete local flow and polish       | Every navigation entry has a deliberate outcome; notifications/payment-status UI if included is simulated; seller-entry flow cannot submit to the existing live application API     |
+| 7     | UI acceptance                        | Browse -> details/options -> cart -> checkout -> demo confirmation -> tracking/account journey verified; responsive/RTL/keyboard checks, typecheck/build and honest visual evidence |
+| 8     | Backend integration (deferred)       | Only after phase 7 completion and explicit user instruction; inventory existing contracts, settle production policies, connect one flow at a time                                   |
 
-| Journey             | Intended path                                                              | Required failure/recovery cases                                                                                                                           |
-| ------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Discover and browse | Home -> category/search -> collection -> seller/product                    | No results, stale query, pagination end, offline/server failure, removed seller/product, shareable URL                                                    |
-| Configure and add   | Product -> variant/modifiers -> authoritative quote -> cart                | Required option missing, invalid combination, unavailable stock, quote failure/price change                                                               |
-| Review basket       | Cart -> quantity/remove -> refreshed quote -> checkout                     | Empty cart, seller conflict, expired persisted data, stock reduction, price change, concurrent-tab changes if supported                                   |
-| Place guest order   | Contact -> supported pickup/delivery fields -> review -> submit -> receipt | Validation error, unavailable fulfillment, duplicate click, timeout with uncertain outcome, authoritative rejection; retain draft/cart until confirmation |
-| Track/reorder       | Receipt/account -> authorized order detail -> status -> optional reorder   | Invalid access, missing order, terminal status, retry/poll stop, reordered items repriced and checked again                                               |
-| Account/favorites   | Sign-in -> favorites/profile/addresses/orders -> sign-out                  | Session expiry, authorization denial, empty lists, invalid address, mutation failure; clear customer cache on sign-out                                    |
-| Seller entry        | Marketplace seller CTA -> existing merchant application                    | Validation and application error/success from existing supported flow; do not promise instant approval                                                    |
+Phases may be sliced into small, reviewable changes. The next practical slice is
+mobile navigation and URL-backed search. Do not build empty architecture layers
+for features that have no implementation yet.
 
-Implement loading, empty, error/retry, unavailable, pending, success and disabled states where meaningful. Test keyboard/focus restoration for menus, filters, dialogs and cart. Announce outcomes without exposing internal implementation details to shoppers.
+## Local behavior and state rules
 
-## Existing integration inventory
+- Components render UI; pure functions handle filtering/formatting/calculations;
+  hooks coordinate related local interactions. Keep related files together.
+- Use component state for forms and transient presentation, URL state for shareable
+  navigation, and Zustand for shared non-sensitive local cart/favorites preferences.
+- React Query remains available; use it only if asynchronous local scenario behavior
+  benefits from it. An in-process mock function is sufficient; do not add network
+  calls merely to exercise a library. Do not duplicate query results in Zustand.
+- Clearly identify demo checkout, authentication, payments, order confirmation and
+  tracking in rendered UI. No real order/session/charge/notification claims.
+- Keep sensitive form inputs transient, clear them on exit/reset, never persist
+  passwords/payment credentials/customer PII, and do not collect real card details.
+- Demo state is isolated from existing tenant/storefront carts, checkout and APIs.
+  Do not connect seller CTA submission to the existing `/join` backend flow now;
+  use a labeled local presentation if demonstrating it.
+- Preserve the reference design where observed. Quantity changes and newly built
+  screens are explicit extensions, not claims about original reference behavior.
+- Mock failures are deliberate scenarios, not silent substitutes after production
+  failures. Fixtures are the intentional active mode during this phase.
 
-Verified by inspecting repository controllers, contracts and storefront code; these are existing local capabilities, not reference-site endpoints:
+## UI acceptance checklist before considering integration
+
+- [ ] All planned pages are reachable, including direct links and intentional not-found views.
+- [ ] Navigation, category/search/filter/sort state and browser back/forward work.
+- [ ] Existing fixture content is reused; additional data/states are identified as mock.
+- [ ] Cart/favorites, product options and quantity/removal journeys work locally.
+- [ ] Checkout validation, pending/error/retry and demo confirmation work end to end.
+- [ ] Demo account, addresses, orders and tracking complete the customer journey.
+- [ ] Loading/empty/error/disabled/unavailable/success states are covered where applicable.
+- [ ] No Marketplace backend data requests or backend service dependency exists.
+- [ ] Demo state cannot affect real tenant orders, accounts, payments or applications.
+- [ ] Responsive/RTL, accessibility, focused tests, typecheck/build and visual checks have recorded evidence; blocked checks remain explicitly open.
+- [ ] The user explicitly instructs beginning backend integration after reviewing UI completion.
+
+## Deferred backend inventory (reference only)
+
+Retained for the later integration phase only. Do not call or extend these endpoints during UI development. Their availability does not authorize integration now. These are local repository capabilities, not reference-site endpoints:
 
 | Capability                 | Existing code                                                                                    | Planning consequence                                                                                                                     |
 | -------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -50,25 +88,17 @@ Verified by inspecting repository controllers, contracts and storefront code; th
 
 Do not fan out over every seller client-side to simulate global search. Define a bounded public composition/listing contract. Storefront owns composition, Catalog owns products and pricing, Orders owns order creation/lifecycle, Auth owns supported actors/sessions, and Payments owns payment behavior. Preserve acyclic dependencies and use module `index.ts` exports. No API/database/contracts were changed by the cleanup.
 
-## Decisions to resolve before affected implementation
+## Decisions deferred to backend integration
 
-| Decision                           | Proposed starting point                                                                        | Why it matters                                                                                                                                                 |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Canonical homepage                 | Keep `/marketplace` during development; decide migration to `/` separately                     | `/` already hosts a business landing; URLs/SEO/navigation need an intentional transition                                                                       |
-| Single vs multiple seller checkout | Start with seller-scoped carts/orders using current slug-scoped order API, subject to approval | Current reference mixes sample products but supplies no seller IDs, shipment grouping or cross-seller order model; never submit a mixed basket to one merchant |
-| Guest vs authenticated checkout    | Validate the existing guest-order flow first; add customer account separately                  | Owner/admin/POS sessions must not become customer sessions                                                                                                     |
-| Delivery location and fees         | Use only actual configured service areas, pickup/delivery options and quoted fees              | Reference location is display text, not verified address selection or delivery eligibility                                                                     |
-| Checkout retries                   | Agree request identity/idempotency or reconciliation contract with Orders                      | No blind mutation retries; a network timeout must not create a second order                                                                                    |
-| Customer access/tracking           | Define actor or narrowly scoped tracking credential and access rules                           | Never expose an order using an enumerable ID alone                                                                                                             |
-| Offers/ratings/restaurants         | Confirm real source, publication rules and freshness                                           | Fixture review counts/deadline/offers cannot be promoted to real claims                                                                                        |
-| Payments/returns/cancellation      | Agree supported provider/methods and lifecycle before implementation                           | Success, refund, return and cancellation are server-owned business events                                                                                      |
+Production seller grouping, customer identity, fulfillment fees, stock, pricing,
+request idempotency, order access, payments, cancellation and returns require an
+explicit integration design later. Local UX can use clearly documented mock
+assumptions without presenting them as approved production contracts.
 
-These are proposed defaults and open decisions, not newly approved business requirements. Record choices with date and affected contract before dependent work; independent frontend/visual work can continue.
-
-## Data, safety and verification rules
-
-Persist only versioned, non-sensitive client references/preferences, scoped by marketplace and seller as required. Do not persist credentials, customer PII, authoritative prices or order records in Zustand. Resolve public merchant scope from validated slugs; authenticated owner scope comes from the actor. Recheck same-tenant references on the server and add foreign-tenant/customer tests. Transport money uses decimal strings and authoritative calculations use integer arithmetic/shared money helpers. Keep order writes, reservation/release and immutable snapshots in the owning transaction.
-
-Keep mock/reference mode separate from live API mode. Never silently substitute fixtures or fake success after a production failure. Use existing shared contracts; add transport types in `packages/contracts` only after API ownership and validation are established. No frontend database imports.
-
-Each phase is reviewable on its own: update routes/components/interactions reports; run focused unit/integration tests and app typecheck/build; run API lint/typecheck/build/default tests and affected database tests when backend changes; test direct URLs and keyboard flow; record visual evidence honestly. Reaching the end of a plan is not evidence that a user journey works.
+At that later stage, inspect shared contracts and API ownership again: Storefront
+composes public catalog, Catalog owns pricing/options, Orders owns order lifecycle,
+Auth owns identities and Payments owns payment behavior. Use tenant-scoped queries,
+authoritative money calculations, transaction boundaries and authorization tests.
+Do not send fixture IDs to real order endpoints. Follow `apps/api/AGENTS.md` before
+planning changes to API/database/shared contracts. This section is future context,
+not current work authorization.
