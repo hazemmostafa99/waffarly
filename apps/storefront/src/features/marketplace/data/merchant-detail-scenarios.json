@@ -1,0 +1,116 @@
+{
+  "storeProducts": [
+    {
+      "id": "mock-tech-phone-stand",
+      "merchantName": "تك زون",
+      "merchantType": "store",
+      "origin": "local-mock",
+      "category": "electronics",
+      "searchName": "حامل هاتف مكتبي قابل للطي",
+      "name": "حامل هاتف مكتبي قابل للطي",
+      "cartName": "حامل هاتف مكتبي",
+      "price": 249,
+      "cartImage": "https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية تجريبية لإكسسوار إلكتروني"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "تك زون",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "249 ج.م",
+      "oldPrice": "",
+      "delivery": "توصيل تجريبي"
+    },
+    {
+      "id": "mock-tech-usb-cable",
+      "merchantName": "تك زون",
+      "merchantType": "store",
+      "origin": "local-mock",
+      "category": "electronics",
+      "searchName": "كابل شحن USB-C بطول مترين",
+      "name": "كابل شحن USB-C بطول مترين",
+      "cartName": "كابل شحن USB-C",
+      "price": 149,
+      "cartImage": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية تجريبية لمنتج تقني"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "تك زون",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "149 ج.م",
+      "oldPrice": "",
+      "delivery": "توصيل تجريبي"
+    }
+  ],
+  "restaurantProducts": [
+    {
+      "id": "mock-burger-classic",
+      "merchantName": "بيت البرجر",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "برجر كلاسيك",
+      "name": "برجر كلاسيك",
+      "cartName": "برجر كلاسيك",
+      "price": 185,
+      "cartImage": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بيت البرجر",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "185 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية"
+    },
+    {
+      "id": "mock-burger-cheese",
+      "merchantName": "بيت البرجر",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "تشيز برجر",
+      "name": "تشيز برجر",
+      "cartName": "تشيز برجر",
+      "price": 215,
+      "cartImage": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بيت البرجر",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "215 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية"
+    },
+    {
+      "id": "mock-burger-fries",
+      "merchantName": "بيت البرجر",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "بطاطس مقرمشة",
+      "name": "بطاطس مقرمشة",
+      "cartName": "بطاطس مقرمشة",
+      "price": 75,
+      "cartImage": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية تجريبية لطبق جانبي"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بيت البرجر",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "75 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية"
+    }
+  ]
+}

@@ -13,10 +13,12 @@ export function ProductInfo({ product }: { product: MarketplaceProduct }) {
           'bg-secondary text-accent text-[11px]',
         )}
       >
-        تجربة محلية — بيانات النموذج
+        {product.origin === 'local-mock'
+          ? 'مثال واجهة محلي — المنتج والسعر تجريبيان'
+          : 'تجربة محلية — بيانات النموذج'}
       </p>
       <h1>{product.name}</h1>
-      <ProductRating rating={product.rating} />
+      <ProductRating rating={product.rating} demo={product.origin === 'local-mock'} />
       <div
         className={
           'detail-price-block flex items-center gap-4 flex-wrap mt-2 mx-0 mb-4 [&_.price-row]:m-0'
@@ -28,7 +30,9 @@ export function ProductInfo({ product }: { product: MarketplaceProduct }) {
             'detail-saving bg-secondary text-accent rounded-[6px] py-[5px] px-2 text-[12px] font-bold'
           }
         >
-          خصم {product.discount.replace('-', '')}
+          {product.origin === 'local-mock'
+            ? 'سعر تجريبي'
+            : `خصم ${product.discount.replace('-', '')}`}
         </span>
       </div>
       <ProductSellerCard product={product} />

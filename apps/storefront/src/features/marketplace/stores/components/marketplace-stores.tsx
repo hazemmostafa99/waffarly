@@ -3,6 +3,8 @@ import { cn } from '@waffarly/ui';
 import { MarketplaceButton as Button } from '@/components/marketplace/marketplace-button';
 import data from '@/features/marketplace/data/reference.json';
 import { SectionHeading } from '@/components/marketplace/section-heading';
+import Link from 'next/link';
+import { storeHref } from '@/features/marketplace/stores/model/stores';
 
 export function MarketplaceStores() {
   return (
@@ -39,7 +41,7 @@ export function MarketplaceStores() {
                 <div>
                   <h3>{s.name}</h3>
                   <p>{s.description}</p>
-                  <a href="#">زيارة المتجر ←</a>
+                  <Link href={storeHref(s)}>زيارة المتجر ←</Link>
                 </div>
               </article>
             ))}

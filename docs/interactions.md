@@ -21,6 +21,12 @@ heart control removes an item from that page. Header, menu and footer links open
 page, and its empty state returns to product browsing. Favorites remain in memory
 until refresh. See [favorites flow](marketplace-favorites.md).
 
+Stores and restaurants: their home cards open fixture-backed detail routes. Store
+pages show fixture products by seller match plus clearly labeled local sample items.
+بيت البرجر has a sample menu with example prices; it is separate from reference data.
+Unknown local IDs show not-found pages. See
+[store/restaurant details](marketplace-store-and-restaurant-details.md).
+
 ## Current product/cart extension (supersedes duplicate-row behavior below)
 
 Image/title links now open the local product detail route, retaining submitted

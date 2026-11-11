@@ -38,8 +38,10 @@ Product details slice delivered locally: existing product cards link to details,
 quantity controls, related products and merged cart lines are implemented, and return
 links preserve search/category. Local checkout and order list/detail are also present.
 The original product page does not establish additional option behavior. Store and
-restaurant details, order tracking/reorder, account and browser acceptance remain
-open. Historical checks apply only to the revisions recorded in
+restaurant detail routes now use the existing local records; the restaurant menu
+shown is an explicitly labeled UI sample because the fixture has no menu data.
+Order tracking/reorder, account and browser acceptance
+remain open. Historical checks apply only to the revisions recorded in
 [slice evidence](marketplace-product-details.md).
 
 Navigation slice implemented locally: header menu/shared destinations, mobile actions,
@@ -61,9 +63,9 @@ and remaining placeholder destinations are not complete. See [slice evidence](ma
 | 8     | Backend integration (deferred)       | Only after phase 7 completion and explicit user instruction; inventory existing contracts, settle production policies, connect one flow at a time                                   |
 
 Phases may be sliced into small, reviewable changes. Navigation, product details,
-cart, checkout, session-only favorites, and order history/detail now have local UI.
-The next practical slice is store/restaurant details, followed by local order
-tracking and the demo account journey. Do not build empty architecture layers for
+cart, checkout, session-only favorites, order history/detail, and store/restaurant
+details now have local UI. The next practical slice is local order tracking, followed
+by the demo account journey. Do not build empty architecture layers for
 features that have no implementation yet.
 
 ## Local behavior and state rules

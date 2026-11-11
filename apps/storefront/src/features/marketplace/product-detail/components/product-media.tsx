@@ -17,7 +17,7 @@ export function ProductMedia({ product }: { product: MarketplaceProduct }) {
           'px-2 text-[11px] font-black',
         )}
       >
-        {product.discount}
+        {product.origin === 'local-mock' ? 'مثال تجريبي' : product.discount}
       </span>
       <FavoriteButton productId={product.id} name={product.cartName} />
     </div>

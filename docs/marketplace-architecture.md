@@ -19,6 +19,8 @@ apps/storefront/src/
     favorites/
     orders/
     orders/[orderId]/
+    stores/[storeId]/
+    restaurants/[restaurantId]/
   components/marketplace/          # Shared Marketplace primitives/adapters
     marketplace-button.tsx        # Uses @waffarly/ui Button
     marketplace-form-controls.tsx # Uses Input and Textarea
@@ -33,6 +35,8 @@ apps/storefront/src/
     search/{components,hooks,model}/
     catalog/{components,model}/
     favorites/{components,hooks,state}/
+    restaurants/{components,model}/
+    stores/{components,model}/
     product-detail/{components,model}/
     cart/{components,hooks,model,state}/
     checkout/{components,hooks,model,state}/
@@ -42,6 +46,7 @@ apps/storefront/src/
     shared/lib/format-money.ts
     providers/marketplace-providers.tsx
     data/reference.json
+    data/merchant-detail-scenarios.json # Explicit local-only sample catalog/menu
     tests/marketplace.test.ts
   styles/marketplace-tokens.css    # Palette, shadcn aliases and base rules only
 ```

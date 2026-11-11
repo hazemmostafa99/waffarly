@@ -8,8 +8,8 @@ import { useMarketplaceSearch } from '@/features/marketplace/search/hooks/use-ma
 import { productCategory } from '@/features/marketplace/search/model/search-state';
 import { MarketplaceSiteHeader } from '@/features/marketplace/navigation/components/marketplace-site-header';
 import { MarketplaceHero } from '@/features/marketplace/home/components/marketplace-hero';
-import { MarketplaceStores } from '@/features/marketplace/home/components/marketplace-stores';
-import { MarketplaceRestaurants } from '@/features/marketplace/catalog/components/marketplace-restaurants';
+import { MarketplaceStores } from '@/features/marketplace/stores/components/marketplace-stores';
+import { MarketplaceRestaurants } from '@/features/marketplace/restaurants/components/marketplace-restaurants';
 import { MarketplaceCategories } from '@/features/marketplace/catalog/components/marketplace-categories';
 import { MarketplaceFooter } from '@/features/marketplace/navigation/components/marketplace-footer';
 import { MarketplaceProducts } from '@/features/marketplace/catalog/components/marketplace-products';

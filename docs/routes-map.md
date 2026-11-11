@@ -20,6 +20,18 @@ details, account identity, backend request, actual fulfillment, or real order st
 Favorites use the feature-owned Zustand slice and remain in memory for the current
 Marketplace session only. See [favorites flow](marketplace-favorites.md).
 
+## Local store and restaurant details
+
+- `/marketplace/stores/[storeId]` opens the selected fixture store and its matching
+  fixture products. تك زون also shows two labeled mock examples for the UI flow.
+- `/marketplace/restaurants/[restaurantId]` shows fixture restaurant information.
+  بيت البرجر also has an explicitly labeled local mock menu for UI walkthroughs.
+- Home cards link to both route types; invalid IDs show not-found states.
+
+IDs are URL-encoded fixture names for local navigation. These are UI extensions,
+not routes observed on the reference site. See
+[store and restaurant details](marketplace-store-and-restaurant-details.md).
+
 Latest local flow: `/marketplace/checkout` now hosts details -> review -> explicit
 demo confirmation on the same route. Entry is the cart review CTA; empty baskets
 link to browsing. No server order/auth/payment routes were added. See

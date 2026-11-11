@@ -24,7 +24,7 @@ export function ProductSellerCard({ product }: { product: MarketplaceProduct }) 
       </div>
       <div>
         <span className={'detail-section-label block text-[11px] text-muted-foreground mb-[5px]'}>
-          يباع بواسطة
+          {product.origin === 'local-mock' ? 'بائع المثال المحلي' : 'يباع بواسطة'}
         </span>
         <div
           className={
@@ -32,20 +32,26 @@ export function ProductSellerCard({ product }: { product: MarketplaceProduct }) 
           }
         >
           <strong>{seller}</strong>
-          <span
-            className={
-              'verified bg-accent text-[#fff] rounded-full w-[15px] h-[15px] inline-grid place-items-center text-[9px]'
-            }
-            aria-label="علامة التحقق في النموذج"
-          >
-            ✓
-          </span>
+          {!product.origin && (
+            <span
+              className={
+                'verified bg-accent text-[#fff] rounded-full w-[15px] h-[15px] inline-grid place-items-center text-[9px]'
+              }
+              aria-label="علامة التحقق في النموذج"
+            >
+              ✓
+            </span>
+          )}
         </div>
         <p>
           <span className={'delivery text-success text-[10px] font-extrabold'}>
             {product.delivery}
           </span>
-          <small>بيانات التوصيل من النموذج المحلي</small>
+          <small>
+            {product.origin === 'local-mock'
+              ? 'تفاصيل العرض والتوصيل توضيحية فقط'
+              : 'بيانات التوصيل من النموذج المحلي'}
+          </small>
         </p>
       </div>
     </Card>

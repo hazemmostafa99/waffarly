@@ -51,7 +51,7 @@ export function ProductCard({
             'px-2 text-[11px] font-black',
           )}
         >
-          {p.discount}
+          {p.origin === 'local-mock' ? 'مثال تجريبي' : p.discount}
         </span>
         <FavoriteButton productId={p.id} name={p.cartName} />
       </div>
@@ -61,19 +61,21 @@ export function ProductCard({
             'seller flex items-center gap-1.5 text-accent text-[10px] font-extrabold mb-[7px]'
           }
         >
-          <span
-            className={
-              'verified bg-accent text-[#fff] rounded-full w-[15px] h-[15px] inline-grid place-items-center text-[9px]'
-            }
-          >
-            ✓
-          </span>
+          {!p.origin && (
+            <span
+              className={
+                'verified bg-accent text-[#fff] rounded-full w-[15px] h-[15px] inline-grid place-items-center text-[9px]'
+              }
+            >
+              ✓
+            </span>
+          )}
           {p.seller.replace('✓', '').trim()}
         </div>
         <h3>
           <Link href={href}>{p.name}</Link>
         </h3>
-        <ProductRating rating={p.rating} />
+        <ProductRating rating={p.rating} demo={p.origin === 'local-mock'} />
         <ProductPrice product={p} />
         <div className={'delivery text-success text-[10px] font-extrabold'}>{p.delivery}</div>
         <Button
