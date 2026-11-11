@@ -38,7 +38,7 @@ export const createCartSlice: StateCreator<MarketplaceState, [], [], CartSlice> 
     const conflict = conflictsWithRestaurant(get().cart, productId, snapshot);
     if (conflict && !replace) return false;
     const cart = conflict ? [] : get().cart;
-    const line: MarketplaceCartLine = { productId, quantity, ...(snapshot ? { snapshot, quotedUnitPrice } : {}),
+    const line: MarketplaceCartLine = { productId, quantity, ...(snapshot ? { snapshot, ...(quotedUnitPrice !== undefined ? { quotedUnitPrice } : {}) } : {}),
       ...(selection ? { selection: Object.fromEntries(Object.entries(selection).map(([key, ids]) => [key, [...ids]])) } : {}) };
     const id = cartLineId(line);
     const existing = cart.find((item) => cartLineId(item) === id);

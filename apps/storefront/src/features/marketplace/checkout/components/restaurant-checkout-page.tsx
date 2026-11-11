@@ -50,7 +50,7 @@ export function RestaurantCheckoutPage() {
   async function review() {
     if (busy.current || envelope.current || !slug || !lines.length) return;
     const validation = validateCheckout(draft);
-    if (restaurant?.restaurantSettings?.referenceData?.origin !== 'local-mock') Object.keys(validation).forEach((key) => { const field = key as keyof CheckoutErrors; validation[field] = validation[field]?.replace(/تجريبيًا /g, ''); });
+    if (restaurant?.restaurantSettings?.referenceData?.origin !== 'local-mock') Object.keys(validation).forEach((key) => { const field = key as keyof CheckoutErrors; const message = validation[field]; if (message !== undefined) validation[field] = message.replace(/تجريبيًا /g, ''); });
     setErrors(validation);
     if (Object.keys(validation).length) return;
     if (products.some((product) => product.restaurantSlug !== slug)) { setNotice('السلة لازم تكون من مطعم واحد.'); return; }

@@ -48,7 +48,7 @@ export function OrderTrackingPage({ orderId }: { orderId: string }) {
   const steps = demoOrderTrackingSteps(order.fulfillment);
   const stopped = order.status === 'demo-cancelled' || order.status === 'demo-rejected';
   const currentIndex = Math.max(steps.findIndex((step) => step.status === order.status), 0);
-  const currentStep = steps[currentIndex];
+  const currentStep = steps[currentIndex]!;
   const isComplete = currentIndex === steps.length - 1;
 
   return (

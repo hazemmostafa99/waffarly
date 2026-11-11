@@ -18,7 +18,7 @@ const requireRestaurant = cache(async (identifier: string) => {
 type Props = { params: Promise<{ restaurantId: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { restaurant, products } = await requireRestaurant((await params).restaurantId);
+  const { restaurant } = await requireRestaurant((await params).restaurantId);
   return {
     title: restaurant ? `${restaurant.name} | وفّرلي` : 'المطعم غير موجود | وفّرلي',
   };

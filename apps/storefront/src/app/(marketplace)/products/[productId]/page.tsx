@@ -39,5 +39,6 @@ export default async function ProductPage({ params, searchParams }: Props) {
     const value = search[key];
     if (typeof value === 'string') values.set(key, value);
   }
-  return <ProductDetailPage product={product} backHref={productBackHref(values.toString())} relatedProducts={product.restaurantSlug ? (await loadRestaurant(product.restaurantSlug)).products : undefined} />;
+  const relatedProducts = product.restaurantSlug ? (await loadRestaurant(product.restaurantSlug)).products : undefined;
+  return <ProductDetailPage product={product} backHref={productBackHref(values.toString())} {...(relatedProducts !== undefined ? { relatedProducts } : {})} />;
 }

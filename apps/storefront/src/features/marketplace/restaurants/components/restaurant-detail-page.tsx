@@ -65,7 +65,7 @@ export function RestaurantDetailPage({
         </article>
         <section aria-label="منيو المطعم التجريبي" className="rounded-[20px] border border-border/70 bg-card p-3 sm:p-5">
           <Suspense fallback={<p aria-busy="true">جارٍ تحميل الأمثلة…</p>}>
-            <RestaurantMenu restaurantName={restaurant.name} products={products} settings={restaurant.settings} />
+            <RestaurantMenu restaurantName={restaurant.name} {...(products !== undefined ? { products } : {})} {...(restaurant.settings !== undefined ? { settings: restaurant.settings } : {})} />
           </Suspense>
           <Link
             className="mt-5 inline-block text-[12px] font-bold text-accent"

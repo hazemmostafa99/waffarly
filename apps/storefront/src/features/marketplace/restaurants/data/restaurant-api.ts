@@ -16,7 +16,8 @@ export function mapRestaurantProduct(product: MarketplaceMenuProduct, restaurant
     seller: restaurant.name, merchantName: restaurant.name, merchantType: 'restaurant', origin: 'local-mock',
     rating: '', discount: '', oldPrice: '', delivery: 'بيانات من الخادم · طلب تجريبي', available: product.availability === 'available',
     menuSection: product.categories.find((category) => category.id === product.menuSectionId)?.name ?? product.categories[0]?.name ?? 'الوجبات',
-    restaurantSlug: restaurant.slug, restaurantSettings: restaurant.settings,
+    ...(restaurant.slug !== undefined ? { restaurantSlug: restaurant.slug } : {}),
+    ...(restaurant.settings !== undefined ? { restaurantSettings: restaurant.settings } : {}),
     apiVariants: product.variants, apiModifierGroups: product.modifierGroups };
 }
 export async function loadRestaurants(browser = false) {

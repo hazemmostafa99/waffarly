@@ -100,7 +100,7 @@ export function CartReviewPage() {
               total={cartTotal(lines)}
               quantity={cartQuantity(lines)}
               productCount={products.length}
-              restaurantName={products[0]?.merchantType === 'restaurant' ? products[0].merchantName : undefined}
+              {...(products[0]?.merchantType === 'restaurant' && products[0].merchantName !== undefined ? { restaurantName: products[0].merchantName } : {})}
             />
           </div>
         ) : (
