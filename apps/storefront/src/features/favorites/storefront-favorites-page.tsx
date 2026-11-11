@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '../../components/storefront/storefront-link';
 import { Heart } from 'lucide-react';
 import type { PublicStorefrontCatalog } from '@waffarly/contracts';
 import { Button } from '@waffarly/ui';

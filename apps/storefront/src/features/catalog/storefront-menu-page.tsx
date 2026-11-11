@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
+import Link from '../../components/storefront/storefront-link';
 import { BookOpen, ChevronLeft, Search, SearchX, SlidersHorizontal } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import type { CursorPage, PublicStorefrontCatalog } from '@waffarly/contracts';

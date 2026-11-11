@@ -67,34 +67,12 @@ export function MerchantLayout() {
         (item.id === 'products' && location.pathname.startsWith('/products/')) ||
         (item.id === 'dashboard' && location.pathname === '/'),
     ) ?? navigation[0];
-  const isCustomers = location.pathname === '/customers';
-  const isOrders = location.pathname === '/orders';
   const isProductBuilder = [
     '/products/new',
     '/products/create',
     '/products/builder',
     '/product-builder',
   ].includes(location.pathname);
-  const hasCustomPageHeading =
-    ![
-      '/products',
-      '/categories',
-      '/media',
-      '/discounts',
-      '/branches',
-      '/employees',
-      '/pos-registers',
-      '/pos-cash',
-      '/pos-tables',
-      '/pos-shift-reports',
-      '/pos-item-returns',
-      '/pos-operations',
-      '/account',
-    ].includes(location.pathname) &&
-    !isProductBuilder &&
-    !location.pathname.startsWith('/inventory');
-  const hasBreadcrumb =
-    hasCustomPageHeading && !isCustomers && !isOrders && location.pathname !== '/settings';
 
   function navigationLabel(item: (typeof navigation)[number]): string {
     if (item.id === 'inventory') return copy('Inventory');
@@ -319,41 +297,8 @@ export function MerchantLayout() {
         <main
           id="main-content"
           tabIndex={-1}
-          className={`merchant-content ${location.pathname === '/settings' ? 'merchant-content-settings' : ''}`}
+          className={`merchant-content ${location.pathname === '/' ? 'merchant-content-dashboard' : location.pathname === '/settings' ? 'merchant-content-settings' : ''}`}
         >
-          {location.pathname !== '/' && hasBreadcrumb && (
-            <div className="merchant-breadcrumb">
-              {t('Home')} <span>/</span> {navigationLabel(current)}
-            </div>
-          )}
-          {location.pathname !== '/' && hasCustomPageHeading && (
-            <div
-              className={`merchant-page-heading ${isCustomers ? 'merchant-customers-heading' : ''}`}
-            >
-              <div>
-                <h1>{navigationLabel(current)}</h1>
-                <p>
-                  {t(
-                    location.pathname === '/'
-                      ? "Here's what's happening with your business today."
-                      : isOrders
-                        ? 'Manage and monitor all orders from different branches and channels.'
-                        : isCustomers
-                          ? 'Manage your customers and build stronger relationships with them.'
-                          : location.pathname === '/settings'
-                            ? 'Manage your store settings and tailor the customer experience to your needs.'
-                            : 'Keep your catalog accurate, organized, and ready to sell.',
-                  )}
-                </p>
-              </div>
-              {!isCustomers && !isOrders && (
-                <span className="merchant-account-pill">
-                  <span className="merchant-online-dot" />
-                  {profile.merchantName}
-                </span>
-              )}
-            </div>
-          )}
           {error && (
             <p className="error" role="alert">
               {errorText(error)}

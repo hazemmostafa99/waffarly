@@ -196,21 +196,7 @@ export function TablesPage() {
 
   return (
     <section className="pos-tables-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <header className="products-heading pos-tables-heading">
-        <div>
-          <h1>{text('POS tables', 'ترابيزات POS')}</h1>
-          <p>
-            {text(
-              'Configure table codes and seat counts per branch. Occupied tables are protected from edits.',
-              'اضبط أرقام الترابيزات وعدد المقاعد لكل فرع. لا يمكن تعديل الترابيزة المشغولة.',
-            )}
-          </p>
-        </div>
-        <button className="products-button primary" type="button" onClick={startCreate}>
-          <Icon name="plus" />
-          {text('Add table', 'إضافة ترابيزة')}
-        </button>
-      </header>
+      <h1 className="sr-only">{text('POS tables', 'ترابيزات POS')}</h1>
 
       {error && !editorOpen && (
         <div className="products-error pos-tables-message" role="alert">
@@ -231,9 +217,10 @@ export function TablesPage() {
         </p>
       )}
 
-      <div className="products-filters pos-tables-filters">
+      <div className="pos-tables-page-toolbar">
+        <div className="products-filters pos-tables-filters">
         <label className="pos-tables-branch-filter">
-          <span>{text('Branch', 'الفرع')}</span>
+          <span className="sr-only">{text('Branch', 'الفرع')}</span>
           <PagedEntitySelect<InventoryBranch>
             path="/owner/inventory/branches"
             value={branchId}
@@ -248,7 +235,7 @@ export function TablesPage() {
           />
         </label>
         <label className="pos-tables-status-filter">
-          <span>{text('Status', 'الحالة')}</span>
+          <span className="sr-only">{text('Status', 'الحالة')}</span>
           <select
             value={status}
             onChange={(event) => {
@@ -261,6 +248,13 @@ export function TablesPage() {
             <option value="all">{text('All', 'الكل')}</option>
           </select>
         </label>
+      </div>
+        <div className="pos-tables-page-toolbar-actions">
+          <button className="products-button primary" type="button" onClick={startCreate}>
+          <Icon name="plus" />
+          {text('Add table', 'إضافة ترابيزة')}
+        </button>
+        </div>
       </div>
 
       <DashboardCard

@@ -986,6 +986,9 @@
   background: #f8fafc;
   text-align: start;
 }
+.orders-expanded-detail > .cd-assignment {
+  grid-column: 1 / -1;
+}
 .orders-expanded-heading,
 .orders-expanded-line,
 .orders-expanded-footer {

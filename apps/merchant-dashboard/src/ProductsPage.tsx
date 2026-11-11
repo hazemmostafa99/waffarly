@@ -323,32 +323,8 @@ export function ProductsPage() {
     },
   ];
   return (
-    <div className="products-page">
-      <header className="products-heading">
-        <div>
-          <h1>{copy('Products')}</h1>
-          <p>{copy('Manage products, prices, categories, and availability.')}</p>
-        </div>
-        <div className="products-heading-actions">
-          <button
-            type="button"
-            className="products-button primary"
-            disabled={loading || busy || !hasLoaded}
-            onClick={() => navigate('/products/new')}
-          >
-            <Icon name="plus" />
-            {copy('Add Product')}
-          </button>
-          <button
-            type="button"
-            className="products-button"
-            disabled={loading || busy || !hasLoaded}
-            onClick={() => setImportOpen(true)}
-          >
-            {copy('Import')}
-          </button>
-        </div>
-      </header>
+    <div className="products-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+      <h1 className="sr-only">{copy('Products')}</h1>
       {error && (
         <div className="products-error" role="alert">
           {errorText(copy(error))}{' '}
@@ -409,64 +385,87 @@ export function ProductsPage() {
           detail={copy('Needs a category')}
         />
       </div>
-      <div className="products-filters">
-        <label className="products-search">
-          <Icon name="search" />
-          <input
-            aria-label={copy('Search products')}
-            placeholder={copy('Search by name or product ID…')}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </label>
-        <select
-          aria-label={copy('Category')}
-          value={category}
-          onChange={(event) => setCategory(event.target.value)}
-        >
-          <option value="">{copy('All categories')}</option>
-          {catalog.categories
-            .filter((item) => !item.archivedAt)
-            .map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-        </select>
-        <select
-          aria-label={copy('Publication status')}
-          value={status}
-          onChange={(event) => setStatus(event.target.value)}
-        >
-          <option value="">{copy('All statuses')}</option>
-          <option value="available">{copy('Available')}</option>
-          <option value="unavailable">{copy('Unavailable')}</option>
-          <option value="archived">{copy('Archived')}</option>
-        </select>
-        <select
-          aria-label={copy('Sort')}
-          value={sort}
-          onChange={(event) => setSort(event.target.value)}
-        >
-          <option value="name">{copy('Name A–Z')}</option>
-          <option value="price-asc">{copy('Price: low to high')}</option>
-          <option value="price-desc">{copy('Price: high to low')}</option>
-        </select>
-        <select
-          aria-label={copy('Bulk actions')}
-          value=""
-          disabled={!selected.length || busy}
-          onChange={(event) => {
-            if (event.target.value === 'archive') setArchiveOpen(true);
-            else if (event.target.value)
-              void updateSelected(event.target.value as 'available' | 'unavailable');
-          }}
-        >
-          <option value="">{copy('Bulk actions')}</option>
-          <option value="available">{copy('Publish')}</option>
-          <option value="unavailable">{copy('Hide')}</option>
-          <option value="archive">{copy('Archive')}</option>
-        </select>
+      <div className="products-toolbar" role="group" aria-label={copy('Search products')}>
+        <div className="products-filters">
+          <label className="products-search">
+            <Icon name="search" />
+            <input
+              aria-label={copy('Search products')}
+              placeholder={copy('Search by name or product ID…')}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+          <select
+            aria-label={copy('Category')}
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+          >
+            <option value="">{copy('All categories')}</option>
+            {catalog.categories
+              .filter((item) => !item.archivedAt)
+              .map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+          </select>
+          <select
+            aria-label={copy('Publication status')}
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+          >
+            <option value="">{copy('All statuses')}</option>
+            <option value="available">{copy('Available')}</option>
+            <option value="unavailable">{copy('Unavailable')}</option>
+            <option value="archived">{copy('Archived')}</option>
+          </select>
+          <select
+            aria-label={copy('Sort')}
+            value={sort}
+            onChange={(event) => setSort(event.target.value)}
+          >
+            <option value="name">{copy('Name A–Z')}</option>
+            <option value="price-asc">{copy('Price: low to high')}</option>
+            <option value="price-desc">{copy('Price: high to low')}</option>
+          </select>
+          <select
+            aria-label={copy('Bulk actions')}
+            value=""
+            disabled={!selected.length || busy}
+            onChange={(event) => {
+              if (event.target.value === 'archive') setArchiveOpen(true);
+              else if (event.target.value)
+                void updateSelected(event.target.value as 'available' | 'unavailable');
+            }}
+          >
+            <option value="">{copy('Bulk actions')}</option>
+            <option value="available">{copy('Publish')}</option>
+            <option value="unavailable">{copy('Hide')}</option>
+            <option value="archive">{copy('Archive')}</option>
+          </select>
+        </div>
+        <div className="products-toolbar-actions">
+        <div className="products-heading-actions">
+          <button
+            type="button"
+            className="products-button primary"
+            disabled={loading || busy || !hasLoaded}
+            onClick={() => navigate('/products/new')}
+          >
+            <Icon name="plus" />
+            {copy('Add Product')}
+          </button>
+          <button
+            type="button"
+            className="products-button"
+            disabled={loading || busy || !hasLoaded}
+            onClick={() => setImportOpen(true)}
+          >
+            {copy('Import')}
+          </button>
+        </div>
+        </div>
       </div>
       {selected.length > 0 && (
         <div className="products-selection">

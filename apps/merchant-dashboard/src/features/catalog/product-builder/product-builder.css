@@ -5736,3 +5736,5 @@
     gap: 14px;
   }
 }
+
+.product-builder-actions-only { align-items: center; justify-content: flex-end; margin: 0 0 12px; }

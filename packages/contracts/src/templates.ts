@@ -6,6 +6,7 @@ export type TemplateStatus = 'draft' | 'available';
 export interface MerchantStorefrontSettings {
   merchantId: string;
   storefrontSlug: string;
+  storefrontHandle?: string | null;
   templateId: string | null;
   accentColor: string;
   logoData: string | null;

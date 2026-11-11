@@ -18,6 +18,9 @@ import type {
   SubmitMerchantApplicationRequest,
 } from '@waffarly/contracts';
 import { randomUUID } from 'node:crypto';
+import { isStorefrontHandle, type PublicStorefrontAddress } from '@waffarly/contracts';
+import { storefrontHandleSchema } from './storefront-address.schemas.js';
+import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { assertScopedCursor, type CursorPageQuery } from '../../common/http/pagination.js';
 import { isUniqueConstraintError } from '../../infrastructure/database/prisma-errors.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
@@ -28,6 +31,7 @@ type MerchantWithOwner = {
   id: string;
   name: string;
   storefrontSlug: string;
+  storefrontHandle?: string | null;
   activity?: string;
   contactPhone: string;
   ownerName: string;
@@ -43,6 +47,7 @@ function toSummary(merchant: MerchantWithOwner): MerchantSummary {
     id: merchant.id,
     name: merchant.name,
     businessCode: merchant.storefrontSlug,
+    storefrontHandle: merchant.storefrontHandle ?? null,
     activity: (merchant.activity ?? 'other') as BusinessActivityKey,
     contactPhone: merchant.contactPhone,
     ownerName: merchant.ownerName,
@@ -166,6 +171,10 @@ export class MerchantService {
     input: CreateMerchantRequest,
     administrator = 'super-admin',
   ): Promise<MerchantSummary> {
+    const storefrontHandle =
+      input.storefrontHandle === undefined
+        ? undefined
+        : parseRequest(storefrontHandleSchema, input.storefrontHandle);
     const username = input.username.trim().toLowerCase();
     const existing = await this.prisma.ownerAccount.findUnique({ where: { username } });
     if (existing) throw new ConflictException('Username is already in use.');
@@ -179,6 +188,13 @@ export class MerchantService {
             id,
             name: input.name.trim(),
             storefrontSlug: createStorefrontSlug(input.name, id),
+            ...(storefrontHandle
+              ? {
+                  storefrontHandle,
+                  storefrontHandleAssignedAt: new Date(),
+                  storefrontHandleAssignedBy: administrator,
+                }
+              : {}),
             activity: input.activity ?? 'other',
             contactPhone: input.contactPhone.trim(),
             ownerName: input.ownerName.trim(),
@@ -195,10 +211,71 @@ export class MerchantService {
       });
     } catch (error) {
       if (isUniqueConstraintError(error)) {
-        throw new ConflictException('Username is already in use.');
+        throw new ConflictException('Username or storefront handle is already in use.');
       }
       throw error;
     }
+  }
+
+  async assignStorefrontHandle(
+    id: string,
+    input: string,
+    administrator: string,
+  ): Promise<MerchantSummary> {
+    const handle = parseRequest(storefrontHandleSchema, input);
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const current = await tx.merchant.findUnique({
+          where: { id },
+          include: {
+            owner: { select: { username: true } },
+            subscription: {
+              select: {
+                status: true,
+                periods: {
+                  where: { startsAt: { lte: new Date() }, coverageEndsAt: { gt: new Date() } },
+                  select: { id: true },
+                  take: 1,
+                },
+              },
+            },
+          },
+        });
+        if (!current) throw new NotFoundException('Merchant was not found.');
+        if (current.storefrontHandle === handle) return toSummary(current);
+        if (current.storefrontHandle !== null) {
+          throw new ConflictException(
+            'This merchant already has a storefront address. Address changes are not supported.',
+          );
+        }
+        const result = await tx.merchant.updateMany({
+          where: { id, storefrontHandle: null },
+          data: {
+            storefrontHandle: handle,
+            storefrontHandleAssignedAt: new Date(),
+            storefrontHandleAssignedBy: administrator,
+          },
+        });
+        if (result.count !== 1)
+          throw new ConflictException('The storefront address changed. Refresh and try again.');
+        return toSummary({ ...current, storefrontHandle: handle });
+      });
+    } catch (error) {
+      if (isUniqueConstraintError(error))
+        throw new ConflictException('Storefront handle is already in use.');
+      throw error;
+    }
+  }
+
+  async resolveStorefrontHandle(handle: string): Promise<PublicStorefrontAddress> {
+    // Public lookup exposes only the same public identifier already used in catalog URLs.
+    if (!isStorefrontHandle(handle)) throw new NotFoundException('Storefront was not found.');
+    const merchant = await this.prisma.merchant.findUnique({
+      where: { storefrontHandle: handle },
+      select: { storefrontSlug: true },
+    });
+    if (!merchant) throw new NotFoundException('Storefront was not found.');
+    return { handle, storefrontSlug: merchant.storefrontSlug };
   }
 
   async submitApplication(input: SubmitMerchantApplicationRequest): Promise<{ received: true }> {

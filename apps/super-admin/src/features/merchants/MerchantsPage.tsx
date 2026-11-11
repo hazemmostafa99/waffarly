@@ -95,27 +95,29 @@ export function MerchantsPage() {
   const normalizedQuery = businessQuery.trim().toLocaleLowerCase(locale);
   const filteredMerchants = useMemo(
     () =>
-      (merchants.data ?? []).filter((merchant) => {
-        const searchable = [
-          merchant.name,
-          merchant.ownerName,
-          merchant.contactPhone,
-          merchant.ownerMobile,
-          merchant.username,
-          t(BUSINESS_ACTIVITY_LABELS[merchant.activity ?? 'other']),
-        ]
-          .join(' ')
-          .toLocaleLowerCase(locale);
-        const matchesQuery = !normalizedQuery || searchable.includes(normalizedQuery);
-        const matchesActivity =
-          activityFilter === 'all' || (merchant.activity ?? 'other') === activityFilter;
-        const hasActivated = merchantHasAccess(merchant);
-        const matchesAccess =
-          accessFilter === 'all' ||
-          (accessFilter === 'activated' && hasActivated) ||
-          (accessFilter === 'awaiting' && !hasActivated);
-        return matchesQuery && matchesActivity && matchesAccess;
-      }).sort((first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt)),
+      (merchants.data ?? [])
+        .filter((merchant) => {
+          const searchable = [
+            merchant.name,
+            merchant.ownerName,
+            merchant.contactPhone,
+            merchant.ownerMobile,
+            merchant.username,
+            t(BUSINESS_ACTIVITY_LABELS[merchant.activity ?? 'other']),
+          ]
+            .join(' ')
+            .toLocaleLowerCase(locale);
+          const matchesQuery = !normalizedQuery || searchable.includes(normalizedQuery);
+          const matchesActivity =
+            activityFilter === 'all' || (merchant.activity ?? 'other') === activityFilter;
+          const hasActivated = merchantHasAccess(merchant);
+          const matchesAccess =
+            accessFilter === 'all' ||
+            (accessFilter === 'activated' && hasActivated) ||
+            (accessFilter === 'awaiting' && !hasActivated);
+          return matchesQuery && matchesActivity && matchesAccess;
+        })
+        .sort((first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt)),
     [accessFilter, activityFilter, locale, merchants.data, normalizedQuery, t],
   );
 
@@ -290,7 +292,8 @@ export function MerchantsPage() {
             aria-label={t('Registered businesses')}
             tabIndex={0}
           >
-            <table className="admin-table w-full min-w-[880px] table-fixed border-collapse text-start text-sm"
+            <table
+              className="admin-table w-full min-w-[880px] table-fixed border-collapse text-start text-sm"
               dir={locale === 'ar' ? 'rtl' : 'ltr'}
               aria-busy={merchants.isPending}
             >
@@ -523,7 +526,11 @@ export function MerchantsPage() {
             </span>
           </div>
           {applications.isPending ? (
-            <div className="admin-section grid gap-3" role="status" aria-label={t('Loading applications')}>
+            <div
+              className="admin-section grid gap-3"
+              role="status"
+              aria-label={t('Loading applications')}
+            >
               <span className="h-10 animate-pulse rounded-lg bg-waffarly-input" />
               <span className="h-10 animate-pulse rounded-lg bg-waffarly-input" />
             </div>
@@ -545,31 +552,36 @@ export function MerchantsPage() {
             <ul className="m-0 grid list-none p-0">
               {pendingApplications.slice(0, 5).map((application) => (
                 <li
-                  className="flex min-w-0 items-center gap-2.5 border-b border-waffarly-border px-4 py-3 last:border-0"
+                  className="min-w-0 border-b border-waffarly-border last:border-0"
                   key={application.id}
                 >
-                  <span
-                    className="grid size-8 shrink-0 place-items-center rounded-full bg-waffarly-gold-light text-xs font-bold text-waffarly-ink"
-                    aria-hidden="true"
+                  <Link
+                    to={`/applications?application=${encodeURIComponent(application.id)}`}
+                    className="flex min-w-0 items-center gap-2.5 px-4 py-3 text-inherit hover:bg-waffarly-input focus-visible:outline-2 focus-visible:outline-waffarly-primary"
                   >
-                    {application.name.trim().slice(0, 1).toLocaleUpperCase() || 'W'}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <strong className="block truncate text-xs font-semibold">
-                      {application.name}
-                    </strong>
-                    <small className="mt-1 block truncate text-[10px] text-waffarly-muted">
-                      {t(BUSINESS_ACTIVITY_LABELS[application.activity ?? 'other'])} ·{' '}
-                      {formatDate(application.createdAt)}
-                    </small>
-                  </span>
+                    <span
+                      className="grid size-8 shrink-0 place-items-center rounded-full bg-waffarly-gold-light text-xs font-bold text-waffarly-ink"
+                      aria-hidden="true"
+                    >
+                      {application.name.trim().slice(0, 1).toLocaleUpperCase() || 'W'}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <strong className="block truncate text-xs font-semibold">
+                        {application.name}
+                      </strong>
+                      <small className="mt-1 block truncate text-[10px] text-waffarly-muted">
+                        {t(BUSINESS_ACTIVITY_LABELS[application.activity ?? 'other'])} ·{' '}
+                        {formatDate(application.createdAt)}
+                      </small>
+                    </span>
+                  </Link>
                 </li>
               ))}
             </ul>
           )}
           <Link
             className="flex items-center justify-between border-t border-waffarly-border px-4 py-3 text-xs font-semibold text-waffarly-primary hover:bg-waffarly-input"
-            to="/"
+            to="/applications"
           >
             {t('Review applications')}
             <ArrowRight className="rtl:rotate-180" size={15} aria-hidden="true" />

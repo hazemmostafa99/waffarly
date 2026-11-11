@@ -1,0 +1,77 @@
+/* Marketplace colors and base rules only. Component styling lives in Tailwind classes.
+   Standard shadcn/Tailwind tokens are scoped here; other apps keep their themes. */
+.marketplace-theme {
+  --purple-950: #1d0629;
+  --purple-900: #2a073b;
+  --purple-800: #3a0d50;
+  --purple-700: #51166c;
+  --purple-600: #6d218c;
+  --purple-100: #f2e9f7;
+  --purple-50: #faf7fc;
+  --gold: #f5bd19;
+  --gold-2: #ffd966;
+  --ink: #17131c;
+  --muted: #6e6873;
+  --line: #e8e2eb;
+  --bg: #f5f3f6;
+  --card: #fff;
+  --green: #16845b;
+  --red: #d93a50;
+  --shadow: 0 8px 24px rgba(43, 13, 55, 0.09);
+  --primary: var(--purple-900);
+  --primary-foreground: #ffffff;
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --card-foreground: var(--ink);
+  --border: var(--line);
+  --input: var(--line);
+  --secondary: var(--purple-100);
+  --secondary-foreground: var(--purple-900);
+  --muted-foreground: var(--muted);
+  --accent: var(--purple-700);
+  --accent-foreground: #ffffff;
+  --ring: var(--gold);
+  --success: var(--green);
+  --destructive: var(--red);
+  --storefront-gold: var(--gold);
+}
+
+@layer base {
+  .marketplace-theme {
+    min-height: 100dvh;
+    direction: rtl;
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+    font-size: 16px;
+    line-height: normal;
+  }
+  .marketplace-theme :where(h1, h2, h3, h4, p) {
+    all: revert;
+  }
+  .marketplace-theme :where(button, input, select) {
+    line-height: normal;
+    letter-spacing: normal;
+  }
+  .marketplace-theme img {
+    display: inline;
+    vertical-align: baseline;
+    max-width: none;
+  }
+  .marketplace-theme * {
+    box-sizing: border-box;
+  }
+  .marketplace-theme button,
+  .marketplace-theme input,
+  .marketplace-theme select {
+    font: inherit;
+  }
+  .marketplace-theme button {
+    cursor: pointer;
+  }
+  .marketplace-theme :focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 3px;
+  }
+}

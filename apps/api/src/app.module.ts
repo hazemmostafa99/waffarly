@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { CustomersModule } from './modules/customers/index.js';
+import { DiscountsModule } from './modules/discounts/index.js';
 import { ConfigurationModule } from './config/configuration.module.js';
 import { DatabaseModule } from './infrastructure/database/database.module.js';
 import { ActivitiesModule } from './modules/activities/index.js';
@@ -18,6 +20,8 @@ import { ShiftsModule } from './modules/shifts/index.js';
 @Module({
   imports: [
     ConfigurationModule,
+    CustomersModule,
+    DiscountsModule,
     DatabaseModule,
     AuthModule,
     HealthModule,

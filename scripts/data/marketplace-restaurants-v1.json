@@ -1,0 +1,1212 @@
+{
+  "version": 1,
+  "restaurants": [
+    {
+      "name": "بيت البرجر",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة مطعم بيت البرجر"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار بيت البرجر"
+      },
+      "offer": "خصم 25%",
+      "meta": "برجر • وجبات سريعة • أمريكي",
+      "rating": "⭐ 4.9",
+      "time": "25–35 دقيقة"
+    },
+    {
+      "name": "أصل الشاورما",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة مطعم أصل الشاورما"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1529006557810-274b9b2fc783?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار أصل الشاورما"
+      },
+      "offer": "توصيل مجاني",
+      "meta": "شاورما • سوري • مشويات",
+      "rating": "⭐ 4.8",
+      "time": "30–40 دقيقة"
+    },
+    {
+      "name": "بيتزا نابولي",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة مطعم بيتزا نابولي"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار بيتزا نابولي"
+      },
+      "offer": "اشترِ 1 واحصل على 1",
+      "meta": "بيتزا • إيطالي • باستا",
+      "rating": "⭐ 4.7",
+      "time": "35–45 دقيقة"
+    },
+    {
+      "name": "بحريات الميناء",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة مطعم الميناء"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار بحريات الميناء"
+      },
+      "offer": "خصم 15%",
+      "meta": "أسماك • مأكولات بحرية",
+      "rating": "⭐ 4.8",
+      "time": "40–50 دقيقة"
+    },
+    {
+      "name": "كشري البلد",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة مطعم كشري البلد"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار كشري البلد"
+      },
+      "offer": "وجبة اقتصادية",
+      "meta": "كشري • أكل مصري • وجبات",
+      "rating": "⭐ 4.6",
+      "time": "20–30 دقيقة"
+    },
+    {
+      "name": "قهوة ومزاج",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة قهوة ومزاج"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار قهوة ومزاج"
+      },
+      "offer": "خصم 20%",
+      "meta": "قهوة • حلويات • فطار",
+      "rating": "⭐ 4.9",
+      "time": "15–25 دقيقة"
+    },
+    {
+      "name": "مشويات السلطان",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة مشويات السلطان"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار مشويات السلطان"
+      },
+      "offer": "خصم 10%",
+      "meta": "كباب • كفتة • مشويات",
+      "rating": "⭐ 4.8",
+      "time": "35–45 دقيقة"
+    },
+    {
+      "name": "مطبخ أم علي",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة مطبخ أم علي"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار مطبخ أم علي"
+      },
+      "offer": "طبق اليوم",
+      "meta": "أكل بيتي • طواجن • محاشي",
+      "rating": "⭐ 4.9",
+      "time": "30–45 دقيقة"
+    },
+    {
+      "name": "سوشي هاوس",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة سوشي هاوس"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار سوشي هاوس"
+      },
+      "offer": "خصم 20%",
+      "meta": "سوشي • آسيوي • نودلز",
+      "rating": "⭐ 4.7",
+      "time": "40–55 دقيقة"
+    },
+    {
+      "name": "فطار زمان",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1533777857889-4be7c70b33f7?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة فطار زمان"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار فطار زمان"
+      },
+      "offer": "فطار لشخصين",
+      "meta": "فول • فلافل • فطار مصري",
+      "rating": "⭐ 4.6",
+      "time": "15–25 دقيقة"
+    },
+    {
+      "name": "حلويات دمشق",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة حلويات دمشق"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار حلويات دمشق"
+      },
+      "offer": "خصم 18%",
+      "meta": "حلويات شرقية • كنافة",
+      "rating": "⭐ 4.8",
+      "time": "25–35 دقيقة"
+    },
+    {
+      "name": "جرين بايتس",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1543362906-acfc16c67564?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة جرين بايتس"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار جرين بايتس"
+      },
+      "offer": "توصيل مجاني",
+      "meta": "صحي • سلطات • نباتي",
+      "rating": "⭐ 4.7",
+      "time": "25–35 دقيقة"
+    }
+  ],
+  "products": [
+    {
+      "id": "mock-burger-classic",
+      "merchantName": "بيت البرجر",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "برجر كلاسيك",
+      "name": "برجر كلاسيك",
+      "cartName": "برجر كلاسيك",
+      "price": 185,
+      "cartImage": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بيت البرجر",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "185 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "برجر مشوي مع الخضار والصوص، بالحجم اللي يناسبك."
+    },
+    {
+      "id": "mock-burger-cheese",
+      "merchantName": "بيت البرجر",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "تشيز برجر",
+      "name": "تشيز برجر",
+      "cartName": "تشيز برجر",
+      "price": 215,
+      "cartImage": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بيت البرجر",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "215 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "برجر بطبقة جبنة وصوص، مع إضافات من اختيارك."
+    },
+    {
+      "id": "mock-burger-fries",
+      "merchantName": "بيت البرجر",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "بطاطس مقرمشة",
+      "name": "بطاطس مقرمشة",
+      "cartName": "بطاطس مقرمشة",
+      "price": 75,
+      "cartImage": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية تجريبية لطبق جانبي"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بيت البرجر",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "75 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "أطباق جانبية",
+      "available": false,
+      "description": "بطاطس مقرمشة كطبق جانبي مع وجبتك."
+    },
+    {
+      "id": "mock-restaurant-1-0",
+      "merchantName": "أصل الشاورما",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "أصل الشاورما برجر كلاسيك وجبة تجريبية",
+      "name": "وجبة تجريبية",
+      "cartName": "وجبة تجريبية",
+      "price": 185,
+      "cartImage": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "أصل الشاورما",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "185 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-1-1",
+      "merchantName": "أصل الشاورما",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "أصل الشاورما تشيز برجر وجبة تجريبية",
+      "name": "وجبة مميزة تجريبية",
+      "cartName": "وجبة مميزة تجريبية",
+      "price": 215,
+      "cartImage": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "أصل الشاورما",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "215 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-1-2",
+      "merchantName": "أصل الشاورما",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "أصل الشاورما بطاطس مقرمشة وجبة تجريبية",
+      "name": "طبق جانبي تجريبي",
+      "cartName": "طبق جانبي تجريبي",
+      "price": 75,
+      "cartImage": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية تجريبية لطبق جانبي"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "أصل الشاورما",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "75 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "أطباق جانبية",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-2-0",
+      "merchantName": "بيتزا نابولي",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "بيتزا نابولي برجر كلاسيك وجبة تجريبية",
+      "name": "وجبة تجريبية",
+      "cartName": "وجبة تجريبية",
+      "price": 185,
+      "cartImage": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بيتزا نابولي",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "185 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-2-1",
+      "merchantName": "بيتزا نابولي",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "بيتزا نابولي تشيز برجر وجبة تجريبية",
+      "name": "وجبة مميزة تجريبية",
+      "cartName": "وجبة مميزة تجريبية",
+      "price": 215,
+      "cartImage": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بيتزا نابولي",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "215 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-2-2",
+      "merchantName": "بيتزا نابولي",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "بيتزا نابولي بطاطس مقرمشة وجبة تجريبية",
+      "name": "طبق جانبي تجريبي",
+      "cartName": "طبق جانبي تجريبي",
+      "price": 75,
+      "cartImage": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية تجريبية لطبق جانبي"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بيتزا نابولي",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "75 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "أطباق جانبية",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-3-0",
+      "merchantName": "بحريات الميناء",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "بحريات الميناء برجر كلاسيك وجبة تجريبية",
+      "name": "وجبة تجريبية",
+      "cartName": "وجبة تجريبية",
+      "price": 185,
+      "cartImage": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بحريات الميناء",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "185 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-3-1",
+      "merchantName": "بحريات الميناء",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "بحريات الميناء تشيز برجر وجبة تجريبية",
+      "name": "وجبة مميزة تجريبية",
+      "cartName": "وجبة مميزة تجريبية",
+      "price": 215,
+      "cartImage": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بحريات الميناء",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "215 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-3-2",
+      "merchantName": "بحريات الميناء",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "بحريات الميناء بطاطس مقرمشة وجبة تجريبية",
+      "name": "طبق جانبي تجريبي",
+      "cartName": "طبق جانبي تجريبي",
+      "price": 75,
+      "cartImage": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية تجريبية لطبق جانبي"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بحريات الميناء",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "75 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "أطباق جانبية",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-4-0",
+      "merchantName": "كشري البلد",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "كشري البلد برجر كلاسيك وجبة تجريبية",
+      "name": "وجبة تجريبية",
+      "cartName": "وجبة تجريبية",
+      "price": 185,
+      "cartImage": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "كشري البلد",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "185 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-4-1",
+      "merchantName": "كشري البلد",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "كشري البلد تشيز برجر وجبة تجريبية",
+      "name": "وجبة مميزة تجريبية",
+      "cartName": "وجبة مميزة تجريبية",
+      "price": 215,
+      "cartImage": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "كشري البلد",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "215 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-4-2",
+      "merchantName": "كشري البلد",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "كشري البلد بطاطس مقرمشة وجبة تجريبية",
+      "name": "طبق جانبي تجريبي",
+      "cartName": "طبق جانبي تجريبي",
+      "price": 75,
+      "cartImage": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية تجريبية لطبق جانبي"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "كشري البلد",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "75 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "أطباق جانبية",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-5-0",
+      "merchantName": "قهوة ومزاج",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "قهوة ومزاج برجر كلاسيك وجبة تجريبية",
+      "name": "وجبة تجريبية",
+      "cartName": "وجبة تجريبية",
+      "price": 185,
+      "cartImage": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "قهوة ومزاج",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "185 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-5-1",
+      "merchantName": "قهوة ومزاج",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "قهوة ومزاج تشيز برجر وجبة تجريبية",
+      "name": "وجبة مميزة تجريبية",
+      "cartName": "وجبة مميزة تجريبية",
+      "price": 215,
+      "cartImage": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "قهوة ومزاج",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "215 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-5-2",
+      "merchantName": "قهوة ومزاج",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "قهوة ومزاج بطاطس مقرمشة وجبة تجريبية",
+      "name": "طبق جانبي تجريبي",
+      "cartName": "طبق جانبي تجريبي",
+      "price": 75,
+      "cartImage": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية تجريبية لطبق جانبي"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "قهوة ومزاج",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "75 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "أطباق جانبية",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-6-0",
+      "merchantName": "مشويات السلطان",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "مشويات السلطان برجر كلاسيك وجبة تجريبية",
+      "name": "وجبة تجريبية",
+      "cartName": "وجبة تجريبية",
+      "price": 185,
+      "cartImage": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "مشويات السلطان",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "185 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-6-1",
+      "merchantName": "مشويات السلطان",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "مشويات السلطان تشيز برجر وجبة تجريبية",
+      "name": "وجبة مميزة تجريبية",
+      "cartName": "وجبة مميزة تجريبية",
+      "price": 215,
+      "cartImage": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "مشويات السلطان",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "215 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-6-2",
+      "merchantName": "مشويات السلطان",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "مشويات السلطان بطاطس مقرمشة وجبة تجريبية",
+      "name": "طبق جانبي تجريبي",
+      "cartName": "طبق جانبي تجريبي",
+      "price": 75,
+      "cartImage": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية تجريبية لطبق جانبي"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "مشويات السلطان",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "75 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "أطباق جانبية",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-7-0",
+      "merchantName": "مطبخ أم علي",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "مطبخ أم علي برجر كلاسيك وجبة تجريبية",
+      "name": "وجبة تجريبية",
+      "cartName": "وجبة تجريبية",
+      "price": 185,
+      "cartImage": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "مطبخ أم علي",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "185 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-7-1",
+      "merchantName": "مطبخ أم علي",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "مطبخ أم علي تشيز برجر وجبة تجريبية",
+      "name": "وجبة مميزة تجريبية",
+      "cartName": "وجبة مميزة تجريبية",
+      "price": 215,
+      "cartImage": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "مطبخ أم علي",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "215 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-7-2",
+      "merchantName": "مطبخ أم علي",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "مطبخ أم علي بطاطس مقرمشة وجبة تجريبية",
+      "name": "طبق جانبي تجريبي",
+      "cartName": "طبق جانبي تجريبي",
+      "price": 75,
+      "cartImage": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية تجريبية لطبق جانبي"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "مطبخ أم علي",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "75 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "أطباق جانبية",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-8-0",
+      "merchantName": "سوشي هاوس",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "سوشي هاوس برجر كلاسيك وجبة تجريبية",
+      "name": "وجبة تجريبية",
+      "cartName": "وجبة تجريبية",
+      "price": 185,
+      "cartImage": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "سوشي هاوس",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "185 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-8-1",
+      "merchantName": "سوشي هاوس",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "سوشي هاوس تشيز برجر وجبة تجريبية",
+      "name": "وجبة مميزة تجريبية",
+      "cartName": "وجبة مميزة تجريبية",
+      "price": 215,
+      "cartImage": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "سوشي هاوس",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "215 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-8-2",
+      "merchantName": "سوشي هاوس",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "سوشي هاوس بطاطس مقرمشة وجبة تجريبية",
+      "name": "طبق جانبي تجريبي",
+      "cartName": "طبق جانبي تجريبي",
+      "price": 75,
+      "cartImage": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية تجريبية لطبق جانبي"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "سوشي هاوس",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "75 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "أطباق جانبية",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-9-0",
+      "merchantName": "فطار زمان",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "فطار زمان برجر كلاسيك وجبة تجريبية",
+      "name": "وجبة تجريبية",
+      "cartName": "وجبة تجريبية",
+      "price": 185,
+      "cartImage": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "فطار زمان",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "185 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-9-1",
+      "merchantName": "فطار زمان",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "فطار زمان تشيز برجر وجبة تجريبية",
+      "name": "وجبة مميزة تجريبية",
+      "cartName": "وجبة مميزة تجريبية",
+      "price": 215,
+      "cartImage": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "فطار زمان",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "215 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-9-2",
+      "merchantName": "فطار زمان",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "فطار زمان بطاطس مقرمشة وجبة تجريبية",
+      "name": "طبق جانبي تجريبي",
+      "cartName": "طبق جانبي تجريبي",
+      "price": 75,
+      "cartImage": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية تجريبية لطبق جانبي"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "فطار زمان",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "75 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "أطباق جانبية",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-10-0",
+      "merchantName": "حلويات دمشق",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "حلويات دمشق برجر كلاسيك وجبة تجريبية",
+      "name": "وجبة تجريبية",
+      "cartName": "وجبة تجريبية",
+      "price": 185,
+      "cartImage": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "حلويات دمشق",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "185 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-10-1",
+      "merchantName": "حلويات دمشق",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "حلويات دمشق تشيز برجر وجبة تجريبية",
+      "name": "وجبة مميزة تجريبية",
+      "cartName": "وجبة مميزة تجريبية",
+      "price": 215,
+      "cartImage": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "حلويات دمشق",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "215 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-10-2",
+      "merchantName": "حلويات دمشق",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "حلويات دمشق بطاطس مقرمشة وجبة تجريبية",
+      "name": "طبق جانبي تجريبي",
+      "cartName": "طبق جانبي تجريبي",
+      "price": 75,
+      "cartImage": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية تجريبية لطبق جانبي"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "حلويات دمشق",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "75 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "أطباق جانبية",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-11-0",
+      "merchantName": "جرين بايتس",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "جرين بايتس برجر كلاسيك وجبة تجريبية",
+      "name": "وجبة تجريبية",
+      "cartName": "وجبة تجريبية",
+      "price": 185,
+      "cartImage": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "جرين بايتس",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "185 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-11-1",
+      "merchantName": "جرين بايتس",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "جرين بايتس تشيز برجر وجبة تجريبية",
+      "name": "وجبة مميزة تجريبية",
+      "cartName": "وجبة مميزة تجريبية",
+      "price": 215,
+      "cartImage": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة طعام توضيحية للتجربة المحلية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "جرين بايتس",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "215 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "الوجبات",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-restaurant-11-2",
+      "merchantName": "جرين بايتس",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "جرين بايتس بطاطس مقرمشة وجبة تجريبية",
+      "name": "طبق جانبي تجريبي",
+      "cartName": "طبق جانبي تجريبي",
+      "price": 75,
+      "cartImage": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية تجريبية لطبق جانبي"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "جرين بايتس",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "75 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "menuSection": "أطباق جانبية",
+      "available": true,
+      "description": "صنف توضيحي للمنيو، بحجم وإضافات حسب اختيارك."
+    },
+    {
+      "id": "mock-burger-grill",
+      "merchantName": "بيت البرجر",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "وجبة مشويات تجريبية",
+      "name": "وجبة مشويات تجريبية",
+      "cartName": "وجبة مشويات تجريبية",
+      "price": 199,
+      "cartImage": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=700&q=80",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية للتجربة: وجبة مشويات تجريبية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بيت البرجر",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "199 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "description": "وجبة مشويات مع طبق جانبي وصوص من اختيارك.",
+      "menuSection": "الوجبات",
+      "available": true
+    },
+    {
+      "id": "mock-burger-onion",
+      "merchantName": "بيت البرجر",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "حلقات بصل تجريبية",
+      "name": "حلقات بصل تجريبية",
+      "cartName": "حلقات بصل تجريبية",
+      "price": 85,
+      "cartImage": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=700&q=80",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=700&q=80",
+        "alt": "صورة توضيحية للتجربة: حلقات بصل تجريبية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بيت البرجر",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "85 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "description": "حلقات بصل مقرمشة مع صوص جانبي.",
+      "menuSection": "أطباق جانبية",
+      "available": true
+    },
+    {
+      "id": "mock-burger-salad",
+      "merchantName": "بيت البرجر",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "سلطة خضراء تجريبية",
+      "name": "سلطة خضراء تجريبية",
+      "cartName": "سلطة خضراء تجريبية",
+      "price": 95,
+      "cartImage": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=160&q=85",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=160&q=85",
+        "alt": "صورة توضيحية للتجربة: سلطة خضراء تجريبية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بيت البرجر",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "95 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "description": "خضار مشكلة مع صوص خفيف كطبق جانبي.",
+      "menuSection": "أطباق جانبية",
+      "available": true
+    },
+    {
+      "id": "mock-burger-coffee",
+      "merchantName": "بيت البرجر",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "قهوة تجريبية",
+      "name": "قهوة تجريبية",
+      "cartName": "قهوة تجريبية",
+      "price": 45,
+      "cartImage": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=160&q=85",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=160&q=85",
+        "alt": "صورة توضيحية للتجربة: قهوة تجريبية"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بيت البرجر",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "45 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "description": "مشروب قهوة لاكتمال تجربة تصفح المنيو.",
+      "menuSection": "مشروبات",
+      "available": true
+    },
+    {
+      "id": "mock-burger-latte",
+      "merchantName": "بيت البرجر",
+      "merchantType": "restaurant",
+      "origin": "local-mock",
+      "category": "food",
+      "searchName": "لاتيه تجريبي",
+      "name": "لاتيه تجريبي",
+      "cartName": "لاتيه تجريبي",
+      "price": 65,
+      "cartImage": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=160&q=85",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=160&q=85",
+        "alt": "صورة توضيحية للتجربة: لاتيه تجريبي"
+      },
+      "discount": "مثال تجريبي",
+      "seller": "بيت البرجر",
+      "rating": "تقييم تجريبي غير متاح",
+      "displayPrice": "65 ج.م",
+      "oldPrice": "",
+      "delivery": "بيانات الطلب تجريبية",
+      "description": "قهوة بالحليب ضمن أمثلة المنيو المحلية.",
+      "menuSection": "مشروبات",
+      "available": true
+    }
+  ]
+}

@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { CustomerAuthController } from './customer-auth.controller.js';
+import { CustomerAuthService } from './customer-auth.service.js';
 import { AdminGuard } from './admin.guard.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
@@ -10,8 +12,15 @@ import { SubscriptionsModule } from '../subscriptions/index.js';
 
 @Module({
   imports: [SubscriptionsModule],
-  controllers: [AuthController, PosEmployeesController],
-  providers: [AuthService, AdminGuard, OwnerGuard, PosEmployeeGuard, PosEmployeeService],
+  controllers: [AuthController, PosEmployeesController, CustomerAuthController],
+  providers: [
+    AuthService,
+    AdminGuard,
+    OwnerGuard,
+    PosEmployeeGuard,
+    PosEmployeeService,
+    CustomerAuthService,
+  ],
   exports: [AuthService, AdminGuard, OwnerGuard, PosEmployeeGuard],
 })
 export class AuthModule {}

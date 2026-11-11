@@ -6,9 +6,11 @@ import './pos-report-workspace.css';
 export function PosReportFilters({
   children,
   footer,
+  actions,
 }: {
   children: ReactNode;
   footer?: ReactNode;
+  actions?: ReactNode;
 }) {
   const { locale } = useLocale();
   return (
@@ -20,7 +22,10 @@ export function PosReportFilters({
           : 'Choose a branch and a period of up to 93 days.'
       }
     >
-      <div className="pos-report-filters">{children}</div>
+      <div className={`pos-report-filters${actions ? ' pos-report-filters--with-actions' : ''}`}>
+        {children}
+        {actions && <div className="pos-report-filter-actions-inline">{actions}</div>}
+      </div>
       {footer}
     </DashboardCard>
   );

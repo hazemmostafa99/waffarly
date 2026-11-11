@@ -2058,7 +2058,7 @@ html[dir='rtl'] .merchant-content {
   border-radius: 10px;
   padding: 7px;
   background: #fff;
-  direction: ltr;
+  direction: inherit;
 }
 
 .customers-toolbar button,

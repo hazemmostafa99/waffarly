@@ -289,24 +289,8 @@ export function EmployeesPage() {
   ];
 
   return (
-    <section className="employee-workspace">
-      <header className="products-heading employee-heading-row">
-        <div>
-          <h1>{text('Employees', 'الموظفون')}</h1>
-          <p>
-            {text(
-              'Manage employee accounts and branch access.',
-              'إدارة حسابات الموظفين وصلاحيات الوصول إلى الفروع.',
-            )}
-          </p>
-        </div>
-        <div className="products-heading-actions">
-          <button className="products-button primary" type="button" onClick={startCreate}>
-            <Icon name="plus" />
-            {text('Add employee', 'إضافة موظف')}
-          </button>
-        </div>
-      </header>
+    <section className="employee-workspace" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+      <h1 className="sr-only">{text('Employees', 'الموظفون')}</h1>
 
       {error && !editorOpen && (
         <div className="products-error employee-load-error" role="alert">
@@ -327,48 +311,56 @@ export function EmployeesPage() {
         </p>
       )}
 
-      <div className="products-filters employee-list-toolbar">
-        <label className="products-search">
-          <Icon name="search" />
-          <input
-            aria-label={text('Search employees', 'ابحث عن موظفين')}
-            placeholder={text('Search by name or username', 'البحث بالاسم أو اسم المستخدم')}
-            value={search}
-            maxLength={160}
-            type="search"
+      <div className="employee-toolbar">
+        <div className="products-filters employee-list-toolbar">
+          <label className="products-search">
+            <Icon name="search" />
+            <input
+              aria-label={text('Search employees', 'ابحث عن موظفين')}
+              placeholder={text('Search by name or username', 'البحث بالاسم أو اسم المستخدم')}
+              value={search}
+              maxLength={160}
+              type="search"
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setHistory([]);
+              }}
+            />
+          </label>
+          <select
+            aria-label={text('Employee role', 'دور الموظف')}
+            value={roleFilter}
             onChange={(event) => {
-              setSearch(event.target.value);
+              setRoleFilter(event.target.value as PosEmployeeRole | '');
               setHistory([]);
             }}
-          />
-        </label>
-        <select
-          aria-label={text('Employee role', 'دور الموظف')}
-          value={roleFilter}
-          onChange={(event) => {
-            setRoleFilter(event.target.value as PosEmployeeRole | '');
-            setHistory([]);
-          }}
-        >
-          <option value="">{text('All roles', 'كل الأدوار')}</option>
-          {POS_EMPLOYEE_ROLES.map((role) => (
-            <option key={role} value={role}>
-              {text(...employeeRoleLabels[role])}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label={text('Employee status', 'حالة الموظف')}
-          value={status}
-          onChange={(event) => {
-            setStatus(event.target.value as typeof status);
-            setHistory([]);
-          }}
-        >
-          <option value="all">{text('All employees', 'كل الموظفين')}</option>
-          <option value="active">{text('Active', 'نشط')}</option>
-          <option value="inactive">{text('Inactive', 'غير نشط')}</option>
-        </select>
+          >
+            <option value="">{text('All roles', 'كل الأدوار')}</option>
+            {POS_EMPLOYEE_ROLES.map((role) => (
+              <option key={role} value={role}>
+                {text(...employeeRoleLabels[role])}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label={text('Employee status', 'حالة الموظف')}
+            value={status}
+            onChange={(event) => {
+              setStatus(event.target.value as typeof status);
+              setHistory([]);
+            }}
+          >
+            <option value="all">{text('All employees', 'كل الموظفين')}</option>
+            <option value="active">{text('Active', 'نشط')}</option>
+            <option value="inactive">{text('Inactive', 'غير نشط')}</option>
+          </select>
+        </div>
+        <div className="employee-toolbar-actions">
+          <button className="products-button primary" type="button" onClick={startCreate}>
+            <Icon name="plus" />
+            {text('Add employee', 'إضافة موظف')}
+          </button>
+        </div>
       </div>
 
       <DashboardCard

@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
+import Link from '../../components/storefront/storefront-link';
 import { ArrowLeft, ArrowRight, BadgeCheck, Clock3, Sparkles, Utensils } from 'lucide-react';
 import type { PublicStorefrontCatalog } from '@waffarly/contracts';
 import { Badge, Button, Card, useLocale } from '@waffarly/ui';

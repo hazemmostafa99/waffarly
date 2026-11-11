@@ -42,4 +42,8 @@ export class AppConfiguration {
   get isProduction(): boolean {
     return this.environment.NODE_ENV === 'production';
   }
+
+  get isDevelopment(): boolean {
+    return this.environment.NODE_ENV === 'development';
+  }
 }

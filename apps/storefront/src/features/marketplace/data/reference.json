@@ -1,0 +1,405 @@
+{
+  "categories": [
+    {
+      "category": "all",
+      "name": "الكل",
+      "subtitle": "كل المنتجات",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1472851294608-062f824d29cc?auto=format&fit=crop&w=240&q=80",
+        "alt": "كل الأقسام"
+      }
+    },
+    {
+      "category": "electronics",
+      "name": "موبايلات",
+      "subtitle": "1,250 منتج",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=240&q=80",
+        "alt": "موبايلات"
+      }
+    },
+    {
+      "category": "electronics",
+      "name": "إلكترونيات",
+      "subtitle": "980 منتج",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=240&q=80",
+        "alt": "إلكترونيات"
+      }
+    },
+    {
+      "category": "fashion",
+      "name": "موضة",
+      "subtitle": "2,100 منتج",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=240&q=80",
+        "alt": "ملابس وموضة"
+      }
+    },
+    {
+      "category": "home",
+      "name": "المنزل",
+      "subtitle": "1,470 منتج",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=240&q=80",
+        "alt": "المنزل والأثاث"
+      }
+    },
+    {
+      "category": "food",
+      "name": "مطاعم",
+      "subtitle": "320 متجر",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=240&q=80",
+        "alt": "مطاعم وطعام"
+      }
+    },
+    {
+      "category": "grocery",
+      "name": "سوبر ماركت",
+      "subtitle": "850 منتج",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=240&q=80",
+        "alt": "سوبر ماركت"
+      }
+    },
+    {
+      "category": "beauty",
+      "name": "الجمال",
+      "subtitle": "640 منتج",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=240&q=80",
+        "alt": "الجمال والعناية"
+      }
+    }
+  ],
+  "restaurants": [
+    {
+      "name": "بيت البرجر",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة مطعم بيت البرجر"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار بيت البرجر"
+      },
+      "offer": "خصم 25%",
+      "meta": "برجر • وجبات سريعة • أمريكي",
+      "rating": "⭐ 4.9",
+      "time": "25–35 دقيقة"
+    },
+    {
+      "name": "أصل الشاورما",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة مطعم أصل الشاورما"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1529006557810-274b9b2fc783?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار أصل الشاورما"
+      },
+      "offer": "توصيل مجاني",
+      "meta": "شاورما • سوري • مشويات",
+      "rating": "⭐ 4.8",
+      "time": "30–40 دقيقة"
+    },
+    {
+      "name": "بيتزا نابولي",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة مطعم بيتزا نابولي"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار بيتزا نابولي"
+      },
+      "offer": "اشترِ 1 واحصل على 1",
+      "meta": "بيتزا • إيطالي • باستا",
+      "rating": "⭐ 4.7",
+      "time": "35–45 دقيقة"
+    },
+    {
+      "name": "بحريات الميناء",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة مطعم الميناء"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار بحريات الميناء"
+      },
+      "offer": "خصم 15%",
+      "meta": "أسماك • مأكولات بحرية",
+      "rating": "⭐ 4.8",
+      "time": "40–50 دقيقة"
+    },
+    {
+      "name": "كشري البلد",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة مطعم كشري البلد"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار كشري البلد"
+      },
+      "offer": "وجبة اقتصادية",
+      "meta": "كشري • أكل مصري • وجبات",
+      "rating": "⭐ 4.6",
+      "time": "20–30 دقيقة"
+    },
+    {
+      "name": "قهوة ومزاج",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة قهوة ومزاج"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار قهوة ومزاج"
+      },
+      "offer": "خصم 20%",
+      "meta": "قهوة • حلويات • فطار",
+      "rating": "⭐ 4.9",
+      "time": "15–25 دقيقة"
+    },
+    {
+      "name": "مشويات السلطان",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1515003197210-e0cd71810b5f?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة مشويات السلطان"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار مشويات السلطان"
+      },
+      "offer": "خصم 10%",
+      "meta": "كباب • كفتة • مشويات",
+      "rating": "⭐ 4.8",
+      "time": "35–45 دقيقة"
+    },
+    {
+      "name": "مطبخ أم علي",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة مطبخ أم علي"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار مطبخ أم علي"
+      },
+      "offer": "طبق اليوم",
+      "meta": "أكل بيتي • طواجن • محاشي",
+      "rating": "⭐ 4.9",
+      "time": "30–45 دقيقة"
+    },
+    {
+      "name": "سوشي هاوس",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1579027989536-b7b1f875659b?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة سوشي هاوس"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار سوشي هاوس"
+      },
+      "offer": "خصم 20%",
+      "meta": "سوشي • آسيوي • نودلز",
+      "rating": "⭐ 4.7",
+      "time": "40–55 دقيقة"
+    },
+    {
+      "name": "فطار زمان",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1533777857889-4be7c70b33f7?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة فطار زمان"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار فطار زمان"
+      },
+      "offer": "فطار لشخصين",
+      "meta": "فول • فلافل • فطار مصري",
+      "rating": "⭐ 4.6",
+      "time": "15–25 دقيقة"
+    },
+    {
+      "name": "حلويات دمشق",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة حلويات دمشق"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار حلويات دمشق"
+      },
+      "offer": "خصم 18%",
+      "meta": "حلويات شرقية • كنافة",
+      "rating": "⭐ 4.8",
+      "time": "25–35 دقيقة"
+    },
+    {
+      "name": "جرين بايتس",
+      "cover": {
+        "src": "https://images.unsplash.com/photo-1543362906-acfc16c67564?auto=format&fit=crop&w=600&q=82",
+        "alt": "واجهة جرين بايتس"
+      },
+      "logo": {
+        "src": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=160&q=85",
+        "alt": "شعار جرين بايتس"
+      },
+      "offer": "توصيل مجاني",
+      "meta": "صحي • سلطات • نباتي",
+      "rating": "⭐ 4.7",
+      "time": "25–35 دقيقة"
+    }
+  ],
+  "products": [
+    {
+      "id": "0",
+      "category": "electronics",
+      "searchName": "سماعة لاسلكية بلوتوث عزل ضوضاء",
+      "name": "سماعة لاسلكية بعزل ضوضاء وصوت عالي النقاء",
+      "cartName": "سماعة لاسلكية",
+      "price": 1299,
+      "cartImage": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=700&q=80",
+        "alt": "سماعة لاسلكية"
+      },
+      "discount": "-32%",
+      "seller": "✓ تك زون",
+      "rating": "★★★★★ (184)",
+      "displayPrice": "1,299 ج.م",
+      "oldPrice": "1,899",
+      "delivery": "توصيل مجاني غدًا"
+    },
+    {
+      "id": "1",
+      "category": "electronics",
+      "searchName": "هاتف ذكي شاشة كبيرة ضمان",
+      "name": "هاتف ذكي بشاشة كبيرة وكاميرا عالية الدقة",
+      "cartName": "هاتف ذكي",
+      "price": 8750,
+      "cartImage": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=700&q=80",
+        "alt": "هاتف ذكي"
+      },
+      "discount": "-18%",
+      "seller": "✓ موبايل ستور",
+      "rating": "★★★★☆ (96)",
+      "displayPrice": "8,750 ج.م",
+      "oldPrice": "10,700",
+      "delivery": "متاح للاستلام اليوم"
+    },
+    {
+      "id": "2",
+      "category": "fashion",
+      "searchName": "حذاء رياضي خفيف مريح",
+      "name": "حذاء رياضي خفيف ومريح للجري والاستخدام اليومي",
+      "cartName": "حذاء رياضي",
+      "price": 899,
+      "cartImage": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=700&q=80",
+        "alt": "حذاء رياضي"
+      },
+      "discount": "-25%",
+      "seller": "✓ ستايل هب",
+      "rating": "★★★★★ (241)",
+      "displayPrice": "899 ج.م",
+      "oldPrice": "1,200",
+      "delivery": "الشحن 35 ج.م"
+    },
+    {
+      "id": "3",
+      "category": "home",
+      "searchName": "ماكينة قهوة منزلية",
+      "name": "ماكينة قهوة أنيقة لتحضير قهوتك في دقائق",
+      "cartName": "ماكينة قهوة",
+      "price": 2490,
+      "cartImage": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=700&q=80",
+        "alt": "ماكينة قهوة"
+      },
+      "discount": "-21%",
+      "seller": "✓ بيتي ستور",
+      "rating": "★★★★☆ (73)",
+      "displayPrice": "2,490 ج.م",
+      "oldPrice": "3,150",
+      "delivery": "توصيل مجاني"
+    },
+    {
+      "id": "4",
+      "category": "beauty",
+      "searchName": "عطر فاخر ثابت",
+      "name": "عطر فاخر برائحة مميزة وثبات يدوم طوال اليوم",
+      "cartName": "عطر فاخر",
+      "price": 745,
+      "cartImage": "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=200&q=70",
+      "image": {
+        "src": "https://images.unsplash.com/photo-1541643600914-78b084683601?auto=format&fit=crop&w=700&q=80",
+        "alt": "عطر فاخر"
+      },
+      "discount": "-15%",
+      "seller": "✓ لمسة بيوتي",
+      "rating": "★★★★★ (128)",
+      "displayPrice": "745 ج.م",
+      "oldPrice": "875",
+      "delivery": "متبقي 3 قطع فقط"
+    }
+  ],
+  "stores": [
+    {
+      "image": {
+        "src": "https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=180&q=80",
+        "alt": "متجر تك زون"
+      },
+      "name": "تك زون",
+      "description": "إلكترونيات وموبايلات • ⭐ 4.9"
+    },
+    {
+      "image": {
+        "src": "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=180&q=80",
+        "alt": "متجر ستايل هب"
+      },
+      "name": "ستايل هب",
+      "description": "ملابس وأحذية • ⭐ 4.8"
+    },
+    {
+      "image": {
+        "src": "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=180&q=80",
+        "alt": "متجر بيتي"
+      },
+      "name": "بيتي ستور",
+      "description": "المنزل والمطبخ • ⭐ 4.7"
+    },
+    {
+      "image": {
+        "src": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=180&q=80",
+        "alt": "موبايل ستور"
+      },
+      "name": "موبايل ستور",
+      "description": "موبايلات وإكسسوارات • ⭐ 4.9"
+    },
+    {
+      "image": {
+        "src": "https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=180&q=80",
+        "alt": "لمسة بيوتي"
+      },
+      "name": "لمسة بيوتي",
+      "description": "عطور وعناية • ⭐ 4.8"
+    },
+    {
+      "image": {
+        "src": "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=180&q=80",
+        "alt": "فريش ماركت"
+      },
+      "name": "فريش ماركت",
+      "description": "بقالة وسوبر ماركت • ⭐ 4.6"
+    }
+  ]
+}

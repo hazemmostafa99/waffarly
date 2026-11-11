@@ -1,6 +1,7 @@
 import type { BusinessActivityKey } from './activities-modules.js';
 
 export interface MerchantSummary {
+  storefrontHandle?: string | null;
   subscriptionStatus?: import('./subscriptions.js').SubscriptionStatus;
   id: string;
   name: string;
@@ -15,6 +16,7 @@ export interface MerchantSummary {
 }
 
 export interface CreateMerchantRequest {
+  storefrontHandle?: string | undefined;
   subscription?: { planId: string; months: import('./plans.js').SubscriptionMonths } | undefined;
   name: string;
   activity?: BusinessActivityKey;

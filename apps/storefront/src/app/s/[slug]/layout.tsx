@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { LocaleProvider } from '@waffarly/ui';
 import type { Locale } from '@waffarly/ui';
@@ -10,6 +10,8 @@ import { getStorefrontCatalog } from '../../../features/catalog/storefront-data'
 import { StorefrontFooter } from '../../../components/storefront/storefront-footer';
 import { StorefrontHeader } from '../../../components/storefront/storefront-header';
 import { StorefrontProviders } from '../../../providers/storefront-providers';
+import { StorefrontAddressProvider } from '../../../components/storefront/storefront-link';
+import { localStorefrontHandle } from '../../../lib/storefront-address';
 
 type StorefrontRouteProps = {
   params: Promise<{ slug: string }>;
@@ -36,6 +38,11 @@ export async function generateMetadata({ params }: StorefrontRouteProps): Promis
 
 export default async function StorefrontLayout({ children, params }: StorefrontLayoutProps) {
   const [{ slug }, cookieStore] = await Promise.all([params, cookies()]);
+  const requestHeaders = await headers();
+  const host = requestHeaders.get('host') ?? '';
+  const handle = localStorefrontHandle(host);
+  const hostBased = process.env.NODE_ENV === 'development' && handle !== null &&
+    handle === slug;
   let catalog;
   try {
     catalog = await getStorefrontCatalog(slug);
@@ -47,14 +54,16 @@ export default async function StorefrontLayout({ children, params }: StorefrontL
 
   return (
     <LocaleProvider initialLocale={locale}>
-      <StorefrontProviders key={slug} slug={slug}>
-        <div
-          className={`${cairo.variable} ${tajawal.variable} storefront-theme min-h-screen bg-store-page font-body text-store-ink`}
-        >
-          <StorefrontHeader catalog={catalog} />
-          <div className="pb-20 lg:pb-0">{children}</div>
-          <StorefrontFooter catalog={catalog} />
-        </div>
+      <StorefrontProviders key={catalog.slug} slug={catalog.slug}>
+        <StorefrontAddressProvider slug={catalog.slug} routeSlug={slug} hostBased={hostBased}>
+          <div
+            className={`${cairo.variable} ${tajawal.variable} storefront-theme min-h-screen bg-store-page font-body text-store-ink`}
+          >
+            <StorefrontHeader catalog={catalog} />
+            <div className="pb-20 lg:pb-0">{children}</div>
+            <StorefrontFooter catalog={catalog} />
+          </div>
+        </StorefrontAddressProvider>
       </StorefrontProviders>
     </LocaleProvider>
   );

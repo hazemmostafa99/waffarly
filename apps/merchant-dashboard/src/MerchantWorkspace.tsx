@@ -640,37 +640,26 @@ export function MerchantWorkspace({
           </button>
         </header>
         <main id="main-content" tabIndex={-1} className="merchant-content">
-          <div className="merchant-breadcrumb">
-            {t('Home')} <span>/</span> {t(current.label)}
-          </div>
-          <div className="merchant-page-heading">
-            <div>
-              <h1>{t(current.label)}</h1>
-              <p>
-                {t(
-                  view === 'dashboard'
-                    ? "Here's what's happening with your business today."
-                    : view === 'settings'
-                      ? 'Manage your business details and customer-facing storefront.'
-                      : 'Keep your catalog accurate, organized, and ready to sell.',
-                )}
-              </p>
-            </div>
-            {view === 'dashboard' ? (
-              <button type="button" className="merchant-date-filter">
-                <Icon name="calendar" />
-                <span>
-                  {t('Jun 8, 2024')} – {t('Jun 14, 2024')}
-                </span>
-                <Icon name="chevron" />
-              </button>
-            ) : (
-              <span className="merchant-account-pill">
-                <span className="merchant-online-dot" />
-                {profile.merchantName}
-              </span>
-            )}
-          </div>
+          {view === 'dashboard' && (
+            <>
+              <div className="merchant-breadcrumb">
+                {t('Home')} <span>/</span> {t(current.label)}
+              </div>
+              <div className="merchant-page-heading">
+                <div>
+                  <h1>{t(current.label)}</h1>
+                  <p>{t("Here's what's happening with your business today.")}</p>
+                </div>
+                <button type="button" className="merchant-date-filter">
+                  <Icon name="calendar" />
+                  <span>
+                    {t('Jun 8, 2024')} – {t('Jun 14, 2024')}
+                  </span>
+                  <Icon name="chevron" />
+                </button>
+              </div>
+            </>
+          )}
           {error}
           {showLegacyDashboard && (
             <>

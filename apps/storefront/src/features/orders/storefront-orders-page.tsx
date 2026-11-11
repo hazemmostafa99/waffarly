@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import Link from '../../components/storefront/storefront-link';
 import { useParams } from 'next/navigation';
 import { ClipboardList } from 'lucide-react';
 import { Button, useLocale } from '@waffarly/ui';

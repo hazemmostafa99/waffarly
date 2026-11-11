@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import Link from 'next/link';
+import Link, { useStorefrontBasePath } from './storefront-link';
 import { usePathname } from 'next/navigation';
 import { Gift, Heart, House, Menu, ShoppingBag, Sparkles, UserRound } from 'lucide-react';
 import type { PublicStorefrontCatalog } from '@waffarly/contracts';
@@ -51,14 +51,14 @@ export function StorefrontHeader({
   const cartCount = useStorefrontStore((state) =>
     state.cart.reduce((total, item) => total + item.quantity, 0),
   );
-  const homeHref = `/s/${catalog.slug}`;
+  const homeHref = useStorefrontBasePath(catalog.slug);
   const menuHref = `${homeHref}/menu`;
   const offersHref = `${homeHref}/offers`;
   const aboutHref = `${homeHref}/about`;
   const cartHref = `${homeHref}/cart`;
   const favoritesHref = `${homeHref}/favorites`;
   const accountHref = `${homeHref}/account`;
-  const isHome = pathname === homeHref;
+  const isHome = pathname === (homeHref || '/');
   const isMenu = pathname === menuHref;
   const isAccount = pathname === accountHref || pathname.startsWith(`${accountHref}/`);
 
@@ -72,13 +72,13 @@ export function StorefrontHeader({
       </div>
       <header className="sticky top-0 z-40 border-b border-store-border bg-white/95 shadow-[0_4px_22px_rgba(16,45,35,0.04)] backdrop-blur-md">
         <div className="mx-auto flex h-[66px] w-[calc(100%-2rem)] max-w-[1240px] items-center justify-between gap-4 lg:h-[86px]">
-          <Link href={homeHref} aria-label={catalog.merchantName} className="min-w-0">
+          <Link href={homeHref || '/'} aria-label={catalog.merchantName} className="min-w-0">
             <Brand catalog={catalog} />
           </Link>
 
           <nav aria-label={t.menu} className="hidden items-center gap-8 lg:flex">
             <Link
-              href={homeHref}
+              href={homeHref || '/'}
               aria-current={isHome ? 'page' : undefined}
               className={`text-sm font-bold transition-colors hover:text-store-accent ${isHome ? 'text-store-accent' : 'text-store-ink'}`}
             >
@@ -152,7 +152,7 @@ export function StorefrontHeader({
         className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-store-border bg-white/95 px-1 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-8px_28px_rgba(16,45,35,0.08)] backdrop-blur-md lg:hidden"
       >
         {[
-          { href: homeHref, title: t.home, icon: House, active: isHome },
+          { href: homeHref || '/', title: t.home, icon: House, active: isHome },
           { href: menuHref, title: t.menu, icon: Menu, active: isMenu },
           { href: cartHref, title: t.cart, icon: ShoppingBag, active: pathname === cartHref },
           { href: favoritesHref, title: t.favorites, icon: Heart, active: pathname === favoritesHref },

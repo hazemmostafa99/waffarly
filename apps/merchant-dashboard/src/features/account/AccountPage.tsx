@@ -14,9 +14,7 @@ import { ApiError, apiRequest, apiRequestSingle } from '../../lib/api-client.js'
 import type { MerchantOutletContext } from '../../lib/merchant-context.js';
 import { SubscriptionStatusBadge } from './SubscriptionStatusBadge.js';
 
-const storefrontBaseUrl = (
-  import.meta.env.VITE_STOREFRONT_BASE_URL || 'http://localhost:3000'
-).replace(/\/$/, '');
+import { storefrontUrl as buildStorefrontUrl } from '../../lib/storefront-url.js';
 const supportPhone = (import.meta.env.VITE_SUPPORT_WHATSAPP || '201044280822').replace(/\D/g, '');
 const supportUrl = `https://wa.me/${supportPhone}`;
 
@@ -262,7 +260,7 @@ export function AccountPage() {
   const current = subscription.currentPeriod;
   const displayedPeriod = current ?? subscription.latestPeriod;
   const canEdit = subscription.status === 'active' || subscription.status === 'legacy';
-  const storefrontUrl = `${storefrontBaseUrl}/s/${encodeURIComponent(profile.storefrontSlug)}`;
+  const storefrontUrl = buildStorefrontUrl(profile.storefrontSlug, profile.storefrontHandle);
   const remainingMs = subscription.coverageEndsAt
     ? new Date(subscription.coverageEndsAt).getTime() - clock
     : 0;
@@ -270,22 +268,9 @@ export function AccountPage() {
   const expiring = subscription.status === 'active' && remainingMs > 0 && daysLeft <= 7;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 text-foreground" data-testid="merchant-account">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-2">
-          <span className="text-xs font-semibold tracking-wider text-primary">
-            {text('YOUR WAFFARLY ACCOUNT', 'حسابك في وفّرلي')}
-          </span>
-          <h1 className="m-0 text-3xl font-bold tracking-tight text-foreground">
-            {text('My account', 'حسابي')}
-          </h1>
-          <p className="m-0 max-w-none text-sm text-muted-foreground">
-            {text(
-              'Your business, storefront and subscription, all in one place.',
-              'بيانات نشاطك ومتجرك واشتراكك، في مكان واحد.',
-            )}
-          </p>
-        </div>
+    <div className="mx-auto max-w-6xl space-y-4 text-foreground" data-testid="merchant-account">
+      <div className="flex flex-wrap items-start justify-end gap-4">
+        <h1 className="sr-only">{text('My account', 'حسابي')}</h1>
         <Button
           variant="outline"
           size="sm"

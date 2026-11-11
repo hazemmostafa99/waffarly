@@ -1,9 +1,11 @@
 import type { INestApplication } from '@nestjs/common';
+import type { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface.js';
 import type { NextFunction, Request, Response } from 'express';
 import morgan from 'morgan';
 import { AppConfiguration } from './config/app-configuration.js';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
 import { StructuredLogger } from './common/logging/structured-logger.js';
+import { MerchantService, localStorefrontRequestScope } from './modules/merchants/index.js';
 
 export function configureHttpApplication(
   app: INestApplication,
@@ -11,7 +13,45 @@ export function configureHttpApplication(
   logger: StructuredLogger,
 ): void {
   const allowedOrigins = new Set(config.corsOrigins);
-  app.enableCors({ origin: config.corsOrigins, credentials: true });
+  const decisions = new WeakMap<Request, Promise<boolean>>();
+  const registeredStorefrontRequest = (request: Request): Promise<boolean> => {
+    const cached = decisions.get(request);
+    if (cached) return cached;
+    const decision = (async () => {
+      if (!config.isDevelopment || !request.headers.origin) return false;
+      const scope = localStorefrontRequestScope(
+        request.headers.origin,
+        request.method,
+        request.path,
+        config.corsOrigins,
+      );
+      if (!scope) return false;
+      try {
+        const address = await app.get(MerchantService).resolveStorefrontHandle(scope.handle);
+        return address.storefrontSlug === scope.slug;
+      } catch {
+        return false;
+      } // Fail closed, including unavailable database/unknown handle.
+    })();
+    decisions.set(request, decision);
+    return decision;
+  };
+  app.enableCors(
+    (request: Request, callback: (error: Error | null, options: CorsOptions) => void) => {
+      if (request.headers.origin && allowedOrigins.has(request.headers.origin)) {
+        callback(null, { origin: request.headers.origin, credentials: true });
+        return;
+      }
+      void registeredStorefrontRequest(request).then((allowed) =>
+        callback(null, {
+          origin: allowed ? request.headers.origin! : false,
+          credentials: false,
+          methods: ['GET', 'HEAD', 'POST', 'OPTIONS'],
+          allowedHeaders: ['Content-Type'],
+        }),
+      );
+    },
+  );
   app.use(
     morgan(
       (tokens, request, response) => {
@@ -80,7 +120,10 @@ export function configureHttpApplication(
       request.headers.origin &&
       !allowedOrigins.has(request.headers.origin)
     ) {
-      response.status(403).json({ message: 'Request origin is not allowed.' });
+      void registeredStorefrontRequest(request).then((allowed) => {
+        if (allowed) next();
+        else response.status(403).json({ message: 'Request origin is not allowed.' });
+      });
       return;
     }
     next();

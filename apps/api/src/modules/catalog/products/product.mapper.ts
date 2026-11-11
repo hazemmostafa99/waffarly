@@ -86,6 +86,8 @@ export function toSellableResponse(
 ) {
   return {
     id: product.id,
+    displayOrder: product.displayOrder,
+    menuSectionId: product.menuSectionId,
     name: product.name,
     description: product.description,
     basePrice: formatCents(toCents(product.basePrice.toString())),

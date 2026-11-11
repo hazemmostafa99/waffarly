@@ -294,23 +294,8 @@ export function CategoriesPage() {
   const selectedImage = media.find((asset) => asset.id === draft.imageAssetId) ?? null;
 
   return (
-    <div className="categories-page">
-      <header className="products-heading categories-heading">
-        <div>
-          <h1>{copy('Categories')}</h1>
-          <p>
-            {copy('Organize product categories and structure them for easy browsing and search.')}
-          </p>
-        </div>
-        <button
-          type="button"
-          className="products-button primary"
-          disabled={loading || busy || !hasLoaded}
-          onClick={startCreating}
-        >
-          <Icon name="plus" /> {copy('Add Category')}
-        </button>
-      </header>
+    <div className="categories-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+      <h1 className="sr-only">{copy('Categories')}</h1>
 
       {error && (
         <div className="products-error" role="alert">
@@ -382,6 +367,7 @@ export function CategoriesPage() {
         />
       </div>
 
+      <div className="categories-toolbar">
       <div className="categories-filters">
         <label className="products-search">
           <Icon name="search" />
@@ -410,6 +396,17 @@ export function CategoriesPage() {
           <option value="name">{copy('Name A–Z')}</option>
           <option value="products">{copy('Most products')}</option>
         </select>
+      </div>
+        <div className="categories-toolbar-actions">
+        <button
+          type="button"
+          className="products-button primary"
+          disabled={loading || busy || !hasLoaded}
+          onClick={startCreating}
+        >
+          <Icon name="plus" /> {copy('Add Category')}
+        </button>
+        </div>
       </div>
 
       <div className="categories-workspace">

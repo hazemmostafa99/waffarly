@@ -1,4 +1,5 @@
 import { RecipeOrderActions } from './features/orders/RecipeOrderActions.js';
+import { OrderCustomerAssignment } from './features/orders/OrderCustomerAssignment.js';
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import type { StorefrontOrderStatus, StorefrontOrderSummary } from '@waffarly/contracts';
 import { useLocale } from '@waffarly/ui';
@@ -457,6 +458,7 @@ export function StorefrontOrdersPage() {
                             <tr className="orders-expanded-row">
                               <td colSpan={8}>
                                 <div className="orders-expanded-detail">
+                                  <OrderCustomerAssignment key={order.id} orderId={order.id} onSaved={() => setRefreshKey((key) => key + 1)} />
                                   <div className="orders-expanded-heading">
                                     <div>
                                       <strong>

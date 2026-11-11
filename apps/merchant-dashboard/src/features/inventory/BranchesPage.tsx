@@ -144,17 +144,68 @@ export function BranchesPage() {
     }
   }
 
+  const branchFilters = (
+    <div className="inventory-filters">
+      <div className="inventory-branch-search">
+        <label className="sr-only" htmlFor="branch-search">
+          {text('Search branches')}
+        </label>
+        <div className="inventory-branch-search-control">
+          <Icon name="search" />
+          <Input
+            id="branch-search"
+            aria-label={text('Search branches')}
+            type="search"
+            value={searchDraft}
+            maxLength={160}
+            onChange={(event) => setSearchDraft(event.target.value)}
+            placeholder={text('Search by branch name')}
+          />
+          {searchDraft && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="inventory-branch-search-clear"
+              aria-label={text('Clear search')}
+              onClick={() => setSearchDraft('')}
+            >
+              <span aria-hidden="true">×</span>
+            </Button>
+          )}
+        </div>
+      </div>
+      <label className="inventory-filter-status">
+        <span className="sr-only">{text('Status')}</span>
+        <select
+          aria-label={text('Branch status')}
+          value={status}
+          onChange={(event) => {
+            setStatus(event.target.value as typeof status);
+            setHistory([]);
+          }}
+        >
+          <option value="active">{text('Active')}</option>
+          <option value="archived">{text('Archived')}</option>
+          <option value="all">{text('All locations')}</option>
+        </select>
+      </label>
+    </div>
+  );
+
   return (
     <main className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <InventoryHeader
         title="Branches and warehouses"
         description="Each branch can hold multiple warehouses and has one default consumption warehouse."
         showInventoryNavigation={false}
+        filters={branchFilters}
         actions={
           <Button
             type="button"
             onClick={() => setBranchEditor({ branch: null, key: crypto.randomUUID() })}
           >
+            <Icon name="plus" />
             {text('Add branch')}
           </Button>
         }
@@ -199,48 +250,6 @@ export function BranchesPage() {
             </span>
           </div>
         )}
-        <div className="inventory-filters">
-          <div className="inventory-branch-search">
-            <label htmlFor="branch-search">{text('Search branches')}</label>
-            <div className="inventory-branch-search-control">
-              <Icon name="search" />
-              <Input
-                id="branch-search"
-                type="search"
-                value={searchDraft}
-                maxLength={160}
-                onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder={text('Search by branch name')}
-              />
-              {searchDraft && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="inventory-branch-search-clear"
-                  aria-label={text('Clear search')}
-                  onClick={() => setSearchDraft('')}
-                >
-                  <span aria-hidden="true">×</span>
-                </Button>
-              )}
-            </div>
-          </div>
-          <label className="inventory-filter-status">
-            {text('Status')}
-            <select
-              value={status}
-              onChange={(event) => {
-                setStatus(event.target.value as typeof status);
-                setHistory([]);
-              }}
-            >
-              <option value="active">{text('Active')}</option>
-              <option value="archived">{text('Archived')}</option>
-              <option value="all">{text('All locations')}</option>
-            </select>
-          </label>
-        </div>
         <div
           className="wf-table-scroll inventory-branch-table-scroll"
           role="region"

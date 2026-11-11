@@ -58,6 +58,7 @@ export interface CatalogCategoryReference {
 }
 
 export interface CatalogCategorySummary {
+  displayOrder?: number;
   id: string;
   name: string;
   description: string | null;
@@ -90,6 +91,8 @@ export interface CatalogProductImage {
 }
 
 export interface CatalogProductSummary {
+  displayOrder?: number;
+  menuSectionId?: string | null;
   id: string;
   name: string;
   description: string | null;
@@ -309,6 +312,11 @@ export interface PosSellableCatalog {
 }
 
 export interface CreateStorefrontOrderRequest {
+  requestId?: string | undefined;
+  reviewedTotal?: string | undefined;
+  discountCode?: string | undefined;
+  deliveryAreaId?: string | undefined;
+  restaurantSettingsRevision?: number | undefined;
   customerName: string;
   customerPhone: string;
   fulfillmentType: 'pickup' | 'delivery';
@@ -353,6 +361,9 @@ export interface DispatchPosKitchenOrderRequest {
 export type PosKitchenDispatchMode = 'automatic' | 'manual' | 'legacy';
 
 export interface StorefrontOrderReceipt {
+  subtotal?: string;
+  deliveryFee?: string;
+  discount?: import('./discounts.js').OrderDiscountSnapshot;
   id: string;
   status: StorefrontOrderStatus;
   currency: 'EGP';
@@ -361,6 +372,8 @@ export interface StorefrontOrderReceipt {
 }
 
 export interface StorefrontOrderSummary {
+  subtotal?: string;
+  deliveryFee?: string;
   orderReference?: string | null;
   readyAt?: string | null;
   completedAt?: string | null;
@@ -537,4 +550,12 @@ export type UpdateCatalogProductRequest = Partial<CatalogProductFields> & { revi
 
 export interface CatalogRevisionRequest {
   revision: number;
+}
+
+export type StorefrontCheckoutQuoteRequest = Pick<CreateStorefrontOrderRequest, 'items' | 'fulfillmentType' | 'deliveryAreaId' | 'discountCode'>;
+export interface StorefrontCheckoutQuote {
+  unitPrices: string[];
+  subtotal: string; deliveryFee: string; total: string; currency: 'EGP';
+  discount?: import('./discounts.js').OrderDiscountSnapshot;
+  restaurantSettingsRevision?: number | undefined; demo: boolean;
 }

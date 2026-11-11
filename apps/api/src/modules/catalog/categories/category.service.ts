@@ -186,6 +186,7 @@ const categoryInclude = {
 } as const;
 
 function toCategoryResponse(category: {
+  displayOrder?: number;
   id: string;
   name: string;
   description: string | null;
@@ -201,6 +202,7 @@ function toCategoryResponse(category: {
 }) {
   return {
     id: category.id,
+    displayOrder: category.displayOrder ?? 0,
     name: category.name,
     description: category.description,
     image: category.imageAsset,

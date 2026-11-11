@@ -4,7 +4,7 @@ export const emptyTemplateDraft: CreateStorefrontTemplateRequest = {
   key: '',
   name: '',
   description: '',
-  activity: 'general',
+  activity: 'restaurant',
   layout: 'menu',
   accentColor: '#245c43',
   status: 'draft',

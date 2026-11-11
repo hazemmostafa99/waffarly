@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
-import { JoinContent } from './join-content';
+import { MerchantEntryPage } from '@/features/marketplace/merchant-entry/components/merchant-entry-page';
 
 export const metadata: Metadata = {
-  title: 'Apply to join Waffarly',
-  description: 'Apply to set up your business with Waffarly.',
+  title: 'سجّل كتاجر | وفّرلي',
+  description: 'قدّم بيانات متجرك أو مطعمك للانضمام إلى وفّرلي.',
 };
 
 export default function JoinPage() {
-  return <JoinContent />;
+  return <MerchantEntryPage />;
 }

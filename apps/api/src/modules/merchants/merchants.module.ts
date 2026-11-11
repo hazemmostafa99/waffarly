@@ -14,9 +14,11 @@ import { MerchantPosAppearanceService } from './merchant-pos-appearance.service.
 import { SubscriptionsModule } from '../subscriptions/index.js';
 import { MerchantAccountController } from './merchant-account.controller.js';
 import { MerchantAccountService } from './merchant-account.service.js';
+import { PublicStorefrontAddressController } from './public-storefront-address.controller.js';
 @Module({
   imports: [AuthModule, SubscriptionsModule],
   controllers: [
+    PublicStorefrontAddressController,
     MerchantAccountController,
     MerchantController,
     OwnerPosAppearanceController,
@@ -25,5 +27,6 @@ import { MerchantAccountService } from './merchant-account.service.js';
     PublicMerchantApplicationController,
   ],
   providers: [MerchantService, MerchantPosAppearanceService, MerchantAccountService],
+  exports: [MerchantService],
 })
 export class MerchantsModule {}
