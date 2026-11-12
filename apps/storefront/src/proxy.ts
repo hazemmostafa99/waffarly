@@ -1,11 +1,14 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { isStorefrontHandle, localStorefrontHandle } from './lib/storefront-address';
+import { isStorefrontHandle, storefrontHostHandle } from './lib/storefront-address';
 
 const reservedTenantPaths = /^\/(?:s|marketplace|join)(?:\/|$)/;
 const legacyMarketplacePath = /^\/marketplace(?:\/|$)/;
 
 function redirectLegacyMarketplacePath(request: NextRequest, path: string) {
-  const url = request.nextUrl.clone();
+  const url = new URL(request.url);
+  url.host = request.headers.get('host') ?? url.host;
+  url.port = new URL(`${url.protocol}//${request.headers.get('host') ?? url.host}`).port;
+  if (request.headers.get('x-forwarded-proto') === 'https') url.protocol = 'https:';
   url.pathname = path.replace(legacyMarketplacePath, '') || '/';
   return NextResponse.redirect(url, 308);
 }
@@ -24,12 +27,12 @@ function unavailable() {
 }
 
 export function proxy(request: NextRequest) {
-  // This slice deliberately does not enable production host routing.
-  if (process.env.NODE_ENV !== 'development') return NextResponse.next();
-
-  // Next can construct nextUrl using the dev server's bind hostname (0.0.0.0).
-  // For local host routing, use the hostname the browser actually requested.
-  const handle = localStorefrontHandle(request.headers.get('host') ?? '');
+  const requestHeaders = new Headers(request.headers);
+  // Always replace this private routing context, including on the main domain.
+  requestHeaders.delete('x-waffarly-storefront-handle');
+  const next = () => NextResponse.next({ request: { headers: requestHeaders } });
+  // Nginx preserves Host; never choose a tenant from client-supplied forwarded headers.
+  const handle = storefrontHostHandle(request.headers.get('host') ?? '');
   const path = request.nextUrl.pathname;
 
   if (
@@ -38,14 +41,14 @@ export function proxy(request: NextRequest) {
     path.startsWith('/storefront-assets/') ||
     path.startsWith('/marketplace-assets/')
   ) {
-    return NextResponse.next();
+    return next();
   }
 
   if (handle === null) {
     if (legacyMarketplacePath.test(path)) {
       return redirectLegacyMarketplacePath(request, path);
     }
-    return NextResponse.next();
+    return next();
   }
 
   if (handle === 'marketplace') {
@@ -53,15 +56,17 @@ export function proxy(request: NextRequest) {
       return redirectLegacyMarketplacePath(request, path);
     }
     if (/^\/s(?:\/|$)/.test(path)) return unavailable();
-    return NextResponse.next();
+    return next();
   }
 
   if (isStorefrontHandle(handle)) {
     if (!reservedTenantPaths.test(path)) {
-      const url = request.nextUrl.clone();
+      // Preserve the raw origin so a loopback bind remains an internal rewrite.
+      const url = new URL(request.url);
       // Only carry the public handle here; resolve it through the API in the page loader.
       url.pathname = '/s/' + encodeURIComponent(handle) + (path === '/' ? '' : path);
-      return NextResponse.rewrite(url);
+      requestHeaders.set('x-waffarly-storefront-handle', handle);
+      return NextResponse.rewrite(url, { request: { headers: requestHeaders } });
     }
   }
 

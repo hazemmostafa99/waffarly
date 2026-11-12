@@ -1,5 +1,10 @@
 # Saved storefront addresses in local development
 
+For opt-in production host routing and registered storefront origins, see
+[production configuration](setup/STOREFRONT_SUBDOMAINS.md). The notes below
+describe the original local rollout; their production limitations are superseded
+by that configuration guide.
+
 Updated 2026-11-11. Merchant addresses are now stored through the API/database.
 `LOCAL_STOREFRONT_ALIASES` is obsolete and is no longer read. There is no automatic
 import of old aliases: an administrator explicitly assigns the desired handle.

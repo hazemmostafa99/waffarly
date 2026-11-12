@@ -31,6 +31,10 @@ export class AppConfiguration {
       .filter(Boolean);
   }
 
+  get storefrontBaseDomain(): string | undefined {
+    return this.environment.STOREFRONT_BASE_DOMAIN;
+  }
+
   get superAdminUsername(): string {
     return this.environment.SUPER_ADMIN_USERNAME.trim().toLowerCase();
   }

@@ -52,6 +52,13 @@ The dependency graph is unchanged. Dedicated reference tenants were seeded local
 existing order creation does not yet enforce the new operating/delivery settings.
 See [delivery notes](../marketplace-restaurant-backend-delivery.md).
 
+Production storefront origins (2026-11-12): HTTP bootstrap uses Merchants' public
+handle resolver to authorize registered HTTPS storefront origins under an explicit
+base domain. Catalog/checkout access requires the matching technical slug; only
+customer-auth routes receive credentialed dynamic CORS. Existing trusted
+application origins and module dependencies remain unchanged. See
+[production configuration](../setup/STOREFRONT_SUBDOMAINS.md).
+
 Direct storefront addresses (2026-11-11): Merchants owns optional immutable public
 handles, admin assignment/creation validation and the public identifier-only
 resolver. Technical storefront slugs and POS business codes stay unchanged.

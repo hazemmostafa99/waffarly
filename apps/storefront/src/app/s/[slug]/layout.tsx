@@ -11,7 +11,7 @@ import { StorefrontFooter } from '../../../components/storefront/storefront-foot
 import { StorefrontHeader } from '../../../components/storefront/storefront-header';
 import { StorefrontProviders } from '../../../providers/storefront-providers';
 import { StorefrontAddressProvider } from '../../../components/storefront/storefront-link';
-import { localStorefrontHandle } from '../../../lib/storefront-address';
+import { storefrontRequestHandle } from '../../../lib/storefront-address';
 
 type StorefrontRouteProps = {
   params: Promise<{ slug: string }>;
@@ -39,9 +39,8 @@ export async function generateMetadata({ params }: StorefrontRouteProps): Promis
 export default async function StorefrontLayout({ children, params }: StorefrontLayoutProps) {
   const [{ slug }, cookieStore] = await Promise.all([params, cookies()]);
   const requestHeaders = await headers();
-  const host = requestHeaders.get('host') ?? '';
-  const handle = localStorefrontHandle(host);
-  const hostBased = process.env.NODE_ENV === 'development' && handle !== null &&
+  const handle = storefrontRequestHandle(requestHeaders);
+  const hostBased = handle !== null &&
     handle === slug;
   let catalog;
   try {

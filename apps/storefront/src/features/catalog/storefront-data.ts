@@ -5,22 +5,20 @@ import {
   type PublicStorefrontCatalog,
 } from '@waffarly/contracts';
 import { headers } from 'next/headers';
-import { localStorefrontHandle } from '../../lib/storefront-address';
+import { storefrontRequestHandle } from '../../lib/storefront-address';
 import { notFound } from 'next/navigation';
 import { ApiError, apiGet } from '../../lib/api-client';
 
 export const getStorefrontCatalog = cache(async (slug: string) => {
   let technicalSlug = slug;
-  if (process.env.NODE_ENV === 'development') {
-    const handle = localStorefrontHandle((await headers()).get('host') ?? '');
-    if (handle !== null) {
-      if (!isStorefrontHandle(handle) || slug !== handle) notFound();
-      const address = await apiGet<PublicStorefrontAddress>(
-        `storefront-handles/${encodeURIComponent(handle)}`,
-        { revalidate: 0 },
-      );
-      technicalSlug = address.storefrontSlug;
-    }
+  const handle = storefrontRequestHandle(await headers());
+  if (handle !== null) {
+    if (!isStorefrontHandle(handle) || slug !== handle) notFound();
+    const address = await apiGet<PublicStorefrontAddress>(
+      `storefront-handles/${encodeURIComponent(handle)}`,
+      { revalidate: 0 },
+    );
+    technicalSlug = address.storefrontSlug;
   }
   return apiGet<PublicStorefrontCatalog>(`catalog/stores/${encodeURIComponent(technicalSlug)}`, {
     revalidate: 300,
