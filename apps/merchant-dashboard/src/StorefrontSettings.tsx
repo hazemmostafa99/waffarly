@@ -55,7 +55,7 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
     };
   }, []);
 
-  const handle = settings?.storefrontHandle ?? profile.storefrontHandle;
+  const handle = settings?.storefrontHandle;
   const customerUrl = settings ? storefrontUrl(settings.storefrontSlug, handle) : '';
 
   async function copyStorefrontUrl() {
