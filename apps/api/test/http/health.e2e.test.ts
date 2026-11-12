@@ -52,4 +52,17 @@ describe('health endpoints', () => {
     assert.equal(response.body.errorCode, 'DATABASE_UNAVAILABLE');
     assert.equal(response.body.message, 'Database is unavailable.');
   });
+
+  it('keeps liveness during an outage and restores readiness on the same process', async () => {
+    let available = false;
+    app = await createTestApplication(async () => {
+      if (!available) throw new Error('connection refused');
+      return [{ '?column?': 1 }];
+    });
+    await request(app.getHttpServer()).get('/health').expect(200);
+    await request(app.getHttpServer()).get('/health/db').expect(503);
+    available = true;
+    await request(app.getHttpServer()).get('/health/db').expect(200);
+    await request(app.getHttpServer()).get('/health').expect(200);
+  });
 });

@@ -25,6 +25,21 @@ export class AppConfiguration {
     return this.environment.DATABASE_URL;
   }
 
+  get databasePoolOptions() {
+    return {
+      max: this.environment.DATABASE_POOL_MAX,
+      connectionTimeoutMillis: this.environment.DATABASE_CONNECTION_TIMEOUT_MS,
+      idleTimeoutMillis: this.environment.DATABASE_IDLE_TIMEOUT_MS,
+    };
+  }
+
+  get databaseStartupOptions() {
+    return {
+      attempts: this.environment.DATABASE_STARTUP_ATTEMPTS,
+      retryDelayMs: this.environment.DATABASE_STARTUP_RETRY_DELAY_MS,
+    };
+  }
+
   get corsOrigins(): string[] {
     return this.environment.CORS_ORIGINS.split(',')
       .map((origin) => origin.trim())

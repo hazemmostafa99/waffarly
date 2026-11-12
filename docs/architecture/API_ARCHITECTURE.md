@@ -1,5 +1,12 @@
 # API architecture
 
+Database connectivity (2026-11-12): Infrastructure owns one configured PostgreSQL
+pool per API process and a bounded startup `SELECT 1` retry policy before HTTP
+listen. Health retains separate liveness and database readiness endpoints;
+the HTTP exception filter maps recognized database connectivity/capacity errors
+to 503 without replaying business operations. No schema or module dependency
+changes are required. See [database connections](../setup/DATABASE_CONNECTIONS.md).
+
 Discounts (2026-11-11): Discounts owns merchant-scoped coupon definitions,
 revisioned updates, branch scope, and redemption reporting. Owner APIs derive
 tenant identity from Auth. Monetary fields cross the API as decimal strings;

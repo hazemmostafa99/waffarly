@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { StructuredLogger } from '../logging/structured-logger.js';
+import { isDatabaseUnavailable } from '../../infrastructure/database/prisma-errors.js';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -16,21 +17,32 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const context = host.switchToHttp();
     const request = context.getRequest<Request>();
     const response = context.getResponse<Response>();
+    const databaseUnavailable =
+      !(exception instanceof HttpException) && isDatabaseUnavailable(exception);
     const statusCode =
-      exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+      exception instanceof HttpException
+        ? exception.getStatus()
+        : databaseUnavailable
+          ? HttpStatus.SERVICE_UNAVAILABLE
+          : HttpStatus.INTERNAL_SERVER_ERROR;
     const exceptionBody = exception instanceof HttpException ? exception.getResponse() : undefined;
     const body: Record<string, unknown> | undefined =
       typeof exceptionBody === 'object' && exceptionBody !== null
         ? (exceptionBody as Record<string, unknown>)
         : undefined;
     const messageValue = body?.message ?? exceptionBody;
-    const message =
-      typeof messageValue === 'string' || Array.isArray(messageValue)
+    const message = databaseUnavailable
+      ? 'Database is unavailable.'
+      : typeof messageValue === 'string' || Array.isArray(messageValue)
         ? messageValue
         : statusCode >= 500
           ? 'Internal server error'
           : 'Request failed';
-    const errorCode = typeof body?.code === 'string' ? body.code : undefined;
+    const errorCode = databaseUnavailable
+      ? 'DATABASE_UNAVAILABLE'
+      : typeof body?.code === 'string'
+        ? body.code
+        : undefined;
 
     if (statusCode >= 500) {
       const error = exception instanceof Error ? exception : undefined;
