@@ -24,10 +24,12 @@ class OriginProbeController {
 describe('registered local storefront origin policy', () => {
   let app: INestApplication;
   let development: boolean;
+  let baseDomain: string | undefined;
   let lookups: number;
   const origin = 'http://abo-ali.localhost:3000';
   beforeEach(async () => {
     development = true;
+    baseDomain = undefined;
     lookups = 0;
     const module = await Test.createTestingModule({
       controllers: [OriginProbeController],
@@ -48,7 +50,10 @@ describe('registered local storefront origin policy', () => {
     configureHttpApplication(
       app,
       {
-        corsOrigins: ['http://localhost:3000', 'http://localhost:5173'],
+        corsOrigins: ['http://localhost:3000', 'http://localhost:5173', 'https://wfarly.com'],
+        get storefrontBaseDomain() {
+          return baseDomain;
+        },
         get isDevelopment() {
           return development;
         },
@@ -114,5 +119,40 @@ describe('registered local storefront origin policy', () => {
       .expect(201)
       .expect('Access-Control-Allow-Origin', 'http://localhost:5173')
       .expect('Access-Control-Allow-Credentials', 'true');
+  });
+
+  it('permits only registered HTTPS production stores to access their own catalog', async () => {
+    development = false;
+    baseDomain = 'wfarly.com';
+    const source = 'https://abo-ali.wfarly.com';
+    await request(app.getHttpServer()).post('/catalog/stores/technical-store/orders')
+      .set('Origin', source).send({}).expect(201)
+      .expect('Access-Control-Allow-Origin', source);
+    for (const denied of [
+      'https://unknown.wfarly.com', 'https://abo-ali.wfarly.com.evil.example',
+      'https://nested.abo-ali.wfarly.com', 'http://abo-ali.wfarly.com',
+      'https://abo-ali.wfarly.com:444', 'https://pos.wfarly.com',
+    ]) {
+      await request(app.getHttpServer()).post('/catalog/stores/technical-store/orders')
+        .set('Origin', denied).send({}).expect(403);
+    }
+    await request(app.getHttpServer()).post('/catalog/stores/other-store/orders')
+      .set('Origin', source).send({}).expect(403);
+    await request(app.getHttpServer()).post('/admin/probe')
+      .set('Origin', source).send({}).expect(403);
+  });
+
+  it('allows customer auth preflight with credentials only for registered storefronts', async () => {
+    development = false;
+    baseDomain = 'wfarly.com';
+    await request(app.getHttpServer()).options('/auth/customer/login')
+      .set('Origin', 'https://abo-ali.wfarly.com')
+      .set('Access-Control-Request-Method', 'POST').expect(204)
+      .expect('Access-Control-Allow-Origin', 'https://abo-ali.wfarly.com')
+      .expect('Access-Control-Allow-Credentials', 'true');
+    const denied = await request(app.getHttpServer()).post('/auth/customer/login')
+      .set('Origin', 'https://unknown.wfarly.com')
+      .send({}).expect(403);
+    assert.equal(denied.headers['access-control-allow-origin'], undefined);
   });
 });
