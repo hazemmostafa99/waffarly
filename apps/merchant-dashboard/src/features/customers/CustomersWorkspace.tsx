@@ -207,7 +207,7 @@ export function CustomersWorkspace({ globalSearch }: { globalSearch: string }) {
                   <strong>{text('Loading customers…', 'جاري تحميل العملاء…')}</strong>
                 </div>
               )}
-              {error && !loading && (
+              {error !== undefined && !loading && (
                 <div className="customers-empty-state" role="alert">
                   <Icon name="customers" />
                   <strong>{text('Customers could not be loaded', 'تعذّر تحميل العملاء')}</strong>

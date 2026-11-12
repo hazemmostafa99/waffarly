@@ -5,7 +5,7 @@ export function inventoryCopy(
 ) {
   const arabic: Record<string, string> = {
     'Inventory navigation': 'التنقل في المخزون',
-    'Stock overview': 'نظرة المخزون',
+    'Stock overview': 'نظرة عامة على المخزون',
     'Stock health': 'حالة المخزون',
     Items: 'الأصناف',
     Purchases: 'المشتريات',
@@ -42,12 +42,7 @@ export function inventoryCopy(
       'تسري هذه السياسة على جميع الفروع والمستودعات. لا يُستخدم المخزون غير القابل للبيع في المبيعات أو الوصفات.',
     'Opening entries add to existing balances. They do not replace stock counts.':
       'تُضاف القيود الافتتاحية إلى الأرصدة الحالية، ولا تستبدل الكميات المسجلة.',
-    'Inventory navigation': 'التنقل في المخزون',
-    'Stock overview': 'نظرة عامة على المخزون',
-    Items: 'الأصناف',
-    Purchases: 'المشتريات',
     'Setup and settings': 'الإعداد والتجهيز',
-    'Inventory settings': 'إعدادات المخزون',
     'Manage the items and units you use in purchases and recipes.':
       'أدر الأصناف والوحدات المستخدمة في المشتريات والوصفات.',
     'See what is in stock and record incoming purchases.':
@@ -129,7 +124,6 @@ export function inventoryCopy(
     'Continue to items': 'متابعة إلى الأصناف',
     Back: 'رجوع',
     'All warehouses': 'كل المستودعات',
-    'Stock items': 'أصناف المخزون',
     'No matching items': 'لا توجد أصناف مطابقة',
     'Add your first stock item': 'أضف أول صنف للمخزون',
     'Start with an ingredient or product, and choose how you measure it.':
@@ -282,7 +276,6 @@ export function inventoryCopy(
     'Allow negative stock': 'السماح بالرصيد السالب',
     'Inventory policy saved.': 'تم حفظ سياسة المخزون.',
     'Could not update the inventory policy.': 'تعذر تحديث سياسة المخزون.',
-    'Opening stock': 'الرصيد الافتتاحي',
     'Add current stock once before purchase invoices are available. Review the lines before posting; posted movements cannot be edited.':
       'سجل الرصيد الحالي مرة واحدة قبل توفر فواتير الشراء. راجع البنود قبل الترحيل؛ لا يمكن تعديل الحركات المُرحّلة.',
     Reason: 'السبب',
@@ -313,7 +306,6 @@ export function inventoryCopy(
     'Quantities are shown in each stock item’s base unit, separated by condition.':
       'تُعرض الكميات بالوحدة الأساسية لكل صنف، ومفصولة حسب الحالة.',
     'No stock balances have been posted yet.': 'لم يتم ترحيل أرصدة مخزون بعد.',
-    'Movement history': 'سجل الحركات',
     'Each posted change includes its source, reason, actor, location, and quantity snapshot.':
       'يتضمن كل تغيير مُرحّل المصدر والسبب والمسؤول والموقع ونسخة الكمية وقت الترحيل.',
     'No stock movements have been posted yet.': 'لم تُرحّل حركات مخزون بعد.',
@@ -416,7 +408,6 @@ export function inventoryCopy(
     'Create the supplier directory entry first.': 'أنشئ المورد في الدليل أولًا.',
     'This supplier invoice number is already recorded.': 'رقم فاتورة المورد مسجل بالفعل.',
     'Could not load the purchase invoice.': 'تعذر تحميل فاتورة الشراء.',
-    'Stock health': 'حالة المخزون',
     'Review configured reorder points against Available stock at each warehouse.':
       'راجع حدود إعادة الطلب مقابل المخزون المتاح في كل مستودع.',
     'Review this item by location and update its reorder points.':

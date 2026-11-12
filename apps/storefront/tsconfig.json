@@ -1,7 +1,6 @@
 {
   "extends": "@waffarly/typescript-config/next",
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": { "@/*": ["./src/*"] }
   },
   "include": [
