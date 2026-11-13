@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { PosButton } from './components/pos-button.js';
 import { ApiError } from './lib/api-client.js';
+import { PickupCollection } from './features/payments/pickup-collection.js';
 import {
   posWorkspaceScope,
   usePosWorkspaceStore,
@@ -295,13 +296,13 @@ export function POSScreen() {
                 !lineReadiness &&
                 employee.permissions.includes('start_preparation')) ||
               (order.status === 'ready' &&
-                Boolean(order.kitchenTicket) &&
+                (Boolean(order.kitchenTicket) || order.fulfillmentType === 'pickup') &&
                 employee.permissions.includes('sell')) ||
               (order.status === 'cancelled' &&
                 Boolean(order.kitchenTicket) &&
                 !order.kitchenTicket?.cancellationAcknowledgedAt &&
                 employee.permissions.includes('accept_recipe_orders'));
-            const canHandover = order.status === 'ready' && Boolean(order.kitchenTicket);
+            const canHandover = order.status === 'ready' && (Boolean(order.kitchenTicket) || order.fulfillmentType === 'pickup');
             const handoverBlocked = canHandover && order.handoverEligible !== true;
             const canRetry =
               pending &&
@@ -507,6 +508,7 @@ export function POSScreen() {
                       })}
                     </strong>
                   </div>
+                  {order.fulfillmentType === 'pickup' && order.status === 'ready' && employee.permissions.includes('sell') && <PickupCollection employee={employee} branchId={branchId} orderId={order.id} onUpdated={() => { void queryClient.invalidateQueries({ queryKey: posOrderKeys.branch(employee.merchantId, branchId) }); }} />}
                   {canHandover && (
                     <p
                       className={cn(

@@ -588,7 +588,7 @@ export class StorefrontOrdersService {
     const hasMore = orders.length > page.limit;
     const items = orders.slice(0, page.limit).map((order) => {
       const summary = toSummary(order);
-      return order.source === 'pos' && order.kitchenTicket
+      return (order.source === 'pos' && order.kitchenTicket) || (order.source === 'storefront' && order.fulfillmentType === 'pickup' && order.posShiftId)
         ? {
             ...summary,
             handoverEligible:

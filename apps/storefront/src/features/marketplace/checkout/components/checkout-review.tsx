@@ -22,7 +22,7 @@ export function CheckoutReview({
     <Card
       className={cn(
         'checkout-panel min-w-0 bg-card border border-solid border-border rounded-[18px] p-7',
-        '[&_h2]:mt-0 [&_h2]:mx-0 [&_h2]:mb-4.5 [&_h2]:text-[22px] [&_>_.add]:mt-5 [&_>_.add]:p-3.5 max-[700px]:py-5 max-[700px]:px-4',
+        '[&_h2]:mt-0 [&_h2]:mx-0 [&_h2]:mb-4.5 [&_h2]:text-[18px] [&_h2]:font-bold [&_>_.add]:mt-5 [&_>_.add]:p-3.5 max-[700px]:py-5 max-[700px]:px-4',
       )}
       aria-labelledby="checkout-review-title"
       aria-busy={pending}
@@ -77,7 +77,7 @@ export function CheckoutReview({
         type="button"
         className={cn(
           'add disabled:cursor-not-allowed disabled:opacity-[0.5] w-full border-0 rounded-[9px] bg-waffarly-gold text-[#30113a]',
-          'p-2.5 font-black mt-2.5 hover:bg-[#ffd353]',
+          'p-2.5 min-h-11 text-[14px] font-medium mt-2.5 hover:bg-[#ffd353]',
         )}
         disabled={pending}
         onClick={onConfirm}

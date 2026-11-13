@@ -365,6 +365,10 @@ export class OrderLifecycleService {
             throw new ConflictException('This action is only available for new recipe orders.');
           if (command.action === 'cancel' && !recipeLines.length && !isRoutedStorefrontOrder)
             throw new ConflictException('POS cancellation requires the cancellation workflow.');
+          if (isRoutedStorefrontOrder && command.action === 'cancel') {
+            const payment = await tx.posOrderPayment.findFirst({ where: { orderId, merchantId }, select: { id: true } });
+            if (payment) throw new ConflictException('A collected pickup requires financial review before cancellation.');
+          }
           if (command.action === 'accept') {
             if (order.status !== 'pending')
               throw new ConflictException('Only pending orders can be accepted.');
@@ -496,7 +500,7 @@ export class OrderLifecycleService {
               throw new ConflictException(
                 'Confirm customer delivery from the delivery follow-up screen.',
               );
-            if (order.source !== 'pos' || !order.kitchenTicket)
+            if (!(order.source === 'pos' && order.kitchenTicket) && !(isRoutedStorefrontOrder && order.fulfillmentType === 'pickup' && order.posShiftId))
               throw new ConflictException('Only ticketed POS orders can be handed over here.');
             if (order.status !== 'ready')
               throw new ConflictException('Only ready orders can be handed over.');

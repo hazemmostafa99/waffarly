@@ -115,3 +115,45 @@ Use Windows PowerShell with -STA -File scripts/copy-marketplace-pos-password.ps1
 clipboard under the same Windows user. The helper does not print passwords.
 No actual login, order submission or automated checks were performed. Final
 storefront handover, customer tracking and full acceptance remain unfinished.
+
+## Pickup collection and completion — 2026-11-13
+
+Orders now exposes POST /pos/orders/:id/pickup-collection with registerId.
+A sell-authorized employee explicitly selects a register with an open shift.
+The transaction locks the shift and the same-tenant order, requires a ready
+storefront pickup at that branch, attaches the shift, creates one whole-order
+check and records an attributable action. Repeated preparation reuses the same
+check/shift; another shift or unexpected check state is rejected. It creates no
+payment and preserves source, order ID, total, stock and original web identity.
+
+The POS kitchen queue offers collection for ready pickup orders through the
+existing payment dialog. Payment-state, payment-write and receipt-read endpoints
+accept explicitly attached ready/completed web pickups as well as POS orders.
+Existing tender, revision, payment retry and cash-journal rules remain. Pickup
+receipts retain pickup as their fulfillment type. No electronic payment provider
+is introduced. Ready pickup handover requires settled checks and records completed
+on the same order. Cash collection and handover remain separate actions.
+
+Shift unsettled-check reconciliation includes attached web pickups, preventing
+ordinary close with their unpaid checks. Ordinary cancellation is rejected once
+a routed web order has any recorded payment; refund/reversal for web pickup is
+not enabled by this change and requires financial review. The existing POS-only
+refund/returns/receipt-history and active-sales listing scopes are unchanged.
+
+This slice does not add storefront delivery collection, customer history/tracking,
+closed-shift reassignment or multi-branch routing. It does not provision registers
+or open shifts or record any payment on the user's behalf. Configure a register
+and open its shift through the existing owner/POS flows before manual acceptance.
+
+Source/diff reviewed only; no tests, lint, typecheck, build, browser automation or
+real order/payment was run, following the manual-QA preference. Database-backed
+concurrency, cross-tenant/branch rejection, exact replay, partial/full payments,
+shift close, receipt and handover acceptance remain unverified.
+
+Migration 20261113140000_pickup_collection_action extends the audited action-kind
+constraint for pickup_collection; existing actions remain allowed. Focused
+preparation regression tests were added but not executed.
+
+The action-kind migration was applied successfully to the local waffarly database
+after migrate status confirmed it was the only pending migration. No application
+tests or financial operations were executed. Manual acceptance remains pending.

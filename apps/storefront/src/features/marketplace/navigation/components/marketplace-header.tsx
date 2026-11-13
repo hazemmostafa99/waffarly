@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@waffarly/ui';
+import { Heart, MapPin, Menu, ShoppingCart } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { MarketplaceButton as Button } from '@/components/marketplace/marketplace-button';
@@ -69,8 +70,8 @@ export function MarketplaceHeader({
     <>
       <div
         className={cn(
-          'promo bg-[linear-gradient(90deg,_var(--gold),_#ffe89c,_var(--gold))] text-[#32163a] text-center py-2 px-4 text-[13px] font-extrabold',
-          '[&_b]:bg-[#32163a] [&_b]:text-[#fff] [&_b]:rounded-[99px] [&_b]:py-[3px] [&_b]:px-[9px] [&_b]:ms-1.5 [&_b]:me-1.5 max-[700px]:text-[10px]',
+          'promo bg-[linear-gradient(90deg,_var(--gold),_#ffe89c,_var(--gold))] text-[#32163a] text-center py-2 px-4 text-[13px] font-medium',
+          '[&_b]:bg-[#32163a] [&_b]:text-[#fff] [&_b]:rounded-[99px] [&_b]:py-[3px] [&_b]:px-[9px] [&_b]:ms-1.5 [&_b]:me-1.5 max-[700px]:text-[12px]',
         )}
       >
         خصومات افتتاح وفّرلي <b>حتى 50%</b> من بائعين موثوقين
@@ -78,7 +79,7 @@ export function MarketplaceHeader({
       <header className={'top bg-primary text-[#fff]'}>
         <div
           className={cn(
-            'marketplace-container top-main w-[min(1480px,_calc(100%_-_32px))] m-auto max-[700px]:w-[min(100%_-_20px,_1480px)] min-h-19.5 grid grid-cols-[auto_minmax(320px,_1fr)_auto]',
+            'marketplace-container top-main w-[min(1480px,_calc(100%_-_32px))] m-auto max-[700px]:w-[min(100%_-_20px,_1480px)] min-h-18 grid grid-cols-[auto_minmax(320px,_1fr)_auto]',
             'items-center gap-5.5 max-[1100px]:grid-cols-[auto_1fr] max-[700px]:gap-2.5 max-[700px]:pt-2',
           )}
         >
@@ -94,7 +95,7 @@ export function MarketplaceHeader({
               aria-controls="marketplace-menu"
               onClick={onOpenMenu}
             >
-              ☰
+              <Menu size={20} strokeWidth={1.75} aria-hidden="true" className="mx-auto" />
             </Button>
             <Link href="/" aria-label="وفّرلي — الرئيسية">
               <img
@@ -106,10 +107,10 @@ export function MarketplaceHeader({
             <div
               className={cn(
                 'deliver flex items-center gap-[7px] [border-right-width:1px] [border-right-style:solid] [border-right-color:rgba(255,_255,_255,_0.16)] pr-[15px]',
-                '[&_small]:block [&_small]:text-[#d9cfe0] [&_small]:text-[11px] [&_strong]:text-[13px] max-[700px]:hidden',
+                '[&_small]:block [&_small]:text-[#d9cfe0] [&_small]:text-[11px] [&_strong]:text-[13px] [&_strong]:font-medium max-[700px]:hidden',
               )}
             >
-              <span>📍</span>
+              <MapPin size={16} strokeWidth={1.75} aria-hidden="true" />
               <div>
                 <small>التوصيل إلى</small>
                 <strong>دمياط الجديدة</strong>
@@ -155,7 +156,7 @@ export function MarketplaceHeader({
                         ? 'أنت في حساب تجريبي'
                         : 'حساب وفّرلي'}
                   </small>
-                  <strong className="text-[13px] font-extrabold leading-tight">
+                  <strong className="text-[13px] font-medium leading-tight">
                     حسابي وقوائمي
                   </strong>
                 </span>
@@ -185,7 +186,7 @@ export function MarketplaceHeader({
                   className="absolute start-0 top-[calc(100%+8px)] z-50 w-64 rounded-2xl border border-border bg-white p-2 text-primary [box-shadow:var(--shadow)]"
                 >
                   <div className="border-b border-border px-3 py-2.5">
-                    <p className="m-0 text-sm font-extrabold">
+                    <p className="m-0 text-sm font-medium">
                       {isCustomerSignedIn
                         ? (customerSession.data?.displayName ?? 'حسابك على وفّرلي')
                         : isDemoSessionActive
@@ -204,7 +205,7 @@ export function MarketplaceHeader({
                     <Link
                       href="/account"
                       onClick={closeAccountMenu}
-                      className="rounded-lg px-3 py-2.5 text-sm font-bold text-primary no-underline hover:bg-secondary"
+                      className="rounded-lg px-3 py-2.5 text-sm font-medium text-primary no-underline hover:bg-secondary"
                     >
                       نظرة عامة على الحساب
                     </Link>
@@ -213,14 +214,14 @@ export function MarketplaceHeader({
                         <Link
                           href="/account/sign-in"
                           onClick={closeAccountMenu}
-                          className="rounded-lg px-3 py-2.5 text-sm font-bold text-primary no-underline hover:bg-secondary"
+                          className="rounded-lg px-3 py-2.5 text-sm font-medium text-primary no-underline hover:bg-secondary"
                         >
                           تسجيل الدخول
                         </Link>
                         <Link
                           href="/account/sign-up"
                           onClick={closeAccountMenu}
-                          className="rounded-lg px-3 py-2.5 text-sm font-bold text-primary no-underline hover:bg-secondary"
+                          className="rounded-lg px-3 py-2.5 text-sm font-medium text-primary no-underline hover:bg-secondary"
                         >
                           إنشاء حساب جديد
                         </Link>
@@ -229,14 +230,14 @@ export function MarketplaceHeader({
                     <Link
                       href="/orders"
                       onClick={closeAccountMenu}
-                      className="rounded-lg px-3 py-2.5 text-sm font-bold text-primary no-underline hover:bg-secondary"
+                      className="rounded-lg px-3 py-2.5 text-sm font-medium text-primary no-underline hover:bg-secondary"
                     >
                       طلباتي
                     </Link>
                     <Link
                       href="/favorites"
                       onClick={closeAccountMenu}
-                      className="rounded-lg px-3 py-2.5 text-sm font-bold text-primary no-underline hover:bg-secondary"
+                      className="rounded-lg px-3 py-2.5 text-sm font-medium text-primary no-underline hover:bg-secondary"
                     >
                       المفضلة
                     </Link>
@@ -247,7 +248,7 @@ export function MarketplaceHeader({
                           leaveDemoAccount();
                           closeAccountMenu();
                         }}
-                        className="rounded-lg border-0 bg-transparent px-3 py-2.5 text-start text-sm font-bold text-destructive hover:bg-red-50"
+                        className="rounded-lg border-0 bg-transparent px-3 py-2.5 text-start text-sm font-medium text-destructive hover:bg-red-50"
                       >
                         إنهاء الجلسة التجريبية
                       </button>
@@ -260,7 +261,7 @@ export function MarketplaceHeader({
               href="/orders"
               className={cn(
                 'action inline-block text-[#fff] no-underline py-2.5 px-[11px] rounded-[10px] hover:bg-[rgba(255,_255,_255,_0.1)]',
-                'whitespace-nowrap hover:bg-[rgba(255,_255,_255,_0.1)] [&_strong]:text-[13px]',
+                'whitespace-nowrap hover:bg-[rgba(255,_255,_255,_0.1)] [&_strong]:text-[13px] [&_strong]:font-medium',
               )}
             >
               <strong>طلباتي</strong>
@@ -270,31 +271,35 @@ export function MarketplaceHeader({
               className="action inline-block whitespace-nowrap rounded-[10px] px-[11px] py-2.5 text-[#fff] no-underline hover:bg-[rgba(255,_255,_255,_0.1)]"
               aria-label="المفضلة"
             >
-              <strong>♡ المفضلة</strong>
+              <span className="inline-flex items-center gap-1.5 text-[13px] font-medium">
+                <Heart size={17} strokeWidth={1.75} aria-hidden="true" />
+                المفضلة
+              </span>
             </Link>
             <Button
               type="button"
               className={cn(
                 'action cart disabled:cursor-not-allowed disabled:opacity-[0.5] text-[#fff] no-underline py-2.5 px-[11px]',
-                'rounded-[10px] whitespace-nowrap hover:bg-[rgba(255,_255,_255,_0.1)] [&_strong]:text-[13px] relative text-[24px] [&_em]:absolute [&_em]:right-[2px]',
-                '[&_em]:top-[-6px] [&_em]:bg-waffarly-gold [&_em]:text-primary [&_em]:[font-style:normal] [&_em]:text-[11px] [&_em]:font-black [&_em]:rounded-[99px] [&_em]:min-w-[19px]',
+                'rounded-[10px] whitespace-nowrap hover:bg-[rgba(255,_255,_255,_0.1)] [&_strong]:text-[13px] [&_strong]:font-medium relative text-[20px] [&_em]:absolute [&_em]:right-[2px]',
+                '[&_em]:top-[-6px] [&_em]:bg-waffarly-gold [&_em]:text-primary [&_em]:[font-style:normal] [&_em]:text-[11px] [&_em]:font-medium [&_em]:rounded-[99px] [&_em]:min-w-[19px]',
                 '[&_em]:h-[19px] [&_em]:grid [&_em]:place-items-center',
               )}
               onClick={() => setCartOpen(true)}
               aria-label="السلة"
             >
-              🛒<em>{cartCount}</em>
+              <ShoppingCart size={21} strokeWidth={1.75} aria-hidden="true" />
+              <em>{cartCount}</em>
             </Button>
           </div>
         </div>
       </header>
       <nav
         className={cn(
-          'nav bg-[var(--purple-800)] text-[#fff] [&_a]:text-[#fff] [&_a]:no-underline [&_a]:text-[13px] [&_a]:font-bold [&_a]:whitespace-nowrap',
+          'nav bg-[var(--purple-800)] text-[#fff] [&_a]:text-[#fff] [&_a]:no-underline [&_a]:text-[13px] [&_a]:font-medium [&_a]:whitespace-nowrap',
           '[&_a]:py-3 [&_a]:px-3.5 [&_a]:[border-bottom-width:3px] [&_a]:[border-bottom-style:solid] [&_a]:[border-bottom-color:transparent] [&_a:hover]:bg-[rgba(255,_255,_255,_0.08)] [&_a:hover]:border-waffarly-gold [&_a.active]:bg-[rgba(255,_255,_255,_0.08)]',
-          '[&_a.active]:border-waffarly-gold max-[700px]:[&_a]:py-2.5 max-[700px]:[&_a]:px-[11px] max-[700px]:[&_a]:text-[11px] [&_.nav-pending]:text-[#fff] [&_.nav-pending]:bg-transparent [&_.nav-pending]:border-0 [&_.nav-pending]:[border-bottom-width:3px]',
-          '[&_.nav-pending]:[border-bottom-style:solid] [&_.nav-pending]:[border-bottom-color:transparent] [&_.nav-pending]:py-3 [&_.nav-pending]:px-3.5 [&_.nav-pending]:text-[13px] [&_.nav-pending]:font-bold [&_.nav-pending]:whitespace-nowrap [&_.nav-pending:hover]:bg-[rgba(255,_255,_255,_0.08)]',
-          '[&_.nav-pending:hover]:[border-bottom-color:var(--gold)] max-[700px]:[&_.nav-pending]:py-2.5 max-[700px]:[&_.nav-pending]:px-[11px] max-[700px]:[&_.nav-pending]:text-[11px]',
+          '[&_a.active]:border-waffarly-gold max-[700px]:[&_a]:py-2.5 max-[700px]:[&_a]:px-[11px] max-[700px]:[&_a]:text-[12px] [&_.nav-pending]:text-[#fff] [&_.nav-pending]:bg-transparent [&_.nav-pending]:border-0 [&_.nav-pending]:[border-bottom-width:3px]',
+          '[&_.nav-pending]:[border-bottom-style:solid] [&_.nav-pending]:[border-bottom-color:transparent] [&_.nav-pending]:py-3 [&_.nav-pending]:px-3.5 [&_.nav-pending]:text-[13px] [&_.nav-pending]:font-medium [&_.nav-pending]:whitespace-nowrap [&_.nav-pending:hover]:bg-[rgba(255,_255,_255,_0.08)]',
+          '[&_.nav-pending:hover]:[border-bottom-color:var(--gold)] max-[700px]:[&_.nav-pending]:py-2.5 max-[700px]:[&_.nav-pending]:px-[11px] max-[700px]:[&_.nav-pending]:text-[12px]',
         )}
         aria-label="التنقل الرئيسي"
       >

@@ -1,3 +1,9 @@
+Pickup collection (2026-11-13): Orders attaches ready web pickup orders to an
+explicit open register shift and one check, reuses existing Payments/Shifts
+services, and permits paid pickup handover without changing order source.
+No module dependency change. An additive action-kind constraint migration records
+pickup collection preparation. See [delivery notes](../marketplace-live-restaurant-ordering.md).
+
 Restaurant ordering update (2026-11-13): persisted reference restaurants now use
 real order submission. The local database has active subscriptions and owner
 accounts for all twelve. Earlier demo-only statements below are historical.

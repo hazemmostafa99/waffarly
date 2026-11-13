@@ -126,7 +126,9 @@ function ReceiptDocument({
     timeStyle: 'short',
   }).format(new Date(receipt.issuedAt));
   const fulfillmentLabel =
-    receipt.fulfillmentType === 'dine_in'
+    receipt.fulfillmentType === 'pickup'
+      ? t('Pickup')
+      : receipt.fulfillmentType === 'dine_in'
       ? t('Dine in')
       : receipt.fulfillmentType === 'delivery'
         ? t('Delivery')

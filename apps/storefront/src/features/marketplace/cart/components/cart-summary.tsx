@@ -18,15 +18,15 @@ export function CartSummary({
   return (
     <aside
       className={cn(
-        'cart-summary min-w-0 bg-card border border-solid border-border rounded-[18px] p-6',
-        'sticky top-5 [box-shadow:var(--shadow)] [&_h2]:text-[20px] [&_h2]:mt-0 [&_h2]:mx-0 [&_h2]:mb-6 [&_dl]:m-0',
-        '[&_dl_>_div]:flex [&_dl_>_div]:items-center [&_dl_>_div]:justify-between [&_dl_>_div]:gap-3 [&_dl_>_div]:mb-4 [&_dl_>_div]:text-[13px] [&_dt]:text-muted-foreground [&_dd]:m-0',
-        '[&_dd]:font-bold [&_dl_.cart-summary-total]:[border-top-width:1px] [&_dl_.cart-summary-total]:[border-top-style:solid] [&_dl_.cart-summary-total]:[border-top-color:var(--line)] [&_dl_.cart-summary-total]:pt-5 [&_dl_.cart-summary-total]:mt-5 max-[768px]:[position:static] max-[700px]:p-5',
+        'cart-summary min-w-0 bg-card border border-solid border-border rounded-[18px] p-5',
+        'sticky top-5 [box-shadow:var(--shadow)] [&_h2]:text-[18px] [&_h2]:font-bold [&_h2]:mt-0 [&_h2]:mx-0 [&_h2]:mb-3 [&_dl]:m-0',
+        '[&_dl_>_div]:flex [&_dl_>_div]:items-center [&_dl_>_div]:justify-between [&_dl_>_div]:gap-3 [&_dl_>_div]:mb-3 [&_dl_>_div]:text-[13px] [&_dt]:text-muted-foreground [&_dd]:m-0',
+        '[&_dd]:font-medium [&_dl_.cart-summary-total]:[border-top-width:1px] [&_dl_.cart-summary-total]:[border-top-style:solid] [&_dl_.cart-summary-total]:[border-top-color:var(--line)] [&_dl_.cart-summary-total]:pt-3 [&_dl_.cart-summary-total]:mt-3 max-[768px]:[position:static] max-[700px]:p-5',
       )}
       aria-labelledby="cart-summary-title"
     >
       <h2 id="cart-summary-title">ملخص السلة</h2>
-      {restaurantName && <p className="text-sm font-bold text-accent">{restaurantName} · {restaurantSlug ? 'طلب من مطعم واحد' : 'طلب تجريبي من مطعم واحد'}</p>}
+      {restaurantName && <p className="mt-0 mb-3 text-[13px] font-medium leading-6 text-accent">{restaurantName}{!restaurantSlug && ' · طلب تجريبي'}</p>}
       <dl>
         <div>
           <dt>المنتجات المختلفة</dt>
@@ -38,7 +38,7 @@ export function CartSummary({
         </div>
         <div
           className={
-            'cart-summary-total [&_dd]:text-[22px] [&_dd]:text-primary [&_dt]:text-foreground'
+            'cart-summary-total [&_dd]:text-[20px] [&_dd]:font-bold [&_dd]:text-primary [&_dt]:text-foreground'
           }
         >
           <dt>إجمالي المنتجات</dt>
@@ -51,7 +51,7 @@ export function CartSummary({
       <Link
         className={cn(
           'add cart-checkout-link w-full border-0 rounded-[9px] bg-waffarly-gold text-[#30113a] p-2.5',
-          'font-black mt-2.5 hover:bg-[#ffd353] block text-center no-underline',
+          'min-h-11 text-[14px] font-medium leading-6 mt-2.5 hover:bg-[#ffd353] block text-center no-underline',
         )}
         href="/checkout"
       >

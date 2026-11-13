@@ -176,6 +176,7 @@ export function PosCheckoutDialog({
           : [],
       );
       await queryClient.invalidateQueries({ queryKey: ['pos', 'payments', merchantId] });
+      await queryClient.invalidateQueries({ queryKey: ['pos', 'orders'] });
       await queryClient.invalidateQueries({ queryKey: ['pos', 'receipts', merchantId] });
       await queryClient.invalidateQueries({ queryKey: ['pos', merchantId, 'dining'] });
       await queryClient.invalidateQueries({ queryKey });

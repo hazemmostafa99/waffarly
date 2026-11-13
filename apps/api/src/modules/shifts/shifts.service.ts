@@ -1310,7 +1310,7 @@ export async function buildShiftReconciliation(
           ON p."checkId" = c."id" AND p."orderId" = c."orderId" AND p."merchantId" = c."merchantId"
         WHERE c."merchantId" = ${shift.merchantId}::uuid
           AND o."posShiftId" = ${shift.id}::uuid
-          AND o."source" = 'pos'
+          AND (o."source" = 'pos' OR (o."source" = 'storefront' AND o."fulfillmentType" = 'pickup'))
           AND NOT EXISTS (SELECT 1 FROM "pos_deliveries" d WHERE d."orderId" = o."id" AND d."merchantId" = o."merchantId")
           AND c."settledAt" IS NULL
           AND c."cancelledAt" IS NULL

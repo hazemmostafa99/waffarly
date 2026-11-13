@@ -339,6 +339,13 @@ export class PosStorefrontOrdersController {
     return this.posOrders.getCheckReceipt(employee, id, checkId);
   }
 
+  @Post(':id/pickup-collection')
+  @HttpCode(HttpStatus.OK)
+  preparePickupCollection(@CurrentPosEmployee() employee: PosEmployeeSession, @Param('id', new ParseUUIDPipe()) id: string, @Body() body: unknown) {
+    const input = parseRequest(z.object({ registerId: z.string().uuid() }).strict(), body);
+    return this.posOrders.preparePickupCollection(employee, id, input.registerId);
+  }
+
   @Post(':id/checks/:checkId/payments')
   @HttpCode(HttpStatus.CREATED)
   recordCheckPayment(

@@ -166,13 +166,13 @@ export function RestaurantCheckoutPage() {
   }
 
   return (
-    <main id="marketplace-main" className="min-h-[60vh] py-6">
+    <main id="marketplace-main" className="min-h-[60vh] py-4">
       <MarketplaceContainer>
-        <div className="mx-auto max-w-[1000px]">
-          <h1 className="mb-4 text-xl font-extrabold text-primary">إتمام الطلب</h1>
+        <div className="mx-auto max-w-[800px]">
+          <h1 className="mt-0 mb-2 text-[20px] font-bold leading-8 text-primary">إتمام الطلب</h1>
           {receipt ? (
             <section className="rounded-2xl border border-border bg-card p-6">
-              <h2 className="text-lg font-bold">تم تسجيل طلبك لدى المطعم</h2>
+              <h2 className="text-[18px] font-bold leading-7">تم تسجيل طلبك لدى المطعم</h2>
               <p dir="ltr">{receipt.id}</p>
               <p>الحالة: {receipt.status}</p>
               <p className="font-bold">الإجمالي {money(Number(receipt.total))}</p>
@@ -190,7 +190,7 @@ export function RestaurantCheckoutPage() {
             </p>
           ) : (
             <>
-              <p className="mb-4 rounded-xl bg-secondary p-3 text-xs leading-6 text-accent">
+              <p className="mt-0 mb-3 rounded-xl bg-secondary px-3 py-2 text-xs leading-6 text-accent">
                 راجع بياناتك والسعر النهائي قبل التأكيد. تأكيد الطلب يسجّله لدى المطعم؛ لا تتم عملية
                 دفع إلكتروني هنا.
               </p>
@@ -235,7 +235,7 @@ export function RestaurantCheckoutPage() {
                   aria-busy={pending}
                   className="rounded-2xl border border-border bg-card p-5"
                 >
-                  <h2 className="mt-0 text-lg font-bold">راجع السعر قبل التأكيد</h2>
+                  <h2 className="mt-0 text-[18px] font-bold leading-7">راجع السعر قبل التأكيد</h2>
                   <ul className="list-none space-y-2 p-0">
                     {products.map((product) => (
                       <li key={product.lineId} className="text-sm">
@@ -275,7 +275,7 @@ export function RestaurantCheckoutPage() {
                     tone="gold"
                     disabled={pending}
                     onClick={confirm}
-                    className="mt-4 min-h-11 w-full rounded-xl px-4 font-bold"
+                    className="mt-4 min-h-11 w-full rounded-xl px-4 text-[14px] font-medium"
                   >
                     {pending
                       ? 'جارٍ التأكيد…'
@@ -288,7 +288,7 @@ export function RestaurantCheckoutPage() {
                       type="button"
                       tone="neutral"
                       onClick={() => setQuote(null)}
-                      className="mt-3 min-h-10 rounded-xl px-4 text-sm"
+                      className="mt-3 min-h-10 rounded-xl px-4 text-[13px] font-medium"
                     >
                       تعديل البيانات ومراجعة السعر
                     </Button>

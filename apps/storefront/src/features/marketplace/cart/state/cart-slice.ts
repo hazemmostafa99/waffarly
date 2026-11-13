@@ -23,6 +23,7 @@ export interface CartSlice {
   addToCart: (productId: string, quantity?: number, selection?: MealSelection, replace?: boolean, snapshot?: MarketplaceProduct, quotedUnitPrice?: number) => boolean;
   setCartQuantity: (lineId: string, quantity: number) => void;
   removeCartItem: (lineId: string) => void;
+  updateCartItem: (lineId: string, selection: MealSelection, quantity: number, quotedUnitPrice?: number) => boolean;
 }
 
 export const createCartSlice: StateCreator<MarketplaceState, [], [], CartSlice> = (set, get) => ({
@@ -30,6 +31,29 @@ export const createCartSlice: StateCreator<MarketplaceState, [], [], CartSlice> 
   cartOpen: false,
   setCartOpen: (cartOpen) => set({ cartOpen }),
   cart: [],
+  updateCartItem: (id, selection, quantity, quotedUnitPrice) => {
+    const cart = get().cart;
+    const current = cart.find((line) => cartLineId(line) === id);
+    const product = current && (current.snapshot ?? findProduct(current.productId));
+    if (!current || !product || product.merchantType !== 'restaurant' ||
+      !mealAvailable(product) || !validQuantity(quantity) || !validMealSelection(selection, product)) return false;
+    if (product.restaurantSlug && (quotedUnitPrice === undefined ||
+      !Number.isFinite(quotedUnitPrice) || quotedUnitPrice < 0)) return false;
+    const updated: MarketplaceCartLine = {
+      productId: current.productId,
+      quantity,
+      selection: Object.fromEntries(Object.entries(selection).map(([key, ids]) => [key, [...ids]])),
+      ...(current.snapshot ? { snapshot: current.snapshot } : {}),
+      ...(product.restaurantSlug ? { quotedUnitPrice: quotedUnitPrice! } : {}),
+    };
+    const nextId = cartLineId(updated);
+    const matching = cart.find((line) => cartLineId(line) !== id && cartLineId(line) === nextId);
+    updated.quantity += matching?.quantity ?? 0;
+    if (!validQuantity(updated.quantity)) return false;
+    set({ cart: cart.flatMap((line) => cartLineId(line) === id ? [updated]
+      : cartLineId(line) === nextId ? [] : [line]) });
+    return true;
+  },
   addToCart: (productId, quantity = 1, selection, replace = false, snapshot, quotedUnitPrice) => {
     const product = snapshot ?? findProduct(productId);
     if (!product || !validQuantity(quantity) || !mealAvailable(product)) return false;

@@ -48,7 +48,7 @@ export interface PosReceipt {
   orderId: string;
   orderReference: string;
   orderCreatedAt: string;
-  fulfillmentType: 'takeaway' | 'delivery' | 'dine_in';
+  fulfillmentType: 'takeaway' | 'delivery' | 'dine_in' | 'pickup';
   tableCode: string | null;
   cashierName: string;
   registerName: string | null;

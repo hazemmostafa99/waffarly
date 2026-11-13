@@ -6,10 +6,14 @@ import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
 import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
-import { cartProducts, cartQuantity, cartTotal } from '@/features/marketplace/cart/model/cart';
+import { cartLineId, cartProducts, cartQuantity, cartTotal } from '@/features/marketplace/cart/model/cart';
 import { CartReviewItem } from '@/features/marketplace/cart/components/cart-review-item';
 import { CartSummary } from '@/features/marketplace/cart/components/cart-summary';
 import { CartEmptyState } from '@/features/marketplace/cart/components/cart-empty-state';
+import { findProduct } from '@/features/marketplace/catalog/model/catalog';
+import { mealGroups } from '@/features/marketplace/restaurants/model/meal-options';
+import { MealPurchase } from '@/features/marketplace/restaurants/components/meal-purchase';
+import { MarketplaceDialog } from '@/components/marketplace/marketplace-dialog';
 
 export function CartReviewPage() {
   const lines = useCartStore((state) => state.cart);
@@ -18,6 +22,9 @@ export function CartReviewPage() {
   const products = cartProducts(lines);
   const heading = useRef<HTMLHeadingElement>(null);
   const [notice, setNotice] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const editingLine = lines.find((line) => cartLineId(line) === editingId);
+  const editingProduct = editingLine && (editingLine.snapshot ?? findProduct(editingLine.productId));
 
   function removeProduct(id: string, name: string) {
     remove(id);
@@ -30,7 +37,7 @@ export function CartReviewPage() {
       id="marketplace-main"
       tabIndex={-1}
       className={
-        'cart-review-page pb-16 min-h-[60vh] pt-6 [&_>_.marketplace-container]:max-w-310 max-[700px]:pt-4.5'
+        'cart-review-page pb-16 min-h-[60vh] pt-4 [&_>_.marketplace-container]:max-w-310 max-[700px]:pt-3'
       }
     >
       <MarketplaceContainer>
@@ -47,19 +54,13 @@ export function CartReviewPage() {
         <h1 ref={heading} tabIndex={-1} className="sr-only">
           سلة التسوق
         </h1>
-        <div className="mb-3 flex justify-end">
-          <span
-            className={
-              'cart-demo-label whitespace-nowrap py-[7px] px-2.5 rounded-[8px] bg-secondary text-accent text-[11px]'
-            }
-          >
-            {products[0]?.restaurantSlug ? 'طلب من مطعم' : 'تجربة محلية'}
-          </span>
-        </div>
+        {!products[0]?.restaurantSlug && products.length > 0 && (
+          <p className="mb-3 mt-0 text-[12px] text-accent">تجربة محلية</p>
+        )}
         <p
           role="status"
           className={
-            'cart-review-notice bg-secondary text-accent py-3 px-4 rounded-[10px] text-[13px] empty:hidden'
+            'cart-review-notice mt-0 mb-3 bg-secondary text-accent py-3 px-4 rounded-[10px] text-[13px] empty:hidden'
           }
         >
           {notice}
@@ -78,8 +79,8 @@ export function CartReviewPage() {
             >
               <div
                 className={cn(
-                  'cart-review-list-heading flex items-center justify-between p-5 [border-bottom-width:1px] [border-bottom-style:solid] [border-bottom-color:var(--line)]',
-                  '[&_h2]:m-0 [&_h2]:text-[18px] [&_>_span]:text-muted-foreground [&_>_span]:text-[12px] max-[700px]:py-4.5 max-[700px]:px-3.5',
+                  'cart-review-list-heading flex items-center justify-between px-4 py-3 [border-bottom-width:1px] [border-bottom-style:solid] [border-bottom-color:var(--line)]',
+                  '[&_h2]:m-0 [&_h2]:text-[17px] [&_h2]:font-bold [&_>_span]:text-muted-foreground [&_>_span]:text-[12px] max-[700px]:py-3 max-[700px]:px-3.5',
                 )}
               >
                 <h2>منتجاتك</h2>
@@ -92,6 +93,8 @@ export function CartReviewPage() {
                     product={product}
                     onQuantityChange={(quantity) => setQuantity(product.lineId, quantity)}
                     onRemove={() => removeProduct(product.lineId, product.cartName)}
+                    {...(product.merchantType === 'restaurant' && mealGroups(product, product.selection).length > 0
+                      ? { onEdit: () => setEditingId(product.lineId) } : {})}
                   />
                 ))}
               </ul>
@@ -114,6 +117,29 @@ export function CartReviewPage() {
         >
           السلة محفوظة أثناء التنقل داخل الموقع فقط؛ تحديث الصفحة يمسح اختيارات التجربة.
         </p>
+        <MarketplaceDialog
+          open={Boolean(editingLine && editingProduct)}
+          onClose={() => setEditingId(null)}
+          title="تعديل اختيارات المنتج"
+          className="w-[min(560px,calc(100vw-24px))] overflow-y-auto"
+          contentClassName="p-0"
+        >
+          {editingLine && editingProduct && editingId && (
+            <MealPurchase
+              key={editingId}
+              product={editingProduct}
+              presentation="dialog"
+              editLine={{ lineId: editingId, quantity: editingLine.quantity,
+                ...(editingLine.selection ? { selection: editingLine.selection } : {}) }}
+              onSaved={() => {
+                setEditingId(null);
+                setNotice('تم تحديث اختيارات المنتج وإجمالي السلة.');
+                heading.current?.focus({ preventScroll: true });
+              }}
+              onCancelEdit={() => setEditingId(null)}
+            />
+          )}
+        </MarketplaceDialog>
       </MarketplaceContainer>
     </main>
   );

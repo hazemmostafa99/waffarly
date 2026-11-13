@@ -28,17 +28,25 @@ export function MealPurchase({
   product,
   onAdded,
   presentation = 'inline',
+  editLine,
+  onSaved,
+  onCancelEdit,
 }: {
   product: MarketplaceProduct;
   onAdded?: () => void;
   presentation?: 'inline' | 'dialog' | 'page';
+  editLine?: { lineId: string; selection?: MealSelection; quantity: number };
+  onSaved?: () => void;
+  onCancelEdit?: () => void;
 }) {
-  const [selection, setSelection] = useState<MealSelection>(() => defaultMealSelection(product));
-  const [quantity, setQuantity] = useState(1);
+  const [selection, setSelection] = useState<MealSelection>(() =>
+    editLine ? structuredClone(editLine.selection ?? {}) : defaultMealSelection(product));
+  const [quantity, setQuantity] = useState(editLine?.quantity ?? 1);
   const [notice, setNotice] = useState('');
   const [replaceOpen, setReplaceOpen] = useState(false);
   const cart = useCartStore((state) => state.cart);
   const add = useCartStore((state) => state.addToCart);
+  const update = useCartStore((state) => state.updateCartItem);
   const openCart = useCartStore((state) => state.setCartOpen);
   const configuration = mealConfiguration(selection, product);
   const available = mealAvailable(product);
@@ -72,7 +80,15 @@ export function MealPurchase({
   function addMeal(replace = false) {
     if (!quoteReady) return;
     if (!validMealSelection(selection, product)) {
-      setNotice('اختار الحجم المطلوب الأول.');
+      setNotice('راجع الاختيارات المطلوبة والحد المسموح لكل مجموعة.');
+      return;
+    }
+    if (editLine) {
+      if (!update(editLine.lineId, selection, quantity, quote.data ? Number(quote.data.totalPrice) : undefined)) {
+        setNotice('تعذر حفظ التعديلات. راجع توفر الصنف والاختيارات والحد الأقصى للكمية بعد دمج الأصناف المتطابقة.');
+        return;
+      }
+      onSaved?.();
       return;
     }
     const existing = cart.find(
@@ -206,6 +222,21 @@ export function MealPurchase({
                 )}
               </legend>
               <div className={group.required ? 'grid grid-cols-2 gap-2.5' : 'grid gap-2'}>
+                {group.selectionMode === 'single' && !group.required && (
+                  <label className="flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border border-border px-3 py-2 text-[13px]">
+                    <input
+                      type="radio"
+                      name={`${product.id}-${group.id}`}
+                      className="m-0 size-4 accent-[var(--purple-700)]"
+                      checked={!selection[group.id]?.length}
+                      onChange={() => {
+                        setSelection((current) => ({ ...current, [group.id]: [] }));
+                        setNotice('');
+                      }}
+                    />
+                    بدون اختيار
+                  </label>
+                )}
                 {group.choices.map((choice) => {
                   const checked = selection[group.id]?.includes(choice.id) ?? false;
                   return (
@@ -228,11 +259,13 @@ export function MealPurchase({
                           name={`${product.id}-${group.id}`}
                           className="m-0 size-4 shrink-0 accent-[var(--purple-700)]"
                           checked={checked}
+                          disabled={group.selectionMode === 'multiple' && !checked &&
+                            (selection[group.id]?.length ?? 0) >= group.maxSelections}
                           onChange={(event) => {
                             const nextChecked = event.target.checked;
+                            setNotice('');
                             if (serverProduct && group.id === 'size') {
                               setSelection({ size: [choice.id] });
-                              setNotice('');
                               return;
                             }
                             setSelection((current) => ({
@@ -318,17 +351,27 @@ export function MealPurchase({
           <Button
             type="button"
             tone="gold"
-            disabled={!available || !quoteReady}
+            disabled={!available || !quoteReady || !validMealSelection(selection, product)}
             onClick={() => addMeal()}
             className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-[13px] font-bold transition-colors disabled:cursor-not-allowed"
           >
             <ShoppingBag size={17} aria-hidden="true" />
-            أضف للسلة
+            {editLine ? 'حفظ التعديلات' : 'أضف للسلة'}
           </Button>
           <div className="shrink-0 [&_.quantity-selector]:rounded-xl [&_.quantity-selector]:border-[var(--purple-100)] [&_.quantity-selector_button]:size-9 [&_.quantity-selector_button:hover]:bg-secondary [&_.quantity-selector_output]:min-w-7">
             <QuantitySelector value={quantity} onChange={setQuantity} />
           </div>
         </div>
+        {editLine && (
+          <>
+            <p className="mb-0 mt-2 text-[11px] text-muted-foreground">
+              الاختيارات المطابقة لصنف آخر في السلة تتجمع في صنف واحد بالكمية الإجمالية.
+            </p>
+            <Button type="button" tone="neutral" onClick={onCancelEdit} className="mt-2 min-h-10 w-full rounded-xl text-[13px]">
+              إلغاء
+            </Button>
+          </>
+        )}
       </div>
       <MarketplaceDialog
         open={replaceOpen}
