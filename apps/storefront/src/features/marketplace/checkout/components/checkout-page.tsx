@@ -21,9 +21,13 @@ import { CheckoutConfirmation } from '@/features/marketplace/checkout/components
 const steps = ['بيانات التواصل والاستلام', 'مراجعة الطلب', 'تأكيد تجريبي'];
 
 export function CheckoutPage() {
-  const remote = useCartStore((state) => state.cart.some((line) => Boolean(line.snapshot?.restaurantSlug)));
+  const remote = useCartStore((state) =>
+    state.cart.some((line) => Boolean(line.snapshot?.restaurantSlug)),
+  );
   const [remoteFlow, setRemoteFlow] = useState(remote);
-  useEffect(() => { if (remote) setRemoteFlow(true); }, [remote]);
+  useEffect(() => {
+    if (remote) setRemoteFlow(true);
+  }, [remote]);
   return remote || remoteFlow ? <RestaurantCheckoutPage /> : <LocalCheckoutPage />;
 }
 function LocalCheckoutPage() {
@@ -94,7 +98,14 @@ function LocalCheckoutPage() {
                 </li>
               ))}
             </ol>
-            {checkout.step === 'details' && checkout.notice && <p role="alert" className="rounded-xl border border-destructive p-3 text-sm text-destructive">{checkout.notice}</p>}
+            {checkout.step === 'details' && checkout.notice && (
+              <p
+                role="alert"
+                className="rounded-xl border border-destructive p-3 text-sm text-destructive"
+              >
+                {checkout.notice}
+              </p>
+            )}
             <div
               className={
                 'cart-review-layout grid grid-cols-[minmax(0,1fr)_330px] items-start gap-6 max-[1000px]:grid-cols-[minmax(0,1fr)_290px] max-[1000px]:gap-4 max-[768px]:grid-cols-[1fr]'
@@ -116,7 +127,11 @@ function LocalCheckoutPage() {
                   onConfirm={checkout.confirm}
                 />
               )}
-              <CheckoutOrderSummary items={products} fulfillment={checkout.draft.fulfillment} editable />
+              <CheckoutOrderSummary
+                items={products}
+                fulfillment={checkout.draft.fulfillment}
+                editable
+              />
             </div>
             <p
               className={
