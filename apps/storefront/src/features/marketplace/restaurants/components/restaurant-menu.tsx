@@ -39,7 +39,7 @@ export function RestaurantMenu({ restaurantName, products: suppliedProducts, set
   return (
     <div className="min-w-0">
       <div className="min-w-0">
-        {!scenario.open && <p role="status" className="rounded-xl border border-border bg-card p-4 text-sm">المطعم مغلق في السيناريو ده. تقدر تتصفح المنيو أو <Link href="/restaurants" className="text-accent">تختار مطعم تاني</Link>.</p>}
+        {!scenario.open && <p role="status" className="rounded-xl border border-border bg-card p-4 text-sm">{settings ? 'المطعم لا يستقبل طلبات حاليًا.' : 'المطعم مغلق في السيناريو ده.'} تقدر تتصفح المنيو أو <Link href="/restaurants" className="text-accent">تختار مطعم تاني</Link>.</p>}
         <label className="mb-4 flex items-center gap-2.5 rounded-[15px] border border-[var(--purple-100)] bg-white/70 px-4 py-3.5 transition-colors focus-within:border-accent focus-within:bg-white">
           <Search size={18} className="shrink-0 text-accent" aria-hidden="true" />
           <span className="sr-only">ابحث في المنيو</span>

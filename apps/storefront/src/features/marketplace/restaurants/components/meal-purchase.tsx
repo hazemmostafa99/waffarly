@@ -49,7 +49,7 @@ export function MealPurchase({ product, onAdded, presentation = 'inline' }: {
     if (!quoteReady) return;
     if (!validMealSelection(selection, product)) { setNotice('اختار الحجم المطلوب الأول.'); return; }
     const existing = cart.find((line) => cartLineId(line) === cartLineId({ productId: product.id, selection }));
-    if ((existing?.quantity ?? 0) + quantity > MAX_CART_QUANTITY) { setNotice('الكمية دي هتتجاوز الحد التجريبي للصنف بنفس الاختيارات.'); return; }
+    if ((existing?.quantity ?? 0) + quantity > MAX_CART_QUANTITY) { setNotice('الكمية دي هتتجاوز الحد المسموح للصنف بنفس الاختيارات.'); return; }
     if (!replace && conflictsWithRestaurant(cart, product.id, product)) { setReplaceOpen(true); return; }
     if (!add(product.id, quantity, selection, replace, serverProduct ? product : undefined, quote.data ? Number(quote.data.totalPrice) : undefined)) { setNotice('تعذرت الإضافة. راجع توفر الوجبة والكمية.'); setReplaceOpen(false); return; }
     setReplaceOpen(false);
@@ -59,7 +59,7 @@ export function MealPurchase({ product, onAdded, presentation = 'inline' }: {
   }
 
   return (
-    <section className={cn('flex min-h-0 flex-col bg-card', presentation === 'dialog' ? 'flex-1 overflow-hidden' : 'overflow-hidden rounded-2xl border border-border', presentation === 'page' ? 'mt-3' : presentation === 'inline' && 'mt-5')} aria-label="اختيارات الوجبة التجريبية">
+    <section className={cn('flex min-h-0 flex-col bg-card', presentation === 'dialog' ? 'flex-1 overflow-hidden' : 'overflow-hidden rounded-2xl border border-border', presentation === 'page' ? 'mt-3' : presentation === 'inline' && 'mt-5')} aria-label={serverProduct ? "اختيارات الوجبة" : "اختيارات الوجبة التجريبية"}>
       <div className={cn('min-h-0 px-5 pb-4 pt-3', presentation === 'dialog' && 'flex-1 overflow-y-auto overscroll-contain', presentation === 'page' && 'px-4')}>
         {presentation !== 'page' && <div className="mb-4 border-b border-border pb-4">
           {presentation === 'dialog' && <img {...product.image} className="mb-3 block h-[138px] w-full rounded-[14px] object-cover" />}
@@ -67,10 +67,10 @@ export function MealPurchase({ product, onAdded, presentation = 'inline' }: {
             {presentation === 'dialog' && <h3 className="mb-1.5 mt-0 text-[20px] font-extrabold leading-7 text-primary">{product.name}</h3>}
             <p className="mb-3 text-[11px] leading-5 text-muted-foreground">{product.description ?? 'وجبة توضيحية بحجم وإضافات حسب اختيارك.'}</p>
             <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-[10px] text-muted-foreground">السعر الأساسي</span><strong className="text-[19px] font-extrabold text-accent">{money(product.price)}</strong></div>
-            <span className="mt-2 inline-block text-[9px] text-muted-foreground">أصناف واختيارات تجريبية · {product.merchantName}</span>
+            <span className="mt-2 inline-block text-[9px] text-muted-foreground">{serverProduct ? 'منيو المطعم' : 'أصناف واختيارات تجريبية'} · {product.merchantName}</span>
           </div>
         </div>}
-        {!available && <p role="status" className="mb-4 rounded-xl bg-secondary p-3 text-xs leading-5 text-destructive">الوجبة غير متاحة أو المطعم مغلق في السيناريو التجريبي.</p>}
+        {!available && <p role="status" className="mb-4 rounded-xl bg-secondary p-3 text-xs leading-5 text-destructive">{serverProduct ? 'الوجبة غير متاحة أو المطعم لا يستقبل طلبات حاليًا.' : 'الوجبة غير متاحة أو المطعم مغلق في السيناريو التجريبي.'}</p>}
         <div className="space-y-4">
           {mealGroups(product, selection).map((group) => (
             <fieldset key={group.id} disabled={!available} className={cn('m-0 min-w-0 border-0 p-0', presentation === 'page' && '[&+fieldset]:border-t [&+fieldset]:border-border/70 [&+fieldset]:pt-3')}>
@@ -125,7 +125,7 @@ export function MealPurchase({ product, onAdded, presentation = 'inline' }: {
         </div>
       </div>
       <MarketplaceDialog open={replaceOpen} onClose={() => setReplaceOpen(false)} title="تبدأ سلة جديدة؟">
-        <p>طلب المطاعم التجريبي بيكون من مطعم واحد. الإضافة من {product.merchantName} هتستبدل الأصناف الموجودة في السلة.</p>
+        <p>الطلب بيكون من مطعم واحد. الإضافة من {product.merchantName} هتستبدل الأصناف الموجودة في السلة.</p>
         <div className="grid gap-3">
           <Button type="button" tone="gold" onClick={() => addMeal(true)} className="min-h-11 rounded-xl px-4 font-bold">استبدل السلة وأضف الوجبة</Button>
           <Button type="button" tone="neutral" onClick={() => setReplaceOpen(false)} className="min-h-10 rounded-xl border border-border">احتفظ بالسلة الحالية</Button>

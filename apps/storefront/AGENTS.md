@@ -1,3 +1,13 @@
+## Restaurant ordering authorization — 2026-11-13
+
+The user explicitly authorized real API-backed ordering for all persisted
+Marketplace restaurants, including the twelve imported reference restaurants.
+Reference/local-mock metadata describes data provenance; it must not switch
+API-backed restaurant checkout to local simulation. Preserve subscription,
+operating-hour, fulfillment, pricing, stock and idempotency enforcement.
+Do not fabricate payment or collection. Local non-restaurant demonstrations
+remain separate. The existing manual-QA/no-automated-checks preference remains.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 ## This is NOT the Next.js you know

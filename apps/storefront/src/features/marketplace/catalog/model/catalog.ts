@@ -14,7 +14,8 @@ type MerchantScenarioProduct = ProductRecord & {
   origin: 'local-mock';
 };
 
-export type MarketplaceProduct = ProductRecord & Partial<MerchantScenarioProduct> & {
+export type MarketplaceProduct = ProductRecord & Partial<Omit<MerchantScenarioProduct, 'origin'>> & {
+  origin?: 'local-mock' | 'api';
   restaurantSlug?: string;
   restaurantSettings?: PublicRestaurantProfile;
   apiVariants?: PublicStorefrontProduct['variants'];

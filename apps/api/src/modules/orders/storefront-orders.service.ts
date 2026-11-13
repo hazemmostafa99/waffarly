@@ -58,6 +58,7 @@ export class StorefrontOrdersService {
     const merchant = await this.prisma.merchant.findUnique({ where: { storefrontSlug: slug }, select: { id: true } });
     if (!merchant) throw new NotFoundException('Storefront was not found.');
     return this.prisma.$transaction(async (db) => {
+      await this.subscriptions.requireActive(merchant.id, db);
       let subtotal = 0n;
       const unitPrices: string[] = [];
       for (const item of input.items) {
@@ -67,14 +68,11 @@ export class StorefrontOrdersService {
       }
       const coupon = await this.quoteDiscount(db, merchant.id, input.discountCode, subtotal);
       const policy = await this.restaurantPolicy.assess(db, merchant.id, input.fulfillmentType, subtotal, input.deliveryAreaId);
-      const profile = await db.restaurantProfile.findUnique({ where: { merchantId: merchant.id }, select: { referenceData: true } });
-      const reference = profile?.referenceData;
-      const demo = reference !== null && typeof reference === 'object' && !Array.isArray(reference) && reference?.origin === 'local-mock';
       const total = subtotal - (coupon?.snapshot.amount ? toCents(coupon.snapshot.amount) : 0n) + (policy?.fee ?? 0n);
       if (total > MAX_ORDER_TOTAL_CENTS) throw new BadRequestException('Order total exceeds the supported range.');
       return { unitPrices, subtotal: formatCents(subtotal), deliveryFee: formatCents(policy?.fee ?? 0n), total: formatCents(total), currency: 'EGP' as const,
         ...(coupon ? { discount: coupon.snapshot } : {}),
-        ...(policy ? { restaurantSettingsRevision: policy.snapshot.revision } : {}), demo };
+        ...(policy ? { restaurantSettingsRevision: policy.snapshot.revision } : {}), demo: false };
     }, { isolationLevel: 'Serializable' });
   }
 

@@ -1,3 +1,8 @@
+Restaurant ordering update (2026-11-13): persisted reference restaurants now use
+real order submission. The local database has active subscriptions and owner
+accounts for all twelve. Earlier demo-only statements below are historical.
+See [current ordering delivery](marketplace-live-restaurant-ordering.md).
+
 # Checkout review and submission integration
 
 2026-11-11. Implemented without tests, HTTP verification, lint, typecheck or build.

@@ -88,7 +88,7 @@ export function MarketplaceCart() {
           </Button>
         </div>
         <div className={'cart-list p-3.5 overflow-auto [flex:1]'}>
-          {products[0]?.merchantType === 'restaurant' && <p className="rounded-xl bg-secondary p-3 text-xs font-bold text-accent">{products[0].merchantName} · طلب من مطعم واحد · رسوم التوصيل التجريبية في إتمام الطلب</p>}
+          {products[0]?.merchantType === 'restaurant' && <p className="rounded-xl bg-secondary p-3 text-xs font-bold text-accent">{products[0].merchantName} · طلب من مطعم واحد · {products[0].restaurantSlug ? 'رسوم التوصيل تُراجع عند إتمام الطلب' : 'رسوم التوصيل التجريبية في إتمام الطلب'}</p>}
           {products.length === 0 ? (
             <p className={'text-center text-muted-foreground py-[35px] px-2.5'}>
               السلة فارغة حاليًا
@@ -145,8 +145,7 @@ export function MarketplaceCart() {
             <span>{money(cartTotal(ids))}</span>
           </div>
           <p className={'detail-note text-[12px] leading-[1.8] text-muted-foreground'}>
-            سلة تجريبية محلية — راجع المنتجات للمتابعة إلى التأكيد التجريبي. الإجمالي لا يشمل رسومًا
-            إضافية.
+            {products[0]?.restaurantSlug ? 'راجع المنتجات ثم بياناتك والسعر النهائي لإرسال الطلب للمطعم. الإجمالي الحالي لا يشمل التوصيل.' : 'سلة تجريبية محلية — راجع المنتجات للمتابعة إلى التأكيد التجريبي. الإجمالي لا يشمل رسومًا إضافية.'}
           </p>
           <Link
             href="/cart"

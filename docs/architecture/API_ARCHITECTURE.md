@@ -1,3 +1,8 @@
+Restaurant ordering update (2026-11-13): persisted reference restaurants now use
+real order submission. The local database has active subscriptions and owner
+accounts for all twelve. Earlier demo-only statements below are historical.
+See [current ordering delivery](../marketplace-live-restaurant-ordering.md).
+
 # API architecture
 
 Database connectivity (2026-11-12): Infrastructure owns one configured PostgreSQL

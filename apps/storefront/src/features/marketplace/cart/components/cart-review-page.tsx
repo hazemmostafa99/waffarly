@@ -53,7 +53,7 @@ export function CartReviewPage() {
               'cart-demo-label whitespace-nowrap py-[7px] px-2.5 rounded-[8px] bg-secondary text-accent text-[11px]'
             }
           >
-            تجربة محلية
+            {products[0]?.restaurantSlug ? 'طلب من مطعم' : 'تجربة محلية'}
           </span>
         </div>
         <p
@@ -100,6 +100,7 @@ export function CartReviewPage() {
               total={cartTotal(lines)}
               quantity={cartQuantity(lines)}
               productCount={products.length}
+              {...(products[0]?.restaurantSlug ? { restaurantSlug: products[0].restaurantSlug } : {})}
               {...(products[0]?.merchantType === 'restaurant' && products[0].merchantName !== undefined ? { restaurantName: products[0].merchantName } : {})}
             />
           </div>

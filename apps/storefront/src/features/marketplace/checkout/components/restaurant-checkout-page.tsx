@@ -7,18 +7,14 @@ import { ApiError, apiPost } from '@/lib/api-client';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
 import { MarketplaceButton as Button } from '@/components/marketplace/marketplace-button';
 import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
-import { useCheckoutStore } from '@/features/marketplace/checkout/hooks/use-checkout-store';
 import { cartProducts } from '@/features/marketplace/cart/model/cart';
 import { EMPTY_CHECKOUT, validateCheckout, type CheckoutDraft, type CheckoutErrors } from '../model/checkout';
 import { CheckoutContactForm } from './checkout-contact-form';
-import { CheckoutConfirmation } from './checkout-confirmation';
-import type { DemoOrder } from '@/features/marketplace/orders/model/demo-order';
 import { money } from '@/features/marketplace/shared/lib/format-money';
 
 export function RestaurantCheckoutPage() {
   const lines = useCartStore((state) => state.cart);
   const clear = useCartStore((state) => state.clearCartIfMatches);
-  const completeDemo = useCheckoutStore((state) => state.completeDemoCheckout);
   const products = cartProducts(lines);
   const restaurant = products[0];
   const slug = restaurant?.restaurantSlug;
@@ -30,7 +26,6 @@ export function RestaurantCheckoutPage() {
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState('');
   const [receipt, setReceipt] = useState<StorefrontOrderReceipt | null>(null);
-  const [demoReceipt, setDemoReceipt] = useState<DemoOrder | null>(null);
   const reviewed = useRef('');
   const busy = useRef(false);
   const envelope = useRef<{ body: CreateStorefrontOrderRequest; cart: typeof lines; slug: string } | null>(null);
@@ -49,8 +44,7 @@ export function RestaurantCheckoutPage() {
   }
   async function review() {
     if (busy.current || envelope.current || !slug || !lines.length) return;
-    const validation = validateCheckout(draft);
-    if (restaurant?.restaurantSettings?.referenceData?.origin !== 'local-mock') Object.keys(validation).forEach((key) => { const field = key as keyof CheckoutErrors; const message = validation[field]; if (message !== undefined) validation[field] = message.replace(/تجريبيًا /g, ''); });
+    const validation = validateCheckout(draft, false);
     setErrors(validation);
     if (Object.keys(validation).length) return;
     if (products.some((product) => product.restaurantSlug !== slug)) { setNotice('السلة لازم تكون من مطعم واحد.'); return; }
@@ -62,18 +56,13 @@ export function RestaurantCheckoutPage() {
         fulfillmentType: draft.fulfillment, items: items(), ...(draft.fulfillment === 'delivery' && area ? { deliveryAreaId: area } : {}),
       });
       reviewed.current = snapshot; setQuote(result);
-    } catch (error) { setNotice(error instanceof Error ? error.message : 'تعذرت مراجعة السعر. حاول مرة تانية.'); }
+    } catch (error) { setNotice(error instanceof ApiError && error.statusCode === 403 ? 'المطعم غير متاح لاستقبال طلبات جديدة حاليًا. جرّب لاحقًا أو اختار مطعمًا آخر.' : error instanceof Error ? error.message : 'تعذرت مراجعة السعر. حاول مرة تانية.'); }
     finally { busy.current = false; setPending(false); }
   }
   async function confirm() {
     if (busy.current) return;
     if (!envelope.current) {
       if (!quote || !slug || reviewed.current !== JSON.stringify(lines)) { setQuote(null); setNotice('السلة اتغيرت. راجع السعر من جديد.'); return; }
-      if (quote.demo) {
-        const order = completeDemo(lines, draft.fulfillment, quote);
-        if (!order) { setQuote(null); setNotice('تعذر التأكيد التجريبي. راجع السلة.'); return; }
-        setDemoReceipt(order); setDraft({ ...EMPTY_CHECKOUT }); return;
-      }
       envelope.current = { slug, cart: structuredClone(lines), body: {
         requestId: crypto.randomUUID(), reviewedTotal: quote.total, restaurantSettingsRevision: quote.restaurantSettingsRevision,
         customerName: draft.name.trim(), customerPhone: draft.phone.trim(), fulfillmentType: draft.fulfillment,
@@ -96,13 +85,13 @@ export function RestaurantCheckoutPage() {
   return <main id="marketplace-main" className="min-h-[60vh] py-6"><MarketplaceContainer>
     <div className="mx-auto max-w-[1000px]">
       <h1 className="mb-4 text-xl font-extrabold text-primary">إتمام الطلب</h1>
-      {demoReceipt ? <CheckoutConfirmation receipt={demoReceipt} /> : receipt ? <section className="rounded-2xl border border-border bg-card p-6">
-        <h2 className="text-lg font-bold">تم تسجيل طلبك</h2><p dir="ltr">{receipt.id}</p><p>الحالة: {receipt.status}</p><p className="font-bold">الإجمالي {money(Number(receipt.total))}</p><p className="text-sm text-muted-foreground">تم تسجيل الطلب على الخادم؛ لم تتم أي عملية دفع إلكتروني.</p><Link href="/restaurants" className="text-accent">العودة للمطاعم</Link>
+      {receipt ? <section className="rounded-2xl border border-border bg-card p-6">
+        <h2 className="text-lg font-bold">تم تسجيل طلبك لدى المطعم</h2><p dir="ltr">{receipt.id}</p><p>الحالة: {receipt.status}</p><p className="font-bold">الإجمالي {money(Number(receipt.total))}</p><p className="text-sm text-muted-foreground">الطلب بانتظار مراجعة المطعم. لم تتم أي عملية دفع إلكتروني. احتفظ برقم الطلب؛ متابعة الطلب من حسابك غير متاحة بعد.</p><Link href="/restaurants" className="text-accent">العودة للمطاعم</Link>
       </section> : !lines.length ? <p>السلة فارغة. <Link href="/restaurants">تصفح المطاعم</Link></p> : <>
-        <p className="mb-4 rounded-xl bg-secondary p-3 text-xs leading-6 text-accent">بيانات المنيو والأسعار من الخادم. مطاعم العرض تُكمل تأكيدًا محليًا فقط. الطلب الفعلي يُرسل فقط للمطاعم غير التجريبية؛ لا يوجد دفع إلكتروني هنا.</p>
+        <p className="mb-4 rounded-xl bg-secondary p-3 text-xs leading-6 text-accent">راجع بياناتك والسعر النهائي قبل التأكيد. تأكيد الطلب يسجّله لدى المطعم؛ لا تتم عملية دفع إلكتروني هنا.</p>
         {notice && <p role="alert" className="rounded-xl border border-destructive p-3 text-sm text-destructive">{notice}</p>}
         {!quote && !uncertain ? <fieldset disabled={pending} className="m-0 min-w-0 border-0 p-0">
-          <CheckoutContactForm demo={restaurant?.restaurantSettings?.referenceData?.origin === 'local-mock'} draft={draft} errors={errors} onChange={change} onContinue={review} />
+          <CheckoutContactForm demo={false} draft={draft} errors={errors} onChange={change} onContinue={review} />
           {draft.fulfillment === 'delivery' && areas.length > 0 && <label className="mt-4 grid gap-2 text-sm">منطقة التوصيل<select value={area} onChange={(event) => setArea(event.target.value)} className="rounded-xl border border-border bg-card p-3"><option value="">اختار المنطقة</option>{areas.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}</select></label>}
           {pending && <p role="status">جارٍ مراجعة السعر مع الخادم…</p>}
         </fieldset> : <section aria-busy={pending} className="rounded-2xl border border-border bg-card p-5">
@@ -110,7 +99,7 @@ export function RestaurantCheckoutPage() {
           <ul className="list-none space-y-2 p-0">{products.map((product) => <li key={product.lineId} className="text-sm">{product.cartName} × {product.quantity}<small className="block text-muted-foreground">{product.optionsLabel}</small></li>)}</ul>
           <div className="my-3 border-y border-border py-3 text-sm leading-6"><p className="m-0">{draft.name} · <bdi>{draft.phone}</bdi></p><p className="m-0">{draft.fulfillment === 'delivery' ? draft.address : 'استلام من المطعم'}</p></div>
           {quote && <dl className="space-y-3 text-sm"><div className="flex justify-between"><dt>الأصناف</dt><dd>{money(Number(quote.subtotal))}</dd></div><div className="flex justify-between"><dt>التوصيل</dt><dd>{money(Number(quote.deliveryFee))}</dd></div><div className="flex justify-between font-bold"><dt>الإجمالي من الخادم</dt><dd>{money(Number(quote.total))}</dd></div></dl>}
-          <Button type="button" tone="gold" disabled={pending} onClick={confirm} className="mt-4 min-h-11 w-full rounded-xl px-4 font-bold">{pending ? 'جارٍ التأكيد…' : uncertain ? 'إعادة نفس المحاولة' : quote?.demo ? 'تأكيد محاكاة محلية — بدون إرسال طلب' : 'تأكيد وإرسال الطلب للمطعم'}</Button>
+          <Button type="button" tone="gold" disabled={pending} onClick={confirm} className="mt-4 min-h-11 w-full rounded-xl px-4 font-bold">{pending ? 'جارٍ التأكيد…' : uncertain ? 'إعادة نفس المحاولة' : 'تأكيد وإرسال الطلب للمطعم'}</Button>
           {!pending && !uncertain && <Button type="button" tone="neutral" onClick={() => setQuote(null)} className="mt-3 min-h-10 rounded-xl px-4 text-sm">تعديل البيانات ومراجعة السعر</Button>}
         </section>}
       </>}

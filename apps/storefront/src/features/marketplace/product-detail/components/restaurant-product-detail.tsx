@@ -11,7 +11,7 @@ import { money } from '@/features/marketplace/shared/lib/format-money';
 export function RestaurantProductDetail({ product, relatedProducts }: { product: MarketplaceProduct; relatedProducts?: MarketplaceProduct[] }) {
   const name = product.merchantName ?? product.seller;
   const restaurantUrl = `/restaurants/${encodeURIComponent(product.restaurantSlug ?? name)}`;
-  const scenario = product.restaurantSettings ? { open: product.restaurantSettings.isOpen, deliveryFee: Number(product.restaurantSettings.deliveryFee) } : restaurantScenario(name);
+  const scenario = product.restaurantSettings ? { open: product.restaurantSettings.acceptingOrders, deliveryFee: Number(product.restaurantSettings.deliveryFee) } : restaurantScenario(name);
   const available = mealAvailable(product);
   const related = (relatedProducts ?? productsForRestaurant({ name })).filter((item) => item.id !== product.id).slice(0, 3);
 
@@ -27,14 +27,14 @@ export function RestaurantProductDetail({ product, relatedProducts }: { product:
       </div>
       <div className="min-w-0">
         <div className="mb-2.5 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--purple-50)] px-2.5 py-1 text-[10px] text-accent"><UtensilsCrossed size={12} aria-hidden="true" />منيو تجريبي محلي</span>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--purple-50)] px-2.5 py-1 text-[10px] text-accent"><UtensilsCrossed size={12} aria-hidden="true" />{product.restaurantSlug ? 'منيو المطعم' : 'منيو تجريبي محلي'}</span>
           <span className="rounded-full bg-[var(--purple-50)] px-2.5 py-1 text-[10px] text-accent">{product.menuSection ?? 'الوجبات'}</span>
         </div>
         <h1 className="mb-2 mt-0 text-[23px] font-extrabold leading-[1.5] text-primary sm:text-[26px]">{product.name}</h1>
         <p className="mb-3 mt-0 text-[12px] leading-6 text-muted-foreground">{product.description ?? 'اختار الحجم والإضافات اللي تناسبك.'}</p>
         <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] text-muted-foreground">
-          <span className={`inline-flex items-center gap-1.5 font-bold ${available ? 'text-success' : 'text-destructive'}`}><span className={`size-1.5 rounded-full ${available ? 'bg-success' : 'bg-destructive'}`} aria-hidden="true" />{!scenario.open ? 'المطعم مغلق — تجربة' : available ? 'متاح في التجربة' : 'الصنف غير متاح — تجربة'}</span>
-          <span className="inline-flex items-center gap-1.5"><Truck size={13} aria-hidden="true" />التوصيل التجريبي {money(scenario.deliveryFee)}</span>
+          <span className={`inline-flex items-center gap-1.5 font-bold ${available ? 'text-success' : 'text-destructive'}`}><span className={`size-1.5 rounded-full ${available ? 'bg-success' : 'bg-destructive'}`} aria-hidden="true" />{product.restaurantSlug ? (!scenario.open ? 'المطعم لا يستقبل طلبات حاليًا' : available ? 'متاح للطلب' : 'الصنف غير متاح') : !scenario.open ? 'المطعم مغلق — تجربة' : available ? 'متاح في التجربة' : 'الصنف غير متاح — تجربة'}</span>
+          <span className="inline-flex items-center gap-1.5"><Truck size={13} aria-hidden="true" />{product.restaurantSlug ? 'التوصيل يبدأ من' : 'التوصيل التجريبي'} {money(Number(product.restaurantSettings?.deliveryFeeFrom ?? scenario.deliveryFee))}</span>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-[15px] border border-[var(--purple-100)] bg-[var(--purple-50)] px-4 py-3">
           <div className="flex min-w-0 items-center gap-2.5">
@@ -44,7 +44,7 @@ export function RestaurantProductDetail({ product, relatedProducts }: { product:
           <div className="shrink-0 sm:border-s sm:border-[var(--purple-100)] sm:ps-4"><span className="mb-0.5 block text-[9px] text-muted-foreground">السعر الأساسي</span><strong className="text-[22px] font-extrabold leading-7 text-accent">{money(product.price)}</strong></div>
         </div>
         <MealPurchase key={product.id} product={product} presentation="page" />
-        <p className="mb-0 mt-2 text-[9px] leading-4 text-muted-foreground">الأصناف والاختيارات والأسعار للتجربة المحلية فقط. التوصيل يُحسب في إتمام الطلب.</p>
+        <p className="mb-0 mt-2 text-[9px] leading-4 text-muted-foreground">{product.restaurantSlug ? 'السعر النهائي والتوصيل يُراجعان مع المطعم قبل تأكيد الطلب.' : 'الأصناف والاختيارات والأسعار للتجربة المحلية فقط. التوصيل يُحسب في إتمام الطلب.'}</p>
       </div>
     </article>
     {related.length > 0 && <section aria-label="أصناف أخرى من المطعم" className="mx-auto mt-5 w-full max-w-[1480px]">

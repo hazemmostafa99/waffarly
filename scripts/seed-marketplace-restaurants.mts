@@ -12,6 +12,14 @@ const id = (key: string) => { const h = createHash('sha256').update('waffarly-re
 const actor = 'marketplace-reference-v1';
 const client = new PrismaClient({ adapter: createPostgresAdapter(process.env.DATABASE_URL) });
 try {
+  const operational = await client.merchant.findFirst({
+    where: {
+      storefrontSlug: { in: data.restaurants.map((_: unknown, index: number) => 'reference-restaurant-' + (index + 1)) },
+      OR: [{ owner: { isNot: null } }, { subscription: { isNot: null } }, { storefrontOrders: { some: {} } }],
+    },
+    select: { storefrontSlug: true },
+  });
+  if (operational) throw new Error('Reference restaurants are operational. Use owner settings/catalog; do not re-import the demo seed.');
   const metadata = new Map<string, { mimeType: string; sizeBytes: number }>();
   const urls = new Set<string>();
   for (const restaurant of data.restaurants) { urls.add(restaurant.logo.src); urls.add(restaurant.cover.src); }
@@ -27,7 +35,8 @@ try {
   await client.$transaction(async (db) => {
     for (const [index, restaurant] of data.restaurants.entries()) {
       const merchantId = id(`merchant:${index}`), slug = `reference-restaurant-${index+1}`;
-      const existing = await db.merchant.findUnique({ where: { storefrontSlug: slug }, select: { id: true } });
+      const existing = await db.merchant.findUnique({ where: { storefrontSlug: slug }, select: { id: true, owner: { select: { id: true } }, subscription: { select: { merchantId: true } }, _count: { select: { storefrontOrders: true } } } });
+      if (existing && (existing.owner || existing.subscription || existing._count.storefrontOrders)) throw new Error('Reference restaurant is operational; import refused.');
       if (existing && existing.id !== merchantId) throw new Error(`Reference slug already belongs to another merchant: ${slug}`);
       await db.merchant.upsert({ where: { id: merchantId }, create: { id: merchantId, name: restaurant.name, storefrontSlug: slug, activity: 'restaurant', contactPhone: 'DEMO-NOT-CONTACTABLE', ownerName: 'Reference demo', ownerMobile: 'DEMO-NOT-CONTACTABLE' }, update: { name: restaurant.name } });
       const times = restaurant.time.match(/\d+/g).map(Number);

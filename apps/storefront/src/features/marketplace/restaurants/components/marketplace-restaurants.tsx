@@ -19,7 +19,7 @@ export function MarketplaceRestaurants() {
     >
       <SectionHeading
         title="مطاعم قريبة منك"
-        subtitle="مطاعم من بيانات العرض — تصفح المنيو وجرّب رحلة الطلب محليًا"
+        subtitle="تصفح المنيو واختار وجبتك واطلب من المطعم"
         more="عرض كل المطاعم"
         moreHref="/restaurants"
       />
