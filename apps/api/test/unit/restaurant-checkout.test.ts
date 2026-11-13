@@ -21,6 +21,7 @@ function fixture(allowed: boolean) {
   let pricingCalls = 0;
   let eligibilityCalls = 0;
   const transaction = {
+    branch: { findMany: async () => [{ id: '33333333-3333-4333-8333-333333333333', name: 'Main branch' }] },
     restaurantProfile: { findUnique: async () => ({ referenceData: { origin: 'local-mock' } }) },
   };
   const prisma = {

@@ -68,6 +68,7 @@ export class StorefrontOrdersService {
       }
       const coupon = await this.quoteDiscount(db, merchant.id, input.discountCode, subtotal);
       const policy = await this.restaurantPolicy.assess(db, merchant.id, input.fulfillmentType, subtotal, input.deliveryAreaId);
+      if (policy) await this.resolveRestaurantBranch(db, merchant.id);
       const total = subtotal - (coupon?.snapshot.amount ? toCents(coupon.snapshot.amount) : 0n) + (policy?.fee ?? 0n);
       if (total > MAX_ORDER_TOTAL_CENTS) throw new BadRequestException('Order total exceeds the supported range.');
       return { unitPrices, subtotal: formatCents(subtotal), deliveryFee: formatCents(policy?.fee ?? 0n), total: formatCents(total), currency: 'EGP' as const,
@@ -302,6 +303,7 @@ export class StorefrontOrdersService {
           const coupon = await this.quoteDiscount(transaction, merchant.id, input.discountCode, orderTotalCents);
           const discountCents = coupon?.snapshot.amount ? toCents(coupon.snapshot.amount) : 0n;
           const policy = await this.restaurantPolicy.assess(transaction, merchant.id, input.fulfillmentType, orderTotalCents, input.deliveryAreaId, input.restaurantSettingsRevision);
+          const receivingBranch = policy ? await this.resolveRestaurantBranch(transaction, merchant.id) : null;
           const deliveryFeeCents = policy?.fee ?? 0n;
           const totalCents = orderTotalCents - discountCents + deliveryFeeCents;
           if (input.reviewedTotal !== undefined && toCents(input.reviewedTotal) !== totalCents) throw new ConflictException('Checkout total changed. Review the new price before confirming.');
@@ -314,7 +316,7 @@ export class StorefrontOrdersService {
           }
           const saved = await transaction.storefrontOrder.update({
             where: { id: order.id },
-            data: { total: formatCents(totalCents), ...(policy ? { subtotal: formatCents(orderTotalCents), deliveryFee: formatCents(deliveryFeeCents), fulfillmentPolicy: policy.snapshot } : {}) },
+            data: { total: formatCents(totalCents), ...(receivingBranch ? { branchId: receivingBranch.id, branchName: receivingBranch.name } : {}), ...(policy ? { subtotal: formatCents(orderTotalCents), deliveryFee: formatCents(deliveryFeeCents), fulfillmentPolicy: policy.snapshot } : {}) },
             include: { discountRedemption: true },
           });
           return toReceipt(saved);
@@ -329,6 +331,21 @@ export class StorefrontOrdersService {
       }
       throw error;
     }
+  }
+
+  private async resolveRestaurantBranch(db: Prisma.TransactionClient, merchantId: string) {
+    const branches = await db.branch.findMany({
+      where: { merchantId, archivedAt: null },
+      select: { id: true, name: true },
+      orderBy: { id: 'asc' },
+      take: 2,
+    });
+    if (branches.length !== 1) {
+      throw new ConflictException(branches.length === 0
+        ? 'المطعم ليس لديه فرع متاح لاستقبال الطلبات حاليًا.'
+        : 'يلزم تحديد فرع استقبال طلبات المطعم قبل تأكيد الطلب.');
+    }
+    return branches[0]!;
   }
 
   private async quoteDiscount(db: Prisma.TransactionClient, merchantId: string, code: string | undefined, subtotal: bigint) {
@@ -389,6 +406,7 @@ export class StorefrontOrdersService {
       merchantId,
       delivery: { is: null },
       OR: [
+        { source: 'storefront', branchId, status: { in: ['pending', 'accepted', 'preparing', 'ready'] } },
         {
           lines: { some: { stockHandling: 'recipe_acceptance' } },
           OR: [

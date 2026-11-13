@@ -50,3 +50,68 @@ Inspected the local database read-only and reviewed the source changes.
 Focused quote regression tests were added, but no tests, lint, typecheck, build,
 browser automation or order submission were run, honoring the manual-QA preference.
 HTTP/UI behavior remains manually unverified.
+
+## Branch routing foundation — 2026-11-13
+
+Orders now resolves a single active same-tenant branch during restaurant quote
+and again during creation, within the existing serializable transactions. The
+order stores that branch ID and name atomically. Zero or multiple active branches
+reject checkout instead of saving an unrouted order. Non-restaurant storefronts
+retain existing behavior. This is an initial single-branch rule; explicit owner
+branch selection, POS queue/lifecycle changes and cross-step branch-review binding
+remain unfinished. Existing reference restaurants have no branches and therefore
+cannot confirm orders until operational setup is completed. No branches or
+employees were fabricated, and no database records were changed.
+
+No automated checks or actual order submission were run.
+
+## Routed storefront POS queue
+
+The existing POS queue now includes pending/accepted/preparing/ready storefront
+orders assigned to the requested same-tenant branch, including non-recipe lines.
+The existing permission/assigned-branch controller guards remain in effect.
+Lifecycle commands permit routed storefront acceptance, preparation and readiness
+without inventing recipe stock requirements. Recipe consumption stays unchanged.
+POS lifecycle reads check receiving-branch assignment and active branch before
+returning saved retry results. Acceptance cannot redirect an assigned order.
+
+Branch creation/employee assignments, final storefront handover/payment policy,
+customer tracking and end-to-end acceptance remain unfinished. No branches were
+created, and no automated checks or real orders were run in this slice.
+
+## Applied local reception setup — 2026-11-13
+
+Executed scripts/prepare-marketplace-reception.mts --apply against the local
+database through InventoryLocationsService.createBranch. All twelve reference
+restaurants now have one active main branch and its default consumption warehouse.
+The command validates deterministic merchant identities, rejects production and
+remote database hosts, reuses existing active branches, and does not change
+subscriptions, restaurant settings or employee permissions. Earlier no-branch
+statements above describe the state before this operation.
+
+The returned setup report shows zero active POS employees for all twelve tenants.
+POS employee provisioning/branch assignment is the next operational prerequisite;
+no employee accounts or credentials were created. No tests, builds or actual
+orders were run. The twelfth restaurant remains closed/paused.
+
+## Applied POS account provisioning — 2026-11-13
+
+Created twelve active cashier accounts using Auth PosEmployeeService.create,
+one per reference restaurant, each assigned exclusively to its main branch.
+Username is waffarly-cashier in each tenant. Existing cashier grants provide
+sales, order acceptance and preparation; view-orders access is implied by the
+existing permission resolver. No administrator or supervisor privileges were added.
+
+Each account has an independently generated 32-character password. Credentials
+were encrypted with Windows DPAPI CurrentUser and saved outside the repository
+under LOCALAPPDATA/Waffarly/local-pos-credentials. No plaintext passwords were
+logged or written to source. The provisioning command reuses its own existing
+accounts and rejects unexpected account/branch state instead of resetting it.
+The initial encryption attempt failed before account creation; the subsequent
+run created all twelve accounts successfully using direct DPAPI calls.
+
+Use Windows PowerShell with -STA -File scripts/copy-marketplace-pos-password.ps1
+-Restaurant 1 (replace 1 with 1–12) to copy that restaurant's password to the
+clipboard under the same Windows user. The helper does not print passwords.
+No actual login, order submission or automated checks were performed. Final
+storefront handover, customer tracking and full acceptance remain unfinished.

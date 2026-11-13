@@ -230,6 +230,24 @@ export class OrderLifecycleService {
             Array<{ id: string }>
           >`SELECT "id" FROM "storefront_orders" WHERE "id" = ${orderId}::uuid AND "merchantId" = ${merchantId}::uuid FOR UPDATE`;
           if (locked.length !== 1) throw new NotFoundException('Order was not found.');
+          // Check routed storefront scope before returning any saved retry result.
+          if (branchIds) {
+            const target = await tx.storefrontOrder.findFirst({
+              where: { id: orderId, merchantId },
+              select: { source: true, branchId: true },
+            });
+            if (target?.source === 'storefront' && target.branchId) {
+              const branch = await tx.branch.findFirst({
+                where: { id: target.branchId, merchantId, archivedAt: null },
+                select: { id: true },
+              });
+              if (!branch || !branchIds.includes(target.branchId))
+                throw new NotFoundException('Order was not found.');
+              if (command.action === 'accept' && command.input.branchId !== target.branchId)
+                throw new ConflictException('Accept this order at its receiving branch.');
+            }
+          }
+
           if (
             branchIds &&
             command.action === 'accept' &&
@@ -250,6 +268,7 @@ export class OrderLifecycleService {
                 branchId: { in: [...branchIds] },
                 OR: [
                   { source: 'pos', kitchenTicket: { isNot: null } },
+                  { source: 'storefront', branchId: { not: null } },
                   { lines: { some: { stockHandling: 'recipe_acceptance' } } },
                 ],
               },
@@ -339,9 +358,12 @@ export class OrderLifecycleService {
             (line) => line.stockHandling === 'recipe_acceptance',
           );
           const isDispatchedPosOrder = order.source === 'pos' && order.kitchenTicket !== null;
-          if (command.action !== 'pos_cancel' && !recipeLines.length && !isDispatchedPosOrder)
+          const isRoutedStorefrontOrder = order.source === 'storefront' && order.branchId !== null;
+          if (isRoutedStorefrontOrder && command.action === 'accept' && order.branchId !== command.input.branchId)
+            throw new ConflictException('Accept this order at its receiving branch.');
+          if (command.action !== 'pos_cancel' && !recipeLines.length && !isDispatchedPosOrder && !isRoutedStorefrontOrder)
             throw new ConflictException('This action is only available for new recipe orders.');
-          if (command.action === 'cancel' && !recipeLines.length)
+          if (command.action === 'cancel' && !recipeLines.length && !isRoutedStorefrontOrder)
             throw new ConflictException('POS cancellation requires the cancellation workflow.');
           if (command.action === 'accept') {
             if (order.status !== 'pending')
