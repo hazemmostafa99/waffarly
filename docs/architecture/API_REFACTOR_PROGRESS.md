@@ -171,3 +171,104 @@ design. Reporting needs representative data/query profiling before replacing
 in-memory aggregation. Multiple API hosts need shared/object media storage and
 matching delivery configuration. These behavior/deployment changes are not
 silently introduced by reorganizing the code.
+
+## Cashier forwarding facade removed
+
+The former PosOrdersService is deleted. Cashier routes now call PosSaleService,
+KitchenOrderAmendmentService, CheckPaymentService, CheckRefundService,
+PickupCollectionService, PosOrderQueryService and PosReceiptQueryService directly.
+The operation bodies retain their original authorization, tenant/branch scope,
+transaction isolation, lock order and replay behavior. Receipt issuance still
+receives the payment transaction; physical item returns remain separate.
+
+All affected fixture construction and HTTP provider stubs were updated. Changed
+files were formatted with installed Prettier. No tests, typecheck, lint, build or
+browser checks were run for this migration, following the current manual-QA
+preference. Earlier verification results in this document predate this migration.
+This completes replacement of this facade, not architectural alignment of every
+API feature.
+
+## Follow-up validation and operation ownership — 2026-11-14
+
+The user explicitly authorized automated checks again. This supersedes the
+manual-only verification status above for the current changes.
+
+- Check splitting now runs directly in CheckSplitService; exact allocation math
+  lives in check-split.rules.ts and remains independently tested.
+- Legacy website accept/reject now runs directly in StorefrontOrderStatusService,
+  rather than through the checkout-submission service.
+- SubscriptionService.command owns its administrative transaction directly. The
+  standalone forwarding command file was removed; read and pricing helpers remain.
+- API formatting, typecheck, lint, all 273 HTTP/unit tests and build passed.
+- All 38 PostgreSQL tests across 29 files passed, with no failures or skips,
+  against the guarded isolated test database. The existing test container was
+  started; no database reset or application-database change was performed.
+- Initial restricted-loopback test failures were resolved by running with local
+  network access. A missing rule import, an unused checkout import and the moved
+  status operation's HTTP mock were corrected before the final successful run.
+
+The Shifts, Inventory, Merchants and Catalog modules still contain legacy
+function-based operation coordination. This delivery does not claim full API
+alignment or browser/operator acceptance. No commit was created.
+
+## Primary write services aligned — 2026-11-14
+
+Moved 37 operation bodies into the existing Nest application services across
+Shifts, Inventory, Merchants and Catalog. Their constructors and public method
+contracts were preserved; no new forwarding services or module dependencies were
+introduced. The services own transaction orchestration, including existing lock,
+revision, retry, tenant and attribution checks. Nested transaction callbacks and
+isolation choices are preserved. Cash custody retains its shared transaction and
+conflict helper, with the business callback coordinated by the service.
+
+Removed 11 standalone command implementation files and renamed eight residual
+read/rule files to describe their remaining work. Product commands no longer have
+a redundant forwarding `commands` directory. Updated module navigation guides
+and purpose comments; calculations and active-transaction persistence remain
+functions.
+
+Validation after these changes:
+
+- `node --import tsx test/support/check-api.ts` from apps/api passed formatting,
+  typecheck, lint, all 273 HTTP/unit tests, and build.
+- `node --import tsx test/support/database-runner.ts` from apps/api passed all 38
+  PostgreSQL tests across 29 files, with zero failures or skips, against the
+  guarded isolated test database.
+- Local loopback access was enabled for the tests. No application-database reset,
+  migration, HTTP-contract change, new test facade or commit was introduced.
+- Browser and operator acceptance were not performed. These results cover the
+  reviewed services; they do not certify every API feature's architecture.
+
+## Inventory policy ownership — 2026-11-14
+
+Inventory policy reads and updates now belong to `InventoryPolicyService`, under
+the existing policy folder and controller. `InventoryLocationsService` now owns
+only branches, warehouses and consumption defaults. The policy's tenant scope,
+revision conflict handling, attribution and response are preserved. This split
+separates two existing API capabilities without adding a forwarding service or
+changing routes or contracts.
+
+## Register ownership — 2026-11-14
+
+Register setup and register reads now belong to `PosRegistersService`; shift
+opening, closing, reconciliation and drawer movement stay in `ShiftsService`.
+Owner and cashier controllers call the register service directly. Employee
+register lookup now sits with register queries instead of shift-session queries.
+Existing transactions, row locks, revision checks, tenant scope and HTTP
+contracts are preserved.
+
+After this split, API formatting, typecheck, lint, all 273 HTTP/unit tests and the
+build passed. All 38 database tests across 29 files also passed with no failures
+or skips against the guarded isolated test database. No reset was performed.
+
+## Cashier order controller ownership — 2026-11-14
+
+The existing `/pos/orders` routes are now grouped among controllers for core
+order work, kitchen tasks, billing and physical returns. Each controller calls
+the operation or query service that owns its work. Route paths, status codes,
+permission checks and refund/return supervisor approval behavior are preserved.
+
+After the controller split, Prettier, typecheck, lint, all 273 HTTP/unit tests and
+the API build passed. The database suite was not rerun because this change only
+rearranged HTTP entry points; no query, transaction or persistence code changed.
+Operator acceptance remains separate.

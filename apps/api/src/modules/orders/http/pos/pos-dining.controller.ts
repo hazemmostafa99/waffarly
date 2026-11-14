@@ -1,6 +1,7 @@
 /**
  * Receives cashier requests to view or move table sessions and divide order bills.
  */
+import { CheckSplitService } from '../../billing/check-split.service.js';
 import {
   Body,
   Controller,
@@ -65,7 +66,7 @@ export class PosDiningController {
 @UseGuards(PosEmployeeGuard)
 @Controller('pos/orders')
 export class PosDiningOrdersController {
-  constructor(@Inject(PosDiningService) private readonly dining: PosDiningService) {}
+  constructor(@Inject(CheckSplitService) private readonly checks: CheckSplitService) {}
 
   @Post(':id/split-checks')
   split(
@@ -73,6 +74,6 @@ export class PosDiningOrdersController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body(new ZodValidationPipe(splitPosOrderChecksSchema)) input: SplitPosOrderChecksRequest,
   ): Promise<SplitPosOrderChecksResponse> {
-    return this.dining.splitOrder(employee, id, input);
+    return this.checks.splitOrder(employee, id, input);
   }
 }

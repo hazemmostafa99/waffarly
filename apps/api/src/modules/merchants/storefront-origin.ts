@@ -1,6 +1,6 @@
 import { isStorefrontHandle } from '@waffarly/contracts';
 
-/** Scope registered storefront origins to their catalog and customer authentication. */
+/** Scope registered storefront origins to their catalog, checkout and tenant customer account. */
 export function storefrontRequestScope(
   origin: string,
   method: string,
@@ -29,23 +29,30 @@ export function storefrontRequestScope(
   if (!trustedOrigins.includes(base)) return null;
   const handle = url.hostname.slice(0, -(domain.length + 1));
   if (!isStorefrontHandle(handle)) return null;
-  const customerRead = path === '/auth/customer/me' && ['GET', 'HEAD', 'OPTIONS'].includes(method);
-  const customerWrite =
-    /^\/auth\/customer\/(?:sign-up|login|logout)$/.test(path) &&
-    ['POST', 'OPTIONS'].includes(method);
-  if (customerRead || customerWrite) return { handle, slug: null };
+  const storefrontCustomerAuth =
+    /^\/auth\/stores\/([a-z0-9]+(?:-[a-z0-9]+)*)\/customer\/(?:sign-up|login|me|logout)$/.exec(
+      path,
+    );
+  if (storefrontCustomerAuth?.[1]) {
+    const read = ['GET', 'HEAD', 'OPTIONS'].includes(method) && path.endsWith('/me');
+    const write = ['POST', 'OPTIONS'].includes(method) && !path.endsWith('/me');
+    if (read || write) return { handle, slug: storefrontCustomerAuth[1] };
+  }
   const catalog =
     /^\/catalog\/stores\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/(?:categories|products))?$/.exec(path);
   const checkout =
     /^\/catalog\/stores\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/orders(?:\/quote)?|\/products\/[0-9a-f-]+\/quote)$/.exec(
       path,
     );
+  const customerOrders = /^\/catalog\/stores\/([a-z0-9]+(?:-[a-z0-9]+)*)\/customer\/orders$/.exec(
+    path,
+  );
   const match = ['GET', 'HEAD'].includes(method)
-    ? catalog
+    ? (catalog ?? customerOrders)
     : method === 'POST'
       ? checkout
       : method === 'OPTIONS'
-        ? (catalog ?? checkout)
+        ? (catalog ?? checkout ?? customerOrders)
         : null;
   return match?.[1] ? { handle, slug: match[1] } : null;
 }

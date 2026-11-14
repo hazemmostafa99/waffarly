@@ -1,18 +1,29 @@
-# Inventory
+# Inventory ownership
 
-| Folder        | Responsibility                                                                   |
-| ------------- | -------------------------------------------------------------------------------- |
-| `items/`      | Stock identity reads, creation/editing, archive rules and unit conversion.       |
-| `locations/`  | Branches, warehouses, their edit checks and response mapping.                    |
-| `policy/`     | Merchant inventory policy and its owner endpoints.                               |
-| `ledger/`     | Existing immutable stock ledger, plus owner balances/movement/opening endpoints. |
-| `visibility/` | Stock health reads, replenishment thresholds and their owner endpoints.          |
+| File or folder                       | Responsibility                                                                           |
+| ------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `inventory.service.ts`               | Creates, updates and archives stock identities; exposes stock reads and unit conversion. |
+| `inventory-locations.service.ts`     | Maintains branches, warehouses and consumption defaults.                                 |
+| `policy/inventory-policy.service.ts` | Reads and updates the merchant stock policy.                                             |
+| `inventory-visibility.service.ts`    | Saves/deletes reorder thresholds and exposes stock-health reads.                         |
+| `inventory-ledger.service.ts`        | Coordinates opening balances and immutable stock posting.                                |
+| `items/`                             | Stock queries, edit guards and response/replay mapping.                                  |
+| `locations/`                         | Branch/warehouse queries, edit guards and response mapping.                              |
+| `policy/`                            | Stock-policy operation and its scoped read.                                              |
+| `ledger/`                            | Stock posting helpers, fingerprints, rules, queries and mapping.                         |
+| `visibility/`                        | Stock-health reads and scoped threshold access checks.                                   |
 
-The existing application services remain entry points for callers. The locations
-controller now contains branch/warehouse routes only. Policy, ledger and stock
-health controllers own their separate routes under the same `/owner/inventory`
-prefix. No URL, request shape or response shape changes are intended.
+Write operations execute directly in their existing application services, which
+own validation and the original transaction boundaries. Ordinary functions handle
+reads, mapping, calculation and persistence on the supplied transaction. There is
+no extra application-service layer forwarding each write to another service.
 
 Creating or editing a stock identity does not add stock. Opening balances and
-movements still use the ledger. Preserve tenant filters, revision checks, unit
-immutability, default-warehouse rules and the original transaction boundaries.
+movements use the ledger. Tenant filters, revision checks, unit immutability,
+default-warehouse rules and history protection remain part of the operation.
+
+Controllers for locations, policy, ledger and stock health keep their existing
+routes and contracts under `/owner/inventory`.
+
+See [the application standard](../../../../../docs/architecture/API_APPLICATION_STANDARD.md)
+and [verification ledger](../../../../../docs/architecture/API_REFACTOR_PROGRESS.md).

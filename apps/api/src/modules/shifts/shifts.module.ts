@@ -7,6 +7,7 @@ import { ShiftsService } from './shifts.service.js';
 import { CashCustodyService } from './cash-custody.service.js';
 import { OwnerCashCustodyController } from './http/owner/cash-custody.controller.js';
 import { PosCashCustodyController } from './http/pos/cash-custody.controller.js';
+import { PosRegistersService } from './registers/pos-registers.service.js';
 
 @Module({
   imports: [AuthModule],
@@ -17,7 +18,7 @@ import { PosCashCustodyController } from './http/pos/cash-custody.controller.js'
     OwnerCashCustodyController,
     PosCashCustodyController,
   ],
-  providers: [ShiftsService, CashCustodyService],
+  providers: [ShiftsService, PosRegistersService, CashCustodyService],
   exports: [ShiftsService],
 })
 export class ShiftsModule {}

@@ -25,18 +25,18 @@ import {
   ownerPosRegisterListSchema,
   updatePosRegisterSchema,
 } from '../../shifts.schemas.js';
-import { ShiftsService } from '../../shifts.service.js';
+import { PosRegistersService } from '../../registers/pos-registers.service.js';
 @UseGuards(OwnerGuard)
 @Controller('owner/pos/registers')
 export class OwnerPosRegistersController {
-  constructor(@Inject(ShiftsService) private readonly shifts: ShiftsService) {}
+  constructor(@Inject(PosRegistersService) private readonly registers: PosRegistersService) {}
 
   @Get()
   list(
     @CurrentOwner() owner: OwnerProfile,
     @Query() query: unknown,
   ): Promise<CursorPage<PosRegisterSummary>> {
-    return this.shifts.listOwnerRegisters(
+    return this.registers.listOwnerRegisters(
       owner.merchantId,
       parseRequest(ownerPosRegisterListSchema, query),
     );
@@ -48,7 +48,7 @@ export class OwnerPosRegistersController {
     @Body(new ZodValidationPipe(createPosRegisterSchema, { format: 'messages' }))
     input: CreatePosRegisterRequest,
   ): Promise<PosRegisterSummary> {
-    return this.shifts.createRegister(owner.merchantId, owner.username, input);
+    return this.registers.createRegister(owner.merchantId, owner.username, input);
   }
 
   @Patch(':id')
@@ -58,6 +58,6 @@ export class OwnerPosRegistersController {
     @Body(new ZodValidationPipe(updatePosRegisterSchema, { format: 'messages' }))
     input: UpdatePosRegisterRequest,
   ): Promise<PosRegisterSummary> {
-    return this.shifts.updateRegister(owner.merchantId, owner.username, id, input);
+    return this.registers.updateRegister(owner.merchantId, owner.username, id, input);
   }
 }

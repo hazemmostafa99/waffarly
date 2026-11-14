@@ -1,10 +1,12 @@
-import { useLocale, Input, Button, PasswordInput, LanguageSwitcher } from '@waffarly/ui';
+import { useLocale, Input, Button, LanguageSwitcher } from '@waffarly/ui';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { LoginRequest } from '@waffarly/contracts';
 import { adminQueryKeys } from './app/query-keys.js';
 import { queryClient } from './app/query-client.js';
 import { apiRequest } from './lib/api-client.js';
+import { Eye, EyeOff, LoaderCircle } from 'lucide-react';
+import './login.css';
 import { adminThemeClass } from './lib/admin-theme.js';
 
 function errorMessage(cause: unknown): string {
@@ -19,6 +21,7 @@ export function Login() {
   const [login, setLogin] = useState<LoginRequest>({ username: '', password: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
   useEffect(() => {
     void apiRequest<{ username: string }>('/auth/admin/me')
@@ -46,7 +49,7 @@ export function Login() {
   }
 
   return (
-    <div className={adminThemeClass} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+    <div className={`${adminThemeClass} admin-login`} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <a
         className="fixed -top-14 start-4 z-[100] rounded-lg border-2 border-waffarly-primary bg-white px-4 py-3 text-sm font-semibold text-waffarly-primary focus:top-3"
         href="#main-content"
@@ -97,34 +100,64 @@ export function Login() {
               'Sign in to review applications, create businesses, and activate their first month.',
             )}
           </p>
-          <form className="grid gap-5" onSubmit={(event) => void signIn(event)}>
+          <form aria-busy={busy} className="grid gap-5" onSubmit={(event) => void signIn(event)}>
             <label className="grid gap-2 text-sm font-semibold text-waffarly-ink">
               <span>{t('Username')}</span>
               <Input
                 className="h-11 rounded-lg border-waffarly-border bg-waffarly-input px-3 text-waffarly-ink placeholder:text-waffarly-muted focus-visible:ring-waffarly-primary"
-                dir="ltr"
+                dir={locale === 'ar' ? 'rtl' : 'ltr'}
+                name="username"
+                autoCapitalize="none"
+                spellCheck={false}
                 autoComplete="username"
                 value={login.username}
                 onChange={(event) => setLogin({ ...login, username: event.target.value })}
                 required
               />
             </label>
-            <label className="grid gap-2 text-sm font-semibold text-waffarly-ink">
-              <span>{t('Password')}</span>
-              <PasswordInput
-                className="h-11 rounded-lg border-waffarly-border bg-waffarly-input px-3 text-waffarly-ink placeholder:text-waffarly-muted focus-visible:ring-waffarly-primary"
-                aria-label={t('Password')}
-                autoComplete="current-password"
-                value={login.password}
-                onChange={(event) => setLogin({ ...login, password: event.target.value })}
-                required
-              />
-            </label>
+            <div className="grid gap-2 text-sm font-semibold text-waffarly-ink">
+              <label htmlFor="admin-password">{t('Password')}</label>
+              <div className="admin-login-password">
+                <Input
+                  id="admin-password"
+                  name="password"
+                  type={passwordVisible ? 'text' : 'password'}
+                  dir={locale === 'ar' ? 'rtl' : 'ltr'}
+                  className="h-11 rounded-lg border-waffarly-border bg-waffarly-input px-3 text-waffarly-ink placeholder:text-waffarly-muted focus-visible:ring-waffarly-primary"
+                  aria-label={t('Password')}
+                  autoComplete="current-password"
+                  value={login.password}
+                  onChange={(event) => setLogin({ ...login, password: event.target.value })}
+                  required
+                />
+                <button
+                  className="admin-login-visibility"
+                  type="button"
+                  aria-label={t(passwordVisible ? 'Hide password' : 'Show password')}
+                  aria-pressed={passwordVisible}
+                  aria-controls="admin-password"
+                  onClick={() => setPasswordVisible((visible) => !visible)}
+                >
+                  {passwordVisible ? (
+                    <EyeOff aria-hidden="true" size={21} />
+                  ) : (
+                    <Eye aria-hidden="true" size={21} />
+                  )}
+                </button>
+              </div>
+            </div>
             <Button
               className="mt-1 h-11 w-full bg-waffarly-primary text-white hover:bg-waffarly-primary-hover"
               disabled={busy}
               type="submit"
             >
+              {busy && (
+                <LoaderCircle
+                  className="animate-spin motion-reduce:animate-none"
+                  aria-hidden="true"
+                  size={18}
+                />
+              )}
               {busy ? t('Signing in…') : t('Sign in')}
             </Button>
           </form>

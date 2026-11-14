@@ -1,3 +1,4 @@
+import { CheckSplitService } from '../../src/modules/orders/billing/check-split.service.js';
 import { UnauthorizedException, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { OwnerProfile, PosEmployeeSession } from '@waffarly/contracts';
@@ -71,6 +72,15 @@ describe('POS dining endpoints', () => {
           },
         },
         {
+          provide: CheckSplitService,
+          useValue: {
+            splitOrder: async (...args: unknown[]) => {
+              calls.push({ method: 'splitOrder', args });
+              return { orderId };
+            },
+          },
+        },
+        {
           provide: PosDiningService,
           useValue: {
             listOwnerTables: async (...args: unknown[]) => {
@@ -96,10 +106,6 @@ describe('POS dining endpoints', () => {
             moveSession: async (...args: unknown[]) => {
               calls.push({ method: 'moveSession', args });
               return { id: sessionId };
-            },
-            splitOrder: async (...args: unknown[]) => {
-              calls.push({ method: 'splitOrder', args });
-              return { orderId };
             },
           },
         },

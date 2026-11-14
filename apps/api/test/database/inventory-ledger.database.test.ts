@@ -1,3 +1,4 @@
+import { InventoryPolicyService } from '../../src/modules/inventory/policy/inventory-policy.service.js';
 import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
@@ -50,6 +51,7 @@ it(
           const txClient = transactionPrisma(transaction);
           const inventory = new InventoryService(txClient);
           const locations = new InventoryLocationsService(txClient);
+          const policy = new InventoryPolicyService(txClient);
           const ledger = new InventoryLedgerService(txClient);
           const branch = await locations.createBranch(merchant.id, 'inventory-ledger-test', {
             name: 'Downtown',
@@ -176,7 +178,7 @@ it(
             /stock item was not found/i,
           );
 
-          const defaultPolicy = await locations.getPolicy(merchant.id);
+          const defaultPolicy = await policy.getPolicy(merchant.id);
           assert.equal(defaultPolicy.negativeStockPolicy, 'allow');
           await ledger.postMovementBatch(transaction, merchant.id, 'inventory-ledger-test', {
             requestId: randomUUID(),
@@ -326,7 +328,7 @@ it(
             /non-zero stock cannot be archived/i,
           );
 
-          await locations.updatePolicy(merchant.id, 'inventory-ledger-test', {
+          await policy.updatePolicy(merchant.id, 'inventory-ledger-test', {
             revision: defaultPolicy.revision,
             negativeStockPolicy: 'prevent',
           });

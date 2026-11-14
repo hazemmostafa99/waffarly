@@ -1,3 +1,5 @@
+import { InventoryLedgerService } from '../../src/modules/inventory/index.js';
+import { StorefrontOrderStatusService } from '../../src/modules/orders/fulfillment/storefront-order-status.service.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 
@@ -130,6 +132,10 @@ it(
             ],
           });
           const orders = new StorefrontOrdersService(transactionClient, productsPricing);
+          const orderStatus = new StorefrontOrderStatusService(
+            transactionClient,
+            new InventoryLedgerService(transactionClient),
+          );
           const first = await orders.create(merchant.storefrontSlug, {
             customerName: 'Mona Ali',
             customerPhone: '01000000000',
@@ -205,7 +211,7 @@ it(
             },
           ]);
 
-          const rejected = await orders.updateStatus(merchant.id, first.id, 'rejected');
+          const rejected = await orderStatus.updateStatus(merchant.id, first.id, 'rejected');
           assert.equal(rejected.status, 'rejected');
           const restoredVariant = await transaction.productVariant.findUniqueOrThrow({
             where: { id: product.variants[0]!.id },
@@ -225,7 +231,7 @@ it(
               },
             ],
           });
-          await orders.updateStatus(merchant.id, second.id, 'accepted');
+          await orderStatus.updateStatus(merchant.id, second.id, 'accepted');
           const orderPageOne = await orders.listForOwner(merchant.id, { limit: 1 });
           assert.equal(orderPageOne.items.length, 1);
           assert.ok(orderPageOne.nextCursor);

@@ -67,14 +67,14 @@ describe('registered local storefront origin policy', () => {
     await app.close();
   });
 
-  it('permits its own public catalog/checkout and preflight without credentials', async () => {
+  it('permits its own public catalog and credentialed checkout preflight', async () => {
     const response = await request(app.getHttpServer())
       .post('/catalog/stores/technical-store/orders')
       .set('Origin', origin)
       .send({})
       .expect(201);
     assert.equal(response.headers['access-control-allow-origin'], origin);
-    assert.equal(response.headers['access-control-allow-credentials'], undefined);
+    assert.equal(response.headers['access-control-allow-credentials'], 'true');
     assert.equal(lookups, 1); // CORS and unsafe-request protection reuse one decision.
     await request(app.getHttpServer())
       .options('/catalog/stores/technical-store/orders')
@@ -161,14 +161,14 @@ describe('registered local storefront origin policy', () => {
     development = false;
     baseDomain = 'wfarly.com';
     await request(app.getHttpServer())
-      .options('/auth/customer/login')
+      .options('/auth/stores/technical-store/customer/login')
       .set('Origin', 'https://abo-ali.wfarly.com')
       .set('Access-Control-Request-Method', 'POST')
       .expect(204)
       .expect('Access-Control-Allow-Origin', 'https://abo-ali.wfarly.com')
       .expect('Access-Control-Allow-Credentials', 'true');
     const denied = await request(app.getHttpServer())
-      .post('/auth/customer/login')
+      .post('/auth/stores/unknown/customer/login')
       .set('Origin', 'https://unknown.wfarly.com')
       .send({})
       .expect(403);

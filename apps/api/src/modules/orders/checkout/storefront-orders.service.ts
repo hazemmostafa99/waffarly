@@ -8,7 +8,6 @@ import {
   quoteCheckoutDiscount,
   resolveRestaurantReceivingBranch,
 } from './checkout-policy.js';
-import { updateStorefrontOrderStatus } from '../fulfillment/update-storefront-order-status.js';
 import {
   listOwnerStorefrontOrders,
   listBranchOrderQueue,
@@ -25,12 +24,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import type {
-  CreateStorefrontOrderRequest,
-  StorefrontOrderReceipt,
-  StorefrontOrderStatus,
-  StorefrontOrderSummary,
-} from '@waffarly/contracts';
+import type { CreateStorefrontOrderRequest, StorefrontOrderReceipt } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { type CursorPageQuery } from '../../../common/http/pagination.js';
 import { formatCents, toCents } from '../../../common/money/money.js';
@@ -41,6 +35,7 @@ import { InventoryLedgerService } from '../../inventory/index.js';
 import { SubscriptionService } from '../../subscriptions/index.js';
 
 import { toReceipt } from '../mapping/order.mapper.js';
+import { CustomersService } from '../../customers/index.js';
 
 const MAX_ORDER_TOTAL_CENTS = 999_999_999_999n;
 @Injectable()
@@ -59,6 +54,9 @@ export class StorefrontOrdersService {
     @Optional()
     @Inject(RestaurantOrderPolicyService)
     private readonly restaurantPolicy: RestaurantOrderPolicyService = new RestaurantOrderPolicyService(),
+    @Optional()
+    @Inject(CustomersService)
+    private readonly customers: CustomersService = new CustomersService(prisma),
   ) {
     this.consumption = consumption ?? new ProductConsumptionService();
     this.ledger = ledger ?? new InventoryLedgerService(prisma);
@@ -122,6 +120,7 @@ export class StorefrontOrdersService {
     input: CreateStorefrontOrderRequest,
     identity?: OrderIdentity,
     replayScope?: Prisma.CustomerOrderAccessWhereInput,
+    merchantCustomerId?: string,
   ): Promise<StorefrontOrderReceipt> {
     const merchant = await this.prisma.merchant.findUnique({
       where: { storefrontSlug: slug },
@@ -142,6 +141,8 @@ export class StorefrontOrdersService {
       if (!existing) return null;
       if (existing.requestFingerprint !== fingerprint)
         throw new ConflictException('This request ID was used for another checkout.');
+      if ((existing.merchantCustomerId ?? undefined) !== merchantCustomerId)
+        throw new NotFoundException('Order was not found.');
       if (
         identity &&
         !(await this.prisma.customerOrderAccess.findFirst({
@@ -167,9 +168,22 @@ export class StorefrontOrdersService {
       return await this.prisma.$transaction(
         async (transaction) => {
           await this.subscriptions.requireActive(merchant.id, transaction);
+          if (merchantCustomerId)
+            await this.customers.requireActive(merchant.id, merchantCustomerId, transaction);
           const order = await transaction.storefrontOrder.create({
             data: {
               merchant: { connect: { id: merchant.id } },
+              ...(merchantCustomerId
+                ? {
+                    merchantCustomer: {
+                      connect: {
+                        id_merchantId: { id: merchantCustomerId, merchantId: merchant.id },
+                      },
+                    },
+                    customerLinkedBy: 'storefront-customer',
+                    customerLinkedAt: new Date(),
+                  }
+                : {}),
               customerName: input.customerName.trim(),
               customerPhone: input.customerPhone.trim(),
               fulfillmentType: input.fulfillmentType,
@@ -299,13 +313,5 @@ export class StorefrontOrdersService {
 
   async listForPos(merchantId: string, branchId: string, page: CursorPageQuery = { limit: 25 }) {
     return listBranchOrderQueue(this.prisma, merchantId, branchId, page);
-  }
-
-  updateStatus(
-    merchantId: string,
-    orderId: string,
-    status: Extract<StorefrontOrderStatus, 'accepted' | 'rejected'>,
-  ): Promise<StorefrontOrderSummary> {
-    return updateStorefrontOrderStatus(this.prisma, this.ledger, merchantId, orderId, status);
   }
 }

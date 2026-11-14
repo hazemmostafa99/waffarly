@@ -9,7 +9,11 @@ import { Button, Input, useLocale } from '@waffarly/ui';
 import { accountCopy } from './account-copy';
 import { AccountPreviewShell } from './account-preview-shell';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { customerSessionKey, loadCustomer, signOutCustomer } from './data/customer-auth-api';
+import {
+  loadStorefrontCustomer,
+  signOutStorefrontCustomer,
+  storefrontCustomerSessionKey,
+} from './data/storefront-customer-api';
 
 type AccountFieldProps = {
   id: string;
@@ -39,10 +43,14 @@ export function StorefrontAccountOverviewPage() {
   const params = useParams<{ slug: string }>();
   const t = accountCopy(locale);
   const queryClient = useQueryClient();
-  const session = useQuery({ queryKey: customerSessionKey, queryFn: loadCustomer, retry: false });
+  const session = useQuery({
+    queryKey: storefrontCustomerSessionKey(params.slug),
+    queryFn: () => loadStorefrontCustomer(params.slug),
+    retry: false,
+  });
   const signOut = useMutation({
-    mutationFn: signOutCustomer,
-    onSuccess: () => queryClient.setQueryData(customerSessionKey, null),
+    mutationFn: () => signOutStorefrontCustomer(params.slug),
+    onSuccess: () => queryClient.setQueryData(storefrontCustomerSessionKey(params.slug), null),
     gcTime: 0,
   });
   const baseHref = `/s/${encodeURIComponent(params.slug)}`;
@@ -55,7 +63,7 @@ export function StorefrontAccountOverviewPage() {
   return (
     <AccountPreviewShell
       active="overview"
-      isPreview={!session.data && !session.isPending}
+      isPreview={false}
       title={t.overview}
       description={t.overviewIntro}
     >
@@ -69,7 +77,7 @@ export function StorefrontAccountOverviewPage() {
               {session.isPending
                 ? t.loadingAccount
                 : session.data
-                  ? `${t.signedInAs} ${session.data.displayName ?? session.data.email ?? session.data.phone}`
+                  ? `${t.signedInAs} ${session.data.name}`
                   : t.guestTitle}
             </h2>
             <p className="mt-1 text-storefront-support leading-5 text-store-secondary">
@@ -138,7 +146,7 @@ export function StorefrontAccountOverviewPage() {
                 />
               </span>
               <span className="text-storefront-support leading-5 text-store-muted">
-                {t.previewDescription}
+                {t.quickLinkDescription}
               </span>
             </Link>
           ))}

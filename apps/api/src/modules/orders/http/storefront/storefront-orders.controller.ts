@@ -17,6 +17,7 @@ import type { CreateStorefrontOrderRequest } from '@waffarly/contracts';
 
 import type { Request } from 'express';
 import { CustomerOrderAccessService } from '../../customers/customer-order-access.service.js';
+import { StorefrontCustomerAuthService } from '../../../customers/index.js';
 import { parseRequest } from '../../../../common/http/zod-validation.pipe.js';
 
 import { StorefrontOrdersService } from '../../checkout/storefront-orders.service.js';
@@ -26,6 +27,8 @@ export class PublicStorefrontOrdersController {
   constructor(
     @Inject(StorefrontOrdersService) private readonly orders: StorefrontOrdersService,
     @Inject(CustomerOrderAccessService) private readonly access: CustomerOrderAccessService,
+    @Inject(StorefrontCustomerAuthService)
+    private readonly storefrontCustomerAuth: StorefrontCustomerAuthService,
   ) {}
 
   @Post('customer')
@@ -61,10 +64,17 @@ export class PublicStorefrontOrdersController {
   }
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Param('slug') slug: string, @Body() body: unknown) {
+  async create(@Param('slug') slug: string, @Body() body: unknown, @Req() request: Request) {
     assertValidStorefrontSlug(slug);
     const parsed = parseRequest(createOrderSchema, body);
-    return this.orders.create(slug, parsed satisfies CreateStorefrontOrderRequest);
+    const customer = await this.storefrontCustomerAuth.current(slug, request);
+    return this.orders.create(
+      slug,
+      parsed satisfies CreateStorefrontOrderRequest,
+      undefined,
+      undefined,
+      customer?.customerId,
+    );
   }
 }
 

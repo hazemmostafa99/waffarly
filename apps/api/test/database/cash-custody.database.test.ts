@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
+import { PosRegistersService } from '../../src/modules/shifts/registers/pos-registers.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 import { CashCustodyService } from '../../src/modules/shifts/cash-custody.service.js';
 
@@ -19,6 +20,7 @@ it(
   async (testContext) => {
     const prisma = createTestDatabaseClient(testContext);
     const shifts = new ShiftsService(prisma as unknown as PrismaService);
+    const registers = new PosRegistersService(prisma as unknown as PrismaService);
     const cash = new CashCustodyService(prisma as unknown as PrismaService);
     const tenants: string[] = [];
     const token = randomUUID();
@@ -97,7 +99,7 @@ it(
       };
       const cashier = await makeEmployee('Cashier');
       const receiver = await makeEmployee('Receiver');
-      const register = await shifts.createRegister(merchant.id, 'test', {
+      const register = await registers.createRegister(merchant.id, 'test', {
         branchId: branch.id,
         name: 'Drawer',
       });

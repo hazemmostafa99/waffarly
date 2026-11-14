@@ -62,7 +62,7 @@
   justify-content: center;
   gap: 8px;
   padding: 8px 14px;
-  border: 1px solid var(--builder-border);
+  border: 1px solid var(--builder-border, var(--dashboard-border, #e1e8ef));
   border-radius: 8px;
   background: #fff;
   color: #49616e;
@@ -79,8 +79,8 @@
 }
 
 .builder-button.primary {
-  border-color: var(--builder-green);
-  background: var(--builder-green);
+  border-color: var(--builder-green, var(--dashboard-green, #126447));
+  background: var(--builder-green, var(--dashboard-green, #126447));
   color: #fff;
 }
 
@@ -3516,6 +3516,13 @@
 }
 .stock-item-quick-dialog {
   max-width: 520px;
+}
+.stock-item-quick-dialog .choice-composer-footer {
+  justify-content: flex-start;
+}
+.stock-item-quick-dialog .stock-item-quick-create {
+  min-width: 180px;
+  min-height: 44px;
 }
 .stock-item-quick-fields,
 .inventory-copy-content {

@@ -1,7 +1,7 @@
 /**
  * Checks whether the employee can use the dining tools at the selected branch.
  */
-export { buildCheckValues } from '../billing/split-order-checks.js';
+export { buildCheckValues } from '../billing/check-split.rules.js';
 import { ForbiddenException } from '@nestjs/common';
 import type { PosEmployeeSession } from '@waffarly/contracts';
 

@@ -38,6 +38,10 @@ export function configureHttpApplication(
     decisions.set(request, decision);
     return decision;
   };
+  const credentialedStorefrontPath = (path: string) =>
+    /^\/auth\/stores\/[a-z0-9]+(?:-[a-z0-9]+)*\/customer\/(?:sign-up|login|me|logout)$/.test(
+      path,
+    ) || /^\/catalog\/stores\/[a-z0-9]+(?:-[a-z0-9]+)*\/(?:orders|customer\/orders)$/.test(path);
   app.enableCors(
     (request: Request, callback: (error: Error | null, options: CorsOptions) => void) => {
       if (request.headers.origin && allowedOrigins.has(request.headers.origin)) {
@@ -47,7 +51,7 @@ export function configureHttpApplication(
       void registeredStorefrontRequest(request).then((allowed) =>
         callback(null, {
           origin: allowed ? request.headers.origin! : false,
-          credentials: allowed && request.path.startsWith('/auth/customer/'),
+          credentials: allowed && credentialedStorefrontPath(request.path),
           methods: ['GET', 'HEAD', 'POST', 'OPTIONS'],
           allowedHeaders: ['Content-Type'],
         }),

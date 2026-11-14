@@ -1,6 +1,8 @@
 /**
  * Connects the order entry points with the people, products, stock and payment features they need.
  */
+import { StorefrontOrderStatusService } from './fulfillment/storefront-order-status.service.js';
+import { CheckSplitService } from './billing/check-split.service.js';
 import { StorefrontModule } from '../storefront/index.js';
 import { CustomersModule } from '../customers/index.js';
 import {
@@ -21,11 +23,19 @@ import { ShiftsModule } from '../shifts/index.js';
 import { PaymentsModule } from '../payments/index.js';
 import { SubscriptionsModule } from '../subscriptions/index.js';
 import { PublicStorefrontOrdersController } from './http/storefront/storefront-orders.controller.js';
+import { StorefrontCustomerOrdersController } from './http/storefront/storefront-customer-orders.controller.js';
 import { OwnerStorefrontOrdersController } from './http/owner/owner-orders.controller.js';
-import { PosStorefrontOrdersController } from './http/pos/pos-orders.controller.js';
+import { PosOrdersController } from './http/pos/pos-orders.controller.js';
+import { PosOrderBillingController } from './http/pos/pos-order-billing.controller.js';
+import { PosOrderKitchenController } from './http/pos/pos-order-kitchen.controller.js';
+import { PosOrderReturnsController } from './http/pos/pos-order-returns.controller.js';
 import { StorefrontOrdersService } from './checkout/storefront-orders.service.js';
+import { CheckRefundService } from './billing/check-refund.service.js';
+import { CheckPaymentService } from './billing/check-payment.service.js';
 import { PosSaleService } from './pos-sales/pos-sale.service.js';
-import { PosOrdersService } from './pos-sales/pos-orders.service.js';
+import { PosOrderQueryService } from './pos-sales/pos-order-query.service.js';
+import { PosReceiptQueryService } from './receipts/pos-receipt-query.service.js';
+import { PickupCollectionService } from './billing/pickup-collection.service.js';
 import {
   PosDiningController,
   PosDiningOrdersController,
@@ -33,6 +43,7 @@ import {
 import { OwnerPosDiningTablesController } from './http/owner/owner-dining-tables.controller.js';
 import { PosDiningService } from './dining/pos-dining.service.js';
 import { PosReceiptsController } from './http/pos/pos-receipts.controller.js';
+import { KitchenOrderAmendmentService } from './kitchen/kitchen-order-amendment.service.js';
 import { PosKitchenService } from './kitchen/pos-kitchen.service.js';
 import { PosReturnsService } from './returns/pos-returns.service.js';
 import { OwnerPosItemReturnsController } from './http/owner/pos-returns.controller.js';
@@ -54,8 +65,12 @@ import { OwnerPosItemReturnsController } from './http/owner/pos-returns.controll
     PosDeliveryController,
     OwnerPosItemReturnsController,
     OwnerStorefrontOrdersController,
-    PosStorefrontOrdersController,
+    PosOrdersController,
+    PosOrderKitchenController,
+    PosOrderBillingController,
+    PosOrderReturnsController,
     PublicStorefrontOrdersController,
+    StorefrontCustomerOrdersController,
     OwnerPosDiningTablesController,
     PosDiningController,
     PosDiningOrdersController,
@@ -66,11 +81,18 @@ import { OwnerPosItemReturnsController } from './http/owner/pos-returns.controll
     OrderCustomerService,
     PosDeliveryService,
     StorefrontOrdersService,
+    StorefrontOrderStatusService,
     OrderLifecycleService,
-    PosOrdersService,
+    PosOrderQueryService,
+    PosReceiptQueryService,
+    PickupCollectionService,
     PosSaleService,
+    CheckPaymentService,
+    CheckSplitService,
+    CheckRefundService,
     PosDiningService,
     PosKitchenService,
+    KitchenOrderAmendmentService,
     PosReturnsService,
   ],
 })

@@ -1,5 +1,47 @@
 # Customers foundation
 
+## Storefront customer accounts (2026-11-14)
+
+Tenant storefront accounts are local to one merchant. Registration at
+`/s/[slug]/login` creates a `MerchantCustomer` row with
+`firstChannel = storefront` and a separate `MerchantCustomerCredential`; it does
+not create or sign in to a global `CustomerAccount`. Login sessions use a
+store-specific cookie and are checked against that merchant's credential.
+
+Submitting an order from that storefront while signed in attaches the new order
+to the same merchant customer inside the checkout transaction. The owner
+customer directory therefore shows the registration immediately, and the
+storefront account's order history can read only orders linked to that customer
+at that merchant. Guest orders and orders submitted through the Marketplace
+customer checkout keep their existing behavior. No automatic matching by
+phone/email or backfill of old orders occurs; the owner's existing explicit
+order-association flow remains available.
+
+The same email or phone may be used to create a separate account at another
+merchant. Storefront credentials and sessions remain independent of the global
+Waffarly account. Contact ownership is not verified, password recovery is not
+available, and customer profile/address pages remain previews. The owner
+directory contact fields are not credential-management controls.
+
+Migration: `20261114150000_merchant_customer_storefront_accounts` adds the
+merchant-scoped credential table and widens `auth_sessions.subjectKind` for the
+new session kind. Applied to the configured local development database without
+resetting data. Existing contacts and orders are not modified.
+
+| Method | Route | Behavior |
+| ------ | ----- | -------- |
+| POST | `/auth/stores/:slug/customer/sign-up` | Create a customer and login for that merchant |
+| POST | `/auth/stores/:slug/customer/login` | Sign in using that store's normalized email or mobile |
+| GET | `/auth/stores/:slug/customer/me` | Read the current store-specific session |
+| POST | `/auth/stores/:slug/customer/logout` | Revoke the current store-specific session |
+| GET | `/catalog/stores/:slug/customer/orders` | List orders linked to that signed-in customer at this store |
+
+Sessions use an eight-hour `HttpOnly`, `SameSite=Lax` cookie whose name includes
+the storefront slug. Signup allows 5 attempts per IP per hour; sign-in allows
+100 attempts per IP and 20 per store-scoped identifier per 15 minutes. Unknown
+accounts still perform the password hash verification work. These routes derive
+merchant identity from the validated storefront slug, not from request data.
+
 ## Subsequent authentication implementation (2026-11-11)
 
 The earlier phone-plus-OTP decision was superseded by the user's explicit choice
@@ -9,21 +51,21 @@ is verified during registration. Customer profile linking and guest-order claims
 remain disabled; a matching email or mobile alone does not prove ownership.
 See [customer authentication](marketplace/marketplace-customer-authentication.md).
 
-## Delivery and authorization (2026-11-11)
+## Foundation delivery (2026-11-11)
 
-The user authorized implementing shared customer identity, merchant-local customer
-records and order associations, in preparation for frontend integration. Mobile
-phone + OTP was the initially chosen sign-in method. This delivery implements the persistence
-foundation, authenticated owner APIs, and the merchant customer directory/order
-association UI. It does not implement or enable customer sign-in, send OTP messages,
-link global accounts, integrate Marketplace customer screens, or change existing
-checkout/POS submission behavior.
+The initial customer-directory delivery added merchant-local contact records,
+authenticated owner APIs, and explicit order associations. Phone-plus-OTP was the
+first sign-in proposal, then superseded by the email/mobile/password choice
+described above. That initial delivery did not create OTP challenges or link
+global accounts. Tenant storefront sign-up and order history were authorized
+separately on 2026-11-14 as documented earlier in this file.
 
-Customers owns merchant customer records and their private merchant-facing
-projection. Auth remains responsible for future customer identity verification,
-credentials/challenges and sessions. Orders owns customer associations and customer
-order history. Dependencies: Customers -> Auth; Orders -> Customers (in addition
-to existing dependencies). No reverse dependency is introduced.
+Customers owns merchant customer records, storefront credentials and the private
+merchant-facing projection. Auth owns global `CustomerAccount` credentials and
+session primitives. Orders owns customer associations and customer order history.
+Dependencies: Customers -> Auth, Merchants; Orders -> Customers (in addition to
+existing dependencies). No reverse dependency is introduced. POS behavior and
+Marketplace customer identity remain separate.
 
 ## Models
 
@@ -40,10 +82,19 @@ to existing dependencies). No reverse dependency is introduced.
 | `displayName`            | Optional account display name                                      |
 | `createdAt`, `updatedAt` | Account timestamps                                                 |
 
-There is no public/owner account creation endpoint in this delivery. A stored
-contact phone is not proof of ownership. The database format constraint does not
-itself verify ownership. No passwords, OTP plaintext, account sessions or fake
-verification endpoints are introduced. CustomerAccount has no merchantId.
+`CustomerAccount` remains the global Waffarly identity. The tenant storefront
+registration above does not create it or set its optional association on a
+`MerchantCustomer`. A stored contact phone is not proof of ownership. The
+database format constraint does not itself verify ownership. `CustomerAccount`
+has no merchantId.
+
+### MerchantCustomerCredential: sign-in at one storefront
+
+This separate record stores a scrypt password hash and normalized email/mobile
+for one merchant customer. Unique indexes apply within a merchant, so another
+store may register the same email or phone independently. A compound foreign
+key binds the credential to the matching customer and merchant. Credentials
+cannot access another store or the global Marketplace customer session.
 
 ### MerchantCustomer: relationship/contact record at one merchant
 
@@ -58,7 +109,7 @@ verification endpoints are introduced. CustomerAccount has no merchantId.
 | `archivedAt`                             | Nullable soft-archive timestamp; history remains readable                             |
 | `revision`                               | Starts at 1; optimistic concurrency for changes                                       |
 | `creationRequest`, `creationFingerprint` | Tenant-scoped creation retry identity and normalized-payload fingerprint              |
-| `createdBy`, `updatedBy`                 | Attributable owner username                                                           |
+| `createdBy`, `updatedBy`                 | Attributable owner username or trusted creation source                                 |
 | `createdAt`, `updatedAt`                 | Timestamps                                                                            |
 
 Manual owner creation always sets `firstChannel = manual`. Clients cannot claim
@@ -156,13 +207,12 @@ approved process-execution path. Database fixtures roll back their transactions.
 
 ## Remaining work
 
-1. Select/configure the SMS provider, then implement Auth-owned OTP challenges,
-   bounded attempts/rate limits, expiration, single use, verified account creation
-   and customer sessions. Provider failures must never issue a session.
+1. Implement verified ownership and safe password recovery for global Marketplace
+   accounts and tenant storefront credentials.
 2. Implement customer-authorized historical-record claims with explicit ownership
    checks; never expose account linking to merchant profile PATCH.
 3. Integrate explicit customer selection in POS order entry;
    keep anonymous POS sales available.
-4. Separately integrate customer login/profile/history UIs and trusted Marketplace
-   order channel attribution. Saved addresses and consent/loyalty behavior need
-   their own concrete flows; they are not fabricated in this foundation.
+4. Separately integrate the global Marketplace profile/history UI and trusted
+   Marketplace order channel attribution. Saved addresses and consent/loyalty
+   behavior need their own concrete flows; they are not fabricated here.

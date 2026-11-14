@@ -1,5 +1,10 @@
 # Inventory, Product Mapping & Recipes — Feature Contract
 
+> Follow-up planned 2026-11-14: [Purchase cost and profitability](../purchase-cost-profitability/README.md)
+> specifies financial purchase invoices and latest-purchase-price sales costing.
+> Its user-confirmed policy replaces an averaging proposal; implementation has not started.
+> M3 exclusions below remain the historical scope of the delivered quantity-receipt slice.
+
 ## Status and scope
 
 - Document status: Repository-audited feature contract; M1-M5 delivered; M6a adds the owner-managed recipe lifecycle; M6b adds branch-assigned employee access and the incoming recipe-order POS queue.

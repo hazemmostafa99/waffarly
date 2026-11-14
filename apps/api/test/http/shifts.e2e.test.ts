@@ -10,6 +10,7 @@ import { PosEmployeeGuard } from '../../src/modules/auth/pos-employee.guard.js';
 import { OwnerPosRegistersController } from '../../src/modules/shifts/http/owner/registers.controller.js';
 import { OwnerPosShiftReportsController } from '../../src/modules/shifts/http/owner/shift-reports.controller.js';
 import { PosShiftsController } from '../../src/modules/shifts/http/pos/shifts.controller.js';
+import { PosRegistersService } from '../../src/modules/shifts/registers/pos-registers.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 
 const merchantId = '11111111-1111-4111-8111-111111111111';
@@ -80,14 +81,10 @@ describe('POS register and shift endpoints', () => {
           },
         },
         {
-          provide: ShiftsService,
+          provide: PosRegistersService,
           useValue: {
             listOwnerRegisters: async (...args: unknown[]) => {
               calls.push({ method: 'listOwnerRegisters', args });
-              return { items: [], nextCursor: null };
-            },
-            listOwnerCloseReports: async (...args: unknown[]) => {
-              calls.push({ method: 'listOwnerCloseReports', args });
               return { items: [], nextCursor: null };
             },
             createRegister: async (...args: unknown[]) => {
@@ -98,9 +95,18 @@ describe('POS register and shift endpoints', () => {
               calls.push({ method: 'updateRegister', args });
               return { id: registerId, branchId, name: 'Front' };
             },
-            listForEmployee: async (...args: unknown[]) => {
-              calls.push({ method: 'listForEmployee', args });
+            listRegistersForEmployee: async (...args: unknown[]) => {
+              calls.push({ method: 'listRegistersForEmployee', args });
               return [];
+            },
+          },
+        },
+        {
+          provide: ShiftsService,
+          useValue: {
+            listOwnerCloseReports: async (...args: unknown[]) => {
+              calls.push({ method: 'listOwnerCloseReports', args });
+              return { items: [], nextCursor: null };
             },
             listDeliveryHandoverRecipients: async (...args: unknown[]) => {
               calls.push({ method: 'listDeliveryHandoverRecipients', args });

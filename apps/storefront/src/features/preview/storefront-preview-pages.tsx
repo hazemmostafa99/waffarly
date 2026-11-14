@@ -17,15 +17,16 @@ import {
 } from 'lucide-react';
 import { Badge, Button, Card, Input, useLocale } from '@waffarly/ui';
 import type { Locale } from '@waffarly/ui';
+import type { CustomerSignInRequest, CustomerSignUpRequest } from '@waffarly/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/lib/api-client';
 import {
-  customerSessionKey,
-  loadCustomer,
-  signInCustomer,
-  signOutCustomer,
-  signUpCustomer,
-} from '@/features/account/data/customer-auth-api';
+  loadStorefrontCustomer,
+  signInStorefrontCustomer,
+  signOutStorefrontCustomer,
+  signUpStorefrontCustomer,
+  storefrontCustomerSessionKey,
+} from '@/features/account/data/storefront-customer-api';
 
 type PreviewCopy = {
   home: string;
@@ -159,12 +160,12 @@ const copy: Record<'ar' | 'en', PreviewCopy> = {
     confirmPassword: 'تأكيد كلمة المرور',
     continueLabel: 'متابعة',
     formNotice:
-      'تُرسل بيانات تسجيل الدخول إلى خدمة الحسابات. البريد والموبايل غير مؤكَّدين حاليًا، واستعادة كلمة المرور غير متاحة.',
+      'ينشئ التسجيل حسابًا خاصًا بهذا المتجر. البريد والموبايل غير مؤكَّدين حاليًا، واستعادة كلمة المرور غير متاحة.',
     noAccount: 'ليس لديك حساب؟',
     haveAccount: 'لديك حساب بالفعل؟',
     signInLink: 'سجّل الدخول',
     accountNotice:
-      'حساب العميل مشترك بين متاجر وفّرلي. تأكيد البريد والموبايل واستعادة كلمة المرور غير مفعّلين بعد؛ الطلبات والعناوين في صفحات المتجر تظل تجريبية.',
+      'حسابك هنا خاص بهذا المتجر. طلباته منفصلة عن حساب وفرلي وباقي المتاجر. تأكيد البريد والموبايل واستعادة كلمة المرور غير متاحين بعد.',
     loadingAccount: 'جارٍ التحقق من جلسة حسابك…',
     signedInAs: 'تم تسجيل الدخول باسم',
     signOut: 'تسجيل الخروج',
@@ -239,12 +240,12 @@ const copy: Record<'ar' | 'en', PreviewCopy> = {
     confirmPassword: 'Confirm password',
     continueLabel: 'Continue',
     formNotice:
-      'Your details are sent to the account service. Email and phone verification and password recovery are not available yet.',
+      'This creates an account for this store only. Email and phone verification and password recovery are not available yet.',
     noAccount: 'New here?',
     haveAccount: 'Already have an account?',
     signInLink: 'Sign in',
     accountNotice:
-      'Your customer account is shared across Waffarly stores. Email/mobile verification and password recovery are not enabled yet; orders and addresses in this store remain previews.',
+      'This account belongs to this store only. Its orders are separate from Waffarly and other stores. Email/mobile verification and password recovery are not available yet.',
     loadingAccount: 'Checking your account session…',
     signedInAs: 'Signed in as',
     signOut: 'Sign out',
@@ -567,6 +568,7 @@ export function StorefrontOrderTrackingPreviewPage() {
 
 export function StorefrontCustomerLoginPage() {
   const { locale } = useLocale();
+  const params = useParams<{ slug: string }>();
   const t = getCopy(locale);
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<'sign-in' | 'register'>('sign-in');
@@ -575,15 +577,24 @@ export function StorefrontCustomerLoginPage() {
   const submitting = useRef(false);
   const isRegister = mode === 'register';
   const session = useQuery({
-    queryKey: customerSessionKey,
-    queryFn: loadCustomer,
+    queryKey: storefrontCustomerSessionKey(params.slug),
+    queryFn: () => loadStorefrontCustomer(params.slug),
     retry: false,
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
-  const signIn = useMutation({ mutationFn: signInCustomer, gcTime: 0 });
-  const signUp = useMutation({ mutationFn: signUpCustomer, gcTime: 0 });
-  const signOut = useMutation({ mutationFn: signOutCustomer, gcTime: 0 });
+  const signIn = useMutation({
+    mutationFn: (data: CustomerSignInRequest) => signInStorefrontCustomer(params.slug, data),
+    gcTime: 0,
+  });
+  const signUp = useMutation({
+    mutationFn: (data: CustomerSignUpRequest) => signUpStorefrontCustomer(params.slug, data),
+    gcTime: 0,
+  });
+  const signOut = useMutation({
+    mutationFn: () => signOutStorefrontCustomer(params.slug),
+    gcTime: 0,
+  });
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -613,7 +624,7 @@ export function StorefrontCustomerLoginPage() {
             password,
           })
         : await signIn.mutateAsync({ identifier: read('identifier'), password });
-      queryClient.setQueryData(customerSessionKey, customer);
+      queryClient.setQueryData(storefrontCustomerSessionKey(params.slug), customer);
       setNotice(isRegister ? t.signUpSuccess : t.signInSuccess);
       form.reset();
     } catch (cause) {
@@ -675,8 +686,7 @@ export function StorefrontCustomerLoginPage() {
                 role="status"
                 className="text-storefront-support font-bold text-store-primary-deep"
               >
-                {t.signedInAs}{' '}
-                {session.data.displayName ?? session.data.email ?? session.data.phone}
+                {t.signedInAs} {session.data.name}
               </p>
               {notice && (
                 <p className="text-storefront-support text-store-primary-deep">{notice}</p>
@@ -689,7 +699,7 @@ export function StorefrontCustomerLoginPage() {
                   setError('');
                   try {
                     await signOut.mutateAsync();
-                    queryClient.setQueryData(customerSessionKey, null);
+                    queryClient.setQueryData(storefrontCustomerSessionKey(params.slug), null);
                     setNotice(t.signOutSuccess);
                   } catch {
                     setError(t.authUnavailable);

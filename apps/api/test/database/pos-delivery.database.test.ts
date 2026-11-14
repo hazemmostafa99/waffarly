@@ -1,4 +1,4 @@
-import { createPosOrdersService } from '../support/pos-orders-service.js';
+import { createPosOrderServices } from '../support/pos-order-services.js';
 import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
@@ -14,6 +14,7 @@ import { PosDeliveryService } from '../../src/modules/orders/delivery/pos-delive
 import { PosDiningService } from '../../src/modules/orders/dining/pos-dining.service.js';
 import { PaymentsService } from '../../src/modules/payments/payments.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
+import { PosRegistersService } from '../../src/modules/shifts/registers/pos-registers.service.js';
 import { PosOperationsReportService } from '../../src/modules/reports/pos-operations-report.service.js';
 
 const databaseUrl = getTestDatabaseUrl();
@@ -76,6 +77,7 @@ it(
       const mona = await employee('Mona', 'cashier');
       const supervisor = await employee('Supervisor', 'supervisor');
       const shifts = new ShiftsService(db as unknown as PrismaService);
+      const registers = new PosRegistersService(db as unknown as PrismaService);
       await employee('Accountant', 'accountant');
       const inactive = await employee('Inactive', 'cashier');
       await db.posEmployee.update({ where: { id: inactive.id }, data: { active: false } });
@@ -106,7 +108,7 @@ it(
         shifts.listDeliveryHandoverRecipients({ ...ahmed, branches: [] }, { branchId: branch.id }),
       );
       const delivery = new PosDeliveryService(db as unknown as PrismaService, shifts);
-      const orders = createPosOrdersService(
+      const { checkRefunds, checkPayments } = createPosOrderServices(
         db as unknown as PrismaService,
         {} as never,
         {} as never,
@@ -115,7 +117,7 @@ it(
         new PosDiningService(db as unknown as PrismaService),
         new PaymentsService(shifts),
       );
-      const register = await shifts.createRegister(merchantId, 'test', {
+      const register = await registers.createRegister(merchantId, 'test', {
         branchId: branch.id,
         name: 'Delivery drawer',
       });
@@ -185,7 +187,7 @@ it(
       };
       let current = await delivery.command(ahmed, order.id, dispatch);
       assert.deepEqual(await delivery.command(ahmed, order.id, dispatch), current);
-      const sideRegister = await shifts.createRegister(merchantId, 'test', {
+      const sideRegister = await registers.createRegister(merchantId, 'test', {
         branchId: branch.id,
         name: 'Other drawer',
       });
@@ -204,7 +206,7 @@ it(
         ConflictException,
       );
       await assert.rejects(
-        orders.recordCheckPayment(ahmed, order.id, order.checks[0]!.id, {
+        checkPayments.recordCheckPayment(ahmed, order.id, order.checks[0]!.id, {
           requestId: randomUUID(),
           revision: current.orderRevision,
           receivingShiftId: sideShift.id,
@@ -308,14 +310,19 @@ it(
         cashCustody: 'courier' as const,
         tenders: [{ method: 'cash' as const, amount: '200.00', receivedAmount: '200.00' }],
       };
-      const paid = await orders.recordCheckPayment(
+      const paid = await checkPayments.recordCheckPayment(
         mona,
         order.id,
         order.checks[0]!.id,
         customerPayment,
       );
       assert.deepEqual(
-        await orders.recordCheckPayment(mona, order.id, order.checks[0]!.id, customerPayment),
+        await checkPayments.recordCheckPayment(
+          mona,
+          order.id,
+          order.checks[0]!.id,
+          customerPayment,
+        ),
         paid,
       );
       assert.equal(await db.posShiftCashMovement.count({ where: { merchantId } }), 0);
@@ -378,7 +385,7 @@ it(
       });
       current = await delivery.summary(mona, order.id);
       // Remaining customer payment is physically received in the NEW drawer.
-      await orders.recordCheckPayment(mona, order.id, order.checks[0]!.id, {
+      await checkPayments.recordCheckPayment(mona, order.id, order.checks[0]!.id, {
         requestId: randomUUID(),
         revision: current.orderRevision,
         receivingShiftId: second.id,
@@ -430,14 +437,14 @@ it(
         revision: failedOrder.revision,
         courierName: 'First courier',
       });
-      await orders.recordCheckPayment(mona, failedOrder.id, failedOrder.checks[0]!.id, {
+      await checkPayments.recordCheckPayment(mona, failedOrder.id, failedOrder.checks[0]!.id, {
         requestId: randomUUID(),
         revision: failed.orderRevision,
         receivingShiftId: third.id,
         tenders: [{ method: 'cash', amount: '100.00', receivedAmount: '100.00' }],
       });
       failed = await delivery.summary(mona, failedOrder.id);
-      const heldPayment = await orders.recordCheckPayment(
+      const heldPayment = await checkPayments.recordCheckPayment(
         mona,
         failedOrder.id,
         failedOrder.checks[0]!.id,
@@ -467,7 +474,7 @@ it(
         ConflictException,
       );
       await assert.rejects(
-        orders.recordCheckRefund(supervisor, failedOrder.id, failedOrder.checks[0]!.id, {
+        checkRefunds.recordCheckRefund(supervisor, failedOrder.id, failedOrder.checks[0]!.id, {
           requestId: randomUUID(),
           revision: failed.orderRevision,
           branchId: branch.id,
@@ -556,7 +563,7 @@ it(
         revision: raceOrder.revision,
         courierName: 'Race courier',
       });
-      const racePayment = await orders.recordCheckPayment(
+      const racePayment = await checkPayments.recordCheckPayment(
         mona,
         raceOrder.id,
         raceOrder.checks[0]!.id,

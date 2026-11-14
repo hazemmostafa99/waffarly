@@ -212,6 +212,7 @@ model MerchantCustomer {
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
   merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   account CustomerAccount? @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  storefrontCredential MerchantCustomerCredential?
   orders StorefrontOrder[]
 
   @@unique([id, merchantId])
@@ -220,6 +221,23 @@ model MerchantCustomer {
   @@index([merchantId, createdAt, id])
   @@index([merchantId, phone])
   @@map("merchant_customers")
+}
+
+// A storefront login belongs to one merchant customer and never to the global Waffarly account.
+model MerchantCustomerCredential {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  merchantCustomerId String @db.Uuid
+  phone String @db.VarChar(16)
+  email String @db.VarChar(254)
+  passwordHash String @db.VarChar(255)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  customer MerchantCustomer @relation(fields: [merchantCustomerId, merchantId], references: [id, merchantId], onDelete: Cascade)
+
+  @@unique([merchantCustomerId, merchantId])
+  @@unique([merchantId, phone])
+  @@unique([merchantId, email])
+  @@map("merchant_customer_credentials")
 }
 
 // Inventory identities only; item creation does not establish stock balances.
@@ -755,7 +773,7 @@ model PosKitchenTicket {
 // Opaque tokens are stored only as hashes. Admin identity is configured outside the database.
 model AuthSession {
   tokenHash   String   @id @db.VarChar(64)
-  subjectKind String   @db.VarChar(10)
+  subjectKind String   @db.VarChar(24)
   subjectId   String   @db.VarChar(80)
   expiresAt   DateTime @db.Timestamptz(6)
   createdAt   DateTime @default(now()) @db.Timestamptz(6)

@@ -1,4 +1,4 @@
-import { createPosOrdersService } from '../support/pos-orders-service.js';
+import { createPosOrderServices } from '../support/pos-order-services.js';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ConflictException, NotFoundException } from '@nestjs/common';
@@ -49,7 +49,7 @@ function fixture(mode: 'new' | 'replay' | 'foreign' | 'other-shift') {
       return { id: 'shift', branchId: 'branch' };
     },
   };
-  const service = createPosOrdersService(
+  const { pickupCollection: service } = createPosOrderServices(
     prisma as never,
     {} as never,
     {} as never,

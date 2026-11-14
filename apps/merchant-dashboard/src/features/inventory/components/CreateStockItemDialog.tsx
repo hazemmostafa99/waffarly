@@ -80,10 +80,18 @@ export function CreateStockItemDialog({
       closeLabel={text('Close', 'إغلاق')}
       className="choice-composer-dialog stock-item-quick-dialog"
     >
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          void create();
+      <div
+        role="group"
+        aria-label={text('Create stock item', 'إنشاء صنف مخزون')}
+        onKeyDown={(event) => {
+          if (
+            event.key === 'Enter' &&
+            !event.isComposing &&
+            event.target instanceof HTMLInputElement
+          ) {
+            event.preventDefault();
+            void create();
+          }
         }}
       >
         <div className="stock-item-quick-fields" aria-busy={busy}>
@@ -141,7 +149,12 @@ export function CreateStockItemDialog({
           )}
         </div>
         <footer className="choice-composer-footer">
-          <button type="submit" className="builder-button primary" disabled={busy}>
+          <button
+            type="button"
+            className="builder-button primary stock-item-quick-create"
+            disabled={busy}
+            onClick={() => void create()}
+          >
             <Icon name="plus" />
             {busy
               ? text('Creating…', 'جارٍ الإنشاء…')
@@ -151,7 +164,7 @@ export function CreateStockItemDialog({
             {text('Cancel', 'إلغاء')}
           </button>
         </footer>
-      </form>
+      </div>
     </Dialog>
   );
 }

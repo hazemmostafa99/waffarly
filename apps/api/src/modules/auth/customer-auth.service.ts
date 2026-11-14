@@ -20,6 +20,8 @@ import { customerSignInSchema, customerSignUpSchema } from './customer-auth.sche
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 
 const COOKIE = 'waffarly_customer_session';
+const STOREFRONT_SESSION_KIND = 'STOREFRONT_CUSTOMER';
+const STOREFRONT_COOKIE_PREFIX = 'waffarly_store_customer_';
 const LIFETIME = 8 * 60 * 60 * 1000;
 // Valid scrypt encoding so unknown accounts perform the same expensive password work.
 const DUMMY_HASH = `scrypt$${Buffer.alloc(16).toString('base64url')}$${Buffer.alloc(64).toString('base64url')}`;
@@ -143,6 +145,100 @@ export class CustomerAuthService {
         where: { tokenHash: digest(token), subjectKind: 'CUSTOMER' },
       });
     response.clearCookie(COOKIE, this.cookieOptions());
+  }
+
+  async limitStorefrontCustomerAttempt(
+    action: 'sign-up' | 'login',
+    merchantId: string,
+    request: Request,
+    identifier?: string,
+  ): Promise<void> {
+    const lifetime = action === 'sign-up' ? 60 * 60 * 1000 : 15 * 60 * 1000;
+    await this.limit(
+      `storefront-customer:${action}:ip:${request.ip ?? 'unknown'}`,
+      action === 'sign-up' ? 5 : 100,
+      lifetime,
+    );
+    if (action === 'login' && identifier) {
+      await this.limit(`storefront-customer:login:${merchantId}:${identifier}`, 20, 15 * 60 * 1000);
+    }
+  }
+
+  async createStorefrontCustomerSession(
+    tx: Prisma.TransactionClient,
+    slug: string,
+    customerId: string,
+    request: Request,
+  ): Promise<string> {
+    const token = randomBytes(32).toString('base64url');
+    const cookieName = this.storefrontCookieName(slug);
+    await tx.authSession.deleteMany({
+      where: { subjectKind: STOREFRONT_SESSION_KIND, expiresAt: { lt: new Date() } },
+    });
+    const previous = this.readCookie(request, cookieName);
+    if (previous) {
+      await tx.authSession.deleteMany({
+        where: { tokenHash: digest(previous), subjectKind: STOREFRONT_SESSION_KIND },
+      });
+    }
+    await tx.authSession.create({
+      data: {
+        tokenHash: digest(token),
+        subjectKind: STOREFRONT_SESSION_KIND,
+        subjectId: customerId,
+        expiresAt: new Date(Date.now() + LIFETIME),
+      },
+    });
+    return token;
+  }
+
+  readStorefrontCustomerId(slug: string, request: Request): Promise<string | null> {
+    const token = this.readCookie(request, this.storefrontCookieName(slug));
+    if (!token || token.length > 128) return Promise.resolve(null);
+    return this.prisma.authSession
+      .findUnique({ where: { tokenHash: digest(token) } })
+      .then((session) =>
+        session?.subjectKind === STOREFRONT_SESSION_KIND && session.expiresAt > new Date()
+          ? session.subjectId
+          : null,
+      );
+  }
+
+  setStorefrontCustomerCookie(response: Response, slug: string, token: string): void {
+    response.cookie(this.storefrontCookieName(slug), token, {
+      ...this.cookieOptions(),
+      maxAge: LIFETIME,
+    });
+  }
+
+  async logoutStorefrontCustomer(
+    slug: string,
+    request: Request,
+    response: Response,
+  ): Promise<void> {
+    const cookieName = this.storefrontCookieName(slug);
+    const token = this.readCookie(request, cookieName);
+    if (token) {
+      await this.prisma.authSession.deleteMany({
+        where: { tokenHash: digest(token), subjectKind: STOREFRONT_SESSION_KIND },
+      });
+    }
+    response.clearCookie(cookieName, this.cookieOptions());
+  }
+
+  private storefrontCookieName(slug: string): string {
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 120) {
+      throw new UnauthorizedException('Storefront address is invalid.');
+    }
+    return `${STOREFRONT_COOKIE_PREFIX}${slug}`;
+  }
+
+  private readCookie(request: Request, name: string): string | undefined {
+    return request.headers.cookie
+      ?.split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(`${name}=`))
+      ?.slice(name.length + 1);
   }
 
   private async createSession(

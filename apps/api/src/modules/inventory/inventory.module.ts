@@ -7,6 +7,7 @@ import { InventoryController } from './inventory.controller.js';
 import { InventoryLedgerService } from './inventory-ledger.service.js';
 import { InventoryLocationsController } from './inventory-locations.controller.js';
 import { InventoryLocationsService } from './inventory-locations.service.js';
+import { InventoryPolicyService } from './policy/inventory-policy.service.js';
 import { InventoryVisibilityService } from './inventory-visibility.service.js';
 import { InventoryService } from './inventory.service.js';
 import { EmployeeInventoryController } from './employee-inventory.controller.js';
@@ -24,6 +25,7 @@ import { EmployeeInventoryController } from './employee-inventory.controller.js'
   providers: [
     InventoryService,
     InventoryLocationsService,
+    InventoryPolicyService,
     InventoryLedgerService,
     InventoryVisibilityService,
   ],

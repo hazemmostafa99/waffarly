@@ -325,6 +325,7 @@ export type {
 export type {
   CustomerChannel,
   MerchantCustomer,
+  StorefrontCustomerProfile,
   CreateMerchantCustomerRequest,
   UpdateMerchantCustomerRequest,
   LinkOrderCustomerRequest,

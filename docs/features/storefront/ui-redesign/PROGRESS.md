@@ -24,15 +24,23 @@ Strict tracking requirements:
 
 ## Current Status
 
-- Overall: Core catalog-to-order pages plus the API-gap route UIs are implemented. The API-gap screens are explicitly preview-only; backend integration remains blocked on approved contracts and real data.
-- Current milestone: UI-first coverage of every planned storefront route; keep API-gap integration backlog open.
-- Current slice: Account preview flow now includes overview, profile, My Orders, and addresses pages with profile-icon navigation. Customer APIs remain blocked.
+- Overall: Core catalog-to-order pages plus the API-gap route UIs are implemented. Tenant account sign-in and merchant-scoped order history are now API-backed; unsupported profile/address/tracking routes remain previews.
+- Current milestone: Preserve the complete storefront journey while keeping Marketplace demo behavior separate from merchant-store accounts.
+- Current slice: Store-specific registration creates a merchant customer, signed-in checkouts link to that customer, and the tenant account shows scoped order history. Profile and address screens remain previews.
 - Visual reference: Supplied Waffarly Bistro UI kit remains the design source; user-provided Wafarly Marketplace screenshots guide relative typography and density only.
 - Target app: `apps/storefront`.
 - Primary route namespace: `/s/[slug]`.
-- Last updated: 2026-10-15.
-- Last verified state: Uncommitted worktree; no commit created. Storefront lint, typecheck, production build, and `git diff --check` passed. The six API-gap routes passed 36 RTL/LTR × mobile/tablet/desktop checks; the four account routes passed 24 checks at `390x844`, `768x1024`, and `1440x900` with no overflow or browser errors. Account profile/address form clearing and My Orders local filters passed. Screenshots are saved for offers-mobile, branches-desktop, account-orders-mobile, and account-profile-desktop. The real API was not used for account data; a temporary empty catalog-shell fixture was stopped after verification and the final build uses the configured `localhost:4000` API URL.
-- Worktree note: Preserve all pre-existing workspace edits. This slice added account/orders feature modules and route files, localized account links and navigation, updated the feature contract/progress, and saved verification screenshots. Existing number-formatting behavior and unrelated dirty API/workspace files were left untouched.
+- Last updated: 2026-11-14.
+- Last verified state: The prior 2026-10-15 viewport evidence remains historical. For the current slice, Prisma Client generation succeeded and the additive storefront-account migration was applied to the configured local database. No tests, app builds/typechecks, or browser account flows were run; manual acceptance is pending.
+- Worktree note: Preserve all pre-existing workspace edits. The current slice adds tenant-scoped auth, merchant customer creation, authenticated order linkage/history, and updates their route copy. Existing number-formatting behavior and unrelated dirty API/workspace files were left untouched.
+
+### 2026-11-14 - Merchant-Scoped Storefront Customer Accounts
+
+- The user clarified that an account created at `/s/[slug]/login` belongs only to that merchant, creates a customer-directory record, and remains separate from the global Waffarly Marketplace account.
+- Added merchant-local credentials and sessions, sign-up/login/me/logout routes, bounded attempt limits, same-merchant order linkage on signed-in checkout, and cursor-based account order history. Global customer authentication and Marketplace checkout routes remain separate.
+- Updated account copy and route descriptions: order history is live for the signed-in merchant account; profile/address editing and unsupported tracking flows remain visibly preview-only.
+- `node node_modules/prisma/build/index.js generate --config prisma.config.ts` from `packages/database`: succeeded. `migrate status`: only `20261114150000_merchant_customer_storefront_accounts` was pending. `migrate deploy`: succeeded; no database reset or backfill.
+- No tests, app builds/typechecks, or browser account registration/order flows were run, per the existing manual-QA preference. Manual acceptance is still needed for store isolation, signup visibility in `/owner/customers`, logged-in checkout linkage, and the order-history screen.
 
 ### 2026-10-15 - API-Gap Pages UI Scope Decision
 
@@ -235,11 +243,11 @@ Strict tracking requirements:
 
 ### 11. Customer Authentication and Account
 
-- [!] Blocked by unresolved customer identity requirements and missing public customer API.
-- [x] Build preview-only login/register form states and account dashboard shell; no authentication call, customer-data persistence, or fake success.
+- [~] Merchant-scoped storefront auth and order history are API-backed; browser acceptance is pending.
+- [x] Build the login/register form and account dashboard shell in the original UI-only slice; the form is now connected only to the merchant-scoped account API.
 - [x] Check both pages at mobile/tablet/desktop in RTL and LTR; registration view switches locally.
 - [x] Add the profile page with blank, transient, non-persisted fields and a visible preview notice.
-- [x] Add the My Orders page with local filter controls and an honest empty state; no order records or statuses are fabricated.
+- [~] Replace My Orders local-only content with authenticated same-merchant order history and empty/loading/error states. Browser acceptance is pending.
 - [x] Add the addresses page with an add-address preview form that clears without saving.
 - [x] Link account pages from the account overview, profile icon, mobile navigation, footer, and account sub-navigation.
 - [x] Check the account flow at mobile/tablet/desktop in RTL and LTR; profile/address fields clear after preview submission and order filters change locally.

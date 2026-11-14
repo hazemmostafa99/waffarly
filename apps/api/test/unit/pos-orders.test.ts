@@ -1,4 +1,4 @@
-import { createPosOrdersService } from '../support/pos-orders-service.js';
+import { createPosOrderServices } from '../support/pos-order-services.js';
 import { ForbiddenException } from '@nestjs/common';
 import type { PosEmployeeSession } from '@waffarly/contracts';
 import assert from 'node:assert/strict';
@@ -52,7 +52,7 @@ describe('POS sales', () => {
         throw new Error('reached third attempt');
       },
     };
-    const service = createPosOrdersService(
+    const { sales: serviceSales } = createPosOrderServices(
       prisma as never,
       {} as never,
       {} as never,
@@ -62,7 +62,7 @@ describe('POS sales', () => {
       {} as never,
     );
     await assert.rejects(
-      service.create(employee, {
+      serviceSales.create(employee, {
         requestId: '88888888-8888-4888-8888-888888888888',
         registerId: '99999999-9999-4999-8999-999999999999',
         fulfillmentType: 'takeaway',
@@ -92,7 +92,7 @@ describe('POS sales', () => {
         },
       },
     };
-    const service = createPosOrdersService(
+    const { orderQueries: service } = createPosOrderServices(
       prisma as never,
       {} as never,
       {} as never,
@@ -135,7 +135,7 @@ describe('POS sales', () => {
 
   it('requires the assigned sell permission before quoting', async () => {
     const pricing = { quoteForMerchant: async () => quote(productId, '2.25') };
-    const service = createPosOrdersService(
+    const { sales: serviceSales } = createPosOrderServices(
       {} as never,
       pricing as never,
       {} as never,
@@ -146,7 +146,7 @@ describe('POS sales', () => {
     );
 
     await assert.rejects(
-      service.quote(
+      serviceSales.quote(
         { ...employee, permissions: ['accept_recipe_orders'] },
         {
           items: [{ lineId, productId, selections: [], quantity: 1 }],
@@ -165,7 +165,7 @@ describe('POS sales', () => {
         return quote(scopedProduct, scopedProduct === productId ? '2.25' : '4.10');
       },
     };
-    const service = createPosOrdersService(
+    const { sales: serviceSales } = createPosOrderServices(
       {} as never,
       pricing as never,
       {} as never,
@@ -174,7 +174,7 @@ describe('POS sales', () => {
       {} as never,
       {} as never,
     );
-    const result = await service.quote(employee, {
+    const result = await serviceSales.quote(employee, {
       items: [
         { lineId, productId, selections: [], quantity: 3 },
         { lineId: secondLineId, productId: secondProductId, selections: [], quantity: 2 },
@@ -201,7 +201,7 @@ describe('POS sales', () => {
         throw new Error('Transaction must not start');
       },
     };
-    const service = createPosOrdersService(
+    const { sales: serviceSales } = createPosOrderServices(
       prisma as never,
       {} as never,
       {} as never,
@@ -212,7 +212,7 @@ describe('POS sales', () => {
     );
 
     await assert.rejects(
-      service.create(employee, {
+      serviceSales.create(employee, {
         requestId: '88888888-8888-4888-8888-888888888888',
         registerId: '99999999-9999-4999-8999-999999999999',
         fulfillmentType: 'delivery',
@@ -358,7 +358,7 @@ describe('POS sales', () => {
         shiftLocks += 1;
       },
     };
-    const service = createPosOrdersService(
+    const { kitchenAmendments } = createPosOrderServices(
       prisma as never,
       pricing as never,
       {} as never,
@@ -381,8 +381,8 @@ describe('POS sales', () => {
       ],
     };
 
-    const first = await service.addKitchenItems(employee, 'order-1', request);
-    const replay = await service.addKitchenItems(employee, 'order-1', request);
+    const first = await kitchenAmendments.addKitchenItems(employee, 'order-1', request);
+    const replay = await kitchenAmendments.addKitchenItems(employee, 'order-1', request);
 
     assert.equal(first.total, '15.00');
     assert.equal(check.amount.toString(), '15.00');
@@ -423,7 +423,7 @@ describe('POS sales', () => {
       posOrderPayment: { count: async () => 0 },
       posOrderCheckLine: { count: async () => 0 },
     };
-    const service = createPosOrdersService(
+    const { kitchenAmendments } = createPosOrderServices(
       {
         $transaction: async (callback: (transaction: typeof tx) => Promise<unknown>) =>
           callback(tx),
@@ -442,7 +442,7 @@ describe('POS sales', () => {
     );
 
     await assert.rejects(
-      service.addKitchenItems(employee, 'order-1', {
+      kitchenAmendments.addKitchenItems(employee, 'order-1', {
         requestId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
         revision: 4,
         items: [
@@ -526,7 +526,7 @@ describe('POS sales', () => {
         posOrderPayment: { count: async () => scenario.payments },
         posOrderCheckLine: { count: async () => scenario.allocations },
       };
-      const service = createPosOrdersService(
+      const { kitchenAmendments } = createPosOrderServices(
         {
           $transaction: async (callback: (transaction: typeof tx) => Promise<unknown>) =>
             callback(tx),
@@ -545,7 +545,7 @@ describe('POS sales', () => {
       );
 
       await assert.rejects(
-        service.addKitchenItems(employee, 'order-1', {
+        kitchenAmendments.addKitchenItems(employee, 'order-1', {
           requestId: `cccccccc-cccc-4ccc-8ccc-ccccccccccc${index}`,
           revision: 4,
           items: [

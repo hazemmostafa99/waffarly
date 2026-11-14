@@ -32,10 +32,12 @@ addresses, favorites, checkout, payment and tracking retain their existing demo
 behavior and are labeled as current-session/demo content. Customer auth sessions
 do not authenticate owner, POS employee or admin routes.
 
-The same auth endpoints serve the customer login at the tenant storefront route
-`/s/[slug]/login`; customer identity is global across Waffarly stores. The store
-account overview displays the active session and supports logout. Profile editing,
-order history, and saved addresses on tenant storefront pages remain previews.
+These endpoints serve the global Waffarly customer account. Tenant storefront
+login at `/s/[slug]/login` uses a separate merchant-scoped credential and session;
+registering there does not create or authenticate a Marketplace account. See
+[storefront customer accounts](../customers.md#storefront-customer-accounts-2026-11-14).
+Marketplace profile/history, addresses, favorites, checkout and tracking retain
+their existing local-demo behavior.
 
 ## Delivery notes
 

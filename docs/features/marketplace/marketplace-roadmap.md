@@ -22,11 +22,14 @@ The customer-auth migration was applied to the local database. The API suite pas
 passed; API-wide lint still reports six existing restaurant-file errors. Storefront
 manual/browser acceptance remains open.
 
-Tenant storefront customer authentication authorization (2026-11-11): the user
-also authorized connecting customer sign-in/sign-up at `/s/[slug]/login`. It uses
-the same global customer account endpoints and session as Marketplace. The store
-account overview reports the signed-in account and supports logout; orders, saved
-addresses and profile editing remain preview/demo flows.
+Tenant storefront customer authentication authorization (2026-11-14): the user
+clarified that `/s/[slug]/login` creates an account for that merchant only. It
+uses a merchant-scoped customer credential and session, creates the merchant's
+customer-directory record, and links signed-in storefront orders to that record.
+It does not create or authenticate a global Waffarly Marketplace account. The
+store account overview shows that session and supports logout; tenant order
+history is live and merchant-scoped, while saved addresses and profile editing
+remain previews. See [storefront customer accounts](../customers.md#storefront-customer-accounts-2026-11-14).
 
 Restaurant integration authorization (2026-11-11): following user manual review,
 the user explicitly authorized backend preparation/seed and then restaurant
@@ -172,7 +175,7 @@ Retained for the later integration phase only. Do not call or extend these endpo
 | Product quote              | `POST /catalog/stores/:slug/products/:id/quote`                                                  | Reuse Catalog pricing; server checks slug/product/options rather than client display prices                                              |
 | Guest order creation       | `POST /catalog/stores/:slug/orders` in `orders/storefront-orders.controller.ts`                  | Supports customerName/customerPhone, pickup/delivery, optional deliveryAddress and configured item quantities; delivery needs an address |
 | Existing frontend checkout | `features/checkout/storefront-checkout-page.tsx`                                                 | Reuse behavior/contracts after review, not its unrelated storefront styling or fixture IDs                                               |
-| Customer pages             | Existing account/tracking preview features and storefront FEATURE/PROGRESS docs                  | UI presence is not evidence of customer auth/profile/history/tracking APIs; implement contracts before live integration                  |
+| Customer pages             | Tenant storefront login/history now use merchant-scoped APIs; see customer and storefront docs  | Tenant profile/address/favorite previews remain local; Marketplace customer flows keep their separate contracts and roadmap                 |
 | Merchant application       | Existing `/join` flow                                                                            | Candidate seller CTA destination, no duplicate onboarding system                                                                         |
 
 Do not fan out over every seller client-side to simulate global search. Define a bounded public composition/listing contract. Storefront owns composition, Catalog owns products and pricing, Orders owns order creation/lifecycle, Auth owns supported actors/sessions, and Payments owns payment behavior. Preserve acyclic dependencies and use module `index.ts` exports. No API/database/contracts were changed by the cleanup.

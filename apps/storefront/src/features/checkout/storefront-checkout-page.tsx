@@ -103,6 +103,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
       return apiPost<StorefrontOrderReceipt>(
         `/catalog/stores/${encodeURIComponent(catalog.slug)}/orders`,
         request,
+        { credentials: 'include' },
       );
     },
     onSuccess: () => clearCart(),

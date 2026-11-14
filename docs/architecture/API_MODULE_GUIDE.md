@@ -1,9 +1,10 @@
 # API module navigation
 
-The target is [Nest application services for operations](API_APPLICATION_STANDARD.md),
-with ordinary functions for rules, mapping and transaction helpers. Alignment is
-partial. `PosSaleService` is the reference operation; legacy forwarding services
-and function-based orchestration remain migration work.
+Use [Nest application services for operations](API_APPLICATION_STANDARD.md), with
+ordinary functions for rules, mapping, read queries and active-transaction helpers.
+Reviewed Orders operations and primary Shifts, Inventory, Merchants, Catalog and
+subscription write services now follow that ownership. See the standard for the
+exact reviewed scope; it does not claim a complete audit of every API feature.
 
 Start with [the developer guide](../../CONTRIBUTING.md), follow
 [an operation end to end](API_WORKFLOWS.md), or choose checks from
@@ -35,6 +36,6 @@ Preserve authorization before saved-result replay where the existing operation
 requires it, along with tenant/branch scope, lock order and monetary invariants.
 
 The feature-to-feature ESLint boundary still requires public `index.ts` imports.
-The one new business-module dependency is Employees → Auth. Auth → Subscriptions
-remains unchanged; no reverse Employees dependency or database/schema change was
-introduced.
+Customers may import Auth and Merchants for merchant-scoped storefront accounts;
+Orders additionally imports Customers for account-linked checkout and history.
+Auth → Subscriptions remains unchanged, and no reverse dependency was introduced.

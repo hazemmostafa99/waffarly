@@ -1,3 +1,10 @@
+import { PosOrderQueryService } from '../../src/modules/orders/pos-sales/pos-order-query.service.js';
+import { PosReceiptQueryService } from '../../src/modules/orders/receipts/pos-receipt-query.service.js';
+import { PickupCollectionService } from '../../src/modules/orders/billing/pickup-collection.service.js';
+import { CheckRefundService } from '../../src/modules/orders/billing/check-refund.service.js';
+import { CheckPaymentService } from '../../src/modules/orders/billing/check-payment.service.js';
+import { KitchenOrderAmendmentService } from '../../src/modules/orders/kitchen/kitchen-order-amendment.service.js';
+import { PosSaleService } from '../../src/modules/orders/pos-sales/pos-sale.service.js';
 import { UnauthorizedException, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { PosEmployeeSession } from '@waffarly/contracts';
@@ -6,10 +13,11 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import request from 'supertest';
 import { AuthService } from '../../src/modules/auth/auth.service.js';
 import { PosEmployeeGuard } from '../../src/modules/auth/pos-employee.guard.js';
-import { PosOrdersService } from '../../src/modules/orders/pos-sales/pos-orders.service.js';
 import { PosReturnsService } from '../../src/modules/orders/returns/pos-returns.service.js';
 import { PosKitchenService } from '../../src/modules/orders/kitchen/pos-kitchen.service.js';
-import { PosStorefrontOrdersController } from '../../src/modules/orders/http/pos/pos-orders.controller.js';
+import { PosOrdersController } from '../../src/modules/orders/http/pos/pos-orders.controller.js';
+import { PosOrderBillingController } from '../../src/modules/orders/http/pos/pos-order-billing.controller.js';
+import { PosOrderKitchenController } from '../../src/modules/orders/http/pos/pos-order-kitchen.controller.js';
 import { PosReceiptsController } from '../../src/modules/orders/http/pos/pos-receipts.controller.js';
 import { OrderLifecycleService } from '../../src/modules/orders/fulfillment/order-lifecycle.service.js';
 import { StorefrontOrdersService } from '../../src/modules/orders/checkout/storefront-orders.service.js';
@@ -60,7 +68,12 @@ describe('POS payment endpoint', () => {
     readyCalls.length = 0;
     handoverCalls.length = 0;
     const module = await Test.createTestingModule({
-      controllers: [PosStorefrontOrdersController, PosReceiptsController],
+      controllers: [
+        PosOrdersController,
+        PosOrderKitchenController,
+        PosOrderBillingController,
+        PosReceiptsController,
+      ],
       providers: [
         PosEmployeeGuard,
         {
@@ -108,8 +121,20 @@ describe('POS payment endpoint', () => {
             },
           },
         },
+        { provide: PosSaleService, useValue: {} },
+        { provide: KitchenOrderAmendmentService, useValue: {} },
         {
-          provide: PosOrdersService,
+          provide: CheckPaymentService,
+          useValue: {
+            recordCheckPayment: async (...args: unknown[]) => {
+              calls.push(args);
+              return { orderId, check: { id: checkId, balanceDue: '0.00' }, payments: [] };
+            },
+          },
+        },
+        { provide: CheckRefundService, useValue: {} },
+        {
+          provide: PosOrderQueryService,
           useValue: {
             listActiveSales: async (...args: unknown[]) => {
               salesCalls.push(args);
@@ -118,10 +143,6 @@ describe('POS payment endpoint', () => {
             detail: async (...args: unknown[]) => {
               detailCalls.push(args);
               return { id: orderId, total: '8.50', lines: [] };
-            },
-            recordCheckPayment: async (...args: unknown[]) => {
-              calls.push(args);
-              return { orderId, check: { id: checkId, balanceDue: '0.00' }, payments: [] };
             },
             paymentState: async (...args: unknown[]) => {
               stateCalls.push(args);
@@ -146,6 +167,11 @@ describe('POS payment endpoint', () => {
                 ],
               };
             },
+          },
+        },
+        {
+          provide: PosReceiptQueryService,
+          useValue: {
             getCheckReceipt: async (...args: unknown[]) => {
               receiptCalls.push(args);
               return {
@@ -194,6 +220,7 @@ describe('POS payment endpoint', () => {
             },
           },
         },
+        { provide: PickupCollectionService, useValue: {} },
       ],
     }).compile();
     app = module.createNestApplication();

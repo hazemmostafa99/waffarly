@@ -1,6 +1,7 @@
 /**
  * Receives owner requests to view website orders and act on their preparation or cancellation.
  */
+import { StorefrontOrderStatusService } from '../../fulfillment/storefront-order-status.service.js';
 import { updateStatusSchema } from '../../checkout/storefront-checkout.schemas.js';
 import {
   Body,
@@ -35,6 +36,8 @@ import { StorefrontOrdersService } from '../../checkout/storefront-orders.servic
 export class OwnerStorefrontOrdersController {
   constructor(
     @Inject(StorefrontOrdersService) private readonly orders: StorefrontOrdersService,
+    @Inject(StorefrontOrderStatusService)
+    private readonly orderStatus: StorefrontOrderStatusService,
     @Inject(OrderLifecycleService) private readonly lifecycle: OrderLifecycleService,
   ) {}
 
@@ -92,7 +95,7 @@ export class OwnerStorefrontOrdersController {
     @Body() body: unknown,
   ) {
     const parsed = parseRequest(updateStatusSchema, body);
-    return this.orders.updateStatus(
+    return this.orderStatus.updateStatus(
       owner.merchantId,
       id,
       parsed.status satisfies UpdateStorefrontOrderStatusRequest['status'],

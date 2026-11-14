@@ -1,4 +1,4 @@
-/** Finds available registers, current shifts and eligible cash handover recipients. */
+/** Finds an employee's current shifts and eligible cash handover recipients. */
 import { toShiftSummary } from '../shift.mapper.js';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
@@ -6,7 +6,6 @@ import type {
   CursorPage,
   PosDeliveryHandoverRecipient,
   PosEmployeeSession,
-  PosRegisterOption,
   PosShiftSummary,
 } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
@@ -15,11 +14,7 @@ import { parseRequest } from '../../../common/http/zod-validation.pipe.js';
 
 import { PrismaService } from '../../../infrastructure/database/prisma.service.js';
 
-import {
-  deliveryHandoverRecipientsSchema,
-  posCurrentShiftSchema,
-  posRegisterListSchema,
-} from '../shifts.schemas.js';
+import { deliveryHandoverRecipientsSchema, posCurrentShiftSchema } from '../shifts.schemas.js';
 
 import { shiftInclude } from '../shift-records.js';
 import {
@@ -66,28 +61,6 @@ export async function listDeliveryHandoverRecipients(
   });
   const items = records.slice(0, q.limit);
   return { items, nextCursor: records.length > q.limit ? (items.at(-1)?.id ?? null) : null };
-}
-
-export async function listForEmployee(
-  prisma: PrismaService,
-  employee: PosEmployeeSession,
-  input: unknown,
-): Promise<PosRegisterOption[]> {
-  requireShiftAccess(employee);
-  const query = parseRequest(posRegisterListSchema, input);
-  assertShiftBranchAssignment(employee, query.branchId);
-  const records = await prisma.posRegister.findMany({
-    where: {
-      merchantId: employee.merchantId,
-      branchId: query.branchId,
-      active: true,
-      branch: { archivedAt: null },
-    },
-    select: { id: true, branchId: true, name: true },
-    orderBy: [{ name: 'asc' }, { id: 'asc' }],
-    take: 100,
-  });
-  return records;
 }
 
 export async function getCurrentShift(

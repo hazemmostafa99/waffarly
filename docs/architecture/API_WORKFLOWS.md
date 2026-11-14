@@ -2,16 +2,16 @@
 
 Use these traces with the [module map](API_MODULE_GUIDE.md). The controller
 recognizes HTTP input and the current actor, the application entry point selects
-an operation, and the operation owns related database writes. Existing service
-methods are intentionally retained for callers, even when their implementation
-now lives in a more specific file.
+an operation, and the operation owns related database writes. Cashier operations now call their
+responsible service directly; the former cashier forwarding facade is removed.
+Other legacy service entry points remain where their migration is still pending.
 
 ## Confirming a cashier sale
 
 1. `POST /pos/orders` enters
    [the cashier controller](../../apps/api/src/modules/orders/http/pos/pos-orders.controller.ts).
    Auth supplies the current employee and branch assignments.
-2. `PosOrdersService.create` delegates to
+2. The controller calls
    [`PosSaleService.create`](../../apps/api/src/modules/orders/pos-sales/pos-sale.service.ts).
    Nest injects the operation dependencies. The service validates the command and
    keeps its request identity.
@@ -32,9 +32,10 @@ complete support for other business activities.
 
 ## Collecting an order bill
 
-1. `POST /pos/orders/:id/checks/:checkId/payments` enters the same cashier
-   controller, then `PosOrdersService.recordCheckPayment`.
-2. [`recordCheckPayment`](../../apps/api/src/modules/orders/billing/collect-order-check.ts)
+1. `POST /pos/orders/:id/checks/:checkId/payments` enters the
+   [cashier billing controller](../../apps/api/src/modules/orders/http/pos/pos-order-billing.controller.ts),
+   then calls `CheckPaymentService.recordCheckPayment` directly.
+2. [`CheckPaymentService`](../../apps/api/src/modules/orders/billing/check-payment.service.ts)
    validates the tender request and its exact retry identity, checks order/branch
    scope, and locks the relevant shift/order/check in its existing order.
 3. [Payments](../../apps/api/src/modules/payments/payments.service.ts) records
@@ -46,7 +47,8 @@ complete support for other business activities.
 5. The operation saves its replay result. Reopening a receipt reads the stored
    snapshot; it does not reconstruct a receipt from subsequently edited products.
 
-Ready website pickups use explicit `preparePickupCollection` before collection,
+Ready website pickups call `PickupCollectionService.preparePickupCollection`
+directly before collection,
 and retain their storefront source. Refunds and physical item returns are separate
 operations with separate money/stock meanings.
 

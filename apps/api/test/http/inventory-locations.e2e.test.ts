@@ -1,3 +1,4 @@
+import { InventoryPolicyService } from '../../src/modules/inventory/policy/inventory-policy.service.js';
 import { InventoryHealthController } from '../../src/modules/inventory/visibility/stock-health.controller.js';
 import { InventoryLedgerController } from '../../src/modules/inventory/ledger/inventory-ledger.controller.js';
 import { InventoryPolicyController } from '../../src/modules/inventory/policy/inventory-policy.controller.js';
@@ -128,10 +129,9 @@ describe('inventory locations and ledger owner endpoints', () => {
             'updateWarehouse',
             'setDefaultConsumptionWarehouse',
             'setWarehouseArchived',
-            'getPolicy',
-            'updatePolicy',
           ]),
         },
+        { provide: InventoryPolicyService, useValue: makeStub(['getPolicy', 'updatePolicy']) },
         {
           provide: InventoryLedgerService,
           useValue: makeStub(['createOpening', 'listBalances', 'listMovements']),

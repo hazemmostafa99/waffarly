@@ -31,6 +31,7 @@ import {
   posShiftClosePreviewSchema,
   recordPosShiftCashMovementSchema,
 } from '../../shifts.schemas.js';
+import { PosRegistersService } from '../../registers/pos-registers.service.js';
 import { ShiftsService } from '../../shifts.service.js';
 
 @UseGuards(PosEmployeeGuard)
@@ -38,6 +39,7 @@ import { ShiftsService } from '../../shifts.service.js';
 export class PosShiftsController {
   constructor(
     @Inject(ShiftsService) private readonly shifts: ShiftsService,
+    @Inject(PosRegistersService) private readonly registers: PosRegistersService,
     @Inject(AuthService) private readonly auth: AuthService,
   ) {}
 
@@ -47,7 +49,10 @@ export class PosShiftsController {
     @Query() query: unknown,
   ): Promise<PosRegisterOption[]> {
     requireShiftPermission(employee);
-    return this.shifts.listForEmployee(employee, parseRequest(posRegisterListSchema, query));
+    return this.registers.listRegistersForEmployee(
+      employee,
+      parseRequest(posRegisterListSchema, query),
+    );
   }
 
   @Get('shifts/delivery-handover-recipients')

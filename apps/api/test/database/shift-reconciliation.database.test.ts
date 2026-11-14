@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
+import { PosRegistersService } from '../../src/modules/shifts/registers/pos-registers.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 
 const databaseUrl = getTestDatabaseUrl();
@@ -101,10 +102,15 @@ it(
         branches: [{ id: branch.id, name: branch.name, archivedAt: null }],
       };
       const service = new ShiftsService(prisma as unknown as PrismaService);
-      const register = await service.createRegister(merchant.id, 'pos-shift-reconciliation-test', {
-        branchId: branch.id,
-        name: 'Reconciliation register',
-      });
+      const registers = new PosRegistersService(prisma as unknown as PrismaService);
+      const register = await registers.createRegister(
+        merchant.id,
+        'pos-shift-reconciliation-test',
+        {
+          branchId: branch.id,
+          name: 'Reconciliation register',
+        },
+      );
       const shift = await service.openShift(cashier, {
         registerId: register.id,
         requestId: randomUUID(),
@@ -383,7 +389,7 @@ it(
       assert.equal((await service.getLatestCloseReport(cashier, register.id))?.id, report.id);
       assert.equal((await service.getCloseReport(cashier, shift.id)).variance, '1.00');
 
-      const secondRegister = await service.createRegister(
+      const secondRegister = await registers.createRegister(
         merchant.id,
         'pos-shift-reconciliation-test',
         {
@@ -449,7 +455,7 @@ it(
         permissions: ['open_register_shift', 'sell'],
         branches: [{ id: otherBranch.id, name: otherBranch.name, archivedAt: null }],
       };
-      const otherRegister = await service.createRegister(
+      const otherRegister = await registers.createRegister(
         otherMerchant.id,
         'pos-shift-reconciliation-test',
         { branchId: otherBranch.id, name: 'Foreign reports register' },

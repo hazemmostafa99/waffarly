@@ -8,18 +8,16 @@ import type {
 import { ZodValidationPipe } from '../../../common/http/zod-validation.pipe.js';
 import { CurrentOwner, OwnerGuard } from '../../auth/index.js';
 
-import { InventoryLocationsService } from '../inventory-locations.service.js';
+import { InventoryPolicyService } from './inventory-policy.service.js';
 
 import { inventoryPolicyUpdateSchema } from '../inventory.schemas.js';
 @UseGuards(OwnerGuard)
 @Controller('owner/inventory')
 export class InventoryPolicyController {
-  constructor(
-    @Inject(InventoryLocationsService) private readonly locations: InventoryLocationsService,
-  ) {}
+  constructor(@Inject(InventoryPolicyService) private readonly policy: InventoryPolicyService) {}
   @Get('policy')
   getPolicy(@CurrentOwner() owner: OwnerProfile): Promise<InventoryPolicy> {
-    return this.locations.getPolicy(owner.merchantId);
+    return this.policy.getPolicy(owner.merchantId);
   }
   @Patch('policy')
   updatePolicy(
@@ -27,6 +25,6 @@ export class InventoryPolicyController {
     @Body(new ZodValidationPipe(inventoryPolicyUpdateSchema, { format: 'messages' }))
     input: UpdateInventoryPolicyRequest,
   ): Promise<InventoryPolicy> {
-    return this.locations.updatePolicy(owner.merchantId, owner.username, input);
+    return this.policy.updatePolicy(owner.merchantId, owner.username, input);
   }
 }

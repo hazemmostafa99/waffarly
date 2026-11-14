@@ -18,17 +18,17 @@ const navigation = [
   { id: 'discounts', label: 'Discounts', icon: 'discounts' },
   { id: 'branches', label: 'Branches', icon: 'branches' },
   { id: 'employees', label: 'Employees', icon: 'customers' },
-  { id: 'pos-registers', label: 'POS Registers', icon: 'orders' },
+  { id: 'pos-registers', label: 'Registers', icon: 'orders' },
   { id: 'pos-cash', label: 'Cash drawers & safes', icon: 'revenue' },
-  { id: 'pos-tables', label: 'POS Tables', icon: 'grid' },
-  { id: 'pos-shift-reports', label: 'POS Shift Reports', icon: 'receipt' },
-  { id: 'pos-item-returns', label: 'POS Returns & Waste', icon: 'receipt' },
-  { id: 'pos-operations', label: 'POS Operations', icon: 'revenue' },
+  { id: 'pos-tables', label: 'Tables', icon: 'grid' },
+  { id: 'pos-shift-reports', label: 'Shift Reports', icon: 'receipt' },
+  { id: 'pos-item-returns', label: 'Returns & Waste', icon: 'receipt' },
+  { id: 'pos-operations', label: 'Operations', icon: 'revenue' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
 ] as const;
 
 export function MerchantLayout() {
-  const { t, locale, errorText, formatNumber } = useLocale();
+  const { t, locale, errorText } = useLocale();
   const copy = (message: string) => dashboardCopy(message, locale, t);
   const navigate = useNavigate();
   const location = useLocation();
@@ -78,11 +78,11 @@ export function MerchantLayout() {
     if (item.id === 'inventory') return copy('Inventory');
     if (locale === 'ar') {
       if (item.id === 'pos-cash') return 'النقدية والخزنة';
-      if (item.id === 'pos-operations') return 'تقارير تشغيل POS';
+      if (item.id === 'pos-operations') return 'تقارير التشغيل';
       if (item.id === 'pos-registers') return 'نقاط البيع';
-      if (item.id === 'pos-tables') return 'ترابيزات POS';
-      if (item.id === 'pos-shift-reports') return 'تقارير ورديات POS';
-      if (item.id === 'pos-item-returns') return 'مرتجعات وهالك POS';
+      if (item.id === 'pos-tables') return 'ترابيزات';
+      if (item.id === 'pos-shift-reports') return 'تقارير الورديات';
+      if (item.id === 'pos-item-returns') return 'مرتجعات وهالك';
       if (item.id === 'employees') return 'الموظفون';
     }
     return t(item.label);
@@ -101,7 +101,6 @@ export function MerchantLayout() {
       >
         <Icon name={item.icon} />
         <span>{navigationLabel(item)}</span>
-        {item.id === 'orders' && <small aria-hidden="true">{formatNumber(12)}</small>}
       </NavLink>
     );
   }
@@ -161,7 +160,7 @@ export function MerchantLayout() {
                 >
                   <summary className="merchant-nav-item">
                     <Icon name="store" />
-                    <span>{locale === 'ar' ? 'إدارة نقاط البيع' : 'POS workspace'}</span>
+                    <span>{locale === 'ar' ? 'إدارة نقاط البيع' : 'Sales workspace'}</span>
                     <Icon name="chevron" />
                   </summary>
                   <div className="merchant-pos-navigation-links">

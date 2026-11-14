@@ -1,4 +1,5 @@
-import { createPosOrdersService } from '../support/pos-orders-service.js';
+import { StorefrontOrderStatusService } from '../../src/modules/orders/fulfillment/storefront-order-status.service.js';
+import { createPosOrderServices } from '../support/pos-order-services.js';
 import {
   enableTestLegacyAccess,
   openTestBranchShift,
@@ -273,6 +274,7 @@ async function fixture(tx: Prisma.TransactionClient, scoped: never) {
     configuration,
     products,
     orders,
+    orderStatus: new StorefrontOrderStatusService(scoped, ledger),
     lifecycle,
     createOrder,
     balance,
@@ -315,7 +317,11 @@ it(
                 },
               },
             });
-            const legacyAccepted = await f.orders.updateStatus(f.merchantId, legacy.id, 'accepted');
+            const legacyAccepted = await f.orderStatus.updateStatus(
+              f.merchantId,
+              legacy.id,
+              'accepted',
+            );
             assert.equal(legacyAccepted.requiresRecipeAcceptance, undefined);
             assert.equal(await f.balance(), '100');
             assert.equal(
@@ -352,7 +358,7 @@ it(
             );
             assert.equal(await f.balance(), '100');
             await assert.rejects(
-              f.orders.updateStatus(f.merchantId, order.id, 'accepted'),
+              f.orderStatus.updateStatus(f.merchantId, order.id, 'accepted'),
               /branch-based/,
             );
             const changed = structuredClone(f.configuration);
@@ -670,7 +676,11 @@ it(
               },
             });
             const pricing = new ProductPricingService(scoped);
-            const posOrders = createPosOrdersService(
+            const {
+              orderQueries,
+              sales: posOrdersSales,
+              kitchenAmendments,
+            } = createPosOrderServices(
               scoped,
               pricing,
               new ProductConsumptionService(),
@@ -713,7 +723,7 @@ it(
                 quantity: 1,
               },
             ];
-            const quote = await posOrders.quote(cashier, { items });
+            const quote = await posOrdersSales.quote(cashier, { items });
             const quoteByLine = new Map(quote.items.map((item) => [item.lineId, item.quote]));
             const payload = {
               requestId: randomUUID(),
@@ -733,7 +743,7 @@ it(
               { name: 'Direct item updated after quote' },
             );
             await assert.rejects(
-              posOrders.create(cashier, payload),
+              posOrdersSales.create(cashier, payload),
               (error: unknown) =>
                 error instanceof ConflictException &&
                 /product changed/i.test(JSON.stringify(error.getResponse())),
@@ -746,10 +756,10 @@ it(
               selections: [],
               quantity: 2,
             };
-            const shortageQuote = await posOrders.quote(cashier, { items: [shortageLine] });
+            const shortageQuote = await posOrdersSales.quote(cashier, { items: [shortageLine] });
             const shortageQuotedLine = shortageQuote.items[0]!.quote;
             await assert.rejects(
-              posOrders.create(cashier, {
+              posOrdersSales.create(cashier, {
                 requestId: randomUUID(),
                 registerId: register.id,
                 fulfillmentType: 'takeaway',
@@ -785,7 +795,7 @@ it(
                 .stockQuantity,
               10,
             );
-            const refreshedQuote = await posOrders.quote(cashier, { items });
+            const refreshedQuote = await posOrdersSales.quote(cashier, { items });
             const refreshedQuoteByLine = new Map(
               refreshedQuote.items.map((item) => [item.lineId, item.quote]),
             );
@@ -797,8 +807,8 @@ it(
                 expectedProductRevision: refreshedQuoteByLine.get(item.lineId)!.productRevision,
               })),
             };
-            const created = await posOrders.create(cashier, refreshedPayload);
-            const replayed = await posOrders.create(cashier, refreshedPayload);
+            const created = await posOrdersSales.create(cashier, refreshedPayload);
+            const replayed = await posOrdersSales.create(cashier, refreshedPayload);
             assert.equal(replayed.id, created.id);
             const unassignedBranch = await tx.branch.create({
               data: {
@@ -1007,11 +1017,11 @@ it(
               ],
               quantity: 1,
             };
-            const amendmentQuote = await posOrders.quote(cashier, {
+            const amendmentQuote = await posOrdersSales.quote(cashier, {
               items: [amendmentLine],
             });
             const amendmentQuotedLine = amendmentQuote.items[0]!;
-            const amendmentOrder = await posOrders.create(cashier, {
+            const amendmentOrder = await posOrdersSales.create(cashier, {
               requestId: randomUUID(),
               registerId: register.id,
               fulfillmentType: 'takeaway',
@@ -1024,7 +1034,7 @@ it(
             });
             assert.equal(amendmentOrder.status, 'pending');
             assert.ok(amendmentOrder.kitchenTicket);
-            const amendmentState = await posOrders.paymentState(cashier, amendmentOrder.id);
+            const amendmentState = await orderQueries.paymentState(cashier, amendmentOrder.id);
             const addition = {
               requestId: randomUUID(),
               revision: amendmentState.revision,
@@ -1045,8 +1055,12 @@ it(
                 },
               })
             ).quantity.toString();
-            const amended = await posOrders.addKitchenItems(cashier, amendmentOrder.id, addition);
-            const replayedAmendment = await posOrders.addKitchenItems(
+            const amended = await kitchenAmendments.addKitchenItems(
+              cashier,
+              amendmentOrder.id,
+              addition,
+            );
+            const replayedAmendment = await kitchenAmendments.addKitchenItems(
               cashier,
               amendmentOrder.id,
               addition,
@@ -1110,9 +1124,12 @@ it(
               ).quantity.toString(),
               '74',
             );
-            const acceptedAmendmentState = await posOrders.paymentState(cashier, amendmentOrder.id);
+            const acceptedAmendmentState = await orderQueries.paymentState(
+              cashier,
+              amendmentOrder.id,
+            );
             await assert.rejects(
-              posOrders.addKitchenItems(cashier, amendmentOrder.id, {
+              kitchenAmendments.addKitchenItems(cashier, amendmentOrder.id, {
                 requestId: randomUUID(),
                 revision: acceptedAmendmentState.revision,
                 items: [

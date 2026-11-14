@@ -1,7 +1,7 @@
 /**
  * Manages dining tables and shows the tables an employee can use at a branch.
  */
-export { buildCheckValues } from '../billing/split-order-checks.js';
+export { buildCheckValues } from '../billing/check-split.rules.js';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import type {
   CreatePosDiningTableRequest,

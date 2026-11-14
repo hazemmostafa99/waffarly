@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
+import { PosRegistersService } from '../../src/modules/shifts/registers/pos-registers.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 
 const databaseUrl = getTestDatabaseUrl();
@@ -105,11 +106,12 @@ it(
       });
 
       const service = new ShiftsService(prisma as unknown as PrismaService);
-      const register = await service.createRegister(merchant.id, 'pos-shift-database-test', {
+      const registers = new PosRegistersService(prisma as unknown as PrismaService);
+      const register = await registers.createRegister(merchant.id, 'pos-shift-database-test', {
         branchId: branch.id,
         name: 'Shared cashier register',
       });
-      const competingRegister = await service.createRegister(
+      const competingRegister = await registers.createRegister(
         merchant.id,
         'pos-shift-database-test',
         { branchId: branch.id, name: 'Concurrent cashier register' },

@@ -9,9 +9,8 @@ import {
   listTablesForEmployee,
 } from './dining-tables.js';
 import { assertDiningSellAccess, assertDiningBranchAccess } from './dining-access.rules.js';
-import { splitOrderChecks } from '../billing/split-order-checks.js';
 import { hash, replayAction } from '../fulfillment/order-action.rules.js';
-export { buildCheckValues } from '../billing/split-order-checks.js';
+export { buildCheckValues } from '../billing/check-split.rules.js';
 import {
   BadRequestException,
   ConflictException,
@@ -24,8 +23,6 @@ import type {
   MovePosDiningSessionRequest,
   PosDiningSessionSummary,
   PosEmployeeSession,
-  SplitPosOrderChecksRequest,
-  SplitPosOrderChecksResponse,
   UpdatePosDiningTableRequest,
 } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
@@ -286,14 +283,6 @@ export class PosDiningService {
       }
       throw error;
     }
-  }
-
-  async splitOrder(
-    employee: PosEmployeeSession,
-    orderId: string,
-    input: SplitPosOrderChecksRequest,
-  ): Promise<SplitPosOrderChecksResponse> {
-    return splitOrderChecks(this.prisma, employee, orderId, input);
   }
 }
 

@@ -1,10 +1,12 @@
-Developer workflow (2026-11-14): [CONTRIBUTING.md](../../CONTRIBUTING.md) is the
+# API architecture
 
-Application standard (2026-11-14): use injectable Nest services to own application
-operations, and ordinary functions for rules, mapping, queries and transaction
-helpers. Alignment remains partial. `PosSaleService` is the first explicit
-reference; legacy function-based coordinators still need migration. See
-[the standard and migration scope](API_APPLICATION_STANDARD.md).
+Current application ownership (2026-11-14): the reviewed Orders operations and
+primary write operations in Shifts, Inventory, Merchants, Catalog and Subscriptions
+execute in Nest application services. Rules, calculations, reads, mapping and
+active-transaction helpers remain ordinary functions. No extra forwarding service
+layer is required. See [the exact standard and reviewed scope](API_APPLICATION_STANDARD.md).
+
+Developer workflow (2026-11-14): [CONTRIBUTING.md](../../CONTRIBUTING.md) is the
 daily entry point, with [operation traces](API_WORKFLOWS.md) and an
 [API test map](../testing/API_TESTING.md). Database suites use guarded
 TEST_DATABASE_URL configuration and a shared client/cleanup setup. The default
@@ -22,12 +24,12 @@ See the [module navigation guide](API_MODULE_GUIDE.md) and
 [verification ledger](API_REFACTOR_PROGRESS.md).
 
 Orders organization (2026-11-14): HTTP entry points are grouped by application;
-order operations are grouped by business responsibility. Cashier sale creation,
-check collection/refunds, receipt issuance, kitchen amendments and read queries
-are separate implementations behind the existing application entry points.
-No route, schema or external module dependency changes are intended. Manual
-acceptance is pending; no automated checks ran for this refactor. See the
-[Orders guide](../../apps/api/src/modules/orders/README.md).
+order operations are grouped by business responsibility. Cashier routes share
+the `/pos/orders` prefix and are grouped into controllers for core order work,
+kitchen, billing and returns. Each calls the existing operation service directly.
+No route, schema or external module dependency changed. See the
+[Orders guide](../../apps/api/src/modules/orders/README.md) and
+[verification ledger](API_REFACTOR_PROGRESS.md).
 
 Orders internal cleanup (2026-11-14): lifecycle actions use named helpers inside
 the existing transaction, with authorization/replay ordering preserved. Checkout
@@ -58,8 +60,6 @@ real order submission. The local database has active subscriptions and owner
 accounts for all twelve. Earlier demo-only statements below are historical.
 See [current ordering delivery](../features/marketplace/marketplace-live-restaurant-ordering.md).
 
-# API architecture
-
 Database connectivity (2026-11-12): Infrastructure owns one configured PostgreSQL
 pool per API process and a bounded startup `SELECT 1` retry policy before HTTP
 listen. Health retains separate liveness and database readiness endpoints;
@@ -88,6 +88,15 @@ Auth work and are not enabled. Orders owns explicit, attributable, revisioned
 same-tenant customer associations and bounded customer history. Customers imports
 Auth; Orders additionally imports Customers. Existing checkout/POS submission and
 order snapshots remain unchanged. See [Customers](../features/customers.md).
+
+Tenant storefront accounts (2026-11-14): Customers owns merchant-scoped
+storefront credentials and sessions, using Auth's password/session primitives
+and Merchants' public slug resolution. Storefront signup creates a local customer
+directory record; Orders links signed-in storefront checkout to that record and
+serves merchant-scoped order history. Global Marketplace `CustomerAccount`
+endpoints remain separate. Dependency graph: Customers -> Auth, Merchants;
+Orders -> Customers. No historical guest orders are claimed or backfilled. See
+[storefront customer accounts](../features/customers.md#storefront-customer-accounts-2026-11-14).
 
 Restaurant owner settings (2026-11-11): Storefront owner settings now support an
 attributable merchant-name edit alongside profile settings. Catalog exports a
@@ -204,7 +213,7 @@ The Orders-owned payment-state response includes optional checkout `context` (th
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
 | auth          | Owner/Admin/POS identity, credentials, sessions, guards and current permission enforcement                                                             | Configuration, database, subscriptions                    |
 | employees     | Owner staff account configuration, role assignment and branch assignment                                                                               | Auth                                                      |
-| customers     | Merchant-private customer directory, guest contacts and global customer identity persistence foundation; customer authentication remains deferred      | Auth                                                      |
+| customers     | Merchant-private customer directory and merchant-scoped storefront credentials; separate global Marketplace account persistence foundation             | Auth, merchants                                           |
 | merchants     | Merchant profiles, applications, onboarding plan assignment, and revisioned tenant-level POS accent configuration                                      | Auth, subscriptions                                       |
 | plans         | Plan definitions, duration prices and subscription administration controllers                                                                          | Auth, subscriptions                                       |
 | subscriptions | Merchant paid coverage, manual collections, lifecycle, quotes, history and eligibility                                                                 | Database                                                  |

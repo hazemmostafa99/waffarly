@@ -5,7 +5,7 @@ import rootConfig from '../../eslint.config.mjs';
 const sourceRoot = fileURLToPath(new URL('./src/', import.meta.url));
 const dependencies = {
   employees: ['auth'],
-  customers: ['auth'],
+  customers: ['auth', 'merchants'],
   discounts: ['auth'],
   auth: ['subscriptions'],
   subscriptions: [],

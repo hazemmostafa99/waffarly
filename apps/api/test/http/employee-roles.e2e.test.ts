@@ -1,4 +1,11 @@
-import { createPosOrdersService } from '../support/pos-orders-service.js';
+import { PosOrderQueryService } from '../../src/modules/orders/pos-sales/pos-order-query.service.js';
+import { PosReceiptQueryService } from '../../src/modules/orders/receipts/pos-receipt-query.service.js';
+import { PickupCollectionService } from '../../src/modules/orders/billing/pickup-collection.service.js';
+import { CheckRefundService } from '../../src/modules/orders/billing/check-refund.service.js';
+import { CheckPaymentService } from '../../src/modules/orders/billing/check-payment.service.js';
+import { KitchenOrderAmendmentService } from '../../src/modules/orders/kitchen/kitchen-order-amendment.service.js';
+import { PosSaleService } from '../../src/modules/orders/pos-sales/pos-sale.service.js';
+import { createPosOrderServices } from '../support/pos-order-services.js';
 import { UnauthorizedException, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
@@ -16,10 +23,11 @@ import { PosEmployeesController } from '../../src/modules/employees/pos-employee
 import { EmployeeInventoryController } from '../../src/modules/inventory/employee-inventory.controller.js';
 import { InventoryLedgerService } from '../../src/modules/inventory/inventory-ledger.service.js';
 import { OrderLifecycleService } from '../../src/modules/orders/fulfillment/order-lifecycle.service.js';
-import { PosOrdersService } from '../../src/modules/orders/pos-sales/pos-orders.service.js';
 import { PosReceiptsController } from '../../src/modules/orders/http/pos/pos-receipts.controller.js';
 import { StorefrontOrdersService } from '../../src/modules/orders/checkout/storefront-orders.service.js';
-import { PosStorefrontOrdersController } from '../../src/modules/orders/http/pos/pos-orders.controller.js';
+import { PosOrdersController } from '../../src/modules/orders/http/pos/pos-orders.controller.js';
+import { PosOrderBillingController } from '../../src/modules/orders/http/pos/pos-order-billing.controller.js';
+import { PosOrderKitchenController } from '../../src/modules/orders/http/pos/pos-order-kitchen.controller.js';
 import { PosKitchenService } from '../../src/modules/orders/kitchen/pos-kitchen.service.js';
 import { PosReturnsService } from '../../src/modules/orders/returns/pos-returns.service.js';
 
@@ -78,7 +86,15 @@ describe('employee role boundaries', () => {
         },
       },
     };
-    const sales = createPosOrdersService(
+    const {
+      orderQueries,
+      receiptQueries,
+      pickupCollection,
+      sales: sale,
+      kitchenAmendments,
+      checkPayments,
+      checkRefunds,
+    } = createPosOrderServices(
       prisma as never,
       {} as never,
       {} as never,
@@ -90,7 +106,9 @@ describe('employee role boundaries', () => {
     const module = await Test.createTestingModule({
       controllers: [
         EmployeeInventoryController,
-        PosStorefrontOrdersController,
+        PosOrdersController,
+        PosOrderKitchenController,
+        PosOrderBillingController,
         PosReceiptsController,
         PosEmployeesController,
       ],
@@ -112,7 +130,13 @@ describe('employee role boundaries', () => {
             },
           },
         },
-        { provide: PosOrdersService, useValue: sales },
+        { provide: KitchenOrderAmendmentService, useValue: kitchenAmendments },
+        { provide: CheckPaymentService, useValue: checkPayments },
+        { provide: CheckRefundService, useValue: checkRefunds },
+        { provide: PosOrderQueryService, useValue: orderQueries },
+        { provide: PosReceiptQueryService, useValue: receiptQueries },
+        { provide: PickupCollectionService, useValue: pickupCollection },
+        { provide: PosSaleService, useValue: sale },
         { provide: PosKitchenService, useValue: { dispatchDineInOrder: async () => ({}) } },
         {
           provide: PosReturnsService,

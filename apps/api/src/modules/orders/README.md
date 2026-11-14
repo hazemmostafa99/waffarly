@@ -23,6 +23,15 @@ paths do not change HTTP URLs, request/response contracts or order source values
 | `stock`            | Frozen stock requirements, inventory consumption and restoration.                                                  |
 | `mapping`          | Existing order receipt/summary transport projections.                                                              |
 
+The shared `/pos/orders` route prefix is split into HTTP controllers by cashier
+task. `pos-orders.controller.ts` owns sale creation, order reads and the main
+accept/handover/cancel actions. `pos-order-kitchen.controller.ts` owns dispatch,
+amendments and preparation. `pos-order-billing.controller.ts` owns payment state,
+pickup collection, tenders, refunds and check receipt lookup.
+`pos-order-returns.controller.ts` owns physical return reads and recording.
+These controllers call the existing operation services directly; their routes
+and contracts stay unchanged.
+
 ## How an operation runs
 
 Storefront submission goes through `http/storefront` to `StorefrontOrdersService`.
@@ -31,20 +40,33 @@ account/guest identity, and uses the same checkout transaction. Marketplace does
 not have a duplicate order engine. Existing legacy storefront submission keeps
 its different ownership behavior.
 
-Cashier commands go through `http/pos` to the existing `PosOrdersService` entry
-point. Sale quote/create delegate to the injectable `PosSaleService`, which owns
-its dependencies, sale transaction and retry loop. This is the reference for the
-[application standard](../../../../../docs/architecture/API_APPLICATION_STANDARD.md).
+Cashier HTTP routes call the service responsible for the requested work directly:
 
-The other cashier operations still delegate to ordinary operation functions:
-`amendKitchenOrder`, `preparePickupCollection`, `recordCheckPayment` and
-`recordCheckRefund`. They remain migration work; the module is not yet fully
-aligned. Existing service methods stay available to callers during migration.
-`getPosSaleDetails`, `getOrderPaymentState` and `listActiveSales` handle reads.
-Receipt issuance accepts the active transaction, so settlement and its immutable
-receipt commit together. Dining delegates check splitting to
-`billing/split-order-checks.ts`; storefront lists delegate to
+| Responsibility                                | Service                        |
+| --------------------------------------------- | ------------------------------ |
+| Quote and create a sale                       | `PosSaleService`               |
+| Add kitchen items                             | `KitchenOrderAmendmentService` |
+| Record payment                                | `CheckPaymentService`          |
+| Split an order into checks                    | `CheckSplitService`            |
+| Accept or reject a legacy website order       | `StorefrontOrderStatusService` |
+| Record an approved refund                     | `CheckRefundService`           |
+| Prepare a ready website pickup for collection | `PickupCollectionService`      |
+| Read active sales, details and payment state  | `PosOrderQueryService`         |
+| Reopen a receipt or browse receipt history    | `PosReceiptQueryService`       |
+
+The former `PosOrdersService` forwarding facade has been removed. Services own
+operation dependencies and transaction boundaries; no extra service sits between
+these controllers and their responsible service. Supervisor approval remains in
+the refund HTTP entry point. Physical item returns remain separate.
+
+Receipt issuance is an ordinary helper that receives the payment transaction, so
+settlement and its immutable receipt commit together. Reading a receipt uses its
+stored snapshot rather than recreating it. The dining HTTP entry point calls `CheckSplitService` directly; storefront lists delegate to
 `fulfillment/order-queue.query.ts`.
+
+See the [application standard](../../../../../docs/architecture/API_APPLICATION_STANDARD.md).
+This completes replacement of the cashier forwarding facade; the whole Orders
+module and the rest of the API still require review against that standard.
 
 `OrderLifecycleService` keeps the common transaction and routes the requested
 change to `accept-order.ts`, `prepare-order.ts`, `handover-order.ts` or
@@ -55,7 +77,8 @@ the active transaction and do not open their own transactions.
 `save-checkout-line.ts` saves one checkout item, holds its available stock and
 freezes its ingredient needs. `checkout-policy.ts` owns checkout discount and
 receiving-branch decisions. The older website accept/reject action lives in
-`fulfillment/update-storefront-order-status.ts` behind its existing service API.
+`fulfillment/storefront-order-status.service.ts` and is called directly by its
+owner controller, separately from checkout submission.
 
 Customer access separates browser/session identity (`customer-order-session.ts`
 and `order-identity.rules.ts`), scoped reads (`customer-orders.query.ts`) and the
@@ -103,10 +126,10 @@ responsibility, rather than splitting a transaction just to meet a line limit.
 
 ## Manual acceptance
 
-No automated checks, build, typecheck, lint, tests, database commands or real
-financial actions were run for this refactor. Source formatting is not behavioral
-verification. Existing test imports were updated to the moved implementations.
-Use a disposable local merchant and known fixtures for manual acceptance:
+Automated checks cover formatting, typecheck, lint, HTTP/unit tests, build and
+isolated database behavior; they do not replace browser/operator acceptance or
+real financial review. No real financial actions were performed. Use a disposable
+local merchant and known fixtures for manual acceptance:
 
 1. Quote and submit storefront and Marketplace orders. Retry the exact request;
    confirm one order and the original receipt. Try a changed payload with that

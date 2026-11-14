@@ -26,7 +26,7 @@
 }
 .merchant-sidebar {
   inset: 0 auto 0 0;
-  width: 184px;
+  width: 220px;
   padding: 18px 12px;
   border: 0;
   border-inline-end: 1px solid var(--dashboard-border);
@@ -72,6 +72,9 @@ html[dir='rtl'] .merchant-sidebar {
   text-align: start;
   text-decoration: none;
   border-radius: 9px;
+}
+.merchant-nav-item > span {
+  white-space: nowrap;
 }
 .merchant-nav-item.active {
   background: #e3f7ec;
@@ -128,6 +131,12 @@ html[dir='rtl'] .merchant-sidebar {
   height: 1px;
   background: var(--dashboard-border);
 }
+.merchant-pos-navigation-links > .merchant-nav-item:nth-child(6)::before {
+  display: none;
+}
+.merchant-pos-navigation-links > .merchant-nav-item:nth-child(6) {
+  margin-top: 0;
+}
 .merchant-sidebar-tip {
   margin-top: auto;
   border-color: var(--dashboard-border);
@@ -178,7 +187,11 @@ html[dir='rtl'] .merchant-sidebar {
 }
 .merchant-body {
   margin: 0;
-  margin-inline-start: 184px;
+  margin-inline-start: 220px;
+}
+html[dir='rtl'] .merchant-body {
+  margin-right: 220px;
+  margin-left: 0;
 }
 .merchant-topbar {
   position: relative;
@@ -920,11 +933,15 @@ html[dir='rtl'] .merchant-sidebar {
 }
 @media (max-width: 1100px) and (min-width: 761px) {
   .merchant-sidebar {
-    width: 156px;
+    width: 192px;
     padding-inline: 10px;
   }
   .merchant-body {
-    margin-inline-start: 156px;
+    margin-inline-start: 192px;
+  }
+  html[dir='rtl'] .merchant-body {
+    margin-right: 192px;
+    margin-left: 0;
   }
   .merchant-topbar {
     min-height: 52px;
@@ -1077,7 +1094,7 @@ html[dir='rtl'] .merchant-sidebar {
     background: #f5f8fb;
   }
   .merchant-sidebar {
-    width: 220px;
+    width: 240px;
     transform: translateX(-100%);
     box-shadow: 0 0 0 100vmax #1b264840;
     visibility: hidden;
@@ -1091,6 +1108,9 @@ html[dir='rtl'] .merchant-sidebar {
     visibility: visible;
   }
   .merchant-body {
+    margin: 0;
+  }
+  html[dir='rtl'] .merchant-body {
     margin: 0;
   }
   .merchant-topbar {
