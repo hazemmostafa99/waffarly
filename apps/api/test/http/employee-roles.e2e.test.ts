@@ -183,7 +183,15 @@ describe('employee role boundaries', () => {
     assert.deepEqual(reads.at(-1)?.query.where, {
       id: orderId,
       merchantId,
-      source: 'pos',
+      OR: [
+        { source: 'pos' },
+        {
+          source: 'storefront',
+          fulfillmentType: 'pickup',
+          posShiftId: { not: null },
+          status: { in: ['ready', 'completed'] },
+        },
+      ],
       branchId: { in: [branchId] },
     });
     await request(app.getHttpServer()).post('/pos/orders/quote').send({}).expect(403);

@@ -25,7 +25,7 @@ const employee: PosEmployeeSession = {
 };
 
 describe('POS kitchen tickets', () => {
-  it('keeps the legacy recipe queue and scopes ticketed POS work to its branch and active statuses', async () => {
+  it('includes routed web orders and keeps legacy recipe and ticketed POS work scoped to the branch', async () => {
     let capturedWhere: unknown;
     const service = new StorefrontOrdersService(
       {
@@ -45,6 +45,11 @@ describe('POS kitchen tickets', () => {
       merchantId,
       delivery: { is: null },
       OR: [
+        {
+          source: 'storefront',
+          branchId,
+          status: { in: ['pending', 'accepted', 'preparing', 'ready'] },
+        },
         {
           lines: { some: { stockHandling: 'recipe_acceptance' } },
           OR: [

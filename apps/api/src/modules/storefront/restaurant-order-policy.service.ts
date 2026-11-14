@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import type { Prisma } from '@waffarly/database';
-import { restaurantSettingsSchema } from './restaurant.schemas.js';
+import { toRestaurantSettings } from './restaurant-settings.mapper.js';
 import { restaurantOperatingState } from './restaurant-hours.js';
 import { formatCents, toCents } from '../../common/money/money.js';
 
@@ -21,12 +21,7 @@ export class RestaurantOrderPolicyService {
         throw new BadRequestException('Restaurant settings are unavailable.');
       return null;
     }
-    const { merchantId: _merchantId, updatedBy, updatedAt, referenceData, ...fields } = record;
-    const settings = restaurantSettingsSchema.parse({
-      ...fields,
-      deliveryFee: record.deliveryFee.toFixed(2),
-      minimumDeliveryOrder: record.minimumDeliveryOrder.toFixed(2),
-    });
+    const settings = toRestaurantSettings(record);
     if (expectedRevision !== undefined && expectedRevision !== settings.revision)
       throw new ConflictException(
         'Restaurant settings changed. Review delivery and confirm again.',

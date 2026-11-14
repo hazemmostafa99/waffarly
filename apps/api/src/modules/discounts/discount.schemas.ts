@@ -20,7 +20,7 @@ export const discountInputSchema = z
     type: z.enum(['percentage', 'fixed']),
     value: money,
     minimum: money,
-    maximum: money,
+    maximum: money.or(z.literal('')),
     startDate: date,
     endDate: date,
     usageLimit: z

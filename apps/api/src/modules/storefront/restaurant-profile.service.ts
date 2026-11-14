@@ -2,6 +2,7 @@ import { Prisma } from '@waffarly/database';
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { restaurantSettingsSchema } from './restaurant.schemas.js';
+import { toRestaurantSettings } from './restaurant-settings.mapper.js';
 import { restaurantOperatingState } from './restaurant-hours.js';
 import { CatalogQueryService } from '../catalog/index.js';
 import { formatCents, toCents } from '../../common/money/money.js';
@@ -21,24 +22,19 @@ export class RestaurantProfileService {
     });
     return { ...this.map(record), name: merchant.name };
   }
-  private map(record: Prisma.RestaurantProfileGetPayload<{}>) {
-    const { merchantId, updatedBy, updatedAt, referenceData, ...fields } = record;
-    const settings = restaurantSettingsSchema.parse({
-      ...fields,
-      deliveryFee: record.deliveryFee.toFixed(2),
-      minimumDeliveryOrder: record.minimumDeliveryOrder.toFixed(2),
-    });
+  private map(record: Prisma.RestaurantProfileModel) {
+    const settings = toRestaurantSettings(record);
     const fees = settings.deliveryAreas.length
       ? settings.deliveryAreas.map((area) => toCents(area.fee))
       : [toCents(settings.deliveryFee)];
     return {
       ...settings,
-      merchantId,
-      updatedAt: updatedAt.toISOString(),
+      merchantId: record.merchantId,
+      updatedAt: record.updatedAt.toISOString(),
       ...restaurantOperatingState(settings),
       deliveryFeeFrom: formatCents(fees.reduce((a, c) => (a < c ? a : c))),
       deliveryFeeTo: formatCents(fees.reduce((a, c) => (a > c ? a : c))),
-      referenceData,
+      referenceData: record.referenceData,
     };
   }
   async save(merchantId: string, actor: string, body: unknown) {
