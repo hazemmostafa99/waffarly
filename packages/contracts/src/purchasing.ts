@@ -31,6 +31,22 @@ export function isNonNegativePurchaseAmount(value: string): boolean {
   return normalizePurchaseAmount(value) !== null;
 }
 
+/** Resolve a saved percentage or fixed discount using rounded line subtotals. */
+export function resolvePurchaseInvoiceDiscount(
+  lines: readonly { quantity: string; unitCost: string }[],
+  type: 'amount' | 'percentage',
+  value: string,
+): string | null {
+  const normalized = normalizePurchaseAmount(value);
+  if (normalized === null) return null;
+  if (type === 'amount') return normalized;
+  const rate = amountToCents(normalized);
+  if (rate > 10_000n) return null;
+  const amounts = calculatePurchaseInvoiceAmounts(lines);
+  if (!amounts) return null;
+  return formatPurchaseCents((amountToCents(amounts.subtotalAmount) * rate + 5_000n) / 10_000n);
+}
+
 /** Calculate a purchase line total with EGP cent precision and half-up rounding. */
 export function calculatePurchaseInvoiceLineTotal(
   quantity: string,
@@ -48,8 +64,7 @@ export function calculatePurchaseInvoiceLineTotal(
   if (quantityMicros <= 0n) return null;
 
   const lineTotalCents =
-    (quantityMicros * unitCostCents + PURCHASE_QUANTITY_SCALE / 2n) /
-    PURCHASE_QUANTITY_SCALE;
+    (quantityMicros * unitCostCents + PURCHASE_QUANTITY_SCALE / 2n) / PURCHASE_QUANTITY_SCALE;
   if (lineTotalCents > MAX_PURCHASE_AMOUNT_CENTS) return null;
   return formatPurchaseCents(lineTotalCents);
 }
@@ -208,6 +223,8 @@ export interface PurchaseInvoiceLine extends Omit<PurchaseInvoiceLineFields, 'un
   position: number;
   /** Historical receipts created before purchase costing may not have a value. */
   unitCost: string | null;
+  correctedUnitCost?: string | null;
+  returnedQuantity?: string;
   lineSubtotal: string | null;
   discountAllocation: string | null;
   shippingAllocation: string | null;
@@ -216,6 +233,10 @@ export interface PurchaseInvoiceLine extends Omit<PurchaseInvoiceLineFields, 'un
 
 export interface PurchaseInvoiceFields {
   supplierId: string;
+  invoiceDate?: string | undefined;
+  notes?: string | undefined;
+  discountType?: 'amount' | 'percentage' | undefined;
+  discountValue?: string | undefined;
   supplierInvoiceNumber?: string | undefined;
   warehouseId: string;
   lines: PurchaseInvoiceLineFields[];
@@ -232,6 +253,14 @@ export interface PurchaseInvoice extends Omit<
   discountAmount: string | null;
   shippingAmount: string | null;
   totalAmount: string | null;
+  warehouseBranchId?: string;
+  paidAmount?: string;
+  creditNoteAmount?: string;
+  balanceDue?: string | null;
+  payments?: PurchaseSupplierPaymentSummary[];
+  correctedTotalAmount?: string | null;
+  creditNotes?: PurchaseSupplierCreditNoteSummary[];
+  corrections?: PurchaseInvoiceCorrectionSummary[];
   id: string;
   supplierName: string;
   supplierInvoiceNumber: string | null;
@@ -264,6 +293,75 @@ export interface ConfirmPurchaseInvoiceRequest {
 export interface ConfirmPurchaseInvoiceResult {
   invoice: PurchaseInvoice;
   receipt: StockMovementBatchResult;
+}
+
+export type PurchaseCashMovementSource =
+  | { sourceType: 'safe'; movementId: string }
+  | { sourceType: 'drawer'; movementId: string; shiftId: string };
+
+export interface CreatePurchaseSupplierPaymentRequest {
+  requestId: string;
+  amount: string;
+  reason: string;
+  source: PurchaseCashMovementSource;
+}
+
+export interface PurchaseCashMovementOption {
+  sourceType: 'safe' | 'drawer';
+  movementId: string;
+  shiftId: string | null;
+  branchId: string;
+  branchName: string;
+  reason: string;
+  movementAmount: string;
+  availableAmount: string;
+  createdAt: string;
+}
+
+export interface PurchaseSupplierPaymentSummary {
+  id: string;
+  amount: string;
+  paidAt: string;
+  reason: string;
+  sourceType: 'safe' | 'drawer';
+  sourceMovementId: string;
+}
+
+export interface CreatePurchaseSupplierCreditNoteRequest {
+  requestId: string;
+  reason: string;
+  amount: string;
+  lines: Array<{
+    invoiceLineId: string;
+    quantity: string;
+    creditAmount: string;
+  }>;
+}
+
+export interface PurchaseSupplierCreditNoteSummary {
+  id: string;
+  creditNumber: string;
+  amount: string;
+  reason: string;
+  issuedAt: string;
+  returnedQuantity: string;
+}
+
+export interface CreatePurchaseInvoiceCorrectionRequest {
+  requestId: string;
+  reason: string;
+  lines: Array<{
+    invoiceLineId: string;
+    unitCost: string;
+  }>;
+}
+
+export interface PurchaseInvoiceCorrectionSummary {
+  id: string;
+  amountDelta: string;
+  reason: string;
+  issuedAt: string;
+  affectedLines: number;
 }
 
 export type PurchaseSupplierPage = CursorPage<PurchaseSupplier>;

@@ -601,7 +601,23 @@ function isPendingPosRefund(value: unknown): value is PendingPosRefund {
       (allocation.terminalReference === undefined ||
         typeof allocation.terminalReference === 'string')
     );
-  });
+  }) && (
+    request.lineAllocations === undefined ||
+    (Array.isArray(request.lineAllocations) &&
+      request.lineAllocations.length > 0 &&
+      request.lineAllocations.length <= 30 &&
+      request.lineAllocations.every((value) => {
+        if (!value || typeof value !== 'object') return false;
+        const line = value as Record<string, unknown>;
+        return (
+          typeof line.orderLineId === 'string' &&
+          Boolean(line.orderLineId) &&
+          Number.isSafeInteger(line.quantity) &&
+          Number(line.quantity) > 0 &&
+          Number(line.quantity) <= 99
+        );
+      }))
+  );
 }
 
 function isPendingPosItemReturn(value: unknown): value is PendingPosItemReturn {
@@ -708,6 +724,9 @@ function parseWorkspace(
                 ? { terminalReference: allocation.terminalReference }
                 : {}),
             })),
+            ...(command.lineAllocations
+              ? { lineAllocations: command.lineAllocations.map((line) => ({ ...line })) }
+              : {}),
           },
         };
       }
@@ -1667,6 +1686,9 @@ export const usePosWorkspaceStore = create<WorkspaceState>((set, get) => ({
             ? { terminalReference: allocation.terminalReference }
             : {}),
         })),
+        ...(refund.request.lineAllocations
+          ? { lineAllocations: refund.request.lineAllocations.map((line) => ({ ...line })) }
+          : {}),
       },
     };
     const existing = current.pendingRefunds[key];

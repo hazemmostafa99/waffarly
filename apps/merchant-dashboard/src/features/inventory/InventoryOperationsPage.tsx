@@ -58,6 +58,8 @@ const movementLabels: Record<string, string> = {
   sale_restoration: 'Sale restoration',
   recipe_consumption: 'Recipe consumption',
   recipe_restoration: 'Recipe restoration',
+  waste: 'Stock waste',
+  transfer: 'Warehouse transfer',
   adjustment: 'Adjustment',
 };
 
@@ -404,6 +406,14 @@ export function InventoryOperationsPage({
           )}
         </span>
       ),
+    },
+    {
+      id: 'cost',
+      header: text('Cost snapshot'),
+      cell: (row) =>
+        row.costRevision === null
+          ? text('Unknown')
+          : formatDigits(`${row.estimatedCostAmount ?? '0.00'} EGP · ${text('cost revision')} ${row.costRevision}`),
     },
     { id: 'actor', header: text('Recorded by'), cell: (row) => formatDigits(row.actor) },
     {

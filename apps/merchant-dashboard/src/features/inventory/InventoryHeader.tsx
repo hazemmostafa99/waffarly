@@ -34,6 +34,8 @@ export function InventoryHeader({
                 ['/inventory/purchases', 'Purchases', 'file'],
                 ['/inventory/history', 'Movement history', 'orders'],
                 ['/inventory/opening', 'Opening stock', 'plus'],
+                ['/inventory/waste', 'Record stock waste', 'trash'],
+                ['/inventory/transfers', 'Transfer stock', 'box'],
                 ['/inventory/settings', 'Inventory settings', 'settings'],
               ].map(([to, label, icon]) => (
                 <NavLink

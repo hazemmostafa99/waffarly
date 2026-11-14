@@ -36,8 +36,10 @@ import { toSummary } from '../mapping/order.mapper.js';
 
 import {
   consumeDirectOrderRequirements,
+  assertKnownCurrentCosts,
   freezeLineStockRequirements,
   resolveConsumptionWarehouse,
+  saveLineCostSnapshots,
 } from '../stock/order-stock.persistence.js';
 import { parseAddPosKitchenItemsRequest } from '../pos-sales/pos-orders.schemas.js';
 
@@ -178,6 +180,8 @@ export class KitchenOrderAmendmentService {
           const quote = await quotePosSaleItems(this.pricing, employee.merchantId, request, tx);
           const quoteByLineId = new Map(quote.items.map((item) => [item.lineId, item.quote]));
           const directRequirements: InventoryRequirement[] = [];
+          const directRequirementsByLine = new Map<string, InventoryRequirement[]>();
+          const revenueRecognizedAt = new Date();
           const firstPosition =
             order.lines.reduce((max, line) => Math.max(max, line.position), -1) + 1;
 
@@ -187,6 +191,7 @@ export class KitchenOrderAmendmentService {
               select: {
                 id: true,
                 name: true,
+                menuSection: { select: { id: true, name: true } },
                 availability: true,
                 revision: true,
                 inventoryConfiguration: { select: { mode: true } },
@@ -246,6 +251,10 @@ export class KitchenOrderAmendmentService {
             const mode = product.inventoryConfiguration?.mode ?? null;
             if (mode && mode !== 'DIRECT' && mode !== 'RECIPE')
               throw new ConflictException('The product stock handling is not supported.');
+            if (!mode)
+              throw new ConflictException(
+                'Configure this product inventory and record current item costs before selling it.',
+              );
             const stockHandling =
               mode === 'DIRECT'
                 ? 'direct_sale'
@@ -267,6 +276,7 @@ export class KitchenOrderAmendmentService {
                 ],
                 mode,
               );
+              await assertKnownCurrentCosts(tx, employee.merchantId, requirements);
               if (mode === 'DIRECT') directRequirements.push(...requirements);
             }
 
@@ -297,6 +307,8 @@ export class KitchenOrderAmendmentService {
                 orderId,
                 merchantId: employee.merchantId,
                 productId: product.id,
+                menuSectionIdAtSale: product.menuSection?.id ?? null,
+                menuSectionNameAtSale: product.menuSection?.name ?? null,
                 variantId: variant?.id ?? null,
                 productName: product.name,
                 variantName: variant?.name ?? null,
@@ -305,6 +317,8 @@ export class KitchenOrderAmendmentService {
                 quantity: item.quantity,
                 unitPrice: lineQuote.totalPrice,
                 lineTotal: formatCents(lineTotalCents),
+                recognizedRevenueAmount: formatCents(lineTotalCents),
+                revenueRecognizedAt,
                 note: item.note?.trim() || null,
                 stockHandling,
                 stockReserved,
@@ -329,6 +343,7 @@ export class KitchenOrderAmendmentService {
                 savedLine.id,
                 requirements,
               );
+            if (mode === 'DIRECT') directRequirementsByLine.set(savedLine.id, requirements);
           }
 
           const newTotalCents = toCents(order.total.toString()) + toCents(quote.total);
@@ -378,7 +393,7 @@ export class KitchenOrderAmendmentService {
                 order.branchId!,
               );
             }
-            await consumeDirectOrderRequirements(
+            const capturedCosts = await consumeDirectOrderRequirements(
               tx,
               this.ledger,
               employee.merchantId,
@@ -387,6 +402,15 @@ export class KitchenOrderAmendmentService {
               warehouse.id,
               directRequirements,
             );
+            for (const [lineId, lineRequirements] of directRequirementsByLine) {
+              await saveLineCostSnapshots(
+                tx,
+                employee.merchantId,
+                lineId,
+                lineRequirements,
+                capturedCosts,
+              );
+            }
             if (!order.warehouseId)
               await tx.storefrontOrder.update({
                 where: { id: orderId },

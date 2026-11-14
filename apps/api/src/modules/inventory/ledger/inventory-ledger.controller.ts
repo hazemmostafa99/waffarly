@@ -17,6 +17,8 @@ import type {
   StockBalance,
   StockMovement,
   StockMovementBatchResult,
+  RecordStockWasteRequest,
+  TransferStockRequest,
 } from '@waffarly/contracts';
 import { ZodValidationPipe } from '../../../common/http/zod-validation.pipe.js';
 import { CurrentOwner, OwnerGuard } from '../../auth/index.js';
@@ -27,6 +29,8 @@ import {
   listStockBalancesSchema,
   listStockMovementsSchema,
   createStockOpeningSchema,
+  recordStockWasteSchema,
+  transferStockSchema,
   type StockBalanceListQuery,
   type StockMovementListQuery,
 } from '../inventory.schemas.js';
@@ -67,5 +71,21 @@ export class InventoryLedgerController {
     input: CreateStockOpeningRequest,
   ): Promise<StockMovementBatchResult> {
     return this.ledger.createOpening(owner.merchantId, owner.username, input);
+  }
+  @Post('waste')
+  recordWaste(
+    @CurrentOwner() owner: OwnerProfile,
+    @Body(new ZodValidationPipe(recordStockWasteSchema, { format: 'messages' }))
+    input: RecordStockWasteRequest,
+  ): Promise<StockMovementBatchResult> {
+    return this.ledger.recordWaste(owner.merchantId, owner.username, input);
+  }
+  @Post('transfers')
+  transfer(
+    @CurrentOwner() owner: OwnerProfile,
+    @Body(new ZodValidationPipe(transferStockSchema, { format: 'messages' }))
+    input: TransferStockRequest,
+  ): Promise<StockMovementBatchResult> {
+    return this.ledger.transferStock(owner.merchantId, owner.username, input);
   }
 }

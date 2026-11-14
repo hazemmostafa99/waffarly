@@ -197,10 +197,122 @@ export class CheckRefundService {
           if (!lockedChecks.length) throw new NotFoundException('The POS check was not found.');
           const check = await tx.posOrderCheck.findFirst({
             where: { id: checkId, orderId, merchantId: employee.merchantId },
-            select: { id: true, amount: true, settledAt: true, cancelledAt: true },
+            select: { id: true, amount: true, settledAt: true, cancelledAt: true, splitMethod: true },
           });
           if (!check || check.cancelledAt)
             throw new ConflictException('This check cannot be refunded.');
+
+          const refundLineRecords: Array<{
+            orderLineId: string;
+            productName: string;
+            variantName: string | null;
+            quantity: number;
+            revenueReversalAmount: string;
+            originalCostAmount: string | null;
+          }> = [];
+          if (request.lineAllocations?.length) {
+            const requestedLineIds = request.lineAllocations.map((line) => line.orderLineId);
+              const [lines, previousLines, previousLinesOnCheck, checkLines] = await Promise.all([
+              tx.storefrontOrderLine.findMany({
+                where: {
+                  merchantId: employee.merchantId,
+                  orderId,
+                  id: { in: requestedLineIds },
+                },
+                include: { costSnapshots: { select: { extendedCost: true } } },
+              }),
+              tx.posOrderRefundLine.groupBy({
+                by: ['orderLineId'],
+                where: { merchantId: employee.merchantId, orderId },
+                _sum: { quantity: true },
+              }),
+              tx.posOrderRefundLine.groupBy({
+                by: ['orderLineId'],
+                where: {
+                  merchantId: employee.merchantId,
+                  orderId,
+                  refund: { merchantId: employee.merchantId, orderId, checkId },
+                },
+                _sum: { quantity: true },
+              }),
+              tx.posOrderCheckLine.findMany({
+                where: { merchantId: employee.merchantId, orderId, checkId },
+                select: { orderLineId: true, quantity: true },
+              }),
+            ]);
+            if (lines.length !== requestedLineIds.length)
+              throw new NotFoundException('A refunded POS order line was not found.');
+            const lineById = new Map(lines.map((line) => [line.id, line]));
+            const previouslyRefunded = new Map(
+              previousLines.map((line) => [line.orderLineId, line._sum.quantity ?? 0]),
+            );
+            const previouslyRefundedOnCheck = new Map(
+              previousLinesOnCheck.map((line) => [line.orderLineId, line._sum.quantity ?? 0]),
+            );
+            const checkQuantityByLine = new Map(
+              checkLines.map((line) => [line.orderLineId, line.quantity]),
+            );
+            let lineRefundCents = 0n;
+            for (const requestedLine of request.lineAllocations) {
+              const line = lineById.get(requestedLine.orderLineId)!;
+              if (!line.recognizedRevenueAmount)
+                throw new ConflictException(
+                  'This sale has no saved revenue snapshot, so its item value cannot be refunded by product.',
+                );
+              const alreadyRefunded = previouslyRefunded.get(line.id) ?? 0;
+              const refundableQuantity = check.splitMethod === 'items'
+                ? Math.min(
+                    line.quantity - alreadyRefunded,
+                    (checkQuantityByLine.get(line.id) ?? 0) - (previouslyRefundedOnCheck.get(line.id) ?? 0),
+                  )
+                : line.quantity - alreadyRefunded;
+              if (requestedLine.quantity > refundableQuantity)
+                throw new ConflictException(
+                  'The requested item quantity exceeds the remaining quantity on this sale/check.',
+                );
+              const recognizedRevenueCents = toCents(line.recognizedRevenueAmount.toString());
+              const revenueCents = allocateUnitCents(
+                recognizedRevenueCents,
+                line.quantity,
+                alreadyRefunded,
+                requestedLine.quantity,
+              );
+              const savedCostCents = line.costSnapshotTotal
+                ? toCents(line.costSnapshotTotal.toString())
+                : line.costSnapshots.length
+                  ? line.costSnapshots.reduce(
+                      (sum, snapshot) => sum + toCents(snapshot.extendedCost.toString()),
+                      0n,
+                    )
+                  : null;
+              const originalCostCents = savedCostCents === null
+                ? null
+                : allocateUnitCents(
+                    savedCostCents,
+                    line.quantity,
+                    alreadyRefunded,
+                    requestedLine.quantity,
+                  );
+              lineRefundCents += revenueCents;
+              refundLineRecords.push({
+                orderLineId: line.id,
+                productName: line.productName,
+                variantName: line.variantName,
+                quantity: requestedLine.quantity,
+                revenueReversalAmount: formatCents(revenueCents),
+                originalCostAmount:
+                  originalCostCents === null ? null : formatCents(originalCostCents),
+              });
+            }
+            const tenderTotal = request.allocations.reduce(
+              (sum, allocation) => sum + toCents(allocation.amount),
+              0n,
+            );
+            if (lineRefundCents !== tenderTotal)
+              throw new BadRequestException(
+                'Item refund value must equal the total cash and terminal refund amount.',
+              );
+          }
 
           const originals = await tx.posOrderPayment.findMany({
             where: {
@@ -292,6 +404,19 @@ export class CheckRefundService {
               amount,
               terminalReference,
             })),
+            ...(refundLineRecords.length
+              ? {
+                  lineAllocations: refundLineRecords.map(
+                    ({ orderLineId, productName, variantName, quantity, revenueReversalAmount }) => ({
+                      orderLineId,
+                      productName,
+                      variantName,
+                      quantity,
+                      revenueReversalAmount,
+                    }),
+                  ),
+                }
+              : {}),
           };
           await tx.posOrderRefund.create({
             data: {
@@ -311,6 +436,21 @@ export class CheckRefundService {
               snapshot: receipt as unknown as Prisma.InputJsonValue,
             },
           });
+          if (refundLineRecords.length) {
+            await tx.posOrderRefundLine.createMany({
+              data: refundLineRecords.map((line) => ({
+                merchantId: employee.merchantId,
+                refundId,
+                orderId,
+                orderLineId: line.orderLineId,
+                productName: line.productName,
+                variantName: line.variantName,
+                quantity: line.quantity,
+                revenueReversalAmount: line.revenueReversalAmount,
+                originalCostAmount: line.originalCostAmount,
+              })),
+            });
+          }
           for (const [position, tender] of normalized.entries()) {
             const row = await tx.posOrderRefundTender.create({
               data: {
@@ -399,4 +539,19 @@ function replayPosRefund(
   )
     throw new ConflictException('The request ID was already used for a different POS action.');
   return previous.result as RecordPosCheckRefundResponse;
+}
+
+function allocateUnitCents(
+  totalCents: bigint,
+  totalUnits: number,
+  firstUnit: number,
+  quantity: number,
+): bigint {
+  if (totalUnits <= 0 || firstUnit < 0 || quantity <= 0 || firstUnit + quantity > totalUnits)
+    throw new ConflictException('The item refund quantity is outside its original sale.');
+  const units = BigInt(totalUnits);
+  const base = totalCents / units;
+  const extraCents = totalCents % units;
+  const prefix = (count: number) => base * BigInt(count) + BigInt(Math.min(count, Number(extraCents)));
+  return prefix(firstUnit + quantity) - prefix(firstUnit);
 }

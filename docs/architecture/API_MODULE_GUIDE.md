@@ -20,7 +20,7 @@ need them. A folder split alone does not require another Nest module.
 | Orders        | [Guide](../../apps/api/src/modules/orders/README.md)                | Checkout, sales, fulfillment, kitchen, bills, receipts, delivery, returns and customers. |
 | Shifts        | [Guide](../../apps/api/src/modules/shifts/README.md)                | Registers, sessions, reconciliation, drawer cash, custody and close reports.             |
 | Subscriptions | [Guide](../../apps/api/src/modules/subscriptions/README.md)         | Eligibility, assignment, quotes, commands and account/history reads.                     |
-| Inventory     | [Guide](../../apps/api/src/modules/inventory/README.md)             | Stock identities, locations, policy, ledger and visibility.                              |
+| Inventory     | [Guide](../../apps/api/src/modules/inventory/README.md)             | Stock identities, locations, policy, ledger, visibility and latest stock-item cost history. |
 | Merchants     | [Guide](../../apps/api/src/modules/merchants/README.md)             | Onboarding, applications, public addresses and account settings.                         |
 | Catalog       | [Guide](../../apps/api/src/modules/catalog/README.md)               | Product commands/queries, configuration helpers and authoritative pricing.               |
 | Employees     | [Guide](../../apps/api/src/modules/employees/README.md)             | Staff account, role and branch configuration.                                            |

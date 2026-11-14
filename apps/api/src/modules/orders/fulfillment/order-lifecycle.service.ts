@@ -269,8 +269,10 @@ export class OrderLifecycleService {
               message: "Open a cashier shift at this order's branch before changing its status.",
               code: 'ORDER_SHIFT_REQUIRED',
             });
-          const recipeLines = order.lines.filter(
-            (line) => line.stockHandling === 'recipe_acceptance',
+          const inventoryLines = order.lines.filter(
+            (line) =>
+              line.stockHandling === 'recipe_acceptance' ||
+              line.stockHandling === 'direct_acceptance',
           );
           const isDispatchedPosOrder = order.source === 'pos' && order.kitchenTicket !== null;
           const isRoutedStorefrontOrder = order.source === 'storefront' && order.branchId !== null;
@@ -282,12 +284,12 @@ export class OrderLifecycleService {
             throw new ConflictException('Accept this order at its receiving branch.');
           if (
             command.action !== 'pos_cancel' &&
-            !recipeLines.length &&
+            !inventoryLines.length &&
             !isDispatchedPosOrder &&
             !isRoutedStorefrontOrder
           )
             throw new ConflictException('This action is only available for new recipe orders.');
-          if (command.action === 'cancel' && !recipeLines.length && !isRoutedStorefrontOrder)
+          if (command.action === 'cancel' && !inventoryLines.length && !isRoutedStorefrontOrder)
             throw new ConflictException('POS cancellation requires the cancellation workflow.');
           if (isRoutedStorefrontOrder && command.action === 'cancel') {
             const payment = await tx.posOrderPayment.findFirst({

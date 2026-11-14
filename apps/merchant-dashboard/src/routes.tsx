@@ -55,6 +55,11 @@ const InventoryOperationsPage = lazy(() =>
     default: module.InventoryOperationsPage,
   })),
 );
+const InventoryStockActionPage = lazy(() =>
+  import('./features/inventory/InventoryStockActionPage.js').then((module) => ({
+    default: module.InventoryStockActionPage,
+  })),
+);
 const PurchaseInvoicesPage = lazy(() =>
   import('./features/purchasing/PurchaseInvoicesPage.js').then((module) => ({
     default: module.PurchaseInvoicesPage,
@@ -87,6 +92,11 @@ const ItemReturnReportsPage = lazy(() =>
 const PosOperationsReportPage = lazy(() =>
   import('./features/pos/PosOperationsReportPage.js').then((module) => ({
     default: module.PosOperationsReportPage,
+  })),
+);
+const ProductProfitabilityPage = lazy(() =>
+  import('./features/reports/ProductProfitabilityPage.js').then((module) => ({
+    default: module.ProductProfitabilityPage,
   })),
 );
 const InventoryHealthPage = lazy(() =>
@@ -152,6 +162,14 @@ export const router = createBrowserRouter([
         element: loadOnRoute(<InventoryOperationsPage view="opening" />),
       },
       {
+        path: 'inventory/waste',
+        element: loadOnRoute(<InventoryStockActionPage action="waste" />),
+      },
+      {
+        path: 'inventory/transfers',
+        element: loadOnRoute(<InventoryStockActionPage action="transfer" />),
+      },
+      {
         path: 'inventory/settings',
         element: loadOnRoute(<InventoryOperationsPage view="settings" />),
       },
@@ -169,6 +187,7 @@ export const router = createBrowserRouter([
       { path: 'pos-shift-reports', element: loadOnRoute(<ShiftReportsPage />) },
       { path: 'pos-item-returns', element: loadOnRoute(<ItemReturnReportsPage />) },
       { path: 'pos-operations', element: loadOnRoute(<PosOperationsReportPage />) },
+      { path: 'profitability', element: loadOnRoute(<ProductProfitabilityPage />) },
       { path: 'settings', element: loadOnRoute(<SettingsRoute />) },
       { path: 'account', element: loadOnRoute(<AccountPage />) },
       { path: '*', element: <Navigate to="/" replace /> },

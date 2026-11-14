@@ -5,15 +5,18 @@ import {
 } from '@waffarly/contracts';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import { normalizeStockQuantity } from '../stock-quantity.js';
+import { normalizeStockQuantity, parseStockQuantity } from '../stock-quantity.js';
 
 export const INVENTORY_MOVEMENT_KINDS = [
   'opening_balance',
   'purchase_receipt',
+  'purchase_return',
   'sale_consumption',
   'sale_restoration',
   'recipe_consumption',
   'recipe_restoration',
+  'waste',
+  'transfer',
   'adjustment',
 ] as const;
 export type InventoryMovementKind = (typeof INVENTORY_MOVEMENT_KINDS)[number];
@@ -72,7 +75,7 @@ export const postingSchema = z
         });
       }
       if (
-        ['sale_consumption', 'recipe_consumption'].includes(batch.kind) &&
+        ['sale_consumption', 'recipe_consumption', 'waste', 'purchase_return'].includes(batch.kind) &&
         !movement.baseDelta.startsWith('-')
       ) {
         context.addIssue({
@@ -94,6 +97,32 @@ export const postingSchema = z
         });
       }
     });
+    if (batch.kind === 'transfer') {
+      const totals = new Map<string, { delta: bigint; hasDebit: boolean; hasCredit: boolean }>();
+      for (const movement of batch.movements) {
+        const key = `${movement.stockItemId}:${movement.condition}`;
+        const delta = parseStockQuantity(
+          normalizeSignedDecimal(movement.baseDelta).replace(/^-/, ''),
+        );
+        const signed = movement.baseDelta.startsWith('-') ? -delta : delta;
+        const value = totals.get(key) ?? { delta: 0n, hasDebit: false, hasCredit: false };
+        totals.set(key, {
+          delta: value.delta + signed,
+          hasDebit: value.hasDebit || signed < 0n,
+          hasCredit: value.hasCredit || signed > 0n,
+        });
+      }
+      for (const [key, value] of totals) {
+        if (value.delta !== 0n || !value.hasDebit || !value.hasCredit) {
+          context.addIssue({
+            code: 'custom',
+            path: ['movements'],
+            message: `Transfer movements must balance for ${key}.`,
+          });
+          break;
+        }
+      }
+    }
   });
 
 export interface InventoryMovementBatchCommand {

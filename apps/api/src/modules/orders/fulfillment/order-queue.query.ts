@@ -59,7 +59,7 @@ export async function listBranchOrderQueue(
         status: { in: ['pending', 'accepted', 'preparing', 'ready'] },
       },
       {
-        lines: { some: { stockHandling: 'recipe_acceptance' } },
+        lines: { some: { stockHandling: { in: ['recipe_acceptance', 'direct_acceptance'] } } },
         OR: [
           { status: 'pending', OR: [{ source: 'storefront', branchId: null }, { branchId }] },
           { status: { in: ['accepted', 'preparing', 'ready'] }, branchId },

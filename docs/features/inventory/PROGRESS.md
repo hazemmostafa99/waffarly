@@ -1,7 +1,7 @@
 # Inventory, Product Mapping & Recipes — Implementation Progress
 
 > Related workstream (2026-11-14): [Purchase cost and profitability progress](../purchase-cost-profitability/PROGRESS.md).
-> P01 adds purchase invoice costs and totals, pending manual QA; latest-cost tracking and product/menu profit remain NOT STARTED there.
+> P01/P02 add purchase invoice costs, discounts, shipping and totals; migrations are applied locally, with full manual QA pending. Latest-cost tracking and product/menu profit remain NOT STARTED there.
 > Existing inventory delivery statuses below do not imply those later phases are implemented.
 
 ## Current state

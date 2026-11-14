@@ -13,12 +13,17 @@ import {
 import type {
   ConfirmPurchaseInvoiceRequest,
   ConfirmPurchaseInvoiceResult,
+  CreatePurchaseSupplierPaymentRequest,
+  CreatePurchaseSupplierCreditNoteRequest,
+  CreatePurchaseInvoiceCorrectionRequest,
   CreatePurchaseInvoiceRequest,
   CreatePurchaseSupplierRequest,
   CursorPage,
   OwnerProfile,
   PurchaseInvoice,
   PurchaseSupplier,
+  PurchaseCashMovementOption,
+  PurchaseSupplierPaymentSummary,
   PurchaseSupplierRevisionRequest,
   UpdatePurchaseInvoiceRequest,
   UpdatePurchaseSupplierRequest,
@@ -29,6 +34,9 @@ import { PurchaseSuppliersService } from './purchase-suppliers.service.js';
 import { PurchasingService } from './purchasing.service.js';
 import {
   confirmPurchaseInvoiceSchema,
+  createPurchaseSupplierPaymentSchema,
+  createPurchaseSupplierCreditNoteSchema,
+  createPurchaseInvoiceCorrectionSchema,
   createPurchaseInvoiceSchema,
   createPurchaseSupplierSchema,
   listPurchaseInvoicesSchema,
@@ -38,6 +46,7 @@ import {
   updatePurchaseSupplierSchema,
   type PurchaseInvoiceListQuery,
   type PurchaseSupplierListQuery,
+  listPurchaseCashMovementsSchema,
 } from './purchasing.schemas.js';
 
 @UseGuards(OwnerGuard)
@@ -104,6 +113,15 @@ export class PurchasingController {
     return this.suppliers.setArchived(owner.merchantId, owner.username, id, false, input);
   }
 
+  @Get('cash-movements')
+  listCashMovements(
+    @CurrentOwner() owner: OwnerProfile,
+    @Query(new ZodValidationPipe(listPurchaseCashMovementsSchema, { format: 'messages' }))
+    query: unknown,
+  ): Promise<PurchaseCashMovementOption[]> {
+    return this.purchasing.listCashMovements(owner.merchantId, query);
+  }
+
   @Get('invoices')
   listInvoices(
     @CurrentOwner() owner: OwnerProfile,
@@ -148,5 +166,35 @@ export class PurchasingController {
     input: ConfirmPurchaseInvoiceRequest,
   ): Promise<ConfirmPurchaseInvoiceResult> {
     return this.purchasing.confirmInvoice(owner.merchantId, owner.username, id, input);
+  }
+
+  @Post('invoices/:id/payments')
+  recordSupplierPayment(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(new ZodValidationPipe(createPurchaseSupplierPaymentSchema, { format: 'messages' }))
+    input: CreatePurchaseSupplierPaymentRequest,
+  ): Promise<PurchaseSupplierPaymentSummary> {
+    return this.purchasing.recordSupplierPayment(owner.merchantId, owner.username, id, input);
+  }
+
+  @Post('invoices/:id/credit-notes')
+  createSupplierCreditNote(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(new ZodValidationPipe(createPurchaseSupplierCreditNoteSchema, { format: 'messages' }))
+    input: CreatePurchaseSupplierCreditNoteRequest,
+  ): Promise<PurchaseInvoice> {
+    return this.purchasing.createSupplierCreditNote(owner.merchantId, owner.username, id, input);
+  }
+
+  @Post('invoices/:id/corrections')
+  correctInvoice(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(new ZodValidationPipe(createPurchaseInvoiceCorrectionSchema, { format: 'messages' }))
+    input: CreatePurchaseInvoiceCorrectionRequest,
+  ): Promise<PurchaseInvoice> {
+    return this.purchasing.correctPurchaseInvoice(owner.merchantId, owner.username, id, input);
   }
 }

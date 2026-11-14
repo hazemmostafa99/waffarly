@@ -23,6 +23,7 @@ import { ProductInformationTab } from './ProductInformationTab.js';
 import { OptionsTab } from './OptionsTab.js';
 import { PreviewPublishTab } from './PreviewPublishTab.js';
 import { ProductPreview } from './ProductPreview.js';
+import { ProductCostPreviewPanel } from './ProductCostPreviewPanel.js';
 import { emptyInventoryComponent, inventoryTargetComplete } from './product-inventory.js';
 
 const tabKeys = ['information', 'options', 'inventory', 'review'] as const;
@@ -891,24 +892,35 @@ export function ProductBuilderPage() {
                 />
               </div>
               {activeTab === 2 && (
-                <ProductInventoryTab
-                  productName={name}
-                  enabled={inventoryEnabled}
-                  onEnabledChange={setInventoryEnabled}
-                  mode={inventoryMode}
-                  defaultMode={activityDefaultMode}
-                  savedModes={inventoryModeDrafts.current}
-                  required={!isEditing || inventoryConfigurationRequired}
-                  availability={availability}
-                  stockItems={stockItems}
-                  onStockItemLoaded={(item) =>
-                    setStockItems((current) => cacheStockItem(current, item))
-                  }
-                  targets={displayedInventoryTargets}
-                  variants={variants.map((variant) => ({ id: variant.id, name: variant.name }))}
-                  onInventorySave={saveInventoryDraft}
-                  text={text}
-                />
+                <>
+                  <ProductInventoryTab
+                    productName={name}
+                    enabled={inventoryEnabled}
+                    onEnabledChange={setInventoryEnabled}
+                    mode={inventoryMode}
+                    defaultMode={activityDefaultMode}
+                    savedModes={inventoryModeDrafts.current}
+                    required={!isEditing || inventoryConfigurationRequired}
+                    availability={availability}
+                    stockItems={stockItems}
+                    onStockItemLoaded={(item) =>
+                      setStockItems((current) => cacheStockItem(current, item))
+                    }
+                    targets={displayedInventoryTargets}
+                    variants={variants.map((variant) => ({ id: variant.id, name: variant.name }))}
+                    onInventorySave={saveInventoryDraft}
+                    text={text}
+                  />
+                  {inventoryEnabled && (
+                    <ProductCostPreviewPanel
+                      productId={productId}
+                      groups={groups}
+                      variants={variants}
+                      text={text}
+                      formatDigits={formatDigits}
+                    />
+                  )}
+                </>
               )}
               {activeTab === 3 && (
                 <PreviewPublishTab

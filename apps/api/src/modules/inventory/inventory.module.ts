@@ -10,6 +10,7 @@ import { InventoryLocationsService } from './inventory-locations.service.js';
 import { InventoryPolicyService } from './policy/inventory-policy.service.js';
 import { InventoryVisibilityService } from './inventory-visibility.service.js';
 import { InventoryService } from './inventory.service.js';
+import { InventoryCostService } from './inventory-cost.service.js';
 import { EmployeeInventoryController } from './employee-inventory.controller.js';
 
 @Module({
@@ -28,7 +29,8 @@ import { EmployeeInventoryController } from './employee-inventory.controller.js'
     InventoryPolicyService,
     InventoryLedgerService,
     InventoryVisibilityService,
+    InventoryCostService,
   ],
-  exports: [InventoryService, InventoryLedgerService],
+  exports: [InventoryService, InventoryLedgerService, InventoryCostService],
 })
 export class InventoryModule {}

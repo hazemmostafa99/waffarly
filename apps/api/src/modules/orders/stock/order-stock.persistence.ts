@@ -3,12 +3,24 @@
  */
 import { ConflictException } from '@nestjs/common';
 import type { Prisma } from '@waffarly/database';
+import type { StockMovement } from '@waffarly/contracts';
 import { randomUUID } from 'node:crypto';
 import {
   InventoryLedgerService,
   type InventoryMovementBatchCommand,
 } from '../../inventory/index.js';
 import type { InventoryRequirement } from '../../catalog/index.js';
+
+export type CapturedStockCost = Pick<
+  StockMovement,
+  | 'stockItemName'
+  | 'costRevision'
+  | 'baseUnitCost'
+  | 'costSourceType'
+  | 'costSourceInvoiceId'
+  | 'baseUnit'
+>;
+export type CapturedStockCostMap = ReadonlyMap<string, CapturedStockCost>;
 
 export async function resolveConsumptionWarehouse(
   tx: Prisma.TransactionClient,
@@ -85,13 +97,14 @@ async function postBatches(
   kind: 'recipe_consumption' | 'sale_consumption' | 'recipe_restoration' | 'sale_restoration',
   reason: string,
   movements: InventoryMovementBatchCommand['movements'],
-) {
+): Promise<Map<string, CapturedStockCost>> {
   const last = await tx.storefrontOrderStockBatch.findFirst({
     where: { merchantId, orderId, role },
     orderBy: { position: 'desc' },
     select: { position: true },
   });
   const firstPosition = (last?.position ?? -1) + 1;
+  const capturedCosts = new Map<string, CapturedStockCost>();
   // Keep the ledger's bounded batch size while posting every chunk in the same order transaction.
   for (let offset = 0; offset < movements.length; offset += 100) {
     const position = firstPosition + offset / 100;
@@ -103,10 +116,21 @@ async function postBatches(
       reason,
       movements: movements.slice(offset, offset + 100),
     });
+    for (const movement of result.movements) {
+      capturedCosts.set(movement.stockItemId, {
+        stockItemName: movement.stockItemName,
+        costRevision: movement.costRevision,
+        baseUnitCost: movement.baseUnitCost,
+        costSourceType: movement.costSourceType,
+        costSourceInvoiceId: movement.costSourceInvoiceId,
+        baseUnit: movement.baseUnit,
+      });
+    }
     await tx.storefrontOrderStockBatch.create({
       data: { merchantId, orderId, batchId: result.id, role, position },
     });
   }
+  return capturedCosts;
 }
 
 function toLedgerMovements(
@@ -132,8 +156,8 @@ export async function consumeOrderRequirements(
   orderId: string,
   warehouseId: string,
   requirements: InventoryRequirement[],
-) {
-  await postBatches(
+): Promise<CapturedStockCostMap> {
+  return postBatches(
     tx,
     ledger,
     merchantId,
@@ -155,19 +179,86 @@ export async function consumeDirectOrderRequirements(
   orderId: string,
   warehouseId: string,
   requirements: InventoryRequirement[],
-) {
-  await postBatches(
+  sourceType: 'pos_sale' | 'storefront_order' = 'pos_sale',
+): Promise<CapturedStockCostMap> {
+  return postBatches(
     tx,
     ledger,
     merchantId,
     actor,
     orderId,
     'consumption',
-    'pos_sale',
+    sourceType,
     'sale_consumption',
-    `POS direct-stock sale ${orderId}`,
+    `${sourceType === 'pos_sale' ? 'POS direct-stock sale' : 'Direct-stock order acceptance'} ${orderId}`,
     toLedgerMovements(warehouseId, requirements, 'debit'),
   );
+}
+
+export async function assertKnownCurrentCosts(
+  tx: Prisma.TransactionClient,
+  merchantId: string,
+  requirements: readonly InventoryRequirement[],
+): Promise<void> {
+  const itemIds = [...new Set(requirements.map((requirement) => requirement.stockItemId))];
+  if (!itemIds.length) return;
+  const known = await tx.stockItemCostCurrent.findMany({
+    where: { merchantId, stockItemId: { in: itemIds } },
+    select: { stockItemId: true },
+  });
+  if (known.length !== itemIds.length) {
+    throw new ConflictException('Record a current cost for every stock item before confirming this sale.');
+  }
+}
+
+export async function saveLineCostSnapshots(
+  tx: Prisma.TransactionClient,
+  merchantId: string,
+  orderLineId: string,
+  requirements: readonly InventoryRequirement[],
+  costs: CapturedStockCostMap,
+): Promise<void> {
+  const createdAt = new Date();
+  let totalCents = 0n;
+  const rows = requirements.map((requirement, position) => {
+    const cost = costs.get(requirement.stockItemId);
+    if (cost?.costRevision === null || !cost?.baseUnitCost) {
+      throw new ConflictException('Record a current cost for every stock item before confirming this sale.');
+    }
+    const extendedCost = stockCostCents(requirement.quantity, cost.baseUnitCost);
+    totalCents += extendedCost;
+    if (extendedCost > MAX_ORDER_COST_CENTS || totalCents > MAX_ORDER_COST_CENTS) {
+      throw new ConflictException('This sale cost exceeds the supported amount.');
+    }
+    return {
+      orderLineId,
+      merchantId,
+      stockItemId: requirement.stockItemId,
+      stockItemName: cost.stockItemName,
+      baseUnit: requirement.baseUnit,
+      quantity: requirement.quantity,
+      costRevision: cost.costRevision,
+      baseUnitCost: cost.baseUnitCost,
+      extendedCost: formatCents(extendedCost),
+      position,
+      createdAt,
+    };
+  });
+
+  if (rows.length) await tx.storefrontOrderLineCostSnapshot.createMany({ data: rows });
+  await tx.storefrontOrderLine.update({
+    where: { id_merchantId: { id: orderLineId, merchantId } },
+    data: { costSnapshotTotal: formatCents(totalCents), costSnapshotAt: createdAt },
+  });
+}
+
+const MAX_ORDER_COST_CENTS = 999_999_999_999_999_999n;
+const STOCK_COST_CENT_DIVISOR = 10_000_000_000_000_000n;
+
+function stockCostCents(quantity: string, baseUnitCost: string): bigint {
+  const quantityScaled = BigInt(quantity.replace('.', ''));
+  const costScaled = BigInt(baseUnitCost.replace('.', ''));
+  return (quantityScaled * costScaled + STOCK_COST_CENT_DIVISOR / 2n) / STOCK_COST_CENT_DIVISOR;
 }
 
 export async function restoreOrderConsumption(

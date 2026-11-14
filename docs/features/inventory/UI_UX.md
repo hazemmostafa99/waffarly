@@ -99,3 +99,46 @@ Recorded previews use test fixture data:
 
 - [Arabic overview](screenshots/phase-one-overview-ar.png)
 - [Purchase review](screenshots/phase-one-purchase-review.png)
+
+## Purchase invoice entry — 2026-11-14
+
+Purchase creation and draft editing now use a single invoice workspace: supplier,
+warehouse, invoice date and supplier invoice number above a compact item table,
+with discount, shipping, total and notes in a separate summary. The invoice page
+uses a breadcrumb in place of the inventory-wide toolbar. Item images, barcode
+scanning and custom keyboard shortcuts are not added.
+
+Dates are calendar dates, independent of the stock receipt timestamp. Notes are
+limited to 2,000 characters. Both are optional in the additive transport contract
+for older clients; the editor requires a date. Discount input retains its mode
+(amount or percentage) and decimal value. Percentage discounts are bounded to
+0–100, rounded to EGP cents using integer arithmetic, and recalculated by the API
+from the rounded line subtotals. Existing invoice discount/shipping allocation,
+tenant scope, revision checks, draft inertness and explicit receipt confirmation
+remain in place. New fields participate in request fingerprints and browser draft
+recovery. Historical invoices are not given invented dates or notes.
+
+The item table uses fixed numeric columns and grouped monetary totals. Condition
+selection is retained behind each row's options control; non-sellable lines show
+a badge. Table item selectors can render their menus through a portal, keeping
+options visible outside the horizontal scrolling region. This is opt-in and does
+not change other selectors. Mobile retains a horizontal table scroll while the
+form and summary fit the viewport.
+
+Verification: manually inspected Arabic and English entry controls, desktop and
+mobile layouts, selecting an existing item through a row menu, and visible money
+formatting. For an unsaved 2,500 EGP entry, 10% displayed 250 EGP discount and a
+2,250 EGP total; switching to a 100 EGP discount displayed 2,400 EGP. No invoice
+was submitted and no stock was posted during this review. No automated checks
+were run, following the existing manual-QA preference. Persisted save/reopen
+acceptance has not been exercised in this pass.
+
+Persistence preparation: the invoice entry migration and generated Prisma client
+were applied locally. A read-only inspection loaded and mapped one existing
+invoice with date/notes response fields, without modifying it. Concurrent
+purchase financial-model changes needed the existing invoice-line tenant pair
+as an explicit unique key; that additive index is captured in its own migration.
+Three finalized financial read-model columns were moved out of an already applied
+migration into a subsequent additive migration. The old migration file was
+restored only after matching its recorded checksum exactly. No historical costs,
+financial movements, invoice lines or stock balances were synthesized.

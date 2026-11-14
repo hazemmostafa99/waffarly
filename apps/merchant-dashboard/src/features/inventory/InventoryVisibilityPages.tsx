@@ -7,6 +7,8 @@ import type {
   InventoryStockHealth,
   StockBalance,
   StockItem,
+  StockItemCostEvent,
+  StockItemCostSummary,
   StockMovement,
 } from '@waffarly/contracts';
 import { Badge, Button, DataTable, Input, useLocale, type DataTableColumn } from '@waffarly/ui';
@@ -15,7 +17,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { InventoryCard } from './InventoryCard.js';
 import { InventoryHeader } from './InventoryHeader.js';
 import { StockItemPicker, WarehousePicker } from './components/InventoryPickers.js';
-import { stockUnitLabel } from './stock-unit-options.js';
+import { stockUnitLabel, stockUnitOptions } from './stock-unit-options.js';
 import { inventoryCopy } from './inventory-copy.js';
 
 type ThresholdEditorState = { row: InventoryStockHealth | null; key: string };
@@ -26,11 +28,15 @@ const movementLabels: Record<string, string> = {
   sale_restoration: 'Sale restoration',
   recipe_consumption: 'Recipe consumption',
   recipe_restoration: 'Recipe restoration',
+  waste: 'Stock waste',
+  transfer: 'Warehouse transfer',
   adjustment: 'Adjustment',
 };
 const sourceLabels: Record<string, string> = {
   opening_balance: 'Opening balance',
   purchase_invoice: 'Purchase receipt',
+  stock_waste: 'Stock waste',
+  stock_transfer: 'Warehouse transfer',
   recipe_order: 'Related recipe order',
   recipe_cancel: 'Recipe restoration',
   pos_sale: 'POS sale',
@@ -460,18 +466,22 @@ export function StockItemDetailPage() {
   const text = useCallback((value: string) => inventoryCopy(value, locale, t), [locale, t]);
   const navigate = useNavigate();
   const [item, setItem] = useState<StockItem | null>(null);
+  const [costSummary, setCostSummary] = useState<StockItemCostSummary | null>(null);
   const [health, setHealth] = useState<HealthPageData | null>(null);
   const [balances, setBalances] = useState<StockBalance[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [balancePage, setBalancePage] = useState<CursorPageState>({});
   const [balanceHistory, setBalanceHistory] = useState<CursorPageState[]>([]);
   const [balanceNext, setBalanceNext] = useState<string | null>(null);
+  const [costPage, setCostPage] = useState<CursorPageState>({});
+  const [costHistory, setCostHistory] = useState<CursorPageState[]>([]);
   const [movementPage, setMovementPage] = useState<CursorPageState>({});
   const [movementHistory, setMovementHistory] = useState<CursorPageState[]>([]);
   const [movementNext, setMovementNext] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [editingOpeningCost, setEditingOpeningCost] = useState(false);
 
   useEffect(() => {
     let current = true;
@@ -479,19 +489,23 @@ export function StockItemDetailPage() {
     setError('');
     const balanceQuery = new URLSearchParams({ limit: '25', stockItemId: itemId });
     if (balancePage.cursor) balanceQuery.set('cursor', balancePage.cursor);
+    const costQuery = new URLSearchParams({ limit: '25' });
+    if (costPage.cursor) costQuery.set('cursor', costPage.cursor);
     const movementQuery = new URLSearchParams({ limit: '10', stockItemId: itemId });
     if (movementPage.cursor) movementQuery.set('cursor', movementPage.cursor);
     void Promise.all([
       apiRequest<StockItem>(`/owner/inventory/items/${itemId}`),
+      apiRequest<StockItemCostSummary>(`/owner/inventory/items/${itemId}/cost?${costQuery.toString()}`),
       apiRequestPage<StockBalance>(`/owner/inventory/balances?${balanceQuery.toString()}`),
       apiRequestPage<StockMovement>(`/owner/inventory/movements?${movementQuery.toString()}`),
       apiRequestSingle<HealthPageData>(
         `/owner/inventory/health?limit=25&stockItemId=${encodeURIComponent(itemId)}`,
       ),
     ])
-      .then(([stockItem, balancePageResult, movementPageResult, healthResult]) => {
+      .then(([stockItem, costResult, balancePageResult, movementPageResult, healthResult]) => {
         if (!current) return;
         setItem(stockItem);
+        setCostSummary(costResult);
         setBalances(balancePageResult.items);
         setBalanceNext(balancePageResult.nextCursor);
         setMovements(movementPageResult.items);
@@ -510,7 +524,7 @@ export function StockItemDetailPage() {
     return () => {
       current = false;
     };
-  }, [balancePage, errorText, itemId, movementPage, refreshKey, text]);
+  }, [balancePage, costPage, errorText, itemId, movementPage, refreshKey, text]);
 
   const balanceColumns: DataTableColumn<StockBalance>[] = [
     {
@@ -568,6 +582,48 @@ export function StockItemDetailPage() {
           {text('View movement')}
         </Link>
       ),
+    },
+  ];
+  const costEventColumns: DataTableColumn<StockItemCostEvent>[] = [
+    {
+      id: 'date',
+      header: text('Date'),
+      cell: (row) => formatDigits(new Date(row.createdAt).toLocaleString(locale)),
+    },
+    {
+      id: 'cost',
+      header: text('Cost per base unit'),
+      cell: (row) => (
+        <span dir="ltr">
+          {formatDigits(`${row.baseUnitCost} EGP / ${stockUnitLabel(row.baseUnit, locale)}`)}
+        </span>
+      ),
+    },
+    {
+      id: 'source',
+      header: text('Source'),
+      cell: (row) => text(row.sourceType === 'purchase' ? 'Confirmed purchase' : 'Opening cost'),
+    },
+    {
+      id: 'details',
+      header: text('Details'),
+      cell: (row) =>
+        row.sourceInvoiceId ? (
+          <div className="inventory-cost-event-detail">
+            <span>
+              {formatDigits(
+                [row.supplierName, row.sourceInvoiceNumber, row.sourceWarehouseName]
+                  .filter(Boolean)
+                  .join(' · '),
+              )}
+            </span>
+            <Link className="inventory-detail-link" to={`/inventory/purchases/${row.sourceInvoiceId}`}>
+              {text('View purchase invoice')}
+            </Link>
+          </div>
+        ) : (
+          formatDigits(row.reason ?? '')
+        ),
     },
   ];
 
@@ -638,6 +694,80 @@ export function StockItemDetailPage() {
         )}
       </InventoryCard>
       <InventoryCard
+        title={text('Latest item cost')}
+        description={text(
+          'One latest cost is shared by this stock item across all warehouses. Purchases update it only after receipt is confirmed.',
+        )}
+        action={
+          item && (!costSummary?.current || costSummary.current.sourceType === 'opening') ? (
+            <Button type="button" variant="outline" onClick={() => setEditingOpeningCost(true)}>
+              {text(costSummary?.current ? 'Update opening cost' : 'Set opening cost')}
+            </Button>
+          ) : undefined
+        }
+      >
+        {loading ? (
+          <p role="status">{text('Loading item cost…')}</p>
+        ) : costSummary?.current ? (
+          <div className="inventory-cost-summary">
+            <div>
+              <span>{text('Current cost per base unit')}</span>
+              <strong dir="ltr">
+                {formatDigits(`${costSummary.current.baseUnitCost} EGP / ${stockUnitLabel(costSummary.baseUnit, locale)}`)}
+              </strong>
+            </div>
+            <div>
+              <span>{text('Latest source')}</span>
+              <strong>{text(costSummary.current.sourceType === 'purchase' ? 'Confirmed purchase' : 'Opening cost')}</strong>
+              <small>
+                {formatDigits(
+                  costSummary.current.sourceType === 'purchase'
+                    ? [
+                        costSummary.current.supplierName,
+                        costSummary.current.sourceInvoiceNumber,
+                        costSummary.current.sourceWarehouseName,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')
+                    : costSummary.history.items.find(
+                        (event) => event.revision === costSummary.current?.revision,
+                      )?.reason ?? '',
+                )}
+              </small>
+            </div>
+            <div>
+              <span>{text('Cost updated')}</span>
+              <strong>{formatDigits(new Date(costSummary.current.updatedAt).toLocaleString(locale))}</strong>
+            </div>
+            <p className="inventory-note">
+              {text('Estimated current stock value uses this price and is not an accounting revaluation.')}
+            </p>
+          </div>
+        ) : (
+          <p className="inventory-note">{text('Cost is unknown until an opening cost or confirmed purchase is recorded.')}</p>
+        )}
+        <DataTable
+          columns={costEventColumns}
+          rows={costSummary?.history.items ?? []}
+          rowKey={(row) => row.id}
+          caption={text('Item cost history')}
+          loading={loading}
+          loadingState={text('Loading item cost…')}
+          emptyState={text('No cost source has been recorded for this item yet.')}
+        />
+        {costSummary && (
+          <CursorPageControls
+            page={costPage}
+            history={costHistory}
+            next={costSummary.history.nextCursor}
+            loading={loading}
+            onChange={setCostPage}
+            onHistoryChange={setCostHistory}
+            copy={text}
+          />
+        )}
+      </InventoryCard>
+      <InventoryCard
         title={text('Current stock by location')}
         description={text('Balances are separated by stock condition and warehouse.')}
       >
@@ -692,7 +822,140 @@ export function StockItemDetailPage() {
           copy={text}
         />
       </InventoryCard>
+      {editingOpeningCost && item && (
+        <OpeningCostEditor
+          item={item}
+          copy={text}
+          onClose={() => setEditingOpeningCost(false)}
+          onSaved={(summary) => {
+            setCostSummary(summary);
+            setCostPage({});
+            setCostHistory([]);
+            setEditingOpeningCost(false);
+          }}
+        />
+      )}
     </main>
+  );
+}
+
+function OpeningCostEditor({
+  item,
+  copy,
+  onClose,
+  onSaved,
+}: {
+  item: StockItem;
+  copy: (value: string) => string;
+  onClose: () => void;
+  onSaved: (summary: StockItemCostSummary) => void;
+}) {
+  const { locale } = useLocale();
+  const text = copy;
+  const [unitCode, setUnitCode] = useState(item.baseUnit);
+  const [unitCost, setUnitCost] = useState('');
+  const [reason, setReason] = useState('');
+  const [requestId, setRequestId] = useState(() => crypto.randomUUID());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const summary = await apiRequest<StockItemCostSummary>(
+        `/owner/inventory/items/${item.id}/opening-cost`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ requestId, unitCode, unitCost: unitCost.trim(), reason: reason.trim() }),
+        },
+      );
+      onSaved(summary);
+    } catch (cause) {
+      setError(cause instanceof Error ? text(cause.message) : text('Could not save the opening cost.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function changed() {
+    setRequestId(crypto.randomUUID());
+  }
+
+  return (
+    <DashboardDialog
+      title={text('Set opening cost')}
+      closeLabel={text('Close')}
+      onClose={onClose}
+      busy={busy}
+    >
+      <form className="products-dialog-body inventory-editor" onSubmit={(event) => void save(event)}>
+        <p className="inventory-note">
+          {text('This records the cost of stock already on hand. It does not add quantity or create a purchase invoice.')}
+        </p>
+        {error && (
+          <p className="inventory-error" role="alert">
+            {error}
+          </p>
+        )}
+        <label>
+          {text('Cost unit')}
+          <select
+            value={unitCode}
+            disabled={busy}
+            onChange={(event) => {
+              setUnitCode(event.target.value);
+              changed();
+            }}
+          >
+            {stockUnitOptions(item).map((unit) => (
+              <option key={unit.code} value={unit.code}>
+                {stockUnitLabel(unit.code, locale, unit.name)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {text('Cost per selected unit (EGP)')}
+          <Input
+            value={unitCost}
+            inputMode="decimal"
+            maxLength={19}
+            placeholder="200.00"
+            disabled={busy}
+            onChange={(event) => {
+              setUnitCost(event.target.value);
+              changed();
+            }}
+            required
+          />
+        </label>
+        <label>
+          {text('Reason for opening cost')}
+          <textarea
+            rows={3}
+            maxLength={500}
+            minLength={3}
+            value={reason}
+            disabled={busy}
+            onChange={(event) => {
+              setReason(event.target.value);
+              changed();
+            }}
+            required
+          />
+        </label>
+        <footer className="products-dialog-footer">
+          <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
+            {text('Cancel')}
+          </Button>
+          <Button type="submit" disabled={busy}>
+            {text('Save opening cost')}
+          </Button>
+        </footer>
+      </form>
+    </DashboardDialog>
   );
 }
 
@@ -811,6 +1074,14 @@ export function StockMovementDetailPage() {
                   {formatDigits(
                     `${movement.enteredQuantity} ${stockUnitLabel(movement.unitCode, locale)}`,
                   )}
+                </dd>
+              </div>
+              <div>
+                <dt>{text('Cost snapshot')}</dt>
+                <dd>
+                  {movement.costRevision === null
+                    ? text('Unknown')
+                    : formatDigits(`${movement.estimatedCostAmount ?? '0.00'} EGP · ${text('cost revision')} ${movement.costRevision}`)}
                 </dd>
               </div>
               <div>

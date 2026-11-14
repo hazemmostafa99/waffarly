@@ -41,6 +41,39 @@ export interface CatalogProductInventoryConfiguration {
   updatedAt: string;
 }
 
+export interface CatalogProductCostPreviewRequest {
+  variantId: string | null;
+  selections: Array<{
+    modifierGroupId: string;
+    modifierOptionId: string;
+    quantity: number;
+  }>;
+}
+
+export interface CatalogProductCostLine {
+  stockItemId: string;
+  stockItemName: string;
+  baseUnit: string;
+  requiredQuantity: string;
+  baseUnitCost: string | null;
+  costRevision: number | null;
+  sourceType: 'opening' | 'purchase' | null;
+  extendedCost: string | null;
+}
+
+export interface CatalogProductCostPreview {
+  productId: string;
+  productName: string;
+  mode: ProductInventoryMode;
+  variantId: string | null;
+  sellingPrice: string;
+  lines: CatalogProductCostLine[];
+  totalKnownCost: string;
+  totalCost: string | null;
+  grossMargin: string | null;
+  isComplete: boolean;
+}
+
 export interface CatalogMediaAsset {
   id: string;
   storageKey: string;
@@ -389,6 +422,7 @@ export interface StorefrontOrderSummary {
   cancellationReason?: string | null;
   tableCode?: string | null;
   requiresRecipeAcceptance?: boolean;
+  requiresInventoryAcceptance?: boolean;
   inventoryLifecycle?: {
     branchId: string | null;
     warehouseId: string | null;

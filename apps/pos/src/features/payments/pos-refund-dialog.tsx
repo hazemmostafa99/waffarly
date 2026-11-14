@@ -65,6 +65,14 @@ export function PosRefundDialog({
       ]) ?? [],
     ),
   );
+  const [lineQuantities, setLineQuantities] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      storedRefund?.request.lineAllocations?.map((line) => [line.orderLineId, String(line.quantity)]) ?? [],
+    ),
+  );
+  const [attributeToItems, setAttributeToItems] = useState(
+    Boolean(storedRefund?.request.lineAllocations?.length),
+  );
   const [approvalUsername, setApprovalUsername] = useState('');
   const [approvalPassword, setApprovalPassword] = useState('');
   const [saveError, setSaveError] = useState('');
@@ -91,6 +99,12 @@ export function PosRefundDialog({
         ]),
       ),
     );
+    setLineQuantities(
+      Object.fromEntries(
+        storedRefund.request.lineAllocations?.map((line) => [line.orderLineId, String(line.quantity)]) ?? [],
+      ),
+    );
+    setAttributeToItems(Boolean(storedRefund.request.lineAllocations?.length));
   }, [pendingCommand, storedRefund]);
 
   const paymentQuery = useQuery({
@@ -132,6 +146,35 @@ export function PosRefundDialog({
     (sum, payment) => sum + (parseMoneyCents(amounts[payment.id] ?? '') ?? 0n),
     0n,
   );
+  const refundLines = paymentState?.orderLines ?? [];
+  const alreadyRefundedOnCheck = new Map<string, number>();
+  for (const refund of check?.refunds ?? []) {
+    for (const line of refund.lineAllocations ?? []) {
+      alreadyRefundedOnCheck.set(
+        line.orderLineId,
+        (alreadyRefundedOnCheck.get(line.orderLineId) ?? 0) + line.quantity,
+      );
+    }
+  }
+  const maxRefundableOnCheck = (line: (typeof refundLines)[number]) => {
+    if (check?.splitMethod !== 'items') return line.refundableQuantity;
+    const checkQuantity = check.allocations?.find((allocation) => allocation.orderLineId === line.orderLineId)?.quantity ?? 0;
+    const refundedHere = alreadyRefundedOnCheck.get(line.orderLineId) ?? 0;
+    return Math.max(0, Math.min(line.refundableQuantity, checkQuantity - refundedHere));
+  };
+  const selectedLineAllocations = refundLines.flatMap((line) => {
+    const quantity = Number(lineQuantities[line.orderLineId] ?? 0);
+    return Number.isSafeInteger(quantity) && quantity > 0 && quantity <= maxRefundableOnCheck(line)
+      ? [{ orderLineId: line.orderLineId, quantity }]
+      : [];
+  });
+  const lineRefundCents = selectedLineAllocations.reduce((sum, allocation) => {
+    const line = refundLines.find((candidate) => candidate.orderLineId === allocation.orderLineId);
+    if (!line) return sum;
+    const total = parseMoneyCents(line.lineTotal);
+    if (total === null) return sum;
+    return sum + allocateUnitCents(total, line.quantity, line.refundedQuantity, allocation.quantity);
+  }, 0n);
   const mutation = useMutation({
     mutationFn: ({
       command,
@@ -185,6 +228,8 @@ export function PosRefundDialog({
       });
     }
     if (!allocations.length) return null;
+    const lineAllocations = attributeToItems ? selectedLineAllocations : undefined;
+    if (attributeToItems && (!lineAllocations?.length || lineRefundCents !== totalCents)) return null;
     return {
       branchId,
       request: {
@@ -194,6 +239,7 @@ export function PosRefundDialog({
         refundShiftId,
         reason: reason.trim(),
         allocations,
+        ...(lineAllocations ? { lineAllocations } : {}),
       },
     };
   }
@@ -256,7 +302,9 @@ export function PosRefundDialog({
           (payment.method !== 'terminal' || Boolean(terminalReferences[payment.id]?.trim()))
         );
       }) &&
-      refundablePayments.some((payment) => Boolean(amounts[payment.id]?.trim()))),
+      refundablePayments.some((payment) => Boolean(amounts[payment.id]?.trim())) &&
+      (!attributeToItems ||
+        (selectedLineAllocations.length > 0 && lineRefundCents === totalCents))),
   );
 
   return (
@@ -339,6 +387,16 @@ export function PosRefundDialog({
                 })}
               </bdi>
             </div>
+            {receipt.lineAllocations?.length ? (
+              <div className="grid gap-1 border-b border-dashed border-neutral-300 py-3 text-xs">
+                {receipt.lineAllocations.map((line) => (
+                  <div key={line.orderLineId} className="flex justify-between gap-3">
+                    <span>{line.productName}{line.variantName ? ` · ${line.variantName}` : ''} × {line.quantity}</span>
+                    <bdi dir="ltr">{formatNumber(Number(line.revenueReversalAmount), { style: 'currency', currency: receipt.currency })}</bdi>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <p className="mb-0 mt-3 break-words text-xs">
               {t('Reason')}: {receipt.reason}
             </p>
@@ -521,6 +579,53 @@ export function PosRefundDialog({
                   </div>
                 ))}
               </div>
+              {refundLines.length > 0 && (
+                <section className="grid gap-2 rounded-lg border border-border p-3">
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      checked={attributeToItems}
+                      disabled={Boolean(pendingCommand) || mutation.isPending}
+                      onChange={(event) => setAttributeToItems(event.target.checked)}
+                    />
+                    {t('Attribute this refund to products')}
+                  </label>
+                  {attributeToItems && (
+                    <>
+                      <p className="m-0 text-xs text-muted-foreground">
+                        {t('Selected item refund value must match the cash and terminal refund total. Stock is handled separately.')}
+                      </p>
+                      {refundLines.map((line) => {
+                        const maxQuantity = maxRefundableOnCheck(line);
+                        if (maxQuantity === 0) return null;
+                        return (
+                          <div key={line.orderLineId} className="grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-2 border-t border-border pt-2">
+                            <span className="min-w-0 text-xs">
+                              {line.productName}{line.variantName ? ` · ${line.variantName}` : ''}
+                              <span className="block text-muted-foreground">{t('Remaining')}: {maxQuantity} · {formatNumber(Number(line.lineTotal), { style: 'currency', currency: paymentState?.currency ?? 'EGP' })}</span>
+                            </span>
+                            <Input
+                              aria-label={`${t('Refund quantity')} ${line.productName}`}
+                              inputMode="numeric"
+                              type="number"
+                              min="0"
+                              max={maxQuantity}
+                              step="1"
+                              value={lineQuantities[line.orderLineId] ?? ''}
+                              disabled={Boolean(pendingCommand) || mutation.isPending}
+                              onChange={(event) => setLineQuantities((current) => ({ ...current, [line.orderLineId]: event.target.value }))}
+                            />
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between border-t border-border pt-2 text-xs">
+                        <span>{t('Selected item value')}</span>
+                        <strong><bdi dir="ltr">{formatNumber(Number(formatMoneyCents(lineRefundCents)), { style: 'currency', currency: paymentState?.currency ?? 'EGP' })}</bdi></strong>
+                      </div>
+                    </>
+                  )}
+                </section>
+              )}
               <label className="grid gap-1.5 text-sm font-medium">
                 {t('Refund reason')}
                 <Input
@@ -622,4 +727,25 @@ function ReceiptRow({ label, value }: { label: string; value: string }) {
       <dd className="m-0 break-all text-end">{value}</dd>
     </div>
   );
+}
+
+function allocateUnitCents(
+  totalCents: bigint,
+  totalUnits: number,
+  firstUnit: number,
+  quantity: number,
+): bigint {
+  if (
+    totalUnits <= 0 ||
+    firstUnit < 0 ||
+    quantity <= 0 ||
+    firstUnit + quantity > totalUnits
+  )
+    return 0n;
+  const units = BigInt(totalUnits);
+  const base = totalCents / units;
+  const extraCents = totalCents % units;
+  const prefix = (count: number) =>
+    base * BigInt(count) + BigInt(Math.min(count, Number(extraCents)));
+  return prefix(firstUnit + quantity) - prefix(firstUnit);
 }

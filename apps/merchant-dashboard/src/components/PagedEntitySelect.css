@@ -368,3 +368,16 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.entity-picker-floating-menu {
+  inset-inline: auto;
+  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  color: #273345;
+}
+.entity-picker-floating-menu .entity-picker-option {
+  font-size: 14px;
+}
+.entity-picker-floating-menu .entity-picker-create button {
+  min-height: 36px;
+  font-size: 13px;
+}

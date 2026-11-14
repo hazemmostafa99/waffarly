@@ -34,6 +34,7 @@ export async function saveCheckoutLine(
     select: {
       id: true,
       name: true,
+      menuSection: { select: { id: true, name: true } },
       availability: true,
       revision: true,
       inventoryConfiguration: { select: { mode: true } },
@@ -91,9 +92,11 @@ export async function saveCheckoutLine(
   }
 
   // 2. Hold available finished stock; ingredients are accounted for at acceptance.
-  const recipeHandling = product.inventoryConfiguration?.mode === 'RECIPE';
+  const inventoryMode = product.inventoryConfiguration?.mode ?? null;
+  const tracksRawStock = inventoryMode === 'DIRECT' || inventoryMode === 'RECIPE';
+  const recipeHandling = inventoryMode === 'RECIPE';
   let stockReserved = false;
-  if (!recipeHandling && variant?.stockQuantity !== null && variant?.stockQuantity !== undefined) {
+  if (!tracksRawStock && variant?.stockQuantity !== null && variant?.stockQuantity !== undefined) {
     const reservation = await transaction.productVariant.updateMany({
       where: {
         id: variant.id,
@@ -161,6 +164,8 @@ export async function saveCheckoutLine(
     data: {
       order: { connect: { id_merchantId: { id: orderId, merchantId } } },
       productId: product.id,
+      menuSectionIdAtSale: product.menuSection?.id ?? null,
+      menuSectionNameAtSale: product.menuSection?.name ?? null,
       variantId: variant?.id ?? null,
       productName: product.name,
       variantName: variant?.name ?? null,
@@ -170,7 +175,12 @@ export async function saveCheckoutLine(
       quantity: item.quantity,
       unitPrice: formatCents(unitPriceCents),
       lineTotal: formatCents(lineTotalCents),
-      stockHandling: recipeHandling ? 'recipe_acceptance' : 'legacy',
+      stockHandling:
+        inventoryMode === 'DIRECT'
+          ? 'direct_acceptance'
+          : recipeHandling
+            ? 'recipe_acceptance'
+            : 'legacy',
       stockReserved,
       position,
       selections: { create: selectionSnapshots },
@@ -178,8 +188,11 @@ export async function saveCheckoutLine(
     },
     select: { id: true },
   });
-  if (recipeHandling) {
-    const requirements = await consumption.requirements(transaction, merchantId, [
+  if (tracksRawStock) {
+    const requirements = await consumption.requirements(
+      transaction,
+      merchantId,
+      [
       {
         productId: product.id,
         variantId: variant?.id ?? null,
@@ -190,7 +203,9 @@ export async function saveCheckoutLine(
           quantity: selection.quantity,
         })),
       },
-    ]);
+      ],
+      inventoryMode!,
+    );
     await freezeLineStockRequirements(transaction, merchantId, savedLine.id, requirements);
   }
   return orderTotalCents;

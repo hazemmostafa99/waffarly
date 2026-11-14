@@ -2,9 +2,11 @@ import { ConflictException, Inject, Injectable, NotFoundException } from '@nestj
 import type {
   CreateStockOpeningRequest,
   CursorPage,
+  RecordStockWasteRequest,
   StockBalance,
   StockMovement,
   StockMovementBatchResult,
+  TransferStockRequest,
 } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
@@ -12,8 +14,12 @@ import { isUniqueConstraintError } from '../../infrastructure/database/prisma-er
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import {
   createStockOpeningSchema,
+  recordStockWasteSchema,
+  transferStockSchema,
   type StockBalanceListQuery,
   type StockMovementListQuery,
+  type RecordStockWasteInput,
+  type TransferStockInput,
 } from './inventory.schemas.js';
 import { convertToBaseQuantity, normalizeStockQuantity } from './stock-quantity.js';
 import { movementInclude, toBatchResult } from './ledger/ledger.mapper.js';
@@ -109,6 +115,63 @@ export class InventoryLedgerService {
     }
   }
 
+  async recordWaste(
+    merchantId: string,
+    actor: string,
+    input: RecordStockWasteRequest,
+  ): Promise<StockMovementBatchResult> {
+    const parsed = parseRequest(recordStockWasteSchema, input) as RecordStockWasteInput;
+    return this.prisma.$transaction(async (transaction) => {
+      const movements = await prepareQuantityMovements(
+        transaction,
+        merchantId,
+        parsed.lines,
+        (line) => line.warehouseId,
+        true,
+      );
+      return this.postMovementBatch(transaction, merchantId, actor, {
+        requestId: parsed.requestId,
+        sourceType: 'stock_waste',
+        sourceId: parsed.requestId,
+        kind: 'waste',
+        reason: parsed.reason,
+        movements,
+      });
+    });
+  }
+
+  async transferStock(
+    merchantId: string,
+    actor: string,
+    input: TransferStockRequest,
+  ): Promise<StockMovementBatchResult> {
+    const parsed = parseRequest(transferStockSchema, input) as TransferStockInput;
+    return this.prisma.$transaction(async (transaction) => {
+      const source = await prepareQuantityMovements(
+        transaction,
+        merchantId,
+        parsed.lines,
+        () => parsed.sourceWarehouseId,
+        true,
+      );
+      const destination = await prepareQuantityMovements(
+        transaction,
+        merchantId,
+        parsed.lines,
+        () => parsed.destinationWarehouseId,
+        false,
+      );
+      return this.postMovementBatch(transaction, merchantId, actor, {
+        requestId: parsed.requestId,
+        sourceType: 'stock_transfer',
+        sourceId: parsed.requestId,
+        kind: 'transfer',
+        reason: parsed.reason,
+        movements: [...source, ...destination],
+      });
+    });
+  }
+
   /** Apply movements on the caller's transaction; this method never opens a transaction. */
   async postMovementBatch(
     transaction: Prisma.TransactionClient,
@@ -147,4 +210,48 @@ export class InventoryLedgerService {
   ): Promise<CursorPage<StockMovement>> {
     return listMovements(this.prisma, merchantId, input);
   }
+}
+
+type QuantityActionLine = {
+  stockItemId: string;
+  condition: 'available' | 'non_sellable';
+  quantity: string;
+  unitCode: string;
+};
+
+async function prepareQuantityMovements(
+  transaction: Prisma.TransactionClient,
+  merchantId: string,
+  lines: readonly QuantityActionLine[],
+  warehouseId: (line: QuantityActionLine) => string,
+  debit: boolean,
+) {
+  const itemIds = [...new Set(lines.map((line) => line.stockItemId))];
+  const items = await transaction.stockItem.findMany({
+    where: { merchantId, id: { in: itemIds }, archivedAt: null },
+    include: { units: true },
+  });
+  if (items.length !== itemIds.length) throw new NotFoundException('Active stock item was not found.');
+  const itemById = new Map(items.map((item) => [item.id, item]));
+  return lines.map((line) => {
+    const item = itemById.get(line.stockItemId)!;
+    const baseDelta = convertToBaseQuantity(
+      line.quantity,
+      line.unitCode,
+      item.baseUnit as Parameters<typeof convertToBaseQuantity>[2],
+      item.units.map((unit) => ({
+        code: unit.code,
+        name: unit.name,
+        baseQuantity: unit.baseQuantity.toFixed(6),
+      })),
+    );
+    return {
+      warehouseId: warehouseId(line),
+      stockItemId: line.stockItemId,
+      condition: line.condition,
+      unitCode: line.unitCode,
+      enteredQuantity: normalizeStockQuantity(line.quantity),
+      baseDelta: debit ? `-${baseDelta}` : baseDelta,
+    };
+  });
 }

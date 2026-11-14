@@ -17,6 +17,7 @@ import { posKitchenTicketInclude } from '../kitchen/pos-kitchen.persistence.js';
 
 export const orderTransitionInclude = {
   kitchenTicket: posKitchenTicketInclude,
+  discountRedemption: true,
   diningSession: { select: { table: { select: { code: true } } } },
   lines: {
     orderBy: { position: 'asc' as const },

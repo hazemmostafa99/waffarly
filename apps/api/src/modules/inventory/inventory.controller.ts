@@ -17,25 +17,34 @@ import type {
   StockItem,
   StockItemConversion,
   StockItemConversionRequest,
+  StockItemCostSummary,
+  SetStockItemOpeningCostRequest,
   StockItemRevisionRequest,
   UpdateStockItemRequest,
 } from '@waffarly/contracts';
 import { ZodValidationPipe } from '../../common/http/zod-validation.pipe.js';
 import { CurrentOwner, OwnerGuard } from '../auth/index.js';
 import { InventoryService } from './inventory.service.js';
+import { InventoryCostService } from './inventory-cost.service.js';
 import {
   convertStockItemSchema,
   createStockItemSchema,
   listStockItemsSchema,
+  listStockItemCostEventsSchema,
   stockItemRevisionSchema,
+  setStockItemOpeningCostSchema,
   updateStockItemSchema,
   type StockItemListQuery,
+  type StockItemCostEventsQuery,
 } from './inventory.schemas.js';
 
 @UseGuards(OwnerGuard)
 @Controller('owner/inventory/items')
 export class InventoryController {
-  constructor(@Inject(InventoryService) private readonly inventory: InventoryService) {}
+  constructor(
+    @Inject(InventoryService) private readonly inventory: InventoryService,
+    @Inject(InventoryCostService) private readonly costs: InventoryCostService,
+  ) {}
 
   @Get()
   list(
@@ -52,6 +61,26 @@ export class InventoryController {
     @Param('id', new ParseUUIDPipe()) id: string,
   ): Promise<StockItem> {
     return this.inventory.get(owner.merchantId, id);
+  }
+
+  @Get(':id/cost')
+  getCost(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Query(new ZodValidationPipe(listStockItemCostEventsSchema, { format: 'messages' }))
+    query: StockItemCostEventsQuery,
+  ): Promise<StockItemCostSummary> {
+    return this.costs.getCostSummary(owner.merchantId, id, query);
+  }
+
+  @Post(':id/opening-cost')
+  setOpeningCost(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(new ZodValidationPipe(setStockItemOpeningCostSchema, { format: 'messages' }))
+    input: SetStockItemOpeningCostRequest,
+  ): Promise<StockItemCostSummary> {
+    return this.costs.setOpeningCost(owner.merchantId, owner.username, id, input);
   }
 
   @Post()

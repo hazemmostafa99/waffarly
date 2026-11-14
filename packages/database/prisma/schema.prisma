@@ -129,6 +129,8 @@ model Merchant {
   modifierGroups           ModifierGroup[]
   storefrontOrders         StorefrontOrder[]
   stockItems               StockItem[]
+  stockItemCostCurrent     StockItemCostCurrent[]
+  stockItemCostEvents      StockItemCostEvent[]
   branches                 Branch[]
   warehouses               Warehouse[]
   stockBalances            StockBalance[]
@@ -258,12 +260,17 @@ model StockItem {
   merchant              Merchant                              @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   units                 StockItemUnit[]
   balances              StockBalance[]
+  currentCost           StockItemCostCurrent?
+  costEvents            StockItemCostEvent[]
+  supplierCreditNoteLines PurchaseSupplierCreditNoteLine[]
+  purchaseCorrectionLines PurchaseInvoiceCorrectionLine[]
   reorderThresholds     StockReorderThreshold[]
   movements             StockMovement[]
   purchaseInvoiceLines  PurchaseInvoiceLine[]
   productComponents     ProductInventoryComponent[]
   modifierEffects       ProductModifierEffect[]
   orderLineRequirements StorefrontOrderLineStockRequirement[]
+  saleCostSnapshots     StorefrontOrderLineCostSnapshot[]
 
   @@unique([id, merchantId])
   @@unique([merchantId, creationRequest])
@@ -341,6 +348,8 @@ model Warehouse {
   reorderThresholds    StockReorderThreshold[]
   movements            StockMovement[]
   purchaseInvoices     PurchaseInvoice[]
+  currentItemCosts     StockItemCostCurrent[]
+  itemCostEvents       StockItemCostEvent[]
   recipeOrders         StorefrontOrder[]
 
   @@unique([id, merchantId])
@@ -369,6 +378,67 @@ model StockBalance {
   @@unique([merchantId, warehouseId, stockItemId, condition])
   @@index([merchantId, warehouseId, createdAt, id])
   @@map("stock_balances")
+}
+
+// The latest merchant-wide base-unit cost used by future profitability snapshots.
+model StockItemCostCurrent {
+  merchantId          String      @db.Uuid
+  stockItemId         String      @db.Uuid
+  baseUnitCost        Decimal     @db.Decimal(38, 12)
+  sourceType          String      @db.VarChar(16)
+  sourceInvoiceId     String?     @db.Uuid
+  sourceInvoiceNumber String?     @db.VarChar(100)
+  supplierName        String?     @db.VarChar(160)
+  sourceWarehouseId   String?     @db.Uuid
+  sourceWarehouseName String?     @db.VarChar(160)
+  enteredUnitCode     String      @db.VarChar(32)
+  enteredUnitName     String      @db.VarChar(80)
+  enteredUnitCost     Decimal     @db.Decimal(18, 2)
+  revision            Int         @default(1)
+  updatedBy           String      @db.VarChar(80)
+  updatedAt           DateTime    @updatedAt @db.Timestamptz(6)
+  merchant            Merchant    @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  stockItem           StockItem   @relation(fields: [stockItemId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  sourceInvoice       PurchaseInvoice? @relation(fields: [sourceInvoiceId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  sourceWarehouse     Warehouse?  @relation(fields: [sourceWarehouseId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@id([merchantId, stockItemId])
+  @@unique([stockItemId, merchantId])
+  @@map("stock_item_cost_current")
+}
+
+// Immutable, revision-ordered history for opening prices and confirmed purchases.
+model StockItemCostEvent {
+  id                  String      @id @default(uuid()) @db.Uuid
+  merchantId          String      @db.Uuid
+  stockItemId         String      @db.Uuid
+  revision            Int
+  requestId           String      @db.Uuid
+  requestFingerprint  String      @db.VarChar(64)
+  baseUnitCost        Decimal     @db.Decimal(38, 12)
+  sourceType          String      @db.VarChar(16)
+  sourceInvoiceId     String?     @db.Uuid
+  sourceInvoiceNumber String?     @db.VarChar(100)
+  supplierName        String?     @db.VarChar(160)
+  sourceWarehouseId   String?     @db.Uuid
+  sourceWarehouseName String?     @db.VarChar(160)
+  enteredUnitCode     String      @db.VarChar(32)
+  enteredUnitName     String      @db.VarChar(80)
+  enteredUnitCost     Decimal     @db.Decimal(18, 2)
+  reason              String?     @db.VarChar(500)
+  actor               String      @db.VarChar(80)
+  createdAt           DateTime    @db.Timestamptz(6)
+  merchant            Merchant    @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  stockItem           StockItem   @relation(fields: [stockItemId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  sourceInvoice       PurchaseInvoice? @relation(fields: [sourceInvoiceId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  sourceWarehouse     Warehouse?  @relation(fields: [sourceWarehouseId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  movementSnapshots   StockMovement[]
+  saleCostSnapshots   StorefrontOrderLineCostSnapshot[]
+
+  @@unique([merchantId, stockItemId, revision])
+  @@unique([merchantId, stockItemId, requestId])
+  @@index([merchantId, stockItemId, createdAt, id])
+  @@map("stock_item_cost_events")
 }
 
 // A reorder point is configured for one item in one warehouse, in that item's base unit.
@@ -431,12 +501,15 @@ model StockMovement {
   unitCode        String             @db.VarChar(32)
   enteredQuantity Decimal            @db.Decimal(18, 6)
   baseDelta       Decimal            @db.Decimal(18, 6)
+  costRevision    Int?
+  baseUnitCost    Decimal?           @db.Decimal(38, 12)
   position        Int
   createdBy       String             @db.VarChar(80)
   createdAt       DateTime           @default(now()) @db.Timestamptz(6)
   batch           StockMovementBatch @relation(fields: [batchId, merchantId], references: [id, merchantId], onDelete: Restrict)
   warehouse       Warehouse          @relation(fields: [warehouseId, merchantId], references: [id, merchantId], onDelete: Restrict)
   stockItem       StockItem          @relation(fields: [stockItemId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  costEvent       StockItemCostEvent? @relation(fields: [merchantId, stockItemId, costRevision], references: [merchantId, stockItemId, revision], onDelete: Restrict)
 
   @@unique([batchId, position])
   @@index([merchantId, warehouseId, createdAt, id])
@@ -478,13 +551,20 @@ model PurchaseInvoice {
   supplierName             String                @db.VarChar(160)
   supplierInvoiceNumber    String?               @db.VarChar(100)
   supplierInvoiceNumberKey String?               @db.VarChar(100)
+  invoiceDate              DateTime?             @db.Date
+  notes                    String?               @db.VarChar(2000)
+  discountType             String                @default("amount") @db.VarChar(16)
+  discountValue            Decimal?              @db.Decimal(18, 2)
   warehouseId              String                @db.Uuid
   warehouseName            String                @db.VarChar(160)
   branchName               String                @db.VarChar(160)
   creationRequest          String                @db.Uuid
   creationFingerprint      String                @db.VarChar(64)
   status                   String                @default("draft") @db.VarChar(16)
-  totalAmount              Decimal?               @db.Decimal(18, 2)
+  subtotalAmount           Decimal?              @db.Decimal(18, 2)
+  discountAmount           Decimal?              @db.Decimal(18, 2)
+  shippingAmount           Decimal?              @db.Decimal(18, 2)
+  totalAmount              Decimal?              @db.Decimal(18, 2)
   revision                 Int                   @default(1)
   confirmedAt              DateTime?             @db.Timestamptz(6)
   confirmedBy              String?               @db.VarChar(80)
@@ -496,6 +576,11 @@ model PurchaseInvoice {
   supplier                 PurchaseSupplier      @relation(fields: [supplierId, merchantId], references: [id, merchantId], onDelete: Restrict)
   warehouse                Warehouse             @relation(fields: [warehouseId, merchantId], references: [id, merchantId], onDelete: Restrict)
   lines                    PurchaseInvoiceLine[]
+  currentItemCosts         StockItemCostCurrent[]
+  itemCostEvents           StockItemCostEvent[]
+  payments                 PurchaseSupplierPayment[]
+  creditNotes              PurchaseSupplierCreditNote[]
+  corrections              PurchaseInvoiceCorrection[]
 
   @@unique([id, merchantId])
   @@unique([merchantId, creationRequest])
@@ -517,11 +602,17 @@ model PurchaseInvoiceLine {
   condition     String          @db.VarChar(24)
   quantity      Decimal         @db.Decimal(18, 6)
   unitCost      Decimal?        @db.Decimal(18, 2)
-  lineTotal     Decimal?        @db.Decimal(18, 2)
+  lineSubtotal       Decimal?        @db.Decimal(18, 2)
+  discountAllocation Decimal?        @db.Decimal(18, 2)
+  shippingAllocation Decimal?        @db.Decimal(18, 2)
+  lineTotal          Decimal?        @db.Decimal(18, 2)
   position      Int
   invoice       PurchaseInvoice @relation(fields: [invoiceId, merchantId], references: [id, merchantId], onDelete: Restrict)
   stockItem     StockItem       @relation(fields: [stockItemId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  creditNoteLines PurchaseSupplierCreditNoteLine[]
+  correctionLines PurchaseInvoiceCorrectionLine[]
 
+  @@unique([id, merchantId], map: "purchase_invoice_lines_tenant_identity_key")
   @@unique([invoiceId, position])
   @@unique([invoiceId, stockItemId, condition])
   @@index([merchantId, stockItemId, invoiceId])
@@ -1314,6 +1405,12 @@ model StorefrontOrderLine {
   note                      String?                               @db.VarChar(500)
   kitchenReadyAt            DateTime?                             @db.Timestamptz(6)
   stockRequirementsFrozenAt DateTime?                             @db.Timestamptz(6)
+  recognizedRevenueAmount   Decimal?                              @db.Decimal(12, 2)
+  revenueRecognizedAt       DateTime?                             @db.Timestamptz(6)
+  costSnapshotTotal         Decimal?                              @db.Decimal(18, 2)
+  costSnapshotAt            DateTime?                             @db.Timestamptz(6)
+  menuSectionIdAtSale       String?                               @db.Uuid
+  menuSectionNameAtSale     String?                               @db.VarChar(160)
   id                        String                                @id @default(uuid()) @db.Uuid
   orderId                   String                                @db.Uuid
   merchantId                String                                @db.Uuid
@@ -1332,6 +1429,8 @@ model StorefrontOrderLine {
   selections                StorefrontOrderLineSelection[]
   variantAttributes         StorefrontOrderLineVariantAttribute[]
   stockRequirements         StorefrontOrderLineStockRequirement[]
+  costSnapshots             StorefrontOrderLineCostSnapshot[]
+  refundLines               PosOrderRefundLine[]
   checkAllocations          PosOrderCheckLine[]
   itemReturnLines           PosOrderItemReturnLine[]
 
@@ -1340,6 +1439,29 @@ model StorefrontOrderLine {
   @@index([orderId, position])
   @@index([merchantId, variantId])
   @@map("storefront_order_lines")
+}
+
+// Immutable ingredient costs attributed to one confirmed order line at consumption time.
+model StorefrontOrderLineCostSnapshot {
+  id            String              @id @default(uuid()) @db.Uuid
+  orderLineId   String              @db.Uuid
+  merchantId    String              @db.Uuid
+  stockItemId   String              @db.Uuid
+  stockItemName String              @db.VarChar(160)
+  baseUnit      String              @db.VarChar(16)
+  quantity      Decimal             @db.Decimal(18, 6)
+  costRevision  Int
+  baseUnitCost  Decimal             @db.Decimal(38, 12)
+  extendedCost  Decimal             @db.Decimal(18, 2)
+  position      Int                 @default(0)
+  createdAt     DateTime            @default(now()) @db.Timestamptz(6)
+  orderLine     StorefrontOrderLine @relation(fields: [orderLineId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  stockItem     StockItem           @relation(fields: [stockItemId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  costEvent     StockItemCostEvent  @relation(fields: [merchantId, stockItemId, costRevision], references: [merchantId, stockItemId, revision], onDelete: Restrict)
+
+  @@unique([orderLineId, stockItemId])
+  @@index([merchantId, stockItemId, createdAt, id])
+  @@map("storefront_order_line_cost_snapshots")
 }
 
 // Checks allocate one POS order without creating duplicate sales or stock-bearing orders.
@@ -1468,13 +1590,35 @@ model PosOrderRefund {
   createdBy            PosEmployee     @relation("PosRefundIssuer", fields: [createdByEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
   approvedBy           PosEmployee?    @relation("PosRefundApprover", fields: [approvedByEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
   tenders              PosOrderRefundTender[]
+  lines                PosOrderRefundLine[]
 
   @@unique([id, shiftId, merchantId])
+  @@unique([id, orderId, merchantId])
   @@unique([merchantId, requestId])
   @@unique([merchantId, receiptNumber])
   @@index([merchantId, orderId, checkId, issuedAt])
   @@index([merchantId, shiftId, issuedAt])
   @@map("pos_order_refunds")
+}
+
+// Financial item refunds are separate from physical returns and never change stock.
+model PosOrderRefundLine {
+  id                       String              @id @default(uuid()) @db.Uuid
+  merchantId               String              @db.Uuid
+  refundId                 String              @db.Uuid
+  orderId                  String              @db.Uuid
+  orderLineId              String              @db.Uuid
+  productName              String              @db.VarChar(160)
+  variantName              String?             @db.VarChar(160)
+  quantity                 Int
+  revenueReversalAmount    Decimal             @db.Decimal(12, 2)
+  originalCostAmount       Decimal?            @db.Decimal(18, 2)
+  refund                  PosOrderRefund      @relation(fields: [refundId, orderId, merchantId], references: [id, orderId, merchantId], onDelete: Restrict)
+  orderLine               StorefrontOrderLine @relation(fields: [orderLineId, orderId, merchantId], references: [id, orderId, merchantId], onDelete: Restrict)
+
+  @@unique([refundId, orderLineId])
+  @@index([merchantId, orderLineId])
+  @@map("pos_order_refund_lines")
 }
 
 // Physical POS item returns are immutable audit records; money and inventory stay separate.
@@ -1572,6 +1716,7 @@ model PosShiftRefundMovement {
 // Cash-in/out adjustments require a reason and supervisor authorization when entered by a cashier.
 model PosShiftManualCashMovement {
   safeTransfer PosCashTransfer?
+  purchasePayments PurchaseSupplierPayment[]
   id                   String       @id @default(uuid()) @db.Uuid
   merchantId           String       @db.Uuid
   shiftId              String       @db.Uuid
@@ -1899,6 +2044,7 @@ model PosCashSafeMovement {
   safeId String @db.Uuid
   requestId String @db.Uuid
   transferId String? @unique @db.Uuid
+  purchasePayments PurchaseSupplierPayment[]
   kind String @db.VarChar(16)
   amount Decimal @db.Decimal(12, 2)
   reason String @db.VarChar(500)
@@ -1907,9 +2053,117 @@ model PosCashSafeMovement {
   safe PosCashSafe @relation(fields: [safeId, branchId, merchantId], references: [id, branchId, merchantId], onDelete: Restrict)
   transfer PosCashTransfer? @relation(fields: [transferId, merchantId], references: [id, merchantId], onDelete: Restrict)
   @@unique([transferId, merchantId])
+  @@unique([id, merchantId])
   @@unique([merchantId, requestId])
   @@index([merchantId, safeId, createdAt, id])
   @@map("pos_cash_safe_movements")
+}
+
+// Supplier payments only allocate money already recorded as a cash outflow.
+model PurchaseSupplierPayment {
+  id                       String                    @id @default(uuid()) @db.Uuid
+  merchantId               String                    @db.Uuid
+  invoiceId                String                    @db.Uuid
+  requestId                String                    @db.Uuid
+  fingerprint              String                    @db.VarChar(64)
+  amount                   Decimal                   @db.Decimal(12, 2)
+  paidAt                   DateTime                  @db.Timestamptz(6)
+  reason                   String                    @db.VarChar(500)
+  createdBy                String                    @db.VarChar(160)
+  safeMovementId           String?                   @db.Uuid
+  drawerMovementId         String?                   @db.Uuid
+  drawerShiftId            String?                   @db.Uuid
+  invoice                  PurchaseInvoice           @relation(fields: [invoiceId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  safeMovement             PosCashSafeMovement?      @relation(fields: [safeMovementId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  drawerMovement           PosShiftManualCashMovement? @relation(fields: [drawerMovementId, drawerShiftId, merchantId], references: [id, shiftId, merchantId], onDelete: Restrict)
+
+  @@unique([merchantId, requestId])
+  @@index([merchantId, invoiceId, paidAt, id])
+  @@index([merchantId, safeMovementId])
+  @@index([merchantId, drawerMovementId, drawerShiftId])
+  @@map("purchase_supplier_payments")
+}
+
+// Supplier credit notes reduce the amount due without synthesizing a cash movement.
+model PurchaseSupplierCreditNote {
+  id               String                       @id @default(uuid()) @db.Uuid
+  merchantId       String                       @db.Uuid
+  invoiceId        String                       @db.Uuid
+  requestId        String                       @db.Uuid
+  fingerprint      String                       @db.VarChar(64)
+  creditNumber     String                       @db.VarChar(40)
+  reason           String                       @db.VarChar(500)
+  amount           Decimal                      @db.Decimal(12, 2)
+  createdBy        String                       @db.VarChar(160)
+  issuedAt         DateTime                     @db.Timestamptz(6)
+  snapshot         Json
+  invoice          PurchaseInvoice              @relation(fields: [invoiceId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  lines            PurchaseSupplierCreditNoteLine[]
+
+  @@unique([merchantId, requestId])
+  @@unique([merchantId, creditNumber])
+  @@unique([id, merchantId])
+  @@index([merchantId, invoiceId, issuedAt, id])
+  @@map("purchase_supplier_credit_notes")
+}
+
+model PurchaseSupplierCreditNoteLine {
+  id             String                     @id @default(uuid()) @db.Uuid
+  merchantId     String                     @db.Uuid
+  creditNoteId   String                     @db.Uuid
+  invoiceLineId  String                     @db.Uuid
+  stockItemId    String                     @db.Uuid
+  stockItemName  String                     @db.VarChar(160)
+  condition      String                     @db.VarChar(24)
+  unitCode       String                     @db.VarChar(32)
+  unitName       String                     @db.VarChar(80)
+  quantity       Decimal                    @db.Decimal(18, 6)
+  creditAmount   Decimal                    @db.Decimal(12, 2)
+  line           PurchaseInvoiceLine        @relation(fields: [invoiceLineId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  stockItem      StockItem                  @relation(fields: [stockItemId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  creditNote     PurchaseSupplierCreditNote @relation(fields: [creditNoteId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([creditNoteId, invoiceLineId])
+  @@index([merchantId, invoiceLineId])
+  @@map("purchase_supplier_credit_note_lines")
+}
+
+// Corrections are append-only and may advance today's cost only when they correct its source.
+model PurchaseInvoiceCorrection {
+  id           String                            @id @default(uuid()) @db.Uuid
+  merchantId   String                            @db.Uuid
+  invoiceId    String                            @db.Uuid
+  requestId    String                            @db.Uuid
+  fingerprint  String                            @db.VarChar(64)
+  amountDelta  Decimal                           @db.Decimal(12, 2)
+  reason       String                            @db.VarChar(500)
+  createdBy    String                            @db.VarChar(160)
+  issuedAt     DateTime                          @db.Timestamptz(6)
+  snapshot     Json
+  invoice      PurchaseInvoice                  @relation(fields: [invoiceId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  lines        PurchaseInvoiceCorrectionLine[]
+
+  @@unique([merchantId, requestId])
+  @@unique([id, merchantId])
+  @@index([merchantId, invoiceId, issuedAt, id])
+  @@map("purchase_invoice_corrections")
+}
+
+model PurchaseInvoiceCorrectionLine {
+  id               String                    @id @default(uuid()) @db.Uuid
+  merchantId       String                    @db.Uuid
+  correctionId     String                    @db.Uuid
+  invoiceLineId    String                    @db.Uuid
+  stockItemId      String                    @db.Uuid
+  originalUnitCost Decimal                   @db.Decimal(18, 2)
+  correctedUnitCost Decimal                  @db.Decimal(18, 2)
+  correction       PurchaseInvoiceCorrection @relation(fields: [correctionId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  invoiceLine      PurchaseInvoiceLine       @relation(fields: [invoiceLineId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  stockItem        StockItem                  @relation(fields: [stockItemId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([correctionId, invoiceLineId])
+  @@index([merchantId, stockItemId])
+  @@map("purchase_invoice_correction_lines")
 }
 
 // Storefront-owned public restaurant settings. Reference metadata is explicitly demo-only.

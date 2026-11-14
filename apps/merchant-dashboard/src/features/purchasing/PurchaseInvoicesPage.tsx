@@ -14,11 +14,19 @@ import type {
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { ApiError, apiRequest, apiRequestPage } from '../../lib/api-client.js';
 import { inventoryCopy } from '../inventory/inventory-copy.js';
-import { useLocation, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useOutletContext,
+  useSearchParams,
+} from 'react-router-dom';
 import { InventoryHeader } from '../inventory/InventoryHeader.js';
 import type { SupplierFields } from './purchasing.types.js';
 import { SupplierEditor } from './SupplierEditor.js';
 import { PurchaseInvoiceEditor } from './PurchaseInvoiceEditor.js';
+import { PurchaseSupplierPaymentsPanel } from './PurchaseSupplierPaymentsPanel.js';
+import { PurchaseInvoiceAdjustmentsPanel } from './PurchaseInvoiceAdjustmentsPanel.js';
 
 type SupplierEditorState = { supplier: PurchaseSupplier | null; key: string };
 
@@ -240,9 +248,18 @@ export function PurchaseInvoicesPage() {
       id: 'amount',
       header: text('Total (EGP)'),
       cell: (invoice) =>
-        invoice.totalAmount === null
-          ? text('Cost not recorded')
-          : formatDigits(invoice.totalAmount),
+        invoice.totalAmount === null ? (
+          text('Cost not recorded')
+        ) : (
+          <div className="inventory-table-name">
+            <strong>{formatDigits(invoice.totalAmount)}</strong>
+            {invoice.status === 'confirmed' && (
+              <small>
+                {text('Due')}: {formatDigits(invoice.balanceDue ?? invoice.totalAmount)}
+              </small>
+            )}
+          </div>
+        ),
     },
     {
       id: 'status',
@@ -505,26 +522,11 @@ export function PurchaseInvoicesPage() {
   if (isInvoiceEditor) {
     return (
       <div className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-        <InventoryHeader
-          title={
-            editorInvoiceId
-              ? editorInvoice?.status === 'confirmed'
-                ? 'Confirmed invoice'
-                : 'Edit draft'
-              : 'New purchase invoice'
-          }
-          description="Save a draft, review received quantities, then add them to your warehouse."
-          actions={
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy}
-              onClick={() => navigate('/inventory/purchases')}
-            >
-              {text('Back to purchases')}
-            </Button>
-          }
-        />
+        <nav className="purchase-entry-breadcrumb" aria-label={text('Purchases')}>
+          <Link to="/inventory/purchases">{text('Purchases')}</Link>
+          <span aria-hidden="true">/</span>
+          <span>{text(editorInvoiceId ? 'Edit draft' : 'New purchase invoice')}</span>
+        </nav>
         {editorInvoiceId && !editorInvoice && (editorInvoiceLoading || !editorInvoiceError) && (
           <InventoryCard title={text('Loading draft')}>
             <p role="status">{text('Loading purchase invoice…')}</p>
@@ -926,11 +928,56 @@ export function PurchaseInvoicesPage() {
               <strong>{text('Warehouse')}:</strong>{' '}
               {formatDigits(`${invoiceReview.branchName} · ${invoiceReview.warehouseName}`)}
             </p>
-            <p>
-              <strong>{text('Invoice total (EGP)')}:</strong>{' '}
-              {invoiceReview.totalAmount === null
-                ? text('Cost not recorded')
-                : formatDigits(invoiceReview.totalAmount)}
+            <div className="inventory-invoice-review-metadata">
+              {invoiceReview.invoiceDate && (
+                <p>
+                  <strong>{text('Invoice date')}:</strong>{' '}
+                  <span dir="ltr">{formatDigits(invoiceReview.invoiceDate)}</span>
+                </p>
+              )}
+              {invoiceReview.discountType === 'percentage' && (
+                <p>
+                  <strong>{text('Discount')}:</strong>{' '}
+                  {formatDigits(invoiceReview.discountValue ?? '0')}%
+                </p>
+              )}
+              {invoiceReview.notes && (
+                <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                  <strong>{text('Notes')}:</strong> {invoiceReview.notes}
+                </p>
+              )}
+            </div>
+            <div className="inventory-invoice-review-totals">
+              <p>
+                <strong>{text('Subtotal (EGP)')}:</strong>{' '}
+                {invoiceReview.subtotalAmount === null
+                  ? text('Cost not recorded')
+                  : formatDigits(invoiceReview.subtotalAmount)}
+              </p>
+              <p>
+                <strong>{text('Discount (EGP)')}:</strong>{' '}
+                {invoiceReview.discountAmount === null
+                  ? text('Cost not recorded')
+                  : formatDigits(invoiceReview.discountAmount)}
+              </p>
+              <p>
+                <strong>{text('Shipping (EGP)')}:</strong>{' '}
+                {invoiceReview.shippingAmount === null
+                  ? text('Cost not recorded')
+                  : formatDigits(invoiceReview.shippingAmount)}
+              </p>
+              <p>
+                <strong>{text('Invoice total (EGP)')}:</strong>{' '}
+                {invoiceReview.totalAmount === null
+                  ? text('Cost not recorded')
+                  : formatDigits(invoiceReview.totalAmount)}
+              </p>
+              {invoiceReview.correctedTotalAmount && invoiceReview.correctedTotalAmount !== invoiceReview.totalAmount && (
+                <p><strong>{text('Corrected invoice total (EGP)')}:</strong> {formatDigits(invoiceReview.correctedTotalAmount)}</p>
+              )}
+            </div>
+            <p className="inventory-note">
+              {text('Taxes are not included in this invoice total yet.')}
             </p>
             {invoiceReview.status === 'draft' &&
               invoiceReview.lines.some(
@@ -947,6 +994,24 @@ export function PurchaseInvoicesPage() {
                   : 'A confirmed purchase invoice cannot be edited. Correct stock with a separate reviewed movement.',
               )}
             </p>
+            {invoiceReview.status === 'confirmed' && (
+              <>
+                <PurchaseSupplierPaymentsPanel
+                  invoice={invoiceReview}
+                  onInvoiceChange={(updated) => {
+                    setInvoiceReview(updated);
+                    setRefreshKey((key) => key + 1);
+                  }}
+                />
+                <PurchaseInvoiceAdjustmentsPanel
+                  invoice={invoiceReview}
+                  onInvoiceChange={(updated) => {
+                    setInvoiceReview(updated);
+                    setRefreshKey((key) => key + 1);
+                  }}
+                />
+              </>
+            )}
             <ul>
               {invoiceReview.lines.map((line) => (
                 <li key={line.id}>
@@ -957,10 +1022,30 @@ export function PurchaseInvoicesPage() {
                     {formatDigits(`${line.baseUnit} (${line.unitName})`)}
                   </small>
                   <small>
-                    {text('Unit cost (EGP)')}: {line.unitCost === null
+                    {text('Unit cost (EGP)')}:{' '}
+                    {line.unitCost === null
                       ? text('Cost not recorded')
-                      : formatDigits(line.unitCost)}{' '}
-                    · {text('Line total (EGP)')}: {line.lineTotal === null
+                      : formatDigits(line.unitCost)}
+                  </small>
+                  <small>
+                    {text('Line subtotal (EGP)')}:{' '}
+                    {line.lineSubtotal === null
+                      ? text('Cost not recorded')
+                      : formatDigits(line.lineSubtotal)}
+                  </small>
+                  <small>
+                    {text('Discount share')}:{' '}
+                    {line.discountAllocation === null
+                      ? text('Cost not recorded')
+                      : formatDigits(line.discountAllocation)}{' '}
+                    · {text('Shipping share')}:{' '}
+                    {line.shippingAllocation === null
+                      ? text('Cost not recorded')
+                      : formatDigits(line.shippingAllocation)}
+                  </small>
+                  <small>
+                    {text('Final line total (EGP)')}:{' '}
+                    {line.lineTotal === null
                       ? text('Cost not recorded')
                       : formatDigits(line.lineTotal)}
                   </small>

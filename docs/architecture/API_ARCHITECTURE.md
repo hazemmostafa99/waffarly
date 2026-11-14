@@ -6,6 +6,13 @@ execute in Nest application services. Rules, calculations, reads, mapping and
 active-transaction helpers remain ordinary functions. No extra forwarding service
 layer is required. See [the exact standard and reviewed scope](API_APPLICATION_STANDARD.md).
 
+Purchase cost P03 (2026-11-14): Inventory owns one current base-unit cost and
+revision-ordered source history per merchant stock item, including opening cost.
+Purchasing records purchase-sourced cost through InventoryCostService inside the
+existing receipt transaction; the stock movement, invoice confirmation, and cost
+event commit or roll back together. See the
+[purchase cost feature](../features/purchase-cost-profitability/README.md).
+
 Developer workflow (2026-11-14): [CONTRIBUTING.md](../../CONTRIBUTING.md) is the
 daily entry point, with [operation traces](API_WORKFLOWS.md) and an
 [API test map](../testing/API_TESTING.md). Database suites use guarded

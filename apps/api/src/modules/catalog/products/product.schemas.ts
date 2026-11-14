@@ -3,6 +3,23 @@ import { z } from 'zod';
 import { MAX_PRODUCT_PRICE, isValidProductPrice } from '../catalog.constants.js';
 export const availability = z.enum(['available', 'unavailable']);
 
+export const productCostPreviewSchema = z
+  .object({
+    variantId: z.uuid().nullable(),
+    selections: z
+      .array(
+        z
+          .object({
+            modifierGroupId: z.uuid(),
+            modifierOptionId: z.uuid(),
+            quantity: z.number().int().min(1).max(99),
+          })
+          .strict(),
+      )
+      .max(100),
+  })
+  .strict();
+
 export const modifierOptionSchema = z.object({
   name: z.string().trim().min(1).max(160),
   priceAdjustment: z.string().regex(/^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/),

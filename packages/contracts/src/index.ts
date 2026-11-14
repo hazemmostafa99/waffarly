@@ -53,6 +53,11 @@ export type {
   StockItemRevisionRequest,
   StockItemConversionRequest,
   StockItemConversion,
+  StockItemCostSource,
+  StockItemCostEvent,
+  StockItemCostSnapshot,
+  StockItemCostSummary,
+  SetStockItemOpeningCostRequest,
   StockCondition,
   NegativeStockPolicy,
   InventoryWarehouse,
@@ -68,6 +73,9 @@ export type {
   StockBalance,
   StockOpeningLineRequest,
   CreateStockOpeningRequest,
+  RecordStockWasteRequest,
+  StockTransferLineRequest,
+  TransferStockRequest,
   StockMovement,
   StockMovementBatchResult,
   InventoryReorderThreshold,
@@ -81,12 +89,17 @@ export type {
 export { STOCK_CONDITIONS } from './inventory.js';
 export {
   PURCHASE_INVOICE_STATUSES,
+  resolvePurchaseInvoiceDiscount,
+  calculatePurchaseInvoiceAmounts,
   calculatePurchaseInvoiceLineTotal,
   calculatePurchaseInvoiceTotal,
+  isNonNegativePurchaseAmount,
   isPositivePurchaseUnitCost,
+  normalizePurchaseAmount,
   normalizePurchaseUnitCost,
 } from './purchasing.js';
 export type {
+  PurchaseInvoiceAmounts,
   PurchaseInvoiceStatus,
   PurchaseSupplierFields,
   PurchaseSupplier,
@@ -103,6 +116,14 @@ export type {
   ConfirmPurchaseInvoiceResult,
   PurchaseSupplierPage,
   PurchaseInvoicePage,
+  CreatePurchaseSupplierPaymentRequest,
+  PurchaseCashMovementSource,
+  PurchaseCashMovementOption,
+  PurchaseSupplierPaymentSummary,
+  CreatePurchaseSupplierCreditNoteRequest,
+  PurchaseSupplierCreditNoteSummary,
+  CreatePurchaseInvoiceCorrectionRequest,
+  PurchaseInvoiceCorrectionSummary,
 } from './purchasing.js';
 export type {
   ActivateFirstMonthRequest,
@@ -166,6 +187,9 @@ export type {
   CatalogProductInventoryConfigurationFields,
   CatalogProductInventoryTarget,
   CatalogProductInventoryTargetFields,
+  CatalogProductCostPreviewRequest,
+  CatalogProductCostLine,
+  CatalogProductCostPreview,
   ProductInventoryMode,
   CatalogProductImage,
   CatalogProductModifierGroup,
@@ -247,6 +271,7 @@ export type {
   OwnerPosItemReturnReportsQuery,
 } from './pos-returns.js';
 export type { OwnerPosOperationsReport } from './pos-reports.js';
+export type { OwnerProductProfitabilityReport, OwnerProductProfitabilityRow, OwnerProfitabilityDimensionRow } from './profitability.js';
 export type {
   PosReceipt,
   PosReceiptLine,

@@ -113,8 +113,10 @@ export function StorefrontOrdersPage() {
     [dateRange, fulfillment, orders, status, terms],
   );
 
-  const selectedRecipe = visibleOrders.find(
-    (order) => order.id === selectedId && order.requiresRecipeAcceptance,
+  const selectedInventoryAcceptance = visibleOrders.find(
+    (order) =>
+      order.id === selectedId &&
+      (order.requiresInventoryAcceptance ?? order.requiresRecipeAcceptance),
   );
 
   const counts = useMemo(
@@ -509,7 +511,7 @@ export function StorefrontOrdersPage() {
                                     ))}
                                   </div>
                                   <div className="orders-expanded-footer">
-                                    {!order.requiresRecipeAcceptance && (
+                                    {!(order.requiresInventoryAcceptance ?? order.requiresRecipeAcceptance) && (
                                       <span>
                                         {copy(
                                           'Tracked stock remains reserved until the order is rejected.',
@@ -517,7 +519,7 @@ export function StorefrontOrdersPage() {
                                       </span>
                                     )}
                                     {order.status === 'pending' &&
-                                      !order.requiresRecipeAcceptance &&
+                                      !(order.requiresInventoryAcceptance ?? order.requiresRecipeAcceptance) &&
                                       (confirmingRejectionId === order.id ? (
                                         <div className="orders-action-group">
                                           <span>
@@ -598,17 +600,17 @@ export function StorefrontOrdersPage() {
                   </div>
                 )}
               </div>
-              {selectedRecipe && (
+              {selectedInventoryAcceptance && (
                 <RecipeOrderActions
-                  key={selectedRecipe.id}
-                  order={selectedRecipe}
+                  key={selectedInventoryAcceptance.id}
+                  order={selectedInventoryAcceptance}
                   onSaved={(saved) => {
                     setOrders((current) =>
                       current.map((item) => (item.id === saved.id ? saved : item)),
                     );
                     setRefreshKey((key) => key + 1);
                   }}
-                  onReject={() => void updateStatus(selectedRecipe.id, 'rejected')}
+                  onReject={() => void updateStatus(selectedInventoryAcceptance.id, 'rejected')}
                 />
               )}
 

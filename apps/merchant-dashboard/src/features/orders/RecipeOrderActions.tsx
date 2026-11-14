@@ -71,8 +71,12 @@ export function RecipeOrderActions({
     <div className="recipe-order-actions">
       <p>
         {text(
-          'Recipe ingredients are deducted when this order is accepted.',
-          'تُخصم مكونات الوصفة عند قبول هذا الطلب.',
+          order.source === 'pos'
+            ? 'The POS sale is recorded when confirmed; stock cost is saved when usage is posted.'
+            : 'Sale revenue and stock cost are recorded when this order is accepted.',
+          order.source === 'pos'
+            ? 'يُسجل بيع نقطة البيع عند التأكيد، وتُحفظ تكلفة المخزون عند تسجيل الاستهلاك.'
+            : 'يُسجل إيراد البيع وتكلفة المخزون عند قبول الطلب.',
         )}
       </p>
       {order.inventoryLifecycle?.warehouseName && (
@@ -112,7 +116,7 @@ export function RecipeOrderActions({
               disabled={locked || !branchId}
               onClick={() => start('accept', { branchId })}
             >
-              {text('Accept and deduct ingredients', 'قبول وخصم المكونات')}
+              {text('Accept and record stock usage', 'قبول وتسجيل استهلاك المخزون')}
             </button>
             <button
               type="button"

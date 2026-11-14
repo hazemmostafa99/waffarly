@@ -112,6 +112,9 @@ export function toSummary(order: {
     }>;
   }>;
 }): StorefrontOrderSummary {
+  const hasRecipeAcceptance = order.lines.some((line) => line.stockHandling === 'recipe_acceptance');
+  const hasInventoryAcceptance =
+    hasRecipeAcceptance || order.lines.some((line) => line.stockHandling === 'direct_acceptance');
   return {
     ...(order.orderReference !== undefined ? { orderReference: order.orderReference } : {}),
     ...(order.cancelledAt !== undefined
@@ -141,9 +144,10 @@ export function toSummary(order: {
     ...(order.completedAt !== undefined
       ? { completedAt: order.completedAt?.toISOString() ?? null }
       : {}),
-    ...(order.lines.some((line) => line.stockHandling === 'recipe_acceptance')
+    ...(hasInventoryAcceptance
       ? {
-          requiresRecipeAcceptance: true,
+          requiresInventoryAcceptance: true,
+          ...(hasRecipeAcceptance ? { requiresRecipeAcceptance: true } : {}),
           inventoryLifecycle: {
             branchId: order.branchId ?? null,
             warehouseId: order.warehouseId ?? null,

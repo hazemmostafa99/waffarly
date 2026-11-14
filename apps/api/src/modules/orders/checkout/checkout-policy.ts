@@ -79,3 +79,47 @@ export async function quoteCheckoutDiscount(
   };
   return { row, snapshot };
 }
+
+/** Allocate a saved order discount across item revenue using exact cent shares. */
+export function allocateCheckoutLineRevenue(
+  lines: readonly { id: string; position: number; lineTotal: string }[],
+  discountAmount?: string,
+): Array<{ lineId: string; revenueAmount: string }> {
+  // 1. Use each saved pre-discount line total as its proportional weight.
+  const lineCents = lines.map((line) => toCents(line.lineTotal));
+  const subtotalCents = lineCents.reduce((total, line) => total + line, 0n);
+  const discountCents = discountAmount ? toCents(discountAmount) : 0n;
+  if (discountCents > subtotalCents) {
+    throw new ConflictException('The saved discount exceeds the order line total.');
+  }
+
+  // 2. Distribute leftover cents by largest fractional share, with stable line ordering.
+  const shares = lineCents.map((weight, index) => {
+    const numerator = discountCents * weight;
+    return {
+      index,
+      baseCents: subtotalCents === 0n ? 0n : numerator / subtotalCents,
+      remainder: subtotalCents === 0n ? 0n : numerator % subtotalCents,
+    };
+  });
+  const allocatedCents = shares.reduce((total, share) => total + share.baseCents, 0n);
+  const leftoverCents = Number(discountCents - allocatedCents);
+  shares.sort((left, right) => {
+    if (left.remainder !== right.remainder) return left.remainder > right.remainder ? -1 : 1;
+    const leftLine = lines[left.index]!;
+    const rightLine = lines[right.index]!;
+    return (
+      leftLine.position - rightLine.position ||
+      (leftLine.id < rightLine.id ? -1 : leftLine.id > rightLine.id ? 1 : 0)
+    );
+  });
+  for (let index = 0; index < leftoverCents; index += 1) {
+    shares[index]!.baseCents += 1n;
+  }
+
+  const discountByLine = new Map(shares.map((share) => [share.index, share.baseCents]));
+  return lines.map((line, index) => ({
+    lineId: line.id,
+    revenueAmount: formatCents(lineCents[index]! - discountByLine.get(index)!),
+  }));
+}

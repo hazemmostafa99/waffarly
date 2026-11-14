@@ -200,6 +200,143 @@
   gap: 18px;
 }
 
+.product-cost-preview {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--builder-border);
+  border-radius: 14px;
+  background: #fbfcfa;
+}
+
+.product-cost-preview-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.product-cost-preview-heading h3,
+.product-cost-preview-options legend {
+  margin: 0;
+  color: var(--builder-ink);
+  font-size: 15px;
+  font-weight: 740;
+}
+
+.product-cost-preview-heading p,
+.product-cost-preview-note {
+  margin: 5px 0 0;
+  color: #6c8078;
+  font-size: 13px;
+}
+
+.product-cost-preview-size {
+  display: grid;
+  max-width: 320px;
+  gap: 6px;
+  color: var(--builder-ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.product-cost-preview-size select,
+.product-cost-preview-options input[type='number'] {
+  min-height: 38px;
+  border: 1px solid var(--builder-border);
+  border-radius: 8px;
+  background: white;
+  color: var(--builder-ink);
+  font: inherit;
+}
+
+.product-cost-preview-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.product-cost-preview-options fieldset {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--builder-border);
+  border-radius: 10px;
+}
+
+.product-cost-preview-options label,
+.product-cost-preview-options label > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.product-cost-preview-options label {
+  justify-content: space-between;
+  color: var(--builder-ink);
+  font-size: 13px;
+}
+
+.product-cost-preview-options input[type='number'] {
+  width: 76px;
+  min-height: 32px;
+  padding-inline: 7px;
+}
+
+.product-cost-preview-table {
+  display: grid;
+  border: 1px solid var(--builder-border);
+  border-radius: 10px;
+  background: white;
+}
+
+.product-cost-preview-table > div,
+.product-cost-preview-totals > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+}
+
+.product-cost-preview-table > div + div {
+  border-top: 1px solid var(--builder-border);
+}
+
+.product-cost-preview-table > div > span:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.product-cost-preview-table small {
+  color: #6c8078;
+  font-size: 12px;
+}
+
+.product-cost-preview-totals {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--builder-border);
+}
+
+.product-cost-preview-totals dt {
+  color: #6c8078;
+}
+
+.product-cost-preview-totals dd {
+  margin: 0;
+  font-weight: 720;
+  direction: ltr;
+}
+
+.product-cost-preview-error {
+  margin: 0;
+  color: #b3261e;
+}
+
 .builder-section-heading {
   display: flex;
   align-items: flex-start;

@@ -24,6 +24,7 @@ const navigation = [
   { id: 'pos-shift-reports', label: 'Shift Reports', icon: 'receipt' },
   { id: 'pos-item-returns', label: 'Returns & Waste', icon: 'receipt' },
   { id: 'pos-operations', label: 'Operations', icon: 'revenue' },
+  { id: 'profitability', label: 'Product profitability', icon: 'revenue' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
 ] as const;
 
@@ -83,6 +84,7 @@ export function MerchantLayout() {
       if (item.id === 'pos-tables') return 'ترابيزات';
       if (item.id === 'pos-shift-reports') return 'تقارير الورديات';
       if (item.id === 'pos-item-returns') return 'مرتجعات وهالك';
+      if (item.id === 'profitability') return 'ربحية المنتجات';
       if (item.id === 'employees') return 'الموظفون';
     }
     return t(item.label);

@@ -174,6 +174,7 @@ export class PosOrderQueryService {
                 createdBy: { select: { displayName: true } },
                 approvedBy: { select: { displayName: true } },
                 tenders: { orderBy: { position: 'asc' } },
+                lines: { orderBy: { id: 'asc' } },
               },
             },
             receipt: { select: { id: true, receiptNumber: true, issuedAt: true } },
@@ -182,6 +183,14 @@ export class PosOrderQueryService {
       },
     });
     if (!order) throw new NotFoundException('The POS order was not found.');
+    const refundedLineQuantities = await this.prisma.posOrderRefundLine.groupBy({
+      by: ['orderLineId'],
+      where: { merchantId: employee.merchantId, orderId },
+      _sum: { quantity: true },
+    });
+    const refundedByLine = new Map(
+      refundedLineQuantities.map((line) => [line.orderLineId, line._sum.quantity ?? 0]),
+    );
     return {
       context: { order: toSummary(order), tableCode: order.diningSession?.table.code ?? null },
       orderId: order.id,
@@ -189,6 +198,15 @@ export class PosOrderQueryService {
       total: formatCents(toCents(order.total.toString())),
       currency: order.currency as 'EGP',
       status: order.status,
+      orderLines: order.lines.map((line) => ({
+        orderLineId: line.id,
+        productName: line.productName,
+        variantName: line.variantName,
+        quantity: line.quantity,
+        lineTotal: line.recognizedRevenueAmount?.toFixed(2) ?? line.lineTotal.toFixed(2),
+        refundableQuantity: Math.max(0, line.quantity - (refundedByLine.get(line.id) ?? 0)),
+        refundedQuantity: refundedByLine.get(line.id) ?? 0,
+      })),
       checks: order.checks.map((check) => {
         const amountCents = toCents(check.amount.toString());
         const paidCents = check.payments.reduce(
@@ -275,6 +293,17 @@ export class PosOrderQueryService {
               amount: formatCents(toCents(tender.amount.toString())),
               terminalReference: tender.terminalReference,
             })),
+            ...(refund.lines.length
+              ? {
+                  lineAllocations: refund.lines.map((line) => ({
+                    orderLineId: line.orderLineId,
+                    productName: line.productName,
+                    variantName: line.variantName,
+                    quantity: line.quantity,
+                    revenueReversalAmount: line.revenueReversalAmount.toFixed(2),
+                  })),
+                }
+              : {}),
           })),
         };
       }),

@@ -4,9 +4,11 @@ import { ProductConfigurationReportController } from './product-configuration-re
 import { ProductConfigurationReportService } from './product-configuration-report.service.js';
 import { PosOperationsReportController } from './pos-operations-report.controller.js';
 import { PosOperationsReportService } from './pos-operations-report.service.js';
+import { ProductProfitabilityReportController } from './product-profitability-report.controller.js';
+import { ProductProfitabilityReportService } from './product-profitability-report.service.js';
 @Module({
   imports: [AuthModule],
-  controllers: [ProductConfigurationReportController, PosOperationsReportController],
-  providers: [ProductConfigurationReportService, PosOperationsReportService],
+  controllers: [ProductConfigurationReportController, PosOperationsReportController, ProductProfitabilityReportController],
+  providers: [ProductConfigurationReportService, PosOperationsReportService, ProductProfitabilityReportService],
 })
 export class ReportsModule {}

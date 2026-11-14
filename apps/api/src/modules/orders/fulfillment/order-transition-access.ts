@@ -52,7 +52,7 @@ export async function assertOrderTransitionAccess(
         OR: [
           { source: 'pos', kitchenTicket: { isNot: null } },
           { source: 'storefront', branchId: { not: null } },
-          { lines: { some: { stockHandling: 'recipe_acceptance' } } },
+          { lines: { some: { stockHandling: { in: ['recipe_acceptance', 'direct_acceptance'] } } } },
         ],
       },
       select: { id: true },
