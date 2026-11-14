@@ -1,5 +1,25 @@
 # API organization progress
 
+## Orders responsibility split — 2026-11-14
+
+Grouped Orders HTTP controllers by storefront, Marketplace customer access, POS
+and owner entry points, and moved business files into named responsibility
+folders. Split the mixed storefront controller and separated its request schemas.
+Extracted cashier sale creation, kitchen amendments, pickup collection, payments,
+refunds, receipt issuance/history and sale queries from PosOrdersService, which
+now delegates through its existing application API. Dining check allocation lives
+in billing; order queue reads live in fulfillment. Updated existing source/test
+imports and added explanatory comments at transaction boundaries.
+
+No schema, route, shared contract or external module dependency changes are
+intended. Existing transaction bodies, replay checks and authorization predicates
+were retained. Source formatting ran with the locally installed Prettier; no
+automated checks, tests, typecheck, lint, build, database or browser verification
+ran under the manual-QA instruction. Runtime acceptance is pending. See the
+[Orders guide](../../apps/api/src/modules/orders/README.md) for ownership,
+remaining cleanup and manual scenarios. Historical verification below describes
+earlier work, not this refactor.
+
 ## Implemented
 
 - Added `apps/api/AGENTS.md` and a root instruction linking it for API, database,

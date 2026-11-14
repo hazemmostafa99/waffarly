@@ -8,8 +8,8 @@ import type { PosEmployeeSession } from '@waffarly/contracts';
 import { AuthService, PosEmployeeGuard } from '../../src/modules/auth/index.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
-import { PosDeliveryService } from '../../src/modules/orders/pos-delivery.service.js';
-import { PosDeliveryController } from '../../src/modules/orders/pos-delivery.controller.js';
+import { PosDeliveryService } from '../../src/modules/orders/delivery/pos-delivery.service.js';
+import { PosDeliveryController } from '../../src/modules/orders/http/pos/pos-delivery.controller.js';
 
 describe('delivery employee endpoints', () => {
   const merchantId = randomUUID();

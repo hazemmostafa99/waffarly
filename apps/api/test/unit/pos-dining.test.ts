@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { buildCheckValues } from '../../src/modules/orders/pos-dining.service.js';
+import { buildCheckValues } from '../../src/modules/orders/dining/pos-dining.service.js';
 
 const lines = [
   { id: 'line-a', quantity: 2, unitPrice: { toString: () => '1.25' } },

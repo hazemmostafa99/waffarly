@@ -2,7 +2,7 @@ import { ConflictException } from '@nestjs/common';
 import type { PosEmployeeSession } from '@waffarly/contracts';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { OrderLifecycleService } from '../../src/modules/orders/order-lifecycle.service.js';
+import { OrderLifecycleService } from '../../src/modules/orders/fulfillment/order-lifecycle.service.js';
 
 const merchantId = '11111111-1111-4111-8111-111111111111';
 const employeeId = '22222222-2222-4222-8222-222222222222';

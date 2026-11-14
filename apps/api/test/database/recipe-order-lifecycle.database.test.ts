@@ -11,13 +11,13 @@ import { ModifierGroupService } from '../../src/modules/catalog/modifiers/modifi
 import { InventoryLedgerService } from '../../src/modules/inventory/inventory-ledger.service.js';
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
 import { InventoryLocationsService } from '../../src/modules/inventory/inventory-locations.service.js';
-import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
-import { OrderLifecycleService } from '../../src/modules/orders/order-lifecycle.service.js';
+import { StorefrontOrdersService } from '../../src/modules/orders/checkout/storefront-orders.service.js';
+import { OrderLifecycleService } from '../../src/modules/orders/fulfillment/order-lifecycle.service.js';
 import { ProductConfigurationReportService } from '../../src/modules/reports/product-configuration-report.service.js';
 import { PosEmployeeService } from '../../src/modules/auth/pos-employee.service.js';
 import type { PosEmployeeSession } from '@waffarly/contracts';
-import { PosOrdersService } from '../../src/modules/orders/pos-orders.service.js';
-import { PosDiningService } from '../../src/modules/orders/pos-dining.service.js';
+import { PosOrdersService } from '../../src/modules/orders/pos-sales/pos-orders.service.js';
+import { PosDiningService } from '../../src/modules/orders/dining/pos-dining.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 
 config({ path: new URL('../../../../.env', import.meta.url), quiet: true });

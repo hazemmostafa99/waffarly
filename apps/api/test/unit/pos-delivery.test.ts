@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
-import { posDeliveryCommandSchema } from '../../src/modules/orders/pos-delivery.schemas.js';
+import { posDeliveryCommandSchema } from '../../src/modules/orders/delivery/pos-delivery.schemas.js';
 import { parseRecordPosCheckPaymentRequest } from '../../src/modules/payments/payments.schemas.js';
 import {
   closePosShiftSchema,

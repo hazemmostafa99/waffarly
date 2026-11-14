@@ -6,7 +6,7 @@ import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { ProductPricingService } from '../../src/modules/catalog/pricing/product-pricing.service.js';
 import { ProductService } from '../../src/modules/catalog/products/product.service.js';
-import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
+import { StorefrontOrdersService } from '../../src/modules/orders/checkout/storefront-orders.service.js';
 import { ProductConfigurationReportService } from '../../src/modules/reports/product-configuration-report.service.js';
 
 config({ path: new URL('../../../../.env', import.meta.url), quiet: true });

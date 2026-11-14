@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
-import { PosReturnsService } from '../../src/modules/orders/pos-returns.service.js';
+import { PosReturnsService } from '../../src/modules/orders/returns/pos-returns.service.js';
 
 config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
 

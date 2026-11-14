@@ -1,3 +1,11 @@
+Orders organization (2026-11-14): HTTP entry points are grouped by application;
+order operations are grouped by business responsibility. Cashier sale creation,
+check collection/refunds, receipt issuance, kitchen amendments and read queries
+are separate implementations behind the existing application entry points.
+No route, schema or external module dependency changes are intended. Manual
+acceptance is pending; no automated checks ran for this refactor. See the
+[Orders guide](../../apps/api/src/modules/orders/README.md).
+
 Customer orders update (2026-11-13): Marketplace restaurant orders now have
 account/guest ownership, backend history/detail/tracking reads and explicit guest
 claim. Historical statements below are superseded for this slice. See

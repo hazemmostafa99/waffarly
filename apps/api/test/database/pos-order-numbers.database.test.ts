@@ -2,7 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
-import { allocatePosOrderReference } from '../../src/modules/orders/pos-order-number.persistence.js';
+import { allocatePosOrderReference } from '../../src/modules/orders/pos-sales/pos-order-number.persistence.js';
 
 // Only run against an explicitly designated disposable, migrated database.
 const databaseUrl = process.env.POS_NUMBER_TEST_DATABASE_URL;

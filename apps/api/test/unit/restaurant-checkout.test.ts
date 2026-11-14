@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ForbiddenException } from '@nestjs/common';
 import type { CreateStorefrontOrderRequest } from '@waffarly/contracts';
-import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
+import { StorefrontOrdersService } from '../../src/modules/orders/checkout/storefront-orders.service.js';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import type { ProductPricingService } from '../../src/modules/catalog/index.js';
 import type { SubscriptionService } from '../../src/modules/subscriptions/index.js';
@@ -21,18 +21,29 @@ function fixture(allowed: boolean) {
   let pricingCalls = 0;
   let eligibilityCalls = 0;
   const transaction = {
-    branch: { findMany: async () => [{ id: '33333333-3333-4333-8333-333333333333', name: 'Main branch' }] },
+    branch: {
+      findMany: async () => [{ id: '33333333-3333-4333-8333-333333333333', name: 'Main branch' }],
+    },
     restaurantProfile: { findUnique: async () => ({ referenceData: { origin: 'local-mock' } }) },
   };
   const prisma = {
-    merchant: { findUnique: async ({ where }: { where: { storefrontSlug: string } }) => {
-      assert.equal(where.storefrontSlug, 'reference-restaurant-1');
-      return { id: merchantId };
-    } },
+    merchant: {
+      findUnique: async ({ where }: { where: { storefrontSlug: string } }) => {
+        assert.equal(where.storefrontSlug, 'reference-restaurant-1');
+        return { id: merchantId };
+      },
+    },
     $transaction: async (run: (db: typeof transaction) => Promise<unknown>) => run(transaction),
   } as unknown as PrismaService;
   const pricing = {
-    quoteForMerchant: async (tenant: string, _product: string, _selections: unknown, _variant: unknown, _quantity: number, db: unknown) => {
+    quoteForMerchant: async (
+      tenant: string,
+      _product: string,
+      _selections: unknown,
+      _variant: unknown,
+      _quantity: number,
+      db: unknown,
+    ) => {
       assert.equal(tenant, merchantId);
       assert.equal(db, transaction);
       pricingCalls++;
@@ -57,7 +68,14 @@ function fixture(allowed: boolean) {
     },
   } as unknown as RestaurantOrderPolicyService;
   return {
-    service: new StorefrontOrdersService(prisma, pricing, undefined, undefined, subscriptions, policy),
+    service: new StorefrontOrdersService(
+      prisma,
+      pricing,
+      undefined,
+      undefined,
+      subscriptions,
+      policy,
+    ),
     counts: () => ({ pricingCalls, eligibilityCalls }),
   };
 }
@@ -65,8 +83,13 @@ function fixture(allowed: boolean) {
 test('persisted reference restaurants receive real checkout quotes with authoritative fees', async () => {
   const { service, counts } = fixture(true);
   assert.deepEqual(await service.quoteCheckout('reference-restaurant-1', input), {
-    unitPrices: ['100.25'], subtotal: '200.50', deliveryFee: '25.00',
-    total: '225.50', currency: 'EGP', restaurantSettingsRevision: 3, demo: false,
+    unitPrices: ['100.25'],
+    subtotal: '200.50',
+    deliveryFee: '25.00',
+    total: '225.50',
+    currency: 'EGP',
+    restaurantSettingsRevision: 3,
+    demo: false,
   });
   assert.deepEqual(counts(), { pricingCalls: 1, eligibilityCalls: 1 });
 });

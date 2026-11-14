@@ -10,12 +10,12 @@ import { OwnerGuard } from '../../src/modules/auth/owner.guard.js';
 import { PosEmployeeService } from '../../src/modules/auth/pos-employee.service.js';
 import { PosEmployeeGuard } from '../../src/modules/auth/pos-employee.guard.js';
 import { PosEmployeesController } from '../../src/modules/auth/pos-employees.controller.js';
-import { OrderLifecycleService } from '../../src/modules/orders/order-lifecycle.service.js';
-import { PosStorefrontOrdersController } from '../../src/modules/orders/storefront-orders.controller.js';
-import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
-import { PosOrdersService } from '../../src/modules/orders/pos-orders.service.js';
-import { PosKitchenService } from '../../src/modules/orders/pos-kitchen.service.js';
-import { PosReturnsService } from '../../src/modules/orders/pos-returns.service.js';
+import { OrderLifecycleService } from '../../src/modules/orders/fulfillment/order-lifecycle.service.js';
+import { PosStorefrontOrdersController } from '../../src/modules/orders/http/pos/pos-orders.controller.js';
+import { StorefrontOrdersService } from '../../src/modules/orders/checkout/storefront-orders.service.js';
+import { PosOrdersService } from '../../src/modules/orders/pos-sales/pos-orders.service.js';
+import { PosKitchenService } from '../../src/modules/orders/kitchen/pos-kitchen.service.js';
+import { PosReturnsService } from '../../src/modules/orders/returns/pos-returns.service.js';
 
 const merchantId = '11111111-1111-4111-8111-111111111111';
 const employeeId = '22222222-2222-4222-8222-222222222222';

@@ -8,7 +8,7 @@ import { ProductService } from '../../src/modules/catalog/products/product.servi
 import { ProductPricingService } from '../../src/modules/catalog/pricing/product-pricing.service.js';
 import { ModifierGroupService } from '../../src/modules/catalog/modifiers/modifier-group.service.js';
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
-import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
+import { StorefrontOrdersService } from '../../src/modules/orders/checkout/storefront-orders.service.js';
 import { ProductConfigurationReportService } from '../../src/modules/reports/product-configuration-report.service.js';
 
 config({ path: new URL('../../../../.env', import.meta.url), quiet: true });

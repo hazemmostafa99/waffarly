@@ -11,8 +11,8 @@ import {
   OwnerPosDiningTablesController,
   PosDiningController,
   PosDiningOrdersController,
-} from '../../src/modules/orders/pos-dining.controller.js';
-import { PosDiningService } from '../../src/modules/orders/pos-dining.service.js';
+} from '../../src/modules/orders/http/pos/pos-dining.controller.js';
+import { PosDiningService } from '../../src/modules/orders/dining/pos-dining.service.js';
 
 const merchantId = '11111111-1111-4111-8111-111111111111';
 const employeeId = '22222222-2222-4222-8222-222222222222';

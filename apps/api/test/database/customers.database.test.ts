@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import { CustomersService } from '../../src/modules/customers/index.js';
-import { OrderCustomerService } from '../../src/modules/orders/order-customer.service.js';
+import { OrderCustomerService } from '../../src/modules/orders/customers/order-customer.service.js';
 
 config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
 const url = process.env.DATABASE_URL;

@@ -6,13 +6,11 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import request from 'supertest';
 import { AuthService } from '../../src/modules/auth/auth.service.js';
 import { OwnerGuard } from '../../src/modules/auth/owner.guard.js';
-import {
-  OwnerStorefrontOrdersController,
-  PublicStorefrontOrdersController,
-} from '../../src/modules/orders/storefront-orders.controller.js';
-import { OrderLifecycleService } from '../../src/modules/orders/order-lifecycle.service.js';
-import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
-import { CustomerOrderAccessService } from '../../src/modules/orders/customer-order-access.service.js';
+import { PublicStorefrontOrdersController } from '../../src/modules/orders/http/storefront/storefront-orders.controller.js';
+import { OwnerStorefrontOrdersController } from '../../src/modules/orders/http/owner/owner-orders.controller.js';
+import { OrderLifecycleService } from '../../src/modules/orders/fulfillment/order-lifecycle.service.js';
+import { StorefrontOrdersService } from '../../src/modules/orders/checkout/storefront-orders.service.js';
+import { CustomerOrderAccessService } from '../../src/modules/orders/customers/customer-order-access.service.js';
 
 const owner: OwnerProfile = {
   username: 'store-owner',

@@ -14,7 +14,7 @@ import { ProductService } from '../modules/catalog/products/product.service.js';
 import { InventoryLedgerService } from '../modules/inventory/inventory-ledger.service.js';
 import { InventoryLocationsService } from '../modules/inventory/inventory-locations.service.js';
 import { InventoryService } from '../modules/inventory/inventory.service.js';
-import { StorefrontOrdersService } from '../modules/orders/storefront-orders.service.js';
+import { StorefrontOrdersService } from '../modules/orders/checkout/storefront-orders.service.js';
 import { PrismaService } from '../infrastructure/database/prisma.service.js';
 import { LocalMediaStorage } from '../infrastructure/storage/local-media-storage.js';
 

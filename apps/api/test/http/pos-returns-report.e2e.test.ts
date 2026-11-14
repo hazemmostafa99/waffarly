@@ -6,8 +6,8 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import request from 'supertest';
 import { AuthService } from '../../src/modules/auth/auth.service.js';
 import { OwnerGuard } from '../../src/modules/auth/owner.guard.js';
-import { OwnerPosItemReturnsController } from '../../src/modules/orders/pos-returns.controller.js';
-import { PosReturnsService } from '../../src/modules/orders/pos-returns.service.js';
+import { OwnerPosItemReturnsController } from '../../src/modules/orders/http/owner/pos-returns.controller.js';
+import { PosReturnsService } from '../../src/modules/orders/returns/pos-returns.service.js';
 
 const merchantId = '11111111-1111-4111-8111-111111111111';
 const branchId = '22222222-2222-4222-8222-222222222222';
