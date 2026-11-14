@@ -1,5 +1,10 @@
 import { NotFoundException } from '@nestjs/common';
-import type { CreatePurchaseInvoiceRequest } from '@waffarly/contracts';
+import {
+  calculatePurchaseInvoiceLineTotal,
+  calculatePurchaseInvoiceTotal,
+  normalizePurchaseUnitCost,
+  type CreatePurchaseInvoiceRequest,
+} from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { convertToBaseQuantity, normalizeStockQuantity } from '../../inventory/index.js';
 import type { InvoiceRecord } from '../purchase-invoice.mapper.js';
@@ -66,6 +71,8 @@ export async function resolveInvoiceReferences(
       unitName: pack?.name ?? line.unitCode,
       condition: line.condition,
       quantity,
+      unitCost: normalizePurchaseUnitCost(line.unitCost)!,
+      lineTotal: calculatePurchaseInvoiceLineTotal(quantity, line.unitCost)!,
       position,
     };
   });
@@ -77,6 +84,7 @@ export async function resolveInvoiceReferences(
     supplierInvoiceNumberKey: supplierInvoiceNumber
       ? supplierInvoiceNumber.toLocaleLowerCase('en-US')
       : null,
+    totalAmount: calculatePurchaseInvoiceTotal(input.lines)!,
     lines,
   };
 }

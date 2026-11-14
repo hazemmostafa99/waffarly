@@ -1,4 +1,9 @@
-import { isPositiveStockQuantity, STOCK_CONDITIONS } from '@waffarly/contracts';
+import {
+  calculatePurchaseInvoiceTotal,
+  isPositivePurchaseUnitCost,
+  isPositiveStockQuantity,
+  STOCK_CONDITIONS,
+} from '@waffarly/contracts';
 import { z } from 'zod';
 
 const uuid = z.string().uuid();
@@ -15,6 +20,13 @@ const quantity = z
   .refine(
     isPositiveStockQuantity,
     'Quantity must be positive with up to 12 integer and 6 fractional digits.',
+  );
+const unitCost = z
+  .string()
+  .trim()
+  .refine(
+    isPositivePurchaseUnitCost,
+    'Unit cost must be a positive EGP amount with up to two decimals.',
   );
 
 const supplierFields = {
@@ -50,6 +62,7 @@ const invoiceLine = z
     condition: z.enum(STOCK_CONDITIONS),
     quantity,
     unitCode,
+    unitCost,
   })
   .strict();
 
@@ -78,6 +91,18 @@ export const listPurchaseInvoicesSchema = z
   .strict();
 export type PurchaseInvoiceListQuery = z.infer<typeof listPurchaseInvoicesSchema>;
 
-export const createPurchaseInvoiceSchema = z.object({ requestId: uuid, ...invoiceFields }).strict();
-export const updatePurchaseInvoiceSchema = z.object({ revision, ...invoiceFields }).strict();
+export const createPurchaseInvoiceSchema = z
+  .object({ requestId: uuid, ...invoiceFields })
+  .strict()
+  .refine((invoice) => calculatePurchaseInvoiceTotal(invoice.lines) !== null, {
+    message: 'Purchase invoice total is outside the supported EGP range.',
+    path: ['lines'],
+  });
+export const updatePurchaseInvoiceSchema = z
+  .object({ revision, ...invoiceFields })
+  .strict()
+  .refine((invoice) => calculatePurchaseInvoiceTotal(invoice.lines) !== null, {
+    message: 'Purchase invoice total is outside the supported EGP range.',
+    path: ['lines'],
+  });
 export const confirmPurchaseInvoiceSchema = z.object({ requestId: uuid, revision }).strict();

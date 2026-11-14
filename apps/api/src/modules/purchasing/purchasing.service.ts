@@ -109,6 +109,7 @@ export class PurchasingService {
               warehouseId: refs.warehouse.id,
               warehouseName: refs.warehouse.name,
               branchName: refs.warehouse.branch.name,
+              totalAmount: refs.totalAmount,
               creationRequest: parsed.requestId,
               creationFingerprint: fingerprint,
               createdBy: actor,
@@ -159,6 +160,7 @@ export class PurchasingService {
             warehouseId: refs.warehouse.id,
             warehouseName: refs.warehouse.name,
             branchName: refs.warehouse.branch.name,
+            totalAmount: refs.totalAmount,
             updatedBy: actor,
             revision: { increment: 1 },
             lines: {
@@ -199,6 +201,12 @@ export class PurchasingService {
       });
       if (!current) throw new NotFoundException('Purchase invoice was not found.');
       if (current.status === 'draft') assertDraftRevision(current, parsed.revision);
+      if (
+        current.status === 'draft' &&
+        current.lines.some((line) => line.unitCost === null || line.lineTotal === null)
+      ) {
+        throw new ConflictException('Add a unit cost to every line before confirming this invoice.');
+      }
 
       const refs = await resolveReceiptReferences(transaction, merchantId, current);
       // Older receipts may retain a draft supplier name. Reuse their immutable reason

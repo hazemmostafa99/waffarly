@@ -1,8 +1,8 @@
 # Inventory, Product Mapping & Recipes — Feature Contract
 
-> Follow-up planned 2026-11-14: [Purchase cost and profitability](../purchase-cost-profitability/README.md)
+> Follow-up workstream (2026-11-14): [Purchase cost and profitability](../purchase-cost-profitability/README.md)
 > specifies financial purchase invoices and latest-purchase-price sales costing.
-> Its user-confirmed policy replaces an averaging proposal; implementation has not started.
+> Its user-confirmed policy replaces an averaging proposal; P01 invoice costs are implemented pending manual QA, while later costing phases remain planned.
 > M3 exclusions below remain the historical scope of the delivered quantity-receipt slice.
 
 ## Status and scope

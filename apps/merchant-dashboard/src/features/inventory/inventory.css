@@ -1614,7 +1614,21 @@ html[dir='rtl'] .inventory-editor .products-dialog-footer {
   color: #315f46;
 }
 .inventory-purchase-editor .inventory-opening-line {
-  grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(100px, 1fr)) auto;
+  grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(100px, 1fr)) auto;
+}
+.inventory-purchase-total {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 10px;
+  background: #fff;
+}
+.inventory-purchase-total strong {
+  color: var(--dashboard-green);
+  font-size: 18px;
 }
 .inventory-editor .products-dialog-footer {
   position: sticky;

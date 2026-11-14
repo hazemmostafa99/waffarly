@@ -16,6 +16,7 @@ export function toInvoice(record: InvoiceRecord): PurchaseInvoice {
     warehouseId: record.warehouseId,
     warehouseName: record.warehouseName,
     branchName: record.branchName,
+    totalAmount: record.totalAmount?.toFixed(2) ?? null,
     status: record.status as PurchaseInvoice['status'],
     revision: record.revision,
     lines: record.lines.map((line) => ({
@@ -27,6 +28,8 @@ export function toInvoice(record: InvoiceRecord): PurchaseInvoice {
       unitName: line.unitName,
       condition: line.condition as PurchaseInvoice['lines'][number]['condition'],
       quantity: normalizeStockQuantity(line.quantity.toFixed(6)),
+      unitCost: line.unitCost?.toFixed(2) ?? null,
+      lineTotal: line.lineTotal?.toFixed(2) ?? null,
       position: line.position,
     })),
     confirmedAt: record.confirmedAt?.toISOString() ?? null,

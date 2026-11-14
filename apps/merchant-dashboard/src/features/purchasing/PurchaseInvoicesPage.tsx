@@ -237,6 +237,14 @@ export function PurchaseInvoicesPage() {
       cell: (invoice) => formatDigits(String(invoice.lines.length)),
     },
     {
+      id: 'amount',
+      header: text('Total (EGP)'),
+      cell: (invoice) =>
+        invoice.totalAmount === null
+          ? text('Cost not recorded')
+          : formatDigits(invoice.totalAmount),
+    },
+    {
       id: 'status',
       header: text('Status'),
       cell: (invoice) => (
@@ -919,6 +927,20 @@ export function PurchaseInvoicesPage() {
               {formatDigits(`${invoiceReview.branchName} · ${invoiceReview.warehouseName}`)}
             </p>
             <p>
+              <strong>{text('Invoice total (EGP)')}:</strong>{' '}
+              {invoiceReview.totalAmount === null
+                ? text('Cost not recorded')
+                : formatDigits(invoiceReview.totalAmount)}
+            </p>
+            {invoiceReview.status === 'draft' &&
+              invoiceReview.lines.some(
+                (line) => line.unitCost === null || line.lineTotal === null,
+              ) && (
+                <p className="inventory-error" role="alert">
+                  {text('Add a unit cost to every line before confirming this invoice.')}
+                </p>
+              )}
+            <p>
               {text(
                 invoiceReview.status === 'draft'
                   ? 'This invoice is a draft. Saving it does not affect stock.'
@@ -934,6 +956,14 @@ export function PurchaseInvoicesPage() {
                     {text(line.condition === 'available' ? 'Available' : 'Non-Sellable')} ·{' '}
                     {formatDigits(`${line.baseUnit} (${line.unitName})`)}
                   </small>
+                  <small>
+                    {text('Unit cost (EGP)')}: {line.unitCost === null
+                      ? text('Cost not recorded')
+                      : formatDigits(line.unitCost)}{' '}
+                    · {text('Line total (EGP)')}: {line.lineTotal === null
+                      ? text('Cost not recorded')
+                      : formatDigits(line.lineTotal)}
+                  </small>
                 </li>
               ))}
             </ul>
@@ -948,7 +978,16 @@ export function PurchaseInvoicesPage() {
               >
                 {text('Close')}
               </Button>
-              <Button type="button" disabled={busy} onClick={() => void confirmInvoice()}>
+              <Button
+                type="button"
+                disabled={
+                  busy ||
+                  invoiceReview.lines.some(
+                    (line) => line.unitCost === null || line.lineTotal === null,
+                  )
+                }
+                onClick={() => void confirmInvoice()}
+              >
                 {text(busy ? 'Posting…' : 'Confirm receipt')}
               </Button>
               <Button

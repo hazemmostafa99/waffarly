@@ -79,7 +79,13 @@ export type {
   InventoryHealthPage,
 } from './inventory.js';
 export { STOCK_CONDITIONS } from './inventory.js';
-export { PURCHASE_INVOICE_STATUSES } from './purchasing.js';
+export {
+  PURCHASE_INVOICE_STATUSES,
+  calculatePurchaseInvoiceLineTotal,
+  calculatePurchaseInvoiceTotal,
+  isPositivePurchaseUnitCost,
+  normalizePurchaseUnitCost,
+} from './purchasing.js';
 export type {
   PurchaseInvoiceStatus,
   PurchaseSupplierFields,

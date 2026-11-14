@@ -105,12 +105,14 @@ it(
             condition: 'available' as const,
             quantity: '1.5',
             unitCode: 'kg',
+            unitCost: '200.00',
           },
           {
             stockItemId: item.id,
             condition: 'non_sellable' as const,
             quantity: '1',
             unitCode: 'case-12',
+            unitCost: '2400.00',
           },
         ],
       };
@@ -171,6 +173,7 @@ it(
               condition: 'available',
               quantity: '1',
               unitCode: 'g',
+              unitCost: '0.10',
             },
           ],
         }),
@@ -186,6 +189,7 @@ it(
               condition: 'available',
               quantity: '1',
               unitCode: 'ml',
+              unitCost: '0.05',
             },
           ],
         }),
@@ -343,7 +347,15 @@ it(
         supplierId: supplier.id,
         warehouseId: branch.warehouses[0]!.id,
         supplierInvoiceNumber: `CON-${token}`,
-        lines: [{ stockItemId: item.id, condition: 'available', quantity: '750', unitCode: 'g' }],
+        lines: [
+          {
+            stockItemId: item.id,
+            condition: 'available',
+            quantity: '750',
+            unitCode: 'g',
+            unitCost: '0.25',
+          },
+        ],
       });
       const confirms = await Promise.all([
         purchasing.confirmInvoice(merchant.id, actor, invoice.id, {

@@ -340,6 +340,17 @@ export function inventoryCopy(
     'Loading suppliers…': 'جارٍ تحميل الموردين…',
     'Search purchase invoices': 'ابحث في فواتير الشراء',
     'Supplier invoice number': 'رقم فاتورة المورد',
+    'Unit cost (EGP)': 'تكلفة الوحدة (جنيه)',
+    'Line total (EGP)': 'إجمالي البند (جنيه)',
+    'Invoice total (EGP)': 'إجمالي الفاتورة (جنيه)',
+    'Total (EGP)': 'الإجمالي (جنيه)',
+    'Cost not recorded': 'التكلفة غير مسجلة',
+    'Enter a unit cost greater than zero.': 'أدخل تكلفة وحدة أكبر من صفر.',
+    'Add a unit cost to every line before confirming this invoice.':
+      'أدخل تكلفة وحدة لكل بند قبل تأكيد الفاتورة.',
+    'Enter the supplier, destination warehouse, received quantities, and unit costs.':
+      'أدخل المورد والمستودع المستلم وكميات الشراء وتكلفة الوحدة بالجنيه.',
+    'Items, quantities, and costs': 'الأصناف والكميات والتكلفة',
     'Invoice reference': 'مرجع الفاتورة',
     Supplier: 'المورد',
     Suppliers: 'الموردون',

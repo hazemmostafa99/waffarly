@@ -484,6 +484,7 @@ model PurchaseInvoice {
   creationRequest          String                @db.Uuid
   creationFingerprint      String                @db.VarChar(64)
   status                   String                @default("draft") @db.VarChar(16)
+  totalAmount              Decimal?               @db.Decimal(18, 2)
   revision                 Int                   @default(1)
   confirmedAt              DateTime?             @db.Timestamptz(6)
   confirmedBy              String?               @db.VarChar(80)
@@ -515,6 +516,8 @@ model PurchaseInvoiceLine {
   unitName      String          @db.VarChar(80)
   condition     String          @db.VarChar(24)
   quantity      Decimal         @db.Decimal(18, 6)
+  unitCost      Decimal?        @db.Decimal(18, 2)
+  lineTotal     Decimal?        @db.Decimal(18, 2)
   position      Int
   invoice       PurchaseInvoice @relation(fields: [invoiceId, merchantId], references: [id, merchantId], onDelete: Restrict)
   stockItem     StockItem       @relation(fields: [stockItemId, merchantId], references: [id, merchantId], onDelete: Restrict)

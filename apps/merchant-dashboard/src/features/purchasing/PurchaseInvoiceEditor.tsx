@@ -10,7 +10,12 @@ import type {
   StockCondition,
   StockItem,
 } from '@waffarly/contracts';
-import { isPositiveStockQuantity } from '@waffarly/contracts';
+import {
+  calculatePurchaseInvoiceLineTotal,
+  calculatePurchaseInvoiceTotal,
+  isPositiveStockQuantity,
+  isPositivePurchaseUnitCost,
+} from '@waffarly/contracts';
 import type { InvoiceLineDraft } from './purchasing.types.js';
 import type { SupplierFields } from './purchasing.types.js';
 import { SupplierEditor } from './SupplierEditor.js';
@@ -23,11 +28,12 @@ function emptyLine(): InvoiceLineDraft {
     condition: 'available',
     quantity: '1',
     unitCode: '',
+    unitCost: '',
   };
 }
 
 type InvoiceRecovery = {
-  version: 1;
+  version: 1 | 2;
   requestId: string;
   invoiceId: string | null;
   revision: number | null;
@@ -44,7 +50,7 @@ function readRecovery(storageKey: string, invoice: PurchaseInvoice | null): Invo
     if (!stored) return null;
     const value = JSON.parse(stored) as InvoiceRecovery;
     if (
-      value.version !== 1 ||
+      (value.version !== 1 && value.version !== 2) ||
       typeof value.requestId !== 'string' ||
       value.invoiceId !== (invoice?.id ?? null) ||
       value.revision !== (invoice?.revision ?? null) ||
@@ -53,7 +59,11 @@ function readRecovery(storageKey: string, invoice: PurchaseInvoice | null): Invo
     ) {
       return null;
     }
-    return value;
+    return {
+      ...value,
+      version: 2,
+      lines: value.lines.map((line) => ({ ...line, unitCost: line.unitCost ?? '' })),
+    };
   } catch {
     return null;
   }
@@ -108,6 +118,7 @@ export function PurchaseInvoiceEditor({
         condition: line.condition,
         quantity: line.quantity,
         unitCode: line.unitCode,
+        unitCost: line.unitCost ?? '',
       })) ?? [emptyLine()],
   );
   const [formError, setFormError] = useState('');
@@ -118,6 +129,12 @@ export function PurchaseInvoiceEditor({
   const [supplierError, setSupplierError] = useState('');
   const supplierSaving = useRef(false);
   const skipNextRecoveryWrite = useRef(false);
+  const invoiceTotal = calculatePurchaseInvoiceTotal(
+    lines.map(({ quantity, unitCost }) => ({
+      quantity: quantity.trim(),
+      unitCost: unitCost.trim(),
+    })),
+  );
 
   useEffect(() => {
     if (skipNextRecoveryWrite.current) {
@@ -126,7 +143,7 @@ export function PurchaseInvoiceEditor({
     }
     try {
       const draft: InvoiceRecovery = {
-        version: 1,
+        version: 2,
         requestId,
         invoiceId: invoice?.id ?? null,
         revision: invoice?.revision ?? null,
@@ -172,6 +189,7 @@ export function PurchaseInvoiceEditor({
         condition: line.condition,
         quantity: line.quantity,
         unitCode: line.unitCode,
+        unitCost: line.unitCost ?? '',
       })) ?? [emptyLine()],
     );
     setFieldErrors({});
@@ -229,6 +247,8 @@ export function PurchaseInvoiceEditor({
       if (!isPositiveStockQuantity(line.quantity.trim()))
         nextErrors[`quantity:${line.key}`] = text('Enter a quantity greater than zero.');
       if (!line.unitCode) nextErrors[`unit:${line.key}`] = text('Choose a unit.');
+      if (!isPositivePurchaseUnitCost(line.unitCost.trim()))
+        nextErrors[`unitCost:${line.key}`] = text('Enter a unit cost greater than zero.');
     }
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
@@ -244,11 +264,12 @@ export function PurchaseInvoiceEditor({
       supplierId,
       supplierInvoiceNumber: supplierInvoiceNumber.trim() || undefined,
       warehouseId,
-      lines: lines.map(({ stockItemId, condition, quantity, unitCode }) => ({
+      lines: lines.map(({ stockItemId, condition, quantity, unitCode, unitCost }) => ({
         stockItemId,
         condition,
         quantity: quantity.trim(),
         unitCode,
+        unitCost: unitCost.trim(),
       })),
     };
     const submitter = (event.nativeEvent as SubmitEvent).submitter;
@@ -274,7 +295,7 @@ export function PurchaseInvoiceEditor({
         <InventoryCard
           title={text(invoice ? 'Purchase invoice details' : 'New purchase details')}
           description={text(
-            'Enter the supplier, destination warehouse, and quantities actually received.',
+            'Enter the supplier, destination warehouse, received quantities, and unit costs.',
           )}
         >
           <form
@@ -291,7 +312,9 @@ export function PurchaseInvoiceEditor({
               <li aria-current={step === 1 ? 'step' : undefined}>
                 {text('Supplier and warehouse')}
               </li>
-              <li aria-current={step === 2 ? 'step' : undefined}>{text('Items and quantities')}</li>
+              <li aria-current={step === 2 ? 'step' : undefined}>
+                {text('Items, quantities, and costs')}
+              </li>
               <li>{text('Review and receive')}</li>
             </ol>
             <fieldset
@@ -373,7 +396,7 @@ export function PurchaseInvoiceEditor({
               </div>
             </fieldset>
             <fieldset className="inventory-form-section" hidden={step !== 2} disabled={busy}>
-              <legend>{text('Items and quantities')}</legend>
+              <legend>{text('Items, quantities, and costs')}</legend>
               {lines.map((line, index) => {
                 const item = items.find((candidate) => candidate.id === line.stockItemId);
                 return (
@@ -444,6 +467,37 @@ export function PurchaseInvoiceEditor({
                       )}
                     </label>
                     <label>
+                      {text('Unit cost (EGP)')}
+                      <Input
+                        inputMode="decimal"
+                        aria-required="true"
+                        aria-invalid={Boolean(fieldErrors[`unitCost:${line.key}`])}
+                        value={line.unitCost}
+                        placeholder="250.00"
+                        onChange={(event) => {
+                          updateLine(line.key, { unitCost: event.target.value });
+                          setFieldErrors((current) => ({
+                            ...current,
+                            [`unitCost:${line.key}`]: '',
+                          }));
+                        }}
+                      />
+                      <small>
+                        {text('Line total (EGP)')}:{' '}
+                        {formatDigits(
+                          calculatePurchaseInvoiceLineTotal(
+                            line.quantity.trim(),
+                            line.unitCost.trim(),
+                          ) ?? '—',
+                        )}
+                      </small>
+                      {fieldErrors[`unitCost:${line.key}`] && (
+                        <small className="inventory-field-error" role="alert">
+                          {fieldErrors[`unitCost:${line.key}`]}
+                        </small>
+                      )}
+                    </label>
+                    <label>
                       {text('Unit')}
                       <select
                         aria-required="true"
@@ -497,6 +551,10 @@ export function PurchaseInvoiceEditor({
                 >
                   {text('Add line')}
                 </Button>
+              </div>
+              <div className="inventory-purchase-total" aria-live="polite">
+                <span>{text('Invoice total (EGP)')}</span>
+                <strong dir="ltr">{formatDigits(invoiceTotal ?? '—')}</strong>
               </div>
             </fieldset>
             {(formError || (step === 2 ? error : '')) && (

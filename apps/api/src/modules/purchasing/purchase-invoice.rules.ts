@@ -1,5 +1,8 @@
 import { ConflictException } from '@nestjs/common';
-import type { CreatePurchaseInvoiceRequest } from '@waffarly/contracts';
+import {
+  normalizePurchaseUnitCost,
+  type CreatePurchaseInvoiceRequest,
+} from '@waffarly/contracts';
 import { createHash } from 'node:crypto';
 import { normalizeStockQuantity } from '../inventory/index.js';
 
@@ -28,6 +31,7 @@ export function invoiceFingerprint(input: CreatePurchaseInvoiceRequest): string 
           condition: line.condition,
           quantity: normalizeStockQuantity(line.quantity),
           unitCode: line.unitCode,
+          unitCost: normalizePurchaseUnitCost(line.unitCost)!,
         })),
       }),
     )

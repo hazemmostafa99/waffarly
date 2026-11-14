@@ -22,7 +22,7 @@ belong with their feature; keep this directory's root for this index.
 - [Marketplace documentation](features/marketplace/README.md)
 - [POS](features/pos/FEATURE.md)
 - [Inventory](features/inventory/FEATURE.md)
-- [Purchase cost and product profitability — planned phases](features/purchase-cost-profitability/README.md)
+- [Purchase cost and product profitability — phased delivery](features/purchase-cost-profitability/README.md)
 - [Catalog](features/catalog/OVERVIEW.md)
 - [Super Admin](features/super-admin/OVERVIEW.md)
 
