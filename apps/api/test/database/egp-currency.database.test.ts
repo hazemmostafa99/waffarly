@@ -1,14 +1,13 @@
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
-import { config } from 'dotenv';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-
-it('enforces EGP on every persisted currency column and rejects foreign-currency plans', async () => {
-  assert.ok(process.env.DATABASE_URL, 'Configure DATABASE_URL and apply EGP migrations first.');
-  const client = new PrismaClient({ adapter: createPostgresAdapter(process.env.DATABASE_URL) });
+it('enforces EGP on every persisted currency column and rejects foreign-currency plans', async (testContext) => {
+  assert.ok(getTestDatabaseUrl(), 'Configure TEST_DATABASE_URL and apply EGP migrations first.');
+  const client = createTestDatabaseClient(testContext);
   const rollback = new Error('Rollback currency verification');
   try {
     const checks = await client.$queryRaw<Array<{ table_name: string; definition: string }>>`

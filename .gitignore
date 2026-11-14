@@ -23,3 +23,7 @@ apps/*/.env.*
 !apps/*/.env.example
 !apps/*/.env.*.example
 packages/database/generated/
+
+# Local reports and scratch output belong here, rather than in the project root.
+artifacts/
+.tmp/

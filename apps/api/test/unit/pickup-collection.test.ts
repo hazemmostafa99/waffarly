@@ -1,8 +1,8 @@
+import { createPosOrdersService } from '../support/pos-orders-service.js';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import type { PosEmployeeSession } from '@waffarly/contracts';
-import { PosOrdersService } from '../../src/modules/orders/pos-sales/pos-orders.service.js';
 
 function fixture(mode: 'new' | 'replay' | 'foreign' | 'other-shift') {
   const writes: string[] = [];
@@ -49,7 +49,7 @@ function fixture(mode: 'new' | 'replay' | 'foreign' | 'other-shift') {
       return { id: 'shift', branchId: 'branch' };
     },
   };
-  const service = new PosOrdersService(
+  const service = createPosOrdersService(
     prisma as never,
     {} as never,
     {} as never,

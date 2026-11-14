@@ -16,9 +16,10 @@ folders. Read README.md for the current ownership map before adding a file.
 - Keep the active transaction explicit when calling helpers. Preserve existing
   lock order, tenant/branch scope, retry identity, authorization order and saved
   financial/stock snapshots during structural changes.
-- Keep existing application service methods where callers need them, but put
-  substantial independent operations in the responsible folder rather than
-  growing a catch-all service.
+- Keep existing application service methods where callers need them. Implement
+  substantial independent operations as injectable application services in their
+  responsible folder. Use PosSaleService as the reference; ordinary functions
+  remain appropriate for rules, queries, mapping and active-transaction helpers.
 - Preserve payment-versus-item-return semantics and customer-account-versus-
   merchant-customer association boundaries.
 - Follow the root manual-QA preference. Formatting is not evidence of runtime

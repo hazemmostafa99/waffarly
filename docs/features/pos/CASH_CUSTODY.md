@@ -85,7 +85,7 @@ statements. Fixtures clean up only their isolated tenants. `test:shifts-db` also
 includes this suite; default API tests include HTTP boundary checks.
 
 Build the merchant dashboard, then run
-`pnpm exec playwright test --config playwright.cash-custody.config.ts` for
+`pnpm exec playwright test --config tests/playwright/cash-custody.config.ts` for
 English/Arabic desktop/mobile owner receipt and network recovery plus POS shift
 handoff/carryover regression checks. The suite uses isolated ports 5294/5295 and
 `test-results/cash-custody`.

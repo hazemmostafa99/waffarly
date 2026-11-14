@@ -32,6 +32,12 @@ apply the relevant boundary rules here too.
 - Application services coordinate use cases and transactions. Extract independent
   calculations and configuration rules into named functions; extract substantial
   persistence helpers when it clarifies queries and transaction ownership.
+- Use injectable Nest application services for substantial operation orchestration.
+  Keep rules, mapping, queries and transaction helpers as ordinary functions with
+  explicit dependencies. Do not introduce new dependency-bag operation functions
+  behind forwarding services. Follow
+  [the application standard](../../docs/architecture/API_APPLICATION_STANDARD.md);
+  existing legacy operations are not evidence of full compliance.
 - Cross-module imports use the owning module's `index.ts` public entry point.
   Export the Nest module and only providers/types deliberately shared with other
   modules. Register shared providers with Nest `exports` and import their module.
@@ -99,6 +105,15 @@ related writes merely to shorten a service.
   edit generated Prisma code.
 - Keep filesystem/provider operations behind storage adapters. Preserve tenant
   paths, signature/size checks, and cleanup if database persistence fails.
+
+## Developer workflow
+
+Read [CONTRIBUTING.md](../../CONTRIBUTING.md), the
+[operation traces](../../docs/architecture/API_WORKFLOWS.md) and
+[test map](../../docs/testing/API_TESTING.md). `pnpm check:api` runs the standard
+API checks. Database tests must use the guarded `TEST_DATABASE_URL` and
+`createTestDatabaseClient(testContext)`; never fall back to the application URL.
+Keep fixture deletion scoped to recorded tenant IDs and always release clients.
 
 ## Validation, growth, and completion
 

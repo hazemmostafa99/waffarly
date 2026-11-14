@@ -1,5 +1,9 @@
 # Local development
 
+Start with the [developer guide](../../CONTRIBUTING.md) for current daily commands,
+code navigation and troubleshooting. Database tests use a separate
+[guarded test database](../testing/API_TESTING.md).
+
 ## Required tools
 
 - Node.js 24.11.1; `.node-version` records the selected version.
@@ -45,7 +49,7 @@ pnpm db:check
 
 Compose runs a container named `waffarly-postgres` and persists local PostgreSQL data in the named `waffarly-postgres-data` volume. To stop the container while keeping the data, run `docker compose --env-file .env -f infrastructure/docker/compose.yaml down`. The database health check runs `pg_isready`.
 
-`db:migrate` applies all pending development migrations, including the catalog tables. There is no seed script or mock business data. `db:check` validates the schema, generates the client, and checks applied migration status; PostgreSQL must be running for the final command.
+`db:migrate` applies all pending development migrations, including the catalog tables. Demo/fixture seed commands are separate from migrations; use the relevant feature guide when you need them. `db:check` validates the schema, generates the client, and checks applied migration status; PostgreSQL must be running for the final command.
 
 ## Start the workspace
 
@@ -79,9 +83,15 @@ The API validates `DATABASE_URL`, `PORT`, `NODE_ENV`, and `CORS_ORIGINS` at star
 1. Open http://localhost:5173 and sign in with `SUPER_ADMIN_USERNAME` and the password used to generate the configured hash.
 2. Enter the restaurant name, restaurant contact number, owner name, owner mobile number, owner username, and owner password. The four contact fields are the approved merchant information; username/password provision owner access.
 3. After creation, call the owner to verify the mobile number, then send the displayed credentials manually in a private message. Dismiss the credential panel when done. No messaging API is called.
-4. The owner cannot sign in at http://localhost:5174 yet. After first-month collection is confirmed outside Waffarly, use **Activate first month** in Super Admin. The owner can then sign in.
+4. Assign/review a priced subscription in subscription administration. Record
+   collection only after it is actually confirmed outside Waffarly, then activate
+   the reviewed coverage. The historical **Activate first month** route does not
+   grant subscription access. Sign-in and permission to perform new operations
+   are separate; inactive accounts may inspect records and finish allowed work.
 
-Sessions use HTTP-only cookies and require the configured local frontend origins. Passwords are stored as hashes, never returned from the API. The current slice does not implement password recovery, renewal, expiry, or any restaurant configuration feature; do not use it as a complete production subscription service.
+Sessions use HTTP-only cookies. Passwords are stored as hashes, never returned
+from the API. See [Merchant subscriptions](../features/super-admin/plans-subscriptions/SUBSCRIPTIONS.md)
+for current activation, expiry, recovery actions and collection semantics.
 
 ## Monthly plan administration
 
@@ -98,6 +108,10 @@ pnpm lint
 pnpm format:check
 pnpm typecheck
 pnpm test
+pnpm check:api
+# After the separate test database is provisioned:
+pnpm test:db:prepare
+pnpm test:db
 pnpm build
 pnpm db:validate
 pnpm db:generate

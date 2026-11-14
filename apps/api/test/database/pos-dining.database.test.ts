@@ -1,7 +1,10 @@
+import { createPosOrdersService } from '../support/pos-orders-service.js';
+import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
+
 import type { PosEmployeeSession } from '@waffarly/contracts';
-import { config } from 'dotenv';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
@@ -9,20 +12,19 @@ import type { PrismaService } from '../../src/infrastructure/database/prisma.ser
 import { PosDiningService } from '../../src/modules/orders/dining/pos-dining.service.js';
 import { OrderLifecycleService } from '../../src/modules/orders/fulfillment/order-lifecycle.service.js';
 import { PosKitchenService } from '../../src/modules/orders/kitchen/pos-kitchen.service.js';
-import { PosOrdersService } from '../../src/modules/orders/pos-sales/pos-orders.service.js';
+
 import { ProductConfigurationReportService } from '../../src/modules/reports/product-configuration-report.service.js';
 import { PaymentsService } from '../../src/modules/payments/payments.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'persists dining sessions, split checks, and safe cash/terminal payment settlement',
   { skip: !databaseUrl },
-  async () => {
-    assert.ok(databaseUrl, 'Configure DATABASE_URL and apply the POS dining migration first.');
-    const prisma = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+  async (testContext) => {
+    assert.ok(databaseUrl, 'Configure TEST_DATABASE_URL and apply the POS dining migration first.');
+    const prisma = createTestDatabaseClient(testContext);
     const token = randomUUID().replaceAll('-', '');
     const merchantIds: string[] = [];
 
@@ -143,7 +145,7 @@ it(
       });
       const shifts = new ShiftsService(prisma as unknown as PrismaService);
       const payments = new PaymentsService(shifts);
-      const posOrders = new PosOrdersService(
+      const posOrders = createPosOrdersService(
         prisma as unknown as PrismaService,
         {} as never,
         {} as never,
@@ -948,7 +950,7 @@ it(
         throw new Error('Injected cash journal failure for rollback verification.');
       };
       const rollbackPayments = new PaymentsService(failingShifts);
-      const rollbackOrders = new PosOrdersService(
+      const rollbackOrders = createPosOrdersService(
         prisma as unknown as PrismaService,
         {} as never,
         {} as never,
@@ -1335,9 +1337,7 @@ it(
             await tx.posEmployee.deleteMany({ where: { merchantId } });
             await tx.branch.deleteMany({ where: { merchantId } });
             // Remove the subscription created with this test merchant before its parent row.
-            await tx.subscriptionEvent.deleteMany({ where: { merchantId } });
-            await tx.subscriptionPeriod.deleteMany({ where: { merchantId } });
-            await tx.subscription.deleteMany({ where: { merchantId } });
+            await deleteTestMerchantSubscriptions(tx, [merchantId]);
             await tx.merchant.deleteMany({ where: { id: merchantId } });
           });
         }

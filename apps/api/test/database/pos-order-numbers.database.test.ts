@@ -1,16 +1,19 @@
-﻿import assert from 'node:assert/strict';
+import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
+
 import { allocatePosOrderReference } from '../../src/modules/orders/pos-sales/pos-order-number.persistence.js';
 
 // Only run against an explicitly designated disposable, migrated database.
-const databaseUrl = process.env.POS_NUMBER_TEST_DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 it(
   'allocates distinct daily numbers concurrently and rolls back failed allocations',
   { skip: !databaseUrl },
-  async () => {
-    const db = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const db = createTestDatabaseClient(testContext);
     const token = randomUUID();
     const merchant = await db.merchant.create({
       data: {
@@ -49,6 +52,7 @@ it(
       await db.posOrderDailyCounter.deleteMany({ where: { merchantId: merchant.id } });
       await db.posOrderBranchCode.deleteMany({ where: { merchantId: merchant.id } });
       await db.branch.deleteMany({ where: { merchantId: merchant.id } });
+      await deleteTestMerchantSubscriptions(db, [merchant.id]);
       await db.merchant.delete({ where: { id: merchant.id } });
       await db.$disconnect();
     }

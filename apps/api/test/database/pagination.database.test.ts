@@ -1,5 +1,6 @@
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
-import { config } from 'dotenv';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
@@ -9,16 +10,14 @@ import { CategoryService } from '../../src/modules/catalog/categories/category.s
 import { ProductService } from '../../src/modules/catalog/products/product.service.js';
 import { MerchantService } from '../../src/modules/merchants/merchant.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'pages tenant catalog, public catalog, and merchant results with scoped PostgreSQL cursors',
   { skip: !databaseUrl },
-  async () => {
-    assert.ok(databaseUrl, 'Configure DATABASE_URL and apply migrations first.');
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+  async (testContext) => {
+    assert.ok(databaseUrl, 'Configure TEST_DATABASE_URL and apply migrations first.');
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback pagination verification fixtures');
 
     try {

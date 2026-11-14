@@ -55,4 +55,4 @@ do not imply real orders, sessions or charges. Do not persist sensitive form dat
 
 Backend integration starts only after the UI flows are complete and the user
 explicitly asks to start that phase. Preserve other existing app surfaces. Follow
-the root Marketplace policy and [roadmap](../../docs/marketplace-roadmap.md).
+the root Marketplace policy and [roadmap](../../docs/features/marketplace/marketplace-roadmap.md).

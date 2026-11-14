@@ -1,0 +1,30 @@
+import { workspacePath } from './paths.js';
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  outputDir: workspacePath('test-results'),
+  testDir: workspacePath('tests/ui'),
+  testMatch: 'pos-incoming-orders.spec.ts',
+  workers: 1,
+  timeout: 45_000,
+  expect: { timeout: 8_000 },
+  use: {
+    channel: process.env.CI ? 'chromium' : 'chrome',
+    headless: true,
+    baseURL: 'http://127.0.0.1:5277',
+    reducedMotion: 'reduce',
+    screenshot: 'only-on-failure',
+    trace: 'retain-on-failure',
+  },
+  projects: [
+    { name: 'desktop', use: { viewport: { width: 1440, height: 1000 } } },
+    { name: 'mobile', use: { viewport: { width: 390, height: 844 } } },
+  ],
+  webServer: {
+    command: 'node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5277 --strictPort',
+    cwd: workspacePath('apps/pos'),
+    url: 'http://127.0.0.1:5277',
+    env: { ...process.env, NODE_ENV: 'development' },
+    reuseExistingServer: !process.env.CI,
+  },
+});

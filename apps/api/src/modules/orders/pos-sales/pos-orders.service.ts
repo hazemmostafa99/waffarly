@@ -26,7 +26,7 @@ import { ShiftsService } from '../../shifts/index.js';
 import { PaymentsService } from '../../payments/index.js';
 import { PosDiningService } from '../dining/pos-dining.service.js';
 
-import { quotePosSale, createPosSale } from './create-pos-sale.js';
+import { PosSaleService } from './pos-sale.service.js';
 import { amendKitchenOrder } from '../kitchen/amend-kitchen-order.js';
 import { preparePickupCollection } from '../billing/prepare-pickup-collection.js';
 import { recordCheckPayment } from '../billing/collect-order-check.js';
@@ -44,14 +44,15 @@ export class PosOrdersService {
     @Inject(ShiftsService) readonly shifts: ShiftsService,
     @Inject(PosDiningService) readonly dining: PosDiningService,
     @Inject(PaymentsService) readonly payments: PaymentsService,
+    @Inject(PosSaleService) private readonly sales: PosSaleService,
   ) {}
 
   async quote(employee: PosEmployeeSession, input: unknown): Promise<PosOrderQuoteResponse> {
-    return quotePosSale(this, employee, input);
+    return this.sales.quote(employee, input);
   }
 
   async create(employee: PosEmployeeSession, input: unknown): Promise<CreatePosOrderResponse> {
-    return createPosSale(this, employee, input);
+    return this.sales.create(employee, input);
   }
 
   async addKitchenItems(

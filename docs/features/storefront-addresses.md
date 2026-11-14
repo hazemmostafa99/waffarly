@@ -67,6 +67,6 @@ unchanged technical codes. Merchant account database regression passed. API
 typecheck/lint/build evidence is recorded at task completion. Frontend browser
 acceptance remains manual and was not performed by this change.
 
-See [local setup](../local-storefront-subdomains.md) and
+See [local setup](../setup/local-storefront-subdomains.md) and
 [production configuration](../setup/STOREFRONT_SUBDOMAINS.md). This production
 routing change adds no database migration, shared API contract or module dependency.

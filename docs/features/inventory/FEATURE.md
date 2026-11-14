@@ -20,7 +20,7 @@ This pair adapts the supplied `WAFFARLY_COMMERCE_FEATURE_SPEC.md` and `WAFFARLY_
 
 Repository references:
 
-- [Project Overview](../../../PROJECT_OVERVIEW.md) and [MVP Scope](../../../MVP_SCOPE.md).
+- [Project Overview](../../product/PROJECT_OVERVIEW.md) and [MVP Scope](../../product/MVP_SCOPE.md).
 - [API implementation rules](../../../apps/api/AGENTS.md) and [API architecture](../../architecture/API_ARCHITECTURE.md).
 - [Product Builder contract](../catalog/product-builder/FEATURE.md) and [existing progress](../catalog/product-builder/PROGRESS.md).
 - [Catalog overview](../catalog/OVERVIEW.md), [Products](../catalog/PRODUCTS.md), and [technical decisions](../../architecture/TECHNICAL_DECISIONS.md).

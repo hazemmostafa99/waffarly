@@ -1,6 +1,7 @@
-import { createPostgresAdapter, PrismaClient, type Prisma } from '@waffarly/database';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+import { type Prisma } from '@waffarly/database';
 import { POS_EMPLOYEE_ROLES } from '@waffarly/contracts';
-import { config } from 'dotenv';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { it } from 'node:test';
@@ -8,15 +9,14 @@ import type { Request, Response } from 'express';
 import { AuthService } from '../../src/modules/auth/auth.service.js';
 import { PosEmployeeService } from '../../src/modules/employees/pos-employee.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'persists employee presets, isolates tenants, reloads grants and revokes POS sessions',
   { skip: !databaseUrl },
-  async () => {
+  async (testContext) => {
     assert.ok(databaseUrl);
-    const prisma = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+    const prisma = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback employee role verification fixtures');
     try {
       await assert.rejects(

@@ -1,19 +1,19 @@
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
-import { config } from 'dotenv';
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
+
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { MerchantService } from '../../src/modules/merchants/merchant.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'reserves public handles atomically, preserves POS codes and prevents replacement',
   { skip: !databaseUrl },
-  async () => {
-    const prisma = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const prisma = createTestDatabaseClient(testContext);
     const service = new MerchantService(prisma as unknown as PrismaService);
     const ids: string[] = [randomUUID(), randomUUID(), randomUUID()];
     const handle = `address-${randomUUID()}`;

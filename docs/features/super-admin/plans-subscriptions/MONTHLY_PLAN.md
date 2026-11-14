@@ -86,8 +86,8 @@ The [Prisma schema](../../../../packages/database/prisma/schema.prisma) defines 
 
 - [Plans view](../../../../apps/super-admin/src/Plans.tsx) and [styles](../../../../apps/super-admin/src/plans.css): responsive create/edit form and catalog, with no preset price and EGP fixed automatically.
 - [Super Admin app](../../../../apps/super-admin/src/App.tsx): Plans navigation alongside Restaurants and Design library.
-- [Controller](../../../../apps/api/src/modules/super-admin/plan.controller.ts): authenticated routes, strict input validation, and normalization.
-- [Service](../../../../apps/api/src/modules/super-admin/plan.service.ts): list/create/edit, replay handling, and revision checks.
+- [Controller](../../../../apps/api/src/modules/plans/plan.controller.ts): authenticated routes, strict input validation, and normalization.
+- [Service](../../../../apps/api/src/modules/plans/plan.service.ts): list/create/edit, replay handling, and revision checks.
 
 ## 8. Acceptance and Validation
 
@@ -98,7 +98,7 @@ The [Prisma schema](../../../../packages/database/prisma/schema.prisma) defines 
 - Plan writes do not mutate merchant approval, owner provisioning, activation, collection, or coverage.
 - No payment-provider call is part of administration.
 
-[API tests](../../../../apps/api/test/plans.e2e.test.ts) cover authorization, price normalization/bounds, validation, optional descriptions, retries, missing targets, and stale revisions with a test database provider. All nine API/health tests passed. A live PostgreSQL check also verified exact price persistence, revision conflicts, and rollback of its temporary data. Builds, type checks, lint, schema validation, and migration checks supplement them. Interactive browser verification is limited by the unavailable browser session connector in this environment and is not claimed as passed.
+[API tests](../../../../apps/api/test/http/plans.e2e.test.ts) cover authorization, price normalization/bounds, validation, optional descriptions, retries, missing targets, and stale revisions with a test database provider. All nine API/health tests passed. A live PostgreSQL check also verified exact price persistence, revision conflicts, and rollback of its temporary data. Builds, type checks, lint, schema validation, and migration checks supplement them. Interactive browser verification is limited by the unavailable browser session connector in this environment and is not claimed as passed.
 
 ## 9. Running the Feature
 

@@ -1,26 +1,26 @@
+import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
+
 import type { PosEmployeeSession } from '@waffarly/contracts';
-import { config } from 'dotenv';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'reconciles cash and terminal tenders, requires supervisor approvals, blocks unsettled checks, and closes idempotently',
   { skip: !databaseUrl },
-  async () => {
+  async (testContext) => {
     assert.ok(
       databaseUrl,
-      'Configure DATABASE_URL and apply the POS shift reconciliation migration.',
+      'Configure TEST_DATABASE_URL and apply the POS shift reconciliation migration.',
     );
-    const prisma = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+    const prisma = createTestDatabaseClient(testContext);
     const merchantIds: string[] = [];
     const orderIds: string[] = [];
 
@@ -530,9 +530,7 @@ it(
             await tx.posEmployee.deleteMany({ where: { merchantId } });
             await tx.branch.deleteMany({ where: { merchantId } });
             // Remove the subscription created with this test merchant before its parent row.
-            await tx.subscriptionEvent.deleteMany({ where: { merchantId } });
-            await tx.subscriptionPeriod.deleteMany({ where: { merchantId } });
-            await tx.subscription.deleteMany({ where: { merchantId } });
+            await deleteTestMerchantSubscriptions(tx, [merchantId]);
             await tx.merchant.deleteMany({ where: { id: merchantId } });
           });
         }

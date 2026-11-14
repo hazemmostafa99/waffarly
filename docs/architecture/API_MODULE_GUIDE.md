@@ -1,5 +1,14 @@
 # API module navigation
 
+The target is [Nest application services for operations](API_APPLICATION_STANDARD.md),
+with ordinary functions for rules, mapping and transaction helpers. Alignment is
+partial. `PosSaleService` is the reference operation; legacy forwarding services
+and function-based orchestration remain migration work.
+
+Start with [the developer guide](../../CONTRIBUTING.md), follow
+[an operation end to end](API_WORKFLOWS.md), or choose checks from
+[the API test map](../testing/API_TESTING.md).
+
 Organize the API by business ownership. Keep small features flat. Within larger
 features, put independent operations, queries, rules and mapping in the folder
 that owns them. Preserve existing application-service entry points when callers

@@ -24,6 +24,7 @@ import { PublicStorefrontOrdersController } from './http/storefront/storefront-o
 import { OwnerStorefrontOrdersController } from './http/owner/owner-orders.controller.js';
 import { PosStorefrontOrdersController } from './http/pos/pos-orders.controller.js';
 import { StorefrontOrdersService } from './checkout/storefront-orders.service.js';
+import { PosSaleService } from './pos-sales/pos-sale.service.js';
 import { PosOrdersService } from './pos-sales/pos-orders.service.js';
 import {
   PosDiningController,
@@ -67,6 +68,7 @@ import { OwnerPosItemReturnsController } from './http/owner/pos-returns.controll
     StorefrontOrdersService,
     OrderLifecycleService,
     PosOrdersService,
+    PosSaleService,
     PosDiningService,
     PosKitchenService,
     PosReturnsService,

@@ -31,19 +31,20 @@ account/guest identity, and uses the same checkout transaction. Marketplace does
 not have a duplicate order engine. Existing legacy storefront submission keeps
 its different ownership behavior.
 
-Cashier commands go through `http/pos` to the thin `PosOrdersService` entry point.
-It delegates to named operations: `createPosSale`, `amendKitchenOrder`,
-`preparePickupCollection`, `recordCheckPayment` and `recordCheckRefund`.
-`getPosSaleDetails`, `getOrderPaymentState` and `listActiveSales` handle reads.
-The entry point retains its constructor and method signatures for existing callers
-and fixtures; business execution no longer lives in that class.
+Cashier commands go through `http/pos` to the existing `PosOrdersService` entry
+point. Sale quote/create delegate to the injectable `PosSaleService`, which owns
+its dependencies, sale transaction and retry loop. This is the reference for the
+[application standard](../../../../../docs/architecture/API_APPLICATION_STANDARD.md).
 
-Operations receive only the dependencies they use. These are ordinary typed
-functions, not additional Nest modules or service-locator abstractions. The
-operation owns its existing transaction. Receipt issuance accepts that active
-transaction directly, so settlement and its immutable receipt commit together.
-Dining delegates check splitting to `billing/split-order-checks.ts`; storefront
-lists delegate to `fulfillment/order-queue.query.ts`.
+The other cashier operations still delegate to ordinary operation functions:
+`amendKitchenOrder`, `preparePickupCollection`, `recordCheckPayment` and
+`recordCheckRefund`. They remain migration work; the module is not yet fully
+aligned. Existing service methods stay available to callers during migration.
+`getPosSaleDetails`, `getOrderPaymentState` and `listActiveSales` handle reads.
+Receipt issuance accepts the active transaction, so settlement and its immutable
+receipt commit together. Dining delegates check splitting to
+`billing/split-order-checks.ts`; storefront lists delegate to
+`fulfillment/order-queue.query.ts`.
 
 `OrderLifecycleService` keeps the common transaction and routes the requested
 change to `accept-order.ts`, `prepare-order.ts`, `handover-order.ts` or

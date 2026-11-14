@@ -1,6 +1,8 @@
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
+import { enableTestLegacyAccess } from '../support/merchant-fixtures.js';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+
 import type { CatalogProductModifierGroupAssignmentFields } from '@waffarly/contracts';
-import { config } from 'dotenv';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
@@ -11,14 +13,13 @@ import { InventoryService } from '../../src/modules/inventory/inventory.service.
 import { StorefrontOrdersService } from '../../src/modules/orders/checkout/storefront-orders.service.js';
 import { ProductConfigurationReportService } from '../../src/modules/reports/product-configuration-report.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'persists modifier overrides, validates tenant recipes, and snapshots quantities and effective prices',
   { skip: !databaseUrl },
-  async () => {
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback M5 fixtures');
     try {
       await assert.rejects(
@@ -35,6 +36,7 @@ it(
                 ownerMobile: '01100000000',
               },
             });
+            await enableTestLegacyAccess(tx, merchant.id);
             const other = await tx.merchant.create({
               data: {
                 name: 'Foreign M5',

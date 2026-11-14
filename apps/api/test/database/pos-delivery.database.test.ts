@@ -1,27 +1,29 @@
+import { createPosOrdersService } from '../support/pos-orders-service.js';
+import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
-import { config } from 'dotenv';
 import { ConflictException, ForbiddenException } from '@nestjs/common';
-import { PrismaClient, createPostgresAdapter } from '@waffarly/database';
+
 import { resolvePosEmployeePermissions, type PosEmployeeSession } from '@waffarly/contracts';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { PosDeliveryService } from '../../src/modules/orders/delivery/pos-delivery.service.js';
-import { PosOrdersService } from '../../src/modules/orders/pos-sales/pos-orders.service.js';
+
 import { PosDiningService } from '../../src/modules/orders/dining/pos-dining.service.js';
 import { PaymentsService } from '../../src/modules/payments/payments.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 import { PosOperationsReportService } from '../../src/modules/reports/pos-operations-report.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'carries COD across closed shifts, separates courier collection from drawer receipt, and preserves audit and exact replay',
   { skip: !databaseUrl },
-  async () => {
+  async (testContext) => {
     assert.ok(databaseUrl);
-    const db = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+    const db = createTestDatabaseClient(testContext);
     const token = randomUUID();
     const merchant = await db.merchant.create({
       data: {
@@ -104,7 +106,7 @@ it(
         shifts.listDeliveryHandoverRecipients({ ...ahmed, branches: [] }, { branchId: branch.id }),
       );
       const delivery = new PosDeliveryService(db as unknown as PrismaService, shifts);
-      const orders = new PosOrdersService(
+      const orders = createPosOrdersService(
         db as unknown as PrismaService,
         {} as never,
         {} as never,
@@ -637,6 +639,7 @@ it(
         await tx.posEmployeeBranch.deleteMany({ where: { merchantId } });
         await tx.posEmployee.deleteMany({ where: { merchantId } });
         await tx.branch.deleteMany({ where: { merchantId } });
+        await deleteTestMerchantSubscriptions(tx, [merchantId]);
         await tx.merchant.delete({ where: { id: merchantId } });
       });
       await db.$disconnect();

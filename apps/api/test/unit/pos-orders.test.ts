@@ -1,8 +1,8 @@
+import { createPosOrdersService } from '../support/pos-orders-service.js';
 import { ForbiddenException } from '@nestjs/common';
 import type { PosEmployeeSession } from '@waffarly/contracts';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { PosOrdersService } from '../../src/modules/orders/pos-sales/pos-orders.service.js';
 
 const merchantId = '11111111-1111-4111-8111-111111111111';
 const employeeId = '22222222-2222-4222-8222-222222222222';
@@ -52,7 +52,7 @@ describe('POS sales', () => {
         throw new Error('reached third attempt');
       },
     };
-    const service = new PosOrdersService(
+    const service = createPosOrdersService(
       prisma as never,
       {} as never,
       {} as never,
@@ -92,7 +92,7 @@ describe('POS sales', () => {
         },
       },
     };
-    const service = new PosOrdersService(
+    const service = createPosOrdersService(
       prisma as never,
       {} as never,
       {} as never,
@@ -135,7 +135,7 @@ describe('POS sales', () => {
 
   it('requires the assigned sell permission before quoting', async () => {
     const pricing = { quoteForMerchant: async () => quote(productId, '2.25') };
-    const service = new PosOrdersService(
+    const service = createPosOrdersService(
       {} as never,
       pricing as never,
       {} as never,
@@ -165,7 +165,7 @@ describe('POS sales', () => {
         return quote(scopedProduct, scopedProduct === productId ? '2.25' : '4.10');
       },
     };
-    const service = new PosOrdersService(
+    const service = createPosOrdersService(
       {} as never,
       pricing as never,
       {} as never,
@@ -201,7 +201,7 @@ describe('POS sales', () => {
         throw new Error('Transaction must not start');
       },
     };
-    const service = new PosOrdersService(
+    const service = createPosOrdersService(
       prisma as never,
       {} as never,
       {} as never,
@@ -358,7 +358,7 @@ describe('POS sales', () => {
         shiftLocks += 1;
       },
     };
-    const service = new PosOrdersService(
+    const service = createPosOrdersService(
       prisma as never,
       pricing as never,
       {} as never,
@@ -423,7 +423,7 @@ describe('POS sales', () => {
       posOrderPayment: { count: async () => 0 },
       posOrderCheckLine: { count: async () => 0 },
     };
-    const service = new PosOrdersService(
+    const service = createPosOrdersService(
       {
         $transaction: async (callback: (transaction: typeof tx) => Promise<unknown>) =>
           callback(tx),
@@ -526,7 +526,7 @@ describe('POS sales', () => {
         posOrderPayment: { count: async () => scenario.payments },
         posOrderCheckLine: { count: async () => scenario.allocations },
       };
-      const service = new PosOrdersService(
+      const service = createPosOrdersService(
         {
           $transaction: async (callback: (transaction: typeof tx) => Promise<unknown>) =>
             callback(tx),

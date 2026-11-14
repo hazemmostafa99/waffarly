@@ -1,5 +1,6 @@
-import { PrismaClient, createPostgresAdapter } from '@waffarly/database';
-import { config } from 'dotenv';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+
 import assert from 'node:assert/strict';
 import { createHash, randomInt, randomUUID } from 'node:crypto';
 import type { Request, Response } from 'express';
@@ -7,15 +8,14 @@ import { it } from 'node:test';
 import { CustomerAuthService } from '../../src/modules/auth/customer-auth.service.js';
 import { verifyPassword } from '../../src/modules/auth/password.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const url = process.env.DATABASE_URL;
+const url = getTestDatabaseUrl();
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 
 it(
   'customer password persistence, isolated sessions, rotation, expiration and durable limits',
   { skip: !url },
-  async () => {
-    const prisma = new PrismaClient({ adapter: createPostgresAdapter(url!) });
+  async (testContext) => {
+    const prisma = createTestDatabaseClient(testContext);
     const tag = randomUUID();
     const ip = `fixture-${tag}`;
     const email = `${tag}@example.invalid`;

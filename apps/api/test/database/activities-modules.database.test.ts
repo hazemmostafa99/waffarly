@@ -1,16 +1,15 @@
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { ConflictException } from '@nestjs/common';
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
-import { config } from 'dotenv';
+
 import assert from 'node:assert/strict';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { ActivitiesModulesService } from '../../src/modules/activities/activities-modules.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-
-it('persists catalog overrides and enforces SQL constraints in a rolled-back transaction', async () => {
-  assert.ok(process.env.DATABASE_URL, 'Configure DATABASE_URL and apply migrations first.');
-  const client = new PrismaClient({ adapter: createPostgresAdapter(process.env.DATABASE_URL) });
+it('persists catalog overrides and enforces SQL constraints in a rolled-back transaction', async (testContext) => {
+  assert.ok(getTestDatabaseUrl(), 'Configure TEST_DATABASE_URL and apply migrations first.');
+  const client = createTestDatabaseClient(testContext);
   const service = new ActivitiesModulesService(client as PrismaService);
   const rollback = new Error('Rollback verification fixtures');
   try {

@@ -19,7 +19,7 @@ This overview identifies features, actors, recorded rules, candidate journeys, d
 ### Sources and Decision Status
 
 - [Existing Super Admin specification](../../SUPER_ADMIN.md): historical first-slice decisions SA-D01–SA-D08 and unresolved rules.
-- [PROJECT_OVERVIEW.md](../../../../PROJECT_OVERVIEW.md) and [MVP_SCOPE.md](../../../../MVP_SCOPE.md): platform principles, restaurant-first constraints, and candidate release scope.
+- [PROJECT_OVERVIEW.md](../../../product/PROJECT_OVERVIEW.md) and [MVP_SCOPE.md](../../../product/MVP_SCOPE.md): platform principles, restaurant-first constraints, and candidate release scope.
 - [Technical decisions](../../../architecture/TECHNICAL_DECISIONS.md): current implementation boundaries, separate from final architecture approval.
 - [Parent overview](../OVERVIEW.md): stable feature IDs, domain relationships, and source reconciliation SA-R01–SA-R06.
 - Current product-owner direction, recorded below: Merchant Management discovery, including self-registration MVP analysis.
@@ -188,7 +188,7 @@ Security/data-integrity principles apply when related features ship. They do not
 Static inspection confirms the existing narrow first slice:
 
 - [Super Admin UI](../../../../apps/super-admin/src/App.tsx): sign-in/out, merchant creation/list, temporary display of entered owner credentials, and collection-confirmation prompt for first-month activation.
-- [Merchant controller](../../../../apps/api/src/modules/super-admin/merchant.controller.ts) and [service](../../../../apps/api/src/modules/super-admin/merchant.service.ts): protected actions, basic field validation, username normalization/uniqueness, nested merchant/owner creation, and one-time activation recording administrator/time.
+- [Merchant controller](../../../../apps/api/src/modules/merchants/merchant.controller.ts) and [service](../../../../apps/api/src/modules/merchants/merchant.service.ts): protected actions, basic field validation, username normalization/uniqueness, nested merchant/owner creation, and one-time activation recording administrator/time.
 - [Auth service](../../../../apps/api/src/modules/auth/auth.service.ts): hashed credentials, cookie sessions, and backend rejection of owner login/profile access before first-month activation.
 - [Prisma schema](../../../../packages/database/prisma/schema.prisma) and [contracts](../../../../packages/contracts/src/super-admin.ts): current merchant/owner/session and first-month data only. Existing structures are inspected, not adopted as the final design.
 

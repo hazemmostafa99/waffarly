@@ -41,7 +41,7 @@ with the existing local data before any backend integration. For Marketplace wor
   business application, admin and POS behavior. Existing external reference image
   URLs are allowed; they do not authorize backend data requests.
 
-See [the Marketplace roadmap](docs/marketplace-roadmap.md) for phase order and
+See [the Marketplace roadmap](docs/features/marketplace/marketplace-roadmap.md) for phase order and
 completion criteria.
 
 ## API feature work (when separately authorized)

@@ -1,8 +1,9 @@
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { it } from 'node:test';
-import { config } from 'dotenv';
-import { createPostgresAdapter, PrismaClient, type Prisma } from '@waffarly/database';
+import { type Prisma } from '@waffarly/database';
 import type { Request } from 'express';
 import type { SubscriptionCommand } from '@waffarly/contracts';
 import { SubscriptionService } from '../../src/modules/subscriptions/subscription.service.js';
@@ -11,8 +12,7 @@ import { PlanService } from '../../src/modules/plans/plan.service.js';
 import { MerchantService } from '../../src/modules/merchants/merchant.service.js';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 function scoped(tx: Prisma.TransactionClient): PrismaService {
   return new Proxy(tx, {
     get(target, key) {
@@ -33,8 +33,8 @@ const merchantData = () => ({
 it(
   'persists duration pricing, paid coverage, revisions, retries, cancellation, expiry and tenant-scoped access',
   { skip: !databaseUrl },
-  async () => {
-    const prisma = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const prisma = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback subscription test fixtures');
     try {
       await assert.rejects(
@@ -381,8 +381,8 @@ it(
 it(
   'creates owner and pending plan assignment atomically during onboarding',
   { skip: !databaseUrl },
-  async () => {
-    const prisma = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const prisma = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback subscription onboarding fixtures');
     try {
       await assert.rejects(
@@ -436,8 +436,8 @@ it(
 it(
   'serializes competing activations and exact duplicate retries without double collection',
   { skip: !databaseUrl },
-  async () => {
-    const prisma = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const prisma = createTestDatabaseClient(testContext);
     const service = new SubscriptionService(prisma as unknown as PrismaService);
     const merchant = await prisma.merchant.create({ data: merchantData() });
     const plan = await prisma.monthlyPlan.create({

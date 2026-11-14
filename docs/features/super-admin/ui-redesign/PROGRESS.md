@@ -197,7 +197,7 @@ Progress states:
 
 - Added mocked Playwright coverage for the `/templates/:templateId` deep link, revision-aware editing, availability changes, and unknown template IDs.
 - Added Arabic direction and responsive overflow assertions to the loaded details route; both desktop and mobile projects pass.
-- `pnpm exec playwright test --config=playwright.routes.config.ts --grep "admin template details"` passed (4 tests across desktop and mobile). The initial run exposed missing timestamps in the mock fixture; adding valid ISO timestamps resolved the fixture error without changing page behavior.
+- `pnpm exec playwright test --config=tests/playwright/routes.config.ts --grep "admin template details"` passed (4 tests across desktop and mobile). The initial run exposed missing timestamps in the mock fixture; adding valid ISO timestamps resolved the fixture error without changing page behavior.
 
 ### 2026-10-14 - Templates Library
 

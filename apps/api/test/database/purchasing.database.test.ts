@@ -1,5 +1,7 @@
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
-import { config } from 'dotenv';
+import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+import { PrismaClient } from '@waffarly/database';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
@@ -10,16 +12,15 @@ import { InventoryService } from '../../src/modules/inventory/inventory.service.
 import { PurchaseSuppliersService } from '../../src/modules/purchasing/purchase-suppliers.service.js';
 import { PurchasingService } from '../../src/modules/purchasing/purchasing.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 const actor = 'purchasing-database-test';
 
 it(
   'keeps purchase drafts inert and atomically receives exact, tenant-scoped invoice quantities once',
   { skip: !databaseUrl },
-  async () => {
-    assert.ok(databaseUrl, 'Configure DATABASE_URL and apply the purchasing migration first.');
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+  async (testContext) => {
+    assert.ok(databaseUrl, 'Configure TEST_DATABASE_URL and apply the purchasing migration first.');
+    const client = createTestDatabaseClient(testContext);
     const merchantIds: string[] = [];
     try {
       const prisma = client as unknown as PrismaService;
@@ -304,9 +305,9 @@ it(
 it(
   'serializes concurrent confirms and adds one receipt batch',
   { skip: !databaseUrl },
-  async () => {
-    assert.ok(databaseUrl, 'Configure DATABASE_URL and apply the purchasing migration first.');
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+  async (testContext) => {
+    assert.ok(databaseUrl, 'Configure TEST_DATABASE_URL and apply the purchasing migration first.');
+    const client = createTestDatabaseClient(testContext);
     let merchantId: string | undefined;
     try {
       const token = randomUUID().replaceAll('-', '');
@@ -369,6 +370,7 @@ it(
         await client.stockItemUnit.deleteMany({ where: { merchantId } });
         await client.stockItem.deleteMany({ where: { merchantId } });
         await client.purchaseSupplier.deleteMany({ where: { merchantId } });
+        await deleteTestMerchantSubscriptions(client, [merchantId]);
         await client.merchant.delete({ where: { id: merchantId } });
       }
       await client.$disconnect();
@@ -388,5 +390,6 @@ async function cleanupMerchants(client: PrismaClient, merchantIds: string[]) {
   await client.stockItemUnit.deleteMany({ where });
   await client.stockItem.deleteMany({ where });
   await client.purchaseSupplier.deleteMany({ where });
+  await deleteTestMerchantSubscriptions(client, merchantIds);
   await client.merchant.deleteMany({ where: { id: { in: merchantIds } } });
 }

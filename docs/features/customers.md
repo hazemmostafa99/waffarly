@@ -7,7 +7,7 @@ of email, mobile and password, with sign-in by either email or mobile. Auth owns
 global CustomerAccount credentials and customer sessions. Neither contact method
 is verified during registration. Customer profile linking and guest-order claims
 remain disabled; a matching email or mobile alone does not prove ownership.
-See [customer authentication](../marketplace-customer-authentication.md).
+See [customer authentication](marketplace/marketplace-customer-authentication.md).
 
 ## Delivery and authorization (2026-11-11)
 

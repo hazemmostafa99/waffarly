@@ -74,7 +74,7 @@ remain separate.
 
 Use Node 24.11.1 and the Merchant Dashboard typecheck, lint, and build scripts.
 Focused scenarios live in `tests/ui/merchant-inventory.spec.ts` and run with
-`playwright.merchant.config.ts` on desktop and mobile, in Arabic and English.
+`tests/playwright/merchant.config.ts` on desktop and mobile, in Arabic and English.
 They cover draft fields and bounded selectors, receipt confirmation/retry,
 inline supplier cancellation/error/retry, explicit policy saving, movement
 filter pagination, and opening-entry recovery. These browser tests mock API

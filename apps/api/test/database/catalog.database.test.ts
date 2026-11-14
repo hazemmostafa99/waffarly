@@ -1,5 +1,6 @@
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
-import { config } from 'dotenv';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
@@ -9,16 +10,14 @@ import { ModifierGroupService } from '../../src/modules/catalog/modifiers/modifi
 import { ProductPricingService } from '../../src/modules/catalog/pricing/product-pricing.service.js';
 import { ProductService } from '../../src/modules/catalog/products/product.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'persists legacy product-local writes as reusable modifier configurations in PostgreSQL',
   { skip: !databaseUrl },
-  async () => {
-    assert.ok(databaseUrl, 'Configure DATABASE_URL and apply migrations first.');
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+  async (testContext) => {
+    assert.ok(databaseUrl, 'Configure TEST_DATABASE_URL and apply migrations first.');
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback catalog verification fixtures');
 
     try {

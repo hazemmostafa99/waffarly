@@ -1,3 +1,4 @@
+import { createPosOrdersService } from '../support/pos-orders-service.js';
 import { UnauthorizedException, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
@@ -77,7 +78,7 @@ describe('employee role boundaries', () => {
         },
       },
     };
-    const sales = new PosOrdersService(
+    const sales = createPosOrdersService(
       prisma as never,
       {} as never,
       {} as never,

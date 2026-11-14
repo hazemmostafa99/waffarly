@@ -4,7 +4,7 @@
 
 **Last updated:** 2026-10-15
 **Scope:** Shared Product Core, restaurant-first implementation, future cross-activity extensibility  
-**Sources:** [Project Overview](../../../PROJECT_OVERVIEW.md), [Restaurant MVP Scope](../../../MVP_SCOPE.md), [Technical Decisions](../../architecture/TECHNICAL_DECISIONS.md), and existing feature specifications under `docs/features/`
+**Sources:** [Project Overview](../../product/PROJECT_OVERVIEW.md), [Restaurant MVP Scope](../../product/MVP_SCOPE.md), [Technical Decisions](../../architecture/TECHNICAL_DECISIONS.md), and existing feature specifications under `docs/features/`
 
 ## 1. Purpose and Current State
 

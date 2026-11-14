@@ -1,5 +1,12 @@
-import { createPostgresAdapter, PrismaClient, type Prisma } from '@waffarly/database';
-import { config } from 'dotenv';
+import { createPosOrdersService } from '../support/pos-orders-service.js';
+import {
+  enableTestLegacyAccess,
+  openTestBranchShift,
+  deleteTestMerchantSubscriptions,
+} from '../support/merchant-fixtures.js';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+import { type Prisma } from '@waffarly/database';
 import { ConflictException } from '@nestjs/common';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -16,12 +23,11 @@ import { OrderLifecycleService } from '../../src/modules/orders/fulfillment/orde
 import { ProductConfigurationReportService } from '../../src/modules/reports/product-configuration-report.service.js';
 import { PosEmployeeService } from '../../src/modules/employees/pos-employee.service.js';
 import type { PosEmployeeSession } from '@waffarly/contracts';
-import { PosOrdersService } from '../../src/modules/orders/pos-sales/pos-orders.service.js';
+
 import { PosDiningService } from '../../src/modules/orders/dining/pos-dining.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 const actor = 'recipe-owner-test';
 
 function transactionServices(tx: Prisma.TransactionClient) {
@@ -59,6 +65,7 @@ async function fixture(tx: Prisma.TransactionClient, scoped: never) {
     },
   });
   const merchantId = merchant.id;
+  await enableTestLegacyAccess(tx, merchantId);
   const media = await tx.mediaAsset.create({
     data: {
       merchantId,
@@ -112,6 +119,11 @@ async function fixture(tx: Prisma.TransactionClient, scoped: never) {
   const missingDefault = await tx.branch.create({
     data: { merchantId, name: 'No default', createdBy: actor, updatedBy: actor },
   });
+  await tx.posEmployeeBranch.create({
+    data: { merchantId, employeeId: employee.id, branchId: missingDefault.id, createdBy: actor },
+  });
+  await openTestBranchShift(tx, merchantId, branch.id, employee.id);
+  await openTestBranchShift(tx, merchantId, missingDefault.id, employee.id);
   const warehouse = await tx.warehouse.create({
     data: {
       merchantId,
@@ -270,8 +282,8 @@ async function fixture(tx: Prisma.TransactionClient, scoped: never) {
 it(
   'atomically accepts recipes, freezes pending configuration, restores recorded stock, and gates preparation',
   { skip: !databaseUrl },
-  async () => {
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback recipe lifecycle fixtures');
     try {
       await assert.rejects(
@@ -316,7 +328,7 @@ it(
               f.lifecycle.startPreparation(f.merchantId, actor, legacy.id, {
                 requestId: randomUUID(),
               }),
-              /only available for new recipe orders/,
+              /Open a cashier shift/,
             );
             const order = await f.createOrder(2, true);
             const queue = await f.orders.listForPos(f.merchantId, f.branch.id);
@@ -370,7 +382,9 @@ it(
                 requestId: randomUUID(),
                 branchId: randomUUID(),
               }),
-              /active branch/,
+              (error: unknown) =>
+                error instanceof ConflictException &&
+                (error.getResponse() as { code?: string }).code === 'ORDER_SHIFT_REQUIRED',
             );
             await assert.rejects(
               f.lifecycle.accept(f.merchantId, actor, order.id, {
@@ -549,8 +563,8 @@ it(
 it(
   'confirms POS sales once, consumes direct stock immediately, and accepts frozen recipes later',
   { skip: !databaseUrl },
-  async () => {
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback POS sale fixtures');
     try {
       await assert.rejects(
@@ -656,7 +670,7 @@ it(
               },
             });
             const pricing = new ProductPricingService(scoped);
-            const posOrders = new PosOrdersService(
+            const posOrders = createPosOrdersService(
               scoped,
               pricing,
               new ProductConsumptionService(),
@@ -1125,8 +1139,8 @@ it(
 it(
   'serializes independent acceptance requests and shared-ingredient shortages without double deduction',
   { skip: !databaseUrl },
-  async () => {
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const client = createTestDatabaseClient(testContext);
     let merchantId: string | undefined;
     try {
       const f = await client.$transaction(
@@ -1238,11 +1252,14 @@ it(
         await client.stockMovementBatch.deleteMany({ where });
         await client.stockBalance.deleteMany({ where });
         await client.warehouse.deleteMany({ where });
+        await client.posShift.deleteMany({ where });
+        await client.posRegister.deleteMany({ where });
         await client.posEmployeeBranch.deleteMany({ where });
         await client.posEmployee.deleteMany({ where });
         await client.branch.deleteMany({ where });
         await client.stockItemUnit.deleteMany({ where });
         await client.stockItem.deleteMany({ where });
+        await deleteTestMerchantSubscriptions(client, [merchantId]);
         await client.merchant.delete({ where: { id: merchantId } });
       }
       await client.$disconnect();
@@ -1253,8 +1270,8 @@ it(
 it(
   'creates a POS employee with tenant-scoped branch assignments',
   { skip: !databaseUrl },
-  async () => {
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback POS employee creation fixture');
     try {
       await assert.rejects(
@@ -1307,8 +1324,8 @@ it(
 it(
   'revokes only the employee POS sessions after password reset or deactivation',
   { skip: !databaseUrl },
-  async () => {
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback POS employee session fixtures');
     try {
       await assert.rejects(

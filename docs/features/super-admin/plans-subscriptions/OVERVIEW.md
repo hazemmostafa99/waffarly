@@ -21,7 +21,7 @@ The product owner selected discovery, then a basic monthly plan first (PS-D03), 
 - [Merchant Management overview](../merchants/OVERVIEW.md): onboarding boundaries, MER-D01–MER-D03, and subscription dependencies MER-Q04/MER-Q07.
 - [Parent overview](../OVERVIEW.md): stable SA-PS feature IDs, domain relationships, and reconciliation SA-R03.
 - [Existing Super Admin specification](../../SUPER_ADMIN.md): recorded first-slice rules SA-D03/SA-D05/SA-D06 and questions SA-Q03A/SA-Q06.
-- [PROJECT_OVERVIEW.md](../../../../PROJECT_OVERVIEW.md) and [MVP_SCOPE.md](../../../../MVP_SCOPE.md): monthly launch model, no-provider constraint, platform vision, and unresolved release scope.
+- [PROJECT_OVERVIEW.md](../../../product/PROJECT_OVERVIEW.md) and [MVP_SCOPE.md](../../../product/MVP_SCOPE.md): monthly launch model, no-provider constraint, platform vision, and unresolved release scope.
 - [Technical decisions](../../../architecture/TECHNICAL_DECISIONS.md) and inspected source files in section 9: existing implementation, separate from approved requirements.
 - Current product-owner direction: “Start the discovery document,” “multiple plans,” “just build a monthly plan for now,” and then “do both” for documentation and implementation.
 
@@ -188,11 +188,11 @@ These security/integrity concerns apply to selected features. They do not approv
 Static inspection of the current working tree confirms:
 
 - [Super Admin UI](../../../../apps/super-admin/src/App.tsx): a per-merchant first-month activation action asks the administrator to confirm external collection. The list shows whether/when first-month activation was recorded.
-- [Merchant controller](../../../../apps/api/src/modules/super-admin/merchant.controller.ts): a protected activation endpoint requires `externalCollectionConfirmed: true` and identifies the administrator.
-- [Merchant service](../../../../apps/api/src/modules/super-admin/merchant.service.ts): records `firstMonthActivatedAt` and `firstMonthActivatedBy`; a conditional write prevents repeated initial activation and distinguishes a missing merchant from an already activated one.
+- [Merchant controller](../../../../apps/api/src/modules/merchants/merchant.controller.ts): a protected activation endpoint requires `externalCollectionConfirmed: true` and identifies the administrator.
+- [Merchant service](../../../../apps/api/src/modules/merchants/merchant.service.ts): records `firstMonthActivatedAt` and `firstMonthActivatedBy`; a conditional write prevents repeated initial activation and distinguishes a missing merchant from an already activated one.
 - [Auth service](../../../../apps/api/src/modules/auth/auth.service.ts): rejects owner login and owner-profile access when the merchant has no first-month activation timestamp.
 - [Prisma schema](../../../../packages/database/prisma/schema.prisma) and [activation contracts](../../../../packages/contracts/src/super-admin.ts): retain initial merchant activation facts/request. The new `MonthlyPlan` definition and [plan contracts](../../../../packages/contracts/src/plans.ts) add offer name, exact decimal price, currency, description, and monthly interval; no recurring subscription, collection-evidence, renewal, expiry, or entitlement models are added.
-- [Plans UI](../../../../apps/super-admin/src/Plans.tsx), [controller](../../../../apps/api/src/modules/super-admin/plan.controller.ts), and [service](../../../../apps/api/src/modules/super-admin/plan.service.ts): authenticated create/list/edit, strict validation, identical initial-create retries, and stale-edit protection. The [Monthly Plan specification](MONTHLY_PLAN.md) records the actual implemented field limits and EGP-only currency.
+- [Plans UI](../../../../apps/super-admin/src/Plans.tsx), [controller](../../../../apps/api/src/modules/plans/plan.controller.ts), and [service](../../../../apps/api/src/modules/plans/plan.service.ts): authenticated create/list/edit, strict validation, identical initial-create retries, and stale-edit protection. The [Monthly Plan specification](MONTHLY_PLAN.md) records the actual implemented field limits and EGP-only currency.
 
 The current working tree also contains in-progress merchant application/provisioning changes. Those changes are implementation evidence only and do not approve a subscription workflow. The linked domain overviews retain their recorded business decisions independently of implementation status.
 

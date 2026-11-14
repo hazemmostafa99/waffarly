@@ -16,7 +16,18 @@ packages/
   eslint-config/       Shared flat ESLint rules
   typescript-config/   Shared strict TypeScript configurations
 infrastructure/docker/ Local PostgreSQL Compose service
-docs/                  Setup instructions and architectural decisions
+docs/                  Documentation index in README.md
+  architecture/        Architecture and implementation conventions
+  features/            Documentation grouped by business feature
+    marketplace/       Marketplace UI, integration and delivery notes
+  product/             Product overview and scope documents
+  setup/               Development and environment setup
+  testing/             Test workflows and database isolation
+  design/              Application design specifications
+  reports/             Operational reports and rendering source
+  reference/           Original reference material
+tests/playwright/      Browser test configurations and shared workspace paths
+artifacts/             Ignored local logs and verification reports
 scripts/               Reserved for cross-workspace automation when needed
 ```
 

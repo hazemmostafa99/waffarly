@@ -1,3 +1,17 @@
+Developer workflow (2026-11-14): [CONTRIBUTING.md](../../CONTRIBUTING.md) is the
+
+Application standard (2026-11-14): use injectable Nest services to own application
+operations, and ordinary functions for rules, mapping, queries and transaction
+helpers. Alignment remains partial. `PosSaleService` is the first explicit
+reference; legacy function-based coordinators still need migration. See
+[the standard and migration scope](API_APPLICATION_STANDARD.md).
+daily entry point, with [operation traces](API_WORKFLOWS.md) and an
+[API test map](../testing/API_TESTING.md). Database suites use guarded
+TEST_DATABASE_URL configuration and a shared client/cleanup setup. The default
+unit suite now detects circular static runtime imports between business modules.
+See the verification ledger for the 273 HTTP/unit and 38 isolated PostgreSQL test
+results. These checks do not imply browser or operator acceptance.
+
 API module cleanup (2026-11-14): Shifts, Subscriptions, Inventory, Merchants and
 Catalog now separate their independent operations and queries while retaining
 existing application-service APIs. Employees owns staff configuration in its own
@@ -26,23 +40,23 @@ module dependency change is intended; manual acceptance remains pending.
 Customer orders update (2026-11-13): Marketplace restaurant orders now have
 account/guest ownership, backend history/detail/tracking reads and explicit guest
 claim. Historical statements below are superseded for this slice. See
-[current customer order delivery](../marketplace-customer-orders.md). Manual acceptance is pending.
+[current customer order delivery](../features/marketplace/marketplace-customer-orders.md). Manual acceptance is pending.
 
 Web restaurant status operations (2026-11-13) require an open receiving-branch
 cash shift. Orders uses Shifts public lockBranchOperationShift; the existing
 dependency graph is unchanged. Order arrival remains available without a shift.
-See [current ordering delivery](../marketplace-live-restaurant-ordering.md).
+See [current ordering delivery](../features/marketplace/marketplace-live-restaurant-ordering.md).
 
 Pickup collection (2026-11-13): Orders attaches ready web pickup orders to an
 explicit open register shift and one check, reuses existing Payments/Shifts
 services, and permits paid pickup handover without changing order source.
 No module dependency change. An additive action-kind constraint migration records
-pickup collection preparation. See [delivery notes](../marketplace-live-restaurant-ordering.md).
+pickup collection preparation. See [delivery notes](../features/marketplace/marketplace-live-restaurant-ordering.md).
 
 Restaurant ordering update (2026-11-13): persisted reference restaurants now use
 real order submission. The local database has active subscriptions and owner
 accounts for all twelve. Earlier demo-only statements below are historical.
-See [current ordering delivery](../marketplace-live-restaurant-ordering.md).
+See [current ordering delivery](../features/marketplace/marketplace-live-restaurant-ordering.md).
 
 # API architecture
 
@@ -65,7 +79,7 @@ customer sessions. Registration allows 5 attempts per IP per hour; login allows
 verify contact ownership. Customers continues to own tenant-local contact records; account linking and historical-order
 claims require a later explicit verified-ownership flow. Orders retains existing
 association ownership. No new module dependency was added. See
-[customer authentication](../marketplace-customer-authentication.md).
+[customer authentication](../features/marketplace/marketplace-customer-authentication.md).
 
 Customers foundation (2026-11-11): Customers owns tenant-scoped guest/contact
 profiles, owner directory APIs and private notes. CustomerAccount provides a
@@ -80,21 +94,21 @@ attributable merchant-name edit alongside profile settings. Catalog exports a
 bounded, revisioned MenuSettingsService for transactional section/product order,
 primary section and availability updates; Storefront exposes it to the current
 restaurant owner. The dependency graph is unchanged. Marketplace reads respect
-menu ordering. See [owner settings delivery](../marketplace-restaurant-owner-settings.md).
+menu ordering. See [owner settings delivery](../features/marketplace/marketplace-restaurant-owner-settings.md).
 
 Storefront checkout retries (2026-11-11): Orders adds a public basket quote,
 tenant/request unique order IDs with payload fingerprints, reviewed-total checks
 and matching replay receipts. Existing clients may omit the additive request
 fields; Marketplace supplies them for non-demo confirmation. Reference tenants
 remain local-confirmation demos. No additional module dependency was introduced.
-See [checkout integration](../marketplace-checkout-integration.md).
+See [checkout integration](../features/marketplace/marketplace-checkout-integration.md).
 
 Restaurant order eligibility (2026-11-11): Orders now imports Storefront's public
 RestaurantOrderPolicyService to assess restaurant operating/fulfillment rules on
 its active transaction and freeze delivery fee/policy snapshots. Storefront still
 depends on Auth/Catalog, with no reverse Orders dependency. Existing tenants
 without RestaurantProfile keep their previous storefront behavior. See
-[order policy delivery](../marketplace-restaurant-order-policy.md). Marketplace
+[order policy delivery](../features/marketplace/marketplace-restaurant-order-policy.md). Marketplace
 order submission remains a demonstration; idempotency is still pending.
 
 Restaurant reference preparation (2026-11-11): Storefront owns the additive
@@ -103,7 +117,7 @@ and public restaurant projections. Catalog adds ordered Marketplace menu reads
 including unavailable items, preserving existing public/POS listing behavior.
 The dependency graph is unchanged. Dedicated reference tenants were seeded locally;
 existing order creation does not yet enforce the new operating/delivery settings.
-See [delivery notes](../marketplace-restaurant-backend-delivery.md).
+See [delivery notes](../features/marketplace/marketplace-restaurant-backend-delivery.md).
 
 Production storefront origins (2026-11-12): HTTP bootstrap uses Merchants' public
 handle resolver to authorize registered HTTPS storefront origins under an explicit
@@ -369,7 +383,7 @@ tenant references, and transaction behavior against a migrated database.
 CI starts PostgreSQL 17, applies migrations to its disposable database, and runs
 the dedicated Catalog, Inventory, Purchasing, Orders, and Activities database
 suites. Merchant inventory browser regressions run with
-`pnpm exec playwright test --config playwright.merchant.config.ts tests/ui/merchant-inventory.spec.ts`
+`pnpm exec playwright test --config tests/playwright/merchant.config.ts tests/ui/merchant-inventory.spec.ts`
 after building UI/contracts and Merchant Dashboard.
 
 ## Growth work separate from structural refactoring

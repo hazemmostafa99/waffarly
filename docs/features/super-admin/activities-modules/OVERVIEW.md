@@ -15,7 +15,7 @@ On 2026-10-13, the product owner requested implementation and selected: “Hybri
 | AM-D01 | CONFIRMED                     | Begin implementing Business Activities & Modules using the hybrid governance model. Code defines supported activities and modules; admins maintain descriptions and restaurant applicability.                                                                                                         |
 | AM-I01 | Initial implementation choice | Use Restaurants as the sole activity, and expose Merchant profile and Storefront design & branding as the two initial capability boundaries, matching existing owner functionality. Display names are editable; identifiers remain fixed. This does not finalize the future commerce module taxonomy. |
 
-Sources: [parent domain boundaries](../OVERVIEW.md#33-business-activities--modules), [platform vision](../../../../PROJECT_OVERVIEW.md), and [restaurant MVP proposal](../../../../MVP_SCOPE.md). Restaurants are the approved initial activity. The Dynamic Product Builder remains confirmed platform vision with restaurant rules open; catalog, orders, POS, inventory, employees, and branches remain discovery topics rather than deployed capabilities in this registry.
+Sources: [parent domain boundaries](../OVERVIEW.md#33-business-activities--modules), [platform vision](../../../product/PROJECT_OVERVIEW.md), and [restaurant MVP proposal](../../../product/MVP_SCOPE.md). Restaurants are the approved initial activity. The Dynamic Product Builder remains confirmed platform vision with restaurant rules open; catalog, orders, POS, inventory, employees, and branches remain discovery topics rather than deployed capabilities in this registry.
 
 ## 2. Initial catalog
 
@@ -27,7 +27,7 @@ Sources: [parent domain boundaries](../OVERVIEW.md#33-business-activities--modul
 
 Both modules support Restaurants and are associated with it by default. Neither declares another catalog module as a dependency. Authentication, tenant scoping, and first-month activation remain application prerequisites.
 
-The [code registry](../../../../apps/api/src/modules/super-admin/capability-registry.ts) owns keys, supported activities, dependency declarations, and initial metadata. Adding supported functionality requires a code release, shared contract updates, validation updates, and a migration extending the allowed database keys. There is no arbitrary create/delete catalog operation or runtime code installation.
+The [code registry](../../../../apps/api/src/modules/activities/capability-registry.ts) owns keys, supported activities, dependency declarations, and initial metadata. Adding supported functionality requires a code release, shared contract updates, validation updates, and a migration extending the allowed database keys. There is no arbitrary create/delete catalog operation or runtime code installation.
 
 ## 3. Admin behavior
 
@@ -76,9 +76,9 @@ Commercial entitlement belongs to [Plans & Subscriptions](../plans-subscriptions
 
 - [Shared contracts](../../../../packages/contracts/src/activities-modules.ts)
 - [Admin view](../../../../apps/super-admin/src/ActivitiesModules.tsx) and [responsive styles](../../../../apps/super-admin/src/activities-modules.css)
-- [API controller](../../../../apps/api/src/modules/super-admin/activities-modules.controller.ts) and [catalog service](../../../../apps/api/src/modules/super-admin/activities-modules.service.ts)
-- [HTTP tests](../../../../apps/api/test/activities-modules.e2e.test.ts): authentication, default reads, persistence behavior, strict validation, applicability changes, immutable registry fields, and stale initial/subsequent edits.
-- [Database verification](../../../../apps/api/test/activities-modules.database.test.ts): real override writes/reads and SQL constraints inside a rolled-back transaction. Run `pnpm --filter @waffarly/api test:activities-db` against a migrated local database.
+- [API controller](../../../../apps/api/src/modules/activities/activities-modules.controller.ts) and [catalog service](../../../../apps/api/src/modules/activities/activities-modules.service.ts)
+- [HTTP tests](../../../../apps/api/test/http/activities-modules.e2e.test.ts): authentication, default reads, persistence behavior, strict validation, applicability changes, immutable registry fields, and stale initial/subsequent edits.
+- [Database verification](../../../../apps/api/test/database/activities-modules.database.test.ts): real override writes/reads and SQL constraints inside a rolled-back transaction. Run `pnpm --filter @waffarly/api test:activities-db` against a migrated local database.
 
 Validation on 2026-10-13: all 17 API tests and the PostgreSQL verification passed; affected package lint/type checks, Prisma schema validation, and API/Super Admin builds passed. The additive migration was applied to the local development database. Interactive browser verification was unavailable because the browser tool could not initialize its sandbox connection.
 

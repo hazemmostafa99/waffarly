@@ -16,8 +16,8 @@ This overview identifies candidate features, actors, boundaries, journeys, depen
 
 ### Sources and Decision Status
 
-- [PROJECT_OVERVIEW.md](../../../../PROJECT_OVERVIEW.md), sections 3, 4.1, and 4.2: restaurant-first launch, activity-associated design library, merchant visual identity and storefront style, and open customization/publishing rules.
-- [MVP_SCOPE.md](../../../../MVP_SCOPE.md), WEB-01/WEB-03 and section 5: proposed storefront/branding scope; the initial two-design count is recorded in TDL-D02; broader release scope and advanced capabilities remain unresolved.
+- [PROJECT_OVERVIEW.md](../../../product/PROJECT_OVERVIEW.md), sections 3, 4.1, and 4.2: restaurant-first launch, activity-associated design library, merchant visual identity and storefront style, and open customization/publishing rules.
+- [MVP_SCOPE.md](../../../product/MVP_SCOPE.md), WEB-01/WEB-03 and section 5: proposed storefront/branding scope; the initial two-design count is recorded in TDL-D02; broader release scope and advanced capabilities remain unresolved.
 - [Existing Super Admin specification](../../SUPER_ADMIN.md), SA-11: template administration has first-release inclusion OPEN.
 - [Parent overview](../OVERVIEW.md): stable feature IDs SA-T01–SA-T04 and dependencies SA-O09 / SA-AM01 / SA-PS02.
 - [Merchant Management overview](../merchants/OVERVIEW.md): merchant identity, owner access, onboarding, and lifecycle boundaries.

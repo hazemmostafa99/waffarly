@@ -1,5 +1,40 @@
 # API organization progress
 
+## Developer entry point and isolated database testing — 2026-11-14
+
+Added CONTRIBUTING.md as the daily entry point, current operation traces and an
+API test map. Linked them from the root README, setup guide, API instructions and
+module guide; corrected older setup statements about POS authentication,
+subscription activation and database startup behavior.
+
+`pnpm check:api` now runs formatting, typecheck, lint, HTTP/unit tests and build in
+order. `pnpm test:db:prepare` and `pnpm test:db` use the guarded common database
+runner; existing named API database commands delegate to the same suite map.
+All 29 database test files use TEST_DATABASE_URL and the shared client helper.
+Missing/unsafe configuration fails before connecting instead of silently skipping
+or using the application database. The helper registers after-test disconnection
+even when explicit fixture cleanup fails.
+
+Shared merchant fixtures cover field defaults, explicit legacy access and
+zero-cash branch shifts. Subscription cleanup is restricted to supplied test
+merchant UUIDs. Older ledger, purchasing, delivery and recipe fixtures were
+updated for automatic subscription records and current shift prerequisites.
+The application rules were not weakened to accommodate those fixtures.
+
+Added tests for database-target separation, secret-free configuration failures,
+suite selection, tenant-scoped cleanup and circular static module dependencies.
+The existing ESLint module boundaries remain in effect. A separate local Docker
+PostgreSQL service and example test environment are provided; the manually
+triggered CI inventory job now provisions and migrates its separate test target.
+No automatic CI triggers were enabled and no application schema/HTTP contracts changed.
+
+Verification: the new API check runner passed all steps with 273 HTTP/unit tests.
+The new all-database runner passed 38 tests across all 29 files, with zero failures
+or skips, against a separately provisioned PostgreSQL 17 test instance. Existing
+migrations applied successfully there through the guarded preparation command.
+No forced test-runner exit or database reset was used. Browser/operator checks and
+execution of the edited GitHub Actions workflow were not performed.
+
 ## Remaining large-module cleanup — 2026-11-14
 
 - Shifts: extracted opening/closing, session reads, reconciliation, close reports,

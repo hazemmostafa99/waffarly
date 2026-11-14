@@ -1,5 +1,6 @@
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
-import { config } from 'dotenv';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
@@ -10,18 +11,17 @@ import { InventoryLocationsService } from '../../src/modules/inventory/inventory
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
 import { InventoryVisibilityService } from '../../src/modules/inventory/inventory-visibility.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'calculates tenant-scoped health from base-unit Available balances and revisioned thresholds',
   { skip: !databaseUrl },
-  async () => {
+  async (testContext) => {
     assert.ok(
       databaseUrl,
-      'Configure DATABASE_URL and apply the inventory visibility migration first.',
+      'Configure TEST_DATABASE_URL and apply the inventory visibility migration first.',
     );
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback inventory visibility fixtures');
     try {
       await assert.rejects(

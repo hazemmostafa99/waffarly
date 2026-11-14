@@ -1,7 +1,9 @@
+import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
+
 import type { PosEmployeeSession } from '@waffarly/contracts';
-import { config } from 'dotenv';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
@@ -9,14 +11,13 @@ import type { PrismaService } from '../../src/infrastructure/database/prisma.ser
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 import { CashCustodyService } from '../../src/modules/shifts/cash-custody.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'tracks physical custody, independently confirms receipts, protects close snapshots and allocates carryover only once',
   { skip: !databaseUrl },
-  async () => {
-    const prisma = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const prisma = createTestDatabaseClient(testContext);
     const shifts = new ShiftsService(prisma as unknown as PrismaService);
     const cash = new CashCustodyService(prisma as unknown as PrismaService);
     const tenants: string[] = [];
@@ -403,9 +404,7 @@ it(
       await prisma.posEmployee.deleteMany({ where: { merchantId: { in: tenants } } });
       await prisma.branch.deleteMany({ where: { merchantId: { in: tenants } } });
       // Merchant creation also creates a subscription; remove only these test tenants' records.
-      await prisma.subscriptionEvent.deleteMany({ where: { merchantId: { in: tenants } } });
-      await prisma.subscriptionPeriod.deleteMany({ where: { merchantId: { in: tenants } } });
-      await prisma.subscription.deleteMany({ where: { merchantId: { in: tenants } } });
+      await deleteTestMerchantSubscriptions(prisma, tenants);
       await prisma.merchant.deleteMany({ where: { id: { in: tenants } } });
       await prisma.$disconnect();
     }
