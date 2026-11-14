@@ -1,3 +1,8 @@
+Customer orders update (2026-11-13): Marketplace restaurant orders now have
+account/guest ownership, backend history/detail/tracking reads and explicit guest
+claim. Historical statements below are superseded for this slice. See
+[current customer order delivery](marketplace-customer-orders.md). Manual acceptance is pending.
+
 Restaurant ordering update (2026-11-13): persisted reference restaurants now use
 real order submission. The local database has active subscriptions and owner
 accounts for all twelve. Earlier demo-only statements below are historical.

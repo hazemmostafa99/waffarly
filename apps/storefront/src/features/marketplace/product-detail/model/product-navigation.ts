@@ -15,6 +15,8 @@ export function productHref(
   const searchParams = new URLSearchParams(search);
   const state = parseMarketplaceSearch(searchParams);
   const params = new URLSearchParams();
+  const restaurant = searchParams.get('restaurant');
+  if (restaurant) params.set('restaurant', restaurant);
   if (state.category !== 'all') params.set('category', state.category);
   if (state.term) params.set('q', state.term);
 

@@ -21,6 +21,6 @@ import { SubscriptionsModule } from '../subscriptions/index.js';
     PosEmployeeService,
     CustomerAuthService,
   ],
-  exports: [AuthService, AdminGuard, OwnerGuard, PosEmployeeGuard],
+  exports: [AuthService, AdminGuard, OwnerGuard, PosEmployeeGuard, CustomerAuthService],
 })
 export class AuthModule {}

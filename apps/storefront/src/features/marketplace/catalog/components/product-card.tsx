@@ -24,13 +24,16 @@ export function ProductCard({
   homeSection,
 }: {
   product: MarketplaceProduct;
-  onAdded: () => void;
+  onAdded?: () => void;
   homeSection?: HomeProductSection;
 }) {
   const [notice, setNotice] = useState('');
   const params = useSearchParams();
   const pathname = usePathname();
-  const href = productHref(p.id, params.toString(), pathname ?? '', homeSection);
+  const productParams = new URLSearchParams(params.toString());
+  if (p.restaurantSlug) productParams.set('restaurant', p.restaurantSlug);
+  else productParams.delete('restaurant');
+  const href = productHref(p.id, productParams.toString(), pathname ?? '', homeSection);
   const addToCart = useCartStore((s) => s.addToCart);
   const atLimit = useCartStore(
     (s) => (s.cart.find((line) => line.productId === p.id)?.quantity ?? 0) >= MAX_CART_QUANTITY,
@@ -61,7 +64,7 @@ export function ProductCard({
         >
           {p.origin === 'local-mock' ? 'مثال تجريبي' : p.discount}
         </span>
-        <FavoriteButton productId={p.id} name={p.cartName} />
+        <FavoriteButton productId={p.id} name={p.cartName} product={p} />
       </div>
       <div className={'product-body p-[13px]'}>
         <div
@@ -87,7 +90,7 @@ export function ProductCard({
         <ProductPrice product={p} />
         <div className={'delivery text-success text-[10px] font-extrabold'}>{p.delivery}</div>
         {p.merchantType === 'restaurant' ? (
-          <Link href={href} className="mt-3 flex min-h-10 items-center justify-center rounded-xl bg-waffarly-gold text-sm font-bold text-primary no-underline">اختار وجبتك</Link>
+          <Link href={href} className="mt-3 flex min-h-10 items-center justify-center rounded-xl bg-waffarly-gold text-sm font-bold text-primary no-underline">{p.available === false ? 'راجع توفر الوجبة' : 'اختار وجبتك'}</Link>
         ) : <Button
           className={cn(
             'add disabled:cursor-not-allowed disabled:opacity-[0.5] w-full border-0 rounded-[9px] bg-waffarly-gold text-[#30113a]',
@@ -95,7 +98,10 @@ export function ProductCard({
           )}
           disabled={atLimit}
           onClick={() => {
-            if (addToCart(p.id)) onAdded();
+            if (addToCart(p.id)) {
+              setNotice('');
+              onAdded?.();
+            }
             else setNotice('السلة فيها طلب مطعم؛ راجعها قبل إضافة منتج متجر.');
           }}
         >

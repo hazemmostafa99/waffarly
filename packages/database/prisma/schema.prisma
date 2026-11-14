@@ -166,6 +166,7 @@ model Merchant {
 
 // Auth-owned identity. Unverified contact details never authorize historical-record claims.
 model CustomerAccount {
+  orderAccess CustomerOrderAccess[]
   id String @id @default(uuid()) @db.Uuid
   phone String @unique @db.VarChar(16)
   phoneVerifiedAt DateTime? @db.Timestamptz(6)
@@ -1215,6 +1216,7 @@ model ProductCategory {
 
 // Public storefront checkouts are snapshots so order history remains readable if catalog data changes.
 model StorefrontOrder {
+  customerAccess CustomerOrderAccess?
   discountRedemption MerchantDiscountRedemption?
   merchantCustomerId String? @db.Uuid
   customerLinkedBy String? @db.VarChar(80)
@@ -1918,4 +1920,20 @@ model RestaurantProfile {
   updatedAt DateTime @updatedAt @db.Timestamptz(6)
   @@index([published, displayOrder, merchantId])
   @@map("restaurant_profiles")
+}
+
+model CustomerOrderAccess {
+  orderId String @id @db.Uuid
+  merchantId String @db.Uuid
+  accountId String? @db.Uuid
+  guestHash String? @db.VarChar(64)
+  guestExpiresAt DateTime? @db.Timestamptz(6)
+  claimedAt DateTime? @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  order StorefrontOrder @relation(fields: [orderId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  account CustomerAccount? @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  @@unique([orderId, merchantId])
+  @@index([accountId, createdAt, orderId])
+  @@index([guestHash, createdAt, orderId])
+  @@map("customer_order_access")
 }

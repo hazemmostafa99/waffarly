@@ -5,7 +5,7 @@ import { apiPost } from '@/lib/api-client';
 
 import { useState } from 'react';
 import { cn } from '@waffarly/ui';
-import { Layers3, ShoppingBag, SlidersHorizontal } from 'lucide-react';
+import { ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import { MarketplaceButton as Button } from '@/components/marketplace/marketplace-button';
 import { MarketplaceDialog } from '@/components/marketplace/marketplace-dialog';
@@ -30,14 +30,12 @@ export function MealPurchase({
   presentation = 'inline',
   editLine,
   onSaved,
-  onCancelEdit,
 }: {
   product: MarketplaceProduct;
   onAdded?: () => void;
   presentation?: 'inline' | 'dialog' | 'page';
   editLine?: { lineId: string; selection?: MealSelection; quantity: number };
   onSaved?: () => void;
-  onCancelEdit?: () => void;
 }) {
   const [selection, setSelection] = useState<MealSelection>(() =>
     editLine ? structuredClone(editLine.selection ?? {}) : defaultMealSelection(product));
@@ -47,7 +45,6 @@ export function MealPurchase({
   const cart = useCartStore((state) => state.cart);
   const add = useCartStore((state) => state.addToCart);
   const update = useCartStore((state) => state.updateCartItem);
-  const openCart = useCartStore((state) => state.setCartOpen);
   const configuration = mealConfiguration(selection, product);
   const available = mealAvailable(product);
   const serverProduct = Boolean(product.restaurantSlug);
@@ -119,7 +116,6 @@ export function MealPurchase({
     setReplaceOpen(false);
     setNotice('اتضافت الوجبة باختياراتك.');
     onAdded?.();
-    openCart(true);
   }
 
   return (
@@ -128,7 +124,7 @@ export function MealPurchase({
         'flex min-h-0 flex-col bg-card',
         presentation === 'dialog'
           ? 'flex-1 overflow-hidden'
-          : 'overflow-hidden rounded-2xl border border-border',
+          : presentation === 'page' ? 'overflow-visible pb-24 md:pb-0' : 'overflow-hidden rounded-2xl border border-border',
         presentation === 'page' ? 'mt-3' : presentation === 'inline' && 'mt-5',
       )}
       aria-label={serverProduct ? 'اختيارات الوجبة' : 'اختيارات الوجبة التجريبية'}
@@ -137,7 +133,7 @@ export function MealPurchase({
         className={cn(
           'min-h-0 px-5 pb-4 pt-3',
           presentation === 'dialog' && 'flex-1 overflow-y-auto overscroll-contain',
-          presentation === 'page' && 'px-4',
+          presentation === 'page' && 'border-t border-border px-0 pb-3 pt-3',
         )}
       >
         {presentation !== 'page' && (
@@ -179,29 +175,19 @@ export function MealPurchase({
               : 'الوجبة غير متاحة أو المطعم مغلق في السيناريو التجريبي.'}
           </p>
         )}
-        <div className="space-y-4">
+        <div className={presentation === 'page' ? 'max-w-[560px] space-y-3' : 'space-y-4'}>
           {mealGroups(product, selection).map((group) => (
             <fieldset
               key={group.id}
               disabled={!available}
               className={cn(
                 'm-0 min-w-0 border-0 p-0',
-                presentation === 'page' &&
-                  '[&+fieldset]:border-t [&+fieldset]:border-border/70 [&+fieldset]:pt-3',
+
               )}
             >
-              <legend className="mb-2.5 w-full p-0">
-                <span className="flex items-center justify-between gap-3">
+              <legend className={presentation === 'page' ? 'mb-1.5 w-full p-0' : 'mb-2.5 w-full p-0'}>
+                <span className={presentation === 'page' ? 'flex items-center gap-2' : 'flex items-center justify-between gap-3'}>
                   <span className="inline-flex items-center gap-2 text-[14px] font-bold text-foreground">
-                    {presentation === 'page' && (
-                      <span className="grid size-6 place-items-center rounded-lg bg-[var(--purple-50)] text-accent">
-                        {group.required ? (
-                          <Layers3 size={14} aria-hidden="true" />
-                        ) : (
-                          <SlidersHorizontal size={14} aria-hidden="true" />
-                        )}
-                      </span>
-                    )}
                     {group.label}
                   </span>
                   <span
@@ -215,13 +201,13 @@ export function MealPurchase({
                     {group.required ? 'مطلوب' : 'اختياري'}
                   </span>
                 </span>
-                {group.required && (
+                {group.required && presentation !== 'page' && (
                   <span className="mt-1 block text-[11px] font-normal text-muted-foreground">
                     اختار الحجم المناسب ليك
                   </span>
                 )}
               </legend>
-              <div className={group.required ? 'grid grid-cols-2 gap-2.5' : 'grid gap-2'}>
+              <div className={presentation === 'page' ? (group.selectionMode === 'single' ? 'flex flex-wrap gap-2' : 'grid gap-0.5') : group.required ? 'grid grid-cols-2 gap-2.5' : 'grid gap-2'}>
                 {group.selectionMode === 'single' && !group.required && (
                   <label className="flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border border-border px-3 py-2 text-[13px]">
                     <input
@@ -244,16 +230,19 @@ export function MealPurchase({
                       key={choice.id}
                       className={cn(
                         'cursor-pointer rounded-xl border px-3 transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2',
-                        group.required
+                        presentation === 'page'
+                          ? 'flex min-h-10 items-center justify-between gap-3 py-2'
+                          : group.required
                           ? 'flex flex-col gap-1.5 py-2.5'
                           : 'flex items-center justify-between gap-3 py-2',
                         checked
                           ? 'border-accent bg-[var(--purple-50)]'
                           : 'border-border bg-card hover:border-[var(--purple-100)] hover:bg-[var(--purple-50)]',
+                        presentation === 'page' && group.selectionMode === 'multiple' && 'rounded-lg border-0 px-2',
                         !available && 'cursor-not-allowed opacity-50',
                       )}
                     >
-                      <span className="flex items-center gap-2 text-[13px] font-medium">
+                      <span className={cn('flex items-center gap-2 text-[13px] font-medium', presentation === 'page' && 'text-[14px]')}>
                         <input
                           type={group.selectionMode === 'single' ? 'radio' : 'checkbox'}
                           name={`${product.id}-${group.id}`}
@@ -285,8 +274,9 @@ export function MealPurchase({
                       <span
                         className={cn(
                           'whitespace-nowrap text-[11px]',
+                          presentation === 'page' && 'text-[12px]',
                           checked ? 'text-accent' : 'text-muted-foreground',
-                          group.required && 'ps-6',
+                          group.required && presentation !== 'page' && 'ps-6',
                         )}
                       >
                         {choice.price ? `+ ${money(choice.price)}` : 'بدون زيادة'}
@@ -303,11 +293,11 @@ export function MealPurchase({
         className={cn(
           'shrink-0 border-t border-border bg-card px-4 pb-4 pt-3',
           presentation === 'page' &&
-            'bg-[var(--purple-50)] sm:grid sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-x-4 sm:py-3',
+            'fixed inset-x-0 bottom-0 z-20 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 bg-white p-3 pb-[max(12px,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(43,13,55,0.06)] md:static lg:grid-cols-[minmax(100px,1fr)_minmax(0,320px)] md:rounded-xl md:border md:bg-[var(--purple-50)] md:shadow-none',
         )}
       >
         {serverProduct && quote.isError && (
-          <p role="alert" className="mb-2 text-xs text-destructive">
+          <p role="alert" className="col-span-full mb-2 text-xs text-destructive">
             تعذر تسعير الاختيارات من الخادم.{' '}
             <Button type="button" onClick={() => quote.refetch()} className="underline">
               إعادة المحاولة
@@ -317,7 +307,7 @@ export function MealPurchase({
         {notice && (
           <p
             role="status"
-            className="mb-3 rounded-lg bg-[var(--purple-50)] px-3 py-2 text-[12px] text-accent sm:col-span-2"
+            className="mb-3 rounded-lg bg-[var(--purple-50)] px-3 py-2 text-[12px] text-accent col-span-full"
           >
             {notice}
           </p>
@@ -326,7 +316,7 @@ export function MealPurchase({
           className={cn(
             'mb-2.5 flex items-center justify-between gap-3 rounded-xl bg-[var(--purple-50)] px-3 py-2.5',
             presentation === 'page' &&
-              'sm:m-0 sm:flex-col sm:items-start sm:gap-0.5 sm:rounded-none sm:border-e sm:border-[var(--purple-100)] sm:bg-transparent sm:p-0 sm:pe-4',
+              'm-0 flex-col items-start gap-0 rounded-none bg-transparent p-0 pe-1',
           )}
         >
           <div>
@@ -336,7 +326,7 @@ export function MealPurchase({
           <strong
             className={cn(
               'font-extrabold text-accent',
-              presentation === 'page' ? 'text-[19px]' : 'text-[21px]',
+              presentation === 'page' ? 'text-[21px]' : 'text-[21px]',
             )}
           >
             {total === null ? 'جارٍ حساب السعر…' : money(total)}
@@ -345,7 +335,7 @@ export function MealPurchase({
         <div
           className={cn(
             'flex items-center gap-3',
-            presentation === 'page' && 'sm:flex-row-reverse',
+            presentation === 'page' && 'flex-row-reverse gap-2',
           )}
         >
           <Button
@@ -362,16 +352,7 @@ export function MealPurchase({
             <QuantitySelector value={quantity} onChange={setQuantity} />
           </div>
         </div>
-        {editLine && (
-          <>
-            <p className="mb-0 mt-2 text-[11px] text-muted-foreground">
-              الاختيارات المطابقة لصنف آخر في السلة تتجمع في صنف واحد بالكمية الإجمالية.
-            </p>
-            <Button type="button" tone="neutral" onClick={onCancelEdit} className="mt-2 min-h-10 w-full rounded-xl text-[13px]">
-              إلغاء
-            </Button>
-          </>
-        )}
+
       </div>
       <MarketplaceDialog
         open={replaceOpen}

@@ -1,3 +1,13 @@
+Customer orders update (2026-11-13): Marketplace restaurant orders now have
+account/guest ownership, backend history/detail/tracking reads and explicit guest
+claim. Historical statements below are superseded for this slice. See
+[current customer order delivery](../marketplace-customer-orders.md). Manual acceptance is pending.
+
+Web restaurant status operations (2026-11-13) require an open receiving-branch
+cash shift. Orders uses Shifts public lockBranchOperationShift; the existing
+dependency graph is unchanged. Order arrival remains available without a shift.
+See [current ordering delivery](../marketplace-live-restaurant-ordering.md).
+
 Pickup collection (2026-11-13): Orders attaches ready web pickup orders to an
 explicit open register shift and one check, reuses existing Payments/Shifts
 services, and permits paid pickup handover without changing order source.

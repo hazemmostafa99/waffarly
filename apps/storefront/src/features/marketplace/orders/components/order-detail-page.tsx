@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { CustomerOrderDetails } from './customer-orders';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
 import { MarketplaceButton } from '@/components/marketplace/marketplace-button';
 import { MarketplaceDialog } from '@/components/marketplace/marketplace-dialog';
@@ -15,6 +16,9 @@ import {
 import { money } from '@/features/marketplace/shared/lib/format-money';
 
 export function OrderDetailPage({ orderId }: { orderId: string }) {
+ return orderId.startsWith("demo-") ? <LocalOrderDetailPage orderId={orderId} /> : <CustomerOrderDetails orderId={orderId} />;
+}
+function LocalOrderDetailPage({ orderId }: { orderId: string }) {
   const order = useOrdersStore((state) => state.orders.find((item) => item.id === orderId));
   const reorder = useOrdersStore((state) => state.reorderDemoOrder);
   const [reorderResult, setReorderResult] = useState<ReorderResult | null>(null);

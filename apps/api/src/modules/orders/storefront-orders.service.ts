@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
+import { orderIdentityWhere, type OrderIdentity } from './customer-order-access.service.js';
 import { RestaurantOrderPolicyService } from '../storefront/index.js';
+import { lockBranchOperationShift } from '../shifts/index.js';
 import {
   BadRequestException,
   ConflictException,
@@ -114,7 +116,7 @@ export class StorefrontOrdersService {
     );
   }
 
-  async create(slug: string, input: CreateStorefrontOrderRequest): Promise<StorefrontOrderReceipt> {
+  async create(slug: string, input: CreateStorefrontOrderRequest, identity?: OrderIdentity, replayScope?: Prisma.CustomerOrderAccessWhereInput): Promise<StorefrontOrderReceipt> {
     const merchant = await this.prisma.merchant.findUnique({
       where: { storefrontSlug: slug },
       select: { id: true },
@@ -133,6 +135,8 @@ export class StorefrontOrdersService {
       if (!existing) return null;
       if (existing.requestFingerprint !== fingerprint)
         throw new ConflictException('This request ID was used for another checkout.');
+      if (identity && !(await this.prisma.customerOrderAccess.findFirst({ where: { AND: [replayScope ?? orderIdentityWhere(identity), { orderId: existing.id }] }, select: { orderId: true } })))
+        throw new NotFoundException('Order was not found.');
       return toReceipt(existing);
     };
     const previous = await replay();
@@ -419,6 +423,7 @@ export class StorefrontOrdersService {
             },
             include: { discountRedemption: true },
           });
+          if (identity) await transaction.customerOrderAccess.create({ data: { orderId: saved.id, merchantId: merchant.id, ...identity } });
           return toReceipt(saved);
         },
         { isolationLevel: 'Serializable' },
@@ -609,6 +614,15 @@ export class StorefrontOrdersService {
     try {
       return await this.prisma.$transaction(
         async (transaction) => {
+          const target = await transaction.storefrontOrder.findFirst({
+            where: { id: orderId, merchantId, source: 'storefront' },
+            select: { branchId: true, merchant: { select: { restaurantProfile: { select: { merchantId: true } } } } },
+          });
+          if (!target) throw new NotFoundException('Order was not found.');
+          if (target.branchId || target.merchant.restaurantProfile) {
+            if (!(await lockBranchOperationShift(transaction, merchantId, target.branchId)))
+              throw new ConflictException({ message: "Open a cashier shift at this order's branch before changing its status.", code: 'ORDER_SHIFT_REQUIRED' });
+          }
           if (status === 'accepted') {
             const recipe = await transaction.storefrontOrderLine.findFirst({
               where: { merchantId, orderId, stockHandling: 'recipe_acceptance' },

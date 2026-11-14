@@ -2,6 +2,12 @@
 
 import { useId, type InputHTMLAttributes, type ReactNode } from 'react';
 import { Input } from '@waffarly/ui';
+import { Eye, EyeOff } from 'lucide-react';
+
+export function normalizeAuthDigits(value: string) {
+  return value.replace(/[٠-٩۰-۹]/g, (digit) =>
+    String(digit.charCodeAt(0) - (digit >= '۰' ? 0x06f0 : 0x0660)));
+}
 
 type AuthInputProps = Pick<
   InputHTMLAttributes<HTMLInputElement>,
@@ -24,18 +30,21 @@ export function AuthInput({ label, action, ...props }: AuthInputProps) {
   const id = useId();
 
   return (
-    <div className="grid min-w-0 gap-2">
+    <div className="grid min-w-0 content-start gap-1.5">
       <div className="flex items-center justify-between gap-3">
-        <label htmlFor={id} className="text-sm font-bold text-primary">
+        <label htmlFor={id} className="text-[13px] font-medium text-primary">
           {label}
         </label>
-        {action}
       </div>
-      <Input
-        {...props}
-        id={id}
-        className="min-h-11 rounded-xl border-border bg-white px-3.5 text-sm text-primary placeholder:text-muted-foreground focus-visible:ring-accent"
-      />
+      <div className="relative">
+        <Input
+          {...props}
+          id={id}
+          dir="ltr"
+          className={`h-11 w-full rounded-xl border-border bg-white px-3 text-left text-[14px] text-primary shadow-none placeholder:text-left placeholder:text-[12px] placeholder:text-muted-foreground focus-visible:ring-accent ${action ? 'pr-11' : ''}`}
+        />
+        {action && <span className="absolute inset-y-0 right-1 flex items-center">{action}</span>}
+      </div>
     </div>
   );
 }
@@ -50,11 +59,12 @@ export function PasswordVisibilityButton({
   return (
     <button
       type="button"
-      className="rounded-md px-1 py-0.5 text-xs font-bold text-accent hover:bg-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+      className="grid size-9 place-items-center rounded-lg text-accent hover:bg-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
       aria-pressed={visible}
+      aria-label={visible ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
       onClick={onToggle}
     >
-      {visible ? 'إخفاء' : 'إظهار'}
+      {visible ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}
     </button>
   );
 }

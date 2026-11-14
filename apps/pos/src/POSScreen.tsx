@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { PosButton } from './components/pos-button.js';
 import { ApiError } from './lib/api-client.js';
+import { orderActionMessage, formatOrderActionError } from './features/orders/order-action-errors.js';
 import { PickupCollection } from './features/payments/pickup-collection.js';
 import {
   posWorkspaceScope,
@@ -22,7 +23,7 @@ type LayoutContext = { employee: PosEmployeeSession };
 
 export function POSScreen() {
   const { employee } = useOutletContext<LayoutContext>();
-  const { t, errorText, formatDate, formatNumber } = useLocale();
+  const { t, locale, errorText, formatDate, formatNumber } = useLocale();
   const queryClient = useQueryClient();
   const scope = posWorkspaceScope(employee.merchantId, employee.id);
   const workspace = usePosWorkspaceStore((state) =>
@@ -139,10 +140,9 @@ export function POSScreen() {
         queryKey: posOrderKeys.branch(employee.merchantId, branchId),
       });
     } catch (cause) {
-      const message =
-        cause instanceof Error ? cause.message : t('The action could not be completed.');
+      const message = orderActionMessage(cause);
       setActionErrors((current) => ({ ...current, [order.id]: message }));
-      if (cause instanceof ApiError && [400, 422].includes(cause.statusCode)) {
+      if (cause instanceof ApiError && ([400, 422].includes(cause.statusCode) || cause.errorCode === 'ORDER_SHIFT_REQUIRED')) {
         try {
           removePendingAction(employee.merchantId, employee.id, order.id);
         } catch {
@@ -570,7 +570,7 @@ export function POSScreen() {
                         className="m-0 max-w-none rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
                         role="alert"
                       >
-                        {errorText(actionErrors[order.id]!)}
+                        {formatOrderActionError(actionErrors[order.id]!, locale, errorText)}
                       </p>
                     )}
                   </div>

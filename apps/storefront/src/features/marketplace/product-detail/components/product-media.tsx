@@ -19,7 +19,7 @@ export function ProductMedia({ product }: { product: MarketplaceProduct }) {
       >
         {product.origin === 'local-mock' ? 'مثال تجريبي' : product.discount}
       </span>
-      <FavoriteButton productId={product.id} name={product.cartName} />
+      <FavoriteButton productId={product.id} name={product.cartName} product={product} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { CustomerOrderDetails } from './customer-orders';
 import { MarketplaceButton } from '@/components/marketplace/marketplace-button';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
 import { useOrdersStore } from '@/features/marketplace/orders/hooks/use-orders-store';
@@ -11,6 +12,9 @@ import {
 import { OrderStatusBadge } from '@/features/marketplace/orders/components/order-status-badge';
 
 export function OrderTrackingPage({ orderId }: { orderId: string }) {
+ return orderId.startsWith("demo-") ? <LocalOrderTrackingPage orderId={orderId} /> : <CustomerOrderDetails orderId={orderId} />;
+}
+function LocalOrderTrackingPage({ orderId }: { orderId: string }) {
   const order = useOrdersStore((state) => state.orders.find((item) => item.id === orderId));
   const advanceStatus = useOrdersStore((state) => state.advanceDemoOrderStatus);
   const stopOrder = useOrdersStore((state) => state.stopDemoOrder);

@@ -7,11 +7,10 @@ import Link from 'next/link';
 import { cn } from '@waffarly/ui';
 import { MarketplaceInput } from '@/components/marketplace/marketplace-form-controls';
 import { MarketplaceButton } from '@/components/marketplace/marketplace-button';
-import { MarketplaceDialog } from '@/components/marketplace/marketplace-dialog';
 import { productsForRestaurant } from '@/features/marketplace/restaurants/model/restaurants';
 import { restaurantScenario } from '@/features/marketplace/data/restaurant-scenarios';
 import type { MarketplaceProduct } from '@/features/marketplace/catalog/model/catalog';
-import { MealPurchase } from './meal-purchase';
+import { MealCustomizerDialog } from './meal-customizer-dialog';
 import { RestaurantMealCard } from './restaurant-meal-card';
 
 function sectionIcon(section: string) {
@@ -54,19 +53,15 @@ export function RestaurantMenu({ restaurantName, products: suppliedProducts, set
         {filtered.length ? sections.filter((value) => filtered.some((product) => product.menuSection === value)).map((value) => {
           const Icon = sectionIcon(value);
           const items = filtered.filter((product) => product.menuSection === value);
-          return <section key={value} className="mb-7 last:mb-0">
-            <div className="mb-3 flex items-center gap-2.5"><span className="grid size-8 place-items-center rounded-xl bg-waffarly-gold/10 text-accent"><Icon size={20} strokeWidth={1.6} aria-hidden="true" /></span><h3 className="m-0 text-[19px] font-extrabold text-primary">{value}</h3><span className="rounded-full bg-secondary/60 px-2.5 py-1 text-[9px] text-accent">{items.length} أصناف</span></div>
-            <div className="flex flex-wrap items-stretch gap-3">
+          return <section key={value} className="mb-5 last:mb-0">
+            <div className="mb-3 flex items-center gap-2.5"><span className="grid size-8 place-items-center rounded-xl bg-waffarly-gold/10 text-accent"><Icon size={20} strokeWidth={1.6} aria-hidden="true" /></span><h3 className="m-0 text-[17px] font-bold text-primary">{value}</h3><span className="rounded-full bg-secondary/60 px-2.5 py-1 text-[9px] text-accent">{items.length} أصناف</span></div>
+            <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2">
               {items.map((product) => <RestaurantMealCard key={product.id} product={product} restaurantOpen={scenario.open} selected={selected?.id === product.id} onSelect={() => selectMeal(product)} />)}
             </div>
           </section>;
         }) : <div className="rounded-2xl border border-dashed border-border bg-card p-6 text-center"><p className="text-sm">مفيش وجبات مطابقة لبحثك.</p><MarketplaceButton type="button" tone="neutral" onClick={() => { setQuery(''); setSection('all'); }} className="min-h-10 rounded-xl px-4 text-sm">عرض كل المنيو</MarketplaceButton></div>}
       </div>
-      <MarketplaceDialog open={selected !== null} onClose={closeMeal} title="تخصيص المنتج"
-        className="w-[calc(100vw-24px)] max-w-[360px] max-h-[calc(100dvh-20px)] overflow-hidden rounded-[24px] open:flex open:flex-col [&_[data-slot=dialog-header]]:shrink-0 [&_[data-slot=dialog-header]]:border-0 [&_[data-slot=dialog-header]]:px-5 [&_[data-slot=dialog-header]]:pb-2 [&_[data-slot=dialog-header]]:pt-5 [&_[data-slot=dialog-header]_h2]:text-[18px] [&_[data-slot=dialog-header]_button]:size-8 [&_[data-slot=dialog-header]_button]:rounded-full [&_[data-slot=dialog-header]_button]:bg-[var(--purple-50)] [&_[data-slot=dialog-header]_button:hover]:bg-secondary"
-        contentClassName="flex min-h-0 flex-1 flex-col overflow-hidden p-0">
-        {selected && <MealPurchase key={selected.id} product={selected} presentation="dialog" onAdded={() => setSelected(null)} />}
-      </MarketplaceDialog>
+      <MealCustomizerDialog product={selected} onClose={closeMeal} onAdded={() => setSelected(null)} />
     </div>
   );
 }

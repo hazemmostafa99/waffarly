@@ -781,6 +781,9 @@ export const ar: Record<string, string> = {
   'Change language': 'تغيير اللغة',
   'Skip to content': 'انتقل إلى المحتوى',
   'Something went wrong.': 'حدث خطأ غير متوقع.',
+  "Open a cashier shift at this order's branch before changing its status.": 'افتح وردية كاشير في فرع الطلب قبل تغيير حالته.',
+  'افتح وردية كاشير في فرع الطلب قبل تغيير حالته.': 'افتح وردية كاشير في فرع الطلب قبل تغيير حالته.',
+
   'Business created': 'تم إنشاء المتجر',
   'View business': 'عرض المتجر',
   Done: 'تم',

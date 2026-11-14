@@ -16,6 +16,7 @@ export class ApiError extends Error {
     message: string,
     readonly statusCode: number,
     readonly issues: ApiValidationIssue[] = [],
+    readonly errorCode?: string,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -64,6 +65,7 @@ export async function parseApiResponse<T>(
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as {
       message?: unknown;
+      errorCode?: unknown;
     } | null;
     const issues: ApiValidationIssue[] = Array.isArray(body?.message)
       ? body.message.filter(
@@ -92,6 +94,7 @@ export async function parseApiResponse<T>(
       message || `API request failed with status ${response.status}.`,
       response.status,
       issues,
+      typeof body?.errorCode === 'string' ? body.errorCode : undefined,
     );
   }
   if (response.status === 204) return (emptyResponseAsNull ? null : undefined) as T | null;

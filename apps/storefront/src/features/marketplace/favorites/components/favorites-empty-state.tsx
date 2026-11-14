@@ -1,22 +1,23 @@
 import Link from 'next/link';
+import { Heart } from 'lucide-react';
 import { MarketplaceCard as Card } from '@/components/marketplace/marketplace-card';
 
 export function FavoritesEmptyState() {
   return (
-    <Card className="rounded-[20px] border border-solid border-border bg-card px-6 py-16 text-center">
+    <Card className="flex flex-col items-center rounded-xl bg-card px-4 py-7 text-center">
       <span
-        className="mx-auto mb-5 grid size-19 place-items-center rounded-[24px] bg-secondary text-[32px]"
+        className="mx-auto mb-3 grid size-11 place-items-center rounded-xl bg-secondary text-accent"
         aria-hidden="true"
       >
-        ♡
+        <Heart size={22} strokeWidth={1.6} />
       </span>
-      <h2 className="mb-3 mt-0 text-2xl">قائمة المفضلة فاضية</h2>
-      <p className="mb-6 mt-0 leading-[1.8] text-muted-foreground">
-        احفظ المنتجات اللي عجبتك من علامة القلب، وهتلاقيها هنا طول ما الجلسة مفتوحة.
+      <h2 className="mb-1 mt-0 text-[17px] font-bold text-primary">المفضلة فاضية</h2>
+      <p className="mb-4 mt-0 text-[12px] leading-6 text-muted-foreground">
+        اضغط القلب على أي صنف عشان تحفظه هنا.
       </p>
       <Link
         href="/#deals"
-        className="inline-block rounded-[11px] bg-waffarly-gold px-5 py-[13px] font-extrabold text-[#2d1038] no-underline"
+        className="inline-flex min-h-10 items-center rounded-lg bg-waffarly-gold px-4 py-2 text-[13px] font-medium text-[#2d1038] no-underline hover:bg-[#ffd353]"
       >
         تصفح المنتجات
       </Link>

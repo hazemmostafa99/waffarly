@@ -23,7 +23,6 @@ function GenericProductPurchase({ product }: { product: MarketplaceProduct }) {
     (state) => state.cart.find((line) => line.productId === product.id)?.quantity ?? 0,
   );
   const add = useCartStore((state) => state.addToCart);
-  const open = useCartStore((state) => state.setCartOpen);
   const remaining = MAX_CART_QUANTITY - existing;
   const allowed = quantity <= remaining;
   return (
@@ -52,7 +51,7 @@ function GenericProductPurchase({ product }: { product: MarketplaceProduct }) {
         )}
         disabled={!allowed}
         onClick={() => {
-          if (add(product.id, quantity)) open(true);
+          if (add(product.id, quantity)) setNotice('');
           else setNotice('السلة فيها طلب من مطعم. راجع السلة واحذف أصنافه قبل إضافة منتجات متجر.');
         }}
       >

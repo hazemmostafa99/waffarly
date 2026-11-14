@@ -2,6 +2,7 @@
 
 import { Suspense, type ReactNode } from 'react';
 import Link from 'next/link';
+import { Heart, ShoppingBag } from 'lucide-react';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
 import { MarketplaceFooter } from '@/features/marketplace/navigation/components/marketplace-footer';
 import { MarketplaceHeaderSkeleton } from '@/features/marketplace/navigation/components/marketplace-header-skeleton';
@@ -23,8 +24,8 @@ export function AuthPageShell({
       <Suspense fallback={<MarketplaceHeaderSkeleton />}>
         <MarketplaceSiteHeader />
       </Suspense>
-      <main id="marketplace-main" tabIndex={-1} className="pb-14 pt-4 sm:pb-16 sm:pt-6">
-        <MarketplaceContainer>
+      <main id="marketplace-main" tabIndex={-1} className="pb-14 pt-4 sm:pb-16 sm:pt-4">
+        <MarketplaceContainer className="max-w-[1000px]">
           <nav
             aria-label="مسار التنقل"
             className="mb-3 flex items-center gap-2 text-xs text-muted-foreground"
@@ -39,52 +40,35 @@ export function AuthPageShell({
             <span aria-hidden="true">/</span>
             <span aria-current="page">{eyebrow}</span>
           </nav>
-          <section className="grid overflow-hidden rounded-3xl border border-border bg-white shadow-[var(--shadow)] lg:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)]">
-            <aside className="relative order-2 overflow-hidden bg-[linear-gradient(145deg,_var(--purple-950),_var(--purple-700))] p-5 text-white sm:p-7 lg:order-2 lg:p-8">
-              <div
-                className="pointer-events-none absolute -end-10 -top-16 size-44 rounded-full border-[22px] border-[rgba(245,189,25,0.12)]"
-                aria-hidden="true"
-              />
-              <div className="relative">
-                <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-extrabold text-waffarly-gold">
-                  وفّرلي
-                </span>
-                <h2 className="mb-0 mt-5 max-w-md text-xl font-black leading-snug sm:text-2xl">
-                  تسوّقك وطلباتك ومفضلاتك في مكان واحد
-                </h2>
-                <p className="mb-0 mt-2 max-w-md text-sm leading-6 text-white/75">
-                  حسابك على وفّرلي بالبريد والموبايل وكلمة المرور. التطبيق لا يخزن كلمة المرور
-                  محليًا.
-                </p>
-                <ul className="mt-5 grid gap-2.5 p-0 text-xs font-bold leading-5 text-white/90 sm:text-sm">
-                  <li className="flex items-center gap-2">
-                    <span className="text-waffarly-gold" aria-hidden="true">
-                      ✓
-                    </span>
-                    ادخل بالبريد الإلكتروني أو الموبايل
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-waffarly-gold" aria-hidden="true">
-                      ✓
-                    </span>
-                    احتفظ بجلسة حسابك عند تحديث الصفحة
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-waffarly-gold" aria-hidden="true">
-                      ✓
-                    </span>
-                    الطلبات والعناوين التجريبية تظل منفصلة عن حسابك
-                  </li>
-                </ul>
+          <section className="grid overflow-hidden rounded-3xl border border-border bg-white shadow-[var(--shadow)] md:grid-cols-[minmax(0,1fr)_320px]">
+            <aside className="relative order-2 hidden min-w-0 flex-col justify-between gap-8 overflow-hidden bg-[linear-gradient(155deg,#210b30_0%,#351048_60%,#4a185e_100%)] p-6 text-white md:flex">
+              <div className="flex items-center justify-between border-b border-white/10 pb-5">
+                <img src="/marketplace-assets/wafarly-logo.png" alt="وفّرلي" className="block h-9 w-28 object-contain" />
+                <span className="size-2 rounded-full bg-waffarly-gold" aria-hidden="true" />
+              </div>
+              <div>
+                <span className="mb-4 block h-1 w-8 rounded-full bg-waffarly-gold" aria-hidden="true" />
+                <h2 className="m-0 text-[26px] font-bold leading-[1.65]">حساب واحد،<br />وتجربة أسهل.</h2>
+                <p className="mb-0 mt-3 text-[13px] leading-6 text-white/65">كل اللي بتحبه على وفّرلي، أقرب ليك.</p>
+              </div>
+              <div className="grid gap-2.5">
+                <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/10 text-waffarly-gold"><Heart size={18} strokeWidth={1.6} aria-hidden="true" /></span>
+                  <div><p className="m-0 text-[13px] font-medium">مفضلاتك قريبة منك</p><p className="m-0 text-[11px] leading-5 text-white/60">ارجع لاختياراتك بسهولة</p></div>
+                </div>
+                <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/10 text-waffarly-gold"><ShoppingBag size={18} strokeWidth={1.6} aria-hidden="true" /></span>
+                  <div><p className="m-0 text-[13px] font-medium">كمّل تسوّقك براحتك</p><p className="m-0 text-[11px] leading-5 text-white/60">اكتشف المتاجر والمطاعم على وفّرلي</p></div>
+                </div>
               </div>
             </aside>
-            <div className="order-1 min-w-0 p-5 sm:p-7 lg:order-1 lg:p-9">
-              <div className="mb-5">
-                <p className="mb-1.5 text-xs font-extrabold text-accent">{eyebrow}</p>
-                <h1 className="m-0 text-2xl font-black leading-tight text-primary sm:text-3xl">
+            <div className="order-2 min-w-0 p-5 md:order-1 md:p-7">
+              <div className="mb-4">
+                <p className="mb-1.5 text-xs font-medium text-accent">{eyebrow}</p>
+                <h1 className="m-0 text-[24px] font-bold leading-9 text-primary">
                   {title}
                 </h1>
-                <p className="mb-0 mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+                <p className="mb-0 mt-1 text-[13px] leading-6 text-muted-foreground">{description}</p>
               </div>
               {children}
             </div>

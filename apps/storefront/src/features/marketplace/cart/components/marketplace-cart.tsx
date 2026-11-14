@@ -1,163 +1,78 @@
 'use client';
 
-import { MarketplaceButton as Button } from '@/components/marketplace/marketplace-button';
-
-import { cn } from '@waffarly/ui';
-
-import { useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
-import { cartProducts, cartTotal } from '@/features/marketplace/cart/model/cart';
-import { money } from '@/features/marketplace/shared/lib/format-money';
+import { ShoppingBag, Store, Trash2, Volume2, VolumeX, ChevronLeft } from 'lucide-react';
+import { MarketplaceButton as Button } from '@/components/marketplace/marketplace-button';
+import { MarketplaceDialog } from '@/components/marketplace/marketplace-dialog';
 import { QuantitySelector } from '@/components/marketplace/quantity-selector';
+import { useCartStore } from '../hooks/use-cart-store';
+import { cartProducts, cartQuantity, cartTotal } from '../model/cart';
+import { money } from '@/features/marketplace/shared/lib/format-money';
+import { CartAdditionNotice } from './cart-addition-notice';
+import { useCartAdditionSound } from '../hooks/use-cart-addition-sound';
+import { productHref } from '@/features/marketplace/product-detail/model/product-navigation';
 
 export function MarketplaceCart() {
-  const open = useCartStore((s) => s.cartOpen);
-  const setOpen = useCartStore((s) => s.setCartOpen);
-  const ids = useCartStore((s) => s.cart);
-  const remove = useCartStore((s) => s.removeCartItem);
-  const setQuantity = useCartStore((s) => s.setCartQuantity);
-  const drawer = useRef<HTMLElement>(null);
-  const closeButton = useRef<HTMLButtonElement>(null);
-  const products = cartProducts(ids);
-  useEffect(() => {
-    if (!open) return;
-    const previous = document.activeElement;
-    closeButton.current?.focus();
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') setOpen(false);
-      if (event.key === 'Tab') {
-        const buttons = drawer.current?.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), a[href]',
-        );
-        if (!buttons?.length) return;
-        const first = buttons[0],
-          last = buttons[buttons.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last?.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first?.focus();
-        }
-      }
-    }
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
-      else document.getElementById('marketplace-main')?.focus();
-    };
-  }, [open, setOpen]);
-  return (
-    <>
-      <div
-        className={cn(
-          `overlay${open ? ' show' : ''}`,
-          'fixed [inset:0] bg-[rgba(20,_5,_27,_0.5)] z-[29] opacity-[0] [pointer-events:none] [transition:0.25s] [&.show]:opacity-[1] [&.show]:[pointer-events:auto]',
-        )}
-        onClick={() => setOpen(false)}
-        aria-hidden="true"
-      />
-      <aside
-        ref={drawer}
-        className={cn(
-          `cart-drawer${open ? ' open' : ''}`,
-          'fixed z-[30] top-0 left-0 w-[min(390px,_92vw)] h-full bg-white [box-shadow:15px_0_50px_rgba(0,_0,_0,_0.2)] [transform:translateX(-105%)] [transition:0.28s] flex flex-col [&.open]:[transform:none] [&:not(.open)]:invisible',
-        )}
-        role="dialog"
-        aria-modal={open || undefined}
-        aria-hidden={!open}
-        aria-label="سلة التسوق"
-      >
-        <div
-          className={
-            'drawer-head p-5 flex items-center justify-between [border-bottom-width:1px] [border-bottom-style:solid] [border-bottom-color:var(--line)] [&_h3]:m-0'
-          }
-        >
-          <h3>سلة التسوق</h3>
-          <Button
-            ref={closeButton}
-            className={
-              'close disabled:cursor-not-allowed disabled:opacity-[0.5] border-0 bg-[#f2eef4] w-9.5 h-9.5 rounded-[10px] text-[21px]'
-            }
-            onClick={() => setOpen(false)}
-            aria-label="إغلاق"
-          >
-            ×
-          </Button>
-        </div>
-        <div className={'cart-list p-3.5 overflow-auto [flex:1]'}>
-          {products[0]?.merchantType === 'restaurant' && <p className="rounded-xl bg-secondary p-3 text-xs font-bold text-accent">{products[0].merchantName} · طلب من مطعم واحد · {products[0].restaurantSlug ? 'رسوم التوصيل تُراجع عند إتمام الطلب' : 'رسوم التوصيل التجريبية في إتمام الطلب'}</p>}
-          {products.length === 0 ? (
-            <p className={'text-center text-muted-foreground py-[35px] px-2.5'}>
-              السلة فارغة حاليًا
-            </p>
-          ) : (
-            products.map((p) => (
-              <div
-                className={cn(
-                  'cart-item grid grid-cols-[58px_1fr_auto] gap-2.5 items-center p-[11px] [border-bottom-width:1px] [border-bottom-style:solid]',
-                  '[border-bottom-color:var(--line)] [&_b]:text-[12px] [&_b]:block [&_span]:text-[11px] [&_span]:text-accent [&_.quantity-selector]:mt-2 [&_.quantity-selector_button]:w-7 [&_.quantity-selector_button]:h-7',
-                )}
-                key={p.lineId}
-              >
-                <img
-                  className={'cart-thumb w-14.5 h-14.5 rounded-[10px] object-cover'}
-                  src={p.cartImage}
-                  alt=""
-                />
-                <div>
-                  <b>{p.cartName}</b>
-                  {p.optionsLabel && <p className="my-1 text-xs text-accent">{p.optionsLabel}</p>}
-                  <span>
-                    {money(p.price)} للقطعة · الإجمالي {money(p.price * p.quantity)}
-                  </span>
-                  <QuantitySelector
-                    value={p.quantity}
-                    onChange={(quantity) => setQuantity(p.lineId, quantity)}
-                    label={`كمية ${p.cartName}`}
-                  />
+  const open = useCartStore(state => state.cartOpen);
+  const setOpen = useCartStore(state => state.setCartOpen);
+  const lines = useCartStore(state => state.cart);
+  const remove = useCartStore(state => state.removeCartItem);
+  const setQuantity = useCartStore(state => state.setCartQuantity);
+  const products = cartProducts(lines);
+  const restaurant = products[0]?.merchantType === 'restaurant' ? products[0] : undefined;
+  const { soundEnabled, toggleSound } = useCartAdditionSound();
+  return <>
+    <CartAdditionNotice />
+    <MarketplaceDialog
+      open={open}
+      onClose={() => setOpen(false)}
+      title={`سلتك · ${cartQuantity(lines)} قطعة`}
+      className="cart-drawer inset-y-0 left-0 right-auto m-0 h-dvh max-h-dvh w-[min(400px,100vw)] rounded-none open:flex open:flex-col [&_[data-slot=dialog-header]]:shrink-0 [&_[data-slot=dialog-header]]:px-4 [&_[data-slot=dialog-header]]:py-3 [&_[data-slot=dialog-header]_h2]:text-[17px] max-[700px]:inset-x-0 max-[700px]:bottom-0 max-[700px]:top-auto max-[700px]:h-auto max-[700px]:max-h-[85dvh] max-[700px]:w-full max-[700px]:rounded-t-[24px]"
+      contentClassName="flex min-h-0 flex-1 flex-col overflow-hidden p-0"
+    >
+      {restaurant && <Link href={`/restaurants/${encodeURIComponent(restaurant.restaurantSlug ?? restaurant.merchantName ?? restaurant.seller)}`} onClick={() => setOpen(false)} aria-label={`العودة إلى منيو ${restaurant.merchantName ?? restaurant.seller}`} className="flex shrink-0 items-center gap-2 border-b border-border bg-[var(--purple-50)] px-4 py-2 text-[12px] font-medium text-accent no-underline hover:bg-secondary"><Store size={15} aria-hidden="true" /><span className="min-w-0 flex-1 truncate">{restaurant.merchantName ?? restaurant.seller}</span><ChevronLeft size={15} aria-hidden="true" /></Link>}
+      <div className="cart-list min-h-0 flex-1 overflow-y-auto overscroll-contain px-4">
+        {!products.length ? <div className="grid justify-items-center gap-3 py-10 text-muted-foreground"><ShoppingBag size={28} strokeWidth={1.5} aria-hidden="true" /><p className="m-0 text-[14px]">سلتك لسه فاضية</p><Button type="button" onClick={() => setOpen(false)} className="min-h-10 rounded-lg bg-secondary px-4 text-[13px] text-accent">كمّل تسوّقك</Button></div> : <ul className="m-0 list-none divide-y divide-border p-0">
+          {products.map(product => <li key={product.lineId} className="cart-item flex items-start gap-3 py-3">
+            <div className="flex min-w-0 flex-1 items-start gap-2.5">
+              <img src={product.cartImage || product.image.src} alt="" className="block size-12 shrink-0 rounded-lg object-cover" />
+              <div className="min-w-0">
+                <div className="flex items-start gap-1">
+                  <h3 className="m-0 min-w-0 text-[13px] font-medium leading-6 text-primary">
+                    <Link
+                      href={productHref(product.id, product.restaurantSlug ? new URLSearchParams({ restaurant: product.restaurantSlug }).toString() : '')}
+                      onClick={() => setOpen(false)}
+                      className="rounded-sm text-inherit no-underline hover:text-accent hover:underline hover:underline-offset-4"
+                    >
+                      {product.name}
+                    </Link>
+                  </h3>
                 </div>
-                <Button
-                  className={
-                    'remove disabled:cursor-not-allowed disabled:opacity-[0.5] border-0 bg-transparent text-destructive text-[18px]'
-                  }
-                  onClick={() => {
-                    remove(p.lineId);
-                    closeButton.current?.focus();
-                  }}
-                  aria-label={`حذف ${p.cartName}`}
-                >
-                  ×
-                </Button>
+                {product.optionsLabel && <p className="mb-0 mt-0.5 text-[11px] leading-5 text-muted-foreground">{product.optionsLabel}</p>}
+                <p className="mb-0 mt-1 flex flex-wrap items-baseline gap-x-1.5 text-[12px] leading-5">
+                  <span className="font-medium text-primary">{money(product.price)}</span>
+                  <span className="text-[10px] text-muted-foreground">للقطعة</span>
+                </p>
               </div>
-            ))
-          )}
-        </div>
-        <div
-          className={
-            'drawer-foot p-4.5 [border-top-width:1px] [border-top-style:solid] [border-top-color:var(--line)] [&_a.checkout]:block [&_a.checkout]:text-center [&_a.checkout]:no-underline [&_a.checkout:hover]:bg-accent'
-          }
-        >
-          <div className={'total flex justify-between font-black mb-[13px]'}>
-            <span>الإجمالي</span>
-            <span>{money(cartTotal(ids))}</span>
-          </div>
-          <p className={'detail-note text-[12px] leading-[1.8] text-muted-foreground'}>
-            {products[0]?.restaurantSlug ? 'راجع المنتجات ثم بياناتك والسعر النهائي لإرسال الطلب للمطعم. الإجمالي الحالي لا يشمل التوصيل.' : 'سلة تجريبية محلية — راجع المنتجات للمتابعة إلى التأكيد التجريبي. الإجمالي لا يشمل رسومًا إضافية.'}
-          </p>
-          <Link
-            href="/cart"
-            className={
-              'checkout w-full border-0 bg-[var(--purple-800)] text-[#fff] p-3.5 rounded-[11px] font-black'
-            }
-            onClick={() => setOpen(false)}
-          >
-            مراجعة السلة
-          </Link>
-        </div>
-      </aside>
-    </>
-  );
+            </div>
+            <div className="grid shrink-0 justify-items-center gap-1 pt-0.5 [&_.quantity-selector_button]:size-8 [&_.quantity-selector_output]:min-w-7 [&_.quantity-selector_output]:text-[13px]">
+              <div className="flex items-center gap-1.5">
+                <QuantitySelector value={product.quantity} onChange={quantity => setQuantity(product.lineId, quantity)} label={`كمية ${product.name}`} />
+                <Button type="button" onClick={() => remove(product.lineId)} aria-label={`حذف ${product.name}`} className="grid size-8 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-red-50 hover:text-destructive"><Trash2 size={14} aria-hidden="true" /></Button>
+              </div>
+              <div className="flex flex-wrap items-baseline justify-center gap-x-1.5 leading-6">
+                <span className="text-[10px] text-muted-foreground">إجمالي الصنف</span>
+                <strong className="whitespace-nowrap text-[14px] font-bold text-primary">{money(product.price * product.quantity)}</strong>
+              </div>
+            </div>
+          </li>)}
+        </ul>}
+      </div>
+      {products.length > 0 && <div className="drawer-foot shrink-0 border-t border-border bg-white p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+        <div className="flex items-center justify-between gap-3 text-primary"><span className="flex items-center gap-2 text-[14px] font-medium">إجمالي المنتجات<Button type="button" onClick={toggleSound} aria-pressed={soundEnabled} aria-label={soundEnabled ? 'إيقاف صوت واهتزاز الإضافة للسلة' : 'تشغيل صوت واهتزاز الإضافة للسلة'} title={soundEnabled ? 'إيقاف تنبيه الإضافة' : 'تشغيل تنبيه الإضافة'} className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary">{soundEnabled ? <Volume2 size={15} aria-hidden="true" /> : <VolumeX size={15} aria-hidden="true" />}</Button></span><strong className="text-[20px] font-bold">{money(cartTotal(lines))}</strong></div>
+        <p className="mb-3 mt-1 text-[11px] leading-5 text-muted-foreground">{products[0]?.restaurantSlug ? 'التوصيل يُحسب عند إتمام الطلب.' : 'تجربة محلية · الإجمالي لا يشمل الرسوم الإضافية.'}</p>
+        <Link href="/cart" onClick={() => setOpen(false)} className="flex min-h-11 w-full items-center justify-center rounded-xl bg-primary px-4 py-2 text-[14px] font-medium text-white no-underline hover:bg-accent">مراجعة السلة</Link>
+      </div>}
+    </MarketplaceDialog>
+  </>;
 }

@@ -28,6 +28,7 @@ import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { calculateInventoryRequirements, ProductConsumptionService } from '../catalog/index.js';
 import { InventoryLedgerService } from '../inventory/index.js';
 import { toSummary } from './order.mapper.js';
+import { lockBranchOperationShift } from '../shifts/index.js';
 import { posKitchenTicketInclude } from './pos-kitchen.persistence.js';
 import {
   acceptRecipeOrderSchema,
@@ -226,6 +227,14 @@ export class OrderLifecycleService {
     try {
       return await this.prisma.$transaction(
         async (tx) => {
+          // Lock the shift before the order, matching the financial/shift-close lock order.
+          const operationTarget = await tx.storefrontOrder.findFirst({
+            where: { id: orderId, merchantId }, select: { source: true, branchId: true },
+          });
+          const operationBranch = operationTarget?.branchId ?? (command.action === 'accept' ? command.input.branchId : null);
+          const operationShift = operationTarget?.source === 'storefront'
+            ? await lockBranchOperationShift(tx, merchantId, operationBranch)
+            : null;
           const locked = await tx.$queryRaw<
             Array<{ id: string }>
           >`SELECT "id" FROM "storefront_orders" WHERE "id" = ${orderId}::uuid AND "merchantId" = ${merchantId}::uuid FOR UPDATE`;
@@ -354,6 +363,9 @@ export class OrderLifecycleService {
             where: { id: orderId, merchantId },
             include: orderInclude,
           });
+          // A completed retry is returned above without a new status write.
+          if (order.source === 'storefront' && (!operationShift || (order.branchId && order.branchId !== operationBranch)))
+            throw new ConflictException({ message: "Open a cashier shift at this order's branch before changing its status.", code: 'ORDER_SHIFT_REQUIRED' });
           const recipeLines = order.lines.filter(
             (line) => line.stockHandling === 'recipe_acceptance',
           );

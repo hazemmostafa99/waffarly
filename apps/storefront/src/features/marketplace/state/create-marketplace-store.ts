@@ -4,6 +4,7 @@ import { createAccountSlice } from '@/features/marketplace/account/state/account
 import { createCartSlice } from '@/features/marketplace/cart/state/cart-slice';
 import { createCheckoutActions } from '@/features/marketplace/checkout/state/checkout-actions';
 import { createFavoritesSlice } from '@/features/marketplace/favorites/state/favorites-slice';
+import { readFavoriteSnapshots } from '@/features/marketplace/favorites/model/favorites';
 import { createOrdersSlice } from '@/features/marketplace/orders/state/orders-slice';
 import type { MarketplaceState } from '@/features/marketplace/state/marketplace-state';
 import { validQuantity, type MarketplaceCartLine } from '@/features/marketplace/cart/model/cart';
@@ -64,11 +65,17 @@ export function createMarketplaceStore() {
         name: CART_STORAGE_KEY,
         version: 1,
         storage: createJSONStorage(() => localStorage),
-        partialize: (state) => ({ cart: state.cart }),
+        partialize: (state) => ({ cart: state.cart, favorites: state.favorites, favoriteSnapshots: state.favoriteSnapshots }),
         skipHydration: true,
         merge: (persistedState, currentState) => ({
           ...currentState,
           cart: readStoredCart((persistedState as { cart?: unknown } | undefined)?.cart),
+          favorites: Array.isArray((persistedState as { favorites?: unknown } | undefined)?.favorites)
+            ? [...new Set(((persistedState as { favorites: unknown[] }).favorites).filter(
+                (id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 200,
+              ))]
+            : [],
+          favoriteSnapshots: readFavoriteSnapshots((persistedState as { favoriteSnapshots?: unknown } | undefined)?.favoriteSnapshots),
         }),
       },
     ),

@@ -3,6 +3,8 @@ import { CustomersModule } from '../customers/index.js';
 import { OrderCustomerController, CustomerOrdersController } from './order-customer.controller.js';
 import { OrderCustomerService } from './order-customer.service.js';
 import { Module } from '@nestjs/common';
+import { CustomerOrderAccessController } from './customer-order-access.controller.js';
+import { CustomerOrderAccessService } from './customer-order-access.service.js';
 import { PosDeliveryController } from './pos-delivery.controller.js';
 import { PosDeliveryService } from './pos-delivery.service.js';
 import { AuthModule } from '../auth/index.js';
@@ -41,6 +43,7 @@ import { OwnerPosItemReturnsController } from './pos-returns.controller.js';
     SubscriptionsModule,
   ],
   controllers: [
+    CustomerOrderAccessController,
     OrderCustomerController,
     CustomerOrdersController,
     PosDeliveryController,
@@ -54,6 +57,7 @@ import { OwnerPosItemReturnsController } from './pos-returns.controller.js';
     PosReceiptsController,
   ],
   providers: [
+    CustomerOrderAccessService,
     OrderCustomerService,
     PosDeliveryService,
     StorefrontOrdersService,

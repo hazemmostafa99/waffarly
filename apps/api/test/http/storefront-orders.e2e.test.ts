@@ -12,6 +12,7 @@ import {
 } from '../../src/modules/orders/storefront-orders.controller.js';
 import { OrderLifecycleService } from '../../src/modules/orders/order-lifecycle.service.js';
 import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
+import { CustomerOrderAccessService } from '../../src/modules/orders/customer-order-access.service.js';
 
 const owner: OwnerProfile = {
   username: 'store-owner',
@@ -43,6 +44,7 @@ describe('storefront order endpoints', () => {
     const module = await Test.createTestingModule({
       controllers: [PublicStorefrontOrdersController, OwnerStorefrontOrdersController],
       providers: [
+        { provide: CustomerOrderAccessService, useValue: {} },
         OwnerGuard,
         {
           provide: OrderLifecycleService,

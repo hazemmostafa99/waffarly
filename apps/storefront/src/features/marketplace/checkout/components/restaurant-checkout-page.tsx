@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { useCustomerSession } from '@/features/marketplace/account/hooks/use-customer-session';
 import Link from 'next/link';
 import type {
   CreateStorefrontOrderRequest,
@@ -8,8 +9,8 @@ import type {
   StorefrontOrderReceipt,
 } from '@waffarly/contracts';
 import { ApiError, apiPost } from '@/lib/api-client';
+import { customerOrdersRequest } from '@/features/marketplace/orders/data/customer-orders-api';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
-import { MarketplaceButton as Button } from '@/components/marketplace/marketplace-button';
 import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
 import { cartProducts } from '@/features/marketplace/cart/model/cart';
 import {
@@ -19,9 +20,11 @@ import {
   type CheckoutErrors,
 } from '../model/checkout';
 import { CheckoutContactForm } from './checkout-contact-form';
-import { money } from '@/features/marketplace/shared/lib/format-money';
+import { RestaurantCheckoutReview } from './restaurant-checkout-review';
+import { RestaurantOrderConfirmation } from './restaurant-order-confirmation';
 
 export function RestaurantCheckoutPage() {
+  const customerSession = useCustomerSession();
   const lines = useCartStore((state) => state.cart);
   const clear = useCartStore((state) => state.clearCartIfMatches);
   const products = cartProducts(lines);
@@ -84,6 +87,7 @@ export function RestaurantCheckoutPage() {
     setPending(true);
     setNotice('');
     try {
+      await customerOrdersRequest('customer/orders/session', {});
       const result = await apiPost<StorefrontCheckoutQuote>(
         `catalog/stores/${encodeURIComponent(slug)}/orders/quote`,
         {
@@ -137,8 +141,8 @@ export function RestaurantCheckoutPage() {
     setNotice('');
     try {
       const attempt = envelope.current;
-      const result = await apiPost<StorefrontOrderReceipt>(
-        `catalog/stores/${encodeURIComponent(attempt.slug)}/orders`,
+      const result = await customerOrdersRequest<StorefrontOrderReceipt>(
+        `catalog/stores/${encodeURIComponent(attempt.slug)}/orders/customer`,
         attempt.body,
       );
       clear(attempt.cart);
@@ -168,22 +172,11 @@ export function RestaurantCheckoutPage() {
   return (
     <main id="marketplace-main" className="min-h-[60vh] py-4">
       <MarketplaceContainer>
-        <div className="mx-auto max-w-[800px]">
+        <div className={`mx-auto ${receipt ? 'max-w-[620px]' : quote || uncertain ? 'max-w-[1000px]' : 'max-w-[800px]'}`}>
           <h1 className="mt-0 mb-2 text-[20px] font-bold leading-8 text-primary">إتمام الطلب</h1>
+          {!receipt && <p className="mb-4 text-sm leading-6 text-muted-foreground">{customerSession.data ? 'الطلب هيتحفظ في حسابك المسجّل دخوله.' : <>إكمال الطلب كضيف: تقدر تتابعه من المتصفح ده لمدة محدودة، أو <Link href="/account/sign-in" className="font-bold text-accent">سجّل دخول قبل التأكيد</Link> لحفظه في حسابك.</>}</p>}
           {receipt ? (
-            <section className="rounded-2xl border border-border bg-card p-6">
-              <h2 className="text-[18px] font-bold leading-7">تم تسجيل طلبك لدى المطعم</h2>
-              <p dir="ltr">{receipt.id}</p>
-              <p>الحالة: {receipt.status}</p>
-              <p className="font-bold">الإجمالي {money(Number(receipt.total))}</p>
-              <p className="text-sm text-muted-foreground">
-                الطلب بانتظار مراجعة المطعم. لم تتم أي عملية دفع إلكتروني. احتفظ برقم الطلب؛ متابعة
-                الطلب من حسابك غير متاحة بعد.
-              </p>
-              <Link href="/restaurants" className="text-accent">
-                العودة للمطاعم
-              </Link>
-            </section>
+            <RestaurantOrderConfirmation receipt={receipt} />
           ) : !lines.length ? (
             <p>
               السلة فارغة. <Link href="/restaurants">تصفح المطاعم</Link>
@@ -231,69 +224,15 @@ export function RestaurantCheckoutPage() {
                   {pending && <p role="status">جارٍ مراجعة السعر مع الخادم…</p>}
                 </fieldset>
               ) : (
-                <section
-                  aria-busy={pending}
-                  className="rounded-2xl border border-border bg-card p-5"
-                >
-                  <h2 className="mt-0 text-[18px] font-bold leading-7">راجع السعر قبل التأكيد</h2>
-                  <ul className="list-none space-y-2 p-0">
-                    {products.map((product) => (
-                      <li key={product.lineId} className="text-sm">
-                        {product.cartName} × {product.quantity}
-                        <small className="block text-muted-foreground">
-                          {product.optionsLabel}
-                        </small>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="my-3 border-y border-border py-3 text-sm leading-6">
-                    <p className="m-0">
-                      {draft.name} · <bdi>{draft.phone}</bdi>
-                    </p>
-                    <p className="m-0">
-                      {draft.fulfillment === 'delivery' ? draft.address : 'استلام من المطعم'}
-                    </p>
-                  </div>
-                  {quote && (
-                    <dl className="space-y-3 text-sm">
-                      <div className="flex justify-between">
-                        <dt>الأصناف</dt>
-                        <dd>{money(Number(quote.subtotal))}</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt>التوصيل</dt>
-                        <dd>{money(Number(quote.deliveryFee))}</dd>
-                      </div>
-                      <div className="flex justify-between font-bold">
-                        <dt>الإجمالي من الخادم</dt>
-                        <dd>{money(Number(quote.total))}</dd>
-                      </div>
-                    </dl>
-                  )}
-                  <Button
-                    type="button"
-                    tone="gold"
-                    disabled={pending}
-                    onClick={confirm}
-                    className="mt-4 min-h-11 w-full rounded-xl px-4 text-[14px] font-medium"
-                  >
-                    {pending
-                      ? 'جارٍ التأكيد…'
-                      : uncertain
-                        ? 'إعادة نفس المحاولة'
-                        : 'تأكيد وإرسال الطلب للمطعم'}
-                  </Button>
-                  {!pending && !uncertain && (
-                    <Button
-                      type="button"
-                      tone="neutral"
-                      onClick={() => setQuote(null)}
-                      className="mt-3 min-h-10 rounded-xl px-4 text-[13px] font-medium"
-                    >
-                      تعديل البيانات ومراجعة السعر
-                    </Button>
-                  )}
-                </section>
+                <RestaurantCheckoutReview
+                  products={products}
+                  draft={draft}
+                  quote={quote}
+                  pending={pending}
+                  uncertain={uncertain}
+                  onConfirm={confirm}
+                  onEdit={() => setQuote(null)}
+                />
               )}
             </>
           )}

@@ -1,3 +1,8 @@
+Customer orders update (2026-11-13): Marketplace restaurant orders now have
+account/guest ownership, backend history/detail/tracking reads and explicit guest
+claim. Historical statements below are superseded for this slice. See
+[current customer order delivery](marketplace-customer-orders.md). Manual acceptance is pending.
+
 # Persisted restaurant ordering
 
 2026-11-13: the user authorized real backend order submission for every persisted
@@ -157,3 +162,47 @@ preparation regression tests were added but not executed.
 The action-kind migration was applied successfully to the local waffarly database
 after migrate status confirmed it was the only pending migration. No application
 tests or financial operations were executed. Manual acceptance remains pending.
+
+## Open-shift status gate — 2026-11-13
+
+User decision: restaurant web orders may arrive without a cashier shift, but
+no new status change may be made until their receiving branch has an open cash
+shift. Orders creation, quotation and queue reads remain unchanged. Web order
+acceptance, preparation, readiness, handover and cancellation in the lifecycle
+service now require a same-tenant, same-branch open shift on an active register
+and active branch. Owner restaurant accept/reject uses the same gate. This
+requires an open branch shift, not ownership of that shift by the kitchen actor.
+Employee/branch permissions remain separately enforced.
+
+Shifts exports lockBranchOperationShift through its public entry point; Orders
+already depends on Shifts. The shared shift-row lock is acquired before the
+order-row lock and retained through transaction completion, preventing a
+simultaneous shift close from crossing the operation. Previously committed
+exact lifecycle retries still return saved results without a new status write.
+Legacy non-restaurant owner status behavior and existing POS-origin lifecycle
+behavior are unchanged. No statuses were reset on existing orders.
+
+Added focused no-shift regression cases for acceptance, preparation, readiness
+and handover. Tests/typecheck/lint/build/browser flows were not run per the
+manual-QA instruction. Source diff review passed; manual acceptance is pending.
+
+## Open-shift rejection presentation
+
+The shift gate now returns ORDER_SHIFT_REQUIRED with a translatable message.
+POS ApiError preserves errorCode, and the kitchen action handler releases the
+saved pending command for this explicit pre-write rejection. Network/server
+uncertainties retain their retry identity. Both the English message and the
+earlier Arabic shift message are registered in the Arabic dictionary, avoiding
+the generic unexpected-error fallback. No broad 409 retry behavior was changed.
+Source reviewed only; no automated checks or live UI actions were run.
+
+## Shift-error presentation correction
+
+The HTTP exception filter reads exception-body code and emits response errorCode.
+Shift rejections now use code accordingly; the earlier errorCode property was
+dropped by the filter. POS renders this known rejection locally, independently
+of the compiled shared UI translation package, whose source-only dictionary
+change did not update dist. English and older Arabic messages are supported;
+unknown errors keep the existing safe fallback. The existing ORDER_SHIFT_REQUIRED
+handler releases the definitively rejected command while network/5xx uncertainty
+stays saved. Regression cases added, not executed; no builds or live actions run.

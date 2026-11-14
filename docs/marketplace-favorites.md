@@ -1,23 +1,33 @@
-# Local favorites flow
+# Marketplace favorites
 
-Route: `/favorites`.
+Favorites are saved in the existing browser-local Marketplace store alongside the
+cart. They survive reloads on the same browser and are not synchronized with a
+customer account. Existing persisted carts remain compatible.
 
-The page lists the existing reference products selected with the shared heart
-control. Toggling a heart removes that product from the list immediately; toggling
-it again from any product card adds it back. Product cards retain their details link
-and add-to-cart action. Adding a product opens the shared cart drawer.
+Product cards, restaurant menu cards and product detail pages share the same heart
+button and favorite IDs. Restaurant favorites also retain display-only snapshots
+so API-backed menu items can appear without being in the local reference catalog.
+Snapshots exclude live restaurant settings, variants and modifiers. Restaurant
+links retain the restaurant slug and open the existing product page to resolve
+current prices, availability and choices before ordering. Saved prices and
+availability are not live; the favorites page explains this. Removed remote items
+use the product page's existing not-found behavior and can still be removed from
+favorites. Unresolvable saved IDs have an explicit removal action.
 
-`favorites/model/favorites.ts` resolves saved product IDs against the local catalog.
-`favorites/state/favorites-slice.ts` owns the IDs and toggle action, while
-`favorites/hooks/use-favorites-store.ts` scopes UI access to that feature. No new
-product data or backend request was introduced.
+No API, database or checkout contracts change.
 
-Favorites live in the provider-scoped Zustand store only. They survive client-side
-navigation and disappear when the Marketplace page is refreshed. The page and its
-empty state explain this limitation.
+## Manual QA
 
-Manual review: open Favorites from the header and menu, save a product, remove it
-from the page, restore it from a product detail/card, add it to the cart, then
-remove the final favorite and use the empty-state link. Refresh to confirm the
-session-only behavior. Check the page on mobile and confirm prices use Western
-digits. No automated checks were run for this slice, per user instruction.
+- Heart a restaurant menu item; confirm the card and detail page share its state.
+- Open favorites; confirm the API-backed item's image, name and restaurant appear.
+- Reload favorites; confirm both favorites and an existing cart survive.
+- Open a saved restaurant item; confirm its restaurant context, current choices
+  and prices load through the existing product page.
+- Remove favorites from a menu, detail page and favorites page; confirm counters
+  and hearts agree without adding to the cart or opening another page.
+- Save an unavailable item and verify saving/removing it still works.
+- Verify an empty list and an unresolvable saved ID can be handled and removed.
+- Verify local demonstration products still save and remove independently.
+
+These are manual review steps, not a record of executed browser QA. Automated
+checks are intentionally not run under the repository's manual-QA preference.

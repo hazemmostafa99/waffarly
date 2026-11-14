@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { CustomerOrdersList } from './customer-orders';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
 import { useOrdersStore } from '@/features/marketplace/orders/hooks/use-orders-store';
 import { OrdersEmptyState } from '@/features/marketplace/orders/components/orders-empty-state';
@@ -12,10 +13,14 @@ import {
 import { money } from '@/features/marketplace/shared/lib/format-money';
 
 export function OrdersPage() {
+ const hasLocalOrders = useOrdersStore(state => state.orders.length > 0);
+ return <><CustomerOrdersList />{hasLocalOrders && <LocalDemoOrders />}</>;
+}
+function LocalDemoOrders() {
   const orders = useOrdersStore((state) => state.orders);
 
   return (
-    <main id="marketplace-main" className="min-h-[60vh] pb-16 pt-6">
+    <section aria-label="طلبات التجربة المحلية" className="min-h-[60vh] pb-16 pt-6">
       <MarketplaceContainer>
         <nav
           aria-label="مسار التنقل"
@@ -96,6 +101,6 @@ export function OrdersPage() {
           </ul>
         )}
       </MarketplaceContainer>
-    </main>
+    </section>
   );
 }

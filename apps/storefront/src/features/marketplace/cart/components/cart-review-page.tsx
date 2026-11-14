@@ -12,8 +12,7 @@ import { CartSummary } from '@/features/marketplace/cart/components/cart-summary
 import { CartEmptyState } from '@/features/marketplace/cart/components/cart-empty-state';
 import { findProduct } from '@/features/marketplace/catalog/model/catalog';
 import { mealGroups } from '@/features/marketplace/restaurants/model/meal-options';
-import { MealPurchase } from '@/features/marketplace/restaurants/components/meal-purchase';
-import { MarketplaceDialog } from '@/components/marketplace/marketplace-dialog';
+import { MealCustomizerDialog } from '@/features/marketplace/restaurants/components/meal-customizer-dialog';
 
 export function CartReviewPage() {
   const lines = useCartStore((state) => state.cart);
@@ -117,29 +116,22 @@ export function CartReviewPage() {
         >
           السلة محفوظة أثناء التنقل داخل الموقع فقط؛ تحديث الصفحة يمسح اختيارات التجربة.
         </p>
-        <MarketplaceDialog
-          open={Boolean(editingLine && editingProduct)}
-          onClose={() => setEditingId(null)}
-          title="تعديل اختيارات المنتج"
-          className="w-[min(560px,calc(100vw-24px))] overflow-y-auto"
-          contentClassName="p-0"
-        >
-          {editingLine && editingProduct && editingId && (
-            <MealPurchase
-              key={editingId}
-              product={editingProduct}
-              presentation="dialog"
-              editLine={{ lineId: editingId, quantity: editingLine.quantity,
-                ...(editingLine.selection ? { selection: editingLine.selection } : {}) }}
-              onSaved={() => {
-                setEditingId(null);
-                setNotice('تم تحديث اختيارات المنتج وإجمالي السلة.');
-                heading.current?.focus({ preventScroll: true });
-              }}
-              onCancelEdit={() => setEditingId(null)}
-            />
-          )}
-        </MarketplaceDialog>
+        {editingLine && editingProduct && editingId && (
+          <MealCustomizerDialog
+            product={editingProduct}
+            onClose={() => setEditingId(null)}
+            editLine={{
+              lineId: editingId,
+              quantity: editingLine.quantity,
+              ...(editingLine.selection ? { selection: editingLine.selection } : {}),
+            }}
+            onSaved={() => {
+              setEditingId(null);
+              setNotice('تم تحديث اختيارات المنتج وإجمالي السلة.');
+              heading.current?.focus({ preventScroll: true });
+            }}
+          />
+        )}
       </MarketplaceContainer>
     </main>
   );

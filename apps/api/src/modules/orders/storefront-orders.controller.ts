@@ -12,6 +12,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import type {
@@ -21,6 +22,8 @@ import type {
   UpdateStorefrontOrderStatusRequest,
 } from '@waffarly/contracts';
 import { z } from 'zod';
+import type { Request } from 'express';
+import { CustomerOrderAccessService } from './customer-order-access.service.js';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { parseCursorPageQuery } from '../../common/http/pagination.js';
 import { AuthService } from '../auth/index.js';
@@ -127,7 +130,16 @@ const posActiveSalesPageSchema = posOrderPageSchema.extend({
 
 @Controller('catalog/stores/:slug/orders')
 export class PublicStorefrontOrdersController {
-  constructor(@Inject(StorefrontOrdersService) private readonly orders: StorefrontOrdersService) {}
+  constructor(@Inject(StorefrontOrdersService) private readonly orders: StorefrontOrdersService, @Inject(CustomerOrderAccessService) private readonly access: CustomerOrderAccessService) {}
+
+  @Post("customer")
+  @HttpCode(HttpStatus.CREATED)
+  async createForCustomer(@Param("slug") slug: string, @Body() body: unknown, @Req() request: Request) {
+    assertValidStorefrontSlug(slug);
+    const input = parseRequest(createOrderSchema, body);
+    if (!input.requestId) throw new BadRequestException('requestId is required for customer checkout.');
+    return this.orders.create(slug, input, await this.access.identity(request), await this.access.scope(request));
+  }
 
   @Post('quote')
   @HttpCode(HttpStatus.OK)

@@ -7,6 +7,7 @@ import { customerAuthError } from '@/features/account/data/customer-auth-api';
 import { MarketplaceButton } from '@/components/marketplace/marketplace-button';
 import {
   AuthInput,
+  normalizeAuthDigits,
   PasswordVisibilityButton,
 } from '@/features/marketplace/account/components/auth/auth-input';
 import { AuthPageShell } from '@/features/marketplace/account/components/auth/auth-page-shell';
@@ -49,8 +50,8 @@ export function SignUpPage() {
       title="خلّي تجربتك أسهل"
       description="أنشئ حسابك بالبريد الإلكتروني ورقم الموبايل وكلمة المرور."
     >
-      <form className="grid gap-4" onSubmit={submit} aria-busy={signUp.isPending}>
-        <fieldset disabled={signUp.isPending} className="m-0 grid min-w-0 gap-4 border-0 p-0">
+      <form className="grid gap-3" onSubmit={submit} aria-busy={signUp.isPending}>
+        <fieldset disabled={signUp.isPending} className="m-0 grid min-w-0 gap-3 border-0 p-0">
           <AuthInput
             autoComplete="name"
             maxLength={120}
@@ -64,7 +65,7 @@ export function SignUpPage() {
             type="text"
             value={name}
           />
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <AuthInput
               autoComplete="email"
               maxLength={254}
@@ -84,7 +85,7 @@ export function SignUpPage() {
               label="رقم الهاتف"
               maxLength={32}
               onChange={(event) => {
-                setPhone(event.target.value);
+                setPhone(normalizeAuthDigits(event.target.value));
                 signUp.reset();
               }}
               placeholder="01xxxxxxxxx"
@@ -93,7 +94,7 @@ export function SignUpPage() {
               value={phone}
             />
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             <AuthInput
               autoComplete="new-password"
               label="كلمة المرور"
@@ -131,6 +132,7 @@ export function SignUpPage() {
               value={confirmation}
             />
           </div>
+          <p className="m-0 text-[12px] leading-5 text-muted-foreground">كلمة المرور من 8 إلى 128 حرفًا. استخدم كلمة يصعب تخمينها.</p>
           {(error || signUp.isError) && (
             <p
               className="m-0 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-xs leading-5 text-red-800"
@@ -142,7 +144,7 @@ export function SignUpPage() {
           <MarketplaceButton
             type="submit"
             disabled={signUp.isPending}
-            className="min-h-12 w-full rounded-xl bg-waffarly-gold px-5 text-sm font-black text-primary transition-colors hover:bg-[#ffd353]"
+            className="min-h-11 w-full rounded-xl bg-waffarly-gold px-5 text-sm font-medium text-primary transition-colors hover:bg-[#ffd353]"
           >
             {signUp.isPending ? 'جارٍ إنشاء الحساب…' : 'إنشاء حساب'}
           </MarketplaceButton>
@@ -151,11 +153,11 @@ export function SignUpPage() {
           </p>
         </fieldset>
       </form>
-      <p className="mb-0 mt-5 border-t border-border pt-4 text-center text-sm text-muted-foreground">
+      <p className="mb-0 mt-4 border-t border-border pt-3 text-center text-sm text-muted-foreground">
         عندك حساب؟{' '}
         <Link
           href="/account/sign-in"
-          className="font-extrabold text-accent underline-offset-4 hover:underline"
+          className="font-medium text-accent underline-offset-4 hover:underline"
         >
           سجّل الدخول
         </Link>

@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
 import { ProductCard } from '@/features/marketplace/catalog/components/product-card';
-import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
 import type { MarketplaceProduct } from '@/features/marketplace/catalog/model/catalog';
 import type { MarketplaceStore } from '@/features/marketplace/stores/model/stores';
 
@@ -14,7 +13,6 @@ export function StoreDetailPage({
   store: MarketplaceStore;
   products: MarketplaceProduct[];
 }) {
-  const openCart = useCartStore((state) => state.setCartOpen);
 
   return (
     <main id="marketplace-main" tabIndex={-1} className="min-h-[60vh] pb-16 pt-6">
@@ -73,7 +71,7 @@ export function StoreDetailPage({
           {products.length ? (
             <div className="grid grid-cols-5 gap-3.5 max-[1100px]:grid-cols-3 max-[700px]:flex max-[700px]:gap-3 max-[700px]:overflow-auto max-[700px]:[scroll-snap-type:x_mandatory] max-[700px]:pb-2">
               {products.map((product) => (
-                <ProductCard key={product.id} product={product} onAdded={() => openCart(true)} />
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           ) : (

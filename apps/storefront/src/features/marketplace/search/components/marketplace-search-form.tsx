@@ -28,10 +28,10 @@ export function MarketplaceSearchForm({
   return (
     <form
       className={cn(
-        'search h-11.5 bg-white rounded-[12px] grid grid-cols-[115px_1fr_55px] overflow-hidden [box-shadow:0_0_0_3px_transparent]',
+        'search min-w-0 h-11.5 bg-white rounded-[12px] grid grid-cols-[115px_1fr_55px] overflow-hidden [box-shadow:0_0_0_3px_transparent]',
         '[transition:0.2s] focus-within:[box-shadow:0_0_0_3px_var(--gold)] [&_select]:text-[13px] [&_select]:border-0 [&_select]:bg-[#f5f2f6] [&_select]:text-[#554b5a] [&_select]:py-0 [&_select]:px-3 [&_select]:[outline:0]',
         '[&_input]:border-0 [&_input]:py-0 [&_input]:px-4.5 [&_input]:[outline:0] [&_input]:min-w-0 [&_input]:text-[14px] [&_input]:text-foreground [&_input]:placeholder:text-muted-foreground [&_input]:[color-scheme:light] [&_button]:border-0 [&_button]:bg-waffarly-gold [&_button]:text-primary',
-        '[&_button]:text-[21px] [&_button]:transition-colors [&_button:hover]:bg-[#ffd353] [&_button:hover]:text-primary [&_button:focus-visible]:bg-[#ffd353] [&_button:focus-visible]:text-primary max-[1100px]:[grid-column:1/-1] max-[1100px]:mb-3.5 max-[700px]:grid-cols-[85px_1fr_48px] max-[700px]:h-[45px] max-[700px]:[&_input]:py-0 max-[700px]:[&_input]:px-2.5 max-[700px]:[&_input]:text-[12px]',
+        '[&_button]:text-[21px] [&_button]:transition-colors [&_button:hover]:bg-[#ffd353] [&_button:hover]:text-primary [&_button:focus-visible]:bg-[#ffd353] [&_button:focus-visible]:text-primary max-[1100px]:[grid-column:1/-1] max-[1100px]:row-start-2 max-[700px]:grid-cols-[85px_1fr_48px] max-[700px]:h-[45px] max-[700px]:[&_input]:py-0 max-[700px]:[&_input]:px-2.5 max-[700px]:[&_input]:text-[12px]',
       )}
       id="searchForm"
       role="search"

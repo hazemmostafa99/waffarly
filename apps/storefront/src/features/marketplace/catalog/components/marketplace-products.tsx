@@ -12,7 +12,7 @@ export function MarketplaceProducts({
 }: {
   category: string;
   term: string;
-  onAdded: () => void;
+  onAdded?: () => void;
 }) {
   const products = filterProducts(category, term);
   return (
@@ -32,7 +32,7 @@ export function MarketplaceProducts({
             <ProductCard
               product={product}
               key={product.id}
-              onAdded={onAdded}
+              {...(onAdded ? { onAdded } : {})}
               homeSection="products"
             />
           ))}
@@ -43,7 +43,7 @@ export function MarketplaceProducts({
           </div>
         )}
       </section>
-      <MarketplaceOffersSection category={category} term={term} onAdded={onAdded} />
+      <MarketplaceOffersSection category={category} term={term} {...(onAdded ? { onAdded } : {})} />
     </>
   );
 }

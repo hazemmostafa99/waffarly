@@ -5,7 +5,11 @@ import { MarketplaceHeaderSkeleton } from '@/features/marketplace/navigation/com
 import { MarketplaceFooter } from '@/features/marketplace/navigation/components/marketplace-footer';
 import { OrdersPage } from '@/features/marketplace/orders/components/orders-page';
 
-export const metadata: Metadata = { title: 'طلباتي | وفّرلي' };
+export const metadata: Metadata = {
+  title: 'طلباتي | وفّرلي',
+  description: 'تابع طلباتك من المطاعم وراجع تفاصيل طلباتك السابقة على وفّرلي.',
+  robots: { index: false, follow: false },
+};
 
 export default function MarketplaceOrdersPage() {
   return (

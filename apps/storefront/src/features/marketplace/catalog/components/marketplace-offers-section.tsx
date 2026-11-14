@@ -11,7 +11,7 @@ export function MarketplaceOffersSection({
 }: {
   category: string;
   term: string;
-  onAdded: () => void;
+  onAdded?: () => void;
 }) {
   const offers = filterProducts(category, term)
     .filter((product) => Boolean(product.oldPrice?.trim()))
@@ -58,7 +58,7 @@ export function MarketplaceOffersSection({
             <ProductCard
               key={product.id}
               product={product}
-              onAdded={onAdded}
+              {...(onAdded ? { onAdded } : {})}
               homeSection="deals"
             />
           ))}

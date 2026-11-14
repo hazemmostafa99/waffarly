@@ -7,6 +7,7 @@ import { customerAuthError } from '@/features/account/data/customer-auth-api';
 import { MarketplaceButton } from '@/components/marketplace/marketplace-button';
 import {
   AuthInput,
+  normalizeAuthDigits,
   PasswordVisibilityButton,
 } from '@/features/marketplace/account/components/auth/auth-input';
 import { AuthPageShell } from '@/features/marketplace/account/components/auth/auth-page-shell';
@@ -39,12 +40,12 @@ export function SignInPage() {
       title="أهلاً بعودتك"
       description="ادخل لحسابك بالبريد الإلكتروني أو رقم الموبايل وكلمة المرور."
     >
-      <form className="grid gap-4" onSubmit={submit} aria-busy={signIn.isPending}>
+      <form className="grid gap-3" onSubmit={submit} aria-busy={signIn.isPending}>
         <AuthInput
           autoComplete="username"
           label="البريد الإلكتروني أو رقم الهاتف"
           onChange={(event) => {
-            setIdentifier(event.target.value);
+            setIdentifier(normalizeAuthDigits(event.target.value));
             signIn.reset();
           }}
           placeholder="اكتب بريدك أو رقم هاتفك"
@@ -96,7 +97,7 @@ export function SignInPage() {
         <MarketplaceButton
           type="submit"
           disabled={signIn.isPending}
-          className="min-h-12 w-full rounded-xl bg-waffarly-gold px-5 text-sm font-black text-primary transition-colors hover:bg-[#ffd353]"
+          className="min-h-11 w-full rounded-xl bg-waffarly-gold px-5 text-sm font-medium text-primary transition-colors hover:bg-[#ffd353]"
         >
           {signIn.isPending ? 'جارٍ تسجيل الدخول…' : 'تسجيل الدخول'}
         </MarketplaceButton>
@@ -109,11 +110,11 @@ export function SignInPage() {
           </p>
         )}
       </form>
-      <p className="mb-0 mt-5 border-t border-border pt-4 text-center text-sm text-muted-foreground">
+      <p className="mb-0 mt-4 border-t border-border pt-3 text-center text-sm text-muted-foreground">
         معندكش حساب؟{' '}
         <Link
           href="/account/sign-up"
-          className="font-extrabold text-accent underline-offset-4 hover:underline"
+          className="font-medium text-accent underline-offset-4 hover:underline"
         >
           أنشئ حساب جديد
         </Link>

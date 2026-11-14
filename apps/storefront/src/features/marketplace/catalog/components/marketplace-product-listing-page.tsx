@@ -16,7 +16,6 @@ import {
   productListingHref,
   type ProductListingState,
 } from '@/features/marketplace/catalog/model/product-listing';
-import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
 import data from '@/features/marketplace/data/reference.json';
 
 export type ProductListingMode = 'all' | 'offers';
@@ -54,7 +53,6 @@ export function MarketplaceProductListingPage({ mode }: { mode: ProductListingMo
   const router = useRouter();
   const pathname = usePathname() ?? pageCopy[mode].pathname;
   const searchParams = useSearchParams();
-  const setCartOpen = useCartStore((state) => state.setCartOpen);
   const paramsString = searchParams.toString();
   const state = parseProductListingState(searchParams);
   const copy = pageCopy[mode];
@@ -148,7 +146,7 @@ export function MarketplaceProductListingPage({ mode }: { mode: ProductListingMo
                   <ProductCard
                     key={product.id}
                     product={product}
-                    onAdded={() => setCartOpen(true)}
+                   
                   />
                 ))}
               </div>

@@ -16,6 +16,8 @@ export function conflictsWithRestaurant(cart: MarketplaceCartLine[], productId: 
 }
 
 export interface CartSlice {
+  cartAddition: { id: string; name: string; image: string; quantity: number } | null;
+  dismissCartAddition: () => void;
   clearCartIfMatches: (snapshot: MarketplaceCartLine[]) => void;
   cartOpen: boolean;
   setCartOpen: (open: boolean) => void;
@@ -27,9 +29,11 @@ export interface CartSlice {
 }
 
 export const createCartSlice: StateCreator<MarketplaceState, [], [], CartSlice> = (set, get) => ({
-  clearCartIfMatches: (snapshot) => { if (JSON.stringify(get().cart) === JSON.stringify(snapshot)) set({ cart: [], cartOpen: false }); },
+  clearCartIfMatches: (snapshot) => { if (JSON.stringify(get().cart) === JSON.stringify(snapshot)) set({ cart: [], cartOpen: false, cartAddition: null }); },
+  cartAddition: null,
+  dismissCartAddition: () => set({ cartAddition: null }),
   cartOpen: false,
-  setCartOpen: (cartOpen) => set({ cartOpen }),
+  setCartOpen: (cartOpen) => set({ cartOpen, ...(cartOpen ? { cartAddition: null } : {}) }),
   cart: [],
   updateCartItem: (id, selection, quantity, quotedUnitPrice) => {
     const cart = get().cart;
@@ -67,7 +71,7 @@ export const createCartSlice: StateCreator<MarketplaceState, [], [], CartSlice> 
     const id = cartLineId(line);
     const existing = cart.find((item) => cartLineId(item) === id);
     if ((existing?.quantity ?? 0) + quantity > MAX_CART_QUANTITY) return false;
-    set({ cart: existing ? cart.map((item) => cartLineId(item) === id
+    set({ cartAddition: { id: crypto.randomUUID(), name: product.name, image: product.cartImage || product.image.src, quantity }, cart: existing ? cart.map((item) => cartLineId(item) === id
       ? { ...item, quantity: item.quantity + quantity } : item) : [...cart, line] });
     return true;
   },

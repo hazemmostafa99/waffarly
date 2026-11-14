@@ -7,21 +7,22 @@ export function MarketplaceHeaderSkeleton({ announce = true }: { announce?: bool
         <MarketplaceSkeleton className="h-2 w-44 bg-purple-900/15 sm:w-64" />
       </div>
       <div className="bg-primary">
-        <div className="marketplace-container mx-auto grid min-h-[76px] w-[min(1480px,_calc(100%_-_24px))] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 sm:w-[min(1480px,_calc(100%_-_32px))] sm:gap-5">
+        <div className="marketplace-container mx-auto grid min-h-[76px] w-[min(1480px,_calc(100%_-_24px))] grid-cols-[auto_minmax(0,1fr)_auto] max-[1100px]:grid-cols-[minmax(0,1fr)_auto] py-3 items-center gap-3 sm:w-[min(1480px,_calc(100%_-_32px))] sm:gap-5">
           <div className="flex items-center gap-2.5">
             <MarketplaceSkeleton className="size-9 rounded-lg bg-white/15 sm:size-10" />
             <MarketplaceSkeleton className="h-9 w-28 bg-white/20 sm:w-40" />
           </div>
-          <MarketplaceSkeleton className="h-10 rounded-lg bg-white/15 sm:h-12" />
-          <div className="flex items-center gap-2">
+          <MarketplaceSkeleton className="h-10 rounded-lg bg-white/15 sm:h-12 max-[1100px]:col-span-full max-[1100px]:row-start-2" />
+          <div className="flex items-center gap-2 max-[1100px]:col-start-2 max-[1100px]:row-start-1">
             <MarketplaceSkeleton className="hidden h-9 w-16 bg-white/15 min-[1101px]:block" />
+            <MarketplaceSkeleton className="size-9 rounded-full bg-white/15" />
             <MarketplaceSkeleton className="size-9 rounded-full bg-white/15" />
           </div>
         </div>
       </div>
       <div className="h-10 bg-purple-800/90">
         <div className="marketplace-container mx-auto flex h-full w-[min(1480px,_calc(100%_-_24px))] items-center justify-end gap-3 overflow-hidden sm:w-[min(1480px,_calc(100%_-_32px))] sm:gap-5">
-          {Array.from({ length: 7 }, (_, index) => (
+          {Array.from({ length: 11 }, (_, index) => (
             <MarketplaceSkeleton key={index} className="h-2.5 w-12 shrink-0 bg-white/20 sm:w-16" />
           ))}
         </div>
