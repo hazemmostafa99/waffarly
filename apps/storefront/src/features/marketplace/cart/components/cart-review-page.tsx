@@ -6,7 +6,12 @@ import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
 import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
-import { cartLineId, cartProducts, cartQuantity, cartTotal } from '@/features/marketplace/cart/model/cart';
+import {
+  cartLineId,
+  cartProducts,
+  cartQuantity,
+  cartTotal,
+} from '@/features/marketplace/cart/model/cart';
 import { CartReviewItem } from '@/features/marketplace/cart/components/cart-review-item';
 import { CartSummary } from '@/features/marketplace/cart/components/cart-summary';
 import { CartEmptyState } from '@/features/marketplace/cart/components/cart-empty-state';
@@ -23,7 +28,8 @@ export function CartReviewPage() {
   const [notice, setNotice] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const editingLine = lines.find((line) => cartLineId(line) === editingId);
-  const editingProduct = editingLine && (editingLine.snapshot ?? findProduct(editingLine.productId));
+  const editingProduct =
+    editingLine && (editingLine.snapshot ?? findProduct(editingLine.productId));
 
   function removeProduct(id: string, name: string) {
     remove(id);
@@ -92,8 +98,10 @@ export function CartReviewPage() {
                     product={product}
                     onQuantityChange={(quantity) => setQuantity(product.lineId, quantity)}
                     onRemove={() => removeProduct(product.lineId, product.cartName)}
-                    {...(product.merchantType === 'restaurant' && mealGroups(product, product.selection).length > 0
-                      ? { onEdit: () => setEditingId(product.lineId) } : {})}
+                    {...(product.merchantType === 'restaurant' &&
+                    mealGroups(product, product.selection).length > 0
+                      ? { onEdit: () => setEditingId(product.lineId) }
+                      : {})}
                   />
                 ))}
               </ul>
@@ -102,8 +110,13 @@ export function CartReviewPage() {
               total={cartTotal(lines)}
               quantity={cartQuantity(lines)}
               productCount={products.length}
-              {...(products[0]?.restaurantSlug ? { restaurantSlug: products[0].restaurantSlug } : {})}
-              {...(products[0]?.merchantType === 'restaurant' && products[0].merchantName !== undefined ? { restaurantName: products[0].merchantName } : {})}
+              {...(products[0]?.restaurantSlug
+                ? { restaurantSlug: products[0].restaurantSlug }
+                : {})}
+              {...(products[0]?.merchantType === 'restaurant' &&
+              products[0].merchantName !== undefined
+                ? { restaurantName: products[0].merchantName }
+                : {})}
             />
           </div>
         ) : (

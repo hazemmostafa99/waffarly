@@ -40,9 +40,7 @@ export function MerchantDetailsPage() {
   if (merchants.isError && !merchants.data) {
     return (
       <div className="admin-page">
-        <PageHeader
-          title={t('Merchant record is unavailable.')}
-        />
+        <PageHeader title={t('Merchant record is unavailable.')} />
         <div
           className="flex flex-wrap items-center justify-between admin-stack rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger"
           role="alert"
@@ -69,10 +67,7 @@ export function MerchantDetailsPage() {
   if (!merchant) {
     return (
       <div className="admin-page">
-        <PageHeader
-          title={t('Merchant not found')}
-          actions={<BackToMerchants />}
-        />
+        <PageHeader title={t('Merchant not found')} actions={<BackToMerchants />} />
         {merchants.isError && (
           <p
             className="m-0 rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger"

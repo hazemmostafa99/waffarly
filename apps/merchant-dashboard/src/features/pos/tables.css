@@ -275,10 +275,64 @@
   }
 }
 
-.pos-tables-page-toolbar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; padding:10px; border:0; border-radius:12px; background:#fff; }
-.pos-tables-page-toolbar .pos-tables-filters { flex:0 1 auto; grid-template-columns:minmax(220px,280px) minmax(160px,200px); min-width:0; margin:0; padding:0; border:0; background:transparent; }
-.pos-tables-page-toolbar-actions { display:flex; flex:0 0 auto; align-self:flex-end; }
-.pos-tables-page-toolbar-actions>.products-button { min-height:40px; white-space:nowrap; }
-@media(max-width:850px){.pos-tables-page-toolbar{flex-wrap:wrap;}.pos-tables-page-toolbar .pos-tables-filters{flex:1 1 100%;grid-template-columns:minmax(220px,1fr) minmax(160px,220px);}.pos-tables-page-toolbar-actions{margin-inline-start:auto;}}
-@media(max-width:760px){.pos-tables-page-toolbar .pos-tables-filters{grid-template-columns:minmax(0,1fr);}}
-@media(max-width:600px){.pos-tables-page-toolbar{flex-direction:column;align-items:stretch;}.pos-tables-page-toolbar .pos-tables-filters{grid-template-columns:1fr;}.pos-tables-page-toolbar-actions{align-self:stretch;}.pos-tables-page-toolbar-actions>.products-button{width:100%;}}
+.pos-tables-page-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+}
+.pos-tables-page-toolbar .pos-tables-filters {
+  flex: 0 1 auto;
+  grid-template-columns: minmax(220px, 280px) minmax(160px, 200px);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.pos-tables-page-toolbar-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-self: flex-end;
+}
+.pos-tables-page-toolbar-actions > .products-button {
+  min-height: 40px;
+  white-space: nowrap;
+}
+@media (max-width: 850px) {
+  .pos-tables-page-toolbar {
+    flex-wrap: wrap;
+  }
+  .pos-tables-page-toolbar .pos-tables-filters {
+    flex: 1 1 100%;
+    grid-template-columns: minmax(220px, 1fr) minmax(160px, 220px);
+  }
+  .pos-tables-page-toolbar-actions {
+    margin-inline-start: auto;
+  }
+}
+@media (max-width: 760px) {
+  .pos-tables-page-toolbar .pos-tables-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .pos-tables-page-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .pos-tables-page-toolbar .pos-tables-filters {
+    grid-template-columns: 1fr;
+  }
+  .pos-tables-page-toolbar-actions {
+    align-self: stretch;
+  }
+  .pos-tables-page-toolbar-actions > .products-button {
+    width: 100%;
+  }
+}

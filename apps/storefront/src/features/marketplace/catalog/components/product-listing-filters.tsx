@@ -5,7 +5,10 @@ import {
   marketplaceCategories,
   type CategoryId,
 } from '@/features/marketplace/search/model/search-state';
-import type { ProductListingState, ProductSort } from '@/features/marketplace/catalog/model/product-listing';
+import type {
+  ProductListingState,
+  ProductSort,
+} from '@/features/marketplace/catalog/model/product-listing';
 
 export function ProductListingFilters({
   state,

@@ -1,6 +1,5 @@
 'use client';
 
-
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
 import { useMarketplaceSearch } from '@/features/marketplace/search/hooks/use-marketplace-search';
 import { productCategory } from '@/features/marketplace/search/model/search-state';
@@ -33,7 +32,6 @@ export function MarketplaceHome() {
         </MarketplaceContainer>
       </main>
       <MarketplaceFooter />
-
     </>
   );
 }

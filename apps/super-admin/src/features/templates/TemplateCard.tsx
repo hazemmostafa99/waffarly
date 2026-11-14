@@ -36,7 +36,10 @@ export function TemplateCard({ template, busy, onEdit, onToggleAvailability }: T
       <div className="admin-section flex flex-1 flex-col">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Badge variant={available ? 'success' : 'warning'} className="min-h-6 px-2 text-[10px]">
-            <span className={`size-1.5 rounded-full ${available ? 'bg-waffarly-success' : 'bg-waffarly-gold'}`} aria-hidden="true" />
+            <span
+              className={`size-1.5 rounded-full ${available ? 'bg-waffarly-success' : 'bg-waffarly-gold'}`}
+              aria-hidden="true"
+            />
             {available ? t('Available') : t('Draft')}
           </Badge>
           <span className="text-[10px] font-medium text-waffarly-muted">
@@ -47,17 +50,37 @@ export function TemplateCard({ template, busy, onEdit, onToggleAvailability }: T
         <div className="mt-3 min-w-0">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h3 className="m-0 truncate text-sm font-bold text-waffarly-ink"><Link to={`/templates/${template.id}`} className="text-inherit no-underline hover:text-waffarly-primary">{template.name}</Link></h3>
-              <code className="mt-1 block truncate text-[10px] text-waffarly-muted" dir="ltr">/{template.key}</code>
+              <h3 className="m-0 truncate text-sm font-bold text-waffarly-ink">
+                <Link
+                  to={`/templates/${template.id}`}
+                  className="text-inherit no-underline hover:text-waffarly-primary"
+                >
+                  {template.name}
+                </Link>
+              </h3>
+              <code className="mt-1 block truncate text-[10px] text-waffarly-muted" dir="ltr">
+                /{template.key}
+              </code>
             </div>
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-waffarly-kpi-mint text-waffarly-primary" aria-hidden="true"><Store size={17} /></span>
+            <span
+              className="grid size-9 shrink-0 place-items-center rounded-xl bg-waffarly-kpi-mint text-waffarly-primary"
+              aria-hidden="true"
+            >
+              <Store size={17} />
+            </span>
           </div>
-          <p className="mb-0 mt-2 line-clamp-2 text-xs leading-5 text-waffarly-muted">{template.description || t('A business storefront design.')}</p>
+          <p className="mb-0 mt-2 line-clamp-2 text-xs leading-5 text-waffarly-muted">
+            {template.description || t('A business storefront design.')}
+          </p>
         </div>
 
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-waffarly-border pt-3">
-          <span className="text-[10px] text-waffarly-muted">{t(activityName(template.activity))}</span>
-          <span className="text-[10px] text-waffarly-muted">{t('Updated')} {formatDate(template.updatedAt)}</span>
+          <span className="text-[10px] text-waffarly-muted">
+            {t(activityName(template.activity))}
+          </span>
+          <span className="text-[10px] text-waffarly-muted">
+            {t('Updated')} {formatDate(template.updatedAt)}
+          </span>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-2">
@@ -74,14 +97,22 @@ export function TemplateCard({ template, busy, onEdit, onToggleAvailability }: T
             type="button"
             variant={available ? 'ghost' : 'default'}
             size="sm"
-            className={available
-              ? 'h-9 flex-1 text-waffarly-muted hover:bg-waffarly-input hover:text-waffarly-ink'
-              : 'h-9 flex-1 bg-waffarly-primary text-white hover:bg-waffarly-primary-hover'}
+            className={
+              available
+                ? 'h-9 flex-1 text-waffarly-muted hover:bg-waffarly-input hover:text-waffarly-ink'
+                : 'h-9 flex-1 bg-waffarly-primary text-white hover:bg-waffarly-primary-hover'
+            }
             disabled={busy}
             onClick={() => onToggleAvailability(template)}
-            aria-label={t(available ? 'Move {{name}} to drafts' : 'Make {{name}} available', { name: template.name })}
+            aria-label={t(available ? 'Move {{name}} to drafts' : 'Make {{name}} available', {
+              name: template.name,
+            })}
           >
-            {available ? <Pencil size={13} aria-hidden="true" /> : <Check size={13} aria-hidden="true" />}
+            {available ? (
+              <Pencil size={13} aria-hidden="true" />
+            ) : (
+              <Check size={13} aria-hidden="true" />
+            )}
             {t(available ? 'Move to drafts' : 'Make available')}
           </Button>
         </div>

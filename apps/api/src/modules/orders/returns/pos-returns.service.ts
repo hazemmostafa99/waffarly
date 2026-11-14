@@ -1,3 +1,13 @@
+/**
+ * Records approved physical item returns against the original sale.
+ * These records describe waste; they do not refund money or put items back into stock.
+ */
+import {
+  itemReturnInclude,
+  toItemReturnSummary,
+  type ItemReturnRecord,
+} from './item-return.mapper.js';
+import { listItemReturnReports, readOrderReturnsState } from './item-return.queries.js';
 import {
   ConflictException,
   ForbiddenException,
@@ -19,134 +29,23 @@ import { createHash, randomUUID } from 'node:crypto';
 import { formatCents, toCents } from '../../../common/money/money.js';
 import { PrismaService } from '../../../infrastructure/database/prisma.service.js';
 import { isPosEmployeeRole, resolvePosEmployeePermissions } from '@waffarly/contracts';
-import { assertScopedCursor } from '../../../common/http/pagination.js';
-import { parseRequest } from '../../../common/http/zod-validation.pipe.js';
-import {
-  ownerPosItemReturnReportsSchema,
-  type OwnerPosItemReturnReportsInput,
-} from './pos-returns.schemas.js';
 
-const itemReturnInclude = {
-  createdBy: { select: { displayName: true } },
-  approvedBy: { select: { displayName: true } },
-  lines: { orderBy: [{ orderLineId: 'asc' as const }, { id: 'asc' as const }] },
-} satisfies Prisma.PosOrderItemReturnInclude;
-
-type ItemReturnRecord = Prisma.PosOrderItemReturnGetPayload<{
-  include: typeof itemReturnInclude;
-}>;
+import { type OwnerPosItemReturnReportsInput } from './pos-returns.schemas.js';
 
 @Injectable()
 export class PosReturnsService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async listOwnerReports(
+  listOwnerReports(
     merchantId: string,
     input: OwnerPosItemReturnReportsInput,
   ): Promise<CursorPage<OwnerPosItemReturnReportRow>> {
-    const query = parseRequest(ownerPosItemReturnReportsSchema, input);
-    if (query.branchId) {
-      const branch = await this.prisma.branch.findFirst({
-        where: { id: query.branchId, merchantId },
-        select: { id: true },
-      });
-      if (!branch) throw new NotFoundException('Branch not found.');
-    }
-
-    const where: Prisma.PosOrderItemReturnWhereInput = {
-      merchantId,
-      issuedAt: { gte: new Date(query.from), lt: new Date(query.to) },
-      order: {
-        is: {
-          source: 'pos',
-          branchId: query.branchId ?? { not: null },
-        },
-      },
-    };
-    if (query.cursor) {
-      const anchor = await this.prisma.posOrderItemReturn.findFirst({
-        where: { ...where, id: query.cursor },
-        select: { id: true },
-      });
-      assertScopedCursor(query.cursor, anchor !== null);
-    }
-
-    const records = await this.prisma.posOrderItemReturn.findMany({
-      where,
-      select: {
-        id: true,
-        returnNumber: true,
-        orderId: true,
-        reason: true,
-        amount: true,
-        currency: true,
-        issuedAt: true,
-        snapshot: true,
-        order: {
-          select: {
-            id: true,
-            orderReference: true,
-            branchId: true,
-            branchName: true,
-            fulfillmentType: true,
-            branch: { select: { name: true } },
-          },
-        },
-        lines: {
-          orderBy: [{ orderLineId: 'asc' }, { id: 'asc' }],
-          select: {
-            productName: true,
-            variantName: true,
-            quantity: true,
-            disposition: true,
-            amount: true,
-          },
-        },
-      },
-      orderBy: [{ issuedAt: 'desc' }, { id: 'desc' }],
-      take: query.limit + 1,
-      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
-    });
-    const hasMore = records.length > query.limit;
-    const items = records.slice(0, query.limit).map((record) => {
-      const snapshot = isJsonObject(record.snapshot) ? record.snapshot : {};
-      const branchId = record.order.branchId;
-      if (!branchId) throw new Error('POS item return report is missing its branch snapshot.');
-      const fulfillmentType = ['dine_in', 'takeaway', 'delivery'].includes(
-        record.order.fulfillmentType,
-      )
-        ? (record.order.fulfillmentType as OwnerPosItemReturnReportRow['fulfillmentType'])
-        : 'unknown';
-      return {
-        id: record.id,
-        returnNumber: record.returnNumber,
-        orderId: record.orderId,
-        orderReference:
-          record.order.orderReference ?? `ORD-${record.orderId.slice(0, 8).toUpperCase()}`,
-        branchId,
-        branchName: record.order.branchName ?? record.order.branch?.name ?? '',
-        fulfillmentType,
-        issuedAt: record.issuedAt.toISOString(),
-        reason: record.reason,
-        referenceValue: record.amount.toFixed(2),
-        currency: (record.currency || 'EGP') as 'EGP',
-        issuedBy: stringFromJson(snapshot, 'issuedBy') ?? '—',
-        approvedBy: nullableStringFromJson(snapshot, 'approvedBy'),
-        lines: record.lines.map((line) => ({
-          productName: line.productName,
-          variantName: line.variantName,
-          quantity: line.quantity,
-          disposition: 'waste' as const,
-          referenceValue: line.amount.toFixed(2),
-        })),
-      };
-    });
-    return { items, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null };
+    return listItemReturnReports(this.prisma, merchantId, input);
   }
 
   async state(employee: PosEmployeeSession, orderId: string): Promise<PosOrderReturnsState> {
     this.requireSell(employee);
-    return this.readState(this.prisma, employee, orderId);
+    return readOrderReturnsState(this.prisma, employee, orderId);
   }
 
   async record(
@@ -157,6 +56,7 @@ export class PosReturnsService {
   ): Promise<RecordPosItemReturnResponse> {
     this.requireSell(employee);
     const actor = `pos:${employee.id}`;
+    // 1. Remember the exact return request and who submitted it.
     const fingerprint = createHash('sha256')
       .update(JSON.stringify({ orderId, ...input, approverEmployeeId: approverEmployeeId ?? null }))
       .digest('hex');
@@ -168,6 +68,7 @@ export class PosReturnsService {
       if (!activeBranchIds.includes(input.branchId))
         throw new ForbiddenException('This employee is not assigned to the selected branch.');
 
+      // 2. Recheck the employee and any supervisor approval before recording a return.
       const actorRow = await tx.posEmployee.findFirst({
         where: {
           id: employee.id,
@@ -205,7 +106,7 @@ export class PosReturnsService {
         return {
           orderId,
           return: savedReturn,
-          state: await this.readState(tx, employee, orderId),
+          state: await readOrderReturnsState(tx, employee, orderId),
         };
       }
 
@@ -261,7 +162,7 @@ export class PosReturnsService {
         return {
           orderId,
           return: savedReturn,
-          state: await this.readState(tx, employee, orderId),
+          state: await readOrderReturnsState(tx, employee, orderId),
         };
       }
 
@@ -355,104 +256,9 @@ export class PosReturnsService {
       return {
         orderId,
         return: summary,
-        state: await this.readState(tx, employee, orderId),
+        state: await readOrderReturnsState(tx, employee, orderId),
       };
     });
-  }
-
-  private async readState(
-    client: Prisma.TransactionClient | PrismaService,
-    employee: PosEmployeeSession,
-    orderId: string,
-  ): Promise<PosOrderReturnsState> {
-    const order = await client.storefrontOrder.findFirst({
-      where: {
-        id: orderId,
-        merchantId: employee.merchantId,
-        source: 'pos',
-        branchId: {
-          in: employee.branches
-            .filter((branch) => branch.archivedAt === null)
-            .map((branch) => branch.id),
-        },
-      },
-      select: {
-        id: true,
-        orderReference: true,
-        status: true,
-        completedAt: true,
-        lines: {
-          orderBy: [{ position: 'asc' }, { id: 'asc' }],
-          include: {
-            selections: { orderBy: [{ groupPosition: 'asc' }, { optionPosition: 'asc' }] },
-          },
-        },
-      },
-    });
-    if (!order) throw new NotFoundException('The POS order was not found.');
-    const returned = await client.posOrderItemReturnLine.groupBy({
-      by: ['orderLineId'],
-      where: { merchantId: employee.merchantId, orderId },
-      _sum: { quantity: true },
-    });
-    const returnedByLine = new Map(
-      returned.map((row) => [row.orderLineId, row._sum.quantity ?? 0]),
-    );
-    const returns = await client.posOrderItemReturn.findMany({
-      where: { merchantId: employee.merchantId, orderId },
-      orderBy: [{ issuedAt: 'desc' }, { id: 'desc' }],
-      take: 20,
-      include: itemReturnInclude,
-    });
-    return {
-      orderId,
-      orderReference: order.orderReference ?? `ORD-${orderId.slice(0, 8).toUpperCase()}`,
-      orderStatus: order.status,
-      eligible: order.status === 'completed' && order.completedAt !== null,
-      items: order.lines.map((line) => {
-        const returnedQuantity = returnedByLine.get(line.id) ?? 0;
-        return {
-          orderLineId: line.id,
-          productName: line.productName,
-          variantName: line.variantName,
-          selections: line.selections.map(
-            (selection) =>
-              `${selection.groupName}: ${selection.optionName}${selection.quantity > 1 ? ` ×${selection.quantity}` : ''}`,
-          ),
-          soldQuantity: line.quantity,
-          returnedQuantity,
-          returnableQuantity: Math.max(0, line.quantity - returnedQuantity),
-          unitPrice: formatCents(toCents(line.unitPrice.toString())),
-        };
-      }),
-      returns: returns.map((record) => this.toSummary(record)),
-    };
-  }
-
-  private toSummary(record: ItemReturnRecord): PosItemReturnSummary {
-    return {
-      id: record.id,
-      requestId: record.requestId,
-      returnNumber: record.returnNumber,
-      orderId: record.orderId,
-      amount: formatCents(toCents(record.amount.toString())),
-      currency: (record.currency || 'EGP') as 'EGP',
-      reason: record.reason,
-      issuedAt: record.issuedAt.toISOString(),
-      createdByEmployeeId: record.createdByEmployeeId,
-      approvedByEmployeeId: record.approvedByEmployeeId,
-      issuedBy: record.createdBy.displayName,
-      approvedBy: record.approvedBy?.displayName ?? null,
-      lines: record.lines.map((line) => ({
-        orderLineId: line.orderLineId,
-        productName: line.productName,
-        variantName: line.variantName,
-        quantity: line.quantity,
-        disposition: 'waste',
-        unitPrice: formatCents(toCents(line.unitPrice.toString())),
-        amount: formatCents(toCents(line.amount.toString())),
-      })),
-    };
   }
 
   private replay(
@@ -469,25 +275,11 @@ export class PosReturnsService {
       throw new ConflictException(
         'This return request ID was already used for a different command.',
       );
-    return this.toSummary(record);
+    return toItemReturnSummary(record);
   }
 
   private requireSell(employee: PosEmployeeSession): void {
     const current = employee.permissions.includes('sell');
     if (!current) throw new ForbiddenException('This employee cannot record POS item returns.');
   }
-}
-
-function isJsonObject(value: Prisma.JsonValue): value is Prisma.JsonObject {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function stringFromJson(value: Prisma.JsonObject, key: string): string | null {
-  const candidate = value[key];
-  return typeof candidate === 'string' ? candidate : null;
-}
-
-function nullableStringFromJson(value: Prisma.JsonObject, key: string): string | null {
-  const candidate = value[key];
-  return typeof candidate === 'string' ? candidate : null;
 }

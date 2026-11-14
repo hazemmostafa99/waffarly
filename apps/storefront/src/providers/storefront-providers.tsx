@@ -8,13 +8,7 @@ import { createStorefrontStore, type StorefrontState } from '../features/cart/st
 
 const StorefrontStoreContext = createContext<StoreApi<StorefrontState> | null>(null);
 
-export function StorefrontProviders({
-  slug,
-  children,
-}: {
-  slug: string;
-  children: ReactNode;
-}) {
+export function StorefrontProviders({ slug, children }: { slug: string; children: ReactNode }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({

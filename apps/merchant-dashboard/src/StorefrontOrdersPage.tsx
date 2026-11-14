@@ -458,7 +458,11 @@ export function StorefrontOrdersPage() {
                             <tr className="orders-expanded-row">
                               <td colSpan={8}>
                                 <div className="orders-expanded-detail">
-                                  <OrderCustomerAssignment key={order.id} orderId={order.id} onSaved={() => setRefreshKey((key) => key + 1)} />
+                                  <OrderCustomerAssignment
+                                    key={order.id}
+                                    orderId={order.id}
+                                    onSaved={() => setRefreshKey((key) => key + 1)}
+                                  />
                                   <div className="orders-expanded-heading">
                                     <div>
                                       <strong>

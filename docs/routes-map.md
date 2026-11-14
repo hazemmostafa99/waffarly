@@ -86,14 +86,14 @@ Inspected public source URL: https://wafarly-marketplace.rassameldeeb.chatgpt.si
 
 The downloaded HTML contains one page and fragment links, with no additional page routes exposed. This does not prove the host has no other routes. No speculative route probing was performed.
 
-| Source destination | Local equivalent         | Meaning                                                       |
-| ------------------ | ------------------------ | ------------------------------------------------------------- |
-| /                  | /                        | Marketplace homepage                                          |
-| #categories        | /#categories             | Category section                                              |
-| #restaurants       | /#restaurants            | Restaurant section (section ID in markup)                     |
-| #deals             | /#deals                  | Product deals                                                 |
-| #stores            | /#stores                 | Featured stores                                               |
-| #                  | #                        | Reference placeholder; retained without inventing destination |
+| Source destination | Local equivalent | Meaning                                                       |
+| ------------------ | ---------------- | ------------------------------------------------------------- |
+| /                  | /                | Marketplace homepage                                          |
+| #categories        | /#categories     | Category section                                              |
+| #restaurants       | /#restaurants    | Restaurant section (section ID in markup)                     |
+| #deals             | /#deals          | Product deals                                                 |
+| #stores            | /#stores         | Featured stores                                               |
+| #                  | #                | Reference placeholder; retained without inventing destination |
 
 The Marketplace homepage is `/`, organized under the invisible `(marketplace)` route group. The unused business landing page and its route group have been removed. `/join` remains a separate local merchant-application flow, and `/s/[slug]` remains the tenant storefront route. Development requests to the former `/marketplace` prefix redirect to the matching root-based route. The reference has no product-detail, restaurant-detail, checkout, login or store-detail route linked in its HTML; corresponding local storefront routes are not claimed as reference routes.
 

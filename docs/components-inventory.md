@@ -32,37 +32,37 @@ changes. See [product component responsibilities](marketplace-product-details.md
 
 Evidence: saved public HTML/CSS/JS; not yet inspected through a rendered browser.
 
-| Component                                   | Implemented responsibility                                                                                    |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| MarketplaceHeader                           | Promo, original logo, delivery location, search form, account dropdown, cart actions and scrolling navigation |
-| MarketplaceHero                             | Original headline, copy, hero asset, deal tags and scroll buttons; trust strip                                |
-| SectionHeading                              | Shared section headings and reference placeholder links                                                       |
-| MarketplaceHome categories                  | 8 extracted categories with active state and keyboard support                                                 |
-| MarketplaceRestaurants                      | 12 restaurant cards with original images, offers, ratings, times                                              |
-| MarketplaceProducts / ProductCard           | Home catalog preview, local filtering and add to cart; links to all products                                |
-| MarketplaceOffersSection                     | Separate home grid of up to five discounted products, countdown and all-offers link                          |
-| FavoriteButton                              | Shared favorite toggle owned by `features/marketplace/favorites`                                              |
-| FavoritesPage / FavoritesEmptyState         | Saved fixture products, favorite removal, add-to-cart and empty state                                         |
-| StoreDetailPage / RestaurantDetailPage      | Fixture profiles, matching products and explicitly labeled local restaurant menu samples                      |
-| FlashCountdown                              | Original 05:42:18 countdown, cleaned-up interval lifecycle                                                    |
-| MarketplaceStores                           | 6 extracted stores, seller banner and app strip                                                               |
-| MarketplaceStoresIndexPage / StoreCard      | Searchable all-store listing linked to fixture store details                                                  |
-| MarketplaceProductListingPage                | Shared all-products/offers listing composition using reference products and URL-backed filters               |
-| ProductListingFilters / ProductListingPagination | Small catalog controls and query-preserving page navigation                                             |
-| MerchantEntryPage / MerchantApplicationForm | Marketplace-styled seller page with local validation and an explicit demo confirmation                        |
-| MarketplaceFooter                           | Original logo, copy, columns and placeholder links                                                            |
-| MarketplaceCart                             | Merged quantity lines, unit counts/subtotals, overlay, focus management and Escape close                      |
+| Component                                        | Implemented responsibility                                                                                          |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| MarketplaceHeader                                | Promo, original logo, delivery location, search form, account dropdown, cart actions and scrolling navigation       |
+| MarketplaceHero                                  | Original headline, copy, hero asset, deal tags and scroll buttons; trust strip                                      |
+| SectionHeading                                   | Shared section headings and reference placeholder links                                                             |
+| MarketplaceHome categories                       | 8 extracted categories with active state and keyboard support                                                       |
+| MarketplaceRestaurants                           | 12 restaurant cards with original images, offers, ratings, times                                                    |
+| MarketplaceProducts / ProductCard                | Home catalog preview, local filtering and add to cart; links to all products                                        |
+| MarketplaceOffersSection                         | Separate home grid of up to five discounted products, countdown and all-offers link                                 |
+| FavoriteButton                                   | Shared favorite toggle owned by `features/marketplace/favorites`                                                    |
+| FavoritesPage / FavoritesEmptyState              | Saved fixture products, favorite removal, add-to-cart and empty state                                               |
+| StoreDetailPage / RestaurantDetailPage           | Fixture profiles, matching products and explicitly labeled local restaurant menu samples                            |
+| FlashCountdown                                   | Original 05:42:18 countdown, cleaned-up interval lifecycle                                                          |
+| MarketplaceStores                                | 6 extracted stores, seller banner and app strip                                                                     |
+| MarketplaceStoresIndexPage / StoreCard           | Searchable all-store listing linked to fixture store details                                                        |
+| MarketplaceProductListingPage                    | Shared all-products/offers listing composition using reference products and URL-backed filters                      |
+| ProductListingFilters / ProductListingPagination | Small catalog controls and query-preserving page navigation                                                         |
+| MerchantEntryPage / MerchantApplicationForm      | Marketplace-styled seller page with local validation and an explicit demo confirmation                              |
+| MarketplaceFooter                                | Original logo, copy, columns and placeholder links                                                                  |
+| MarketplaceCart                                  | Merged quantity lines, unit counts/subtotals, overlay, focus management and Escape close                            |
 | OrdersPage / OrderDetailPage / OrderTrackingPage | Session-only order history, detail, interactive local status timeline, reorder-to-cart and empty/unavailable states |
-| MarketplaceHome mobile nav                  | Reference mobile navigation; only cart has a handler in original source                                       |
-| MarketplaceProviders                        | Per-provider Zustand and QueryClient instances                                                                |
-| AccountPage / AccountDashboard / DemoAddressBook | Demo guest entry, session state, fictional address selection and order/favorites summary |
-| AuthPageShell / SignInPage / SignUpPage     | Shared branded auth layout with separate local-only sign-in and sign-up form states                           |
-| MarketplaceContainer                        | Reference container dimensions                                                                                |
-| MarketplaceSkeleton                         | Shared animated placeholder primitive with reduced-motion support                                             |
-| MarketplaceHeaderSkeleton                   | Promo, brand/search/actions and navigation placeholders matching the Marketplace header                       |
-| MerchantEntrySkeleton                       | Compact hero, form and helper-panel loading layout                                                            |
-| MarketplaceStoresSkeleton                   | Search and responsive store-card loading layout                                                               |
-| MarketplaceProductListingSkeleton           | Responsive product-listing loading layout shared by products and offers                                      |
+| MarketplaceHome mobile nav                       | Reference mobile navigation; only cart has a handler in original source                                             |
+| MarketplaceProviders                             | Per-provider Zustand and QueryClient instances                                                                      |
+| AccountPage / AccountDashboard / DemoAddressBook | Demo guest entry, session state, fictional address selection and order/favorites summary                            |
+| AuthPageShell / SignInPage / SignUpPage          | Shared branded auth layout with separate local-only sign-in and sign-up form states                                 |
+| MarketplaceContainer                             | Reference container dimensions                                                                                      |
+| MarketplaceSkeleton                              | Shared animated placeholder primitive with reduced-motion support                                                   |
+| MarketplaceHeaderSkeleton                        | Promo, brand/search/actions and navigation placeholders matching the Marketplace header                             |
+| MerchantEntrySkeleton                            | Compact hero, form and helper-panel loading layout                                                                  |
+| MarketplaceStoresSkeleton                        | Search and responsive store-card loading layout                                                                     |
+| MarketplaceProductListingSkeleton                | Responsive product-listing loading layout shared by products and offers                                             |
 
 Data is separated into `apps/storefront/src/features/marketplace/data/reference.json`. Search drafts stay local; submitted category/query state comes from the URL. Account, cart, favorites and orders use feature-owned Zustand slices composed into one provider-scoped store. React Query remains available but unused because the inspected source has no catalog API.
 

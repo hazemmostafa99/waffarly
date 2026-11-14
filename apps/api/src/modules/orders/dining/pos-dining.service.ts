@@ -1,21 +1,28 @@
+/**
+ * Keeps orders attached to the right dining session and moves sessions between tables.
+ * Table setup and bill splitting are handled by their own files.
+ */
+import {
+  listOwnerTables,
+  createTable,
+  updateTable,
+  listTablesForEmployee,
+} from './dining-tables.js';
+import { assertDiningSellAccess, assertDiningBranchAccess } from './dining-access.rules.js';
 import { splitOrderChecks } from '../billing/split-order-checks.js';
 import { hash, replayAction } from '../fulfillment/order-action.rules.js';
 export { buildCheckValues } from '../billing/split-order-checks.js';
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import type {
   CreatePosDiningTableRequest,
-  CursorPage,
   MovePosDiningSessionRequest,
   PosDiningSessionSummary,
-  PosDiningTableOption,
-  PosDiningTableSummary,
   PosEmployeeSession,
   SplitPosOrderChecksRequest,
   SplitPosOrderChecksResponse,
@@ -24,24 +31,16 @@ import type {
 import type { Prisma } from '@waffarly/database';
 
 import { toCents, formatCents, requireEgpCurrency } from '../../../common/money/money.js';
-import { assertScopedCursor } from '../../../common/http/pagination.js';
-import { parseRequest } from '../../../common/http/zod-validation.pipe.js';
+
 import {
   isSerializationConflict,
   isUniqueConstraintError,
 } from '../../../infrastructure/database/prisma-errors.js';
 import { PrismaService } from '../../../infrastructure/database/prisma.service.js';
 import {
-  createPosDiningTableSchema,
-  ownerPosDiningTableListSchema,
   parseMovePosDiningSession,
-  updatePosDiningTableSchema,
   type OwnerPosDiningTableListQuery,
 } from './pos-dining.schemas.js';
-
-const tableInclude = {
-  branch: { select: { id: true, name: true } },
-} satisfies Prisma.PosDiningTableInclude;
 
 const sessionInclude = {
   table: { select: { code: true } },
@@ -78,167 +77,30 @@ type SessionRecord = Prisma.PosDiningSessionGetPayload<{ include: typeof session
 export class PosDiningService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async listOwnerTables(
-    merchantId: string,
-    input: OwnerPosDiningTableListQuery,
-  ): Promise<CursorPage<PosDiningTableSummary>> {
-    const query = parseRequest(ownerPosDiningTableListSchema, input);
-    const where: Prisma.PosDiningTableWhereInput = {
-      merchantId,
-      ...(query.branchId ? { branchId: query.branchId } : {}),
-      ...(query.status === 'active'
-        ? { active: true }
-        : query.status === 'inactive'
-          ? { active: false }
-          : {}),
-    };
-    if (query.cursor) {
-      const anchor = await this.prisma.posDiningTable.findFirst({
-        where: { ...where, id: query.cursor },
-        select: { id: true },
-      });
-      assertScopedCursor(query.cursor, anchor !== null);
-    }
-    const records = await this.prisma.posDiningTable.findMany({
-      where,
-      include: tableInclude,
-      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      take: query.limit + 1,
-      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
-    });
-    const hasMore = records.length > query.limit;
-    const items = records.slice(0, query.limit).map(toTableSummary);
-    return { items, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null };
+  listOwnerTables(merchantId: string, input: OwnerPosDiningTableListQuery) {
+    return listOwnerTables(this.prisma, merchantId, input);
   }
-
-  async createTable(
-    merchantId: string,
-    actor: string,
-    input: CreatePosDiningTableRequest,
-  ): Promise<PosDiningTableSummary> {
-    const request = parseRequest(createPosDiningTableSchema, input);
-    try {
-      const record = await this.prisma.$transaction(async (tx) => {
-        const branch = await tx.branch.findFirst({
-          where: { id: request.branchId, merchantId, archivedAt: null },
-          select: { id: true },
-        });
-        if (!branch) throw new ConflictException('Select an active branch for this table.');
-        return tx.posDiningTable.create({
-          data: {
-            merchantId,
-            branchId: branch.id,
-            code: request.code,
-            capacity: request.capacity,
-            createdBy: actor,
-            updatedBy: actor,
-          },
-          include: tableInclude,
-        });
-      });
-      return toTableSummary(record);
-    } catch (error) {
-      if (isUniqueConstraintError(error))
-        throw new ConflictException('A table with this code already exists at the branch.');
-      throw error;
-    }
+  createTable(merchantId: string, actor: string, input: CreatePosDiningTableRequest) {
+    return createTable(this.prisma, merchantId, actor, input);
   }
-
-  async updateTable(
+  updateTable(
     merchantId: string,
     actor: string,
     tableId: string,
     input: UpdatePosDiningTableRequest,
-  ): Promise<PosDiningTableSummary> {
-    const request = parseRequest(updatePosDiningTableSchema, input);
-    try {
-      const record = await this.prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`SELECT "id" FROM "pos_dining_tables" WHERE "id" = ${tableId}::uuid AND "merchantId" = ${merchantId}::uuid FOR UPDATE`;
-        const current = await tx.posDiningTable.findFirst({
-          where: { id: tableId, merchantId },
-          select: { id: true, branchId: true, revision: true },
-        });
-        if (!current) throw new NotFoundException('The table was not found.');
-        if (current.revision !== request.revision)
-          throw new ConflictException('This table changed. Reload it before saving.');
-        const session = await tx.posDiningSession.findFirst({
-          where: { merchantId, tableId, status: 'open' },
-          select: { id: true },
-        });
-        if (session)
-          throw new ConflictException('An occupied table cannot be edited or deactivated.');
-        const updated = await tx.posDiningTable.updateMany({
-          where: { id: tableId, merchantId, revision: request.revision },
-          data: {
-            code: request.code,
-            capacity: request.capacity,
-            active: request.active,
-            revision: { increment: 1 },
-            updatedBy: actor,
-          },
-        });
-        if (updated.count !== 1)
-          throw new ConflictException('This table changed. Reload it before saving.');
-        return tx.posDiningTable.findFirstOrThrow({
-          where: { id: tableId, merchantId },
-          include: tableInclude,
-        });
-      });
-      return toTableSummary(record);
-    } catch (error) {
-      if (isUniqueConstraintError(error))
-        throw new ConflictException('A table with this code already exists at the branch.');
-      throw error;
-    }
+  ) {
+    return updateTable(this.prisma, merchantId, actor, tableId, input);
   }
-
-  async listTablesForEmployee(
-    employee: PosEmployeeSession,
-    branchId: string,
-  ): Promise<PosDiningTableOption[]> {
-    this.requireSell(employee);
-    this.requireBranch(employee, branchId);
-    const tables = await this.prisma.posDiningTable.findMany({
-      where: { merchantId: employee.merchantId, branchId, active: true },
-      include: {
-        branch: { select: { name: true } },
-        sessions: {
-          where: { status: 'open' },
-          take: 1,
-          include: { _count: { select: { orders: true } }, orders: { select: { total: true } } },
-        },
-      },
-      orderBy: [{ code: 'asc' }, { id: 'asc' }],
-      take: 100,
-    });
-    return tables.map((table) => {
-      const session = table.sessions[0];
-      const outstandingCents =
-        session?.orders.reduce((sum, order) => sum + toCents(order.total.toString()), 0n) ?? 0n;
-      return {
-        id: table.id,
-        branchId: table.branchId,
-        branchName: table.branch.name,
-        code: table.code,
-        capacity: table.capacity,
-        active: table.active,
-        revision: table.revision,
-        occupancy: session ? 'occupied' : 'available',
-        sessionId: session?.id ?? null,
-        sessionRevision: session?.revision ?? null,
-        openedAt: session?.openedAt.toISOString() ?? null,
-        orderCount: session?._count.orders ?? 0,
-        outstandingTotal: formatCents(outstandingCents),
-      };
-    });
+  listTablesForEmployee(employee: PosEmployeeSession, branchId: string) {
+    return listTablesForEmployee(this.prisma, employee, branchId);
   }
 
   async listOpenSessionsForEmployee(
     employee: PosEmployeeSession,
     branchId: string,
   ): Promise<PosDiningSessionSummary[]> {
-    this.requireSell(employee);
-    this.requireBranch(employee, branchId);
+    assertDiningSellAccess(employee);
+    assertDiningBranchAccess(employee, branchId);
     const sessions = await this.prisma.posDiningSession.findMany({
       where: { merchantId: employee.merchantId, branchId, status: 'open' },
       include: sessionInclude,
@@ -256,7 +118,7 @@ export class PosDiningService {
     orderId: string,
     orderTotal: string,
   ): Promise<void> {
-    this.requireBranch(employee, branchId);
+    assertDiningBranchAccess(employee, branchId);
     if (tableId) {
       const locked = await tx.$queryRaw<Array<{ id: string }>>`
         SELECT "id" FROM "pos_dining_tables"
@@ -302,7 +164,7 @@ export class PosDiningService {
     sessionId: string,
     input: MovePosDiningSessionRequest,
   ): Promise<PosDiningSessionSummary> {
-    this.requireSell(employee);
+    assertDiningSellAccess(employee);
     const request = parseMovePosDiningSession(input);
     const actor = `pos:${employee.id}`;
     const fingerprint = hash(request);
@@ -334,7 +196,7 @@ export class PosDiningService {
             select: { tableId: true, branchId: true },
           });
           if (!observed) throw new NotFoundException('The open dining session was not found.');
-          this.requireBranch(employee, observed.branchId);
+          assertDiningBranchAccess(employee, observed.branchId);
           const tableIds = [...new Set([observed.tableId, request.tableId])].sort();
           for (const tableId of tableIds) {
             await tx.$queryRaw`SELECT "id" FROM "pos_dining_tables" WHERE "id" = ${tableId}::uuid AND "merchantId" = ${employee.merchantId}::uuid AND "branchId" = ${observed.branchId}::uuid FOR UPDATE`;
@@ -433,36 +295,6 @@ export class PosDiningService {
   ): Promise<SplitPosOrderChecksResponse> {
     return splitOrderChecks(this.prisma, employee, orderId, input);
   }
-
-  private requireSell(employee: PosEmployeeSession): void {
-    if (!employee.permissions.includes('sell'))
-      throw new ForbiddenException('This employee is not authorized to use POS dining.');
-  }
-
-  private requireBranch(employee: PosEmployeeSession, branchId: string): void {
-    if (!employee.branches.some((branch) => branch.id === branchId && branch.archivedAt === null))
-      throw new ForbiddenException('This employee is not assigned to the selected branch.');
-  }
-}
-
-function toTableSummary(table: {
-  id: string;
-  branchId: string;
-  code: string;
-  capacity: number;
-  active: boolean;
-  revision: number;
-  branch: { id?: string; name: string };
-}): PosDiningTableSummary {
-  return {
-    id: table.id,
-    branchId: table.branchId,
-    branchName: table.branch.name,
-    code: table.code,
-    capacity: table.capacity,
-    active: table.active,
-    revision: table.revision,
-  };
 }
 
 function toSessionSummary(session: SessionRecord): PosDiningSessionSummary {

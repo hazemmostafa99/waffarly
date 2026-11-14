@@ -141,7 +141,12 @@ export function ProductImport({
             emptyState=""
             columns={[
               { id: 'name', header: copy('Product'), cell: (row) => row.name },
-              { id: 'price', header: copy('Base price'), cell: (row) => `EGP ${formatNumber(Number(row.basePrice), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+              {
+                id: 'price',
+                header: copy('Base price'),
+                cell: (row) =>
+                  `EGP ${formatNumber(Number(row.basePrice), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+              },
             ]}
           />
         )}

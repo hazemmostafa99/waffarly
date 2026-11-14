@@ -45,7 +45,7 @@ export class CategoryService {
       ...toCategoryResponse(category),
       effectiveVisible: isEffectivelyVisible(category),
     }));
-    return { items, nextCursor: hasMore ? items.at(-1)?.id ?? null : null };
+    return { items, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null };
   }
 
   async create(merchantId: string, actor: string, input: CategoryInput) {

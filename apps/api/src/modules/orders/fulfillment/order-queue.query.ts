@@ -1,3 +1,6 @@
+/**
+ * Shows website orders to the owner and the combined order work list for a branch.
+ */
 import type { CursorPage, StorefrontOrderSummary } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { assertScopedCursor, type CursorPageQuery } from '../../../common/http/pagination.js';
@@ -9,7 +12,6 @@ import { posKitchenTicketInclude } from '../kitchen/pos-kitchen.persistence.js';
 
 export async function listOwnerStorefrontOrders(
   prisma: PrismaService,
-
   merchantId: string,
   page: CursorPageQuery = { limit: 25 },
 ): Promise<CursorPage<StorefrontOrderSummary>> {
@@ -43,7 +45,6 @@ export async function listOwnerStorefrontOrders(
 
 export async function listBranchOrderQueue(
   prisma: PrismaService,
-
   merchantId: string,
   branchId: string,
   page: CursorPageQuery = { limit: 25 },

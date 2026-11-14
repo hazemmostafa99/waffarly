@@ -1,3 +1,6 @@
+/**
+ * Checks table details and requests to move a table session or divide an order bill.
+ */
 import { z } from 'zod';
 import { parseRequest } from '../../../common/http/zod-validation.pipe.js';
 

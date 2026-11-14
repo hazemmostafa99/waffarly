@@ -13,7 +13,10 @@ export interface OrdersSlice {
   reorderDemoOrder: (orderId: string, replace?: boolean) => ReorderResult;
 }
 
-export const createOrdersSlice: StateCreator<MarketplaceState, [], [], OrdersSlice> = (set, get) => ({
+export const createOrdersSlice: StateCreator<MarketplaceState, [], [], OrdersSlice> = (
+  set,
+  get,
+) => ({
   orders: [],
   reorderDemoOrder: (id, replace = false) => {
     const order = get().orders.find((entry) => entry.id === id);
@@ -22,9 +25,16 @@ export const createOrdersSlice: StateCreator<MarketplaceState, [], [], OrdersSli
     if (next.cart) set({ cart: next.cart });
     return next.result;
   },
-  stopDemoOrder: (orderId, reason) => set((state) => ({ orders: state.orders.map((order) =>
-    order.id === orderId && order.restaurantName && (order.status === 'demo-confirmed' || order.status === 'demo-preparing')
-      ? { ...order, status: reason } : order) })),
+  stopDemoOrder: (orderId, reason) =>
+    set((state) => ({
+      orders: state.orders.map((order) =>
+        order.id === orderId &&
+        order.restaurantName &&
+        (order.status === 'demo-confirmed' || order.status === 'demo-preparing')
+          ? { ...order, status: reason }
+          : order,
+      ),
+    })),
   advanceDemoOrderStatus: (orderId) =>
     set((state) => ({
       orders: state.orders.map((order) => {

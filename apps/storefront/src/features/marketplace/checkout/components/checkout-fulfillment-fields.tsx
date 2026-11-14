@@ -4,7 +4,8 @@ import { MarketplaceTextarea as Textarea } from '@/components/marketplace/market
 import type { CheckoutDraft, CheckoutErrors } from '@/features/marketplace/checkout/model/checkout';
 
 export function CheckoutFulfillmentFields({
-  draft, demo = true,
+  draft,
+  demo = true,
   errors,
   onChange,
 }: {
@@ -88,7 +89,9 @@ export function CheckoutFulfillmentFields({
         </>
       ) : (
         <p className={'detail-note text-[12px] leading-[1.8] text-muted-foreground'}>
-          {demo ? 'الاستلام هنا للتجربة فقط؛ لم يتم تحديد فرع أو موعد حقيقي.' : 'استلام الطلب من المطعم بعد قبول الطلب وتجهيزه.'}
+          {demo
+            ? 'الاستلام هنا للتجربة فقط؛ لم يتم تحديد فرع أو موعد حقيقي.'
+            : 'استلام الطلب من المطعم بعد قبول الطلب وتجهيزه.'}
         </p>
       )}
     </fieldset>

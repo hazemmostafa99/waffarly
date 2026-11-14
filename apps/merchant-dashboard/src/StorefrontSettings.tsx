@@ -64,7 +64,11 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
       setError('');
       setNotice(locale === 'ar' ? 'تم نسخ رابط المتجر.' : 'Store link copied.');
     } catch {
-      setError(locale === 'ar' ? 'تعذر النسخ. يمكنك نسخ الرابط مباشرة.' : 'Could not copy. Select and copy the link directly.');
+      setError(
+        locale === 'ar'
+          ? 'تعذر النسخ. يمكنك نسخ الرابط مباشرة.'
+          : 'Could not copy. Select and copy the link directly.',
+      );
     }
   }
 
@@ -137,7 +141,11 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
           </span>
           <div>
             <h2 id="merchant-design-heading">{t('Storefront design')}</h2>
-            <p>{locale === 'ar' ? 'شعار المتجر والقالب الذي يراه عملاؤك على رابطك الخاص.' : 'Your logo and design on your customer storefront.'}</p>
+            <p>
+              {locale === 'ar'
+                ? 'شعار المتجر والقالب الذي يراه عملاؤك على رابطك الخاص.'
+                : 'Your logo and design on your customer storefront.'}
+            </p>
           </div>
         </div>
       </div>
@@ -160,12 +168,29 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
           <div className="settings-public-storefront">
             <div className="settings-storefront-address">
               <span>{locale === 'ar' ? 'رابط المتجر للعملاء' : 'Customer storefront'}</span>
-              <a href={customerUrl} dir="ltr" target="_blank" rel="noreferrer">{customerUrl}</a>
-              {!handle && <small>{locale === 'ar' ? 'هذا هو الرابط الحالي. يمكن تعيين عنوان فرعي للمتجر من الإدارة.' : 'Current address. An administrator can assign a storefront subdomain.'}</small>}
+              <a href={customerUrl} dir="ltr" target="_blank" rel="noreferrer">
+                {customerUrl}
+              </a>
+              {!handle && (
+                <small>
+                  {locale === 'ar'
+                    ? 'هذا هو الرابط الحالي. يمكن تعيين عنوان فرعي للمتجر من الإدارة.'
+                    : 'Current address. An administrator can assign a storefront subdomain.'}
+                </small>
+              )}
             </div>
             <div className="settings-storefront-actions">
-              <Button type="button" variant="outline" onClick={() => void copyStorefrontUrl()}>{locale === 'ar' ? 'نسخ الرابط' : 'Copy link'}</Button>
-              <a className="settings-open-store" href={customerUrl} target="_blank" rel="noreferrer">{locale === 'ar' ? 'فتح المتجر' : 'Open store'} <Icon name="arrow" /></a>
+              <Button type="button" variant="outline" onClick={() => void copyStorefrontUrl()}>
+                {locale === 'ar' ? 'نسخ الرابط' : 'Copy link'}
+              </Button>
+              <a
+                className="settings-open-store"
+                href={customerUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {locale === 'ar' ? 'فتح المتجر' : 'Open store'} <Icon name="arrow" />
+              </a>
             </div>
           </div>
           <div className="settings-identity-grid">
@@ -207,16 +232,20 @@ export function StorefrontSettings({ profile }: { profile: OwnerProfile }) {
               )}
             </div>
 
-            {profile.activity !== 'restaurant' && (<label className="settings-description-field">
-              <span>{t('Store description')}</span>
-              <textarea
-                value={description}
-                maxLength={300}
-                onChange={(event) => setDescription(event.target.value)}
-              />
-              <small>{t('A short description customers will see on your storefront.')}</small>
-              <em>{formatNumber(description.length)}/{formatNumber(300)}</em>
-            </label>)}
+            {profile.activity !== 'restaurant' && (
+              <label className="settings-description-field">
+                <span>{t('Store description')}</span>
+                <textarea
+                  value={description}
+                  maxLength={300}
+                  onChange={(event) => setDescription(event.target.value)}
+                />
+                <small>{t('A short description customers will see on your storefront.')}</small>
+                <em>
+                  {formatNumber(description.length)}/{formatNumber(300)}
+                </em>
+              </label>
+            )}
           </div>
 
           {settings.templates.length > 0 && (

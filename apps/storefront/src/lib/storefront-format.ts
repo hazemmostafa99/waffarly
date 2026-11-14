@@ -16,7 +16,9 @@ export function toMinorUnits(value: string): number {
 
 export function fromMinorUnits(value: number): string {
   const whole = Math.trunc(value / 100);
-  const fraction = Math.abs(value % 100).toString().padStart(2, '0');
+  const fraction = Math.abs(value % 100)
+    .toString()
+    .padStart(2, '0');
   return `${whole}.${fraction}`;
 }
 

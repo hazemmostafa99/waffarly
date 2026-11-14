@@ -33,47 +33,98 @@ export function StorefrontAddressesPreviewPage() {
             <span className="grid size-11 place-items-center rounded-2xl bg-store-cream text-store-primary">
               <MapPin className="size-5" aria-hidden="true" />
             </span>
-            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">{t.noAddressesTitle}</h2>
+            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
+              {t.noAddressesTitle}
+            </h2>
           </div>
           {!isFormOpen && (
             <Button
               className="min-h-11 bg-store-primary text-white hover:bg-store-primary-dark"
-              onClick={() => { setFeedback(''); setIsFormOpen(true); }}
+              onClick={() => {
+                setFeedback('');
+                setIsFormOpen(true);
+              }}
               type="button"
             >
-              <Plus className="me-2 size-4" aria-hidden="true" />{t.addAddress}
+              <Plus className="me-2 size-4" aria-hidden="true" />
+              {t.addAddress}
             </Button>
           )}
         </div>
 
-        <p className="max-w-2xl text-storefront-support leading-5 text-store-secondary">{t.noAddressesDescription}</p>
+        <p className="max-w-2xl text-storefront-support leading-5 text-store-secondary">
+          {t.noAddressesDescription}
+        </p>
 
         {isFormOpen && (
-          <form className="grid gap-4 rounded-2xl border border-store-border bg-store-page p-4 sm:p-5" onSubmit={previewAddress} ref={formRef}>
+          <form
+            className="grid gap-4 rounded-2xl border border-store-border bg-store-page p-4 sm:p-5"
+            onSubmit={previewAddress}
+            ref={formRef}
+          >
             <p className="rounded-xl border border-store-gold/40 bg-store-cream px-4 py-3 text-storefront-support leading-5 text-store-secondary">
               {t.addressFieldsNotice}
             </p>
-            <label className="grid gap-1.5 text-storefront-support font-bold text-store-ink" htmlFor="preview-address-street">
+            <label
+              className="grid gap-1.5 text-storefront-support font-bold text-store-ink"
+              htmlFor="preview-address-street"
+            >
               {t.street}
-              <Input autoComplete="off" className="h-11 rounded-xl border-store-border bg-white text-start" id="preview-address-street" name="previewAddressStreet" />
+              <Input
+                autoComplete="off"
+                className="h-11 rounded-xl border-store-border bg-white text-start"
+                id="preview-address-street"
+                name="previewAddressStreet"
+              />
             </label>
-            <label className="grid gap-1.5 text-storefront-support font-bold text-store-ink" htmlFor="preview-address-area">
+            <label
+              className="grid gap-1.5 text-storefront-support font-bold text-store-ink"
+              htmlFor="preview-address-area"
+            >
               {t.area}
-              <Input autoComplete="off" className="h-11 rounded-xl border-store-border bg-white text-start" id="preview-address-area" name="previewAddressArea" />
+              <Input
+                autoComplete="off"
+                className="h-11 rounded-xl border-store-border bg-white text-start"
+                id="preview-address-area"
+                name="previewAddressArea"
+              />
             </label>
-            <label className="grid gap-1.5 text-storefront-support font-bold text-store-ink" htmlFor="preview-address-notes">
-              <span>{t.addressNotes} <span className="font-normal text-store-muted">({t.optional})</span></span>
-              <Textarea autoComplete="off" className="min-h-24 rounded-xl border-store-border bg-white text-start" id="preview-address-notes" name="previewAddressNotes" />
+            <label
+              className="grid gap-1.5 text-storefront-support font-bold text-store-ink"
+              htmlFor="preview-address-notes"
+            >
+              <span>
+                {t.addressNotes}{' '}
+                <span className="font-normal text-store-muted">({t.optional})</span>
+              </span>
+              <Textarea
+                autoComplete="off"
+                className="min-h-24 rounded-xl border-store-border bg-white text-start"
+                id="preview-address-notes"
+                name="previewAddressNotes"
+              />
             </label>
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
               <Button className="min-h-11" onClick={closeForm} type="button" variant="outline">
-                <X className="me-2 size-4" aria-hidden="true" />{t.closeForm}
+                <X className="me-2 size-4" aria-hidden="true" />
+                {t.closeForm}
               </Button>
-              <Button className="min-h-11 bg-store-primary text-white hover:bg-store-primary-dark" type="submit">
+              <Button
+                className="min-h-11 bg-store-primary text-white hover:bg-store-primary-dark"
+                type="submit"
+              >
                 {t.reviewAddress}
               </Button>
             </div>
-            {feedback && <p aria-live="polite" className="rounded-xl bg-store-info px-4 py-3 text-storefront-support text-store-primary-deep" role="status">{feedback}</p>}
+            {feedback && (
+              <p
+                aria-live="polite"
+                className="rounded-xl bg-store-info px-4 py-3 text-storefront-support text-store-primary-deep"
+                role="status"
+              >
+                {feedback}
+              </p>
+            )}
           </form>
         )}
       </section>

@@ -185,52 +185,52 @@ export function StockItemsPage() {
   }
 
   const stockFilters = (
-        <div className="inventory-filters">
-          <form className="inventory-search" onSubmit={applySearch}>
-            <label htmlFor="inventory-search">{text('Search stock items')}</label>
-            <div>
-              <Input
-                id="inventory-search"
-                value={searchDraft}
-                maxLength={160}
-                onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder={text('Search by item name')}
-              />
-              <Button type="submit" variant="outline">
-                {text('Search')}
-              </Button>
-            </div>
-          </form>
-          <label className="inventory-filter-status">
-            {text('Status')}
-            <select
-              value={status}
-              onChange={(event) => {
-                setStatus(event.target.value as typeof status);
-                setHistory([]);
-              }}
-            >
-              <option value="active">{text('Active')}</option>
-              <option value="archived">{text('Archived')}</option>
-              <option value="all">{text('All items')}</option>
-            </select>
-          </label>
-          {(searchDraft || search || status !== 'active') && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                setSearch('');
-                setSearchDraft('');
-                setStatus('active');
-                setHistory([]);
-                setNextCursor(null);
-              }}
-            >
-              {text('Clear filters')}
-            </Button>
-          )}
+    <div className="inventory-filters">
+      <form className="inventory-search" onSubmit={applySearch}>
+        <label htmlFor="inventory-search">{text('Search stock items')}</label>
+        <div>
+          <Input
+            id="inventory-search"
+            value={searchDraft}
+            maxLength={160}
+            onChange={(event) => setSearchDraft(event.target.value)}
+            placeholder={text('Search by item name')}
+          />
+          <Button type="submit" variant="outline">
+            {text('Search')}
+          </Button>
         </div>
+      </form>
+      <label className="inventory-filter-status">
+        {text('Status')}
+        <select
+          value={status}
+          onChange={(event) => {
+            setStatus(event.target.value as typeof status);
+            setHistory([]);
+          }}
+        >
+          <option value="active">{text('Active')}</option>
+          <option value="archived">{text('Archived')}</option>
+          <option value="all">{text('All items')}</option>
+        </select>
+      </label>
+      {(searchDraft || search || status !== 'active') && (
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => {
+            setSearch('');
+            setSearchDraft('');
+            setStatus('active');
+            setHistory([]);
+            setNextCursor(null);
+          }}
+        >
+          {text('Clear filters')}
+        </Button>
+      )}
+    </div>
   );
 
   return (
@@ -248,7 +248,10 @@ export function StockItemsPage() {
             >
               {text('Record purchase')}
             </Button>
-            <Button type="button" onClick={() => setEditor({ item: null, key: crypto.randomUUID() })}>
+            <Button
+              type="button"
+              onClick={() => setEditor({ item: null, key: crypto.randomUUID() })}
+            >
               {text('New stock item')}
             </Button>
           </>

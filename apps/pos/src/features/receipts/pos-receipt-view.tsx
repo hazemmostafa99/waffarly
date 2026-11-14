@@ -129,10 +129,10 @@ function ReceiptDocument({
     receipt.fulfillmentType === 'pickup'
       ? t('Pickup')
       : receipt.fulfillmentType === 'dine_in'
-      ? t('Dine in')
-      : receipt.fulfillmentType === 'delivery'
-        ? t('Delivery')
-        : t('Takeaway');
+        ? t('Dine in')
+        : receipt.fulfillmentType === 'delivery'
+          ? t('Delivery')
+          : t('Takeaway');
   const cashierName = isReadablePosLabel(receipt.cashierName)
     ? receipt.cashierName.trim()
     : t('Cashier name unavailable');

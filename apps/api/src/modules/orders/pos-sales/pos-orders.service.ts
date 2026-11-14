@@ -1,3 +1,7 @@
+/**
+ * Routes cashier order requests to the file responsible for each operation.
+ * The actual sale, payment, kitchen and receipt work lives in those dedicated files.
+ */
 import { Inject, Injectable } from '@nestjs/common';
 import type {
   AddPosKitchenItemsResponse,

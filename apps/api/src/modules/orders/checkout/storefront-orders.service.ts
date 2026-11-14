@@ -1,14 +1,22 @@
+/**
+ * Coordinates website checkout from the basket review to the saved order.
+ * Marketplace uses the same flow with customer or guest ownership attached.
+ */
+import { saveCheckoutLine } from './save-checkout-line.js';
+import {
+  currentCairoDate,
+  quoteCheckoutDiscount,
+  resolveRestaurantReceivingBranch,
+} from './checkout-policy.js';
+import { updateStorefrontOrderStatus } from '../fulfillment/update-storefront-order-status.js';
 import {
   listOwnerStorefrontOrders,
   listBranchOrderQueue,
 } from '../fulfillment/order-queue.query.js';
 import { createHash } from 'node:crypto';
-import {
-  orderIdentityWhere,
-  type OrderIdentity,
-} from '../customers/customer-order-access.service.js';
+import { orderIdentityWhere, type OrderIdentity } from '../customers/order-identity.rules.js';
 import { RestaurantOrderPolicyService } from '../../storefront/index.js';
-import { lockBranchOperationShift } from '../../shifts/index.js';
+
 import {
   BadRequestException,
   ConflictException,
@@ -22,7 +30,6 @@ import type {
   StorefrontOrderReceipt,
   StorefrontOrderStatus,
   StorefrontOrderSummary,
-  OrderDiscountSnapshot,
 } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { type CursorPageQuery } from '../../../common/http/pagination.js';
@@ -33,24 +40,9 @@ import { ProductConsumptionService, ProductPricingService } from '../../catalog/
 import { InventoryLedgerService } from '../../inventory/index.js';
 import { SubscriptionService } from '../../subscriptions/index.js';
 
-import { toReceipt, toSummary } from '../mapping/order.mapper.js';
-
-import {
-  freezeLineStockRequirements,
-  restoreOrderConsumption,
-} from '../stock/order-stock.persistence.js';
+import { toReceipt } from '../mapping/order.mapper.js';
 
 const MAX_ORDER_TOTAL_CENTS = 999_999_999_999n;
-function cairoToday() {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Africa/Cairo',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts();
-  return `${parts.find((part) => part.type === 'year')!.value}-${parts.find((part) => part.type === 'month')!.value}-${parts.find((part) => part.type === 'day')!.value}`;
-}
-
 @Injectable()
 export class StorefrontOrdersService {
   private readonly consumption: ProductConsumptionService;
@@ -95,7 +87,7 @@ export class StorefrontOrdersService {
           unitPrices.push(quote.totalPrice);
           subtotal += toCents(quote.totalPrice) * BigInt(item.quantity);
         }
-        const coupon = await this.quoteDiscount(db, merchant.id, input.discountCode, subtotal);
+        const coupon = await quoteCheckoutDiscount(db, merchant.id, input.discountCode, subtotal);
         const policy = await this.restaurantPolicy.assess(
           db,
           merchant.id,
@@ -103,7 +95,7 @@ export class StorefrontOrdersService {
           subtotal,
           input.deliveryAreaId,
         );
-        if (policy) await this.resolveRestaurantBranch(db, merchant.id);
+        if (policy) await resolveRestaurantReceivingBranch(db, merchant.id);
         const total =
           subtotal -
           (coupon?.snapshot.amount ? toCents(coupon.snapshot.amount) : 0n) +
@@ -171,6 +163,7 @@ export class StorefrontOrdersService {
     );
 
     try {
+      // 2. Save the order, its stock commitments and customer access together.
       return await this.prisma.$transaction(
         async (transaction) => {
           await this.subscriptions.requireActive(merchant.id, transaction);
@@ -193,184 +186,21 @@ export class StorefrontOrdersService {
 
           for (const [position, item] of input.items.entries()) {
             const quote = quotes[position]!;
-            const product = await transaction.product.findFirst({
-              where: {
-                id: item.productId,
-                merchantId: merchant.id,
-                archivedAt: null,
-              },
-              select: {
-                id: true,
-                name: true,
-                availability: true,
-                revision: true,
-                inventoryConfiguration: { select: { mode: true } },
-                variants: {
-                  select: {
-                    id: true,
-                    name: true,
-                    availability: true,
-                    stockQuantity: true,
-                    attributeSelections: {
-                      orderBy: { attribute: { position: 'asc' } },
-                      select: {
-                        attributeId: true,
-                        valueId: true,
-                        attribute: { select: { id: true, name: true, position: true } },
-                        value: { select: { id: true, value: true } },
-                      },
-                    },
-                  },
-                },
-                modifierGroups: {
-                  orderBy: { position: 'asc' },
-                  select: {
-                    id: true,
-                    modifierGroupId: true,
-                    position: true,
-                    modifierGroup: { select: { name: true } },
-                    options: {
-                      orderBy: { option: { position: 'asc' } },
-                      select: {
-                        optionId: true,
-                        priceAdjustment: true,
-                        option: { select: { name: true, position: true } },
-                      },
-                    },
-                  },
-                },
-              },
-            });
-            if (!product || product.availability !== 'available') {
-              throw new ConflictException('A product in this order is no longer available.');
-            }
-            if (product.revision !== quote.productRevision) {
-              throw new ConflictException('A product changed while this order was being placed.');
-            }
-
-            const variant = quote.variantId
-              ? product.variants.find((candidate) => candidate.id === quote.variantId)
-              : undefined;
-            if (product.variants.length > 0 && !variant) {
-              throw new ConflictException('A selected variant is no longer available.');
-            }
-            if (variant && variant.availability !== 'available') {
-              throw new ConflictException('A selected variant is no longer available.');
-            }
-
-            const recipeHandling = product.inventoryConfiguration?.mode === 'RECIPE';
-            let stockReserved = false;
-            if (
-              !recipeHandling &&
-              variant?.stockQuantity !== null &&
-              variant?.stockQuantity !== undefined
-            ) {
-              const reservation = await transaction.productVariant.updateMany({
-                where: {
-                  id: variant.id,
-                  merchantId: merchant.id,
-                  productId: product.id,
-                  availability: 'available',
-                  stockQuantity: { gte: item.quantity },
-                },
-                data: { stockQuantity: { decrement: item.quantity } },
-              });
-              if (reservation.count !== 1) {
-                throw new ConflictException('A selected variant does not have enough stock.');
-              }
-              stockReserved = true;
-            }
-
-            const selectedOptions = new Map(
-              quote.selections.map((selection) => [
-                selection.groupId,
-                new Map(
-                  (
-                    selection.options ??
-                    selection.optionIds.map((optionId) => ({
-                      optionId,
-                      quantity: 1,
-                      unitPriceAdjustment: undefined,
-                    }))
-                  ).map((option) => [option.optionId, option]),
-                ),
-              ]),
+            // 3. Save the item as sold and reserve or freeze its stock needs.
+            orderTotalCents = await saveCheckoutLine(
+              transaction,
+              this.consumption,
+              merchant.id,
+              order.id,
+              item,
+              quote,
+              position,
+              orderTotalCents,
             );
-            const selectionSnapshots = product.modifierGroups.flatMap((group) =>
-              group.options
-                .filter((option) => selectedOptions.get(group.id)?.has(option.optionId))
-                .map((option) => ({
-                  modifierGroupId: group.modifierGroupId,
-                  modifierOptionId: option.optionId,
-                  groupName: group.modifierGroup.name,
-                  optionName: option.option.name,
-                  quantity: selectedOptions.get(group.id)!.get(option.optionId)!.quantity,
-                  priceAdjustment:
-                    selectedOptions.get(group.id)!.get(option.optionId)!.unitPriceAdjustment ??
-                    option.priceAdjustment.toString(),
-                  groupPosition: group.position,
-                  optionPosition: option.option.position,
-                })),
-            );
-            const variantAttributeSnapshots =
-              variant?.attributeSelections.map((selection) => ({
-                attributeId: selection.attributeId,
-                valueId: selection.valueId,
-                attributeName: selection.attribute.name,
-                attributeValue: selection.value.value,
-                position: selection.attribute.position,
-              })) ?? [];
-            const unitPriceCents = toCents(quote.totalPrice);
-            const lineTotalCents = unitPriceCents * BigInt(item.quantity);
-            orderTotalCents += lineTotalCents;
-            if (orderTotalCents > MAX_ORDER_TOTAL_CENTS) {
-              throw new BadRequestException('The order total is too large.');
-            }
-
-            const savedLine = await transaction.storefrontOrderLine.create({
-              data: {
-                order: { connect: { id_merchantId: { id: order.id, merchantId: merchant.id } } },
-                productId: product.id,
-                variantId: variant?.id ?? null,
-                productName: product.name,
-                variantName: variant?.name ?? null,
-                note: null,
-                basePrice: quote.basePrice,
-                modifierTotal: quote.modifierTotal,
-                quantity: item.quantity,
-                unitPrice: formatCents(unitPriceCents),
-                lineTotal: formatCents(lineTotalCents),
-                stockHandling: recipeHandling ? 'recipe_acceptance' : 'legacy',
-                stockReserved,
-                position,
-                selections: { create: selectionSnapshots },
-                variantAttributes: { create: variantAttributeSnapshots },
-              },
-              select: { id: true },
-            });
-            if (recipeHandling) {
-              const requirements = await this.consumption.requirements(transaction, merchant.id, [
-                {
-                  productId: product.id,
-                  variantId: variant?.id ?? null,
-                  quantity: item.quantity,
-                  selections: selectionSnapshots.map((selection) => ({
-                    modifierGroupId: selection.modifierGroupId,
-                    modifierOptionId: selection.modifierOptionId,
-                    quantity: selection.quantity,
-                  })),
-                },
-              ]);
-              await freezeLineStockRequirements(
-                transaction,
-                merchant.id,
-                savedLine.id,
-                requirements,
-              );
-            }
           }
 
-          const coupon = await this.quoteDiscount(
+          // 4. Recheck the discount and restaurant rules before fixing the final total.
+          const coupon = await quoteCheckoutDiscount(
             transaction,
             merchant.id,
             input.discountCode,
@@ -386,7 +216,7 @@ export class StorefrontOrdersService {
             input.restaurantSettingsRevision,
           );
           const receivingBranch = policy
-            ? await this.resolveRestaurantBranch(transaction, merchant.id)
+            ? await resolveRestaurantReceivingBranch(transaction, merchant.id)
             : null;
           const deliveryFeeCents = policy?.fee ?? 0n;
           const totalCents = orderTotalCents - discountCents + deliveryFeeCents;
@@ -397,7 +227,7 @@ export class StorefrontOrdersService {
           if (totalCents > MAX_ORDER_TOTAL_CENTS)
             throw new BadRequestException('Order total exceeds the supported range.');
           if (coupon && discountCents > 0n) {
-            const today = cairoToday();
+            const today = currentCairoDate();
             const changed = await transaction.merchantDiscount.updateMany({
               where: {
                 id: coupon.row.id,
@@ -427,6 +257,7 @@ export class StorefrontOrdersService {
               },
             });
           }
+          // 5. Save the agreed total and attach the customer or guest when supplied.
           const saved = await transaction.storefrontOrder.update({
             where: { id: order.id },
             data: {
@@ -462,66 +293,6 @@ export class StorefrontOrdersService {
     }
   }
 
-  private async resolveRestaurantBranch(db: Prisma.TransactionClient, merchantId: string) {
-    const branches = await db.branch.findMany({
-      where: { merchantId, archivedAt: null },
-      select: { id: true, name: true },
-      orderBy: { id: 'asc' },
-      take: 2,
-    });
-    if (branches.length !== 1) {
-      throw new ConflictException(
-        branches.length === 0
-          ? 'المطعم ليس لديه فرع متاح لاستقبال الطلبات حاليًا.'
-          : 'يلزم تحديد فرع استقبال طلبات المطعم قبل تأكيد الطلب.',
-      );
-    }
-    return branches[0]!;
-  }
-
-  private async quoteDiscount(
-    db: Prisma.TransactionClient,
-    merchantId: string,
-    code: string | undefined,
-    subtotal: bigint,
-  ) {
-    if (!code) return null;
-    const normalized = code.trim().toUpperCase();
-    const row = await db.merchantDiscount.findFirst({
-      where: { merchantId, code: normalized },
-      include: { branches: { select: { branchId: true } } },
-    });
-    const unavailable = () =>
-      new BadRequestException('Discount code is not available for this order.');
-    const today = cairoToday();
-    if (
-      !row ||
-      row.state !== 'published' ||
-      row.startDate.toISOString().slice(0, 10) > today ||
-      row.endDate.toISOString().slice(0, 10) < today ||
-      (row.usageLimit !== null && row.usedCount >= row.usageLimit) ||
-      row.branches.length > 0
-    )
-      throw unavailable();
-    if (subtotal < toCents(row.minimum.toString()))
-      throw new BadRequestException('Order does not meet the discount minimum.');
-    const value = toCents(row.value.toString());
-    let amount = row.type === 'fixed' ? value : (subtotal * value + 5_000n) / 10_000n;
-    if (row.maximum !== null)
-      amount = amount < toCents(row.maximum.toString()) ? amount : toCents(row.maximum.toString());
-    if (amount > subtotal) amount = subtotal;
-    if (amount <= 0n) throw unavailable();
-    const snapshot: OrderDiscountSnapshot = {
-      code: row.code,
-      name: row.name,
-      type: row.type as OrderDiscountSnapshot['type'],
-      value: row.value.toString(),
-      amount: formatCents(amount),
-      terms: row.terms,
-    };
-    return { row, snapshot };
-  }
-
   async listForOwner(merchantId: string, page: CursorPageQuery = { limit: 25 }) {
     return listOwnerStorefrontOrders(this.prisma, merchantId, page);
   }
@@ -530,98 +301,11 @@ export class StorefrontOrdersService {
     return listBranchOrderQueue(this.prisma, merchantId, branchId, page);
   }
 
-  async updateStatus(
+  updateStatus(
     merchantId: string,
     orderId: string,
     status: Extract<StorefrontOrderStatus, 'accepted' | 'rejected'>,
   ): Promise<StorefrontOrderSummary> {
-    try {
-      return await this.prisma.$transaction(
-        async (transaction) => {
-          const target = await transaction.storefrontOrder.findFirst({
-            where: { id: orderId, merchantId, source: 'storefront' },
-            select: {
-              branchId: true,
-              merchant: { select: { restaurantProfile: { select: { merchantId: true } } } },
-            },
-          });
-          if (!target) throw new NotFoundException('Order was not found.');
-          if (target.branchId || target.merchant.restaurantProfile) {
-            if (!(await lockBranchOperationShift(transaction, merchantId, target.branchId)))
-              throw new ConflictException({
-                message: "Open a cashier shift at this order's branch before changing its status.",
-                code: 'ORDER_SHIFT_REQUIRED',
-              });
-          }
-          if (status === 'accepted') {
-            const recipe = await transaction.storefrontOrderLine.findFirst({
-              where: { merchantId, orderId, stockHandling: 'recipe_acceptance' },
-              select: { id: true },
-            });
-            if (recipe)
-              throw new ConflictException('Recipe orders require branch-based acceptance.');
-          }
-          const changed = await transaction.storefrontOrder.updateMany({
-            where: { id: orderId, merchantId, source: 'storefront', status: 'pending' },
-            data: { status },
-          });
-          if (changed.count !== 1) {
-            const exists = await transaction.storefrontOrder.findFirst({
-              where: { id: orderId, merchantId, source: 'storefront' },
-              select: { id: true },
-            });
-            if (!exists) throw new NotFoundException('Order was not found.');
-            throw new ConflictException('Only pending orders can be accepted or rejected.');
-          }
-
-          if (status === 'rejected') {
-            await restoreOrderConsumption(
-              transaction,
-              this.ledger,
-              merchantId,
-              'owner:order-rejection',
-              orderId,
-              'Rejected order stock reversal',
-            );
-            const reservedLines = await transaction.storefrontOrderLine.findMany({
-              where: { orderId, merchantId, stockReserved: true, variantId: { not: null } },
-              select: { variantId: true, quantity: true },
-            });
-            for (const line of reservedLines) {
-              if (!line.variantId) continue;
-              await transaction.productVariant.updateMany({
-                where: {
-                  id: line.variantId,
-                  merchantId,
-                  stockQuantity: { not: null },
-                },
-                data: { stockQuantity: { increment: line.quantity } },
-              });
-            }
-          }
-
-          const saved = await transaction.storefrontOrder.findFirst({
-            where: { id: orderId, merchantId },
-            include: {
-              lines: {
-                orderBy: { position: 'asc' },
-                include: {
-                  selections: { orderBy: [{ groupPosition: 'asc' }, { optionPosition: 'asc' }] },
-                  variantAttributes: { orderBy: { position: 'asc' } },
-                },
-              },
-            },
-          });
-          if (!saved) throw new NotFoundException('Order was not found.');
-          return toSummary(saved);
-        },
-        { isolationLevel: 'Serializable' },
-      );
-    } catch (error) {
-      if (isSerializationConflict(error)) {
-        throw new ConflictException('Order changed while it was being updated. Please retry.');
-      }
-      throw error;
-    }
+    return updateStorefrontOrderStatus(this.prisma, this.ledger, merchantId, orderId, status);
   }
 }

@@ -16,7 +16,5 @@ export function PageHeader({ title, actions }: PageHeaderProps) {
     return () => setTitle(null);
   }, [title, setTitle]);
 
-  return actions ? (
-    <div className="admin-toolbar">{actions}</div>
-  ) : null;
+  return actions ? <div className="admin-toolbar">{actions}</div> : null;
 }

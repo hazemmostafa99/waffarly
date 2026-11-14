@@ -528,125 +528,132 @@ export function InventoryOperationsPage({
 
   const hasOverviewFilters = Boolean(search || searchDraft || warehouseId || condition);
 
-  const overviewFilters = (view === 'overview' || view === 'history') ? (
-    <div className="inventory-filters inventory-overview-filters">
-      {view === 'overview' && (
-        <form
-          className="inventory-search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setSearch(searchDraft.trim());
-            setBalancePage({});
-            setBalanceHistory([]);
-          }}
-        >
-          <label className="sr-only" htmlFor="stock-search">{text('Search stock items')}</label>
-          <div>
-            <Input
-              id="stock-search"
-              aria-label={text('Search stock items')}
-              type="search"
-              value={searchDraft}
-              maxLength={160}
-              placeholder={text('Search by item name')}
-              onChange={(event) => setSearchDraft(event.target.value)}
-            />
-            <Button type="submit" variant="outline">{text('Search')}</Button>
-          </div>
-        </form>
-      )}
-      <div className="inventory-picker-field">
-        <span className="sr-only">{text('Filter by warehouse')}</span>
-        <WarehousePicker
-          value={warehouseId}
-          label={text('Filter by warehouse')}
-          searchMode="combobox"
-          required={false}
-          emptyLabel={text('All warehouses')}
-          onSelect={(warehouse) => {
-            setWarehouseId(warehouse?.id ?? '');
-            setBalancePage({});
-            setBalanceHistory([]);
-            setMovementPage({});
-            setMovementHistory([]);
-          }}
-        />
-      </div>
-      {view === 'history' && (
-        <>
-          <div className="inventory-picker-field">
-            <span className="sr-only">{text('Filter by item')}</span>
-            <StockItemPicker
-              value={movementItemId}
-              label={text('Filter by item')}
-              onSelect={(item) => {
-                setMovementItemId(item?.id ?? '');
-                setMovementPage({});
-                setMovementHistory([]);
-              }}
-            />
-          </div>
+  const overviewFilters =
+    view === 'overview' || view === 'history' ? (
+      <div className="inventory-filters inventory-overview-filters">
+        {view === 'overview' && (
+          <form
+            className="inventory-search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setSearch(searchDraft.trim());
+              setBalancePage({});
+              setBalanceHistory([]);
+            }}
+          >
+            <label className="sr-only" htmlFor="stock-search">
+              {text('Search stock items')}
+            </label>
+            <div>
+              <Input
+                id="stock-search"
+                aria-label={text('Search stock items')}
+                type="search"
+                value={searchDraft}
+                maxLength={160}
+                placeholder={text('Search by item name')}
+                onChange={(event) => setSearchDraft(event.target.value)}
+              />
+              <Button type="submit" variant="outline">
+                {text('Search')}
+              </Button>
+            </div>
+          </form>
+        )}
+        <div className="inventory-picker-field">
+          <span className="sr-only">{text('Filter by warehouse')}</span>
+          <WarehousePicker
+            value={warehouseId}
+            label={text('Filter by warehouse')}
+            searchMode="combobox"
+            required={false}
+            emptyLabel={text('All warehouses')}
+            onSelect={(warehouse) => {
+              setWarehouseId(warehouse?.id ?? '');
+              setBalancePage({});
+              setBalanceHistory([]);
+              setMovementPage({});
+              setMovementHistory([]);
+            }}
+          />
+        </div>
+        {view === 'history' && (
+          <>
+            <div className="inventory-picker-field">
+              <span className="sr-only">{text('Filter by item')}</span>
+              <StockItemPicker
+                value={movementItemId}
+                label={text('Filter by item')}
+                onSelect={(item) => {
+                  setMovementItemId(item?.id ?? '');
+                  setMovementPage({});
+                  setMovementHistory([]);
+                }}
+              />
+            </div>
+            <label className="inventory-filter-status">
+              <span className="sr-only">{text('Movement type')}</span>
+              <select
+                aria-label={text('Movement type')}
+                value={movementKind}
+                onChange={(event) => {
+                  setMovementKind(event.target.value);
+                  setMovementPage({});
+                  setMovementHistory([]);
+                }}
+              >
+                <option value="">{text('All')}</option>
+                {Object.entries(movementLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {text(label)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
+        {view === 'overview' && (
           <label className="inventory-filter-status">
-            <span className="sr-only">{text('Movement type')}</span>
+            <span className="sr-only">{text('Condition')}</span>
             <select
-              aria-label={text('Movement type')}
-              value={movementKind}
+              aria-label={text('Condition')}
+              value={condition}
               onChange={(event) => {
-                setMovementKind(event.target.value);
+                setCondition(event.target.value);
+                setBalancePage({});
+                setBalanceHistory([]);
                 setMovementPage({});
                 setMovementHistory([]);
               }}
             >
               <option value="">{text('All')}</option>
-              {Object.entries(movementLabels).map(([value, label]) => (
-                <option key={value} value={value}>{text(label)}</option>
-              ))}
+              <option value="available">{text('Available')}</option>
+              <option value="non_sellable">{text('Non-Sellable')}</option>
             </select>
           </label>
-        </>
-      )}
-      {view === 'overview' && (
-        <label className="inventory-filter-status">
-          <span className="sr-only">{text('Condition')}</span>
-          <select
-            aria-label={text('Condition')}
-            value={condition}
-            onChange={(event) => {
-              setCondition(event.target.value);
+        )}
+        {(warehouseId || search || condition || searchDraft || movementItemId || movementKind) && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setSearch('');
+              setSearchDraft('');
+              setWarehouseId('');
+              setCondition('');
+              setMovementItemId('');
+              setMovementKind('');
               setBalancePage({});
               setBalanceHistory([]);
               setMovementPage({});
               setMovementHistory([]);
             }}
           >
-            <option value="">{text('All')}</option>
-            <option value="available">{text('Available')}</option>
-            <option value="non_sellable">{text('Non-Sellable')}</option>
-          </select>
-        </label>
-      )}
-      {(warehouseId || search || condition || searchDraft || movementItemId || movementKind) && (
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => {
-            setSearch('');
-            setSearchDraft('');
-            setWarehouseId('');
-            setCondition('');
-            setMovementItemId('');
-            setMovementKind('');
-            setBalancePage({});
-            setBalanceHistory([]);
-            setMovementPage({});
-            setMovementHistory([]);
-          }}
-        >
-          {text('Clear filters')}
-        </Button>
-      )}
-    </div>
-  ) : null;
+            {text('Clear filters')}
+          </Button>
+        )}
+      </div>
+    ) : null;
 
   return (
     <div className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>

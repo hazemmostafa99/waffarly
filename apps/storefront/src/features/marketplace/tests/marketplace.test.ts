@@ -54,11 +54,7 @@ test('search URLs round-trip Arabic, preserve unrelated params and reset owned p
     term: 'سماعة',
   });
   assert.equal(
-    marketplaceSearchHref('/',
-      url.search,
-      { category: 'all', term: '' },
-      'marketplace-main',
-    ),
+    marketplaceSearchHref('/', url.search, { category: 'all', term: '' }, 'marketplace-main'),
     '/?campaign=local#marketplace-main',
   );
 });

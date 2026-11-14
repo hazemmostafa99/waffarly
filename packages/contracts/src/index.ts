@@ -1,6 +1,9 @@
 export { BUSINESS_ACTIVITY_KEYS, BUSINESS_ACTIVITY_LABELS } from './activities-modules.js';
 export { RESERVED_STOREFRONT_HANDLES, isStorefrontHandle } from './storefront-address.js';
-export type { AssignStorefrontHandleRequest, PublicStorefrontAddress } from './storefront-address.js';
+export type {
+  AssignStorefrontHandleRequest,
+  PublicStorefrontAddress,
+} from './storefront-address.js';
 export { POS_APPEARANCE_ACCENTS } from './pos-appearance.js';
 export type {
   CashSafeSummary,
@@ -294,16 +297,49 @@ export type {
   SubscriptionDashboard,
 } from './subscriptions.js';
 
-export type { RestaurantImage, RestaurantPeriod, RestaurantDay, RestaurantException, RestaurantArea, RestaurantSettingsInput, RestaurantOperatingState } from './restaurant.js';
+export type {
+  RestaurantImage,
+  RestaurantPeriod,
+  RestaurantDay,
+  RestaurantException,
+  RestaurantArea,
+  RestaurantSettingsInput,
+  RestaurantOperatingState,
+} from './restaurant.js';
 
-export type { PublicRestaurantProfile, MarketplaceMenuProduct, MarketplaceMenuPage } from './restaurant.js';
+export type {
+  PublicRestaurantProfile,
+  MarketplaceMenuProduct,
+  MarketplaceMenuPage,
+} from './restaurant.js';
 
 export type { StorefrontCheckoutQuoteRequest, StorefrontCheckoutQuote } from './catalog.js';
 
 export type { OwnerRestaurantSettings } from './restaurant.js';
 export { CUSTOMER_CHANNELS } from './customers.js';
-export type { CustomerProfile, CustomerSignUpRequest, CustomerSignInRequest } from './customer-auth.js';
-export type { CustomerChannel, MerchantCustomer, CreateMerchantCustomerRequest, UpdateMerchantCustomerRequest, LinkOrderCustomerRequest, OrderCustomerLink, OrderCustomerContext, CustomerOrderSummary } from './customers.js';
-export type { MerchantDiscount, MerchantDiscountInput, MerchantDiscountState, MerchantDiscountStatus, MerchantDiscountType, MerchantDiscountStats, OrderDiscountSnapshot } from './discounts.js';
+export type {
+  CustomerProfile,
+  CustomerSignUpRequest,
+  CustomerSignInRequest,
+} from './customer-auth.js';
+export type {
+  CustomerChannel,
+  MerchantCustomer,
+  CreateMerchantCustomerRequest,
+  UpdateMerchantCustomerRequest,
+  LinkOrderCustomerRequest,
+  OrderCustomerLink,
+  OrderCustomerContext,
+  CustomerOrderSummary,
+} from './customers.js';
+export type {
+  MerchantDiscount,
+  MerchantDiscountInput,
+  MerchantDiscountState,
+  MerchantDiscountStatus,
+  MerchantDiscountType,
+  MerchantDiscountStats,
+  OrderDiscountSnapshot,
+} from './discounts.js';
 
 export type { CustomerOrderView, CustomerOrdersPage } from './customer-orders.js';

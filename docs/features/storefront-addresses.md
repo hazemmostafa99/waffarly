@@ -16,7 +16,7 @@ No new business-module dependency or authentication flow was introduced.
   The actor comes from CurrentAdmin, never the request body. Unknown merchant:404;
   invalid body/name:400; duplicate name or attempted replacement:409.
 - `GET /storefront-handles/:handle` is public and returns only `{ handle,
-  storefrontSlug }`. Unknown/reserved/invalid handles return 404, never owner PII.
+storefrontSlug }`. Unknown/reserved/invalid handles return 404, never owner PII.
 - Admin merchant summaries and owner account/storefront-settings projections
   expose optional nullable `storefrontHandle`, preserving existing clients.
 

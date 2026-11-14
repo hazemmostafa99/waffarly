@@ -1,172 +1,53 @@
+/**
+ * Connects customer sessions, order history and the action that adds a guest order to an account.
+ */
 import { Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { createHash, randomBytes } from 'node:crypto';
 import type { Prisma } from '@waffarly/database';
-import type { CustomerProfile } from '@waffarly/contracts';
+
 import { CustomerAuthService } from '../../auth/index.js';
 import { PrismaService } from '../../../infrastructure/database/prisma.service.js';
 import { AppConfiguration } from '../../../config/app-configuration.js';
 
-export type OrderIdentity = { accountId: string } | { guestHash: string; guestExpiresAt: Date };
-const COOKIE = 'waffarly_guest_orders';
-const AGE = 30 * 24 * 60 * 60 * 1000;
-function cookie(request: Request, name: string) {
-  return request.headers.cookie
-    ?.split(';')
-    .map((value) => value.trim())
-    .find((value) => value.startsWith(name + '='))
-    ?.slice(name.length + 1);
-}
-const hash = (value: string) => createHash('sha256').update(value).digest('hex');
-export function orderIdentityWhere(identity: OrderIdentity): Prisma.CustomerOrderAccessWhereInput {
-  return 'accountId' in identity
-    ? { accountId: identity.accountId }
-    : { accountId: null, guestHash: identity.guestHash, guestExpiresAt: { gt: new Date() } };
-}
-const projection = {
-  orderId: true,
-  accountId: true,
-  order: {
-    select: {
-      id: true,
-      status: true,
-      createdAt: true,
-      total: true,
-      subtotal: true,
-      deliveryFee: true,
-      fulfillmentType: true,
-      acceptedAt: true,
-      preparationStartedAt: true,
-      readyAt: true,
-      completedAt: true,
-      cancelledAt: true,
-      merchant: { select: { name: true } },
-      lines: {
-        orderBy: { position: 'asc' as const },
-        select: {
-          id: true,
-          productName: true,
-          variantName: true,
-          quantity: true,
-          unitPrice: true,
-          lineTotal: true,
-          selections: {
-            orderBy: [{ groupPosition: 'asc' as const }, { optionPosition: 'asc' as const }],
-            select: { groupName: true, optionName: true, quantity: true },
-          },
-        },
-      },
-    },
-  },
-} satisfies Prisma.CustomerOrderAccessSelect;
-type Row = Prisma.CustomerOrderAccessGetPayload<{ select: typeof projection }>;
-function view(row: Row) {
-  const order = row.order;
-  return {
-    id: order.id,
-    restaurantName: order.merchant.name,
-    status: order.status,
-    createdAt: order.createdAt.toISOString(),
-    total: order.total.toFixed(2),
-    subtotal: order.subtotal?.toFixed(2) ?? null,
-    deliveryFee: order.deliveryFee?.toFixed(2) ?? null,
-    fulfillmentType: order.fulfillmentType,
-    guest: row.accountId === null,
-    acceptedAt: order.acceptedAt?.toISOString() ?? null,
-    preparationStartedAt: order.preparationStartedAt?.toISOString() ?? null,
-    readyAt: order.readyAt?.toISOString() ?? null,
-    completedAt: order.completedAt?.toISOString() ?? null,
-    cancelledAt: order.cancelledAt?.toISOString() ?? null,
-    items: order.lines.map((line) => ({
-      ...line,
-      unitPrice: line.unitPrice.toFixed(2),
-      lineTotal: line.lineTotal.toFixed(2),
-    })),
-  };
-}
+import { CustomerOrderSession } from './customer-order-session.js';
+import { type OrderIdentity, orderIdentityWhere } from './order-identity.rules.js';
+import { listCustomerOrders, getCustomerOrderDetails } from './customer-orders.query.js';
+export { orderIdentityWhere, type OrderIdentity } from './order-identity.rules.js';
+
 @Injectable()
 export class CustomerOrderAccessService {
-  private readonly accounts = new WeakMap<Request, Promise<CustomerProfile | null>>();
+  private readonly session: CustomerOrderSession;
   constructor(
     @Inject(PrismaService) private readonly db: PrismaService,
-    @Inject(CustomerAuthService) private readonly auth: CustomerAuthService,
-    @Inject(AppConfiguration) private readonly config: AppConfiguration,
-  ) {}
-  account(request: Request): Promise<CustomerProfile | null> {
-    const cached = this.accounts.get(request);
-    if (cached) return cached;
-    const result = cookie(request, 'waffarly_customer_session')
-      ? this.auth.me(request)
-      : Promise.resolve(null);
-    this.accounts.set(request, result);
-    return result;
+    @Inject(CustomerAuthService) auth: CustomerAuthService,
+    @Inject(AppConfiguration) config: AppConfiguration,
+  ) {
+    this.session = new CustomerOrderSession(auth, config);
   }
-  guest(request: Request): OrderIdentity | null {
-    const token = cookie(request, COOKIE);
-    return token && /^[A-Za-z0-9_-]{43}$/.test(token)
-      ? { guestHash: hash(token), guestExpiresAt: new Date(Date.now() + AGE) }
-      : null;
+  account(request: Request) {
+    return this.session.resolveAccount(request);
   }
-  async prepare(request: Request, response: Response) {
-    const account = await this.account(request);
-    if (!this.guest(request))
-      response.cookie(COOKIE, randomBytes(32).toString('base64url'), {
-        httpOnly: true,
-        secure: this.config.isProduction,
-        sameSite: 'lax',
-        path: '/',
-        maxAge: AGE,
-      });
-    return { signedIn: account !== null, guestLifetimeDays: 30 };
+  guest(request: Request) {
+    return this.session.readGuestIdentity(request);
   }
-  async identity(request: Request): Promise<OrderIdentity> {
-    const account = await this.account(request);
-    if (account) return { accountId: account.id };
-    const guest = this.guest(request);
-    if (!guest)
-      throw new UnauthorizedException('Review checkout again to prepare secure order access.');
-    return guest;
+  prepare(request: Request, response: Response) {
+    return this.session.prepareOrderSession(request, response);
   }
-  async scope(request: Request): Promise<Prisma.CustomerOrderAccessWhereInput> {
-    const account = await this.account(request);
-    const guest = this.guest(request);
-    const choices: Prisma.CustomerOrderAccessWhereInput[] = [];
-    if (account) choices.push({ accountId: account.id });
-    if (guest) choices.push(orderIdentityWhere(guest));
-    return choices.length ? { OR: choices } : { orderId: { in: [] } };
+  identity(request: Request): Promise<OrderIdentity> {
+    return this.session.resolveOrderIdentity(request);
+  }
+  scope(request: Request): Promise<Prisma.CustomerOrderAccessWhereInput> {
+    return this.session.buildOrderAccessScope(request);
   }
   async list(request: Request, cursor?: string) {
-    const scope = await this.scope(request);
-    if (
-      cursor &&
-      !(await this.db.customerOrderAccess.findFirst({
-        where: { AND: [scope, { orderId: cursor }] },
-        select: { orderId: true },
-      }))
-    )
-      throw new NotFoundException('Order was not found.');
-    const rows = await this.db.customerOrderAccess.findMany({
-      where: scope,
-      select: projection,
-      orderBy: [{ createdAt: 'desc' }, { orderId: 'desc' }],
-      take: 21,
-      ...(cursor ? { cursor: { orderId: cursor }, skip: 1 } : {}),
-    });
-    return {
-      items: rows.slice(0, 20).map(view),
-      nextCursor: rows.length > 20 ? rows[19]!.orderId : null,
-      signedIn: (await this.account(request)) !== null,
-    };
+    const result = await listCustomerOrders(this.db, await this.scope(request), cursor);
+    return { ...result, signedIn: (await this.account(request)) !== null };
   }
   async detail(request: Request, orderId: string) {
-    const row = await this.db.customerOrderAccess.findFirst({
-      where: { AND: [await this.scope(request), { orderId }] },
-      select: projection,
-    });
-    if (!row) throw new NotFoundException('Order was not found.');
-    return view(row);
+    return getCustomerOrderDetails(this.db, await this.scope(request), orderId);
   }
   async claim(request: Request, orderId: string) {
+    // 1. Only a signed-in customer can add a guest order to their account.
     const account = await this.account(request);
     if (!account) throw new UnauthorizedException('Sign in is required.');
     if (
@@ -176,8 +57,10 @@ export class CustomerOrderAccessService {
       })
     )
       return this.detail(request, orderId);
+    // 2. Require the original browser proof; matching contact details is not enough.
     const guest = this.guest(request);
     if (!guest) throw new NotFoundException('Order was not found.');
+    // 3. Replace guest access with account ownership only while that proof is valid.
     const changed = await this.db.customerOrderAccess.updateMany({
       where: { orderId, ...orderIdentityWhere(guest) },
       data: { accountId: account.id, guestHash: null, guestExpiresAt: null, claimedAt: new Date() },

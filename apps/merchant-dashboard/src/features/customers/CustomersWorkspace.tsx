@@ -74,7 +74,12 @@ export function CustomersWorkspace({ globalSearch }: { globalSearch: string }) {
         </p>
       )}
 
-      <div dir={locale === 'ar' ? 'rtl' : 'ltr'} className="customers-toolbar customers-live-toolbar" role="group" aria-label={text('Customer search and actions', 'البحث عن العملاء والإجراءات')}>
+      <div
+        dir={locale === 'ar' ? 'rtl' : 'ltr'}
+        className="customers-toolbar customers-live-toolbar"
+        role="group"
+        aria-label={text('Customer search and actions', 'البحث عن العملاء والإجراءات')}
+      >
         <label className="customers-live-search">
           <span className="sr-only">{text('Search for a customer', 'البحث عن عميل')}</span>
           <div className="customers-search-field">

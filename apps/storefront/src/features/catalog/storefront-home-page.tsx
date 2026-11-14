@@ -10,20 +10,28 @@ import { interpolate } from '../../lib/storefront-copy';
 import { StorefrontCategoryCard } from './storefront-category-card';
 import { StorefrontProductGrid } from './storefront-product-grid';
 
-export function StorefrontHomePage({
-  catalog,
-}: {
-  catalog: PublicStorefrontCatalog;
-}) {
+export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatalog }) {
   const { locale } = useLocale();
   const t = storefrontCopy(locale);
   const imageSource = '/storefront-assets/hero-burger.webp';
   const Arrow = locale === 'ar' ? ArrowLeft : ArrowRight;
   const featuredProducts = catalog.products.slice(0, 4);
   const features = [
-    { icon: Clock3, title: locale === 'ar' ? 'تصفح بسهولة' : 'Browse with ease', detail: locale === 'ar' ? 'اكتشف القائمة في خطوات بسيطة' : 'Find your next favorite quickly' },
-    { icon: Sparkles, title: locale === 'ar' ? 'اختيارات متنوعة' : 'Plenty to explore', detail: locale === 'ar' ? 'أقسام وأطباق مختلفة' : 'Explore dishes across the menu' },
-    { icon: BadgeCheck, title: locale === 'ar' ? 'تفاصيل واضحة' : 'Clear details', detail: locale === 'ar' ? 'راجع اختياراتك قبل الإرسال' : 'Review options before ordering' },
+    {
+      icon: Clock3,
+      title: locale === 'ar' ? 'تصفح بسهولة' : 'Browse with ease',
+      detail: locale === 'ar' ? 'اكتشف القائمة في خطوات بسيطة' : 'Find your next favorite quickly',
+    },
+    {
+      icon: Sparkles,
+      title: locale === 'ar' ? 'اختيارات متنوعة' : 'Plenty to explore',
+      detail: locale === 'ar' ? 'أقسام وأطباق مختلفة' : 'Explore dishes across the menu',
+    },
+    {
+      icon: BadgeCheck,
+      title: locale === 'ar' ? 'تفاصيل واضحة' : 'Clear details',
+      detail: locale === 'ar' ? 'راجع اختياراتك قبل الإرسال' : 'Review options before ordering',
+    },
   ];
 
   return (
@@ -88,15 +96,27 @@ export function StorefrontHomePage({
         </div>
       </section>
 
-      <section aria-label={locale === 'ar' ? 'مميزات التصفح' : 'Browsing highlights'} className="relative z-10 mx-auto -mt-2.5 grid w-[calc(100%-1rem)] max-w-[1060px] grid-cols-3 rounded-[1.35rem] border border-store-border bg-white px-2 py-3 shadow-[0_14px_40px_rgba(23,35,48,0.08)] sm:-mt-9 sm:px-4 sm:py-4">
+      <section
+        aria-label={locale === 'ar' ? 'مميزات التصفح' : 'Browsing highlights'}
+        className="relative z-10 mx-auto -mt-2.5 grid w-[calc(100%-1rem)] max-w-[1060px] grid-cols-3 rounded-[1.35rem] border border-store-border bg-white px-2 py-3 shadow-[0_14px_40px_rgba(23,35,48,0.08)] sm:-mt-9 sm:px-4 sm:py-4"
+      >
         {features.map(({ icon: Icon, title, detail }, index) => (
-          <div key={title} className={`flex min-w-0 flex-col items-center justify-center gap-1 px-1 sm:flex-row sm:gap-3 sm:px-4 ${index > 0 ? 'border-s border-store-border' : ''}`}>
-            <span className={`grid size-9 shrink-0 place-items-center rounded-xl sm:size-11 ${index === 1 ? 'bg-store-gold/20 text-store-gold-muted' : 'bg-store-primary/10 text-store-primary'}`}>
+          <div
+            key={title}
+            className={`flex min-w-0 flex-col items-center justify-center gap-1 px-1 sm:flex-row sm:gap-3 sm:px-4 ${index > 0 ? 'border-s border-store-border' : ''}`}
+          >
+            <span
+              className={`grid size-9 shrink-0 place-items-center rounded-xl sm:size-11 ${index === 1 ? 'bg-store-gold/20 text-store-gold-muted' : 'bg-store-primary/10 text-store-primary'}`}
+            >
               <Icon className="size-5" aria-hidden="true" />
             </span>
             <span className="grid min-w-0 justify-items-center text-center sm:justify-items-start sm:text-start">
-              <strong className="max-w-24 truncate font-heading text-xs font-extrabold leading-4 text-store-ink sm:max-w-none">{title}</strong>
-              <span className="mt-0.5 max-w-28 truncate text-storefront-caption text-store-muted sm:mt-1">{detail}</span>
+              <strong className="max-w-24 truncate font-heading text-xs font-extrabold leading-4 text-store-ink sm:max-w-none">
+                {title}
+              </strong>
+              <span className="mt-0.5 max-w-28 truncate text-storefront-caption text-store-muted sm:mt-1">
+                {detail}
+              </span>
             </span>
           </div>
         ))}
@@ -106,25 +126,42 @@ export function StorefrontHomePage({
         <section id="categories" className="mt-5 sm:mt-8" aria-labelledby="categories-heading">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <h2 id="categories-heading" className="font-heading text-storefront-section font-black text-store-ink">
+              <h2
+                id="categories-heading"
+                className="font-heading text-storefront-section font-black text-store-ink"
+              >
                 {t.categorySectionTitle}
               </h2>
-              <p className="mt-1 text-storefront-support text-store-muted">{t.categorySectionDescription}</p>
+              <p className="mt-1 text-storefront-support text-store-muted">
+                {t.categorySectionDescription}
+              </p>
             </div>
-            <Link href={`/s/${catalog.slug}/menu`} className="inline-flex items-center gap-2 pb-1 text-sm font-extrabold text-store-accent hover:text-store-primary-deep">
-              {t.allItems}<Arrow className="size-4" aria-hidden="true" />
+            <Link
+              href={`/s/${catalog.slug}/menu`}
+              className="inline-flex items-center gap-2 pb-1 text-sm font-extrabold text-store-accent hover:text-store-primary-deep"
+            >
+              {t.allItems}
+              <Arrow className="size-4" aria-hidden="true" />
             </Link>
           </div>
           <div className="mt-4 flex gap-3 overflow-x-auto overscroll-x-contain pb-3 [scrollbar-width:thin] sm:mt-6">
             {catalog.categories.map((category) => {
-              const categoryProduct = catalog.products.find((product) => product.categories.some((item) => item.id === category.id));
-              const categoryImage = categoryProduct?.images.find((image) => image.isPrimary) ?? categoryProduct?.images[0];
+              const categoryProduct = catalog.products.find((product) =>
+                product.categories.some((item) => item.id === category.id),
+              );
+              const categoryImage =
+                categoryProduct?.images.find((image) => image.isPrimary) ??
+                categoryProduct?.images[0];
               return (
                 <StorefrontCategoryCard
                   key={category.id}
                   href={`/s/${catalog.slug}/menu?category=${encodeURIComponent(category.id)}`}
                   imageUrl={categoryImage?.publicUrl}
-                  productCount={catalog.products.filter((product) => product.categories.some((item) => item.id === category.id)).length}
+                  productCount={
+                    catalog.products.filter((product) =>
+                      product.categories.some((item) => item.id === category.id),
+                    ).length
+                  }
                   productsLabel={t.products}
                   title={category.name}
                 />
@@ -138,12 +175,19 @@ export function StorefrontHomePage({
         <div className="mb-4 flex items-end justify-between gap-4">
           <div>
             <p className="text-sm font-extrabold text-store-accent">{t.brandTagline}</p>
-            <h2 id="featured-heading" className="mt-1 font-heading text-storefront-section font-black text-store-ink">
+            <h2
+              id="featured-heading"
+              className="mt-1 font-heading text-storefront-section font-black text-store-ink"
+            >
               {t.featuredItems}
             </h2>
           </div>
-          <Link href={`/s/${catalog.slug}/menu`} className="inline-flex items-center gap-2 pb-1 text-sm font-extrabold text-store-accent hover:text-store-primary-deep">
-            {t.allItems}<Arrow className="size-4" aria-hidden="true" />
+          <Link
+            href={`/s/${catalog.slug}/menu`}
+            className="inline-flex items-center gap-2 pb-1 text-sm font-extrabold text-store-accent hover:text-store-primary-deep"
+          >
+            {t.allItems}
+            <Arrow className="size-4" aria-hidden="true" />
           </Link>
         </div>
         {featuredProducts.length ? (

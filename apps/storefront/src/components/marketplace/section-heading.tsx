@@ -23,7 +23,10 @@ export function SectionHeading({
         <p>{subtitle}</p>
       </div>
       {moreHref ? (
-        <Link className={'more text-accent font-extrabold no-underline text-[13px]'} href={moreHref}>
+        <Link
+          className={'more text-accent font-extrabold no-underline text-[13px]'}
+          href={moreHref}
+        >
           {more} ←
         </Link>
       ) : null}

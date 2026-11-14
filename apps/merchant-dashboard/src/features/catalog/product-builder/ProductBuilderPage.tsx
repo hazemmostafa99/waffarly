@@ -750,7 +750,9 @@ export function ProductBuilderPage() {
     <div className="product-builder-page" dir={isArabic ? 'rtl' : 'ltr'}>
       <header className="product-builder-topbar product-builder-actions-only">
         <h1 className="sr-only">
-          {isEditing ? text('Edit product', 'تعديل المنتج') : text('Create a product', 'إضافة منتج')}
+          {isEditing
+            ? text('Edit product', 'تعديل المنتج')
+            : text('Create a product', 'إضافة منتج')}
         </h1>
         <Link className="builder-button ghost" to="/products">
           {text('Cancel', 'إلغاء')}

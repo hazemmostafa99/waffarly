@@ -1,3 +1,6 @@
+/**
+ * Receives cashier requests to find saved receipts at an assigned branch.
+ */
 import { Controller, Get, Inject, Query, UseGuards } from '@nestjs/common';
 import type { PosEmployeeSession, PosReceiptHistoryPage } from '@waffarly/contracts';
 import { parseRequest } from '../../../../common/http/zod-validation.pipe.js';

@@ -1,3 +1,7 @@
+/**
+ * Gets a ready website pickup order ready for collection at the cashier.
+ * It links the order to a cashier shift without changing where the order came from.
+ */
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import type { PosEmployeeSession } from '@waffarly/contracts';
 

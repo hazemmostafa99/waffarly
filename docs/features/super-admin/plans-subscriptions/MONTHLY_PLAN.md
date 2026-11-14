@@ -33,7 +33,7 @@ These are reversible implementation choices for the authorized slice, separate f
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Name             | Required trimmed text, 1–160 characters. Duplicate display names are permitted; identifiers distinguish records.                                                                        |
 | Monthly price    | Required decimal string from `0` to `99999999.99`, with at most two fractional digits; stored as `DECIMAL(10,2)` and returned with two digits. Floating-point JSON prices are rejected. |
-| Currency         | Always EGP. Both plan editors submit EGP automatically; the API, service, shared contracts, and database reject other currencies.             |
+| Currency         | Always EGP. Both plan editors submit EGP automatically; the API, service, shared contracts, and database reject other currencies.                                                       |
 | Billing interval | Always `monthly`; other intervals are rejected. This does not define merchant coverage dates.                                                                                           |
 | Description      | Optional trimmed text up to 1,000 characters; omitted API values become an empty string.                                                                                                |
 | Record facts     | UUID identifier, revision, timestamps, and creation/update administrator identifiers.                                                                                                   |

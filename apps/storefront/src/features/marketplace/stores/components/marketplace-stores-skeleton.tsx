@@ -4,7 +4,12 @@ import { MarketplaceSkeleton } from '@/features/marketplace/shared/components/ma
 
 export function MarketplaceStoresSkeleton() {
   return (
-    <div className="marketplace-theme min-h-screen" role="status" aria-live="polite" aria-busy="true">
+    <div
+      className="marketplace-theme min-h-screen"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
       <span className="sr-only">جارٍ تحميل المتاجر…</span>
       <MarketplaceHeaderSkeleton announce={false} />
       <main className="pb-16">
@@ -19,7 +24,10 @@ export function MarketplaceStoresSkeleton() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }, (_, index) => (
-              <div key={index} className="flex min-h-28 items-center gap-4 rounded-2xl border border-border bg-white p-4 shadow-[var(--shadow)]">
+              <div
+                key={index}
+                className="flex min-h-28 items-center gap-4 rounded-2xl border border-border bg-white p-4 shadow-[var(--shadow)]"
+              >
                 <MarketplaceSkeleton className="size-[68px] shrink-0 rounded-2xl" />
                 <div className="grid min-w-0 flex-1 gap-2">
                   <MarketplaceSkeleton className="h-4 w-32 max-w-full" />

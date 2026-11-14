@@ -19,5 +19,12 @@ export function StatusBadge({ children, tone }: StatusBadgeProps) {
     neutral: 'border-waffarly-border bg-waffarly-input text-waffarly-muted',
     info: 'border-transparent bg-waffarly-kpi-blue text-waffarly-info',
   }[tone];
-  return <Badge variant={variants[tone]} className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${toneClass}`}>{children}</Badge>;
+  return (
+    <Badge
+      variant={variants[tone]}
+      className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${toneClass}`}
+    >
+      {children}
+    </Badge>
+  );
 }

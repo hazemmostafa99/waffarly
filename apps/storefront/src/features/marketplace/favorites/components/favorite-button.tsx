@@ -5,7 +5,17 @@ import { cn } from '@waffarly/ui';
 import { useFavoritesStore } from '@/features/marketplace/favorites/hooks/use-favorites-store';
 import type { MarketplaceProduct } from '@/features/marketplace/catalog/model/catalog';
 
-export function FavoriteButton({ productId, name, product, className }: { productId: string; name: string; product?: MarketplaceProduct; className?: string }) {
+export function FavoriteButton({
+  productId,
+  name,
+  product,
+  className,
+}: {
+  productId: string;
+  name: string;
+  product?: MarketplaceProduct;
+  className?: string;
+}) {
   const favorite = useFavoritesStore((state) => state.favorites.includes(productId));
   const toggle = useFavoritesStore((state) => state.toggleFavorite);
   return (

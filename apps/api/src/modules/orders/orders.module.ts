@@ -1,3 +1,6 @@
+/**
+ * Connects the order entry points with the people, products, stock and payment features they need.
+ */
 import { StorefrontModule } from '../storefront/index.js';
 import { CustomersModule } from '../customers/index.js';
 import {
@@ -25,8 +28,8 @@ import { PosOrdersService } from './pos-sales/pos-orders.service.js';
 import {
   PosDiningController,
   PosDiningOrdersController,
-  OwnerPosDiningTablesController,
 } from './http/pos/pos-dining.controller.js';
+import { OwnerPosDiningTablesController } from './http/owner/owner-dining-tables.controller.js';
 import { PosDiningService } from './dining/pos-dining.service.js';
 import { PosReceiptsController } from './http/pos/pos-receipts.controller.js';
 import { PosKitchenService } from './kitchen/pos-kitchen.service.js';

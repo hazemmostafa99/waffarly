@@ -26,7 +26,9 @@ export function MarketplaceMenu({
           '[&_:is(a,_button)]:rounded-[10px] [&_:is(a,_button)]:p-3 [&_:is(a,_button)]:text-start [&_:is(a,_button)]:text-[14px] [&_:is(a,_button):hover]:bg-secondary [&_.active]:bg-secondary',
         )}
         aria-label="قائمة السوق والحساب والطلبات والمفضلة"
-        onClick={(event) => { if ((event.target as HTMLElement).closest("a")) onClose(); }}
+        onClick={(event) => {
+          if ((event.target as HTMLElement).closest('a')) onClose();
+        }}
       >
         <MarketplaceNavigationLinks
           activeCategory={activeCategory}

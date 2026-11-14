@@ -1,3 +1,6 @@
+/**
+ * Builds the receipt as it looked at payment time, including the items, branch and payment amounts.
+ */
 import type { PosReceipt, PosReceiptPayment, PosReceiptSplitMethod } from '@waffarly/contracts';
 import { formatCents, requireEgpCurrency, toCents } from '../../../common/money/money.js';
 

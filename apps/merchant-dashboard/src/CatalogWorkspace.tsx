@@ -176,7 +176,9 @@ export function CatalogWorkspace({
       aria-labelledby="catalog-heading"
     >
       <div className="section-heading catalog-actions-only">
-        <h2 id="catalog-heading" className="sr-only">{t('Products and categories')}</h2>
+        <h2 id="catalog-heading" className="sr-only">
+          {t('Products and categories')}
+        </h2>
         <Button
           type="button"
           variant="outline"

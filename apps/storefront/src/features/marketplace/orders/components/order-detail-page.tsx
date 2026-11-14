@@ -16,7 +16,11 @@ import {
 import { money } from '@/features/marketplace/shared/lib/format-money';
 
 export function OrderDetailPage({ orderId }: { orderId: string }) {
- return orderId.startsWith("demo-") ? <LocalOrderDetailPage orderId={orderId} /> : <CustomerOrderDetails orderId={orderId} />;
+  return orderId.startsWith('demo-') ? (
+    <LocalOrderDetailPage orderId={orderId} />
+  ) : (
+    <CustomerOrderDetails orderId={orderId} />
+  );
 }
 function LocalOrderDetailPage({ orderId }: { orderId: string }) {
   const order = useOrdersStore((state) => state.orders.find((item) => item.id === orderId));
@@ -85,9 +89,7 @@ function LocalOrderDetailPage({ orderId }: { orderId: string }) {
         </nav>
         <header className="mb-3 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="sr-only">
-              تفاصيل الطلب
-            </h1>
+            <h1 className="sr-only">تفاصيل الطلب</h1>
             <p className="m-0 text-[13px] text-muted-foreground" dir="ltr">
               {order.id}
             </p>
@@ -123,7 +125,9 @@ function LocalOrderDetailPage({ orderId }: { orderId: string }) {
                   />
                   <div className="min-w-0">
                     <h3 className="m-0 text-[14px] leading-[1.7]">{item.cartName}</h3>
-                    {item.optionsLabel && <p className="my-1 text-xs text-accent">{item.optionsLabel}</p>}
+                    {item.optionsLabel && (
+                      <p className="my-1 text-xs text-accent">{item.optionsLabel}</p>
+                    )}
                     <p className="mb-0 mt-1 text-[12px] text-muted-foreground">
                       الكمية: {item.quantity}
                     </p>
@@ -143,10 +147,18 @@ function LocalOrderDetailPage({ orderId }: { orderId: string }) {
               ملخص الطلب
             </h2>
             <dl className="m-0 grid gap-4 text-[13px]">
-              {order.restaurantName && <>
-                <div className="flex justify-between gap-3"><dt>المطعم</dt><dd className="m-0">{order.restaurantName}</dd></div>
-                <div className="flex justify-between gap-3"><dt>رسوم توصيل تجريبية</dt><dd className="m-0">{money(order.deliveryFee ?? 0)}</dd></div>
-              </>}
+              {order.restaurantName && (
+                <>
+                  <div className="flex justify-between gap-3">
+                    <dt>المطعم</dt>
+                    <dd className="m-0">{order.restaurantName}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt>رسوم توصيل تجريبية</dt>
+                    <dd className="m-0">{money(order.deliveryFee ?? 0)}</dd>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">وقت التأكيد التجريبي</dt>
                 <dd className="m-0 text-end">{formatDemoOrderDate(order.createdAt)}</dd>
@@ -181,10 +193,7 @@ function LocalOrderDetailPage({ orderId }: { orderId: string }) {
               >
                 إعادة المنتجات إلى السلة
               </MarketplaceButton>
-              <Link
-                className="text-center text-[13px] text-accent no-underline"
-                href="/orders"
-              >
+              <Link className="text-center text-[13px] text-accent no-underline" href="/orders">
                 كل طلباتي
               </Link>
             </div>
@@ -193,17 +202,42 @@ function LocalOrderDetailPage({ orderId }: { orderId: string }) {
                 role="status"
                 className="mb-0 mt-3 rounded-xl bg-secondary px-3 py-2.5 text-xs leading-5 text-accent"
               >
-                {reorderResult === 'added' ? 'اتضافت كل الأصناف بنفس اختياراتك وبالأسعار التجريبية الحالية.' : reorderResult === 'conflict' ? 'السلة فيها أصناف من تاجر آخر. اختار الاحتفاظ بيها أو استبدالها.' : reorderResult === 'limit' ? 'الطلب هيتجاوز حد الكمية التجريبي. عدّل السلة وحاول تاني؛ السلة لم تتغير.' : 'فيه أصناف أو اختيارات غير متاحة حاليًا؛ السلة لم تتغير.'}
-                {' '}<Link className="font-bold text-primary" href="/cart">راجع السلة</Link>
+                {reorderResult === 'added'
+                  ? 'اتضافت كل الأصناف بنفس اختياراتك وبالأسعار التجريبية الحالية.'
+                  : reorderResult === 'conflict'
+                    ? 'السلة فيها أصناف من تاجر آخر. اختار الاحتفاظ بيها أو استبدالها.'
+                    : reorderResult === 'limit'
+                      ? 'الطلب هيتجاوز حد الكمية التجريبي. عدّل السلة وحاول تاني؛ السلة لم تتغير.'
+                      : 'فيه أصناف أو اختيارات غير متاحة حاليًا؛ السلة لم تتغير.'}{' '}
+                <Link className="font-bold text-primary" href="/cart">
+                  راجع السلة
+                </Link>
               </p>
             )}
           </aside>
         </div>
-        <MarketplaceDialog open={replaceOpen} onClose={() => setReplaceOpen(false)} title="استبدال السلة لإعادة الطلب؟">
-          <p>إعادة الطلب هتستبدل الأصناف الموجودة في السلة، بنفس اختيارات الوجبات وبأسعار التجربة الحالية.</p>
+        <MarketplaceDialog
+          open={replaceOpen}
+          onClose={() => setReplaceOpen(false)}
+          title="استبدال السلة لإعادة الطلب؟"
+        >
+          <p>
+            إعادة الطلب هتستبدل الأصناف الموجودة في السلة، بنفس اختيارات الوجبات وبأسعار التجربة
+            الحالية.
+          </p>
           <div className="grid gap-3">
-            <MarketplaceButton onClick={() => handleReorder(true)} className="min-h-11 rounded-xl bg-waffarly-gold px-4 font-bold">استبدل السلة وأعد الطلب</MarketplaceButton>
-            <MarketplaceButton onClick={() => setReplaceOpen(false)} className="min-h-10 rounded-xl border border-border px-4">احتفظ بالسلة</MarketplaceButton>
+            <MarketplaceButton
+              onClick={() => handleReorder(true)}
+              className="min-h-11 rounded-xl bg-waffarly-gold px-4 font-bold"
+            >
+              استبدل السلة وأعد الطلب
+            </MarketplaceButton>
+            <MarketplaceButton
+              onClick={() => setReplaceOpen(false)}
+              className="min-h-10 rounded-xl border border-border px-4"
+            >
+              احتفظ بالسلة
+            </MarketplaceButton>
           </div>
         </MarketplaceDialog>
       </MarketplaceContainer>

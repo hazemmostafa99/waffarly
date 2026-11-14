@@ -49,8 +49,7 @@ export function productHref(
     }
   }
 
-  return '/products/' + encodeURIComponent(id) +
-    (params.size ? '?' + params.toString() : '');
+  return '/products/' + encodeURIComponent(id) + (params.size ? '?' + params.toString() : '');
 }
 
 export function productBackHref(search: string) {
@@ -58,11 +57,7 @@ export function productBackHref(search: string) {
   const returnTo = params.get('returnTo');
   if (returnTo === 'home-products' || returnTo === 'home-deals') {
     const section = returnTo === 'home-products' ? 'products' : 'deals';
-    return marketplaceSearchHref('/',
-      '',
-      parseMarketplaceSearch(params),
-      section,
-    );
+    return marketplaceSearchHref('/', '', parseMarketplaceSearch(params), section);
   }
 
   if (returnTo === 'offers' || returnTo === 'products') {
@@ -76,8 +71,5 @@ export function productBackHref(search: string) {
     return pathname + (query ? '?' + query : '');
   }
 
-  return marketplaceSearchHref('/',
-    '',
-    parseMarketplaceSearch(new URLSearchParams(search)),
-  );
+  return marketplaceSearchHref('/', '', parseMarketplaceSearch(new URLSearchParams(search)));
 }

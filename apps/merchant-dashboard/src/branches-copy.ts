@@ -65,7 +65,11 @@ const arabic: Record<string, string> = {
   'Next page': 'الصفحة التالية',
 };
 
-export function branchesCopy(message: string, locale: Locale, translate: (value: string) => string) {
+export function branchesCopy(
+  message: string,
+  locale: Locale,
+  translate: (value: string) => string,
+) {
   const result = locale === 'ar' ? (arabic[message] ?? translate(message)) : translate(message);
   return formatDigits(result, locale);
 }

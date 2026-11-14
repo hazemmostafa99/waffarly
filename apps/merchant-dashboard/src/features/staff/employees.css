@@ -181,7 +181,9 @@
   border-right: 1.5px solid #176444;
   border-bottom: 1.5px solid #176444;
   transform: rotate(45deg);
-  transition: transform 140ms ease, margin 140ms ease;
+  transition:
+    transform 140ms ease,
+    margin 140ms ease;
 }
 .employee-role-help[open] .employee-role-disclosure-icon > span {
   margin-top: 4px;
@@ -387,9 +389,51 @@
   }
 }
 
-.employee-toolbar { display:flex; align-items:center; gap:10px; padding:10px; border:1px solid var(--dashboard-border); border-radius:12px; background:#fff; }
-.employee-toolbar .employee-list-toolbar { flex:1 1 auto; min-width:0; padding:0; margin:0; border:0; background:transparent; }
-.employee-toolbar-actions { display:flex; flex:0 0 auto; }
-.employee-toolbar-actions .products-button { min-height:40px; white-space:nowrap; }
-@media(max-width:850px){.employee-toolbar{flex-wrap:wrap;}.employee-toolbar .employee-list-toolbar{flex:1 1 100%;}.employee-toolbar-actions{margin-inline-start:auto;}}
-@media(max-width:600px){.employee-toolbar{flex-direction:column;align-items:stretch;}.employee-toolbar .employee-list-toolbar{grid-template-columns:1fr;}.employee-toolbar-actions .products-button{width:100%;}}
+.employee-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 12px;
+  background: #fff;
+}
+.employee-toolbar .employee-list-toolbar {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: transparent;
+}
+.employee-toolbar-actions {
+  display: flex;
+  flex: 0 0 auto;
+}
+.employee-toolbar-actions .products-button {
+  min-height: 40px;
+  white-space: nowrap;
+}
+@media (max-width: 850px) {
+  .employee-toolbar {
+    flex-wrap: wrap;
+  }
+  .employee-toolbar .employee-list-toolbar {
+    flex: 1 1 100%;
+  }
+  .employee-toolbar-actions {
+    margin-inline-start: auto;
+  }
+}
+@media (max-width: 600px) {
+  .employee-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .employee-toolbar .employee-list-toolbar {
+    grid-template-columns: 1fr;
+  }
+  .employee-toolbar-actions .products-button {
+    width: 100%;
+  }
+}

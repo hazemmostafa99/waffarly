@@ -17,7 +17,10 @@ const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is required to seed the catalog.');
 
 const requestedSlug = readOption('--merchant-slug') ?? process.env.CATALOG_SEED_MERCHANT_SLUG;
-const mediaRoot = resolve(process.cwd(), process.env.MEDIA_STORAGE_DIRECTORY ?? './uploads/catalog');
+const mediaRoot = resolve(
+  process.cwd(),
+  process.env.MEDIA_STORAGE_DIRECTORY ?? './uploads/catalog',
+);
 const publicApiBaseUrl = process.env.PUBLIC_API_BASE_URL ?? 'http://localhost:4000';
 const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
 
@@ -49,7 +52,9 @@ async function resolveMerchant(slug: string | undefined) {
     select: { id: true, name: true, storefrontSlug: true },
   });
   if (merchants.length === 0) {
-    throw new Error('No merchant exists yet. Create a merchant first, then run this seed with --merchant-slug <slug>.');
+    throw new Error(
+      'No merchant exists yet. Create a merchant first, then run this seed with --merchant-slug <slug>.',
+    );
   }
   if (merchants.length > 1) {
     throw new Error(
@@ -98,7 +103,11 @@ function createMenuImage(base: [number, number, number], seed: number): Buffer {
     pixels[y * (width * 4 + 1)] = 0;
     for (let x = 0; x < width; x += 1) {
       const shade = Math.floor((y / height) * 16);
-      setPixel(x, y, [Math.max(0, base[0] - shade), Math.max(0, base[1] - shade), Math.max(0, base[2] - shade)]);
+      setPixel(x, y, [
+        Math.max(0, base[0] - shade),
+        Math.max(0, base[1] - shade),
+        Math.max(0, base[2] - shade),
+      ]);
     }
   }
   fillRect(0, 236, width, 84, [55, 74, 59]);
@@ -116,21 +125,41 @@ function createMenuImage(base: [number, number, number], seed: number): Buffer {
     pngChunk('IEND', Buffer.alloc(0)),
   ]);
 
-  function fillRect(x: number, y: number, rectWidth: number, rectHeight: number, color: [number, number, number]) {
+  function fillRect(
+    x: number,
+    y: number,
+    rectWidth: number,
+    rectHeight: number,
+    color: [number, number, number],
+  ) {
     for (let row = y; row < y + rectHeight; row += 1) {
       for (let column = x; column < x + rectWidth; column += 1) setPixel(column, row, color);
     }
   }
 
-  function fillEllipse(centerX: number, centerY: number, radiusX: number, radiusY: number, color: [number, number, number]) {
+  function fillEllipse(
+    centerX: number,
+    centerY: number,
+    radiusX: number,
+    radiusY: number,
+    color: [number, number, number],
+  ) {
     for (let y = centerY - radiusY; y <= centerY + radiusY; y += 1) {
       for (let x = centerX - radiusX; x <= centerX + radiusX; x += 1) {
-        if (((x - centerX) / radiusX) ** 2 + ((y - centerY) / radiusY) ** 2 <= 1) setPixel(x, y, color);
+        if (((x - centerX) / radiusX) ** 2 + ((y - centerY) / radiusY) ** 2 <= 1)
+          setPixel(x, y, color);
       }
     }
   }
 
-  function fillRoundedRect(x: number, y: number, rectWidth: number, rectHeight: number, radius: number, color: [number, number, number]) {
+  function fillRoundedRect(
+    x: number,
+    y: number,
+    rectWidth: number,
+    rectHeight: number,
+    radius: number,
+    color: [number, number, number],
+  ) {
     for (let row = y; row < y + rectHeight; row += 1) {
       for (let column = x; column < x + rectWidth; column += 1) {
         const edgeX = Math.max(x + radius - column, column - (x + rectWidth - radius - 1), 0);

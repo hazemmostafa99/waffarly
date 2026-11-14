@@ -531,7 +531,9 @@ export function ShiftReportsPage() {
           hasPrevious={history.length > 0}
           hasNext={Boolean(page.nextCursor)}
           onPrevious={() => setPagination({ filterKey, cursors: history.slice(0, -1) })}
-          onNext={() => setPagination({ filterKey, cursors: [...history, page.nextCursor ?? undefined] })}
+          onNext={() =>
+            setPagination({ filterKey, cursors: [...history, page.nextCursor ?? undefined] })
+          }
         />
       </DashboardCard>
 

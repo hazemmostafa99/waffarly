@@ -1,10 +1,5 @@
 import { Fragment, useEffect, useState, type FormEvent } from 'react';
-import {
-  Button,
-  DashboardCard,
-  Input,
-  useLocale,
-} from '@waffarly/ui';
+import { Button, DashboardCard, Input, useLocale } from '@waffarly/ui';
 import type { InventoryBranch, InventoryWarehouse } from '@waffarly/contracts';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { Icon } from '../../Icons.js';
@@ -276,28 +271,28 @@ export function BranchesPage() {
               ) : branches.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="wf-table-state" role="status">
-                    {listError
-                      ? text('Could not load branches.')
-                      : search || status !== 'active' ? (
-                          <div className="inventory-branch-empty">
-                            <span>{text('No branches match these filters.')}</span>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSearchDraft('');
-                                setSearch('');
-                                setStatus('active');
-                                setHistory([]);
-                              }}
-                            >
-                              {text('Clear filters')}
-                            </Button>
-                          </div>
-                        ) : (
-                          text('No branches yet. Add a branch to begin.')
-                        )}
+                    {listError ? (
+                      text('Could not load branches.')
+                    ) : search || status !== 'active' ? (
+                      <div className="inventory-branch-empty">
+                        <span>{text('No branches match these filters.')}</span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSearchDraft('');
+                            setSearch('');
+                            setStatus('active');
+                            setHistory([]);
+                          }}
+                        >
+                          {text('Clear filters')}
+                        </Button>
+                      </div>
+                    ) : (
+                      text('No branches yet. Add a branch to begin.')
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -352,9 +347,7 @@ export function BranchesPage() {
                           </div>
                         </td>
                         <td className="inventory-branch-status-cell">
-                          <small className="inventory-branch-mobile-label">
-                            {text('Status')}
-                          </small>
+                          <small className="inventory-branch-mobile-label">{text('Status')}</small>
                           <span
                             className={
                               'inventory-location-status ' +
@@ -395,7 +388,9 @@ export function BranchesPage() {
                                   </span>
                                 </h3>
                                 <p>
-                                  {text('The default warehouse is used for future recipe consumption.')}
+                                  {text(
+                                    'The default warehouse is used for future recipe consumption.',
+                                  )}
                                 </p>
                               </div>
                               <div className="inventory-row-actions">
@@ -457,27 +452,30 @@ export function BranchesPage() {
                                       )}
                                     </div>
                                     <div className="inventory-row-actions">
-                                      {!warehouse.archivedAt &&
-                                        !warehouse.isDefaultConsumption && (
-                                          <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            disabled={busy || Boolean(branch.archivedAt)}
-                                            onClick={() =>
-                                              void saveWarehouseDefault(branch, warehouse)
-                                            }
-                                          >
-                                            {text('Set as default')}
-                                          </Button>
-                                        )}
+                                      {!warehouse.archivedAt && !warehouse.isDefaultConsumption && (
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="sm"
+                                          disabled={busy || Boolean(branch.archivedAt)}
+                                          onClick={() =>
+                                            void saveWarehouseDefault(branch, warehouse)
+                                          }
+                                        >
+                                          {text('Set as default')}
+                                        </Button>
+                                      )}
                                       <Button
                                         type="button"
                                         variant="ghost"
                                         size="sm"
                                         disabled={busy || Boolean(branch.archivedAt)}
                                         onClick={() =>
-                                          setWarehouseEditor({ warehouse, branch, key: warehouse.id })
+                                          setWarehouseEditor({
+                                            warehouse,
+                                            branch,
+                                            key: warehouse.id,
+                                          })
                                         }
                                       >
                                         {text('Edit')}
@@ -717,9 +715,7 @@ function BranchEditor({
               maxLength={160}
               value={defaultWarehouseName}
               aria-invalid={Boolean(defaultWarehouseError)}
-              aria-describedby={
-                defaultWarehouseError ? 'default-warehouse-name-error' : undefined
-              }
+              aria-describedby={defaultWarehouseError ? 'default-warehouse-name-error' : undefined}
               onInvalid={(event) => {
                 event.preventDefault();
                 setDefaultWarehouseError(copy('Enter a default warehouse name.'));

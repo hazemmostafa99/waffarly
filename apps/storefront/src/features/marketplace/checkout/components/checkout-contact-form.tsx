@@ -7,7 +7,8 @@ import type { CheckoutDraft, CheckoutErrors } from '@/features/marketplace/check
 import { CheckoutFulfillmentFields } from '@/features/marketplace/checkout/components/checkout-fulfillment-fields';
 
 export function CheckoutContactForm({
-  draft, demo = true,
+  draft,
+  demo = true,
   errors,
   onChange,
   onContinue,
@@ -38,7 +39,9 @@ export function CheckoutContactForm({
     >
       <h2>بيانات التواصل</h2>
       <p className={'detail-note mt-0 mb-4 text-[12px] leading-[1.8] text-muted-foreground'}>
-        {demo ? 'استخدم بيانات تجريبية فقط. لن يتم إرسالها أو حفظها بعد مغادرة الصفحة.' : 'بيانات التواصل تُرسل للمطعم عند تأكيد الطلب، ولا تُحفظ في تخزين المتصفح.'}
+        {demo
+          ? 'استخدم بيانات تجريبية فقط. لن يتم إرسالها أو حفظها بعد مغادرة الصفحة.'
+          : 'بيانات التواصل تُرسل للمطعم عند تأكيد الطلب، ولا تُحفظ في تخزين المتصفح.'}
       </p>
       {Object.keys(errors).length > 0 && (
         <p

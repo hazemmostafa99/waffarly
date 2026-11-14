@@ -248,10 +248,13 @@ export function Plans() {
                   </div>
                   <p className="plan-price">
                     <strong>
-                      {new Intl.NumberFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB-u-nu-latn', {
-                        style: 'currency',
-                        currency: plan.currency,
-                      }).format(Number(plan.monthlyPrice))}
+                      {new Intl.NumberFormat(
+                        locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB-u-nu-latn',
+                        {
+                          style: 'currency',
+                          currency: plan.currency,
+                        },
+                      ).format(Number(plan.monthlyPrice))}
                     </strong>
                     <span> {t('/ month')}</span>
                   </p>

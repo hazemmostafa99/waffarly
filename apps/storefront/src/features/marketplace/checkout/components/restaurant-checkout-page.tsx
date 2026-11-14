@@ -172,9 +172,25 @@ export function RestaurantCheckoutPage() {
   return (
     <main id="marketplace-main" className="min-h-[60vh] py-4">
       <MarketplaceContainer>
-        <div className={`mx-auto ${receipt ? 'max-w-[620px]' : quote || uncertain ? 'max-w-[1000px]' : 'max-w-[800px]'}`}>
+        <div
+          className={`mx-auto ${receipt ? 'max-w-[620px]' : quote || uncertain ? 'max-w-[1000px]' : 'max-w-[800px]'}`}
+        >
           <h1 className="mt-0 mb-2 text-[20px] font-bold leading-8 text-primary">إتمام الطلب</h1>
-          {!receipt && <p className="mb-4 text-sm leading-6 text-muted-foreground">{customerSession.data ? 'الطلب هيتحفظ في حسابك المسجّل دخوله.' : <>إكمال الطلب كضيف: تقدر تتابعه من المتصفح ده لمدة محدودة، أو <Link href="/account/sign-in" className="font-bold text-accent">سجّل دخول قبل التأكيد</Link> لحفظه في حسابك.</>}</p>}
+          {!receipt && (
+            <p className="mb-4 text-sm leading-6 text-muted-foreground">
+              {customerSession.data ? (
+                'الطلب هيتحفظ في حسابك المسجّل دخوله.'
+              ) : (
+                <>
+                  إكمال الطلب كضيف: تقدر تتابعه من المتصفح ده لمدة محدودة، أو{' '}
+                  <Link href="/account/sign-in" className="font-bold text-accent">
+                    سجّل دخول قبل التأكيد
+                  </Link>{' '}
+                  لحفظه في حسابك.
+                </>
+              )}
+            </p>
+          )}
           {receipt ? (
             <RestaurantOrderConfirmation receipt={receipt} />
           ) : !lines.length ? (

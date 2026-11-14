@@ -6,7 +6,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { PosButton } from './components/pos-button.js';
 import { ApiError } from './lib/api-client.js';
-import { orderActionMessage, formatOrderActionError } from './features/orders/order-action-errors.js';
+import {
+  orderActionMessage,
+  formatOrderActionError,
+} from './features/orders/order-action-errors.js';
 import { PickupCollection } from './features/payments/pickup-collection.js';
 import {
   posWorkspaceScope,
@@ -104,17 +107,17 @@ export function POSScreen() {
             ? { action: 'prepare' as const, requestId: crypto.randomUUID(), branchId }
             : order.status === 'preparing'
               ? { action: 'ready' as const, requestId: crypto.randomUUID(), branchId }
-            : order.status === 'cancelled'
-              ? { action: 'cancel_ack' as const, requestId: crypto.randomUUID() }
-              : { action: 'handover' as const, requestId: crypto.randomUUID(), branchId });
+              : order.status === 'cancelled'
+                ? { action: 'cancel_ack' as const, requestId: crypto.randomUUID() }
+                : { action: 'handover' as const, requestId: crypto.randomUUID(), branchId });
     const requiredPermission =
       pending.action === 'accept'
         ? 'accept_recipe_orders'
         : pending.action === 'cancel_ack'
           ? 'accept_recipe_orders'
-        : pending.action === 'handover'
-          ? 'sell'
-          : 'start_preparation';
+          : pending.action === 'handover'
+            ? 'sell'
+            : 'start_preparation';
     if (!employee.permissions.includes(requiredPermission)) return;
     try {
       // Write the exact idempotent command before sending it. A timeout must reuse this payload.
@@ -142,7 +145,10 @@ export function POSScreen() {
     } catch (cause) {
       const message = orderActionMessage(cause);
       setActionErrors((current) => ({ ...current, [order.id]: message }));
-      if (cause instanceof ApiError && ([400, 422].includes(cause.statusCode) || cause.errorCode === 'ORDER_SHIFT_REQUIRED')) {
+      if (
+        cause instanceof ApiError &&
+        ([400, 422].includes(cause.statusCode) || cause.errorCode === 'ORDER_SHIFT_REQUIRED')
+      ) {
         try {
           removePendingAction(employee.merchantId, employee.id, order.id);
         } catch {
@@ -169,7 +175,8 @@ export function POSScreen() {
     if (status === 'accepted') return 'bg-info/15 text-info';
     if (status === 'preparing') return 'bg-primary/15 text-primary';
     if (status === 'ready') return 'bg-success/15 text-success';
-    if (status === 'cancelled' || status === 'rejected') return 'bg-destructive/15 text-destructive';
+    if (status === 'cancelled' || status === 'rejected')
+      return 'bg-destructive/15 text-destructive';
     return 'bg-secondary text-foreground';
   }
 
@@ -302,7 +309,9 @@ export function POSScreen() {
                 Boolean(order.kitchenTicket) &&
                 !order.kitchenTicket?.cancellationAcknowledgedAt &&
                 employee.permissions.includes('accept_recipe_orders'));
-            const canHandover = order.status === 'ready' && (Boolean(order.kitchenTicket) || order.fulfillmentType === 'pickup');
+            const canHandover =
+              order.status === 'ready' &&
+              (Boolean(order.kitchenTicket) || order.fulfillmentType === 'pickup');
             const handoverBlocked = canHandover && order.handoverEligible !== true;
             const canRetry =
               pending &&
@@ -310,11 +319,11 @@ export function POSScreen() {
               employee.permissions.includes(
                 pending.action === 'accept'
                   ? 'accept_recipe_orders'
-                    : pending.action === 'cancel_ack'
-                      ? 'accept_recipe_orders'
-                  : pending.action === 'handover'
-                    ? 'sell'
-                    : 'start_preparation',
+                  : pending.action === 'cancel_ack'
+                    ? 'accept_recipe_orders'
+                    : pending.action === 'handover'
+                      ? 'sell'
+                      : 'start_preparation',
               );
             return (
               <article
@@ -492,9 +501,16 @@ export function POSScreen() {
                 )}
                 <footer className="grid gap-3 border-t border-border bg-secondary/20 p-4">
                   {order.status === 'cancelled' && (
-                    <p className="m-0 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="status">
-                      {t('Cancelled before preparation. Stop this ticket and acknowledge the update.')}
-                      {order.cancellationReason ? ` ${t('Reason')}: ${order.cancellationReason}` : ''}
+                    <p
+                      className="m-0 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                      role="status"
+                    >
+                      {t(
+                        'Cancelled before preparation. Stop this ticket and acknowledge the update.',
+                      )}
+                      {order.cancellationReason
+                        ? ` ${t('Reason')}: ${order.cancellationReason}`
+                        : ''}
                     </p>
                   )}
                   <div className="flex items-center justify-between gap-3">
@@ -508,7 +524,20 @@ export function POSScreen() {
                       })}
                     </strong>
                   </div>
-                  {order.fulfillmentType === 'pickup' && order.status === 'ready' && employee.permissions.includes('sell') && <PickupCollection employee={employee} branchId={branchId} orderId={order.id} onUpdated={() => { void queryClient.invalidateQueries({ queryKey: posOrderKeys.branch(employee.merchantId, branchId) }); }} />}
+                  {order.fulfillmentType === 'pickup' &&
+                    order.status === 'ready' &&
+                    employee.permissions.includes('sell') && (
+                      <PickupCollection
+                        employee={employee}
+                        branchId={branchId}
+                        orderId={order.id}
+                        onUpdated={() => {
+                          void queryClient.invalidateQueries({
+                            queryKey: posOrderKeys.branch(employee.merchantId, branchId),
+                          });
+                        }}
+                      />
+                    )}
                   {canHandover && (
                     <p
                       className={cn(
@@ -543,15 +572,15 @@ export function POSScreen() {
                           ? t('Retry saved action')
                           : order.status === 'cancelled'
                             ? t('Acknowledge cancellation')
-                          : order.status === 'pending'
-                            ? order.requiresRecipeAcceptance
-                              ? t('Accept and deduct stock')
-                              : t('Accept order')
-                            : order.status === 'accepted'
-                              ? t('Start preparation')
-                              : order.status === 'preparing'
-                                ? t('Mark order ready')
-                                : t('Confirm handover')}
+                            : order.status === 'pending'
+                              ? order.requiresRecipeAcceptance
+                                ? t('Accept and deduct stock')
+                                : t('Accept order')
+                              : order.status === 'accepted'
+                                ? t('Start preparation')
+                                : order.status === 'preparing'
+                                  ? t('Mark order ready')
+                                  : t('Confirm handover')}
                       <ArrowRight size={16} aria-hidden="true" className="rtl:rotate-180" />
                     </PosButton>
                   )}

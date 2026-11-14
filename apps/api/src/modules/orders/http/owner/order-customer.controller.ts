@@ -1,3 +1,6 @@
+/**
+ * Receives owner requests to link an order to a customer or view that customer order history.
+ */
 import {
   Body,
   Controller,

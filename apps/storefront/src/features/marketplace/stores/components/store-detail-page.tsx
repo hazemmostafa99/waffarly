@@ -13,7 +13,6 @@ export function StoreDetailPage({
   store: MarketplaceStore;
   products: MarketplaceProduct[];
 }) {
-
   return (
     <main id="marketplace-main" tabIndex={-1} className="min-h-[60vh] pb-16 pt-6">
       <MarketplaceContainer>

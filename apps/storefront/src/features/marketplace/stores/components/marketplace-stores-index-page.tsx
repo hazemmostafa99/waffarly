@@ -11,7 +11,12 @@ import data from '@/features/marketplace/data/reference.json';
 export function MarketplaceStoresIndexPage() {
   const [term, setTerm] = useState('');
   const stores = useMemo(
-    () => data.stores.filter((store) => `${store.name} ${store.description}`.toLocaleLowerCase().includes(term.trim().toLocaleLowerCase())),
+    () =>
+      data.stores.filter((store) =>
+        `${store.name} ${store.description}`
+          .toLocaleLowerCase()
+          .includes(term.trim().toLocaleLowerCase()),
+      ),
     [term],
   );
 
@@ -49,13 +54,19 @@ export function MarketplaceStoresIndexPage() {
               />
             </label>
           </div>
-          <p className="mb-4 text-sm text-muted-foreground" aria-live="polite">{stores.length} متجر</p>
+          <p className="mb-4 text-sm text-muted-foreground" aria-live="polite">
+            {stores.length} متجر
+          </p>
           {stores.length ? (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {stores.map((store) => <MarketplaceStoreCard key={store.name} store={store} />)}
+              {stores.map((store) => (
+                <MarketplaceStoreCard key={store.name} store={store} />
+              ))}
             </div>
           ) : (
-            <p className="rounded-2xl border border-border bg-white p-8 text-center text-muted-foreground">ملقيناش متجر بالاسم ده. جرّب كلمة تانية.</p>
+            <p className="rounded-2xl border border-border bg-white p-8 text-center text-muted-foreground">
+              ملقيناش متجر بالاسم ده. جرّب كلمة تانية.
+            </p>
           )}
         </MarketplaceContainer>
       </main>

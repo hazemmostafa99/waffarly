@@ -195,7 +195,9 @@ export class InventoryService {
           select: { id: true },
         });
         if (pendingSnapshot)
-          throw new ConflictException('A stock item required by a pending recipe order cannot be archived.');
+          throw new ConflictException(
+            'A stock item required by a pending recipe order cannot be archived.',
+          );
         const cancellable = await transaction.stockMovement.findFirst({
           where: {
             merchantId,

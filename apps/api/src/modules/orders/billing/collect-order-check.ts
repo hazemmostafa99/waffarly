@@ -1,3 +1,7 @@
+/**
+ * Records a payment against an order bill and saves its receipt when the bill is fully paid.
+ * Repeating the same payment request returns the earlier result.
+ */
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { PosEmployeeSession, RecordPosCheckPaymentResponse } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';

@@ -14,7 +14,8 @@ export function getStorefrontProductImage(
 
   if (hasMerchantPhoto) return primaryImage.publicUrl;
 
-  if (/دجاج|تشيكن|chicken|tenders|crispy/u.test(searchText)) return '/storefront-assets/chicken.webp';
+  if (/دجاج|تشيكن|chicken|tenders|crispy/u.test(searchText))
+    return '/storefront-assets/chicken.webp';
   if (/برجر|burger|سماش/u.test(searchText)) {
     return placement === 'detail'
       ? '/storefront-assets/hero-burger.webp'
@@ -22,8 +23,10 @@ export function getStorefrontProductImage(
   }
   if (/بطاطس|fries|مقبلات|appetizer/u.test(searchText)) return '/storefront-assets/fries.webp';
   if (/بيتزا|pizza/u.test(searchText)) return '/storefront-assets/pizza.webp';
-  if (/وافل|waffle|كيك|cake|حلويات|dessert/u.test(searchText)) return '/storefront-assets/waffle.webp';
-  if (/مشروبات|مشروب|drink|beverage|shake/u.test(searchText)) return '/storefront-assets/shake.webp';
+  if (/وافل|waffle|كيك|cake|حلويات|dessert/u.test(searchText))
+    return '/storefront-assets/waffle.webp';
+  if (/مشروبات|مشروب|drink|beverage|shake/u.test(searchText))
+    return '/storefront-assets/shake.webp';
 
   return primaryImage?.publicUrl;
 }

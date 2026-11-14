@@ -174,7 +174,10 @@ export function AdminSidebar() {
             {t('PLATFORM')}
           </p>
         )}
-        <nav className="grid min-w-0 shrink-0 grid-cols-[minmax(0,1fr)] gap-1" aria-label={t('Platform administration')}>
+        <nav
+          className="grid min-w-0 shrink-0 grid-cols-[minmax(0,1fr)] gap-1"
+          aria-label={t('Platform administration')}
+        >
           {navigation.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -199,7 +202,9 @@ export function AdminSidebar() {
                     strokeWidth={1.8}
                     aria-hidden="true"
                   />
-                  {!isCollapsedDesktop && <span className="min-w-0 flex-1 truncate">{t(label)}</span>}
+                  {!isCollapsedDesktop && (
+                    <span className="min-w-0 flex-1 truncate">{t(label)}</span>
+                  )}
                 </>
               )}
             </NavLink>

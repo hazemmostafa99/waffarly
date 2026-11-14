@@ -1,3 +1,6 @@
+/**
+ * Checks the details sent when a customer reviews or places a website order.
+ */
 import { z } from 'zod';
 const orderSelectionSchema = z
   .object({

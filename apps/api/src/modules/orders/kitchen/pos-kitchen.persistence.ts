@@ -1,3 +1,6 @@
+/**
+ * Saves the kitchen ticket and its ordered rounds with the sale they belong to.
+ */
 import type { Prisma } from '@waffarly/database';
 import { ConflictException } from '@nestjs/common';
 

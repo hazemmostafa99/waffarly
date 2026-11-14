@@ -10,7 +10,7 @@ paths do not change HTTP URLs, request/response contracts or order source values
 | `http/marketplace` | Customer/guest order session, history, details and explicit claim.                                                 |
 | `http/pos`         | Cashier sales, order operations, dining, delivery and saved receipt endpoints.                                     |
 | `http/owner`       | Owner order operations, customer association and return reports.                                                   |
-| `checkout`         | Storefront checkout validation, quote, submission and existing legacy status command.                              |
+| `checkout`         | Storefront checkout validation, quote, submission, saved items and checkout discount/branch rules.                 |
 | `pos-sales`        | Cashier quote/create, active-sale/detail/payment-state reads and immutable sale references.                        |
 | `fulfillment`      | Acceptance, preparation, readiness, handover, cancellation and branch operation queues.                            |
 | `kitchen`          | Kitchen dispatch, additional items and cancellation acknowledgement.                                               |
@@ -45,6 +45,29 @@ transaction directly, so settlement and its immutable receipt commit together.
 Dining delegates check splitting to `billing/split-order-checks.ts`; storefront
 lists delegate to `fulfillment/order-queue.query.ts`.
 
+`OrderLifecycleService` keeps the common transaction and routes the requested
+change to `accept-order.ts`, `prepare-order.ts`, `handover-order.ts` or
+`cancel-order.ts`. `order-transition-access.ts` checks branch/operator access
+after the original locks and before saved-result replay. These helpers receive
+the active transaction and do not open their own transactions.
+
+`save-checkout-line.ts` saves one checkout item, holds its available stock and
+freezes its ingredient needs. `checkout-policy.ts` owns checkout discount and
+receiving-branch decisions. The older website accept/reject action lives in
+`fulfillment/update-storefront-order-status.ts` behind its existing service API.
+
+Customer access separates browser/session identity (`customer-order-session.ts`
+and `order-identity.rules.ts`), scoped reads (`customer-orders.query.ts`) and the
+customer-visible response (`customer-order.mapper.ts`). The service still
+coordinates explicit guest claims. Guest identity caching remains per request;
+account and guest access are not inferred from contact details.
+
+Delivery separates work-list reads (`delivery-queue.query.ts`) from employee and
+custodian checks (`delivery-access.rules.ts`) and its existing command transaction.
+Item returns separate read/report queries (`item-return.queries.ts`) and response
+mapping (`item-return.mapper.ts`) from the write command. Dining table setup lives
+in `dining-tables.ts`; its owner routes live under `http/owner`.
+
 ## Rules for future edits
 
 - Put HTTP parsing and actor extraction in controllers. Keep database access in
@@ -65,15 +88,17 @@ lists delegate to `fulfillment/order-queue.query.ts`.
 - Do not rename Prisma models or shared transport contracts as part of folder
   cleanup. `StorefrontOrder` currently stores both storefront and POS orders.
 
-## Scope and remaining cleanup
+## Reading the files
 
-This is a structural refactor, not a change in order behavior. The checkout,
-lifecycle, delivery and return coordinators still contain substantial business
-transactions. Further extraction should target a concrete independent rule;
-splitting a transaction into fragments merely to meet a line limit adds indirection.
-Customer access still combines guest-session handling and customer reads, and the
-POS dining controller file still contains owner table routes. These are explicit
-remaining cleanup areas rather than a claim that every boundary is complete.
+Every TypeScript file in this module begins with a short plain-English description
+of its purpose. Significant multi-step writes also have short numbered comments.
+Read the description first, then the named operation; the comments explain the
+business steps and why related writes stay together.
+
+This is a structural refactor, not a change in order behavior. Transaction
+coordinators deliberately keep their common locks, replay handling and commit
+boundaries together. Further extraction should target a concrete independent
+responsibility, rather than splitting a transaction just to meet a line limit.
 
 ## Manual acceptance
 

@@ -256,7 +256,15 @@ export function ProductsPage() {
       cell: (product) => {
         const prices = product.variants.map((variant) => Number(variant.price));
         if (!prices.length)
-          return <span dir="ltr">EGP {formatNumber(Number(product.basePrice), { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>;
+          return (
+            <span dir="ltr">
+              EGP{' '}
+              {formatNumber(Number(product.basePrice), {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </span>
+          );
         const minimum = Math.min(...prices);
         const maximum = Math.max(...prices);
         return (
@@ -446,25 +454,25 @@ export function ProductsPage() {
           </select>
         </div>
         <div className="products-toolbar-actions">
-        <div className="products-heading-actions">
-          <button
-            type="button"
-            className="products-button primary"
-            disabled={loading || busy || !hasLoaded}
-            onClick={() => navigate('/products/new')}
-          >
-            <Icon name="plus" />
-            {copy('Add Product')}
-          </button>
-          <button
-            type="button"
-            className="products-button"
-            disabled={loading || busy || !hasLoaded}
-            onClick={() => setImportOpen(true)}
-          >
-            {copy('Import')}
-          </button>
-        </div>
+          <div className="products-heading-actions">
+            <button
+              type="button"
+              className="products-button primary"
+              disabled={loading || busy || !hasLoaded}
+              onClick={() => navigate('/products/new')}
+            >
+              <Icon name="plus" />
+              {copy('Add Product')}
+            </button>
+            <button
+              type="button"
+              className="products-button"
+              disabled={loading || busy || !hasLoaded}
+              onClick={() => setImportOpen(true)}
+            >
+              {copy('Import')}
+            </button>
+          </div>
         </div>
       </div>
       {selected.length > 0 && (
@@ -523,7 +531,8 @@ export function ProductsPage() {
           className="products-table-card"
           action={
             <span className="products-result-count">
-              {copy('Showing')} {formatNumber(visible.length)} {copy('of')} {formatNumber(filtered.length)} {copy('products')}
+              {copy('Showing')} {formatNumber(visible.length)} {copy('of')}{' '}
+              {formatNumber(filtered.length)} {copy('products')}
             </span>
           }
         >

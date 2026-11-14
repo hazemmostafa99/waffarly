@@ -1,3 +1,6 @@
+/**
+ * Finds cashier sales and shows their saved items, bills, payments and refunds.
+ */
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import type {
   PosEmployeeSession,

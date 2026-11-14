@@ -1,3 +1,6 @@
+/**
+ * Turns saved order details into the receipt and order summary shown by the application.
+ */
 import type {
   StorefrontOrderReceipt,
   StorefrontOrderSummary,

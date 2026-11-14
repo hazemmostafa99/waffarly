@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { createDiscountSchema, updateDiscountSchema } from '../../src/modules/discounts/discount.schemas.js';
+import {
+  createDiscountSchema,
+  updateDiscountSchema,
+} from '../../src/modules/discounts/discount.schemas.js';
 
 const discount = {
   name: 'Welcome',
@@ -30,10 +33,7 @@ describe('discount request schemas', () => {
   });
 
   it('accepts a revision with discount fields and still rejects unknown keys', () => {
-    assert.equal(
-      updateDiscountSchema.safeParse({ ...discount, revision: 1 }).success,
-      true,
-    );
+    assert.equal(updateDiscountSchema.safeParse({ ...discount, revision: 1 }).success, true);
     assert.equal(
       updateDiscountSchema.safeParse({ ...discount, revision: 1, unexpected: true }).success,
       false,

@@ -9,7 +9,9 @@ const previewAssets = {
   offers: '/assets/restaurant-offers.jpg',
 } as const;
 
-function templatePreviewSource(template: Pick<StorefrontTemplateSummary, 'key' | 'name' | 'description' | 'layout'>) {
+function templatePreviewSource(
+  template: Pick<StorefrontTemplateSummary, 'key' | 'name' | 'description' | 'layout'>,
+) {
   const content = `${template.key} ${template.name} ${template.description}`.toLocaleLowerCase();
   if (/offer|promotion|promo|deal/.test(content)) return previewAssets.offers;
   return template.layout === 'hero' ? previewAssets.hero : previewAssets.menu;
@@ -31,20 +33,41 @@ function Artwork({ source, name }: { source: string; name: string }) {
     return (
       <div className="grid aspect-[16/9] place-items-center bg-gradient-to-br from-waffarly-kpi-mint via-white to-waffarly-kpi-gold text-waffarly-primary">
         <div className="grid justify-items-center gap-2">
-          <span className="grid size-11 place-items-center rounded-2xl bg-white shadow-sm"><LayoutTemplate size={20} aria-hidden="true" /></span>
+          <span className="grid size-11 place-items-center rounded-2xl bg-white shadow-sm">
+            <LayoutTemplate size={20} aria-hidden="true" />
+          </span>
           <span className="text-xs font-bold">{name || t('Storefront preview')}</span>
         </div>
       </div>
     );
   }
 
-  return <img src={source} alt="" className="aspect-[16/9] w-full object-cover" onError={() => setFailed(true)} />;
+  return (
+    <img
+      src={source}
+      alt=""
+      className="aspect-[16/9] w-full object-cover"
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
-export function TemplateArtwork({ template }: { template: Pick<StorefrontTemplateSummary, 'key' | 'name' | 'description' | 'layout'> }) {
+export function TemplateArtwork({
+  template,
+}: {
+  template: Pick<StorefrontTemplateSummary, 'key' | 'name' | 'description' | 'layout'>;
+}) {
   return <Artwork source={templatePreviewSource(template)} name={template.name} />;
 }
 
-export function TemplateFormArtwork({ layout, name, description }: { layout: TemplateLayout; name: string; description: string }) {
+export function TemplateFormArtwork({
+  layout,
+  name,
+  description,
+}: {
+  layout: TemplateLayout;
+  name: string;
+  description: string;
+}) {
   return <Artwork source={layoutPreviewSource(layout, name, description)} name={name} />;
 }

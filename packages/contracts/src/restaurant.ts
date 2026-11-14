@@ -1,8 +1,24 @@
-export interface RestaurantImage { src: string; alt: string }
-export interface RestaurantPeriod { open: string; close: string }
-export interface RestaurantDay { day: number; periods: RestaurantPeriod[] }
-export interface RestaurantException { date: string; periods: RestaurantPeriod[] }
-export interface RestaurantArea { id: string; name: string; fee: string }
+export interface RestaurantImage {
+  src: string;
+  alt: string;
+}
+export interface RestaurantPeriod {
+  open: string;
+  close: string;
+}
+export interface RestaurantDay {
+  day: number;
+  periods: RestaurantPeriod[];
+}
+export interface RestaurantException {
+  date: string;
+  periods: RestaurantPeriod[];
+}
+export interface RestaurantArea {
+  id: string;
+  name: string;
+  fee: string;
+}
 export interface RestaurantSettingsInput {
   description: string;
   cuisines: string[];
@@ -24,18 +40,34 @@ export interface RestaurantSettingsInput {
   deliveryTimeMaxMinutes: number;
   deliveryAreas: RestaurantArea[];
 }
-export interface RestaurantOperatingState { isOpen: boolean; acceptingOrders: boolean; reason: 'open' | 'closed' | 'paused' | 'unpublished' }
+export interface RestaurantOperatingState {
+  isOpen: boolean;
+  acceptingOrders: boolean;
+  reason: 'open' | 'closed' | 'paused' | 'unpublished';
+}
 
 import type { PublicStorefrontProduct } from './catalog.js';
 export interface PublicRestaurantProfile extends RestaurantSettingsInput, RestaurantOperatingState {
-  merchantId: string; name: string; slug: string; revision: number;
-  deliveryFeeFrom: string; deliveryFeeTo: string;
+  merchantId: string;
+  name: string;
+  slug: string;
+  revision: number;
+  deliveryFeeFrom: string;
+  deliveryFeeTo: string;
   referenceData: { origin?: string; rating?: string; offer?: string; time?: string } | null;
 }
 export interface MarketplaceMenuProduct extends PublicStorefrontProduct {
-  referenceKey: string | null; availability: 'available' | 'unavailable';
-  menuSectionId: string | null; displayOrder: number;
+  referenceKey: string | null;
+  availability: 'available' | 'unavailable';
+  menuSectionId: string | null;
+  displayOrder: number;
 }
-export interface MarketplaceMenuPage { items: MarketplaceMenuProduct[]; nextCursor: string | null }
+export interface MarketplaceMenuPage {
+  items: MarketplaceMenuProduct[];
+  nextCursor: string | null;
+}
 
-export interface OwnerRestaurantSettings extends RestaurantSettingsInput { revision: number; name: string }
+export interface OwnerRestaurantSettings extends RestaurantSettingsInput {
+  revision: number;
+  name: string;
+}

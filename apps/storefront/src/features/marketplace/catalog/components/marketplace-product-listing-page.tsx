@@ -25,7 +25,8 @@ const pageCopy = {
     title: 'كل المنتجات',
     searchLabel: 'ابحث في المنتجات',
     eyebrow: 'منتجات السوق',
-    description: 'تصفّح المنتجات المتاحة في بيانات السوق المحلية، وابحث أو رتّب النتائج حسب احتياجك.',
+    description:
+      'تصفّح المنتجات المتاحة في بيانات السوق المحلية، وابحث أو رتّب النتائج حسب احتياجك.',
     countLabel: 'منتجات',
     empty: 'مفيش منتجات مطابقة للاختيارات دي.',
     pathname: '/products',
@@ -39,15 +40,18 @@ const pageCopy = {
     empty: 'مفيش عروض مطابقة للاختيارات دي.',
     pathname: '/offers',
   },
-} satisfies Record<ProductListingMode, {
-  title: string;
-  searchLabel: string;
-  eyebrow: string;
-  description: string;
-  countLabel: string;
-  empty: string;
-  pathname: string;
-}>;
+} satisfies Record<
+  ProductListingMode,
+  {
+    title: string;
+    searchLabel: string;
+    eyebrow: string;
+    description: string;
+    countLabel: string;
+    empty: string;
+    pathname: string;
+  }
+>;
 
 export function MarketplaceProductListingPage({ mode }: { mode: ProductListingMode }) {
   const router = useRouter();
@@ -57,9 +61,10 @@ export function MarketplaceProductListingPage({ mode }: { mode: ProductListingMo
   const state = parseProductListingState(searchParams);
   const copy = pageCopy[mode];
   const [draftTerm, setDraftTerm] = useState(state.term);
-  const products = mode === 'offers'
-    ? data.products.filter((product) => Boolean(product.oldPrice?.trim()))
-    : data.products;
+  const products =
+    mode === 'offers'
+      ? data.products.filter((product) => Boolean(product.oldPrice?.trim()))
+      : data.products;
   const filteredProducts = filterAndSortProducts(products, state);
   const page = paginateProducts(filteredProducts, state.page);
 
@@ -143,11 +148,7 @@ export function MarketplaceProductListingPage({ mode }: { mode: ProductListingMo
             <>
               <div className="grid grid-cols-4 gap-3 max-[1100px]:grid-cols-3 max-[700px]:flex max-[700px]:overflow-x-auto max-[700px]:[scroll-snap-type:x_mandatory] max-[700px]:pb-2">
                 {page.items.map((product) => (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                   
-                  />
+                  <ProductCard key={product.id} product={product} />
                 ))}
               </div>
               <ProductListingPagination

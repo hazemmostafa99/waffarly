@@ -21,7 +21,9 @@ export function CartReviewItem({
   onRemove: () => void;
   onEdit?: () => void;
 }) {
-  const href = productHref(product.id) + (product.restaurantSlug ? `?restaurant=${encodeURIComponent(product.restaurantSlug)}` : '');
+  const href =
+    productHref(product.id) +
+    (product.restaurantSlug ? `?restaurant=${encodeURIComponent(product.restaurantSlug)}` : '');
   return (
     <li
       className={cn(
@@ -45,9 +47,7 @@ export function CartReviewItem({
         }
       >
         <span
-          className={
-            'seller flex items-center gap-1.5 text-accent text-[12px] font-medium mb-0.5'
-          }
+          className={'seller flex items-center gap-1.5 text-accent text-[12px] font-medium mb-0.5'}
         >
           {product.seller}
         </span>
@@ -55,7 +55,9 @@ export function CartReviewItem({
           <Link href={href}>{product.name}</Link>
         </h2>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
-          {product.optionsLabel && <span className="text-xs text-accent">{product.optionsLabel}</span>}
+          {product.optionsLabel && (
+            <span className="text-xs text-accent">{product.optionsLabel}</span>
+          )}
           <p className={'cart-review-unit-price text-[12px] text-muted-foreground m-0'}>
             {money(product.price)} للقطعة
           </p>

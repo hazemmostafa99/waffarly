@@ -1,3 +1,7 @@
+/**
+ * Records an approved refund against the original payments.
+ * It keeps the refund receipt and the returned cash amounts together.
+ */
 import {
   BadRequestException,
   ConflictException,

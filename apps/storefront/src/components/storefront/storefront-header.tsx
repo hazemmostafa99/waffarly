@@ -40,11 +40,7 @@ function Brand({ catalog }: { catalog: PublicStorefrontCatalog }) {
   );
 }
 
-export function StorefrontHeader({
-  catalog,
-}: {
-  catalog: PublicStorefrontCatalog;
-}) {
+export function StorefrontHeader({ catalog }: { catalog: PublicStorefrontCatalog }) {
   const pathname = usePathname();
   const { locale } = useLocale();
   const t = storefrontCopy(locale);
@@ -155,7 +151,12 @@ export function StorefrontHeader({
           { href: homeHref || '/', title: t.home, icon: House, active: isHome },
           { href: menuHref, title: t.menu, icon: Menu, active: isMenu },
           { href: cartHref, title: t.cart, icon: ShoppingBag, active: pathname === cartHref },
-          { href: favoritesHref, title: t.favorites, icon: Heart, active: pathname === favoritesHref },
+          {
+            href: favoritesHref,
+            title: t.favorites,
+            icon: Heart,
+            active: pathname === favoritesHref,
+          },
           { href: accountHref, title: t.account, icon: UserRound, active: isAccount },
         ].map(({ href, title, icon: Icon, active }) => (
           <Link

@@ -48,7 +48,12 @@ export function InventoryHeader({
               ))}
             </div>
           </nav>
-          {!filters && actionGroup && <>{pageTitle}{actionGroup}</>}
+          {!filters && actionGroup && (
+            <>
+              {pageTitle}
+              {actionGroup}
+            </>
+          )}
           {!filters && !actions && pageTitle}
         </div>
       )}

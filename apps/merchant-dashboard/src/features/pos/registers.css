@@ -287,10 +287,64 @@
   }
 }
 
-.register-page-toolbar { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; padding:10px; border:0; border-radius:12px; background:#fff; }
-.register-page-toolbar .register-filters { flex:0 1 auto; grid-template-columns:minmax(220px,280px) minmax(160px,200px); min-width:0; margin:0; padding:0; border:0; background:transparent; }
-.register-page-toolbar-actions { display:flex; flex:0 0 auto; align-self:flex-end; }
-.register-page-toolbar-actions>.products-button { min-height:40px; white-space:nowrap; }
-@media(max-width:850px){.register-page-toolbar{flex-wrap:wrap;}.register-page-toolbar .register-filters{flex:1 1 100%;grid-template-columns:minmax(220px,1fr) minmax(160px,220px);}.register-page-toolbar-actions{margin-inline-start:auto;}}
-@media(max-width:760px){.register-page-toolbar .register-filters{grid-template-columns:minmax(0,1fr);}}
-@media(max-width:600px){.register-page-toolbar{flex-direction:column;align-items:stretch;}.register-page-toolbar .register-filters{grid-template-columns:1fr;}.register-page-toolbar-actions{align-self:stretch;}.register-page-toolbar-actions>.products-button{width:100%;}}
+.register-page-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+}
+.register-page-toolbar .register-filters {
+  flex: 0 1 auto;
+  grid-template-columns: minmax(220px, 280px) minmax(160px, 200px);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.register-page-toolbar-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-self: flex-end;
+}
+.register-page-toolbar-actions > .products-button {
+  min-height: 40px;
+  white-space: nowrap;
+}
+@media (max-width: 850px) {
+  .register-page-toolbar {
+    flex-wrap: wrap;
+  }
+  .register-page-toolbar .register-filters {
+    flex: 1 1 100%;
+    grid-template-columns: minmax(220px, 1fr) minmax(160px, 220px);
+  }
+  .register-page-toolbar-actions {
+    margin-inline-start: auto;
+  }
+}
+@media (max-width: 760px) {
+  .register-page-toolbar .register-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .register-page-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .register-page-toolbar .register-filters {
+    grid-template-columns: 1fr;
+  }
+  .register-page-toolbar-actions {
+    align-self: stretch;
+  }
+  .register-page-toolbar-actions > .products-button {
+    width: 100%;
+  }
+}

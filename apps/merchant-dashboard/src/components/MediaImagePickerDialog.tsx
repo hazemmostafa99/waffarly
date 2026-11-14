@@ -37,16 +37,11 @@ export function MediaImagePickerDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const images = useMemo(
-    () => assets.filter(isSupportedMediaImage),
-    [assets],
-  );
+  const images = useMemo(() => assets.filter(isSupportedMediaImage), [assets]);
   const visibleImages = useMemo(() => {
     const normalizedSearch = search.trim().toLocaleLowerCase();
     if (!normalizedSearch) return images;
-    return images.filter((asset) =>
-      fileName(asset).toLocaleLowerCase().includes(normalizedSearch),
-    );
+    return images.filter((asset) => fileName(asset).toLocaleLowerCase().includes(normalizedSearch));
   }, [images, search]);
   const selectedAsset =
     images.find((asset) => asset.id === draftSelectedId) ??

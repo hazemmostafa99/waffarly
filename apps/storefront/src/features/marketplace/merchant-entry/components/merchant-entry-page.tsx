@@ -25,21 +25,33 @@ export function MerchantEntryPage() {
         </Suspense>
         <main id="marketplace-main" tabIndex={-1} className="pb-16">
           <MarketplaceContainer className="max-w-[760px]">
-            {!submitted && <div className="flex justify-end pt-3 sm:pt-4">
-              <Link href="/" className="inline-flex min-h-9 items-center gap-2 text-sm font-bold text-accent no-underline hover:text-primary">
-                <span aria-hidden="true">→</span>
-                {isArabic ? 'العودة إلى السوق' : 'Back to marketplace'}
-              </Link>
-            </div>}
+            {!submitted && (
+              <div className="flex justify-end pt-3 sm:pt-4">
+                <Link
+                  href="/"
+                  className="inline-flex min-h-9 items-center gap-2 text-sm font-bold text-accent no-underline hover:text-primary"
+                >
+                  <span aria-hidden="true">→</span>
+                  {isArabic ? 'العودة إلى السوق' : 'Back to marketplace'}
+                </Link>
+              </div>
+            )}
 
             <Card className="mt-4 rounded-2xl border border-border bg-white p-4 sm:p-5">
-              {!submitted && <header className="mb-4 border-b border-border pb-3">
-                <h1 className="m-0 text-[21px] font-bold leading-8 text-primary">{isArabic ? 'انضم كتاجر إلى وفّرلي' : 'Sell on Waffarly'}</h1>
-                <p className="mb-0 mt-1 text-[12px] leading-6 text-muted-foreground">{isArabic ? 'قدّم بيانات نشاطك ليراجعها فريق وفّرلي.' : 'Submit your business details for review by Waffarly.'}</p>
-              </header>}
+              {!submitted && (
+                <header className="mb-4 border-b border-border pb-3">
+                  <h1 className="m-0 text-[21px] font-bold leading-8 text-primary">
+                    {isArabic ? 'انضم كتاجر إلى وفّرلي' : 'Sell on Waffarly'}
+                  </h1>
+                  <p className="mb-0 mt-1 text-[12px] leading-6 text-muted-foreground">
+                    {isArabic
+                      ? 'قدّم بيانات نشاطك ليراجعها فريق وفّرلي.'
+                      : 'Submit your business details for review by Waffarly.'}
+                  </p>
+                </header>
+              )}
               <MerchantApplicationForm onSubmitted={() => setSubmitted(true)} />
             </Card>
-
           </MarketplaceContainer>
         </main>
         <MarketplaceFooter />

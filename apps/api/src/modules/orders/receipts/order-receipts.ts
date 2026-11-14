@@ -1,3 +1,6 @@
+/**
+ * Saves the receipt for a fully paid bill and reopens saved receipts without recreating them.
+ */
 import {
   ForbiddenException,
   InternalServerErrorException,

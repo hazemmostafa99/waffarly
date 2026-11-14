@@ -37,7 +37,11 @@ export function MarketplaceHeader({
   const [promoVisible, setPromoVisible] = useState(true);
   const pathname = usePathname();
   const { query: ordersQuery } = useCustomerOrders();
-  const activeOrder = !ordersQuery.isError ? ordersQuery.data?.pages.flatMap((page) => page.items).find((order) => !isFinishedOrder(order.status)) : undefined;
+  const activeOrder = !ordersQuery.isError
+    ? ordersQuery.data?.pages
+        .flatMap((page) => page.items)
+        .find((order) => !isFinishedOrder(order.status))
+    : undefined;
   const activeOrderId = activeOrder?.id;
   const refreshOrders = ordersQuery.refetch;
   const cartCount = useCartStore((s) => cartQuantity(s.cart));
@@ -95,15 +99,25 @@ export function MarketplaceHeader({
   }
   return (
     <>
-      {promoVisible && <div
-        className={cn(
-          'relative promo bg-[linear-gradient(90deg,_var(--gold),_#ffe89c,_var(--gold))] text-[#32163a] text-center py-1.5 px-10 text-[12px] font-medium',
-          '[&_b]:bg-[#32163a] [&_b]:text-[#fff] [&_b]:rounded-[99px] [&_b]:py-[3px] [&_b]:px-[9px] [&_b]:ms-1.5 [&_b]:me-1.5 max-[700px]:text-[12px]',
-        )}
-      >
-        خصومات افتتاح وفّرلي <b>حتى 50%</b> من بائعين موثوقين
-        <button type="button" onClick={() => setPromoVisible(false)} aria-label="إغلاق شريط العروض" title="إغلاق شريط العروض" className="absolute end-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-primary"><X size={15} aria-hidden="true" /></button>
-      </div>}
+      {promoVisible && (
+        <div
+          className={cn(
+            'relative promo bg-[linear-gradient(90deg,_var(--gold),_#ffe89c,_var(--gold))] text-[#32163a] text-center py-1.5 px-10 text-[12px] font-medium',
+            '[&_b]:bg-[#32163a] [&_b]:text-[#fff] [&_b]:rounded-[99px] [&_b]:py-[3px] [&_b]:px-[9px] [&_b]:ms-1.5 [&_b]:me-1.5 max-[700px]:text-[12px]',
+          )}
+        >
+          خصومات افتتاح وفّرلي <b>حتى 50%</b> من بائعين موثوقين
+          <button
+            type="button"
+            onClick={() => setPromoVisible(false)}
+            aria-label="إغلاق شريط العروض"
+            title="إغلاق شريط العروض"
+            className="absolute end-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-full hover:bg-primary/10 focus-visible:outline-2 focus-visible:outline-primary"
+          >
+            <X size={15} aria-hidden="true" />
+          </button>
+        </div>
+      )}
       <header className={'top bg-primary text-[#fff]'}>
         <div
           className={cn(
@@ -127,7 +141,9 @@ export function MarketplaceHeader({
             </Button>
             <Link href="/" aria-label="وفّرلي — الرئيسية">
               <img
-                className={'logo w-36 h-11 object-contain block max-[700px]:w-[72px] max-[700px]:h-9'}
+                className={
+                  'logo w-36 h-11 object-contain block max-[700px]:w-[72px] max-[700px]:h-9'
+                }
                 src="/marketplace-assets/wafarly-logo.png"
                 alt="وفّرلي"
               />
@@ -141,7 +157,9 @@ export function MarketplaceHeader({
               <MapPin size={16} strokeWidth={1.75} aria-hidden="true" />
               <div>
                 <small>التوصيل إلى</small>
-                <strong className="block truncate" title="دمياط الجديدة">دمياط الجديدة</strong>
+                <strong className="block truncate" title="دمياط الجديدة">
+                  دمياط الجديدة
+                </strong>
               </div>
             </div>
           </div>
@@ -167,8 +185,20 @@ export function MarketplaceHeader({
               <Button
                 ref={accountTriggerRef}
                 type="button"
-                aria-label={isCustomerSignedIn ? `حساب ${name.full}، مسجّل دخول` : isDemoSessionActive ? 'حساب تجريبي' : 'قائمة الحساب وتسجيل الدخول'}
-                title={isCustomerSignedIn ? `${name.full} — مسجّل دخول` : isDemoSessionActive ? 'حساب تجريبي' : 'تسجيل الدخول'}
+                aria-label={
+                  isCustomerSignedIn
+                    ? `حساب ${name.full}، مسجّل دخول`
+                    : isDemoSessionActive
+                      ? 'حساب تجريبي'
+                      : 'قائمة الحساب وتسجيل الدخول'
+                }
+                title={
+                  isCustomerSignedIn
+                    ? `${name.full} — مسجّل دخول`
+                    : isDemoSessionActive
+                      ? 'حساب تجريبي'
+                      : 'تسجيل الدخول'
+                }
                 aria-haspopup="true"
                 aria-expanded={accountMenuOpen}
                 aria-controls="marketplace-account-menu"
@@ -179,11 +209,21 @@ export function MarketplaceHeader({
                 onClick={() => setAccountMenuOpen((open) => !open)}
               >
                 {isCustomerSignedIn ? (
-                  <span aria-hidden="true" className={cn('grid size-9 shrink-0 place-items-center rounded-full border border-white/25 bg-[#b99aca]/20 text-[13px] font-bold leading-none text-[#f5eff8] transition-colors group-hover/account:bg-[#b99aca]/30 group-focus-visible/account:bg-[#b99aca]/30', accountMenuOpen && 'bg-[#b99aca]/30')}><bdi>{name.initials}</bdi></span>
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'grid size-9 shrink-0 place-items-center rounded-full border border-white/25 bg-[#b99aca]/20 text-[13px] font-bold leading-none text-[#f5eff8] transition-colors group-hover/account:bg-[#b99aca]/30 group-focus-visible/account:bg-[#b99aca]/30',
+                      accountMenuOpen && 'bg-[#b99aca]/30',
+                    )}
+                  >
+                    <bdi>{name.initials}</bdi>
+                  </span>
                 ) : (
                   <>
                     <UserRound size={20} strokeWidth={1.75} aria-hidden="true" />
-                    <span className="hidden text-[13px] font-medium min-[701px]:inline">{isDemoSessionActive ? 'حساب تجريبي' : 'تسجيل الدخول'}</span>
+                    <span className="hidden text-[13px] font-medium min-[701px]:inline">
+                      {isDemoSessionActive ? 'حساب تجريبي' : 'تسجيل الدخول'}
+                    </span>
                   </>
                 )}
                 <span
@@ -212,10 +252,29 @@ export function MarketplaceHeader({
                   className="absolute end-0 top-[calc(100%+8px)] z-50 w-64 rounded-2xl border border-border bg-white p-2 text-primary [box-shadow:var(--shadow)] max-[700px]:start-2 max-[700px]:end-2 max-[700px]:top-full max-[700px]:w-auto"
                 >
                   <div className="flex items-center gap-3 border-b border-border px-3 py-4">
-                    <span aria-hidden="true" className="grid size-11 shrink-0 place-items-center rounded-full bg-secondary text-sm font-bold text-accent">{isCustomerSignedIn ? name.initials : <UserRound size={21} />}</span>
+                    <span
+                      aria-hidden="true"
+                      className="grid size-11 shrink-0 place-items-center rounded-full bg-secondary text-sm font-bold text-accent"
+                    >
+                      {isCustomerSignedIn ? name.initials : <UserRound size={21} />}
+                    </span>
                     <div className="min-w-0">
-                      <p className="m-0 text-sm font-bold">{isCustomerSignedIn ? <>أهلًا، <bdi>{name.first}</bdi></> : isDemoSessionActive ? 'حساب تجريبي' : 'أهلًا بيك'}</p>
-                      {isCustomerSignedIn && <p className="mb-0 mt-1 break-words text-xs leading-5 text-muted-foreground"><bdi>{name.full}</bdi></p>}
+                      <p className="m-0 text-sm font-bold">
+                        {isCustomerSignedIn ? (
+                          <>
+                            أهلًا، <bdi>{name.first}</bdi>
+                          </>
+                        ) : isDemoSessionActive ? (
+                          'حساب تجريبي'
+                        ) : (
+                          'أهلًا بيك'
+                        )}
+                      </p>
+                      {isCustomerSignedIn && (
+                        <p className="mb-0 mt-1 break-words text-xs leading-5 text-muted-foreground">
+                          <bdi>{name.full}</bdi>
+                        </p>
+                      )}
                     </div>
                   </div>
                   <nav aria-label="روابط الحساب" className="grid gap-0.5 py-1.5">
@@ -224,7 +283,8 @@ export function MarketplaceHeader({
                       onClick={closeAccountMenu}
                       className="flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-primary no-underline hover:bg-secondary"
                     >
-                      <UserRound size={17} aria-hidden="true" />حسابي
+                      <UserRound size={17} aria-hidden="true" />
+                      حسابي
                     </Link>
                     {!isCustomerSignedIn && !isDemoSessionActive && (
                       <>
@@ -249,20 +309,41 @@ export function MarketplaceHeader({
                       onClick={closeAccountMenu}
                       className="flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-primary no-underline hover:bg-secondary"
                     >
-                      <ShoppingBag size={17} aria-hidden="true" />طلباتي
+                      <ShoppingBag size={17} aria-hidden="true" />
+                      طلباتي
                     </Link>
                     <Link
                       href="/favorites"
                       onClick={closeAccountMenu}
                       className="flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-primary no-underline hover:bg-secondary"
                     >
-                      <Heart size={17} aria-hidden="true" />المفضلة<span className="ms-auto rounded-md bg-secondary px-2 text-xs text-accent">{favoriteCount}</span>
+                      <Heart size={17} aria-hidden="true" />
+                      المفضلة
+                      <span className="ms-auto rounded-md bg-secondary px-2 text-xs text-accent">
+                        {favoriteCount}
+                      </span>
                     </Link>
-                    {isCustomerSignedIn && <div className="mt-1 border-t border-border pt-1">
-                      <button type="button" disabled={logout.isPending} onClick={() => logout.mutate(undefined, { onSuccess: closeAccountMenu })} className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-start text-sm text-destructive hover:bg-red-50 disabled:opacity-50"><LogOut size={17} aria-hidden="true" />{logout.isPending ? 'جارٍ الخروج…' : 'تسجيل الخروج'}</button>
-                      {logout.isError && <p role="alert" className="px-3 text-xs leading-5 text-destructive">تعذّر تسجيل الخروج. حاول مرة أخرى.</p>}
-                    </div>}
-                    <p className="mx-3 my-2 text-[11px] leading-5 text-muted-foreground">المفضلة محفوظة على المتصفح ده، ومش مرتبطة بالحساب.</p>
+                    {isCustomerSignedIn && (
+                      <div className="mt-1 border-t border-border pt-1">
+                        <button
+                          type="button"
+                          disabled={logout.isPending}
+                          onClick={() => logout.mutate(undefined, { onSuccess: closeAccountMenu })}
+                          className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-start text-sm text-destructive hover:bg-red-50 disabled:opacity-50"
+                        >
+                          <LogOut size={17} aria-hidden="true" />
+                          {logout.isPending ? 'جارٍ الخروج…' : 'تسجيل الخروج'}
+                        </button>
+                        {logout.isError && (
+                          <p role="alert" className="px-3 text-xs leading-5 text-destructive">
+                            تعذّر تسجيل الخروج. حاول مرة أخرى.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    <p className="mx-3 my-2 text-[11px] leading-5 text-muted-foreground">
+                      المفضلة محفوظة على المتصفح ده، ومش مرتبطة بالحساب.
+                    </p>
                     {isDemoSessionActive && (
                       <button
                         type="button"
@@ -279,9 +360,20 @@ export function MarketplaceHeader({
                 </div>
               )}
             </div>
-            <Link href="/orders" title={activeOrder ? 'طلباتي — عندك طلب جارٍ' : 'طلباتي'} aria-label={activeOrder ? 'طلباتي، عندك طلب جارٍ' : 'طلباتي'} className="action relative inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-2.5 max-[700px]:px-2 text-white no-underline hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-waffarly-gold">
-              <ShoppingBag size={20} strokeWidth={1.75} aria-hidden="true" /><span className="hidden text-[13px] font-medium min-[701px]:inline">طلباتي</span>
-              {activeOrder && <span aria-hidden="true" className="absolute end-1.5 top-1.5 size-2 rounded-full bg-waffarly-gold ring-2 ring-primary" />}
+            <Link
+              href="/orders"
+              title={activeOrder ? 'طلباتي — عندك طلب جارٍ' : 'طلباتي'}
+              aria-label={activeOrder ? 'طلباتي، عندك طلب جارٍ' : 'طلباتي'}
+              className="action relative inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-2.5 max-[700px]:px-2 text-white no-underline hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-waffarly-gold"
+            >
+              <ShoppingBag size={20} strokeWidth={1.75} aria-hidden="true" />
+              <span className="hidden text-[13px] font-medium min-[701px]:inline">طلباتي</span>
+              {activeOrder && (
+                <span
+                  aria-hidden="true"
+                  className="absolute end-1.5 top-1.5 size-2 rounded-full bg-waffarly-gold ring-2 ring-primary"
+                />
+              )}
             </Link>
             <Link
               href="/favorites"

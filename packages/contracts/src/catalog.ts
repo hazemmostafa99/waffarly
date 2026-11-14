@@ -552,10 +552,16 @@ export interface CatalogRevisionRequest {
   revision: number;
 }
 
-export type StorefrontCheckoutQuoteRequest = Pick<CreateStorefrontOrderRequest, 'items' | 'fulfillmentType' | 'deliveryAreaId' | 'discountCode'>;
+export type StorefrontCheckoutQuoteRequest = Pick<
+  CreateStorefrontOrderRequest,
+  'items' | 'fulfillmentType' | 'deliveryAreaId' | 'discountCode'
+>;
 export interface StorefrontCheckoutQuote {
   unitPrices: string[];
-  subtotal: string; deliveryFee: string; total: string; currency: 'EGP';
+  subtotal: string;
+  deliveryFee: string;
+  total: string;
+  currency: 'EGP';
   discount?: import('./discounts.js').OrderDiscountSnapshot;
   restaurantSettingsRevision?: number | undefined;
   /** @deprecated API checkout submits real orders; reference metadata is provenance only. */

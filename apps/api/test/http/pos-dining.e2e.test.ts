@@ -8,10 +8,10 @@ import { AuthService } from '../../src/modules/auth/auth.service.js';
 import { OwnerGuard } from '../../src/modules/auth/owner.guard.js';
 import { PosEmployeeGuard } from '../../src/modules/auth/pos-employee.guard.js';
 import {
-  OwnerPosDiningTablesController,
   PosDiningController,
   PosDiningOrdersController,
 } from '../../src/modules/orders/http/pos/pos-dining.controller.js';
+import { OwnerPosDiningTablesController } from '../../src/modules/orders/http/owner/owner-dining-tables.controller.js';
 import { PosDiningService } from '../../src/modules/orders/dining/pos-dining.service.js';
 
 const merchantId = '11111111-1111-4111-8111-111111111111';

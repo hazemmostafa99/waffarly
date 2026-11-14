@@ -188,46 +188,44 @@ export function RegistersPage() {
 
       <div className="register-page-toolbar">
         <div className="products-filters register-filters">
-        <label className="register-branch-filter">
-          <span className="sr-only">{text('Branch', 'الفرع')}</span>
-          <PagedEntitySelect<InventoryBranch>
-            path="/owner/inventory/branches"
-            value={branchId}
-            label={text('Filter by branch', 'تصفية حسب الفرع')}
-            emptyLabel={text('All branches', 'كل الفروع')}
-            required={false}
-            searchMode="combobox"
-            onSelect={(branch) => {
-              setBranchId(branch?.id ?? '');
-              setHistory([]);
-            }}
-          />
-        </label>
-        <label className="register-status-filter">
-          <span className="sr-only">{text('Status', 'الحالة')}</span>
-          <select
-            value={status}
-            onChange={(event) => {
-              setStatus(event.target.value as typeof status);
-              setHistory([]);
-            }}
-          >
-            <option value="active">{text('Active', 'نشطة')}</option>
-            <option value="inactive">{text('Inactive', 'متوقفة')}</option>
-            <option value="all">{text('All registers', 'كل النقاط')}</option>
-          </select>
-        </label>
-      </div>
+          <label className="register-branch-filter">
+            <span className="sr-only">{text('Branch', 'الفرع')}</span>
+            <PagedEntitySelect<InventoryBranch>
+              path="/owner/inventory/branches"
+              value={branchId}
+              label={text('Filter by branch', 'تصفية حسب الفرع')}
+              emptyLabel={text('All branches', 'كل الفروع')}
+              required={false}
+              searchMode="combobox"
+              onSelect={(branch) => {
+                setBranchId(branch?.id ?? '');
+                setHistory([]);
+              }}
+            />
+          </label>
+          <label className="register-status-filter">
+            <span className="sr-only">{text('Status', 'الحالة')}</span>
+            <select
+              value={status}
+              onChange={(event) => {
+                setStatus(event.target.value as typeof status);
+                setHistory([]);
+              }}
+            >
+              <option value="active">{text('Active', 'نشطة')}</option>
+              <option value="inactive">{text('Inactive', 'متوقفة')}</option>
+              <option value="all">{text('All registers', 'كل النقاط')}</option>
+            </select>
+          </label>
+        </div>
         <div className="register-page-toolbar-actions">
           <button className="products-button primary" type="button" onClick={startCreate}>
-          <Icon name="plus" />
-          {text('Add register', 'إضافة نقطة بيع')}
-        </button>
+            <Icon name="plus" />
+            {text('Add register', 'إضافة نقطة بيع')}
+          </button>
         </div>
       </div>
       <PosAppearanceSettings />
-
-
 
       <DashboardCard
         className="register-table-card"

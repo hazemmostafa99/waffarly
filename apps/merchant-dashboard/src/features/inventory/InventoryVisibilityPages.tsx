@@ -788,9 +788,7 @@ export function StockMovementDetailPage() {
               <div className="inventory-movement-change">
                 <span>{text('Change')}</span>
                 <strong
-                  className={
-                    movement.baseDelta.startsWith('-') ? 'is-negative' : 'is-positive'
-                  }
+                  className={movement.baseDelta.startsWith('-') ? 'is-negative' : 'is-positive'}
                   dir="ltr"
                 >
                   {formatDigits(

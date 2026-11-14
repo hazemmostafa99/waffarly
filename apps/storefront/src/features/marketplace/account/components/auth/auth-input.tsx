@@ -6,7 +6,8 @@ import { Eye, EyeOff } from 'lucide-react';
 
 export function normalizeAuthDigits(value: string) {
   return value.replace(/[٠-٩۰-۹]/g, (digit) =>
-    String(digit.charCodeAt(0) - (digit >= '۰' ? 0x06f0 : 0x0660)));
+    String(digit.charCodeAt(0) - (digit >= '۰' ? 0x06f0 : 0x0660)),
+  );
 }
 
 type AuthInputProps = Pick<

@@ -183,20 +183,20 @@ Avoid creating a shared component until it is used by at least two pages or repr
 
 ## Routes and Page Order
 
-| Order | Route | Page | Implementation boundary |
-| --- | --- | --- | --- |
-| 1 | `/dashboard` | Platform Overview | Real aggregate data only; unsupported metrics are omitted. |
-| 2 | `/merchants` | Merchants List | Existing merchants and applications APIs. |
-| 3 | `/merchants/new` | Create Merchant | Existing creation contract and validation. |
-| 4 | `/merchants/:merchantId` | Merchant Details | Only approved details and actions. |
-| 5 | `/plans` | Plans Catalog | Existing plans API; no invented prices or rules. |
-| 6 | `/plans/new`, `/plans/:planId/edit` | Plan Editor | Subject to supported API operations. |
-| 7 | `/subscriptions` | Merchant Subscriptions | Implement only approved subscription behavior. |
-| 8 | `/activities` | Business Activities | Existing catalog API fields and revision-aware editing; compatibility does not grant access or entitlements. |
-| 9 | `/modules` | Modules Matrix | Compare code-supported activity types with saved catalog associations; keep both distinct from entitlements and permissions. |
-| 10 | `/templates` | Templates Library | Existing template API and preview assets; availability adds a design to the merchant selection library but does not publish a storefront. |
-| 11 | `/templates/:templateId` | Template Details | Derive metadata from the existing templates list (there is no detail endpoint); merchant selection eligibility follows the template activity scope and `available` status. |
-| 12 | `/governance` | Governance and Audit | Deferred until its requirements and API are approved. |
+| Order | Route                               | Page                   | Implementation boundary                                                                                                                                                    |
+| ----- | ----------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | `/dashboard`                        | Platform Overview      | Real aggregate data only; unsupported metrics are omitted.                                                                                                                 |
+| 2     | `/merchants`                        | Merchants List         | Existing merchants and applications APIs.                                                                                                                                  |
+| 3     | `/merchants/new`                    | Create Merchant        | Existing creation contract and validation.                                                                                                                                 |
+| 4     | `/merchants/:merchantId`            | Merchant Details       | Only approved details and actions.                                                                                                                                         |
+| 5     | `/plans`                            | Plans Catalog          | Existing plans API; no invented prices or rules.                                                                                                                           |
+| 6     | `/plans/new`, `/plans/:planId/edit` | Plan Editor            | Subject to supported API operations.                                                                                                                                       |
+| 7     | `/subscriptions`                    | Merchant Subscriptions | Implement only approved subscription behavior.                                                                                                                             |
+| 8     | `/activities`                       | Business Activities    | Existing catalog API fields and revision-aware editing; compatibility does not grant access or entitlements.                                                               |
+| 9     | `/modules`                          | Modules Matrix         | Compare code-supported activity types with saved catalog associations; keep both distinct from entitlements and permissions.                                               |
+| 10    | `/templates`                        | Templates Library      | Existing template API and preview assets; availability adds a design to the merchant selection library but does not publish a storefront.                                  |
+| 11    | `/templates/:templateId`            | Template Details       | Derive metadata from the existing templates list (there is no detail endpoint); merchant selection eligibility follows the template activity scope and `available` status. |
+| 12    | `/governance`                       | Governance and Audit   | Deferred until its requirements and API are approved.                                                                                                                      |
 
 Additional routes:
 
@@ -251,4 +251,3 @@ The redesign is complete when:
 - RTL, localization, responsiveness, accessibility, and error states are verified.
 - Typecheck, lint, build, and relevant automated tests pass.
 - `PROGRESS.md` contains current evidence for every page.
-

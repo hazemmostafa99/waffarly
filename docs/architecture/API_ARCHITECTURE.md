@@ -6,6 +6,14 @@ No route, schema or external module dependency changes are intended. Manual
 acceptance is pending; no automated checks ran for this refactor. See the
 [Orders guide](../../apps/api/src/modules/orders/README.md).
 
+Orders internal cleanup (2026-11-14): lifecycle actions use named helpers inside
+the existing transaction, with authorization/replay ordering preserved. Checkout
+item saving and policy decisions, customer session/queries/mapping, delivery
+queries/access, return queries/mapping and dining table setup have explicit homes.
+Owner dining table controllers now live in the owner HTTP folder. Each Orders
+source file has a plain-English purpose comment. No schema, route or external
+module dependency change is intended; manual acceptance remains pending.
+
 Customer orders update (2026-11-13): Marketplace restaurant orders now have
 account/guest ownership, backend history/detail/tracking reads and explicit guest
 claim. Historical statements below are superseded for this slice. See

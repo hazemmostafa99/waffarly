@@ -37,13 +37,7 @@ export class ProductPricingService {
         })
       : null;
     if (storefrontSlug && !merchant) throw new NotFoundException('Storefront was not found.');
-    return this.quoteForMerchant(
-      merchant?.id ?? null,
-      id,
-      selections,
-      variantId,
-      sellableQuantity,
-    );
+    return this.quoteForMerchant(merchant?.id ?? null, id, selections, variantId, sellableQuantity);
   }
 
   async quoteForMerchant(

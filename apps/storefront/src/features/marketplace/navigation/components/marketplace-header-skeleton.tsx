@@ -30,12 +30,12 @@ export function MarketplaceHeaderSkeleton({ announce = true }: { announce?: bool
     </div>
   );
 
-  return (
-    announce ? (
-      <div role="status" aria-live="polite" aria-busy="true" className="w-full">
-        <span className="sr-only">جارٍ تحميل رأس السوق…</span>
-        {header}
-      </div>
-    ) : header
+  return announce ? (
+    <div role="status" aria-live="polite" aria-busy="true" className="w-full">
+      <span className="sr-only">جارٍ تحميل رأس السوق…</span>
+      {header}
+    </div>
+  ) : (
+    header
   );
 }

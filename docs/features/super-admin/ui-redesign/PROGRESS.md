@@ -357,11 +357,10 @@ Progress states:
 
 ## Decisions and Blockers
 
-| Date | Area | Decision or blocker | Status |
-| --- | --- | --- | --- |
-| 2026-10-14 | Visual reference | Use the supplied kit for presentation, not for business rules. | Decided |
-| 2026-10-14 | Server state | TanStack React Query owns API data and mutations. | Decided |
-| 2026-10-14 | Client state | Zustand owns only small client-side UI state. | Decided |
-| 2026-10-14 | Shareable state | Routes and query parameters own shareable navigation, filters, sorting, and pagination. | Decided |
-| 2026-10-14 | Governance | Requirements, viewer policy, event policy, retention, and API remain unresolved. | Blocked |
-
+| Date       | Area             | Decision or blocker                                                                     | Status  |
+| ---------- | ---------------- | --------------------------------------------------------------------------------------- | ------- |
+| 2026-10-14 | Visual reference | Use the supplied kit for presentation, not for business rules.                          | Decided |
+| 2026-10-14 | Server state     | TanStack React Query owns API data and mutations.                                       | Decided |
+| 2026-10-14 | Client state     | Zustand owns only small client-side UI state.                                           | Decided |
+| 2026-10-14 | Shareable state  | Routes and query parameters own shareable navigation, filters, sorting, and pagination. | Decided |
+| 2026-10-14 | Governance       | Requirements, viewer policy, event policy, retention, and API remain unresolved.        | Blocked |

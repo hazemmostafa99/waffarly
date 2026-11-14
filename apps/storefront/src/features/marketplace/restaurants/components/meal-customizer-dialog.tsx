@@ -5,12 +5,19 @@ import { MarketplaceDialog } from '@/components/marketplace/marketplace-dialog';
 import type { MarketplaceProduct } from '@/features/marketplace/catalog/model/catalog';
 import { MealPurchase } from './meal-purchase';
 
-type MealCustomizerDialogProps = Pick<ComponentProps<typeof MealPurchase>, 'editLine' | 'onSaved' | 'onAdded'> & {
+type MealCustomizerDialogProps = Pick<
+  ComponentProps<typeof MealPurchase>,
+  'editLine' | 'onSaved' | 'onAdded'
+> & {
   product: MarketplaceProduct | null;
   onClose: () => void;
 };
 
-export function MealCustomizerDialog({ product, onClose, ...purchaseProps }: MealCustomizerDialogProps) {
+export function MealCustomizerDialog({
+  product,
+  onClose,
+  ...purchaseProps
+}: MealCustomizerDialogProps) {
   return (
     <MarketplaceDialog
       open={product !== null}

@@ -1,3 +1,6 @@
+/**
+ * Checks the branch and page requested when looking through saved receipts.
+ */
 import { z } from 'zod';
 
 export const posReceiptHistoryQuerySchema = z

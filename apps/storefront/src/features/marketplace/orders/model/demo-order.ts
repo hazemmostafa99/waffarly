@@ -27,12 +27,13 @@ export interface DemoOrder {
 }
 
 export function demoOrderTotal(order: Pick<DemoOrder, 'items' | 'deliveryFee'>) {
-  return order.items.reduce((sum, item) => sum + item.price * item.quantity, 0) + (order.deliveryFee ?? 0);
+  return (
+    order.items.reduce((sum, item) => sum + item.price * item.quantity, 0) +
+    (order.deliveryFee ?? 0)
+  );
 }
 
-export function demoOrderTrackingSteps(
-  fulfillment: Fulfillment,
-): DemoOrderTrackingStep[] {
+export function demoOrderTrackingSteps(fulfillment: Fulfillment): DemoOrderTrackingStep[] {
   return [
     {
       status: 'demo-confirmed',

@@ -4,7 +4,12 @@ import { MarketplaceSkeleton } from '@/features/marketplace/shared/components/ma
 
 export function MarketplaceProductListingSkeleton({ label = 'المنتجات' }: { label?: string }) {
   return (
-    <div className="marketplace-theme min-h-screen" role="status" aria-live="polite" aria-busy="true">
+    <div
+      className="marketplace-theme min-h-screen"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
       <span className="sr-only">جارٍ تحميل {label}…</span>
       <MarketplaceHeaderSkeleton announce={false} />
       <main className="pb-16">
@@ -22,7 +27,10 @@ export function MarketplaceProductListingSkeleton({ label = 'المنتجات' }
           </div>
           <div className="grid grid-cols-4 gap-3 max-[1100px]:grid-cols-3 max-[700px]:flex max-[700px]:overflow-hidden">
             {Array.from({ length: 4 }, (_, index) => (
-              <div key={index} className="min-w-0 overflow-hidden rounded-2xl border border-border bg-white p-2.5 shadow-[var(--shadow)] max-[700px]:min-w-[210px]">
+              <div
+                key={index}
+                className="min-w-0 overflow-hidden rounded-2xl border border-border bg-white p-2.5 shadow-[var(--shadow)] max-[700px]:min-w-[210px]"
+              >
                 <MarketplaceSkeleton className="h-40 w-full rounded-xl sm:h-48" />
                 <div className="grid gap-2 p-1 pt-3">
                   <MarketplaceSkeleton className="h-3 w-20" />

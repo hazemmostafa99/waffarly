@@ -1,3 +1,17 @@
+/**
+ * Coordinates delivery updates and money handed in by a courier.
+ * It also lets staff check the outcome of an earlier request before retrying it.
+ */
+import {
+  assertDeliveryBranchAccess,
+  assertDeliveryCustodianAccess,
+  readCurrentDeliveryPermissions,
+} from './delivery-access.rules.js';
+import {
+  listDeliveryQueue,
+  listReadyDeliveries,
+  getDeliverySummary,
+} from './delivery-queue.query.js';
 import {
   ConflictException,
   ForbiddenException,
@@ -7,8 +21,6 @@ import {
 } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import {
-  isPosEmployeeRole,
-  resolvePosEmployeePermissions,
   type CursorPage,
   type PosDeliveryCommand,
   type PosDeliverySummary,
@@ -20,10 +32,10 @@ import {
   isSerializationConflict,
   isUniqueConstraintError,
 } from '../../../infrastructure/database/prisma-errors.js';
-import { formatCents, toCents } from '../../../common/money/money.js';
+import { toCents } from '../../../common/money/money.js';
 import { parseRequest } from '../../../common/http/zod-validation.pipe.js';
 import { readDeliveryBalances, ShiftsService } from '../../shifts/index.js';
-import { posDeliveryCommandSchema, posDeliveryListSchema } from './pos-delivery.schemas.js';
+import { posDeliveryCommandSchema } from './pos-delivery.schemas.js';
 
 @Injectable()
 export class PosDeliveryService {
@@ -43,7 +55,7 @@ export class PosDeliveryService {
       select: { branchId: true },
     });
     if (!order?.branchId) throw new NotFoundException('The delivery order was not found.');
-    this.requireBranch(employee, order.branchId);
+    assertDeliveryBranchAccess(employee, order.branchId);
     const action = await this.db.storefrontOrderAction.findUnique({
       where: { merchantId_requestId: { merchantId: employee.merchantId, requestId } },
     });
@@ -79,8 +91,8 @@ export class PosDeliveryService {
         select: { branchId: true },
       });
       if (!order?.branchId) throw new NotFoundException('The delivery order was not found.');
-      this.requireBranch(employee, order.branchId);
-      await this.currentPermissions(tx, employee, order.branchId);
+      assertDeliveryBranchAccess(employee, order.branchId);
+      await readCurrentDeliveryPermissions(tx, employee, order.branchId);
       await tx.$queryRaw`SELECT "id" FROM "storefront_orders" WHERE "id" = ${orderId}::uuid AND "merchantId" = ${employee.merchantId}::uuid FOR UPDATE`;
       const prior = await tx.storefrontOrderAction.findUnique({
         where: { merchantId_requestId: { merchantId: employee.merchantId, requestId } },
@@ -120,171 +132,18 @@ export class PosDeliveryService {
     });
   }
 
-  async list(
-    employee: PosEmployeeSession,
-    input: unknown,
-  ): Promise<CursorPage<PosDeliverySummary>> {
-    const query = parseRequest(posDeliveryListSchema, input);
-    this.requireBranch(employee, query.branchId);
-    if (
-      query.cursor &&
-      !(
-        await readDeliveryBalances(this.db, employee.merchantId, {
-          branchId: query.branchId,
-          orderId: query.cursor,
-          pendingOnly: !query.includeResolved,
-          limit: 1,
-        })
-      ).length
-    )
-      throw new NotFoundException('Delivery cursor was not found in this branch.');
-    const rows = await readDeliveryBalances(this.db, employee.merchantId, {
-      ...query,
-      pendingOnly: !query.includeResolved,
-      limit: query.limit + 1,
-    });
-    const items = await this.summaries(employee, rows.slice(0, query.limit));
-    return { items, nextCursor: rows.length > query.limit ? items.at(-1)!.orderId : null };
+  list(employee: PosEmployeeSession, input: unknown): Promise<CursorPage<PosDeliverySummary>> {
+    return listDeliveryQueue(this.db, employee, input);
   }
-
-  async ready(employee: PosEmployeeSession, input: unknown) {
-    const query = parseRequest(posDeliveryListSchema, input);
-    this.requireBranch(employee, query.branchId);
-    const where: Prisma.StorefrontOrderWhereInput = {
-      merchantId: employee.merchantId,
-      branchId: query.branchId,
-      source: 'pos',
-      fulfillmentType: 'delivery',
-      status: 'ready',
-      delivery: { is: null },
-    };
-    if (
-      query.cursor &&
-      !(await this.db.storefrontOrder.findFirst({
-        where: { ...where, id: query.cursor },
-        select: { id: true },
-      }))
-    )
-      throw new NotFoundException('Delivery cursor was not found in this branch.');
-    const rows = await this.db.storefrontOrder.findMany({
-      where: { ...where, ...(query.cursor ? { id: { lt: query.cursor } } : {}) },
-      orderBy: { id: 'desc' },
-      take: query.limit + 1,
-      select: { id: true, orderReference: true, revision: true, total: true, customerName: true },
-    });
-    return {
-      items: rows.slice(0, query.limit).map((row) => ({ ...row, total: row.total.toFixed(2) })),
-      nextCursor: rows.length > query.limit ? rows[query.limit - 1]!.id : null,
-    };
+  ready(employee: PosEmployeeSession, input: unknown) {
+    return listReadyDeliveries(this.db, employee, input);
   }
-
-  async summary(
+  summary(
     employee: PosEmployeeSession,
     orderId: string,
     tx: Prisma.TransactionClient | PrismaService = this.db,
   ): Promise<PosDeliverySummary> {
-    const [row] = await readDeliveryBalances(tx, employee.merchantId, {
-      orderId,
-      pendingOnly: false,
-      limit: 1,
-    });
-    if (!row) throw new NotFoundException('The delivery was not found.');
-    this.requireBranch(employee, row.branchId);
-    return (await this.summaries(employee, [row], tx))[0]!;
-  }
-
-  private async summaries(
-    employee: PosEmployeeSession,
-    rows: Awaited<ReturnType<typeof readDeliveryBalances>>,
-    tx: Prisma.TransactionClient | PrismaService = this.db,
-  ): Promise<PosDeliverySummary[]> {
-    if (!rows.length) return [];
-    const orderReferences = await tx.storefrontOrder.findMany({
-      where: { merchantId: employee.merchantId, id: { in: rows.map((row) => row.orderId) } },
-      select: { id: true, orderReference: true },
-    });
-    const references = new Map(orderReferences.map((order) => [order.id, order.orderReference]));
-    const allChecks = await tx.posOrderCheck.findMany({
-      where: {
-        merchantId: employee.merchantId,
-        orderId: { in: rows.map((row) => row.orderId) },
-        cancelledAt: null,
-      },
-      select: {
-        id: true,
-        orderId: true,
-        position: true,
-        amount: true,
-        payments: {
-          select: {
-            id: true,
-            amount: true,
-            cashCustody: true,
-            deliveryRemittances: {
-              select: {
-                amount: true,
-                shiftId: true,
-                createdAt: true,
-                operator: { select: { displayName: true } },
-              },
-            },
-          },
-        },
-      },
-      orderBy: { position: 'asc' },
-    });
-    return rows.map((row) => {
-      const checks = allChecks.filter((check) => check.orderId === row.orderId);
-      return {
-        orderId: row.orderId,
-        orderReference: references.get(row.orderId) ?? null,
-        branchId: row.branchId,
-        sourceShiftId: row.sourceShiftId,
-        followupShiftId: row.followupShiftId,
-        revision: row.revision,
-        orderRevision: row.orderRevision,
-        orderStatus: row.orderStatus,
-        courierName: row.courierName,
-        status: row.status,
-        failureReason: row.failureReason,
-        custodianName: row.custodianName,
-        custodianEmployeeId: row.custodianEmployeeId,
-        customerDue: formatCents(toCents(row.customerDue)),
-        courierCashHeld: formatCents(toCents(row.courierCashHeld)),
-        dispatchedAt: row.dispatchedAt.toISOString(),
-        deliveredAt: row.deliveredAt?.toISOString() ?? null,
-        checks: checks.map((check) => ({
-          id: check.id,
-          position: check.position,
-          balanceDue: formatCents(
-            toCents(check.amount.toFixed(2)) -
-              check.payments.reduce((sum, p) => sum + toCents(p.amount.toFixed(2)), 0n),
-          ),
-        })),
-        courierPayments: checks.flatMap((check) =>
-          check.payments
-            .filter((p) => p.cashCustody === 'courier')
-            .map((p) => ({
-              id: p.id,
-              amount: p.amount.toFixed(2),
-              remaining: formatCents(
-                toCents(p.amount.toFixed(2)) -
-                  p.deliveryRemittances.reduce((sum, r) => sum + toCents(r.amount.toFixed(2)), 0n),
-              ),
-            })),
-        ),
-        remittances: checks.flatMap((check) =>
-          check.payments.flatMap((payment) =>
-            payment.deliveryRemittances.map((r) => ({
-              amount: r.amount.toFixed(2),
-              shiftId: r.shiftId,
-              operatorName: r.operator.displayName,
-              receivedAt: r.createdAt.toISOString(),
-            })),
-          ),
-        ),
-      };
-    });
+    return getDeliverySummary(this.db, employee, orderId, tx);
   }
 
   async command(
@@ -292,6 +151,7 @@ export class PosDeliveryService {
     orderId: string,
     input: unknown,
   ): Promise<PosDeliverySummary> {
+    // 1. Keep the exact request identity so a retry cannot repeat the action.
     const command: PosDeliveryCommand = parseRequest(posDeliveryCommandSchema, input);
     const fingerprint = createHash('sha256')
       .update(JSON.stringify({ orderId, command }))
@@ -313,7 +173,7 @@ export class PosDeliveryService {
           'This delivery request ID was already used for another action.',
         );
       const result = previous.result as unknown as PosDeliverySummary;
-      this.requireBranch(employee, result.branchId);
+      assertDeliveryBranchAccess(employee, result.branchId);
       return result;
     };
     const prior = await this.db.storefrontOrderAction.findUnique({
@@ -325,6 +185,7 @@ export class PosDeliveryService {
     try {
       return await this.db.$transaction(
         async (tx) => {
+          // 2. Check the branch and shifts before changing responsibility or money.
           const observed = await tx.storefrontOrder.findFirst({
             where: {
               id: orderId,
@@ -340,8 +201,8 @@ export class PosDeliveryService {
           });
           if (!observed?.branchId || !observed.posShiftId)
             throw new NotFoundException('The POS delivery order was not found.');
-          this.requireBranch(employee, observed.branchId);
-          const permissions = await this.currentPermissions(tx, employee, observed.branchId);
+          assertDeliveryBranchAccess(employee, observed.branchId);
+          const permissions = await readCurrentDeliveryPermissions(tx, employee, observed.branchId);
           const shiftIds = [
             ...new Set(
               [
@@ -399,7 +260,11 @@ export class PosDeliveryService {
                 throw new ConflictException(
                   'Receive the previous courier cash before redispatching.',
                 );
-              this.requireCustodian(employee, order.delivery.custodianEmployeeId, permissions);
+              assertDeliveryCustodianAccess(
+                employee,
+                order.delivery.custodianEmployeeId,
+                permissions,
+              );
             }
             await tx.posDelivery.upsert({
               where: { orderId },
@@ -424,7 +289,7 @@ export class PosDeliveryService {
             if (!delivery || delivery.revision !== command.revision)
               throw new ConflictException('The delivery changed. Refresh and retry.');
             if (command.action === 'claim') {
-              this.requireCustodian(employee, delivery.custodianEmployeeId, permissions);
+              assertDeliveryCustodianAccess(employee, delivery.custodianEmployeeId, permissions);
               await tx.posDelivery.update({
                 where: { orderId },
                 data: {
@@ -434,7 +299,7 @@ export class PosDeliveryService {
                 },
               });
             } else if (command.action === 'remit') {
-              this.requireCustodian(employee, delivery.custodianEmployeeId, permissions);
+              assertDeliveryCustodianAccess(employee, delivery.custodianEmployeeId, permissions);
               const payment = await tx.posOrderPayment.findFirst({
                 where: {
                   id: command.paymentId,
@@ -477,7 +342,7 @@ export class PosDeliveryService {
                 },
               });
             } else {
-              this.requireCustodian(employee, delivery.custodianEmployeeId, permissions);
+              assertDeliveryCustodianAccess(employee, delivery.custodianEmployeeId, permissions);
               if (delivery.status !== 'out_for_delivery')
                 throw new ConflictException(
                   'Only an outgoing delivery can be marked delivered or failed.',
@@ -503,6 +368,7 @@ export class PosDeliveryService {
             where: { id: orderId },
             data: { revision: { increment: 1 } },
           });
+          // 3. Save the updated delivery view as the result of this exact request.
           const result = await this.summary(employee, orderId, tx);
           await tx.storefrontOrderAction.create({
             data: {
@@ -533,47 +399,5 @@ export class PosDeliveryService {
       }
       throw error;
     }
-  }
-
-  private requireBranch(employee: PosEmployeeSession, branchId: string) {
-    if (
-      !employee.permissions.includes('sell') ||
-      !employee.branches.some((branch) => branch.id === branchId && branch.archivedAt === null)
-    )
-      throw new ForbiddenException('This employee cannot manage deliveries at this branch.');
-  }
-  private requireCustodian(
-    employee: PosEmployeeSession,
-    custodianId: string,
-    permissions: readonly string[],
-  ) {
-    if (custodianId !== employee.id && !permissions.includes('approve_shift_close'))
-      throw new ForbiddenException(
-        'Only the responsible employee or a supervisor can manage this delivery.',
-      );
-  }
-  private async currentPermissions(
-    tx: Prisma.TransactionClient,
-    employee: PosEmployeeSession,
-    branchId: string,
-  ) {
-    const actor = await tx.posEmployee.findFirst({
-      where: {
-        id: employee.id,
-        merchantId: employee.merchantId,
-        active: true,
-        branches: { some: { branchId, branch: { archivedAt: null } } },
-      },
-      select: { role: true, permissions: true },
-    });
-    const permissions = actor
-      ? resolvePosEmployeePermissions(
-          isPosEmployeeRole(actor.role) ? actor.role : null,
-          actor.permissions,
-        )
-      : [];
-    if (!permissions.includes('sell'))
-      throw new ForbiddenException('This employee is no longer authorized to manage deliveries.');
-    return permissions;
   }
 }

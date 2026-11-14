@@ -75,18 +75,18 @@ kept out of it.
 
 Route loading states reuse the `MarketplaceSkeleton` primitive and compose page-shaped placeholders for the header, merchant entry, stores and product listings. These are used for Next route loading and Suspense boundaries; synchronous local fixtures do not get an artificial delay.
 
-| State                                         | Owner                                                                   |
-| --------------------------------------------- | ----------------------------------------------------------------------- |
-| Initial product/catalog content               | Read-only data/reference.json                                           |
-| Submitted search/category and product listings | URL; search hooks and catalog listing model                           |
-| Draft input, menus, toasts and local checkout | Component state/hooks                                                   |
-| Product ID/quantity lines and drawer          | Cart Zustand slice                                                      |
-| Favorite product IDs                          | Favorites Zustand slice                                                 |
-| Session-only demo order records               | Orders Zustand slice                                                    |
-| Checkout completion across cart/orders        | Checkout action, composed into the same store for one atomic update     |
-| Basket counts/subtotals                       | Pure derived functions in cart/model                                    |
-| Western-digit money formatting                | shared/lib/format-money.ts                                              |
-| Interactive server cache                      | React Query provisioned, unused until separately authorized integration |
+| State                                          | Owner                                                                   |
+| ---------------------------------------------- | ----------------------------------------------------------------------- |
+| Initial product/catalog content                | Read-only data/reference.json                                           |
+| Submitted search/category and product listings | URL; search hooks and catalog listing model                             |
+| Draft input, menus, toasts and local checkout  | Component state/hooks                                                   |
+| Product ID/quantity lines and drawer           | Cart Zustand slice                                                      |
+| Favorite product IDs                           | Favorites Zustand slice                                                 |
+| Session-only demo order records                | Orders Zustand slice                                                    |
+| Checkout completion across cart/orders         | Checkout action, composed into the same store for one atomic update     |
+| Basket counts/subtotals                        | Pure derived functions in cart/model                                    |
+| Western-digit money formatting                 | shared/lib/format-money.ts                                              |
+| Interactive server cache                       | React Query provisioned, unused until separately authorized integration |
 
 The composed store and QueryClient are created once per mounted provider, not mutable module-level singletons. Local state survives client navigation under Marketplace layout but is not persisted on reload. Checkout clears contact fields on success and keeps a product-only demo summary. Basket snapshot comparison prevents clearing changed selections during demo confirmation.
 

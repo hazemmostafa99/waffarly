@@ -1,3 +1,6 @@
+/**
+ * Checks the details sent when quoting, confirming or adding items to a cashier sale.
+ */
 import type {
   CreatePosOrderRequest,
   DispatchPosKitchenOrderRequest,

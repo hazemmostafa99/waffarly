@@ -1,3 +1,6 @@
+/**
+ * Gives each new cashier sale its branch-and-day reference without reusing another sale number.
+ */
 import { InternalServerErrorException } from '@nestjs/common';
 import type { Prisma } from '@waffarly/database';
 

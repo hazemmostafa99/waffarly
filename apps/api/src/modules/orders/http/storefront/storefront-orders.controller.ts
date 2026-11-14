@@ -1,3 +1,6 @@
+/**
+ * Receives customer basket reviews and new website orders, including Marketplace customer checkout.
+ */
 import { createOrderSchema } from '../../checkout/storefront-checkout.schemas.js';
 import {
   BadRequestException,

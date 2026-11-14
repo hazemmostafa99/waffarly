@@ -34,18 +34,17 @@ export function StorefrontMenuPage({
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadMoreError, setLoadMoreError] = useState(false);
   const [search, setSearch] = useState(initialSearch);
-  const sort = initialSort === 'price-asc' || initialSort === 'price-desc' ? initialSort : 'default';
-  const sortLabel = sort === 'price-asc'
-    ? t.priceAscending
-    : sort === 'price-desc'
-      ? t.priceDescending
-      : t.sort;
+  const sort =
+    initialSort === 'price-asc' || initialSort === 'price-desc' ? initialSort : 'default';
+  const sortLabel =
+    sort === 'price-asc' ? t.priceAscending : sort === 'price-desc' ? t.priceDescending : t.sort;
 
   useEffect(() => setSearch(initialSearch), [initialSearch]);
   useEffect(() => setLoadedCatalog(catalog), [catalog.slug]);
 
   async function loadMore() {
-    if (loadingMore || (!loadedCatalog.nextProductCursor && !loadedCatalog.nextCategoryCursor)) return;
+    if (loadingMore || (!loadedCatalog.nextProductCursor && !loadedCatalog.nextCategoryCursor))
+      return;
     setLoadingMore(true);
     setLoadMoreError(false);
     try {
@@ -65,7 +64,10 @@ export function StorefrontMenuPage({
             items: [],
             nextCursor: null,
           });
-      const [productPage, categoryPage] = await Promise.all([productPageRequest, categoryPageRequest]);
+      const [productPage, categoryPage] = await Promise.all([
+        productPageRequest,
+        categoryPageRequest,
+      ]);
       setLoadedCatalog((current) => ({
         ...current,
         categories: appendUnique(current.categories, categoryPage.items),
@@ -97,34 +99,56 @@ export function StorefrontMenuPage({
     updateUrl({ q: search });
   }
 
-  const normalizedSearch = initialSearch.trim().toLocaleLowerCase(locale === 'ar' ? 'ar-EG' : 'en-EG');
+  const normalizedSearch = initialSearch
+    .trim()
+    .toLocaleLowerCase(locale === 'ar' ? 'ar-EG' : 'en-EG');
   const filteredProducts = loadedCatalog.products
-    .filter((product) => !initialCategoryId || product.categories.some((category) => category.id === initialCategoryId))
-    .filter((product) =>
-      !normalizedSearch || `${product.name} ${product.description ?? ''} ${product.categories.map((category) => category.name).join(' ')}`
-        .toLocaleLowerCase(locale === 'ar' ? 'ar-EG' : 'en-EG')
-        .includes(normalizedSearch),
+    .filter(
+      (product) =>
+        !initialCategoryId ||
+        product.categories.some((category) => category.id === initialCategoryId),
+    )
+    .filter(
+      (product) =>
+        !normalizedSearch ||
+        `${product.name} ${product.description ?? ''} ${product.categories.map((category) => category.name).join(' ')}`
+          .toLocaleLowerCase(locale === 'ar' ? 'ar-EG' : 'en-EG')
+          .includes(normalizedSearch),
     )
     .sort((left, right) => {
       if (sort === 'default') return 0;
-      const difference = Number(getProductStartingPrice(left)) - Number(getProductStartingPrice(right));
+      const difference =
+        Number(getProductStartingPrice(left)) - Number(getProductStartingPrice(right));
       return sort === 'price-asc' ? difference : -difference;
     });
-  const number = filteredProducts.length.toLocaleString(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG-u-nu-latn');
+  const number = filteredProducts.length.toLocaleString(
+    locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG-u-nu-latn',
+  );
   const categoryImages = loadedCatalog.categories.map((category) => {
     const matchingProduct = loadedCatalog.products.find((product) =>
       product.categories.some((productCategory) => productCategory.id === category.id),
     );
-    const primaryImage = matchingProduct?.images.find((image) => image.isPrimary) ?? matchingProduct?.images[0];
+    const primaryImage =
+      matchingProduct?.images.find((image) => image.isPrimary) ?? matchingProduct?.images[0];
     return { category, imageUrl: primaryImage?.publicUrl };
   });
 
   return (
-    <main id="main-content" className="mx-auto min-h-[70vh] w-[calc(100%-2rem)] max-w-[1240px] pb-10 pt-3">
-      <nav aria-label={t.breadcrumbs} className="mb-4 flex h-6 items-center justify-start gap-2 text-storefront-support font-bold text-store-muted">
-        <Link href={`/s/${catalog.slug}`} className="hover:text-store-primary">{t.home}</Link>
+    <main
+      id="main-content"
+      className="mx-auto min-h-[70vh] w-[calc(100%-2rem)] max-w-[1240px] pb-10 pt-3"
+    >
+      <nav
+        aria-label={t.breadcrumbs}
+        className="mb-4 flex h-6 items-center justify-start gap-2 text-storefront-support font-bold text-store-muted"
+      >
+        <Link href={`/s/${catalog.slug}`} className="hover:text-store-primary">
+          {t.home}
+        </Link>
         <ChevronLeft className="size-4" aria-hidden="true" />
-        <span aria-current="page" className="text-store-primary">{t.menu}</span>
+        <span aria-current="page" className="text-store-primary">
+          {t.menu}
+        </span>
       </nav>
 
       <header className="grid min-h-[200px] grid-cols-[minmax(0,1fr)_100px] items-center gap-3 overflow-hidden rounded-3xl bg-store-primary/10 p-4 sm:grid-cols-[minmax(0,1fr)_150px] sm:p-5 lg:min-h-[224px] lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-6 lg:rounded-[1.75rem] lg:p-6">
@@ -133,9 +157,7 @@ export function StorefrontMenuPage({
           <h1 className="mt-1 max-w-3xl font-heading text-storefront-page font-black text-store-ink text-balance">
             {t.menuHeroTitle}
           </h1>
-          <p className="mt-2 max-w-2xl text-storefront-body text-store-muted">
-            {t.menuIntro}
-          </p>
+          <p className="mt-2 max-w-2xl text-storefront-body text-store-muted">{t.menuIntro}</p>
         </div>
         <div className="relative aspect-[1.05] w-full overflow-hidden rounded-2xl bg-white/40 lg:aspect-[1.68]">
           <Image
@@ -152,8 +174,13 @@ export function StorefrontMenuPage({
 
       <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6">
         <aside className="min-w-0 lg:sticky lg:top-24 lg:h-fit lg:rounded-[1.6rem] lg:border lg:border-store-border lg:bg-white lg:p-4">
-          <h2 className="hidden font-heading text-storefront-subsection font-extrabold text-store-ink lg:block">{t.menuCategories}</h2>
-          <nav aria-label={t.menuCategories} className="flex min-w-0 gap-2 overflow-x-auto pb-2 lg:mt-3 lg:grid lg:overflow-visible lg:pb-0">
+          <h2 className="hidden font-heading text-storefront-subsection font-extrabold text-store-ink lg:block">
+            {t.menuCategories}
+          </h2>
+          <nav
+            aria-label={t.menuCategories}
+            className="flex min-w-0 gap-2 overflow-x-auto pb-2 lg:mt-3 lg:grid lg:overflow-visible lg:pb-0"
+          >
             <button
               type="button"
               aria-current={!initialCategoryId ? 'true' : undefined}
@@ -176,7 +203,14 @@ export function StorefrontMenuPage({
                 >
                   {imageUrl ? (
                     <span className="relative hidden size-8 shrink-0 overflow-hidden rounded-lg lg:block">
-                      <Image src={imageUrl} alt="" fill sizes="32px" className="object-cover" unoptimized />
+                      <Image
+                        src={imageUrl}
+                        alt=""
+                        fill
+                        sizes="32px"
+                        className="object-cover"
+                        unoptimized
+                      />
                     </span>
                   ) : null}
                   <span>{category.name}</span>
@@ -228,7 +262,9 @@ export function StorefrontMenuPage({
               <h2 className="font-heading text-storefront-section font-extrabold text-store-ink">
                 {t.allProducts}
               </h2>
-              <p className="mt-1 text-storefront-support text-store-muted">{number} {t.productsToDisplay}</p>
+              <p className="mt-1 text-storefront-support text-store-muted">
+                {number} {t.productsToDisplay}
+              </p>
             </div>
           </header>
 
@@ -256,7 +292,11 @@ export function StorefrontMenuPage({
               >
                 {loadingMore ? t.loadingMore : t.loadMore}
               </button>
-              {loadMoreError ? <p role="alert" className="text-sm text-red-700">{t.loadMoreError}</p> : null}
+              {loadMoreError ? (
+                <p role="alert" className="text-sm text-red-700">
+                  {t.loadMoreError}
+                </p>
+              ) : null}
             </div>
           ) : null}
         </section>

@@ -1,3 +1,6 @@
+/**
+ * Checks the details staff send when accepting, preparing, completing or cancelling an order.
+ */
 import { z } from 'zod';
 
 export const acceptRecipeOrderSchema = z

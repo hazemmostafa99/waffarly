@@ -1,3 +1,7 @@
+/**
+ * Links an order to a customer in the merchant customer book and shows that customer order history.
+ * This is separate from ownership of a Marketplace account.
+ */
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   LinkOrderCustomerRequest,

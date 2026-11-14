@@ -1,3 +1,6 @@
+/**
+ * Checks cashier selling access and prepares item prices and the choices saved with a sale.
+ */
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import type {
   CreatePosOrderResponse,
@@ -15,7 +18,6 @@ const MAX_ORDER_TOTAL_CENTS = 999_999_999_999n;
 
 export async function quotePosSaleItems(
   pricing: ProductPricingService,
-
   merchantId: string,
   request: PosOrderQuoteRequest,
   transaction?: Prisma.TransactionClient,

@@ -1,3 +1,7 @@
+/**
+ * Divides an order into bills by items, equal shares or chosen amounts.
+ * It keeps the full order value accounted for and prevents changes after payment starts.
+ */
 import { hash, replayAction } from '../fulfillment/order-action.rules.js';
 import {
   BadRequestException,
@@ -25,7 +29,6 @@ import { splitPosOrderChecksSchema } from '../dining/pos-dining.schemas.js';
 
 export async function splitOrderChecks(
   prisma: PrismaService,
-
   employee: PosEmployeeSession,
   orderId: string,
   input: SplitPosOrderChecksRequest,

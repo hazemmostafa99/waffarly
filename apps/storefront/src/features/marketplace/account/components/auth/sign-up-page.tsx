@@ -132,7 +132,9 @@ export function SignUpPage() {
               value={confirmation}
             />
           </div>
-          <p className="m-0 text-[12px] leading-5 text-muted-foreground">كلمة المرور من 8 إلى 128 حرفًا. استخدم كلمة يصعب تخمينها.</p>
+          <p className="m-0 text-[12px] leading-5 text-muted-foreground">
+            كلمة المرور من 8 إلى 128 حرفًا. استخدم كلمة يصعب تخمينها.
+          </p>
           {(error || signUp.isError) && (
             <p
               className="m-0 rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-xs leading-5 text-red-800"

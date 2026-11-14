@@ -52,10 +52,12 @@ export interface CancelPosOrderRequest {
   requestId: string;
   branchId: string;
   reason: string;
-  approval?: {
-    username: string;
-    password: string;
-  } | undefined;
+  approval?:
+    | {
+        username: string;
+        password: string;
+      }
+    | undefined;
 }
 
 export interface AcknowledgePosKitchenCancellationRequest {

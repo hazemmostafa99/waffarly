@@ -200,7 +200,9 @@ export function Dashboard() {
       orderValue,
       orders: periodOrders.length,
       customers: new Set(
-        nonRejected.map((order) => order.customerPhone).filter((phone): phone is string => Boolean(phone)),
+        nonRejected
+          .map((order) => order.customerPhone)
+          .filter((phone): phone is string => Boolean(phone)),
       ).size,
       average: nonRejected.length ? orderValue / nonRejected.length : 0,
     };

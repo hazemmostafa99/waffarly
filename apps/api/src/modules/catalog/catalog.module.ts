@@ -31,6 +31,11 @@ import { ProductService } from './products/product.service.js';
     ProductConsumptionService,
     CatalogQueryService,
   ],
-  exports: [MenuSettingsService, ProductPricingService, ProductConsumptionService, CatalogQueryService],
+  exports: [
+    MenuSettingsService,
+    ProductPricingService,
+    ProductConsumptionService,
+    CatalogQueryService,
+  ],
 })
 export class CatalogModule {}

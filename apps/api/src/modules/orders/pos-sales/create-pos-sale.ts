@@ -1,3 +1,6 @@
+/**
+ * Reviews prices and confirms a cashier sale with its items, stock effects and first bill.
+ */
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import type {
   CreatePosOrderResponse,

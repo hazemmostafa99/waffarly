@@ -191,7 +191,9 @@ test('admin template details deep link supports revisioned edits and availabilit
 
   await expect(page.locator('h1')).toHaveText('Garden');
   await expect(page.getByRole('heading', { name: 'Merchant eligibility' })).toBeVisible();
-  await expect(page.getByText('Only available designs are offered for new merchant selections.')).toBeVisible();
+  await expect(
+    page.getByText('Only available designs are offered for new merchant selections.'),
+  ).toBeVisible();
   await assertFits(page);
 
   await page.getByRole('button', { name: 'Edit design' }).click();

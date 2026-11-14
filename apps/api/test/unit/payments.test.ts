@@ -99,20 +99,32 @@ describe('POS check tenders', () => {
       approval: { username: 'supervisor', password: 'not-for-persistence' },
     };
     assert.deepEqual(parseRecordPosCheckRefundRequest(request), request);
-    assert.throws(() =>
-      parseRecordPosCheckRefundRequest({ ...request, allocations: [{ ...request.allocations[0], amount: '0.00' }] }),
+    assert.throws(
+      () =>
+        parseRecordPosCheckRefundRequest({
+          ...request,
+          allocations: [{ ...request.allocations[0], amount: '0.00' }],
+        }),
       BadRequestException,
     );
-    assert.throws(() =>
-      parseRecordPosCheckRefundRequest({ ...request, allocations: [request.allocations[0], request.allocations[0]] }),
+    assert.throws(
+      () =>
+        parseRecordPosCheckRefundRequest({
+          ...request,
+          allocations: [request.allocations[0], request.allocations[0]],
+        }),
       BadRequestException,
     );
-    assert.throws(() =>
-      parseRecordPosCheckRefundRequest({ ...request, reason: '   ' }),
+    assert.throws(
+      () => parseRecordPosCheckRefundRequest({ ...request, reason: '   ' }),
       BadRequestException,
     );
-    assert.throws(() =>
-      parseRecordPosCheckRefundRequest({ ...request, approval: { username: 'supervisor', password: 'x'.repeat(257) } }),
+    assert.throws(
+      () =>
+        parseRecordPosCheckRefundRequest({
+          ...request,
+          approval: { username: 'supervisor', password: 'x'.repeat(257) },
+        }),
       BadRequestException,
     );
   });

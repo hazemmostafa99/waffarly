@@ -1,3 +1,6 @@
+/**
+ * Receives cashier requests to follow deliveries and record their progress or courier collections.
+ */
 import {
   Body,
   Controller,

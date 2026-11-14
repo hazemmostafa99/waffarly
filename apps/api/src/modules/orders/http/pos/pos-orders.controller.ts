@@ -1,3 +1,6 @@
+/**
+ * Receives cashier requests for sales, kitchen work, order collection, payments, refunds and item returns.
+ */
 import {
   posOrderPageSchema,
   posActiveSalesPageSchema,

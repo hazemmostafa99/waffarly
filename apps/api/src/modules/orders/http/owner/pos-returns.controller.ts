@@ -1,3 +1,6 @@
+/**
+ * Receives owner requests for reports about returned items and recorded waste.
+ */
 import { Controller, Get, Inject, Query, UseGuards } from '@nestjs/common';
 import type { OwnerProfile } from '@waffarly/contracts';
 import { parseRequest } from '../../../../common/http/zod-validation.pipe.js';

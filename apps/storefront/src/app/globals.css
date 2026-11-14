@@ -74,7 +74,11 @@
     padding: 26px 30px;
     border: 1px solid #e2e7dd;
     border-radius: 20px;
-    background: linear-gradient(115deg, color-mix(in srgb, var(--store-accent) 10%, white), white 72%);
+    background: linear-gradient(
+      115deg,
+      color-mix(in srgb, var(--store-accent) 10%, white),
+      white 72%
+    );
   }
   .public-store-logo,
   .public-store-mark {
@@ -111,7 +115,11 @@
     min-height: 230px;
     padding: 40px;
     border-color: transparent;
-    background: linear-gradient(115deg, color-mix(in srgb, var(--store-accent) 20%, white), white 76%);
+    background: linear-gradient(
+      115deg,
+      color-mix(in srgb, var(--store-accent) 20%, white),
+      white 76%
+    );
   }
   .public-layout-hero .public-store-logo,
   .public-layout-hero .public-store-mark {

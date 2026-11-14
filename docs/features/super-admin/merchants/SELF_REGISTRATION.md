@@ -17,10 +17,10 @@ A restaurant owner submits an application containing four required contact field
 
 ## Actors and Permissions
 
-| Actor | Responsibility | Authority |
-| --- | --- | --- |
-| Restaurant owner / applicant | Submit the required application information. | No owner account or Merchant Dashboard access is created by submission. |
-| Super Admin | Review the submitted information, perform verification outside the application, and approve by creating merchant/owner records. | Authenticated administrator only. The existing administrator session mechanism is used in this slice. |
+| Actor                        | Responsibility                                                                                                                  | Authority                                                                                             |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Restaurant owner / applicant | Submit the required application information.                                                                                    | No owner account or Merchant Dashboard access is created by submission.                               |
+| Super Admin                  | Review the submitted information, perform verification outside the application, and approve by creating merchant/owner records. | Authenticated administrator only. The existing administrator session mechanism is used in this slice. |
 
 ## Use Cases and Business Rules
 
@@ -85,12 +85,12 @@ Rejection criteria, reason format/content constraints, applicant tracking UX, se
 
 The implemented slice stores the four submitted fields, submission timestamp, approval timestamp/administrator, rejection timestamp/administrator/reason, and a nullable unique link to its approved merchant. It has no user/account fields before approval. This model is scoped to the feature and does not finalize the overall merchant lifecycle schema.
 
-| Endpoint | Access | Behavior |
-| --- | --- | --- |
-| `POST /merchant-applications` | Public | Validate and store the four contact fields; return only `{ received: true }`. |
-| `GET /admin/merchant-applications` | Super Admin | List submitted applications for human review. |
+| Endpoint                                        | Access      | Behavior                                                                                                                                 |
+| ----------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /merchant-applications`                   | Public      | Validate and store the four contact fields; return only `{ received: true }`.                                                            |
+| `GET /admin/merchant-applications`              | Super Admin | List submitted applications for human review.                                                                                            |
 | `POST /admin/merchant-applications/:id/approve` | Super Admin | Accept `{ username, password }`; atomically approve, create/link merchant, and create owner account. Return the normal merchant summary. |
-| `POST /admin/merchant-applications/:id/reject` | Super Admin | Accept a required non-empty `{ reason }`; permanently reject the application and record reviewer/time. |
+| `POST /admin/merchant-applications/:id/reject`  | Super Admin | Accept a required non-empty `{ reason }`; permanently reject the application and record reviewer/time.                                   |
 
 Requests and responses use shared runtime-independent TypeScript contracts. The rejection endpoint and Super Admin reason/history response are implemented for this slice. No public endpoint exposes a rejection reason; per MER-D07, decide applicant access only after defining application-tracking UX. The API currently matches stored phone strings exactly after submission trimming; broader phone normalization remains OPEN.
 

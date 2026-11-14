@@ -40,8 +40,7 @@ export default async function StorefrontLayout({ children, params }: StorefrontL
   const [{ slug }, cookieStore] = await Promise.all([params, cookies()]);
   const requestHeaders = await headers();
   const handle = storefrontRequestHandle(requestHeaders);
-  const hostBased = handle !== null &&
-    handle === slug;
+  const hostBased = handle !== null && handle === slug;
   let catalog;
   try {
     catalog = await getStorefrontCatalog(slug);

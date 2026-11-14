@@ -65,17 +65,30 @@ export function createMarketplaceStore() {
         name: CART_STORAGE_KEY,
         version: 1,
         storage: createJSONStorage(() => localStorage),
-        partialize: (state) => ({ cart: state.cart, favorites: state.favorites, favoriteSnapshots: state.favoriteSnapshots }),
+        partialize: (state) => ({
+          cart: state.cart,
+          favorites: state.favorites,
+          favoriteSnapshots: state.favoriteSnapshots,
+        }),
         skipHydration: true,
         merge: (persistedState, currentState) => ({
           ...currentState,
           cart: readStoredCart((persistedState as { cart?: unknown } | undefined)?.cart),
-          favorites: Array.isArray((persistedState as { favorites?: unknown } | undefined)?.favorites)
-            ? [...new Set(((persistedState as { favorites: unknown[] }).favorites).filter(
-                (id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 200,
-              ))]
+          favorites: Array.isArray(
+            (persistedState as { favorites?: unknown } | undefined)?.favorites,
+          )
+            ? [
+                ...new Set(
+                  (persistedState as { favorites: unknown[] }).favorites.filter(
+                    (id): id is string =>
+                      typeof id === 'string' && id.length > 0 && id.length <= 200,
+                  ),
+                ),
+              ]
             : [],
-          favoriteSnapshots: readFavoriteSnapshots((persistedState as { favoriteSnapshots?: unknown } | undefined)?.favoriteSnapshots),
+          favoriteSnapshots: readFavoriteSnapshots(
+            (persistedState as { favoriteSnapshots?: unknown } | undefined)?.favoriteSnapshots,
+          ),
         }),
       },
     ),

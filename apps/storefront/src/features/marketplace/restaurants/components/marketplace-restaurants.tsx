@@ -8,8 +8,21 @@ import { restaurantHref } from '@/features/marketplace/restaurants/model/restaur
 export function MarketplaceRestaurants() {
   const remote = useRestaurants();
   const data = { restaurants: remote.data ?? [] };
-  if (remote.isPending) return <p role="status" className="p-5 text-sm">جارٍ تحميل المطاعم…</p>;
-  if (remote.isError) return <div role="alert" className="p-5 text-sm"><p>تعذر تحميل المطاعم من الخادم.</p><button type="button" onClick={() => remote.refetch()}>إعادة المحاولة</button></div>;
+  if (remote.isPending)
+    return (
+      <p role="status" className="p-5 text-sm">
+        جارٍ تحميل المطاعم…
+      </p>
+    );
+  if (remote.isError)
+    return (
+      <div role="alert" className="p-5 text-sm">
+        <p>تعذر تحميل المطاعم من الخادم.</p>
+        <button type="button" onClick={() => remote.refetch()}>
+          إعادة المحاولة
+        </button>
+      </div>
+    );
   return (
     <section
       className={

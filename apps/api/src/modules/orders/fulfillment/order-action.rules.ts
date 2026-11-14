@@ -1,3 +1,6 @@
+/**
+ * Recognizes an exact repeat of an earlier order action so it cannot be applied twice.
+ */
 import { createHash } from 'node:crypto';
 import { ConflictException } from '@nestjs/common';
 

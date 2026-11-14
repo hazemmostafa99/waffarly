@@ -1295,6 +1295,7 @@ The live receipt print button invokes the browser print dialog, where an operato
 - Ran `fnm exec --using 24.11.1 pnpm.cmd --filter @waffarly/api test:pos-db`: **2/2 passed** against the configured local PostgreSQL database. The integration fixture proves concurrent duplicate payment replay returns one result/effect, competing 0.75 EGP tenders against a 1.00 EGP check yield one success and a 0.25 EGP balance, and injected cash-journal failure rolls back payment, journal, order revision and settlement.
 - Ran `fnm exec --using 24.11.1 pnpm.cmd exec playwright test --config playwright.pos-receipt-detail.config.ts --reporter=list`: **10/10 passed** across desktop/mobile. Browser API calls are intercepted; this verifies UI recovery, not a live cashier-to-API/database journey or physical printer/PDF output.
 - Corrected the M5.5 Feature test command to point to the receipt-detail Playwright config that actually includes this case. Real cashier acceptance, physical 80mm printing and direct PDF generation remain open. Next, continue M9 hardening; the live owner-report journey still requires its disposable CI run.
+
 ## 2026-10-26 — Tracked COD delivery across register shifts (POS-D18)
 
 Implemented the user-approved delivery-only exception to unpaid shift closure and
@@ -1322,6 +1323,7 @@ concurrent run hit shared trace-folder ENOENT errors; isolated output fixed tear
 Existing Vite bundle advisories remain. Physical device/courier
 and cashier acceptance stay pending; follow the disposable 300 EGP scenario in
 the companion specification before rollout to a branch.
+
 ### 2026-10-26 — Close-preview variance requirements and Arabic validation
 
 Fixed the cashier's 2500 EGP blind-count preview path. Local validation messages
@@ -1340,7 +1342,6 @@ supervisor fields, block a close POST until reason and approval are provided,
 then complete one mocked close. Manual acceptance against the operator's real
 shift remains separate; refresh the POS to load the updated client.
 
-
 ### Shift screen: remove the standalone blind-count card
 
 - Removed the redundant blind-count heading, instructional box, and separate status-refresh button.
@@ -1348,6 +1349,7 @@ shift remains separate; refresh the POS to load the updated client.
 - The page Refresh button now refreshes register, current shift, and active reconciliation/latest close data.
 - Unpaid-check and pending-delivery warnings remain conditional; manual cash movement history remains available.
 - Validation: POS typecheck, lint, production build, shared UI build; 38/38 shift/delivery browser tests passed on desktop/mobile. The added refresh request assertion also passed on both viewports (2/2).
+
 # 2026-10-29 — POS order numbers and recovery
 
 Local recovery: the migration file's UTF-8 BOM initially caused PostgreSQL to reject it before any steps ran. The BOM was removed, the zero-step attempt was marked rolled back, and the corrected migration was applied to the local `waffarly` database. Read-only delivery-ready, active-sales and history service queries succeeded for the affected branch; number allocation succeeded in an intentionally rolled-back transaction. Concurrent database verification remains pending.

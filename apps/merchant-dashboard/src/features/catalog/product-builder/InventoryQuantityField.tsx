@@ -73,10 +73,7 @@ export function InventoryQuantityField({
           />
         ) : (
           <span className="inventory-quantity-disabled-hint">
-            {text(
-              'Select a stock item to set its unit.',
-              'اختر صنف المخزون أولًا لتحديد الوحدة',
-            )}
+            {text('Select a stock item to set its unit.', 'اختر صنف المخزون أولًا لتحديد الوحدة')}
           </span>
         )}
         {item && (units.length > 1 || !validUnit) ? (

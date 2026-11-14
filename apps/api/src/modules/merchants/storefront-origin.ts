@@ -20,8 +20,8 @@ export function storefrontRequestScope(
   }
   if (url.origin !== origin || url.username || url.password) return null;
   const local = allowLocal && url.hostname.endsWith('.localhost');
-  const production = baseDomain && url.protocol === 'https:' && !url.port &&
-    url.hostname.endsWith(`.${baseDomain}`);
+  const production =
+    baseDomain && url.protocol === 'https:' && !url.port && url.hostname.endsWith(`.${baseDomain}`);
   if (!local && !production) return null;
   const domain = local ? 'localhost' : baseDomain!;
   const base = `${url.protocol}//${domain}${url.port ? `:${url.port}` : ''}`;
@@ -30,7 +30,8 @@ export function storefrontRequestScope(
   const handle = url.hostname.slice(0, -(domain.length + 1));
   if (!isStorefrontHandle(handle)) return null;
   const customerRead = path === '/auth/customer/me' && ['GET', 'HEAD', 'OPTIONS'].includes(method);
-  const customerWrite = /^\/auth\/customer\/(?:sign-up|login|logout)$/.test(path) &&
+  const customerWrite =
+    /^\/auth\/customer\/(?:sign-up|login|logout)$/.test(path) &&
     ['POST', 'OPTIONS'].includes(method);
   if (customerRead || customerWrite) return { handle, slug: null };
   const catalog =

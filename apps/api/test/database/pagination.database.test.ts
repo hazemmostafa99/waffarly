@@ -155,7 +155,9 @@ it(
           );
           assert.equal((await categories.list(otherMerchant.id)).items.length, 1);
 
-          const publicPageOne = await publicCatalog.getPublicStorefrontCatalog(merchant.storefrontSlug);
+          const publicPageOne = await publicCatalog.getPublicStorefrontCatalog(
+            merchant.storefrontSlug,
+          );
           assert.equal(publicPageOne.products.length, 40);
           assert.equal(publicPageOne.categories.length, 100);
           assert.ok(publicPageOne.nextProductCursor);
@@ -184,18 +186,23 @@ it(
           assert.equal(publicCategoryPageThree.items.length, 1);
           assert.equal(publicCategoryPageThree.nextCursor, null);
           assert.equal(
-            new Set([
-              ...publicPageOne.categories,
-              ...publicCategoryPageTwo.items,
-              ...publicCategoryPageThree.items,
-            ].map(({ id }) => id)).size,
+            new Set(
+              [
+                ...publicPageOne.categories,
+                ...publicCategoryPageTwo.items,
+                ...publicCategoryPageThree.items,
+              ].map(({ id }) => id),
+            ).size,
             201,
           );
 
           const merchantPageOne = await merchants.list({ limit: 1 });
           assert.equal(merchantPageOne.items.length, 1);
           assert.ok(merchantPageOne.nextCursor);
-          const merchantPageTwo = await merchants.list({ limit: 1, cursor: merchantPageOne.nextCursor });
+          const merchantPageTwo = await merchants.list({
+            limit: 1,
+            cursor: merchantPageOne.nextCursor,
+          });
           assert.equal(merchantPageTwo.items.length, 1);
           assert.notEqual(merchantPageOne.items[0]!.id, merchantPageTwo.items[0]!.id);
 

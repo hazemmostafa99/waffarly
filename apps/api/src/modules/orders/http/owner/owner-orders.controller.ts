@@ -1,3 +1,6 @@
+/**
+ * Receives owner requests to view website orders and act on their preparation or cancellation.
+ */
 import { updateStatusSchema } from '../../checkout/storefront-checkout.schemas.js';
 import {
   Body,

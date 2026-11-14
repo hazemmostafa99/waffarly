@@ -1,3 +1,6 @@
+/**
+ * Sends a dining order to the kitchen and lets kitchen staff acknowledge a cancellation.
+ */
 import {
   ConflictException,
   ForbiddenException,

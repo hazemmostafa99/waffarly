@@ -1,3 +1,6 @@
+/**
+ * Adds newly ordered items to a kitchen ticket while keeping the existing sale and bill.
+ */
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import type {
   AddPosKitchenItemsRequest,

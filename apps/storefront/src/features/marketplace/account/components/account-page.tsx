@@ -294,7 +294,7 @@ export function AccountPage() {
         <MarketplaceSiteHeader />
       </Suspense>
       <main id="marketplace-main" tabIndex={-1} className="min-h-[60vh] pb-16 pt-5 sm:pt-7">
-        <MarketplaceContainer className={session.data ? "max-w-[1200px]" : undefined}>
+        <MarketplaceContainer className={session.data ? 'max-w-[1200px]' : undefined}>
           <nav
             aria-label="مسار التنقل"
             className="mb-4 flex items-center gap-2 text-xs text-muted-foreground"

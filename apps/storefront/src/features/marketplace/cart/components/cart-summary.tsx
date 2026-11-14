@@ -26,7 +26,12 @@ export function CartSummary({
       aria-labelledby="cart-summary-title"
     >
       <h2 id="cart-summary-title">ملخص السلة</h2>
-      {restaurantName && <p className="mt-0 mb-3 text-[13px] font-medium leading-6 text-accent">{restaurantName}{!restaurantSlug && ' · طلب تجريبي'}</p>}
+      {restaurantName && (
+        <p className="mt-0 mb-3 text-[13px] font-medium leading-6 text-accent">
+          {restaurantName}
+          {!restaurantSlug && ' · طلب تجريبي'}
+        </p>
+      )}
       <dl>
         <div>
           <dt>المنتجات المختلفة</dt>
@@ -46,7 +51,11 @@ export function CartSummary({
         </div>
       </dl>
       <p className={'detail-note text-[12px] leading-[1.8] text-muted-foreground'}>
-        {restaurantSlug ? 'السعر النهائي ورسوم التوصيل تُراجع مع المطعم عند إتمام الطلب؛ الاستلام بدون رسوم توصيل.' : restaurantName ? 'الإجمالي يشمل اختيارات الوجبات. رسوم التوصيل التجريبية تظهر في الخطوة التالية؛ الاستلام بدون رسوم توصيل.' : 'الشحن وأي رسوم إضافية غير محسوبة في هذه التجربة.'}
+        {restaurantSlug
+          ? 'السعر النهائي ورسوم التوصيل تُراجع مع المطعم عند إتمام الطلب؛ الاستلام بدون رسوم توصيل.'
+          : restaurantName
+            ? 'الإجمالي يشمل اختيارات الوجبات. رسوم التوصيل التجريبية تظهر في الخطوة التالية؛ الاستلام بدون رسوم توصيل.'
+            : 'الشحن وأي رسوم إضافية غير محسوبة في هذه التجربة.'}
       </p>
       <Link
         className={cn(
@@ -58,11 +67,17 @@ export function CartSummary({
         متابعة لإتمام الطلب
       </Link>
       <p className={'cart-checkout-note text-muted-foreground text-[11px] leading-[1.8] my-3 mx-0'}>
-        {restaurantSlug ? 'راجع بياناتك والسعر النهائي ثم أكّد إرسال الطلب للمطعم. لا يوجد دفع إلكتروني.' : 'الخطوة التالية تجربة محلية فقط، بدون إرسال طلب أو دفع حقيقي.'}
+        {restaurantSlug
+          ? 'راجع بياناتك والسعر النهائي ثم أكّد إرسال الطلب للمطعم. لا يوجد دفع إلكتروني.'
+          : 'الخطوة التالية تجربة محلية فقط، بدون إرسال طلب أو دفع حقيقي.'}
       </p>
       <Link
         className={'cart-continue-link block text-center text-accent no-underline text-[13px] pt-2'}
-        href={restaurantName ? `/restaurants/${encodeURIComponent(restaurantSlug ?? restaurantName)}` : '/#deals'}
+        href={
+          restaurantName
+            ? `/restaurants/${encodeURIComponent(restaurantSlug ?? restaurantName)}`
+            : '/#deals'
+        }
       >
         {restaurantName ? 'كمّل من منيو المطعم ←' : 'متابعة التسوق ←'}
       </Link>

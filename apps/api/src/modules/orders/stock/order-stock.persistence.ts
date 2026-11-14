@@ -1,3 +1,6 @@
+/**
+ * Remembers the stock needed by an order and applies or reverses its recorded stock use.
+ */
 import { ConflictException } from '@nestjs/common';
 import type { Prisma } from '@waffarly/database';
 import { randomUUID } from 'node:crypto';

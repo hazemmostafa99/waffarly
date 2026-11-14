@@ -16,7 +16,10 @@ it(
   'reconciles cash and terminal tenders, requires supervisor approvals, blocks unsettled checks, and closes idempotently',
   { skip: !databaseUrl },
   async () => {
-    assert.ok(databaseUrl, 'Configure DATABASE_URL and apply the POS shift reconciliation migration.');
+    assert.ok(
+      databaseUrl,
+      'Configure DATABASE_URL and apply the POS shift reconciliation migration.',
+    );
     const prisma = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
     const merchantIds: string[] = [];
     const orderIds: string[] = [];
@@ -89,7 +92,12 @@ it(
         username: supervisorRecord.username,
         displayName: supervisorRecord.displayName,
         role: 'supervisor',
-        permissions: ['open_register_shift', 'sell', 'approve_shift_close', 'manage_cash_movements'],
+        permissions: [
+          'open_register_shift',
+          'sell',
+          'approve_shift_close',
+          'manage_cash_movements',
+        ],
         branches: [{ id: branch.id, name: branch.name, archivedAt: null }],
       };
       const service = new ShiftsService(prisma as unknown as PrismaService);
@@ -252,10 +260,15 @@ it(
         1,
       );
       await assert.rejects(
-        service.recordManualCashMovement(cashier, shift.id, {
-          ...cashInRequest,
-          amount: '11.00',
-        }, supervisor.id),
+        service.recordManualCashMovement(
+          cashier,
+          shift.id,
+          {
+            ...cashInRequest,
+            amount: '11.00',
+          },
+          supervisor.id,
+        ),
         (error: unknown) => error instanceof ConflictException,
       );
       const cashOut = await service.recordManualCashMovement(
@@ -296,18 +309,21 @@ it(
       assert.equal(cashDrop.movement.kind, 'cash_drop');
       assert.equal(cashDrop.movement.dropReference, 'SAFE-BAG-1042');
       assert.equal(cashDrop.movement.approvedByName, supervisor.displayName);
-      assert.equal(await prisma.posShiftManualCashMovement.count({ where: { merchantId: merchant.id } }), 3);
       assert.equal(
-        'expectedCash' in await service.getReconciliation(cashier, shift.id),
-        false,
+        await prisma.posShiftManualCashMovement.count({ where: { merchantId: merchant.id } }),
+        3,
       );
-      assert.deepEqual(await service.previewCloseShift(cashier, shift.id, {
-        countedCash: '130.00',
-      }), {
-        unsettledCheckCount: 1,
-        requiresReason: false,
-        requiresSupervisorApproval: false,
-      });
+      assert.equal('expectedCash' in (await service.getReconciliation(cashier, shift.id)), false);
+      assert.deepEqual(
+        await service.previewCloseShift(cashier, shift.id, {
+          countedCash: '130.00',
+        }),
+        {
+          unsettledCheckCount: 1,
+          requiresReason: false,
+          requiresSupervisorApproval: false,
+        },
+      );
       await assert.rejects(
         service.closeShift(cashier, shift.id, {
           requestId: randomUUID(),
@@ -325,21 +341,27 @@ it(
         countedCash: '131.00',
         reason: 'One pound cash count variance',
       };
-      assert.deepEqual(await service.previewCloseShift(cashier, shift.id, {
-        countedCash: closeRequest.countedCash,
-      }), {
-        unsettledCheckCount: 0,
-        requiresReason: true,
-        requiresSupervisorApproval: true,
-      });
-      assert.deepEqual(await service.previewCloseShift(cashier, shift.id, {
-        countedCash: closeRequest.countedCash,
-        reason: closeRequest.reason,
-      }), {
-        unsettledCheckCount: 0,
-        requiresReason: false,
-        requiresSupervisorApproval: true,
-      });
+      assert.deepEqual(
+        await service.previewCloseShift(cashier, shift.id, {
+          countedCash: closeRequest.countedCash,
+        }),
+        {
+          unsettledCheckCount: 0,
+          requiresReason: true,
+          requiresSupervisorApproval: true,
+        },
+      );
+      assert.deepEqual(
+        await service.previewCloseShift(cashier, shift.id, {
+          countedCash: closeRequest.countedCash,
+          reason: closeRequest.reason,
+        }),
+        {
+          unsettledCheckCount: 0,
+          requiresReason: false,
+          requiresSupervisorApproval: true,
+        },
+      );
       await assert.rejects(
         service.closeShift(cashier, shift.id, closeRequest),
         (error: unknown) => error instanceof ForbiddenException,
@@ -361,10 +383,14 @@ it(
       assert.equal((await service.getLatestCloseReport(cashier, register.id))?.id, report.id);
       assert.equal((await service.getCloseReport(cashier, shift.id)).variance, '1.00');
 
-      const secondRegister = await service.createRegister(merchant.id, 'pos-shift-reconciliation-test', {
-        branchId: branch.id,
-        name: 'Second reconciliation register',
-      });
+      const secondRegister = await service.createRegister(
+        merchant.id,
+        'pos-shift-reconciliation-test',
+        {
+          branchId: branch.id,
+          name: 'Second reconciliation register',
+        },
+      );
       const secondShift = await service.openShift(cashier, {
         registerId: secondRegister.id,
         requestId: randomUUID(),
@@ -467,7 +493,10 @@ it(
         limit: 10,
       });
       assert.equal(allBranchReports.items.length, 2);
-      assert.equal(allBranchReports.items.every((item) => item.branchId === branch.id), true);
+      assert.equal(
+        allBranchReports.items.every((item) => item.branchId === branch.id),
+        true,
+      );
       const outsideRange = await service.listOwnerCloseReports(merchant.id, {
         from: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
         to: new Date(Date.now() + 366 * 24 * 60 * 60 * 1000).toISOString(),

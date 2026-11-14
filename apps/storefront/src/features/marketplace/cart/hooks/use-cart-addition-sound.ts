@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useCartStore } from './use-cart-store';
 
 export function useCartAdditionSound() {
-  const additionId = useCartStore(state => state.cartAddition?.id);
+  const additionId = useCartStore((state) => state.cartAddition?.id);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const context = useRef<AudioContext | null>(null);
   const playedId = useRef<string | undefined>(undefined);
@@ -16,7 +16,9 @@ export function useCartAdditionSound() {
       try {
         context.current ??= new AudioContext();
         if (context.current.state === 'suspended') void context.current.resume().catch(() => {});
-      } catch { /* Audio is optional; cart feedback remains visible. */ }
+      } catch {
+        /* Audio is optional; cart feedback remains visible. */
+      }
     }
     document.addEventListener('pointerdown', unlock, true);
     document.addEventListener('keydown', unlock, true);
@@ -33,7 +35,11 @@ export function useCartAdditionSound() {
     if (!additionId || additionId === playedId.current) return;
     playedId.current = additionId;
     if (soundEnabled && typeof navigator.vibrate === 'function') {
-      try { navigator.vibrate([65, 45, 85]); } catch { /* Unsupported hardware or browser policy. */ }
+      try {
+        navigator.vibrate([65, 45, 85]);
+      } catch {
+        /* Unsupported hardware or browser policy. */
+      }
     }
     const audio = context.current;
     if (!soundEnabled || !audio || audio.state !== 'running') return;
@@ -52,10 +58,15 @@ export function useCartAdditionSound() {
         gain.connect(audio.destination);
         oscillator.start(at);
         oscillator.stop(at + 0.31);
-        oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
+        oscillator.onended = () => {
+          oscillator.disconnect();
+          gain.disconnect();
+        };
       });
-    } catch { /* Audio must never interrupt an add-to-cart operation. */ }
+    } catch {
+      /* Audio must never interrupt an add-to-cart operation. */
+    }
   }, [additionId, soundEnabled]);
 
-  return { soundEnabled, toggleSound: () => setSoundEnabled(value => !value) };
+  return { soundEnabled, toggleSound: () => setSoundEnabled((value) => !value) };
 }

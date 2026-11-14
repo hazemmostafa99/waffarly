@@ -1,3 +1,6 @@
+/**
+ * Checks the details sent when staff view or update deliveries.
+ */
 import { z } from 'zod';
 
 const base = { requestId: z.string().uuid(), revision: z.number().int().positive() };

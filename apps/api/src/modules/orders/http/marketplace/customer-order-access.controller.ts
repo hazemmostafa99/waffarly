@@ -1,3 +1,6 @@
+/**
+ * Receives customer requests to view their orders or add a guest order to their account.
+ */
 import {
   Body,
   Controller,

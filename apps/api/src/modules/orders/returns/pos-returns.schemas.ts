@@ -1,3 +1,6 @@
+/**
+ * Checks the details for an item return and the dates and branch used in return reports.
+ */
 import type { RecordPosItemReturnRequest } from '@waffarly/contracts';
 import { z } from 'zod';
 import { parseRequest } from '../../../common/http/zod-validation.pipe.js';

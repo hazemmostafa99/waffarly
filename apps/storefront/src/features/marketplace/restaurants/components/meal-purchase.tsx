@@ -38,7 +38,8 @@ export function MealPurchase({
   onSaved?: () => void;
 }) {
   const [selection, setSelection] = useState<MealSelection>(() =>
-    editLine ? structuredClone(editLine.selection ?? {}) : defaultMealSelection(product));
+    editLine ? structuredClone(editLine.selection ?? {}) : defaultMealSelection(product),
+  );
   const [quantity, setQuantity] = useState(editLine?.quantity ?? 1);
   const [notice, setNotice] = useState('');
   const [replaceOpen, setReplaceOpen] = useState(false);
@@ -81,8 +82,17 @@ export function MealPurchase({
       return;
     }
     if (editLine) {
-      if (!update(editLine.lineId, selection, quantity, quote.data ? Number(quote.data.totalPrice) : undefined)) {
-        setNotice('تعذر حفظ التعديلات. راجع توفر الصنف والاختيارات والحد الأقصى للكمية بعد دمج الأصناف المتطابقة.');
+      if (
+        !update(
+          editLine.lineId,
+          selection,
+          quantity,
+          quote.data ? Number(quote.data.totalPrice) : undefined,
+        )
+      ) {
+        setNotice(
+          'تعذر حفظ التعديلات. راجع توفر الصنف والاختيارات والحد الأقصى للكمية بعد دمج الأصناف المتطابقة.',
+        );
         return;
       }
       onSaved?.();
@@ -124,7 +134,9 @@ export function MealPurchase({
         'flex min-h-0 flex-col bg-card',
         presentation === 'dialog'
           ? 'flex-1 overflow-hidden'
-          : presentation === 'page' ? 'overflow-visible pb-24 md:pb-0' : 'overflow-hidden rounded-2xl border border-border',
+          : presentation === 'page'
+            ? 'overflow-visible pb-24 md:pb-0'
+            : 'overflow-hidden rounded-2xl border border-border',
         presentation === 'page' ? 'mt-3' : presentation === 'inline' && 'mt-5',
       )}
       aria-label={serverProduct ? 'اختيارات الوجبة' : 'اختيارات الوجبة التجريبية'}
@@ -180,13 +192,18 @@ export function MealPurchase({
             <fieldset
               key={group.id}
               disabled={!available}
-              className={cn(
-                'm-0 min-w-0 border-0 p-0',
-
-              )}
+              className={cn('m-0 min-w-0 border-0 p-0')}
             >
-              <legend className={presentation === 'page' ? 'mb-1.5 w-full p-0' : 'mb-2.5 w-full p-0'}>
-                <span className={presentation === 'page' ? 'flex items-center gap-2' : 'flex items-center justify-between gap-3'}>
+              <legend
+                className={presentation === 'page' ? 'mb-1.5 w-full p-0' : 'mb-2.5 w-full p-0'}
+              >
+                <span
+                  className={
+                    presentation === 'page'
+                      ? 'flex items-center gap-2'
+                      : 'flex items-center justify-between gap-3'
+                  }
+                >
                   <span className="inline-flex items-center gap-2 text-[14px] font-bold text-foreground">
                     {group.label}
                   </span>
@@ -207,7 +224,17 @@ export function MealPurchase({
                   </span>
                 )}
               </legend>
-              <div className={presentation === 'page' ? (group.selectionMode === 'single' ? 'flex flex-wrap gap-2' : 'grid gap-0.5') : group.required ? 'grid grid-cols-2 gap-2.5' : 'grid gap-2'}>
+              <div
+                className={
+                  presentation === 'page'
+                    ? group.selectionMode === 'single'
+                      ? 'flex flex-wrap gap-2'
+                      : 'grid gap-0.5'
+                    : group.required
+                      ? 'grid grid-cols-2 gap-2.5'
+                      : 'grid gap-2'
+                }
+              >
                 {group.selectionMode === 'single' && !group.required && (
                   <label className="flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border border-border px-3 py-2 text-[13px]">
                     <input
@@ -233,23 +260,33 @@ export function MealPurchase({
                         presentation === 'page'
                           ? 'flex min-h-10 items-center justify-between gap-3 py-2'
                           : group.required
-                          ? 'flex flex-col gap-1.5 py-2.5'
-                          : 'flex items-center justify-between gap-3 py-2',
+                            ? 'flex flex-col gap-1.5 py-2.5'
+                            : 'flex items-center justify-between gap-3 py-2',
                         checked
                           ? 'border-accent bg-[var(--purple-50)]'
                           : 'border-border bg-card hover:border-[var(--purple-100)] hover:bg-[var(--purple-50)]',
-                        presentation === 'page' && group.selectionMode === 'multiple' && 'rounded-lg border-0 px-2',
+                        presentation === 'page' &&
+                          group.selectionMode === 'multiple' &&
+                          'rounded-lg border-0 px-2',
                         !available && 'cursor-not-allowed opacity-50',
                       )}
                     >
-                      <span className={cn('flex items-center gap-2 text-[13px] font-medium', presentation === 'page' && 'text-[14px]')}>
+                      <span
+                        className={cn(
+                          'flex items-center gap-2 text-[13px] font-medium',
+                          presentation === 'page' && 'text-[14px]',
+                        )}
+                      >
                         <input
                           type={group.selectionMode === 'single' ? 'radio' : 'checkbox'}
                           name={`${product.id}-${group.id}`}
                           className="m-0 size-4 shrink-0 accent-[var(--purple-700)]"
                           checked={checked}
-                          disabled={group.selectionMode === 'multiple' && !checked &&
-                            (selection[group.id]?.length ?? 0) >= group.maxSelections}
+                          disabled={
+                            group.selectionMode === 'multiple' &&
+                            !checked &&
+                            (selection[group.id]?.length ?? 0) >= group.maxSelections
+                          }
                           onChange={(event) => {
                             const nextChecked = event.target.checked;
                             setNotice('');
@@ -352,7 +389,6 @@ export function MealPurchase({
             <QuantitySelector value={quantity} onChange={setQuantity} />
           </div>
         </div>
-
       </div>
       <MarketplaceDialog
         open={replaceOpen}

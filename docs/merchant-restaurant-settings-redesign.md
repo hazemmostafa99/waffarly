@@ -30,7 +30,6 @@ No tests, browser automation, typecheck, lint or build were run as requested.
 The user-provided screenshots guided the redesign; the new rendering is manually
 unverified. No live merchant settings or seeded data were changed by this redesign.
 
-
 ## Settings simplification
 
 - Removed the menu management tab and its mounted editor from restaurant settings.

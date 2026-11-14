@@ -21,7 +21,13 @@ import {
 import { recordPosCheckPayment } from '../payments/pos-payments.api.js';
 import { useDeliveryRecovery, type PendingDeliveryWrite } from './delivery-recovery.js';
 
-type ReadyDelivery = { id: string; orderReference?: string | null; revision: number; total: string; customerName: string | null };
+type ReadyDelivery = {
+  id: string;
+  orderReference?: string | null;
+  revision: number;
+  total: string;
+  customerName: string | null;
+};
 type DeliveryView = 'ready' | 'delivery' | 'cash' | 'history';
 
 export function PosDeliveryRecoveryNotice({ employee }: { employee: PosEmployeeSession }) {
@@ -377,7 +383,10 @@ export function PosDeliveryScreen() {
             </span>
             {!shift.data && (
               <span className="text-muted-foreground">
-                {text('Open a shift before receiving courier cash.', 'افتح وردية قبل استلام كاش الطيار.')}
+                {text(
+                  'Open a shift before receiving courier cash.',
+                  'افتح وردية قبل استلام كاش الطيار.',
+                )}
               </span>
             )}
             <Link className="underline" to="/shift">
@@ -398,12 +407,30 @@ export function PosDeliveryScreen() {
           aria-label={text('Delivery work queues', 'قوائم متابعة الدليفري')}
           className="flex overflow-x-auto border-b border-border"
         >
-          {([
-            { id: 'ready', label: text('Ready to dispatch', 'جاهز للتوصيل'), count: ready.data?.items.length },
-            { id: 'delivery', label: text('Delivery follow-up', 'متابعة التوصيل'), count: activeView === 'history' ? undefined : deliveryFollowups.length },
-            { id: 'cash', label: text('Courier cash', 'تحصيل كاش الطيار'), count: activeView === 'history' ? undefined : cashDeliveries.length },
-            { id: 'history', label: text('History', 'السجل'), count: activeView === 'history' ? historyDeliveries.length : undefined },
-          ] as const).map((view) => (
+          {(
+            [
+              {
+                id: 'ready',
+                label: text('Ready to dispatch', 'جاهز للتوصيل'),
+                count: ready.data?.items.length,
+              },
+              {
+                id: 'delivery',
+                label: text('Delivery follow-up', 'متابعة التوصيل'),
+                count: activeView === 'history' ? undefined : deliveryFollowups.length,
+              },
+              {
+                id: 'cash',
+                label: text('Courier cash', 'تحصيل كاش الطيار'),
+                count: activeView === 'history' ? undefined : cashDeliveries.length,
+              },
+              {
+                id: 'history',
+                label: text('History', 'السجل'),
+                count: activeView === 'history' ? historyDeliveries.length : undefined,
+              },
+            ] as const
+          ).map((view) => (
             <button
               key={view.id}
               id={`delivery-tab-${view.id}`}
@@ -419,7 +446,9 @@ export function PosDeliveryScreen() {
             >
               <span>{view.label}</span>
               {view.count !== undefined && (
-                <span className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${activeView === view.id ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs tabular-nums ${activeView === view.id ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}
+                >
                   {view.count}
                 </span>
               )}
@@ -427,7 +456,10 @@ export function PosDeliveryScreen() {
           ))}
         </div>
         <p className="-mt-2 text-xs text-muted-foreground">
-          {text('Counts reflect the orders on the current page.', 'الأعداد بتوضح الطلبات الظاهرة في الصفحة الحالية.')}
+          {text(
+            'Counts reflect the orders on the current page.',
+            'الأعداد بتوضح الطلبات الظاهرة في الصفحة الحالية.',
+          )}
         </p>
 
         <div
@@ -439,13 +471,20 @@ export function PosDeliveryScreen() {
           {activeView === 'ready' && (
             <>
               <div>
-                <h2 className="text-lg font-semibold">{text('Ready to dispatch', 'جاهز للتوصيل')}</h2>
-                <p className="text-sm text-muted-foreground">{text('Choose a courier for each prepared order.', 'اختار الطيار لكل طلب جاهز.')}</p>
+                <h2 className="text-lg font-semibold">
+                  {text('Ready to dispatch', 'جاهز للتوصيل')}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {text('Choose a courier for each prepared order.', 'اختار الطيار لكل طلب جاهز.')}
+                </p>
               </div>
               {ready.isLoading && <p>{text('Loading orders...', 'جارٍ تحميل الطلبات...')}</p>}
               {ready.data?.items.length === 0 && (
                 <p className="rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground">
-                  {text('All set. There are no orders waiting for dispatch.', 'تمام، مفيش طلبات مستنية التوصيل.')}
+                  {text(
+                    'All set. There are no orders waiting for dispatch.',
+                    'تمام، مفيش طلبات مستنية التوصيل.',
+                  )}
                 </p>
               )}
               {ready.data?.items.map((order) => (
@@ -482,15 +521,23 @@ export function PosDeliveryScreen() {
           {activeView === 'delivery' && (
             <>
               <div>
-                <h2 className="text-lg font-semibold">{text('Delivery follow-up', 'متابعة التوصيل')}</h2>
+                <h2 className="text-lg font-semibold">
+                  {text('Delivery follow-up', 'متابعة التوصيل')}
+                </h2>
                 <p className="text-sm text-muted-foreground">
-                  {text('Confirm delivery, record a failed attempt, or collect an outstanding customer payment.', 'أكد التوصيل، سجل محاولة فاشلة، أو سجل المبلغ المتبقي على العميل.')}
+                  {text(
+                    'Confirm delivery, record a failed attempt, or collect an outstanding customer payment.',
+                    'أكد التوصيل، سجل محاولة فاشلة، أو سجل المبلغ المتبقي على العميل.',
+                  )}
                 </p>
               </div>
               {list.isLoading && <p>{text('Loading orders...', 'جارٍ تحميل الطلبات...')}</p>}
               {list.data && deliveryFollowups.length === 0 && (
                 <p className="rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground">
-                  {text('No delivery follow-up is needed right now.', 'مفيش طلبات محتاجة متابعة توصيل حاليًا.')}
+                  {text(
+                    'No delivery follow-up is needed right now.',
+                    'مفيش طلبات محتاجة متابعة توصيل حاليًا.',
+                  )}
                 </p>
               )}
               {deliveryFollowups.map((delivery) => (
@@ -517,31 +564,56 @@ export function PosDeliveryScreen() {
           {activeView === 'cash' && (
             <>
               <div>
-                <h2 className="text-lg font-semibold">{text('Cash to receive from couriers', 'كاش مطلوب استلامه من الطيارين')}</h2>
+                <h2 className="text-lg font-semibold">
+                  {text('Cash to receive from couriers', 'كاش مطلوب استلامه من الطيارين')}
+                </h2>
                 <p className="text-sm text-muted-foreground">
-                  {text('Groups and totals cover the orders on this page. Use Next to continue through the list.', 'التجميع والإجمالي للطلبات الظاهرة في الصفحة دي. استخدم التالي عشان تكمل باقي القائمة.')}
+                  {text(
+                    'Groups and totals cover the orders on this page. Use Next to continue through the list.',
+                    'التجميع والإجمالي للطلبات الظاهرة في الصفحة دي. استخدم التالي عشان تكمل باقي القائمة.',
+                  )}
                 </p>
               </div>
-              {list.isLoading && <p>{text('Loading cash balances...', 'جارٍ تحميل أرصدة الكاش...')}</p>}
+              {list.isLoading && (
+                <p>{text('Loading cash balances...', 'جارٍ تحميل أرصدة الكاش...')}</p>
+              )}
               {list.data && cashGroups.length === 0 && (
                 <p className="rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground">
-                  {text('No courier cash is waiting to be received.', 'مفيش كاش مستني التوريد من الطيارين.')}
+                  {text(
+                    'No courier cash is waiting to be received.',
+                    'مفيش كاش مستني التوريد من الطيارين.',
+                  )}
                 </p>
               )}
               {cashGroups.map(([courierName, orders]) => {
-                const totalCents = orders.reduce((sum, order) => sum + amountToCents(order.courierCashHeld), 0);
+                const totalCents = orders.reduce(
+                  (sum, order) => sum + amountToCents(order.courierCashHeld),
+                  0,
+                );
                 return (
-                  <section key={courierName} className="overflow-hidden rounded-xl border border-border bg-card">
+                  <section
+                    key={courierName}
+                    className="overflow-hidden rounded-xl border border-border bg-card"
+                  >
                     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/30 px-4 py-3">
                       <div>
                         <h3 className="font-semibold">{courierName}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {text(`${orders.length} order${orders.length === 1 ? '' : 's'}`, `${orders.length} طلب`)}
+                          {text(
+                            `${orders.length} order${orders.length === 1 ? '' : 's'}`,
+                            `${orders.length} طلب`,
+                          )}
                         </p>
                       </div>
                       <p className="text-end">
-                        <span className="block text-xs text-muted-foreground">{text('Cash still with courier', 'الكاش المتبقي مع الطيار')}</span>
-                        <strong className="text-lg tabular-nums"><bdi dir="ltr">{formatCents(totalCents, locale)} {text('EGP', 'ج.م.')}</bdi></strong>
+                        <span className="block text-xs text-muted-foreground">
+                          {text('Cash still with courier', 'الكاش المتبقي مع الطيار')}
+                        </span>
+                        <strong className="text-lg tabular-nums">
+                          <bdi dir="ltr">
+                            {formatCents(totalCents, locale)} {text('EGP', 'ج.م.')}
+                          </bdi>
+                        </strong>
                       </p>
                     </header>
                     <div className="divide-y divide-border">
@@ -573,15 +645,23 @@ export function PosDeliveryScreen() {
           {activeView === 'history' && (
             <>
               <div>
-                <h2 className="text-lg font-semibold">{text('Completed deliveries', 'الطلبات المكتملة')}</h2>
+                <h2 className="text-lg font-semibold">
+                  {text('Completed deliveries', 'الطلبات المكتملة')}
+                </h2>
                 <p className="text-sm text-muted-foreground">
-                  {text('Delivered orders with customer balances and courier cash fully settled.', 'الطلبات اللي اتسلمت واتصفى حساب العميل وكاش الطيار فيها.')}
+                  {text(
+                    'Delivered orders with customer balances and courier cash fully settled.',
+                    'الطلبات اللي اتسلمت واتصفى حساب العميل وكاش الطيار فيها.',
+                  )}
                 </p>
               </div>
               {list.isLoading && <p>{text('Loading history...', 'جارٍ تحميل السجل...')}</p>}
               {list.data && historyDeliveries.length === 0 && (
                 <p className="rounded-xl border border-dashed border-border p-6 text-center text-muted-foreground">
-                  {text('No completed deliveries in this part of the history.', 'مفيش طلبات مكتملة في الجزء ده من السجل.')}
+                  {text(
+                    'No completed deliveries in this part of the history.',
+                    'مفيش طلبات مكتملة في الجزء ده من السجل.',
+                  )}
                 </p>
               )}
               {historyDeliveries.map((delivery) => (
@@ -632,12 +712,22 @@ function DispatchCard({
       }}
     >
       <div className="min-w-0">
-        <p className="text-xs text-muted-foreground">{text('Ready for dispatch', 'جاهز للتوصيل')}</p>
-        <h3 className="truncate font-semibold">{order.customerName || text('Customer name unavailable', 'اسم العميل غير متاح')}</h3>
+        <p className="text-xs text-muted-foreground">
+          {text('Ready for dispatch', 'جاهز للتوصيل')}
+        </p>
+        <h3 className="truncate font-semibold">
+          {order.customerName || text('Customer name unavailable', 'اسم العميل غير متاح')}
+        </h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          {text('Order', 'طلب')} <bdi dir="ltr">{order.orderReference ?? `#${order.id.slice(0, 8)}`}</bdi>
+          {text('Order', 'طلب')}{' '}
+          <bdi dir="ltr">{order.orderReference ?? `#${order.id.slice(0, 8)}`}</bdi>
           <span className="mx-2">·</span>
-          {text('Total', 'الإجمالي')} <strong className="tabular-nums"><bdi dir="ltr">{order.total} {text('EGP', 'ج.م.')}</bdi></strong>
+          {text('Total', 'الإجمالي')}{' '}
+          <strong className="tabular-nums">
+            <bdi dir="ltr">
+              {order.total} {text('EGP', 'ج.م.')}
+            </bdi>
+          </strong>
         </p>
       </div>
       <label className="grid gap-1">
@@ -727,7 +817,8 @@ function CourierCashOrder({
     <article className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] sm:items-center">
       <div className="min-w-0">
         <p className="font-semibold">
-          {text('Order', 'طلب')} <bdi dir="ltr">{d.orderReference ?? `#${d.orderId.slice(0, 8)}`}</bdi>
+          {text('Order', 'طلب')}{' '}
+          <bdi dir="ltr">{d.orderReference ?? `#${d.orderId.slice(0, 8)}`}</bdi>
           <span className="mx-2 text-muted-foreground">·</span>
           {d.status === 'delivered'
             ? text('Delivered', 'تم التوصيل')
@@ -737,15 +828,22 @@ function CourierCashOrder({
         </p>
         <p className="mt-1 text-sm text-muted-foreground">
           {text('Customer still owes', 'المتبقي على العميل')}:{' '}
-          <bdi dir="ltr">{d.customerDue} {text('EGP', 'ج.م.')}</bdi>
+          <bdi dir="ltr">
+            {d.customerDue} {text('EGP', 'ج.م.')}
+          </bdi>
         </p>
         <p className="mt-1 font-semibold tabular-nums">
           {text('To receive', 'المطلوب استلامه')}:{' '}
-          <bdi dir="ltr">{d.courierCashHeld} {text('EGP', 'ج.م.')}</bdi>
+          <bdi dir="ltr">
+            {d.courierCashHeld} {text('EGP', 'ج.م.')}
+          </bdi>
         </p>
         {!mine && (
           <p className="mt-2 text-xs text-muted-foreground">
-            {text('The assigned employee or a supervisor can receive this cash.', 'مسؤول المتابعة أو المشرف يقدر يستلم الكاش ده.')}
+            {text(
+              'The assigned employee or a supervisor can receive this cash.',
+              'مسؤول المتابعة أو المشرف يقدر يستلم الكاش ده.',
+            )}
           </p>
         )}
       </div>
@@ -779,7 +877,10 @@ function CourierCashOrder({
                 onChange={(event) => {
                   const nextPaymentId = event.target.value;
                   setPaymentId(nextPaymentId);
-                  setAmount(d.courierPayments.find((payment) => payment.id === nextPaymentId)?.remaining ?? '');
+                  setAmount(
+                    d.courierPayments.find((payment) => payment.id === nextPaymentId)?.remaining ??
+                      '',
+                  );
                 }}
               >
                 {d.courierPayments
@@ -869,7 +970,11 @@ function DeliveryCard({
                 amount: customerPaymentAmount,
                 ...(reference.trim() ? { terminalReference: reference.trim() } : {}),
               }
-            : { method: 'cash', amount: customerPaymentAmount, receivedAmount: customerPaymentAmount },
+            : {
+                method: 'cash',
+                amount: customerPaymentAmount,
+                receivedAmount: customerPaymentAmount,
+              },
         ],
       },
     });
@@ -879,9 +984,12 @@ function DeliveryCard({
       <header>
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="font-semibold">
-            {text('Order', 'طلب')} <bdi dir="ltr">{d.orderReference ?? `#${d.orderId.slice(0, 8)}`}</bdi>
+            {text('Order', 'طلب')}{' '}
+            <bdi dir="ltr">{d.orderReference ?? `#${d.orderId.slice(0, 8)}`}</bdi>
           </h3>
-          <span className={`rounded-full px-2.5 py-1 text-xs ${d.status === 'failed' ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'}`}>
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs ${d.status === 'failed' ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'}`}
+          >
             {d.status === 'delivered'
               ? text('Delivered', 'تم التوصيل')
               : d.status === 'failed'
@@ -898,12 +1006,24 @@ function DeliveryCard({
       </header>
       <div className="grid gap-2 sm:grid-cols-2">
         <p className="rounded-lg bg-muted/30 p-3">
-          <span className="block text-xs text-muted-foreground">{text('Customer balance due', 'المتبقي على العميل')}</span>
-          <strong className="mt-1 block tabular-nums"><bdi dir="ltr">{d.customerDue} {text('EGP', 'ج.م.')}</bdi></strong>
+          <span className="block text-xs text-muted-foreground">
+            {text('Customer balance due', 'المتبقي على العميل')}
+          </span>
+          <strong className="mt-1 block tabular-nums">
+            <bdi dir="ltr">
+              {d.customerDue} {text('EGP', 'ج.م.')}
+            </bdi>
+          </strong>
         </p>
         <p className="rounded-lg bg-muted/30 p-3">
-          <span className="block text-xs text-muted-foreground">{text('Courier cash to receive', 'كاش مطلوب من الطيار')}</span>
-          <strong className="mt-1 block tabular-nums"><bdi dir="ltr">{d.courierCashHeld} {text('EGP', 'ج.م.')}</bdi></strong>
+          <span className="block text-xs text-muted-foreground">
+            {text('Courier cash to receive', 'كاش مطلوب من الطيار')}
+          </span>
+          <strong className="mt-1 block tabular-nums">
+            <bdi dir="ltr">
+              {d.courierCashHeld} {text('EGP', 'ج.م.')}
+            </bdi>
+          </strong>
         </p>
       </div>
       {Boolean(d.remittances?.length) && (
@@ -1055,7 +1175,9 @@ function DeliveryCard({
           )}
           <PosButton
             type="submit"
-            disabled={disabled || !customerMoneyValid || !checkId || (method !== 'courier' && !shift)}
+            disabled={
+              disabled || !customerMoneyValid || !checkId || (method !== 'courier' && !shift)
+            }
           >
             {text('Record customer payment once', 'سجل دفع العميل مرة واحدة')}
           </PosButton>
@@ -1066,7 +1188,13 @@ function DeliveryCard({
           className="grid gap-3 border-t border-border pt-3"
           onSubmit={(event) => {
             event.preventDefault();
-            action({ ...base(), action: 'remit', receivingShiftId: shift!.id, paymentId, amount: remitAmount });
+            action({
+              ...base(),
+              action: 'remit',
+              receivingShiftId: shift!.id,
+              paymentId,
+              amount: remitAmount,
+            });
           }}
         >
           <label>
@@ -1079,7 +1207,10 @@ function DeliveryCard({
               value={paymentId}
               onChange={(e) => {
                 setPaymentId(e.target.value);
-                setRemitAmount(d.courierPayments.find((payment) => payment.id === e.target.value)?.remaining ?? '');
+                setRemitAmount(
+                  d.courierPayments.find((payment) => payment.id === e.target.value)?.remaining ??
+                    '',
+                );
               }}
             >
               {d.courierPayments

@@ -125,34 +125,53 @@ describe('registered local storefront origin policy', () => {
     development = false;
     baseDomain = 'wfarly.com';
     const source = 'https://abo-ali.wfarly.com';
-    await request(app.getHttpServer()).post('/catalog/stores/technical-store/orders')
-      .set('Origin', source).send({}).expect(201)
+    await request(app.getHttpServer())
+      .post('/catalog/stores/technical-store/orders')
+      .set('Origin', source)
+      .send({})
+      .expect(201)
       .expect('Access-Control-Allow-Origin', source);
     for (const denied of [
-      'https://unknown.wfarly.com', 'https://abo-ali.wfarly.com.evil.example',
-      'https://nested.abo-ali.wfarly.com', 'http://abo-ali.wfarly.com',
-      'https://abo-ali.wfarly.com:444', 'https://pos.wfarly.com',
+      'https://unknown.wfarly.com',
+      'https://abo-ali.wfarly.com.evil.example',
+      'https://nested.abo-ali.wfarly.com',
+      'http://abo-ali.wfarly.com',
+      'https://abo-ali.wfarly.com:444',
+      'https://pos.wfarly.com',
     ]) {
-      await request(app.getHttpServer()).post('/catalog/stores/technical-store/orders')
-        .set('Origin', denied).send({}).expect(403);
+      await request(app.getHttpServer())
+        .post('/catalog/stores/technical-store/orders')
+        .set('Origin', denied)
+        .send({})
+        .expect(403);
     }
-    await request(app.getHttpServer()).post('/catalog/stores/other-store/orders')
-      .set('Origin', source).send({}).expect(403);
-    await request(app.getHttpServer()).post('/admin/probe')
-      .set('Origin', source).send({}).expect(403);
+    await request(app.getHttpServer())
+      .post('/catalog/stores/other-store/orders')
+      .set('Origin', source)
+      .send({})
+      .expect(403);
+    await request(app.getHttpServer())
+      .post('/admin/probe')
+      .set('Origin', source)
+      .send({})
+      .expect(403);
   });
 
   it('allows customer auth preflight with credentials only for registered storefronts', async () => {
     development = false;
     baseDomain = 'wfarly.com';
-    await request(app.getHttpServer()).options('/auth/customer/login')
+    await request(app.getHttpServer())
+      .options('/auth/customer/login')
       .set('Origin', 'https://abo-ali.wfarly.com')
-      .set('Access-Control-Request-Method', 'POST').expect(204)
+      .set('Access-Control-Request-Method', 'POST')
+      .expect(204)
       .expect('Access-Control-Allow-Origin', 'https://abo-ali.wfarly.com')
       .expect('Access-Control-Allow-Credentials', 'true');
-    const denied = await request(app.getHttpServer()).post('/auth/customer/login')
+    const denied = await request(app.getHttpServer())
+      .post('/auth/customer/login')
       .set('Origin', 'https://unknown.wfarly.com')
-      .send({}).expect(403);
+      .send({})
+      .expect(403);
     assert.equal(denied.headers['access-control-allow-origin'], undefined);
   });
 });

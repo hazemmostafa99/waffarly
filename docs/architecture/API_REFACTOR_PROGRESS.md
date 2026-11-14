@@ -1,5 +1,26 @@
 # API organization progress
 
+## Orders internal cleanup and reading guide — 2026-11-14
+
+Continued the Orders refactor with explicit lifecycle action helpers, shared
+transition data and authorization checks inside the existing transaction. Split
+checkout item persistence, discount/receiving-branch rules and the legacy website
+status command. Separated customer session/identity, scoped queries and customer
+response mapping; separated delivery queries/access rules and return queries/
+mapping; extracted dining table management and moved owner table controllers to
+the owner HTTP folder. Existing application service methods and constructors
+remain compatible with their callers.
+
+Added a short plain-English purpose comment to every Orders TypeScript file and
+comments for meaningful steps in longer writes. The module README and scoped
+AGENTS.md document the layout and naming/comment conventions.
+
+No HTTP contract, schema or external module dependency changes are intended.
+Transaction ownership, statement order within extracted actions and replay/tenant/
+branch/permission checks were retained. Formatting and source review only; no
+automated checks, build, lint, typecheck, tests, browser or database operations ran.
+The manual acceptance scenarios in the Orders guide remain pending.
+
 ## Orders responsibility split — 2026-11-14
 
 Grouped Orders HTTP controllers by storefront, Marketplace customer access, POS
