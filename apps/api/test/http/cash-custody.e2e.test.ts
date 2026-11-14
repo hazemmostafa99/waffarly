@@ -5,10 +5,8 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import request from 'supertest';
 import { AuthService, OwnerGuard, PosEmployeeGuard } from '../../src/modules/auth/index.js';
 import { CashCustodyService } from '../../src/modules/shifts/cash-custody.service.js';
-import {
-  OwnerCashCustodyController,
-  PosCashCustodyController,
-} from '../../src/modules/shifts/cash-custody.controller.js';
+import { OwnerCashCustodyController } from '../../src/modules/shifts/http/owner/cash-custody.controller.js';
+import { PosCashCustodyController } from '../../src/modules/shifts/http/pos/cash-custody.controller.js';
 import {
   createSafeSchema,
   transferCashSchema,

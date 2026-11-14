@@ -529,6 +529,10 @@ it(
             await tx.posEmployeeBranch.deleteMany({ where: { merchantId } });
             await tx.posEmployee.deleteMany({ where: { merchantId } });
             await tx.branch.deleteMany({ where: { merchantId } });
+            // Remove the subscription created with this test merchant before its parent row.
+            await tx.subscriptionEvent.deleteMany({ where: { merchantId } });
+            await tx.subscriptionPeriod.deleteMany({ where: { merchantId } });
+            await tx.subscription.deleteMany({ where: { merchantId } });
             await tx.merchant.deleteMany({ where: { id: merchantId } });
           });
         }

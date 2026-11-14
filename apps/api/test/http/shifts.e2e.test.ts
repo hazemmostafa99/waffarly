@@ -7,11 +7,9 @@ import request from 'supertest';
 import { AuthService } from '../../src/modules/auth/auth.service.js';
 import { OwnerGuard } from '../../src/modules/auth/owner.guard.js';
 import { PosEmployeeGuard } from '../../src/modules/auth/pos-employee.guard.js';
-import {
-  OwnerPosRegistersController,
-  OwnerPosShiftReportsController,
-  PosShiftsController,
-} from '../../src/modules/shifts/shifts.controller.js';
+import { OwnerPosRegistersController } from '../../src/modules/shifts/http/owner/registers.controller.js';
+import { OwnerPosShiftReportsController } from '../../src/modules/shifts/http/owner/shift-reports.controller.js';
+import { PosShiftsController } from '../../src/modules/shifts/http/pos/shifts.controller.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 
 const merchantId = '11111111-1111-4111-8111-111111111111';

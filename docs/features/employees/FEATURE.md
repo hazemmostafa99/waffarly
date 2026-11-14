@@ -1,7 +1,9 @@
 # Employee roles
 
-Auth owns employee records, role assignment, sessions, permission resolution and
-active branch assignments. Owners manage employees at `/owner/employees`; the
+Employees owns employee record configuration, role assignment and active branch
+assignments. Auth owns sign-in, sessions, permission resolution and supervisor
+credential verification. Employees imports Auth; Auth does not import Employees.
+Owners manage employees at `/owner/employees`; the
 employee/POS workspace provides employee operations. Owner dashboard routes remain
 owner-only. Employee roles cannot confer account ownership or subscription access.
 

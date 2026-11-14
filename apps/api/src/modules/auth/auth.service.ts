@@ -3,6 +3,9 @@ import {
   resolvePosEmployeePermissions,
   type PosEmployeePermission,
   type BusinessActivityKey,
+  type OwnerProfile,
+  type PosEmployeeSession,
+  type PosLoginRequest,
 } from '@waffarly/contracts';
 import { createHash, randomBytes } from 'node:crypto';
 import {
@@ -13,7 +16,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import type { OwnerProfile, PosEmployeeSession, PosLoginRequest } from '@waffarly/contracts';
+
 import { AppConfiguration } from '../../config/app-configuration.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { verifyPassword } from './password.js';

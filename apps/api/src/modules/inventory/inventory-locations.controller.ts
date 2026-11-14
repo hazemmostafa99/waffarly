@@ -1,7 +1,7 @@
+/** Receives owner requests to manage branches and warehouses. */
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Inject,
   Param,
@@ -14,59 +14,35 @@ import {
 import type {
   CreateInventoryBranchRequest,
   CreateInventoryWarehouseRequest,
-  CreateStockOpeningRequest,
-  ClearInventoryReorderThresholdResult,
   CursorPage,
-  InventoryHealthPage,
-  InventoryReorderThreshold,
   InventoryBranch,
   InventoryWarehouseSummary,
-  InventoryPolicy,
   OwnerProfile,
-  StockBalance,
-  StockMovement,
-  StockMovementBatchResult,
   StockItemRevisionRequest,
-  UpdateInventoryReorderThresholdRequest,
   UpdateInventoryBranchRequest,
-  UpdateInventoryPolicyRequest,
   UpdateInventoryWarehouseRequest,
 } from '@waffarly/contracts';
 import { ZodValidationPipe } from '../../common/http/zod-validation.pipe.js';
 import { CurrentOwner, OwnerGuard } from '../auth/index.js';
-import { InventoryLedgerService } from './inventory-ledger.service.js';
+
 import { InventoryLocationsService } from './inventory-locations.service.js';
-import { InventoryVisibilityService } from './inventory-visibility.service.js';
+
 import {
   createInventoryBranchSchema,
   createInventoryWarehouseSchema,
-  inventoryPolicyUpdateSchema,
   listInventoryBranchesSchema,
-  listInventoryHealthSchema,
-  listStockBalancesSchema,
-  listStockMovementsSchema,
-  createStockOpeningSchema,
   setDefaultConsumptionWarehouseSchema,
   stockItemRevisionSchema,
   updateInventoryBranchSchema,
   updateInventoryWarehouseSchema,
-  updateInventoryReorderThresholdSchema,
-  deleteInventoryReorderThresholdSchema,
   type InventoryBranchListQuery,
-  type InventoryHealthListQuery,
-  type StockBalanceListQuery,
-  type StockMovementListQuery,
 } from './inventory.schemas.js';
-
 @UseGuards(OwnerGuard)
 @Controller('owner/inventory')
 export class InventoryLocationsController {
   constructor(
     @Inject(InventoryLocationsService) private readonly locations: InventoryLocationsService,
-    @Inject(InventoryLedgerService) private readonly ledger: InventoryLedgerService,
-    @Inject(InventoryVisibilityService) private readonly visibility: InventoryVisibilityService,
   ) {}
-
   @Get('branches')
   listBranches(
     @CurrentOwner() owner: OwnerProfile,
@@ -75,7 +51,6 @@ export class InventoryLocationsController {
   ): Promise<CursorPage<InventoryBranch>> {
     return this.locations.listBranches(owner.merchantId, query);
   }
-
   @Get('warehouses')
   listWarehouses(
     @CurrentOwner() owner: OwnerProfile,
@@ -84,7 +59,6 @@ export class InventoryLocationsController {
   ): Promise<CursorPage<InventoryWarehouseSummary>> {
     return this.locations.listWarehouses(owner.merchantId, query);
   }
-
   @Get('warehouses/:id')
   getWarehouse(
     @CurrentOwner() owner: OwnerProfile,
@@ -92,7 +66,6 @@ export class InventoryLocationsController {
   ): Promise<InventoryWarehouseSummary> {
     return this.locations.getWarehouse(owner.merchantId, id);
   }
-
   @Post('branches')
   createBranch(
     @CurrentOwner() owner: OwnerProfile,
@@ -101,7 +74,6 @@ export class InventoryLocationsController {
   ): Promise<InventoryBranch> {
     return this.locations.createBranch(owner.merchantId, owner.username, input);
   }
-
   @Get('branches/:branchId')
   getBranch(
     @CurrentOwner() owner: OwnerProfile,
@@ -109,7 +81,6 @@ export class InventoryLocationsController {
   ): Promise<InventoryBranch> {
     return this.locations.getBranch(owner.merchantId, branchId);
   }
-
   @Patch('branches/:branchId')
   updateBranch(
     @CurrentOwner() owner: OwnerProfile,
@@ -119,7 +90,6 @@ export class InventoryLocationsController {
   ): Promise<InventoryBranch> {
     return this.locations.updateBranch(owner.merchantId, owner.username, branchId, input);
   }
-
   @Post('branches/:branchId/archive')
   archiveBranch(
     @CurrentOwner() owner: OwnerProfile,
@@ -135,7 +105,6 @@ export class InventoryLocationsController {
       input,
     );
   }
-
   @Post('branches/:branchId/restore')
   restoreBranch(
     @CurrentOwner() owner: OwnerProfile,
@@ -151,7 +120,6 @@ export class InventoryLocationsController {
       input,
     );
   }
-
   @Post('branches/:branchId/warehouses')
   createWarehouse(
     @CurrentOwner() owner: OwnerProfile,
@@ -161,7 +129,6 @@ export class InventoryLocationsController {
   ): Promise<InventoryBranch> {
     return this.locations.createWarehouse(owner.merchantId, owner.username, branchId, input);
   }
-
   @Patch('branches/:branchId/warehouses/:warehouseId')
   updateWarehouse(
     @CurrentOwner() owner: OwnerProfile,
@@ -178,7 +145,6 @@ export class InventoryLocationsController {
       input,
     );
   }
-
   @Patch('branches/:branchId/default-consumption-warehouse')
   setDefaultWarehouse(
     @CurrentOwner() owner: OwnerProfile,
@@ -193,7 +159,6 @@ export class InventoryLocationsController {
       input,
     );
   }
-
   @Post('branches/:branchId/warehouses/:warehouseId/archive')
   archiveWarehouse(
     @CurrentOwner() owner: OwnerProfile,
@@ -211,7 +176,6 @@ export class InventoryLocationsController {
       input,
     );
   }
-
   @Post('branches/:branchId/warehouses/:warehouseId/restore')
   restoreWarehouse(
     @CurrentOwner() owner: OwnerProfile,
@@ -228,91 +192,5 @@ export class InventoryLocationsController {
       false,
       input,
     );
-  }
-
-  @Get('policy')
-  getPolicy(@CurrentOwner() owner: OwnerProfile): Promise<InventoryPolicy> {
-    return this.locations.getPolicy(owner.merchantId);
-  }
-
-  @Patch('policy')
-  updatePolicy(
-    @CurrentOwner() owner: OwnerProfile,
-    @Body(new ZodValidationPipe(inventoryPolicyUpdateSchema, { format: 'messages' }))
-    input: UpdateInventoryPolicyRequest,
-  ): Promise<InventoryPolicy> {
-    return this.locations.updatePolicy(owner.merchantId, owner.username, input);
-  }
-
-  @Get('balances')
-  listBalances(
-    @CurrentOwner() owner: OwnerProfile,
-    @Query(new ZodValidationPipe(listStockBalancesSchema, { format: 'messages' }))
-    query: StockBalanceListQuery,
-  ): Promise<CursorPage<StockBalance>> {
-    return this.ledger.listBalances(owner.merchantId, query);
-  }
-
-  @Get('movements')
-  listMovements(
-    @CurrentOwner() owner: OwnerProfile,
-    @Query(new ZodValidationPipe(listStockMovementsSchema, { format: 'messages' }))
-    query: StockMovementListQuery,
-  ): Promise<CursorPage<StockMovement>> {
-    return this.ledger.listMovements(owner.merchantId, query);
-  }
-
-  @Get('movements/:id')
-  getMovement(
-    @CurrentOwner() owner: OwnerProfile,
-    @Param('id', new ParseUUIDPipe()) id: string,
-  ): Promise<StockMovement> {
-    return this.visibility.getMovement(owner.merchantId, id);
-  }
-
-  @Get('health')
-  listHealth(
-    @CurrentOwner() owner: OwnerProfile,
-    @Query(new ZodValidationPipe(listInventoryHealthSchema, { format: 'messages' }))
-    query: InventoryHealthListQuery,
-  ): Promise<InventoryHealthPage> {
-    return this.visibility.listHealth(owner.merchantId, query);
-  }
-
-  @Patch('warehouses/:warehouseId/items/:stockItemId/reorder-threshold')
-  saveReorderThreshold(
-    @CurrentOwner() owner: OwnerProfile,
-    @Param('warehouseId', new ParseUUIDPipe()) warehouseId: string,
-    @Param('stockItemId', new ParseUUIDPipe()) stockItemId: string,
-    @Body(new ZodValidationPipe(updateInventoryReorderThresholdSchema, { format: 'messages' }))
-    input: UpdateInventoryReorderThresholdRequest,
-  ): Promise<InventoryReorderThreshold> {
-    return this.visibility.saveThreshold(
-      owner.merchantId,
-      owner.username,
-      warehouseId,
-      stockItemId,
-      input,
-    );
-  }
-
-  @Delete('warehouses/:warehouseId/items/:stockItemId/reorder-threshold')
-  deleteReorderThreshold(
-    @CurrentOwner() owner: OwnerProfile,
-    @Param('warehouseId', new ParseUUIDPipe()) warehouseId: string,
-    @Param('stockItemId', new ParseUUIDPipe()) stockItemId: string,
-    @Body(new ZodValidationPipe(deleteInventoryReorderThresholdSchema, { format: 'messages' }))
-    input: { revision: number },
-  ): Promise<ClearInventoryReorderThresholdResult> {
-    return this.visibility.deleteThreshold(owner.merchantId, warehouseId, stockItemId, input);
-  }
-
-  @Post('opening-balances')
-  createOpening(
-    @CurrentOwner() owner: OwnerProfile,
-    @Body(new ZodValidationPipe(createStockOpeningSchema, { format: 'messages' }))
-    input: CreateStockOpeningRequest,
-  ): Promise<StockMovementBatchResult> {
-    return this.ledger.createOpening(owner.merchantId, owner.username, input);
   }
 }

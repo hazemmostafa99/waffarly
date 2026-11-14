@@ -10,7 +10,7 @@ import { describe, it } from 'node:test';
 import {
   createPosEmployeeSchema,
   updatePosEmployeeSchema,
-} from '../../src/modules/auth/pos-employee.schemas.js';
+} from '../../src/modules/employees/pos-employee.schemas.js';
 
 describe('POS employee role permissions', () => {
   it('preserves the legacy order grants without adding sales or shift access', () => {

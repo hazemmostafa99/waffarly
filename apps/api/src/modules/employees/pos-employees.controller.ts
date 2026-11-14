@@ -1,3 +1,4 @@
+/** Receives owner requests to manage staff accounts and branch assignments. */
 import {
   Body,
   Controller,
@@ -12,8 +13,7 @@ import {
 } from '@nestjs/common';
 import type { CursorPage, OwnerProfile, PosEmployeeSummary } from '@waffarly/contracts';
 import { ZodValidationPipe } from '../../common/http/zod-validation.pipe.js';
-import { CurrentOwner } from './current-actor.js';
-import { OwnerGuard } from './owner.guard.js';
+import { CurrentOwner, OwnerGuard } from '../auth/index.js';
 import { PosEmployeeService } from './pos-employee.service.js';
 import { listPosEmployeesSchema, type PosEmployeeListQuery } from './pos-employee.schemas.js';
 

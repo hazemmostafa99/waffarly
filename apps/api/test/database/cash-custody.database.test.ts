@@ -402,6 +402,10 @@ it(
       await prisma.posEmployeeBranch.deleteMany({ where: { merchantId: { in: tenants } } });
       await prisma.posEmployee.deleteMany({ where: { merchantId: { in: tenants } } });
       await prisma.branch.deleteMany({ where: { merchantId: { in: tenants } } });
+      // Merchant creation also creates a subscription; remove only these test tenants' records.
+      await prisma.subscriptionEvent.deleteMany({ where: { merchantId: { in: tenants } } });
+      await prisma.subscriptionPeriod.deleteMany({ where: { merchantId: { in: tenants } } });
+      await prisma.subscription.deleteMany({ where: { merchantId: { in: tenants } } });
       await prisma.merchant.deleteMany({ where: { id: { in: tenants } } });
       await prisma.$disconnect();
     }

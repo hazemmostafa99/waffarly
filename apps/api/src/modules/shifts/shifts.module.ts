@@ -1,13 +1,12 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/index.js';
-import {
-  OwnerPosRegistersController,
-  OwnerPosShiftReportsController,
-  PosShiftsController,
-} from './shifts.controller.js';
+import { OwnerPosRegistersController } from './http/owner/registers.controller.js';
+import { OwnerPosShiftReportsController } from './http/owner/shift-reports.controller.js';
+import { PosShiftsController } from './http/pos/shifts.controller.js';
 import { ShiftsService } from './shifts.service.js';
 import { CashCustodyService } from './cash-custody.service.js';
-import { OwnerCashCustodyController, PosCashCustodyController } from './cash-custody.controller.js';
+import { OwnerCashCustodyController } from './http/owner/cash-custody.controller.js';
+import { PosCashCustodyController } from './http/pos/cash-custody.controller.js';
 
 @Module({
   imports: [AuthModule],

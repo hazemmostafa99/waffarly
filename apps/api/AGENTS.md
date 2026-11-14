@@ -72,6 +72,12 @@ Use catalog's product rules, mapping, and transaction helpers as the example whe
 a feature grows beyond that shape. Use storefront settings as the example of a
 typed owner controller with a Zod validation pipe.
 
+For the current larger-module folder map, read
+[`docs/architecture/API_MODULE_GUIDE.md`](../../docs/architecture/API_MODULE_GUIDE.md).
+Give extracted files a short plain-English purpose comment and name them after
+their responsibility. Keep transaction ownership explicit instead of splitting
+related writes merely to shorten a service.
+
 ## Authentication, tenants, and persistence
 
 - Use the existing admin/owner guards and typed actor decorators. Authenticate

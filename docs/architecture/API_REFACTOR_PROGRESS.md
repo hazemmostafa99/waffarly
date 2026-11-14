@@ -1,5 +1,49 @@
 # API organization progress
 
+## Remaining large-module cleanup — 2026-11-14
+
+- Shifts: extracted opening/closing, session reads, reconciliation, close reports,
+  branch/approval checks, manual cash activity and order cash helpers. Cash custody
+  now separates safe, drawer and transfer operations; owner/POS controllers have
+  separate files. Existing service APIs and reconciliation exports remain.
+- Subscriptions: separated access, onboarding assignment, pricing quotes,
+  administrative commands, queries/history and record mapping. Overloads and
+  transaction-client forwarding remain compatible.
+- Inventory: separated stock item operations, branch/warehouse management,
+  inventory policy, health reads and reorder thresholds. Owner policy, ledger and
+  health routes now have dedicated controllers under the existing URL prefix.
+- Merchants: separated onboarding, applications, public addresses and directory
+  reads; Catalog: separated product create/update, modifier links, availability
+  changes and reads, reusing existing persistence helpers and rules.
+- Employees: moved owner staff configuration from Auth to EmployeesModule,
+  registered in AppModule with Employees → Auth allowed in ESLint. Auth keeps
+  sign-in/session/permission enforcement and exposes its username validator through
+  its public entry point. Updated source/test callers and employee ownership docs.
+- Added plain-English purpose comments, operation-step comments and module guides.
+  See [API_MODULE_GUIDE.md](API_MODULE_GUIDE.md) for the complete navigation map.
+
+No route, request/response contract or schema changes are intended. Existing
+transaction bodies, locks, revision checks and replay semantics were preserved.
+Database regression runs exposed stale fixture cleanup in four cash/shift suites:
+merchant subscriptions now have to be removed before their test merchant. Cleanup
+was corrected using the exact test tenant IDs, with no database reset or migration.
+
+Final verification on Node 24.11.1:
+
+- API typecheck, ESLint and TypeScript build passed.
+- Default API HTTP/unit suite: 264 passed, zero failed or skipped.
+- Selected PostgreSQL suite: 12 passed, zero failed or skipped, across Catalog,
+  product inventory, Inventory, stock visibility, Subscriptions, Shifts,
+  reconciliation, cash custody, POS dining and Employees test files.
+- Formatting completed on changed source, tests and documentation.
+
+The installed local CLI entry points were used directly (the package manager
+shim attempts a network download in this environment). The selected database
+command used `--test-force-exit --test-isolation=none --test-concurrency=1` and
+the configured local PostgreSQL database. These are backend regression results;
+they do not establish browser, physical printer, cash-count or operator acceptance.
+No schema migrations, shared contracts or frontend workflows changed.
+
 ## Orders internal cleanup and reading guide — 2026-11-14
 
 Continued the Orders refactor with explicit lifecycle action helpers, shared

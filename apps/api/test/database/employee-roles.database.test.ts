@@ -6,7 +6,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { Request, Response } from 'express';
 import { AuthService } from '../../src/modules/auth/auth.service.js';
-import { PosEmployeeService } from '../../src/modules/auth/pos-employee.service.js';
+import { PosEmployeeService } from '../../src/modules/employees/pos-employee.service.js';
 
 config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
 const databaseUrl = process.env.DATABASE_URL;

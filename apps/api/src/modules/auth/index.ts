@@ -8,3 +8,5 @@ export { hashPassword } from './password.js';
 export { requireEmployeePermission, requireEmployeeBranch } from './employee-permissions.js';
 
 export { CustomerAuthService } from './customer-auth.service.js';
+
+export { posUsernameSchema } from './pos-login.schemas.js';

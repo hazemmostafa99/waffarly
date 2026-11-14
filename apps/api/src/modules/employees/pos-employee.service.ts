@@ -1,3 +1,4 @@
+/** Manages staff accounts, their roles and assigned branches for one merchant. */
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   POS_LEGACY_EMPLOYEE_PERMISSIONS,
@@ -13,7 +14,7 @@ import { assertScopedCursor } from '../../common/http/pagination.js';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { isUniqueConstraintError } from '../../infrastructure/database/prisma-errors.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
-import { hashPassword } from './password.js';
+import { hashPassword } from '../auth/index.js';
 import {
   createPosEmployeeSchema,
   listPosEmployeesSchema,

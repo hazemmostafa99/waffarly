@@ -4,7 +4,7 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { AuthService } from './auth.service.js';
-import { posLoginSchema } from './pos-employee.schemas.js';
+import { posLoginSchema } from './pos-login.schemas.js';
 
 const loginSchema = z.object({
   username: z.string().trim().min(1).max(80),

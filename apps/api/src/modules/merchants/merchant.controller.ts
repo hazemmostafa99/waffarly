@@ -11,8 +11,8 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import type { MerchantSummary } from '@waffarly/contracts';
-import { BUSINESS_ACTIVITY_KEYS } from '@waffarly/contracts';
+import { type MerchantSummary, BUSINESS_ACTIVITY_KEYS } from '@waffarly/contracts';
+
 import { z } from 'zod';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { parseCursorPageQuery } from '../../common/http/pagination.js';

@@ -1,26 +1,13 @@
+/** Checks the details entered when listing, creating or updating staff accounts. */
+import { posUsernameSchema } from '../auth/index.js';
 import { z } from 'zod';
 import { POS_EMPLOYEE_ROLES } from '@waffarly/contracts';
 
 const uuid = z.string().uuid();
-const username = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .min(3)
-  .max(80)
-  .regex(/^[a-z0-9._-]+$/);
 const branchIds = z
   .array(uuid)
   .max(100)
   .refine((ids) => new Set(ids).size === ids.length);
-
-export const posLoginSchema = z
-  .object({
-    storefrontSlug: z.string().trim().toLowerCase().min(1).max(120),
-    username,
-    password: z.string().min(1).max(200),
-  })
-  .strict();
 
 export const listPosEmployeesSchema = z
   .object({
@@ -35,7 +22,7 @@ export type PosEmployeeListQuery = z.infer<typeof listPosEmployeesSchema>;
 
 export const createPosEmployeeSchema = z
   .object({
-    username,
+    username: posUsernameSchema,
     displayName: z.string().trim().min(2).max(160),
     password: z.string().min(12).max(200),
     role: z.enum(POS_EMPLOYEE_ROLES).nullable().optional(),

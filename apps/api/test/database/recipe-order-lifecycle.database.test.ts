@@ -14,7 +14,7 @@ import { InventoryLocationsService } from '../../src/modules/inventory/inventory
 import { StorefrontOrdersService } from '../../src/modules/orders/checkout/storefront-orders.service.js';
 import { OrderLifecycleService } from '../../src/modules/orders/fulfillment/order-lifecycle.service.js';
 import { ProductConfigurationReportService } from '../../src/modules/reports/product-configuration-report.service.js';
-import { PosEmployeeService } from '../../src/modules/auth/pos-employee.service.js';
+import { PosEmployeeService } from '../../src/modules/employees/pos-employee.service.js';
 import type { PosEmployeeSession } from '@waffarly/contracts';
 import { PosOrdersService } from '../../src/modules/orders/pos-sales/pos-orders.service.js';
 import { PosDiningService } from '../../src/modules/orders/dining/pos-dining.service.js';

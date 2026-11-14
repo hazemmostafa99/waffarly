@@ -1,3 +1,12 @@
+API module cleanup (2026-11-14): Shifts, Subscriptions, Inventory, Merchants and
+Catalog now separate their independent operations and queries while retaining
+existing application-service APIs. Employees owns staff configuration in its own
+module and imports Auth; Auth retains identity/session/permission enforcement.
+Owner/cashier shift controllers and inventory policy/ledger/health controllers
+have separate homes. HTTP URLs, shared contracts and schema remain unchanged.
+See the [module navigation guide](API_MODULE_GUIDE.md) and
+[verification ledger](API_REFACTOR_PROGRESS.md).
+
 Orders organization (2026-11-14): HTTP entry points are grouped by application;
 order operations are grouped by business responsibility. Cashier sale creation,
 check collection/refunds, receipt issuance, kitchen amendments and read queries
@@ -179,7 +188,8 @@ The Orders-owned payment-state response includes optional checkout `context` (th
 
 | Module        | Responsibility                                                                                                                                         | Application dependencies                                  |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
-| auth          | Owner/Admin/POS employee credentials, sessions, guards, employee records, and branch assignments                                                       | Configuration, database, subscriptions                    |
+| auth          | Owner/Admin/POS identity, credentials, sessions, guards and current permission enforcement                                                             | Configuration, database, subscriptions                    |
+| employees     | Owner staff account configuration, role assignment and branch assignment                                                                               | Auth                                                      |
 | customers     | Merchant-private customer directory, guest contacts and global customer identity persistence foundation; customer authentication remains deferred      | Auth                                                      |
 | merchants     | Merchant profiles, applications, onboarding plan assignment, and revisioned tenant-level POS accent configuration                                      | Auth, subscriptions                                       |
 | plans         | Plan definitions, duration prices and subscription administration controllers                                                                          | Auth, subscriptions                                       |
@@ -264,8 +274,9 @@ Cancellation before preparation reverses the actual linked batches, rather than
 recalculating recipes or consulting a new default warehouse. Accepted orders also
 protect their consumed items and locations from archival until preparation or
 cancellation resolves their restoration eligibility. Reports include accepted,
-preparing, ready and completed orders, and exclude cancellation. `AuthModule` owns merchant-scoped POS employee credentials,
-current active branch assignments, and the owner employee directory. Employee login
+preparing, ready and completed orders, and exclude cancellation. `AuthModule` owns merchant-scoped POS login credentials and current session/permission checks.
+`EmployeesModule` owns the owner employee directory, role configuration and active
+branch assignments. Employee login
 uses the merchant storefront slug with the employee username; Super Admin shows this
 slug as the Business Code. Sessions use the same hashed opaque-token store with a
 POS-specific cookie and subject kind. Disabling an

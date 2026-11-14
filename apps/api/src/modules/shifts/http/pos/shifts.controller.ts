@@ -1,106 +1,37 @@
+/** Receives cashier requests to open, inspect and close shifts and record cash movements. */
 import {
   Body,
   Controller,
-  ForbiddenException,
   Get,
   Inject,
   Param,
   ParseUUIDPipe,
-  Patch,
   Post,
   Query,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import type {
-  CreatePosRegisterRequest,
-  CursorPage,
-  OwnerProfile,
   PosEmployeeSession,
   PosRegisterOption,
-  PosRegisterSummary,
   PosShiftCloseReport,
   PosShiftClosePreview,
-  PosShiftCloseReportRow,
   PosShiftLiveSummary,
   PosShiftSummary,
   RecordPosShiftCashMovementResponse,
-  UpdatePosRegisterRequest,
 } from '@waffarly/contracts';
-import { parseRequest, ZodValidationPipe } from '../../common/http/zod-validation.pipe.js';
-import {
-  AuthService,
-  CurrentOwner,
-  CurrentPosEmployee,
-  OwnerGuard,
-  PosEmployeeGuard,
-} from '../auth/index.js';
+import { parseRequest } from '../../../../common/http/zod-validation.pipe.js';
+import { AuthService, CurrentPosEmployee, PosEmployeeGuard } from '../../../auth/index.js';
 import {
   closePosShiftSchema,
   deliveryHandoverRecipientsSchema,
-  createPosRegisterSchema,
   openPosShiftSchema,
-  ownerPosRegisterListSchema,
-  ownerPosShiftCloseReportsSchema,
   posCurrentShiftSchema,
   posRegisterListSchema,
   posShiftClosePreviewSchema,
   recordPosShiftCashMovementSchema,
-  updatePosRegisterSchema,
-} from './shifts.schemas.js';
-import { ShiftsService } from './shifts.service.js';
-
-@UseGuards(OwnerGuard)
-@Controller('owner/pos/shifts')
-export class OwnerPosShiftReportsController {
-  constructor(@Inject(ShiftsService) private readonly shifts: ShiftsService) {}
-
-  @Get('reports')
-  listCloseReports(
-    @CurrentOwner() owner: OwnerProfile,
-    @Query() query: unknown,
-  ): Promise<CursorPage<PosShiftCloseReportRow>> {
-    return this.shifts.listOwnerCloseReports(
-      owner.merchantId,
-      parseRequest(ownerPosShiftCloseReportsSchema, query),
-    );
-  }
-}
-
-@UseGuards(OwnerGuard)
-@Controller('owner/pos/registers')
-export class OwnerPosRegistersController {
-  constructor(@Inject(ShiftsService) private readonly shifts: ShiftsService) {}
-
-  @Get()
-  list(
-    @CurrentOwner() owner: OwnerProfile,
-    @Query() query: unknown,
-  ): Promise<CursorPage<PosRegisterSummary>> {
-    return this.shifts.listOwnerRegisters(
-      owner.merchantId,
-      parseRequest(ownerPosRegisterListSchema, query),
-    );
-  }
-
-  @Post()
-  create(
-    @CurrentOwner() owner: OwnerProfile,
-    @Body(new ZodValidationPipe(createPosRegisterSchema, { format: 'messages' }))
-    input: CreatePosRegisterRequest,
-  ): Promise<PosRegisterSummary> {
-    return this.shifts.createRegister(owner.merchantId, owner.username, input);
-  }
-
-  @Patch(':id')
-  update(
-    @CurrentOwner() owner: OwnerProfile,
-    @Param('id', new ParseUUIDPipe()) id: string,
-    @Body(new ZodValidationPipe(updatePosRegisterSchema, { format: 'messages' }))
-    input: UpdatePosRegisterRequest,
-  ): Promise<PosRegisterSummary> {
-    return this.shifts.updateRegister(owner.merchantId, owner.username, id, input);
-  }
-}
+} from '../../shifts.schemas.js';
+import { ShiftsService } from '../../shifts.service.js';
 
 @UseGuards(PosEmployeeGuard)
 @Controller('pos')

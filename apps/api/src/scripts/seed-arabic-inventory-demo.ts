@@ -7,7 +7,7 @@ import type { CatalogProductFields } from '@waffarly/contracts';
 import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
 import { AppConfiguration } from '../config/app-configuration.js';
 import { hashPassword } from '../modules/auth/password.js';
-import { PosEmployeeService } from '../modules/auth/pos-employee.service.js';
+import { PosEmployeeService } from '../modules/employees/pos-employee.service.js';
 import { CategoryService } from '../modules/catalog/categories/category.service.js';
 import { ProductPricingService } from '../modules/catalog/pricing/product-pricing.service.js';
 import { ProductService } from '../modules/catalog/products/product.service.js';

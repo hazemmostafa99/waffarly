@@ -8,11 +8,12 @@ import {
 import type {
   CatalogProductQuoteResponse,
   CatalogProductQuoteSelection,
+  StockBaseUnit,
 } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { formatCents, toCents } from '../../../common/money/money.js';
 import { PrismaService } from '../../../infrastructure/database/prisma.service.js';
-import type { StockBaseUnit } from '@waffarly/contracts';
+
 import { selectedOptionQuantities } from './modifier-selections.js';
 import {
   calculateInventoryRequirements,
