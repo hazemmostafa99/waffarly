@@ -9,7 +9,7 @@ backend and UI steps. Source implementation is present; manual acceptance is ope
 1. Open `/merchants`, find the business and select **Reset password**, or open
    its details and use the same action under **Owner account**.
 2. Check the displayed business name and username. Enter and confirm a new
-   password of 12–128 characters. Spaces are preserved. The operator chooses
+   password of 6–128 characters. Spaces are preserved. The operator chooses
    and privately delivers the new password; no message is sent automatically.
 3. Confirm once and wait. Inputs, submission and dismissal are blocked while
    the request is pending. Success is shown only after a successful API response.
@@ -71,7 +71,7 @@ unrelated accounts or submitting financial operations.
 - Open the dialog from the list and details in Arabic and English. Check mobile
   layout, labels, keyboard focus, password visibility and Escape/close behavior.
 - Cancel without submitting; verify no change. Reopen and check empty inputs.
-- Check empty/short/mismatched values and the 12/128-character boundaries.
+- Check empty/short/mismatched values and the 6/128-character boundaries.
 - Confirm once; check pending state and prevention of repeated submission.
 - Verify the chosen account accepts the new password, rejects the old password,
   and its previously open session fails on the next protected request.

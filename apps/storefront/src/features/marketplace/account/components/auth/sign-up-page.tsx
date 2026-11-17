@@ -104,14 +104,14 @@ export function SignUpPage() {
                   onToggle={() => setPasswordVisible((value) => !value)}
                 />
               }
-              minLength={8}
+              minLength={6}
               maxLength={128}
               onChange={(event) => {
                 setPassword(event.target.value);
                 setError('');
                 signUp.reset();
               }}
-              placeholder="8 أحرف على الأقل"
+              placeholder="6 أحرف على الأقل"
               required
               type={passwordVisible ? 'text' : 'password'}
               value={password}
@@ -119,7 +119,7 @@ export function SignUpPage() {
             <AuthInput
               autoComplete="new-password"
               label="تأكيد كلمة المرور"
-              minLength={8}
+              minLength={6}
               maxLength={128}
               onChange={(event) => {
                 setConfirmation(event.target.value);
@@ -133,7 +133,7 @@ export function SignUpPage() {
             />
           </div>
           <p className="m-0 text-[12px] leading-5 text-muted-foreground">
-            كلمة المرور من 8 إلى 128 حرفًا. استخدم كلمة يصعب تخمينها.
+            كلمة المرور من 6 إلى 128 حرفًا.
           </p>
           {(error || signUp.isError) && (
             <p

@@ -799,7 +799,7 @@ export function StorefrontCustomerLoginPage() {
                     name="password"
                     type="password"
                     autoComplete={isRegister ? 'new-password' : 'current-password'}
-                    minLength={isRegister ? 8 : 1}
+                    minLength={isRegister ? 6 : 1}
                     maxLength={128}
                     required
                   />
@@ -809,7 +809,7 @@ export function StorefrontCustomerLoginPage() {
                       name="confirm-password"
                       type="password"
                       autoComplete="new-password"
-                      minLength={8}
+                      minLength={6}
                       maxLength={128}
                       required
                     />

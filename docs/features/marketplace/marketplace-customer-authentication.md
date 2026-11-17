@@ -2,6 +2,13 @@
 
 ## Authorized behavior
 
+2026-11-17: the user reduced the password minimum to 6 characters across account
+types. Customer registration now uses 6–128 characters in the shared API schema,
+Marketplace sign-up and tenant storefront sign-up forms. No character-class
+complexity rule is required. Password hashing, sign-in, session ownership and
+rate limits are unchanged. Source/diff review only; runtime/browser acceptance
+and automated checks remain pending under the manual-QA instruction.
+
 The user chose customer registration with a name, email, mobile and password, and
 sign-in with either email or mobile plus password. The earlier OTP proposal was
 superseded. These routes belong to the existing Auth module:

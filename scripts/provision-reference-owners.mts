@@ -7,8 +7,8 @@ config({ path: fileURLToPath(new URL('../.env', import.meta.url)), quiet: true }
 if (process.env.NODE_ENV === 'production')
   throw new Error('Reference accounts are local/demo only.');
 const password = process.env.REFERENCE_OWNER_PASSWORD;
-if (!password || password.length < 12)
-  throw new Error('Set REFERENCE_OWNER_PASSWORD (at least 12 characters).');
+if (!password || password.length < 6)
+  throw new Error('Set REFERENCE_OWNER_PASSWORD (at least 6 characters).');
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required.');
 const id = (key: string) => {
   const h = createHash('sha256')

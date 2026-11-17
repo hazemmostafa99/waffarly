@@ -473,11 +473,11 @@ export function EmployeesPage() {
                 <label>
                   {editing
                     ? text('New password (optional)', 'كلمة مرور جديدة (اختياري)')
-                    : text('Password (12 characters minimum)', 'كلمة المرور (12 حرفًا على الأقل)')}
+                    : text('Password (6 characters minimum)', 'كلمة المرور (6 حروف على الأقل)')}
                   <Input
                     type="password"
                     required={!editing}
-                    minLength={12}
+                    minLength={6}
                     maxLength={200}
                     autoComplete="new-password"
                     value={draft.password}

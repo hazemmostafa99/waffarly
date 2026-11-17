@@ -68,7 +68,7 @@ Rejection criteria, reason format/content constraints, applicant tracking UX, se
 ## Validation and Security Requirements
 
 - Server-side validation is authoritative. Names are trimmed and limited to the existing 160-character model bounds; contact strings are trimmed and limited to 3–32 characters, matching the existing account-creation contract. Product-owner approval of normalization, country formats, and uniqueness rules remains OPEN.
-- Owner username and password are requested only on the authenticated approval action; the existing username character/length limits and 12–128-character password bounds are reused.
+- Owner username and password are requested only on the authenticated approval action; the existing username character/length limits and 6–128-character password bounds are reused (password minimum updated by user decision on 2026-11-17).
 - Public submission returns a generic acknowledgement without application identifiers or access credentials. The application list and approval endpoint require an authenticated Super Admin session.
 - The owner account is created with the existing scrypt hash helper. Passwords are not stored in the application, returned by the API, or added to application logs.
 - Manual verification belongs to Super Admin operations outside the system; there is no automated phone call, message, payment, or verification integration.

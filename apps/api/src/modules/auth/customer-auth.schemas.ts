@@ -22,7 +22,7 @@ export const customerSignUpSchema = z
     name: z.string().trim().min(1).max(120),
     email,
     phone,
-    password: z.string().min(8).max(128),
+    password: z.string().min(6).max(128),
   })
   .strict();
 

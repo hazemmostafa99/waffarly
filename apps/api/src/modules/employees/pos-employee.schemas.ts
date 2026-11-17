@@ -24,7 +24,7 @@ export const createPosEmployeeSchema = z
   .object({
     username: posUsernameSchema,
     displayName: z.string().trim().min(2).max(160),
-    password: z.string().min(12).max(200),
+    password: z.string().min(6).max(200),
     role: z.enum(POS_EMPLOYEE_ROLES).nullable().optional(),
     branchIds,
   })
@@ -37,7 +37,7 @@ export const updatePosEmployeeSchema = z
     active: z.boolean(),
     role: z.enum(POS_EMPLOYEE_ROLES).nullable().optional(),
     branchIds,
-    password: z.string().min(12).max(200).optional(),
+    password: z.string().min(6).max(200).optional(),
   })
   .strict()
   .superRefine((input, context) => {

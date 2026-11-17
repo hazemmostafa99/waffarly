@@ -93,6 +93,15 @@ Sessions use HTTP-only cookies. Passwords are stored as hashes, never returned
 from the API. See [Merchant subscriptions](../features/super-admin/plans-subscriptions/SUBSCRIPTIONS.md)
 for current activation, expiry, recovery actions and collection semantics.
 
+2026-11-17 password policy: new passwords require at least 6 characters, without
+mandatory uppercase, digit or symbol rules. This applies to the Super Admin
+password-hashing tool, merchant creation/approval/reset, POS employee creation/
+updates, and Marketplace/storefront customer registration. Existing maximum
+lengths and scrypt hashing remain unchanged. Existing passwords are not rewritten,
+and sign-in continues to verify the saved password. The source and form copy were
+reviewed manually; runtime boundary checks, browser acceptance and compiled shared
+UI translations remain unverified/unbuilt under the manual-QA preference.
+
 ## Monthly plan administration
 
 The additive `20261013040000_monthly_plans` migration creates platform-owned offer definitions. Apply pending development migrations and generate/build the database and contracts packages before running API/Super Admin. No plan or commercial price is seeded.

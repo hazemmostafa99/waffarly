@@ -461,11 +461,11 @@ export function App() {
                 </label>
               ))}
               <label>
-                {t('Owner password')} <small>{t('(at least 12 characters)')}</small>
+                {t('Owner password')} <small>{t('(at least 6 characters)')}</small>
                 <PasswordInput
                   aria-label={t('Owner password')}
                   autoComplete="new-password"
-                  minLength={12}
+                  minLength={6}
                   value={merchantForm.password}
                   onChange={(event) =>
                     setMerchantForm({ ...merchantForm, password: event.target.value })
@@ -581,11 +581,11 @@ export function App() {
                               />
                             </label>
                             <label>
-                              {t('Owner password')} <small>{t('(12–128 characters)')}</small>
+                              {t('Owner password')} <small>{t('(6–128 characters)')}</small>
                               <PasswordInput
                                 aria-label={t('Owner password')}
                                 autoComplete="new-password"
-                                minLength={12}
+                                minLength={6}
                                 maxLength={128}
                                 required
                                 value={credentials.password}

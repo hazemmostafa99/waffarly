@@ -44,9 +44,9 @@ export function ResetMerchantPasswordDialog({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting.current || succeeded) return;
-    if (password.length < 12 || password.length > 128) {
+    if (password.length < 6 || password.length > 128) {
       setError(
-        ar ? 'كلمة المرور لازم تكون من ١٢ لـ١٢٨ حرف.' : 'Use 12–128 characters for the password.',
+        ar ? 'كلمة المرور لازم تكون من ٦ لـ١٢٨ حرف.' : 'Use 6–128 characters for the password.',
       );
       return;
     }
@@ -103,10 +103,10 @@ export function ResetMerchantPasswordDialog({
       }}
       title={ar ? 'إعادة تعيين كلمة مرور التاجر' : 'Reset merchant password'}
       closeLabel={ar ? 'إغلاق' : 'Close'}
-      className="admin-dialog"
+      className="admin-dialog admin-password-reset"
     >
-      <div className="admin-section grid admin-stack" dir={ar ? 'rtl' : 'ltr'}>
-        <dl className="m-0 grid gap-3 sm:grid-cols-2">
+      <div className="password-reset-content grid" dir={ar ? 'rtl' : 'ltr'}>
+        <dl className="password-reset-identity m-0 grid gap-3 sm:grid-cols-2">
           <div className="grid min-w-0 gap-1">
             <dt className="text-xs text-waffarly-muted">{ar ? 'النشاط' : 'Business'}</dt>
             <dd className="m-0 break-words text-sm font-semibold">
@@ -134,53 +134,57 @@ export function ResetMerchantPasswordDialog({
           </>
         ) : (
           <form
-            className="grid admin-stack"
+            className="password-reset-form grid"
             onSubmit={(event) => void submit(event)}
             aria-busy={pending}
           >
-            <p id={`${id}-notice`} className="m-0 rounded-xl bg-waffarly-input p-3 text-sm leading-6 text-waffarly-muted">
+            <p id={`${id}-notice`} className="password-reset-note">
               {ar
                 ? 'التأكيد هيغيّر كلمة مرور حساب التاجر وينهي جلساته الحالية. احتفظ بالباسورد الجديد ووصّله لصاحب الحساب بشكل خاص.'
                 : 'Confirming changes the owner password and ends their current sessions. Keep your chosen password and share it privately with the owner.'}
             </p>
-            <label className="grid gap-2 text-sm font-medium" htmlFor={`${id}-password`}>
-              {ar ? 'كلمة المرور الجديدة' : 'New password'}
-            </label>
-            <PasswordInput
-              id={`${id}-password`}
-              autoComplete="new-password"
-              value={password}
-              required
-              minLength={12}
-              maxLength={128}
-              disabled={pending}
-              aria-describedby={`${id}-hint ${id}-notice`}
-              onChange={(event) => {
-                setPassword(event.target.value);
-                setError('');
-              }}
-            />
-            <small id={`${id}-hint`} className="text-waffarly-muted">
-              {ar
-                ? 'من ١٢ لـ١٢٨ حرف، مع الحفاظ على المسافات كما كتبتها.'
-                : '12–128 characters. Spaces are preserved exactly as entered.'}
-            </small>
-            <label className="text-sm font-medium" htmlFor={`${id}-confirmation`}>
-              {ar ? 'تأكيد كلمة المرور' : 'Confirm password'}
-            </label>
-            <PasswordInput
-              id={`${id}-confirmation`}
-              autoComplete="new-password"
-              value={confirmation}
-              required
-              minLength={12}
-              maxLength={128}
-              disabled={pending}
-              onChange={(event) => {
-                setConfirmation(event.target.value);
-                setError('');
-              }}
-            />
+            <div className="password-reset-field">
+              <label htmlFor={`${id}-password`}>
+                {ar ? 'كلمة المرور الجديدة' : 'New password'}
+              </label>
+              <PasswordInput
+                id={`${id}-password`}
+                autoComplete="new-password"
+                value={password}
+                required
+                minLength={6}
+                maxLength={128}
+                disabled={pending}
+                aria-describedby={`${id}-hint ${id}-notice`}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setError('');
+                }}
+              />
+              <small id={`${id}-hint`} className="password-reset-hint">
+                {ar
+                  ? 'من ٦ لـ١٢٨ حرف، مع الحفاظ على المسافات كما كتبتها.'
+                  : '6–128 characters. Spaces are preserved exactly as entered.'}
+              </small>
+            </div>
+            <div className="password-reset-field">
+              <label htmlFor={`${id}-confirmation`}>
+                {ar ? 'تأكيد كلمة المرور' : 'Confirm password'}
+              </label>
+              <PasswordInput
+                id={`${id}-confirmation`}
+                autoComplete="new-password"
+                value={confirmation}
+                required
+                minLength={6}
+                maxLength={128}
+                disabled={pending}
+                onChange={(event) => {
+                  setConfirmation(event.target.value);
+                  setError('');
+                }}
+              />
+            </div>
             {error && (
               <p role="alert" className="m-0 text-sm text-waffarly-danger">{error}</p>
             )}

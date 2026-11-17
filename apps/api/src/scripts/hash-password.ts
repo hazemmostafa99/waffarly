@@ -40,5 +40,5 @@ async function readPassword(): Promise<string> {
 }
 
 const password = await readPassword();
-if (password.length < 12) throw new Error('Use at least 12 characters.');
+if (password.length < 6) throw new Error('Use at least 6 characters.');
 process.stdout.write(`${await hashPassword(password)}\n`);

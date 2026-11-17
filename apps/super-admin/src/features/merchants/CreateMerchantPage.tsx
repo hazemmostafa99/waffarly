@@ -336,14 +336,14 @@ export function CreateMerchantPage() {
               <FormField
                 id="owner-password"
                 label={t('Owner password')}
-                hint={t('Use a password with 12–128 characters.')}
+                hint={t('Use a password with 6–128 characters.')}
               >
                 <PasswordInput
                   aria-describedby="owner-password-hint"
                   autoComplete="new-password"
                   id="owner-password"
                   maxLength={128}
-                  minLength={12}
+                  minLength={6}
                   required
                   value={form.password}
                   onChange={(event) => updateForm('password', event.target.value)}

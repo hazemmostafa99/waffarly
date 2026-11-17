@@ -660,7 +660,7 @@ export const ar: Record<string, string> = {
     'أنشئ حساب دخول المالك. احتفظ بكلمة المرور بشكل خاص وشاركها بعد التحقق من هوية المالك فقط.',
   'Use 3–80 letters, numbers, dots, underscores, or hyphens.':
     'استخدم من 3 إلى 80 حرفًا من الحروف أو الأرقام أو النقاط أو الشرطات السفلية أو الوصلات.',
-  'Use a password with 12–128 characters.': 'استخدم كلمة مرور من 12 إلى 128 حرفًا.',
+  'Use a password with 6–128 characters.': 'استخدم كلمة مرور من 6 إلى 128 حرفًا.',
   'Approval and access': 'الموافقة والوصول',
   'Create the business and owner account': 'إنشاء المتجر وحساب المالك',
   'The merchant is approved when this form is submitted successfully.':
@@ -857,7 +857,7 @@ export const ar: Record<string, string> = {
   'Owner mobile number': 'رقم هاتف المالك',
   'Owner username': 'اسم مستخدم المالك',
   'Owner password': 'كلمة مرور المالك',
-  '(at least 12 characters)': '(١٢ حرفًا على الأقل)',
+  '(at least 6 characters)': '(٦ حروف على الأقل)',
   'Create business': 'إضافة المتجر',
   'Business applications': 'طلبات انضمام المتاجر',
   'Review the contact details and complete your checks before approval. An owner account is created only when you approve an application.':
@@ -874,7 +874,7 @@ export const ar: Record<string, string> = {
   Required: 'مطلوب',
   'Business contact:': 'رقم المتجر:',
   Submitted: 'تاريخ التقديم',
-  '(12–128 characters)': '(من ١٢ إلى ١٢٨ حرفًا)',
+  '(6–128 characters)': '(من ٦ إلى ١٢٨ حرفًا)',
   'Approve and create owner account': 'الموافقة وإنشاء حساب المالك',
   'Send credentials manually': 'إرسال بيانات الدخول يدويًا',
   'Verify the owner by phone, then send these details privately to':

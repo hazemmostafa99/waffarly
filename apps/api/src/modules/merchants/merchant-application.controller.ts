@@ -40,7 +40,7 @@ const approvalSchema = z
       .min(3)
       .max(80)
       .regex(/^[a-zA-Z0-9._-]+$/),
-    password: z.string().min(12).max(128),
+    password: z.string().min(6).max(128),
   })
   .strict();
 

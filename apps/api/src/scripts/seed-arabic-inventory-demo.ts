@@ -50,8 +50,8 @@ if (process.env.NODE_ENV === 'production') {
 if (!['localhost', '127.0.0.1', '::1'].includes(new URL(databaseUrl).hostname)) {
   throw new Error('This demo seed only runs against a localhost PostgreSQL database.');
 }
-if (DEMO.password.length < 12)
-  throw new Error('The demo password must contain at least 12 characters.');
+if (DEMO.password.length < 6)
+  throw new Error('The demo password must contain at least 6 characters.');
 
 const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
 const persistence = client as unknown as PrismaService;
