@@ -1,3 +1,4 @@
+// import this module to deal with metadata
 import 'reflect-metadata';
 import { config as loadDotEnv } from 'dotenv';
 import { resolve } from 'node:path';
@@ -7,6 +8,8 @@ import { configureHttpApplication } from './configure-http-application.js';
 import { StructuredLogger } from './common/logging/structured-logger.js';
 import { AppConfiguration } from './config/app-configuration.js';
 
+// load env from project root also from api root
+// cwd: current working directory ./
 loadDotEnv({ path: [resolve(process.cwd(), '../../.env'), resolve(process.cwd(), '.env')] });
 
 async function bootstrap(): Promise<void> {

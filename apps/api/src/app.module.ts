@@ -20,10 +20,15 @@ import { StorefrontModule } from './modules/storefront/index.js';
 import { ShiftsModule } from './modules/shifts/index.js';
 @Module({
   imports: [
+    // Configuration
     ConfigurationModule,
+
+    // Database
+    DatabaseModule,
+
+    // Feature Modules
     CustomersModule,
     DiscountsModule,
-    DatabaseModule,
     AuthModule,
     EmployeesModule,
     HealthModule,
