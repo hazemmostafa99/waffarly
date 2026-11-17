@@ -189,7 +189,7 @@ export function BranchesPage() {
   );
 
   return (
-    <main className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+    <main className="inventory-page inventory-workspace" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <InventoryHeader
         title="Branches and warehouses"
         description="Each branch can hold multiple warehouses and has one default consumption warehouse."

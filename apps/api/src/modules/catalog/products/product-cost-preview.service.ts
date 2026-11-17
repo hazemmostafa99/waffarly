@@ -6,6 +6,7 @@ import type {
 } from '@waffarly/contracts';
 import { formatCents, toCents } from '../../../common/money/money.js';
 import { PrismaService } from '../../../infrastructure/database/prisma.service.js';
+import { parseStockQuantity } from '../../inventory/index.js';
 import { ProductConsumptionService } from './product-consumption.service.js';
 
 @Injectable()
@@ -151,7 +152,8 @@ export class ProductCostPreviewService {
 }
 
 function costForQuantityCents(quantity: string, costPerBaseUnit: string): bigint {
-  const quantityScaled = BigInt(quantity.replace('.', ''));
+  // Requirements may omit trailing decimals; always scale quantities to six places.
+  const quantityScaled = parseStockQuantity(quantity);
   const costScaled = BigInt(costPerBaseUnit.replace('.', ''));
   return (quantityScaled * costScaled + 5_000_000_000_000_000n) / 10_000_000_000_000_000n;
 }

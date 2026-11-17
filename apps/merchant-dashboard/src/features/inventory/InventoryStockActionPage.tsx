@@ -48,12 +48,16 @@ export function InventoryStockActionPage({ action }: { action: 'waste' | 'transf
   const [postStarted, setPostStarted] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [pending, setPending] = useState<RecordStockWasteRequest | TransferStockRequest | null>(null);
+  const [pending, setPending] = useState<RecordStockWasteRequest | TransferStockRequest | null>(
+    null,
+  );
   const requestId = useRef(crypto.randomUUID());
   const isWaste = action === 'waste';
 
   function updateLine(key: string, change: Partial<DraftLine>) {
-    setLines((current) => current.map((line) => (line.key === key ? { ...line, ...change } : line)));
+    setLines((current) =>
+      current.map((line) => (line.key === key ? { ...line, ...change } : line)),
+    );
   }
 
   function review(event: FormEvent<HTMLFormElement>) {
@@ -137,7 +141,9 @@ export function InventoryStockActionPage({ action }: { action: 'waste' | 'transf
       setDestinationId('');
       requestId.current = crypto.randomUUID();
     } catch (cause) {
-      setError(cause instanceof Error ? errorText(cause.message) : text('Could not record this movement.'));
+      setError(
+        cause instanceof Error ? errorText(cause.message) : text('Could not record this movement.'),
+      );
     } finally {
       setBusy(false);
     }
@@ -147,7 +153,7 @@ export function InventoryStockActionPage({ action }: { action: 'waste' | 'transf
   const selectedDestination = warehouses.find((warehouse) => warehouse.id === destinationId);
 
   return (
-    <main className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+    <main className="inventory-page inventory-workspace" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <InventoryHeader
         title={isWaste ? 'Record stock waste' : 'Transfer stock'}
         description={
@@ -161,22 +167,49 @@ export function InventoryStockActionPage({ action }: { action: 'waste' | 'transf
           </Button>
         }
       />
-      {notice && <p className="inventory-notice" role="status">{notice}</p>}
-      {error && <p className="inventory-error" role="alert">{error}</p>}
+      {notice && (
+        <p className="inventory-notice" role="status">
+          {notice}
+        </p>
+      )}
+      {error && (
+        <p className="inventory-error" role="alert">
+          {error}
+        </p>
+      )}
       <InventoryCard
+        className="inventory-operation-card"
         title={text(isWaste ? 'Waste details' : 'Transfer details')}
-        description={text(isWaste ? 'Choose the warehouse and the quantities to write off.' : 'Choose both warehouses and the quantities to move.')}
+        description={text(
+          isWaste
+            ? 'Choose the warehouse and the quantities to write off.'
+            : 'Choose both warehouses and the quantities to move.',
+        )}
       >
+        <ol className="inventory-flow-steps" aria-label={text('Stock operations')}>
+          <li>{text('Choose warehouse')}</li>
+          <li>{text('Add items and quantities')}</li>
+          <li>{text('Review before posting')}</li>
+        </ol>
         <form className="inventory-editor" onSubmit={review}>
-          <div className="inventory-opening-line">
+          <div className="inventory-location-fields">
             <label>
               {text(isWaste ? 'Warehouse' : 'Source warehouse')}
               <WarehousePicker
                 value={warehouseId}
                 label={text(isWaste ? 'Warehouse' : 'Source warehouse')}
-                onResolve={(warehouse) => setWarehouses((current) => [...current.filter((entry) => entry.id !== warehouse.id), warehouse])}
+                onResolve={(warehouse) =>
+                  setWarehouses((current) => [
+                    ...current.filter((entry) => entry.id !== warehouse.id),
+                    warehouse,
+                  ])
+                }
                 onSelect={(warehouse) => {
-                  if (warehouse) setWarehouses((current) => [...current.filter((entry) => entry.id !== warehouse.id), warehouse]);
+                  if (warehouse)
+                    setWarehouses((current) => [
+                      ...current.filter((entry) => entry.id !== warehouse.id),
+                      warehouse,
+                    ]);
                   setWarehouseId(warehouse?.id ?? '');
                 }}
               />
@@ -187,9 +220,18 @@ export function InventoryStockActionPage({ action }: { action: 'waste' | 'transf
                 <WarehousePicker
                   value={destinationId}
                   label={text('Destination warehouse')}
-                  onResolve={(warehouse) => setWarehouses((current) => [...current.filter((entry) => entry.id !== warehouse.id), warehouse])}
+                  onResolve={(warehouse) =>
+                    setWarehouses((current) => [
+                      ...current.filter((entry) => entry.id !== warehouse.id),
+                      warehouse,
+                    ])
+                  }
                   onSelect={(warehouse) => {
-                    if (warehouse) setWarehouses((current) => [...current.filter((entry) => entry.id !== warehouse.id), warehouse]);
+                    if (warehouse)
+                      setWarehouses((current) => [
+                        ...current.filter((entry) => entry.id !== warehouse.id),
+                        warehouse,
+                      ]);
                     setDestinationId(warehouse?.id ?? '');
                   }}
                 />
@@ -198,49 +240,97 @@ export function InventoryStockActionPage({ action }: { action: 'waste' | 'transf
           </div>
           <label>
             {text('Reason')}
-            <Input required minLength={3} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} placeholder={text(isWaste ? 'Expired or damaged stock' : 'Restock another warehouse')} />
+            <Input
+              required
+              minLength={3}
+              maxLength={500}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              placeholder={text(isWaste ? 'Expired or damaged stock' : 'Restock another warehouse')}
+            />
           </label>
           <h3>{text('Stock items and quantities')}</h3>
           {lines.map((line, index) => {
             const item = items.find((entry) => entry.id === line.stockItemId);
             return (
               <fieldset className="inventory-opening-line" key={line.key}>
-                <legend>{text('Line')} {formatDigits(String(index + 1))}</legend>
+                <legend>
+                  {text('Line')} {formatDigits(String(index + 1))}
+                </legend>
                 <label>
                   {text('Stock item')}
                   <StockItemPicker
                     value={line.stockItemId}
                     label={text('Stock item')}
-                    onResolve={(stockItem) => setItems((current) => cacheStockItem(current, stockItem))}
+                    onResolve={(stockItem) =>
+                      setItems((current) => cacheStockItem(current, stockItem))
+                    }
                     onSelect={(stockItem) => {
                       if (stockItem) setItems((current) => cacheStockItem(current, stockItem));
-                      updateLine(line.key, { stockItemId: stockItem?.id ?? '', unitCode: stockItem?.baseUnit ?? '' });
+                      updateLine(line.key, {
+                        stockItemId: stockItem?.id ?? '',
+                        unitCode: stockItem?.baseUnit ?? '',
+                      });
                     }}
                   />
                 </label>
                 <label>
                   {text('Condition')}
-                  <select value={line.condition} onChange={(event) => updateLine(line.key, { condition: event.target.value as StockCondition })}>
+                  <select
+                    value={line.condition}
+                    onChange={(event) =>
+                      updateLine(line.key, { condition: event.target.value as StockCondition })
+                    }
+                  >
                     <option value="available">{text('Available')}</option>
                     <option value="non_sellable">{text('Non-Sellable')}</option>
                   </select>
                 </label>
                 <label>
                   {text('Quantity')}
-                  <Input required inputMode="decimal" value={line.quantity} onChange={(event) => updateLine(line.key, { quantity: event.target.value })} />
+                  <Input
+                    required
+                    inputMode="decimal"
+                    value={line.quantity}
+                    onChange={(event) => updateLine(line.key, { quantity: event.target.value })}
+                  />
                 </label>
                 <label>
                   {text('Unit')}
-                  <select required value={line.unitCode} onChange={(event) => updateLine(line.key, { unitCode: event.target.value })}>
-                    {stockUnitOptions(item).map((unit) => <option key={unit.code} value={unit.code}>{formatDigits(`${unit.name} (${unit.code})`)}</option>)}
+                  <select
+                    required
+                    value={line.unitCode}
+                    onChange={(event) => updateLine(line.key, { unitCode: event.target.value })}
+                  >
+                    {stockUnitOptions(item).map((unit) => (
+                      <option key={unit.code} value={unit.code}>
+                        {formatDigits(`${unit.name} (${unit.code})`)}
+                      </option>
+                    ))}
                   </select>
                 </label>
-                {lines.length > 1 && <Button type="button" variant="ghost" onClick={() => setLines((current) => current.filter((entry) => entry.key !== line.key))}>{text('Remove line')}</Button>}
+                {lines.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() =>
+                      setLines((current) => current.filter((entry) => entry.key !== line.key))
+                    }
+                  >
+                    {text('Remove line')}
+                  </Button>
+                )}
               </fieldset>
             );
           })}
           <div className="inventory-editor-actions">
-            <Button type="button" variant="outline" onClick={() => setLines((current) => [...current, emptyLine()])}>{text('Add line')}</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setLines((current) => [...current, emptyLine()])}
+            >
+              {text('Add line')}
+            </Button>
             <Button type="submit">{text('Review movement')}</Button>
           </div>
         </form>
@@ -253,24 +343,62 @@ export function InventoryStockActionPage({ action }: { action: 'waste' | 'transf
           busy={busy}
         >
           <div className="products-dialog-body inventory-review">
-            <p>{text(isWaste ? 'Posting reduces the selected stock and saves the active item cost for this movement.' : 'Posting reduces the source and adds the same quantities to the destination in one transaction. It does not change the item cost.')}</p>
-            <p><strong>{text('Reason')}:</strong> {formatDigits(pending.reason)}</p>
-            {!isWaste && <p>{formatDigits(`${selectedSource?.branchName ?? ''} · ${selectedSource?.name ?? ''} → ${selectedDestination?.branchName ?? ''} · ${selectedDestination?.name ?? ''}`)}</p>}
+            <p>
+              {text(
+                isWaste
+                  ? 'Posting reduces the selected stock and saves the active item cost for this movement.'
+                  : 'Posting reduces the source and adds the same quantities to the destination in one transaction. It does not change the item cost.',
+              )}
+            </p>
+            <p>
+              <strong>{text('Reason')}:</strong> {formatDigits(pending.reason)}
+            </p>
+            {!isWaste && (
+              <p>
+                {formatDigits(
+                  `${selectedSource?.branchName ?? ''} · ${selectedSource?.name ?? ''} → ${selectedDestination?.branchName ?? ''} · ${selectedDestination?.name ?? ''}`,
+                )}
+              </p>
+            )}
             <ul>
               {pending.lines.map((line, index) => {
                 const item = items.find((entry) => entry.id === line.stockItemId);
-                return <li key={`${line.stockItemId}:${index}`}><strong>{formatDigits(item?.name ?? '')}</strong><span>{formatDigits(`${line.quantity} ${line.unitCode} · ${line.condition === 'available' ? text('Available') : text('Non-Sellable')}`)}</span></li>;
+                return (
+                  <li key={`${line.stockItemId}:${index}`}>
+                    <strong>{formatDigits(item?.name ?? '')}</strong>
+                    <span>
+                      {formatDigits(
+                        `${line.quantity} ${line.unitCode} · ${line.condition === 'available' ? text('Available') : text('Non-Sellable')}`,
+                      )}
+                    </span>
+                  </li>
+                );
               })}
             </ul>
-            {error && <p className="inventory-error" role="alert">{error}</p>}
+            {error && (
+              <p className="inventory-error" role="alert">
+                {error}
+              </p>
+            )}
           </div>
           <footer className="products-dialog-footer">
-            <Button type="button" variant="outline" disabled={busy || postStarted} onClick={backToEdit}>{text('Back to edit')}</Button>
-            <Button type="button" disabled={busy} onClick={() => void post()}>{busy ? text('Posting…') : text('Post movement')}</Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy || postStarted}
+              onClick={backToEdit}
+            >
+              {text('Back to edit')}
+            </Button>
+            <Button type="button" disabled={busy} onClick={() => void post()}>
+              {busy ? text('Posting…') : text('Post movement')}
+            </Button>
           </footer>
         </DashboardDialog>
       )}
-      <Link className="inventory-detail-link" to="/inventory/history">{text('View movement history')}</Link>
+      <Link className="inventory-detail-link" to="/inventory/history">
+        {text('View movement history')}
+      </Link>
     </main>
   );
 }

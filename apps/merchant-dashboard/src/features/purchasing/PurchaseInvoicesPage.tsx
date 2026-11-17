@@ -521,7 +521,10 @@ export function PurchaseInvoicesPage() {
 
   if (isInvoiceEditor) {
     return (
-      <div className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+      <div
+        className="inventory-page inventory-workspace inventory-purchase-workspace"
+        dir={locale === 'ar' ? 'rtl' : 'ltr'}
+      >
         <nav className="purchase-entry-breadcrumb" aria-label={text('Purchases')}>
           <Link to="/inventory/purchases">{text('Purchases')}</Link>
           <span aria-hidden="true">/</span>
@@ -573,7 +576,7 @@ export function PurchaseInvoicesPage() {
   }
 
   return (
-    <div className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="inventory-page inventory-workspace" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <InventoryHeader
         title="Purchases"
         description="Save a draft, review received quantities, then add them to your warehouse."
@@ -972,9 +975,13 @@ export function PurchaseInvoicesPage() {
                   ? text('Cost not recorded')
                   : formatDigits(invoiceReview.totalAmount)}
               </p>
-              {invoiceReview.correctedTotalAmount && invoiceReview.correctedTotalAmount !== invoiceReview.totalAmount && (
-                <p><strong>{text('Corrected invoice total (EGP)')}:</strong> {formatDigits(invoiceReview.correctedTotalAmount)}</p>
-              )}
+              {invoiceReview.correctedTotalAmount &&
+                invoiceReview.correctedTotalAmount !== invoiceReview.totalAmount && (
+                  <p>
+                    <strong>{text('Corrected invoice total (EGP)')}:</strong>{' '}
+                    {formatDigits(invoiceReview.correctedTotalAmount)}
+                  </p>
+                )}
             </div>
             <p className="inventory-note">
               {text('Taxes are not included in this invoice total yet.')}

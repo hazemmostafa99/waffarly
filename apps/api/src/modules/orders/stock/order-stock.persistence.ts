@@ -5,8 +5,10 @@ import { ConflictException } from '@nestjs/common';
 import type { Prisma } from '@waffarly/database';
 import type { StockMovement } from '@waffarly/contracts';
 import { randomUUID } from 'node:crypto';
+import { formatCents } from '../../../common/money/money.js';
 import {
   InventoryLedgerService,
+  parseStockQuantity,
   type InventoryMovementBatchCommand,
 } from '../../inventory/index.js';
 import type { InventoryRequirement } from '../../catalog/index.js';
@@ -256,7 +258,8 @@ const MAX_ORDER_COST_CENTS = 999_999_999_999_999_999n;
 const STOCK_COST_CENT_DIVISOR = 10_000_000_000_000_000n;
 
 function stockCostCents(quantity: string, baseUnitCost: string): bigint {
-  const quantityScaled = BigInt(quantity.replace('.', ''));
+  // Frozen requirements may omit trailing decimals; use the same six-place scale as inventory.
+  const quantityScaled = parseStockQuantity(quantity);
   const costScaled = BigInt(baseUnitCost.replace('.', ''));
   return (quantityScaled * costScaled + STOCK_COST_CENT_DIVISOR / 2n) / STOCK_COST_CENT_DIVISOR;
 }

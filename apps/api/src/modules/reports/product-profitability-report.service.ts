@@ -176,7 +176,7 @@ export class ProductProfitabilityReportService {
             AND r."issuedAt">=(${query.from}::date::timestamp AT TIME ZONE 'Africa/Cairo')
             AND r."issuedAt"< ((${query.to}::date+1)::timestamp AT TIME ZONE 'Africa/Cairo')
             AND (${branchId}::uuid IS NULL OR o."branchId"=${branchId}::uuid)
-            AND NOT EXISTS (SELECT 1 FROM "pos_order_refund_lines" rl WHERE rl."refundId"=r."id" AND rl."merchantId"=r."merchantId')), 0)::bigint AS "unallocatedRefundCount"
+            AND NOT EXISTS (SELECT 1 FROM "pos_order_refund_lines" rl WHERE rl."refundId"=r."id" AND rl."merchantId"=r."merchantId")), 0)::bigint AS "unallocatedRefundCount"
       FROM event_totals`;
 
     const summary = totals[0]!;

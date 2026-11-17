@@ -187,10 +187,13 @@ export function StockItemsPage() {
   const stockFilters = (
     <div className="inventory-filters">
       <form className="inventory-search" onSubmit={applySearch}>
-        <label htmlFor="inventory-search">{text('Search stock items')}</label>
+        <label className="sr-only" htmlFor="inventory-search">
+          {text('Search stock items')}
+        </label>
         <div>
           <Input
             id="inventory-search"
+            type="search"
             value={searchDraft}
             maxLength={160}
             onChange={(event) => setSearchDraft(event.target.value)}
@@ -234,20 +237,12 @@ export function StockItemsPage() {
   );
 
   return (
-    <div className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="inventory-page inventory-workspace" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <InventoryHeader
         title="Stock items"
         description="Manage the items and units you use in purchases and recipes."
-        filters={stockFilters}
         actions={
           <>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/inventory/purchases/new')}
-            >
-              {text('Record purchase')}
-            </Button>
             <Button
               type="button"
               onClick={() => setEditor({ item: null, key: crypto.randomUUID() })}
@@ -290,6 +285,7 @@ export function StockItemsPage() {
           'One item can be shared by products and recipes. Pack conversion factors stay fixed after saving.',
         )}
       >
+        {stockFilters}
         {itemsLoadError && (
           <div className="inventory-error" role="alert">
             <span>{errorText(itemsLoadError)}</span>
@@ -541,6 +537,7 @@ function StockItemEditor({
       closeLabel={text('Close')}
       onClose={onClose}
       busy={busy}
+      className="inventory-stock-item-dialog"
     >
       <form
         className="products-dialog-body inventory-editor"
@@ -551,41 +548,47 @@ function StockItemEditor({
             {error}
           </p>
         )}
-        <label>
-          {text('Item name')}
-          <Input
-            autoFocus
-            maxLength={160}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            required
-          />
-        </label>
-        <label>
-          {text('Description (optional)')}
-          <textarea
-            rows={3}
-            maxLength={1000}
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-          />
-        </label>
-        <label>
-          {text('Measurement unit')}
-          <select
-            aria-label={text('Measurement unit')}
-            value={baseUnit}
-            disabled={!created}
-            onChange={(event) => setBaseUnit(event.target.value as StockBaseUnit)}
-          >
-            {STOCK_BASE_UNITS.map((unit) => (
-              <option key={unit} value={unit}>
-                {text(baseLabels[unit])}
-              </option>
-            ))}
-          </select>
-          {!created && <small>{text('The base unit cannot change after creation.')}</small>}
-        </label>
+        <div className="inventory-form-grid">
+          <label>
+            {text('Item name')}
+            <Input
+              autoFocus
+              placeholder={text('e.g. Milk or flour')}
+              maxLength={160}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            {text('Measurement unit')}
+            <select
+              aria-label={text('Measurement unit')}
+              value={baseUnit}
+              disabled={!created}
+              onChange={(event) => setBaseUnit(event.target.value as StockBaseUnit)}
+            >
+              {STOCK_BASE_UNITS.map((unit) => (
+                <option key={unit} value={unit}>
+                  {text(baseLabels[unit])}
+                </option>
+              ))}
+            </select>
+            <small>{text('The base unit cannot change after creation.')}</small>
+          </label>
+        </div>
+        <details className="inventory-section-details" open={Boolean(item?.description)}>
+          <summary>{text('Description (optional)')}</summary>
+          <label>
+            <span className="sr-only">{text('Description (optional)')}</span>
+            <textarea
+              rows={2}
+              maxLength={1000}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+            />
+          </label>
+        </details>
         <button
           type="button"
           className="inventory-disclosure"
@@ -665,73 +668,75 @@ function StockItemEditor({
           </section>
         )}
         {created && (
-          <p className="inventory-note">
-            {text(
-              'Creating an item does not add stock. Next, add starting stock or record a purchase.',
-            )}
+          <p className="inventory-secondary-note">
+            {text('Save the item first, then add stock through a purchase or opening balance.')}
           </p>
         )}
         {item && (
-          <section className="inventory-converter">
-            <h3>{text('Conversion preview')}</h3>
-            <div>
-              <label>
-                {text('Quantity')}
-                <Input
-                  value={quantity}
-                  maxLength={19}
-                  inputMode="decimal"
-                  onChange={(event) => {
-                    setQuantity(event.target.value);
-                    setConversion(null);
-                  }}
-                />
-              </label>
-              <label>
-                {text('Unit')}
-                <select
-                  value={unitCode}
-                  onChange={(event) => {
-                    setUnitCode(event.target.value);
-                    setConversion(null);
-                  }}
+          <details className="inventory-section-details">
+            <summary>{text('Conversion preview')}</summary>
+            <section className="inventory-converter">
+              <div>
+                <label>
+                  {text('Quantity')}
+                  <Input
+                    value={quantity}
+                    maxLength={19}
+                    inputMode="decimal"
+                    onChange={(event) => {
+                      setQuantity(event.target.value);
+                      setConversion(null);
+                    }}
+                  />
+                </label>
+                <label>
+                  {text('Unit')}
+                  <select
+                    value={unitCode}
+                    onChange={(event) => {
+                      setUnitCode(event.target.value);
+                      setConversion(null);
+                    }}
+                  >
+                    {[
+                      ...compatibleBaseUnits(item.baseUnit),
+                      ...item.units.map((unit) => unit.code),
+                    ].map((unit) => (
+                      <option key={unit} value={unit}>
+                        {text(
+                          item.units.find((pack) => pack.code === unit)?.name ??
+                            baseLabels[unit as StockBaseUnit],
+                        )}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => void previewConversion()}
                 >
-                  {[
-                    ...compatibleBaseUnits(item.baseUnit),
-                    ...item.units.map((unit) => unit.code),
-                  ].map((unit) => (
-                    <option key={unit} value={unit}>
-                      {text(
-                        item.units.find((pack) => pack.code === unit)?.name ??
-                          baseLabels[unit as StockBaseUnit],
-                      )}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={() => void previewConversion()}
-              >
-                {text('Convert')}
-              </Button>
-            </div>
-            {conversion && (
-              <p role="status">
-                <strong>{formatDigits(`${conversion.quantity} ${conversion.unitCode}`)}</strong> ={' '}
-                <strong>{formatDigits(`${conversion.baseQuantity} ${conversion.baseUnit}`)}</strong>
-              </p>
-            )}
-          </section>
+                  {text('Convert')}
+                </Button>
+              </div>
+              {conversion && (
+                <p role="status">
+                  <strong>{formatDigits(`${conversion.quantity} ${conversion.unitCode}`)}</strong> ={' '}
+                  <strong>
+                    {formatDigits(`${conversion.baseQuantity} ${conversion.baseUnit}`)}
+                  </strong>
+                </p>
+              )}
+            </section>
+          </details>
         )}
         <footer className="products-dialog-footer">
           <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
             {text('Cancel')}
           </Button>
           <Button type="submit" disabled={busy || !name.trim()}>
-            {busy ? text('Saving…') : created ? text('Create stock item') : text('Save changes')}
+            {busy ? text('Saving…') : created ? text('Save stock item') : text('Save changes')}
           </Button>
         </footer>
       </form>

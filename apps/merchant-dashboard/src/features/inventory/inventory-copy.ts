@@ -4,6 +4,35 @@ export function inventoryCopy(
   translate: (text: string) => string,
 ) {
   const arabic: Record<string, string> = {
+    'Stock balances': 'أرصدة المخزون',
+    'Stock operations': 'عمليات المخزون',
+    'e.g. Milk or flour': 'مثال: حليب أو دقيق',
+    'Save stock item': 'حفظ الصنف',
+    Details: 'التفاصيل',
+    View: 'عرض',
+    'Hide details': 'إخفاء التفاصيل',
+    'Contact details (optional)': 'بيانات التواصل (اختياري)',
+    'Add items and quantities': 'أضف الأصناف والكميات',
+    'Review before posting': 'راجع ثم رحّل العملية',
+    'Save the item first, then add stock through a purchase or opening balance.':
+      'حفظ الصنف لا يضيف كمية. أضف الكمية بعد الحفظ من المشتريات أو الرصيد الافتتاحي.',
+    'Select a product to review refunds and cost coverage.':
+      'اضغط على اسم المنتج لعرض المرتجعات وحالة تسجيل التكلفة.',
+    'More filters': 'فلاتر إضافية',
+    'No reorder points match these filters': 'لا توجد حدود إعادة طلب مطابقة للفلاتر المحددة',
+    'Amounts in EGP': 'المبالغ بالجنيه المصري',
+    'All conditions': 'كل حالات المخزون',
+    'Stock monitoring is not set up yet': 'لم يتم إعداد متابعة النواقص',
+    'Set a reorder point for each item and warehouse you want to monitor.':
+      'حدد حد إعادة الطلب لكل صنف ومستودع لبدء المتابعة.',
+    'Stock needs attention': 'مخزون يحتاج إلى متابعة',
+    'No low stock in monitored locations': 'لا يوجد مخزون منخفض ضمن المواقع المُتابعة',
+    'Monitored item locations': 'مواقع أصناف مُتابعة',
+    'All warehouses · independent of the balance filters below':
+      'جميع المستودعات · الملخص مستقل عن فلاتر الأرصدة أدناه',
+    'Review stock health': 'مراجعة النواقص والمتابعة',
+    'Set up stock monitoring': 'ضبط متابعة النواقص',
+    'Report details and calculation notes': 'تفاصيل التقرير وطريقة الحساب',
     'Your unsaved invoice was restored.': 'تمت استعادة الفاتورة غير المحفوظة.',
     'Discard recovery': 'تجاهل الاستعادة',
     'Unit cost': 'تكلفة الوحدة',
@@ -624,8 +653,8 @@ export function inventoryCopy(
       'يُسجل الإيراد عند تأكيد البيع أو قبول الطلب، والاسترداد حسب الصنف، والتكلفة عند استهلاك المخزون.',
     'This is gross profit before rent, wages, utilities, payment fees, and other operating expenses.':
       'هذا مجمل الربح قبل الإيجار والمرتبات والمرافق ورسوم الدفع وباقي مصاريف التشغيل.',
-    'From': 'من',
-    'To': 'إلى',
+    From: 'من',
+    To: 'إلى',
     Branch: 'الفرع',
     'Group by': 'تجميع حسب',
     'All branches': 'كل الفروع',

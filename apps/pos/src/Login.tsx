@@ -8,6 +8,7 @@ import { ApiError, apiRequest } from './lib/api-client.js';
 import { getPosSession, posSessionKey } from './features/auth/pos-session.api.js';
 import { usePosAppearanceStore } from './app/pos-appearance-store.js';
 import '@waffarly/ui/pos-theme.css';
+import './login.css';
 
 export function Login() {
   const { t, errorText, locale, setLocale } = useLocale();
@@ -65,7 +66,7 @@ export function Login() {
 
   return (
     <div
-      className="pos-theme flex min-h-dvh flex-col bg-background font-sans text-sm text-foreground"
+      className="pos-login pos-theme flex min-h-dvh flex-col bg-background font-sans text-sm text-foreground"
       data-theme={selectedTheme}
       data-accent={accent}
     >
