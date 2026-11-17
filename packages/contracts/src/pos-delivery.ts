@@ -41,9 +41,9 @@ export type PosDeliveryCommand = {
 );
 
 export interface PosDeliveryHandoverSnapshot {
-  recipientEmployeeId: string;
-  recipientName: string;
-  approvedByName: string;
+  recipientEmployeeId?: string | null;
+  recipientName?: string | null;
+  approvedByName?: string | null;
   deliveries: Array<{
     orderId: string;
     courierName: string;

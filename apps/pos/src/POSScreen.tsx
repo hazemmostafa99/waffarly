@@ -182,11 +182,20 @@ export function POSScreen() {
   }
 
   return (
-    <section className="space-y-3 p-3 sm:p-4 lg:p-5" aria-labelledby="pos-orders-heading">
+    <section className="space-y-4 p-3 md:p-4" aria-labelledby="pos-orders-heading">
       <header className="flex items-center justify-between gap-2">
-        <h2 id="pos-orders-heading" className="m-0 text-base font-semibold sm:text-lg">
-          {t('Incoming orders')}
-        </h2>
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 id="pos-orders-heading" className="m-0 text-base font-semibold sm:text-lg">
+            {t('Kitchen')}
+          </h2>
+          {isOnline && ordersQuery.dataUpdatedAt > 0 && !ordersQuery.isRefetchError && (
+            <span className="text-[11px] text-muted-foreground" role="status">
+              {t('Last updated')}:{' '}
+              {formatDate(new Date(ordersQuery.dataUpdatedAt).toISOString(), true)}
+              {ordersQuery.isFetching ? ` · ${t('Refreshing…')}` : ''}
+            </span>
+          )}
+        </div>
         <PosButton
           variant="outline"
           size="sm"
@@ -229,12 +238,6 @@ export function POSScreen() {
               date: formatDate(new Date(ordersQuery.dataUpdatedAt).toISOString(), true),
             },
           )}
-        </p>
-      )}
-      {isOnline && ordersQuery.dataUpdatedAt > 0 && !ordersQuery.isRefetchError && (
-        <p className="m-0 text-[11px] text-muted-foreground" role="status">
-          {t('Last updated')}: {formatDate(new Date(ordersQuery.dataUpdatedAt).toISOString(), true)}
-          {ordersQuery.isFetching ? ` · ${t('Refreshing…')}` : ''}
         </p>
       )}
       {(persistenceError || actionErrors.workspace) && (

@@ -95,21 +95,10 @@ export async function lockDeliveryReceivingShift(
     merchantId: string;
     branchId: string;
     shiftId: string;
-    followupShiftId: string | null;
     employee: PosEmployeeSession;
   },
 ): Promise<void> {
   await lockOpenShiftForPayment(tx, input);
-  if (input.followupShiftId && input.followupShiftId !== input.shiftId) {
-    const current = await tx.posShift.findFirst({
-      where: { id: input.followupShiftId, merchantId: input.merchantId, status: 'open' },
-      select: { id: true },
-    });
-    if (current)
-      throw new ConflictException(
-        'Close and approve delivery handover before moving follow-up to another drawer.',
-      );
-  }
 }
 
 export async function lockOpenShiftForRefund(

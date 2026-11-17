@@ -82,12 +82,29 @@ export function listPosSales(
   search: string,
   cursor: string | undefined,
   signal: AbortSignal,
+  filters?: PosSalesFilters,
 ): Promise<CursorPage<StorefrontOrderSummary>> {
   const params = new URLSearchParams({ branchId, mode, limit: '25' });
   if (search.trim()) params.set('search', search.trim());
+  if (filters?.status) params.set('status', filters.status);
+  if (filters?.fulfillmentType) params.set('fulfillmentType', filters.fulfillmentType);
+  if (filters?.settlement) params.set('settlement', filters.settlement);
+  if (filters?.createdFrom) params.set('createdFrom', filters.createdFrom);
+  if (filters?.createdTo) params.set('createdTo', filters.createdTo);
   if (cursor) params.set('cursor', cursor);
   return apiRequest(`/pos/orders/active-sales?${params.toString()}`, { method: 'GET', signal });
 }
+
+export type PosSalesFilters = {
+  status?: StorefrontOrderSummary['status'];
+  fulfillmentType?: Extract<
+    StorefrontOrderSummary['fulfillmentType'],
+    'dine_in' | 'takeaway' | 'delivery'
+  >;
+  settlement?: 'open' | 'settled';
+  createdFrom?: string;
+  createdTo?: string;
+};
 
 export function runPosOrderAction(
   orderId: string,

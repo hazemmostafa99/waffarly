@@ -8,6 +8,10 @@ The selling picker uses the sell-authorized, tenant and assigned-branch scoped `
 
 Verification: run API typecheck, lint, build, default tests, POS typecheck/lint/build and POS tests. `test:pos-number-db` requires `TEST_DATABASE_URL` explicitly pointing to the dedicated migrated test database and tests concurrent allocation and rollback. Also test multi-device recovery, selected/pending retention, server pagination/search, old reference display and Arabic/English layouts in browser acceptance. Apply the additive migration before API deployment and API before POS deployment.
 
+### POS order history filters — 2026-11-17
+
+The assigned-branch `GET /pos/orders/active-sales?mode=history` endpoint supports server-side status, fulfillment type, settlement (`open` or fully settled), and inclusive creation timestamp filters in addition to search and cursor pagination. Filters are applied within the existing merchant/branch scope before paging. `createdFrom` must be on or before `createdTo`. Settlement filters describe check settlement; refunds remain a separate financial event.
+
 ## Status and authority
 
 - Last reviewed: 2026-10-26.

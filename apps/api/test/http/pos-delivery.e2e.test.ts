@@ -16,6 +16,7 @@ describe('delivery employee endpoints', () => {
   const branchId = randomUUID();
   const orderId = randomUUID();
   const employeeId = randomUUID();
+  const registerId = randomUUID();
   let app: INestApplication;
   let authorized = true;
   let employee: PosEmployeeSession;
@@ -35,6 +36,7 @@ describe('delivery employee endpoints', () => {
       role: 'cashier',
       permissions: ['sell', 'open_register_shift'],
       branch: { id: branchId, name: 'Main', archivedAt: null },
+      deviceRegister: { id: registerId, branchId, name: 'Front' },
     };
     const module = await Test.createTestingModule({
       controllers: [PosDeliveryController],

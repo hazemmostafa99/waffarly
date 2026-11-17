@@ -1,5 +1,5 @@
 /**
- * Checks which employee can work on a delivery and who is responsible for its money.
+ * Checks that employees can work on deliveries only at their active assigned branch.
  */
 import { ForbiddenException } from '@nestjs/common';
 
@@ -13,19 +13,10 @@ import type { Prisma } from '@waffarly/database';
 export function assertDeliveryBranchAccess(employee: PosEmployeeSession, branchId: string) {
   if (
     !employee.permissions.includes('sell') ||
-    employee.branch.id !== branchId || employee.branch.archivedAt !== null
+    employee.branch.id !== branchId ||
+    employee.branch.archivedAt !== null
   )
     throw new ForbiddenException('This employee cannot manage deliveries at this branch.');
-}
-export function assertDeliveryCustodianAccess(
-  employee: PosEmployeeSession,
-  custodianId: string,
-  permissions: readonly string[],
-) {
-  if (custodianId !== employee.id && !permissions.includes('approve_shift_close'))
-    throw new ForbiddenException(
-      'Only the responsible employee or a supervisor can manage this delivery.',
-    );
 }
 export async function readCurrentDeliveryPermissions(
   tx: Prisma.TransactionClient,

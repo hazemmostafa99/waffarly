@@ -15,6 +15,7 @@ const merchantId = '11111111-1111-4111-8111-111111111111';
 const employeeId = '22222222-2222-4222-8222-222222222222';
 const branchId = '33333333-3333-4333-8333-333333333333';
 const courierId = '44444444-4444-4444-8444-444444444444';
+const registerId = '55555555-5555-4555-8555-555555555555';
 
 const owner: OwnerProfile = {
   username: 'store-owner',
@@ -35,6 +36,7 @@ const employee: PosEmployeeSession = {
   role: 'cashier',
   permissions: ['sell'],
   branch: { id: branchId, name: 'Main', archivedAt: null },
+  deviceRegister: { id: registerId, branchId, name: 'Front' },
 };
 
 const courier: DeliveryCourierSummary = {

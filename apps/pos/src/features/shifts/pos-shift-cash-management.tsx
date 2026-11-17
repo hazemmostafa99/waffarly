@@ -17,7 +17,6 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { PosCashCustody, PosSafeSelect } from './pos-cash-custody.js';
 import { isCorrectableShiftCloseRejection } from './shift-close-recovery.js';
-import { DeliveryHandoverRecipientSelect } from './delivery-handover-recipient-select.js';
 import { usePosWorkspaceStore } from '../../app/pos-workspace-store.js';
 import { PosButton } from '../../components/pos-button.js';
 import {
@@ -78,7 +77,6 @@ export function PosShiftCashManagement({
   }, [branchId]);
   const [countedCash, setCountedCash] = useState('');
   const [closeReason, setCloseReason] = useState('');
-  const [recipientUsername, setRecipientUsername] = useState('');
   const [supervisorUsername, setSupervisorUsername] = useState('');
   const [supervisorPassword, setSupervisorPassword] = useState('');
   const [requiresCloseApproval, setRequiresCloseApproval] = useState(false);
@@ -152,9 +150,8 @@ export function PosShiftCashManagement({
       if (isCorrectableShiftCloseRejection(error)) {
         removePendingShiftClose(employee.merchantId, employee.id, variables.request.requestId);
         setSupervisorPassword('');
-        setRecipientUsername('');
         setFormError(
-          'Shift close was rejected. Review the recipient and count, then submit again.',
+          'Shift close was rejected. Review the count, then submit again.',
         );
       }
       if (
@@ -186,7 +183,6 @@ export function PosShiftCashManagement({
     if (pendingClose) {
       setCountedCash(pendingClose.request.countedCash);
       setCloseReason(pendingClose.request.reason ?? '');
-      setRecipientUsername(pendingClose.request.deliveryHandover?.recipientUsername ?? '');
     }
   }, [pendingClose]);
 
@@ -282,10 +278,17 @@ export function PosShiftCashManagement({
   ) {
     const approval = credentials();
     if (supervisorUsername.trim() && !approval) return;
-    if (!shift && (!canApproveClose || request.deliveryHandover) && !approval) {
+    if (
+      !shift &&
+      !approval &&
+      ((!canApproveClose &&
+        (!request.confirmPendingDeliveries || Boolean(request.reason))) ||
+        (Boolean(request.deliveryHandover) && !request.confirmPendingDeliveries))
+    ) {
       setFormError('Re-enter supervisor credentials to safely retry this shift close.');
       return;
     }
+    let submittedRequest = request;
     try {
       if (shift) {
         const preview = await closePreviewMutation.mutateAsync({
@@ -293,6 +296,9 @@ export function PosShiftCashManagement({
           request: {
             countedCash: request.countedCash,
             ...(request.reason ? { reason: request.reason } : {}),
+            ...(request.confirmPendingDeliveries !== undefined
+              ? { confirmPendingDeliveries: request.confirmPendingDeliveries }
+              : {}),
             ...(request.deliveryHandover ? { deliveryHandover: request.deliveryHandover } : {}),
           },
         });
@@ -301,24 +307,34 @@ export function PosShiftCashManagement({
           setFormError('Settle or cancel every open check before closing this shift.');
           return;
         }
-        if (preview.requiresDeliveryHandover) {
-          setFormError('Enter the employee receiving pending deliveries.');
-          return;
+        if (preview.requiresDeliveryConfirmation) {
+          const pendingCount = preview.pendingDeliveryCount ?? 0;
+          const pendingText =
+            pendingCount === 1
+              ? '1 delivery is still pending'
+              : `${pendingCount} deliveries are still pending`;
+          const message =
+            locale === 'ar'
+              ? `فيه ${pendingCount} طلب توصيل لسه معلّق. هتقفل الوردية من غير تعيين مستلم، والتحصيل اللي يرجع بعد كده هيتسجل في الوردية المفتوحة وقت استلامه. تأكد من قفل الوردية؟`
+              : `${pendingText}. This shift will close without assigning a recipient; cash received later will be recorded in the shift open at that time. Close this shift?`;
+          if (!window.confirm(message)) return;
+          submittedRequest = { ...request, confirmPendingDeliveries: true };
         }
         if (preview.requiresReason && !request.reason) {
           setFormError('Enter a reason for the cash variance before closing.');
           return;
         }
         if (preview.requiresSupervisorApproval && !approval) {
-          setFormError(
-            preview.pendingDeliveryCount
-              ? 'Delivery handover requires a different supervisor.'
-              : 'Supervisor approval is required for a cash variance.',
-          );
+          setFormError('Supervisor approval is required for a cash variance.');
           return;
         }
       }
-      const command = { branchId: closeBranchId, registerId: closeRegisterId, shiftId, request };
+      const command = {
+        branchId: closeBranchId,
+        registerId: closeRegisterId,
+        shiftId,
+        request: submittedRequest,
+      };
       if (!pendingClose) savePendingShiftClose(employee.merchantId, employee.id, command);
     } catch (cause) {
       setFormError(
@@ -327,7 +343,11 @@ export function PosShiftCashManagement({
       return;
     }
     setFormError('');
-    closeMutation.mutate({ shiftId, request, ...(approval ? { approval } : {}) });
+    closeMutation.mutate({
+      shiftId,
+      request: submittedRequest,
+      ...(approval ? { approval } : {}),
+    });
   }
 
   function handleClose(event: FormEvent<HTMLFormElement>) {
@@ -349,9 +369,6 @@ export function PosShiftCashManagement({
         requestId: crypto.randomUUID(),
         countedCash,
         ...(closeReason.trim() ? { reason: closeReason.trim() } : {}),
-        ...((reconciliation.data?.pendingDeliveryCount ?? 0) > 0 && recipientUsername.trim()
-          ? { deliveryHandover: { recipientUsername: recipientUsername.trim() } }
-          : {}),
       },
     );
   }
@@ -377,7 +394,7 @@ export function PosShiftCashManagement({
     (closeMutation.error instanceof Error ? closeMutation.error.message : '');
 
   return (
-    <div className="grid gap-4" aria-live="polite">
+    <div className="grid gap-3" aria-live="polite">
       {error && (
         <p
           className="m-0 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
@@ -390,14 +407,14 @@ export function PosShiftCashManagement({
         <>
           {reconciliation.isLoading ? (
             <p
-              className="m-0 rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground"
+              className="m-0 rounded-lg border border-border bg-card p-3 text-sm text-muted-foreground"
               role="status"
             >
               {t('Loading shift reconciliation...')}
             </p>
           ) : reconciliation.isError ? (
             <div
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive"
               role="alert"
             >
               <span>
@@ -439,7 +456,7 @@ export function PosShiftCashManagement({
                     {t('Pending deliveries')}: {reconciliation.data.pendingDeliveryCount}
                   </strong>
                   <p>
-                    {t('Money outside the drawer')}:{' '}
+                    {t('Customer balance and courier cash')}:{' '}
                     {formatMoney(reconciliation.data.pendingDeliveryBalance ?? '0.00')}
                   </p>
                   <Link className="underline" to="/deliveries">
@@ -447,7 +464,7 @@ export function PosShiftCashManagement({
                   </Link>
                   <p className="text-xs">
                     {t(
-                      'These amounts are not drawer cash. A named recipient and a different supervisor must approve handover.',
+                      'These amounts are not drawer cash. You can close after confirming, and a later shift records cash when it is received.',
                     )}
                   </p>
                 </div>
@@ -487,11 +504,11 @@ export function PosShiftCashManagement({
 
               {canSell && (
                 <form
-                  className="grid gap-4 rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-5"
+                  className="grid gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm sm:p-4"
                   onSubmit={handleMovement}
                 >
                   <div>
-                    <h3 className="m-0 text-base font-semibold">{t('Register cash movements')}</h3>
+                    <h3 className="m-0 text-sm font-semibold">{t('Register cash movements')}</h3>
                     <p className="m-0 mt-1 text-xs text-muted-foreground">
                       {t(
                         'Record an addition, paid-out expense, or secured cash drop with a reason. Cashiers need supervisor approval.',
@@ -606,14 +623,14 @@ export function PosShiftCashManagement({
               )}
 
               <form
-                className="grid gap-4 rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-5"
+                className="grid gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm sm:p-4"
                 onSubmit={handleClose}
               >
                 <div>
-                  <h3 className="m-0 text-base font-semibold">{t('Close register shift')}</h3>
+                  <h3 className="m-0 text-sm font-semibold">{t('Close register shift')}</h3>
                   <p className="m-0 mt-1 text-xs text-muted-foreground">
                     {t(
-                      'Ordinary unpaid checks block closing; tracked deliveries require an approved handover.',
+                      'Ordinary unpaid checks block closing. Pending deliveries require cashier confirmation.',
                     )}
                   </p>
                 </div>
@@ -639,7 +656,7 @@ export function PosShiftCashManagement({
                         setRequiresCloseApproval(false);
                         setFormError('');
                       }}
-                      className="min-h-11 text-base font-semibold tabular-nums"
+                      className="min-h-11 text-sm font-semibold tabular-nums"
                     />
                   </label>
                   <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
@@ -661,31 +678,14 @@ export function PosShiftCashManagement({
                     />
                   </label>
                 </div>
-                {(reconciliation.data.pendingDeliveryCount ?? 0) > 0 && (
-                  <DeliveryHandoverRecipientSelect
-                    key={`${employee.id}:${branchId}`}
-                    employee={employee}
-                    branchId={branchId}
-                    value={
-                      pendingClose?.request.deliveryHandover?.recipientUsername ?? recipientUsername
-                    }
-                    disabled={Boolean(pendingClose) || closeMutation.isPending}
-                    onChange={(value) => {
-                      setRecipientUsername(value);
-                      setFormError('');
-                      closeMutation.reset();
-                    }}
-                  />
-                )}
-                {((!canApproveClose && (requiresCloseApproval || pendingClose)) ||
-                  (reconciliation.data.pendingDeliveryCount ?? 0) > 0) && (
+                {!canApproveClose &&
+                  (requiresCloseApproval ||
+                    (pendingClose &&
+                      (!pendingClose.request.confirmPendingDeliveries ||
+                        Boolean(pendingClose.request.reason)))) && (
                   <div className="grid gap-3 rounded-lg border border-warning/30 bg-warning/5 p-3 sm:grid-cols-2">
                     <p className="m-0 text-xs leading-relaxed text-muted-foreground sm:col-span-2">
-                      {t(
-                        (reconciliation.data.pendingDeliveryCount ?? 0) > 0
-                          ? 'Delivery handover requires a different supervisor.'
-                          : 'A cash variance needs approval from a different supervisor.',
-                      )}
+                      {t('A cash variance needs approval from a different supervisor.')}
                     </p>
                     <SupervisorFields
                       username={supervisorUsername}
@@ -738,12 +738,12 @@ export function PosShiftCashManagement({
 
       {!shift && pendingMovement && (
         <form
-          className="grid gap-3 rounded-xl border border-warning/30 bg-warning/5 p-4 text-card-foreground"
+          className="grid gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3 text-card-foreground"
           onSubmit={retryMovement}
         >
           <div className="flex items-center gap-2">
             <Wallet size={17} aria-hidden="true" />
-            <h3 className="m-0 text-base font-semibold">
+            <h3 className="m-0 text-sm font-semibold">
               {t('Saved cash movement needs confirmation')}
             </h3>
           </div>
@@ -773,12 +773,12 @@ export function PosShiftCashManagement({
       )}
       {!shift && pendingClose && (
         <form
-          className="grid gap-3 rounded-xl border border-warning/30 bg-warning/5 p-4 text-card-foreground"
+          className="grid gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3 text-card-foreground"
           onSubmit={retryClose}
         >
           <div className="flex items-center gap-2">
             <CircleDollarSign size={17} aria-hidden="true" />
-            <h3 className="m-0 text-base font-semibold">
+            <h3 className="m-0 text-sm font-semibold">
               {t('Saved shift close needs confirmation')}
             </h3>
           </div>
@@ -787,7 +787,10 @@ export function PosShiftCashManagement({
               amount: formatMoney(pendingClose.request.countedCash),
             })}
           </p>
-          {(!canApproveClose || Boolean(pendingClose.request.deliveryHandover)) && (
+          {(!canApproveClose &&
+            (!pendingClose.request.confirmPendingDeliveries ||
+              Boolean(pendingClose.request.reason)) ||
+            Boolean(pendingClose.request.deliveryHandover)) && (
             <SupervisorFields
               username={supervisorUsername}
               password={supervisorPassword}
@@ -808,10 +811,10 @@ export function PosShiftCashManagement({
       )}
 
       {!shift && !pendingMovement && !pendingClose && latestClose.data && (
-        <section className="grid gap-3 rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-5">
+        <section className="grid gap-2 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm sm:p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h3 className="m-0 text-base font-semibold">{t('Last shift close')}</h3>
+              <h3 className="m-0 text-sm font-semibold">{t('Last shift close')}</h3>
               <p className="m-0 mt-1 text-xs text-muted-foreground">
                 {formatDate(latestClose.data.closedAt, true)} · {latestClose.data.operatorName}
               </p>
@@ -855,11 +858,13 @@ export function PosShiftCashManagement({
           {latestClose.data.deliveryHandover && (
             <div className="rounded-lg border border-border p-3">
               <strong>
-                {t('Delivery handover')}: {latestClose.data.deliveryHandover.recipientName}
+                {latestClose.data.deliveryHandover.recipientName
+                  ? `${t('Delivery handover')}: ${latestClose.data.deliveryHandover.recipientName}`
+                  : t('Pending deliveries at close')}
               </strong>
-              <p>
-                {t('Approved by')}: {latestClose.data.deliveryHandover.approvedByName}
-              </p>
+              {latestClose.data.deliveryHandover.approvedByName && (
+                <p>{t('Approved by')}: {latestClose.data.deliveryHandover.approvedByName}</p>
+              )}
               <ul>
                 {latestClose.data.deliveryHandover.deliveries.map((d) => (
                   <li key={d.orderId}>

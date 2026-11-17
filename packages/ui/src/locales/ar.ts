@@ -195,15 +195,15 @@ export const ar: Record<string, string> = {
     'استخدم توريد للخزنة من حركات النقدية للشيفت المفتوح.',
   'Count the cash physically present. Expected cash appears after closing.':
     'عدّ النقد الموجود فعلًا؛ المتوقع هيظهر بعد الإقفال.',
-  'Ordinary unpaid checks block closing; tracked deliveries require an approved handover.':
-    'الحسابات العادية غير المسددة بتمنع الإقفال، والدليفري المتابع محتاج تسليم معتمد.',
+  'Ordinary unpaid checks block closing. Pending deliveries require cashier confirmation.':
+    'الحسابات العادية غير المسددة بتمنع الإقفال. طلبات التوصيل المعلقة محتاجة تأكيد الكاشير قبل القفل.',
   'Delivery follow-up': 'متابعة الدليفري',
   'Close and approve delivery handover before moving follow-up to another drawer.':
     'اقفل الوردية وسلّم متابعة الدليفري باعتماد المشرف قبل نقلها لدرج تاني.',
   'Delivery handover requires a different supervisor.':
     'تسليم متابعة الدليفري محتاج موافقة مشرف مختلف.',
-  'Count the physical till. Ordinary unpaid checks block closing; tracked deliveries require an approved handover.':
-    'عدّ النقد الموجود فعلًا. الحسابات العادية غير المسددة بتمنع الإقفال، والدليفري المتابع محتاج تسليم معتمد.',
+  'Count the physical till. Ordinary unpaid checks block closing. Pending deliveries require cashier confirmation.':
+    'عدّ النقد الموجود فعلًا. الحسابات العادية غير المسددة بتمنع الإقفال. طلبات التوصيل المعلقة محتاجة تأكيد الكاشير قبل القفل.',
   'The delivery changed. Refresh and retry.': 'بيانات الدليفري اتغيرت. حدّث الصفحة وراجع العملية.',
   'Only the responsible employee or a supervisor can manage this delivery.':
     'مسؤول المتابعة أو المشرف بس يقدر ينفذ العملية دي.',
@@ -219,13 +219,15 @@ export const ar: Record<string, string> = {
   'Pending deliveries': 'طلبات دليفري معلقة',
   'Money outside the drawer': 'فلوس لسه برّه الدرج',
   'Review delivery follow-up': 'مراجعة متابعة الدليفري',
-  'These amounts are not drawer cash. A named recipient and a different supervisor must approve handover.':
-    'المبالغ دي مش نقد جوه الدرج. لازم مسؤول مستلم بالاسم وموافقة مشرف مختلف لتسليم المتابعة.',
+  'Customer balance and courier cash': 'باقي على العملاء والكاش مع الطيارين',
+  'These amounts are not drawer cash. You can close after confirming, and a later shift records cash when it is received.':
+    'المبالغ دي مش موجودة في الدرج. تقدر تقفل بعد التأكيد، والوردية اللي تستلم الفلوس بعدين هتسجلها.',
   'Receiving employee username': 'اسم مستخدم الموظف المستلم للمتابعة',
   'Enter the employee receiving pending deliveries.':
     'اكتب اسم مستخدم الموظف اللي هيستلم متابعة الدليفري المعلق.',
   'Courier cash received': 'كاش مستلم من الطيار',
   'Delivery handover': 'تسليم متابعة الدليفري',
+  'Pending deliveries at close': 'طلبات توصيل معلقة وقت القفل',
   'Customer due': 'باقي على العميل',
   'Cash with courier': 'كاش مع الطيار',
   'Delivery details': 'بيانات التوصيل',
@@ -1694,6 +1696,26 @@ export const ar: Record<string, string> = {
   'Recent receipts': 'الإيصالات الأخيرة',
   'Load more receipts': 'تحميل إيصالات أقدم',
   'Back to receipts': 'العودة إلى الإيصالات',
+  'Back to orders': 'العودة إلى الطلبات',
+  'Orders shown': 'الطلبات المعروضة',
+  'Search order number, customer or table': 'ابحث برقم الطلب أو العميل أو الترابيزة',
+  'Order status': 'حالة الطلب',
+  'All order types': 'كل أنواع الطلبات',
+  Settlement: 'حالة الحساب',
+  'Any settlement': 'كل حالات الحساب',
+  'From date': 'من تاريخ',
+  'To date': 'إلى تاريخ',
+  'The end date must be on or after the start date.': 'يجب أن يكون تاريخ النهاية في نفس تاريخ البداية أو بعده.',
+  'No matching orders': 'لا توجد طلبات مطابقة',
+  'No orders yet': 'لا توجد طلبات حتى الآن',
+  'Try another order or adjust filters.': 'جرّب رقمًا آخر أو غيّر عوامل التصفية.',
+  'Orders will appear here after they are confirmed.': 'ستظهر الطلبات هنا بعد تأكيدها.',
+  'Show order details': 'تفاصيل الطلب',
+  'Hide order details': 'إخفاء تفاصيل الطلب',
+  'Loading order details…': 'جارٍ تحميل تفاصيل الطلب…',
+  'Could not load order details.': 'تعذر تحميل تفاصيل الطلب.',
+  'Receipt is available after settlement.': 'يتاح الإيصال بعد سداد الحساب.',
+  completed: 'مكتمل',
   'Payment methods': 'وسائل الدفع',
   'Add payment method': 'إضافة وسيلة دفع',
   Method: 'الوسيلة',
@@ -1780,6 +1802,19 @@ export const ar: Record<string, string> = {
   'Confirm split': 'تأكيد التقسيم',
   'Sample receipt': 'إيصال تجريبي',
   'Take payment': 'تحصيل مبلغ',
+  'Collect order payment': 'تحصيل الحساب',
+  'Confirm collection of the remaining order balance in cash.':
+    'أكد تحصيل المبلغ المتبقي على الطلب كاش.',
+  'Order balance': 'حساب الطلب',
+  'Amount due': 'المطلوب تحصيله',
+  'Cash payment': 'الدفع كاش',
+  'Previously collected': 'تم تحصيله قبل كده',
+  'Collect {{amount}} cash': 'تحصيل {{amount}} كاش',
+  'This order has multiple checks or a split balance. Review it before collecting payment.':
+    'الطلب ده متقسم على أكتر من حساب. راجعه قبل التحصيل.',
+  'This order has no bill to collect. Refresh order details before trying again.':
+    'مفيش حساب متاح للتحصيل في الطلب ده. حدّث تفاصيل الطلب وحاول تاني.',
+  'Order items': 'أصناف الطلب',
   'Design preview — no money is collected.': 'معاينة تصميم — لا يتم تحصيل مبالغ حقيقية.',
   'SAMPLE · NOT A FISCAL DOCUMENT': 'نموذج تجريبي · ليس مستندًا ضريبيًا',
   Collected: 'تم تحصيله',
@@ -2090,8 +2125,6 @@ export const ar: Record<string, string> = {
   'Kitchen orders': 'طلبات المطبخ',
   'Incoming orders': 'الطلبات الواردة',
   'Order page navigation': 'التنقل بين صفحات الطلبات',
-  Previous: 'السابق',
-  Next: 'التالي',
   'Page {{page}}': 'الصفحة {{page}}',
   'Could not load the next order page.': 'تعذر تحميل صفحة الطلبات التالية.',
   'Dine-in rounds appear after you send them. Recipe stock is deducted on acceptance; direct stock is recorded at sale.':

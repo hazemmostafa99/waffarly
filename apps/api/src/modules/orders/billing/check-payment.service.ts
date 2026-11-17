@@ -109,14 +109,8 @@ export class CheckPaymentService {
                   actorRow.permissions,
                 )
               : [];
-            if (
-              !permissions.includes('sell') ||
-              (observedOrder.delivery.custodianEmployeeId !== employee.id &&
-                !permissions.includes('approve_shift_close'))
-            )
-              throw new ForbiddenException(
-                'Only the responsible employee or a supervisor can record this delivery collection.',
-              );
+            if (!permissions.includes('sell'))
+              throw new ForbiddenException('This employee is no longer authorized to sell.');
             const shiftIds = [
               ...new Set(
                 [
@@ -135,7 +129,6 @@ export class CheckPaymentService {
                 merchantId: employee.merchantId,
                 shiftId: paymentShiftId,
                 branchId: observedOrder.branchId,
-                followupShiftId: observedOrder.delivery.followupShiftId,
                 employee,
               });
             else

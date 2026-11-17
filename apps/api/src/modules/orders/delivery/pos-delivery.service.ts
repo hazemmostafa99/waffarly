@@ -4,7 +4,6 @@
  */
 import {
   assertDeliveryBranchAccess,
-  assertDeliveryCustodianAccess,
   readCurrentDeliveryPermissions,
 } from './delivery-access.rules.js';
 import {
@@ -202,7 +201,7 @@ export class PosDeliveryService {
           if (!observed?.branchId || !observed.posShiftId)
             throw new NotFoundException('The POS delivery order was not found.');
           assertDeliveryBranchAccess(employee, observed.branchId);
-          const permissions = await readCurrentDeliveryPermissions(tx, employee, observed.branchId);
+          await readCurrentDeliveryPermissions(tx, employee, observed.branchId);
           const shiftIds = [
             ...new Set(
               [
@@ -219,7 +218,6 @@ export class PosDeliveryService {
               merchantId: employee.merchantId,
               branchId: observed.branchId,
               shiftId: command.receivingShiftId,
-              followupShiftId: observed.delivery?.followupShiftId ?? null,
               employee,
             });
           await tx.$queryRaw`SELECT "id" FROM "storefront_orders" WHERE "id" = ${orderId}::uuid AND "merchantId" = ${employee.merchantId}::uuid FOR UPDATE`;
@@ -262,11 +260,6 @@ export class PosDeliveryService {
                 throw new ConflictException(
                   'Receive the previous courier cash before redispatching.',
                 );
-              assertDeliveryCustodianAccess(
-                employee,
-                order.delivery.custodianEmployeeId,
-                permissions,
-              );
             }
             const courier = await resolveDispatchCourier(
               tx,
@@ -310,7 +303,6 @@ export class PosDeliveryService {
             if (!delivery || delivery.revision !== command.revision)
               throw new ConflictException('The delivery changed. Refresh and retry.');
             if (command.action === 'claim') {
-              assertDeliveryCustodianAccess(employee, delivery.custodianEmployeeId, permissions);
               await tx.posDelivery.update({
                 where: { orderId },
                 data: {
@@ -320,7 +312,6 @@ export class PosDeliveryService {
                 },
               });
             } else if (command.action === 'remit') {
-              assertDeliveryCustodianAccess(employee, delivery.custodianEmployeeId, permissions);
               const payment = await tx.posOrderPayment.findFirst({
                 where: {
                   id: command.paymentId,
@@ -363,7 +354,6 @@ export class PosDeliveryService {
                 },
               });
             } else {
-              assertDeliveryCustodianAccess(employee, delivery.custodianEmployeeId, permissions);
               if (delivery.status !== 'out_for_delivery')
                 throw new ConflictException(
                   'Only an outgoing delivery can be marked delivered or failed.',

@@ -6,6 +6,7 @@ import type {
   PosEmployeeSession,
   PosOrderPaymentStateResponse,
   PosPaymentSummary,
+  StorefrontOrderStatus,
   StorefrontOrderSummary,
 } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
@@ -44,6 +45,11 @@ export class PosOrderQueryService {
       branchId: string;
       search?: string | undefined;
       mode: 'active' | 'history';
+      status?: StorefrontOrderStatus | undefined;
+      fulfillmentType?: 'dine_in' | 'takeaway' | 'delivery' | undefined;
+      settlement?: 'open' | 'settled' | undefined;
+      createdFrom?: Date | undefined;
+      createdTo?: Date | undefined;
     },
   ) {
     requirePosSellPermission(employee);
@@ -55,13 +61,36 @@ export class PosOrderQueryService {
       merchantId: employee.merchantId,
       branchId: input.branchId,
       source: 'pos',
+      ...(input.status
+        ? { status: input.status }
+        : input.mode === 'active'
+          ? { status: { notIn: ['cancelled', 'rejected'] } }
+          : {}),
       ...(input.mode === 'active'
         ? {
-            status: { notIn: ['cancelled', 'rejected'] },
             OR: [
               { checks: { some: { settledAt: null, cancelledAt: null } } },
               { fulfillmentType: 'dine_in', status: 'pending', kitchenTicket: { is: null } },
             ],
+          }
+        : {}),
+      ...(input.fulfillmentType ? { fulfillmentType: input.fulfillmentType } : {}),
+      ...(input.settlement === 'open'
+        ? { checks: { some: { settledAt: null, cancelledAt: null } } }
+        : input.settlement === 'settled'
+          ? {
+              checks: {
+                some: { settledAt: { not: null } },
+                none: { settledAt: null, cancelledAt: null },
+              },
+            }
+          : {}),
+      ...(input.createdFrom || input.createdTo
+        ? {
+            createdAt: {
+              ...(input.createdFrom ? { gte: input.createdFrom } : {}),
+              ...(input.createdTo ? { lte: input.createdTo } : {}),
+            },
           }
         : {}),
       ...(input.search

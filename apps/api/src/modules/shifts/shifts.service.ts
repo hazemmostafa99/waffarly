@@ -18,8 +18,6 @@ import type {
   RecordPosShiftCashMovementResponse,
 } from '@waffarly/contracts';
 import {
-  isPosEmployeeRole,
-  resolvePosEmployeePermissions,
   type PosDeliveryHandoverSnapshot,
   type PosShiftReconciliationSummary,
 } from '@waffarly/contracts';
@@ -354,51 +352,18 @@ export class ShiftsService {
             throw new ConflictException('Settle or cancel every check before closing this shift.');
           let deliveryHandover: PosDeliveryHandoverSnapshot | null = null;
           if (reconciliation.pendingDeliveryCount) {
-            if (!request.deliveryHandover || !approvedByEmployeeId)
-              throw new ForbiddenException(
-                'Pending deliveries require a named recipient and approval from a different supervisor.',
-              );
-            const recipient = await tx.posEmployee.findFirst({
-              where: {
-                merchantId: employee.merchantId,
-                username: request.deliveryHandover.recipientUsername,
-                active: true,
-                branchId: lockedShift.branchId,
-                branch: { archivedAt: null },
-              },
-              select: { id: true, displayName: true, role: true, permissions: true },
-            });
-            const recipientPermissions = recipient
-              ? resolvePosEmployeePermissions(
-                  isPosEmployeeRole(recipient.role) ? recipient.role : null,
-                  recipient.permissions,
-                )
-              : [];
-            if (
-              !recipient ||
-              recipient.id === employee.id ||
-              !recipientPermissions.includes('sell') ||
-              !recipientPermissions.includes('open_register_shift')
-            )
-              throw new ForbiddenException(
-                'Choose a different active cashier or supervisor assigned to this branch.',
+            if (!request.confirmPendingDeliveries && !request.deliveryHandover)
+              throw new ConflictException(
+                'Confirm closing this shift while deliveries remain pending.',
               );
             const deliveries = await readDeliveryBalances(tx, employee.merchantId, {
-              shiftId,
-              limit: 501,
-            });
-            if (deliveries.length > 500)
-              throw new ConflictException(
-                'Resolve deliveries until at most 500 follow-ups remain before closing.',
-              );
-            const approver = await tx.posEmployee.findFirstOrThrow({
-              where: { id: approvedByEmployeeId, merchantId: employee.merchantId },
-              select: { displayName: true },
+              branchId: lockedShift.branchId,
+              limit: Math.max(reconciliation.pendingDeliveryCount, 1),
             });
             deliveryHandover = {
-              recipientEmployeeId: recipient.id,
-              recipientName: recipient.displayName,
-              approvedByName: approver.displayName,
+              recipientEmployeeId: null,
+              recipientName: null,
+              approvedByName: null,
               deliveries: deliveries.map((d) => ({
                 orderId: d.orderId,
                 courierName: d.courierName,
@@ -414,15 +379,10 @@ export class ShiftsService {
                 followupShiftId: shiftId,
               },
               data: {
-                custodianEmployeeId: recipient.id,
                 followupShiftId: null,
                 revision: { increment: 1 },
               },
             });
-          } else if (request.deliveryHandover) {
-            throw new ConflictException(
-              'There are no pending deliveries to hand over. Refresh the shift.',
-            );
           }
           const countedCash = formatCents(toCents(request.countedCash));
           const varianceCents = toCents(countedCash) - toCents(reconciliation.expectedCash);
@@ -533,14 +493,13 @@ export class ShiftsService {
     return lockOpenShiftForPayment(tx, input);
   }
 
-  /** Orders holds the source/follow-up/receiving shift locks in sorted order. */
+  /** Orders holds the source and receiving shift locks in sorted order. */
   async lockDeliveryReceivingShift(
     tx: Prisma.TransactionClient,
     input: {
       merchantId: string;
       branchId: string;
       shiftId: string;
-      followupShiftId: string | null;
       employee: PosEmployeeSession;
     },
   ): Promise<void> {

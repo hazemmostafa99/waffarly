@@ -422,6 +422,8 @@ function isPendingShiftClose(value: unknown): value is PendingPosShiftClose {
     typeof request.requestId === 'string' &&
     Boolean(request.requestId) &&
     isPersistedMoney(request.countedCash) &&
+    (request.confirmPendingDeliveries === undefined ||
+      typeof request.confirmPendingDeliveries === 'boolean') &&
     (request.deliveryHandover === undefined ||
       (request.deliveryHandover !== null &&
         typeof request.deliveryHandover === 'object' &&
@@ -816,6 +818,9 @@ function parseWorkspace(
               countedCash: value.pendingShiftClose.request.countedCash,
               ...(typeof value.pendingShiftClose.request.reason === 'string'
                 ? { reason: value.pendingShiftClose.request.reason }
+                : {}),
+              ...(value.pendingShiftClose.request.confirmPendingDeliveries === true
+                ? { confirmPendingDeliveries: true }
                 : {}),
               ...(value.pendingShiftClose.request.deliveryHandover
                 ? {

@@ -1,13 +1,13 @@
 # POS delivery collections across shifts
 
-Approved direction: 2026-10-26. Implements an explicit delivery-only exception to
-POS-D05 (unpaid close block) and POS-D06 (paid handover). All other fulfillment
-types keep their current gates. Preserve POS-D07: shared register shifts and
-individual operator attribution.
+Approved direction: 2026-10-26, simplified on 2026-11-17. Implements a delivery-only
+exception to POS-D05 (unpaid close block); pending delivery close now requires
+cashier confirmation. Other fulfillment types keep their existing gates. Preserve
+POS-D07: shared register shifts and individual operator attribution.
 
 Orders owns delivery dispatch, manually confirmed customer delivery/failure,
-custodian assignment and courier cash remittance. Payments owns immutable customer
-tenders. Shifts owns drawer reconciliation and immutable close/handover snapshots.
+branch-scoped follow-up and courier cash remittance. Payments owns immutable customer
+tenders. Shifts owns drawer reconciliation and immutable close snapshots.
 Extend the existing modules; do not introduce a reverse Shifts -> Orders import.
 
 ## Money and attribution
@@ -27,23 +27,22 @@ Extend the existing modules; do not introduce a reverse Shifts -> Orders import.
   COD remains due. Failure records a required reason, changes neither money nor
   inventory, and remains visible for supervisor follow-up/re-dispatch.
 
-## Shift close and responsibility
+## Shift close and branch follow-up
 
-Ordinary unpaid checks continue to block close. Tracked dispatched deliveries may
-be carried forward only with an explicit handover, a different active supervisor's
-`approve_shift_close` approval, and a named different active same-branch employee
-with sell/register permission. Freeze order/check balances, courier-held cash,
-courier name/status and recipient/approver names in the close report. The old
-report never changes when collection happens later. Cash outside the drawer is
-never counted as drawer cash or variance.
+Ordinary unpaid checks continue to block close. Tracked deliveries may remain
+pending after a cashier confirms the close warning. Delivery exposure does not
+require a named recipient or supervisor approval; cash variance approval keeps
+its existing rule. Freeze pending orders, customer balances and courier-held cash
+in the close report without assigning follow-up. The old report never changes
+when collection happens later. Cash outside the drawer is never counted as drawer
+cash or variance.
 
-The recipient can explicitly accept follow-up into a new open same-branch shift.
-While the current follow-up shift is still open, moving it or receiving its cash
-into a different drawer is rejected: close with an approved handover first. This
-prevents an ordinary claim/payment from bypassing the frozen handover record.
-An authorized supervisor can take over. Receipt of partial courier cash also binds
-remaining follow-up to the receiving shift. No open next shift is required when
-the previous shift assigns a named responsible recipient.
+Pending deliveries remain visible to sell-authorized employees at their active
+branch after the original shift closes. No separate claim action is required.
+Delivery outcomes remain branch-scoped; drawer payments and courier cash receipts
+must target an open same-branch shift. The receiving employee and shift are
+recorded on the receipt, and only cash physically received increases that drawer.
+Partial courier receipts remain supported.
 
 ## Safety and acceptance
 
@@ -56,7 +55,7 @@ uncertain writes with an explicit exact retry.
 
 Required evidence: cross-shift COD, partial customer payment/remittance, mixed
 prepayment, failure/re-dispatch, normal unpaid close blocking, exact retry after a
-lost response, foreign tenant/branch/recipient denial, concurrent receipts and
+lost response, foreign tenant/branch/courier denial, concurrent receipts and
 close-vs-payment/remittance rollback/serialization, unchanged old reports and
 single-counted operation/shift aggregates. Preserve existing receipts/refunds,
 stock, storefront and dining tests. Test Arabic/English UI and mobile layout.
@@ -75,26 +74,14 @@ stock, storefront and dining tests. Test Arabic/English UI and mobile layout.
    can issue its ordinary customer receipt, labeled courier custody. Drawer cash
    remains unchanged. Direct drawer cash or confirmed manual-terminal payment uses
    the selected open same-branch shift. No payment-provider integration was added.
-4. In `/shift`, ordinary unpaid checks still block close. For pending tracked
-   deliveries, select the receiving employee and enter a different supervisor's
-   credentials, then submit the physical count. Outside cash is shown separately
-   and is excluded from the drawer expectation. Up to 500 pending deliveries can be
-   frozen into one handover; larger sets must be reduced before close. Count and
-   exposure totals are SQL aggregates over the complete pending set, not the page.
-   The bounded `GET /pos/shifts/delivery-handover-recipients` selector includes only
-   active same-branch employees who can sell and open shifts, excluding the actor.
-   It exposes only ID, username and display name. The selected receiving manager
-   may also approve the handover, provided that manager is not the closing actor.
-   The close transaction still revalidates the recipient and approver.
-   Explicit invalid-recipient, missing-variance-reason and no-pending-deliveries
-   rejections release the saved close for correction while preserving the physical
-   count. Unknown network/server outcomes retain the exact saved command, including
-   its recipient and request ID. Previously saved invalid recipients unlock after
-   retry returns the explicit rejection. There is no blanket storage clearing or
-   automatic close/collection.
-5. The named employee signs in, opens the next shift, and accepts follow-up into
-   that shift. Receive courier cash against the original payment, fully or partly.
-   Only received cash increases that drawer. A branch supervisor may take over.
+4. In `/shift`, ordinary unpaid checks still block close. When branch deliveries
+   remain pending, POS asks the cashier to confirm before closing. The report
+   freezes the pending orders and balances without assigning an employee. A cash
+   variance still follows its existing supervisor approval rule. The confirmation
+   and request ID are retained for network recovery.
+5. Any authorized cashier at the branch can record delivery progress. When the
+   courier returns, receive all or part of the cash into the currently open shift.
+   Only received cash increases that drawer; no separate follow-up claim is needed.
 6. **Include completed follow-up and receipt history** makes resolved deliveries
    visible again. Receipt history shows amount, receiving employee, shift and time.
    Queue pages are 25 by default, maximum 100, with tenant/branch-scoped cursors.
@@ -104,7 +91,7 @@ stock, storefront and dining tests. Test Arabic/English UI and mobile layout.
    write from committing after the recovery is cleared. Credentials never enter
    the delivery recovery or saved shift-close command.
 
-Owner **POS Shift Reports** adds courier cash received and frozen handover details.
+Owner **POS Shift Reports** adds courier cash received and frozen pending-delivery details.
 **POS Operations** separates customer cash paid to couriers from drawer receipts,
 and attributes receipts to the receiving employee, including CSV. Remittances never
 increase sales, customer collections or net collected a second time.
@@ -155,6 +142,15 @@ courier, retry a failed delivery with a different assigned courier after resolvi
 cash, verify both courier attempts appear in performance, reject inactive or
 other-branch IDs, and retry or explicitly dismiss a legacy saved dispatch.
 
+## Delivery shift-close confirmation — 2026-11-17
+
+Closing a shift with unresolved branch deliveries now uses cashier confirmation.
+POS does not request a recipient or delivery-specific supervisor approval. The
+pending queue stays branch-wide, so any authorized cashier can confirm delivery,
+record customer payment or receive courier cash into the open shift. Cash variance
+approval, separate customer/drawer accounting and immutable close snapshots remain
+in effect. Historical handover reports and saved commands remain readable.
+
 ## Rollout and acceptance
 
 Migration `20261026090000_pos_delivery_collections` is additive and preserves
@@ -190,12 +186,13 @@ was rerun with `--output test-results/delivery-pos-ui` and passed 34/34; the fin
 owner suite passed 10/10 with explicit handover/CSV fixtures.
 
 Manual acceptance remains pending. With disposable data, create a 300 EGP ready
-delivery in shift A with 50 EGP float; dispatch it and close A with an approved
-handover to B. Confirm A expects 50 EGP and freezes 300 EGP customer due. Open B
-with 20 EGP float; claim the delivery, confirm delivery, record 200 EGP paid to the
-courier, receive it in parts (75 + 100 + 25), then receive the remaining 100 EGP
-customer payment directly into B. B must expect 320 EGP, A must remain unchanged,
-and Operations must report 300 EGP collections plus a separately labeled 200 EGP
-courier-to-drawer transfer. Repeat failure/redispatch, supervisor denial, partial
-payment, reload during a lost response, both themes, Arabic/English and the target
-touchscreen. This manual gate is not replaced by mocked browser tests.
+delivery in shift A with 50 EGP float; dispatch it and confirm the close warning.
+Close A without naming a recipient or entering supervisor credentials for delivery.
+Confirm A expects 50 EGP and freezes 300 EGP customer due. Open B with 20 EGP float;
+without claiming follow-up, confirm delivery, record 200 EGP paid to the courier,
+receive it in parts (75 + 100 + 25), then receive the remaining 100 EGP customer
+payment directly into B. B must expect 320 EGP, A must remain unchanged, and
+Operations must report 300 EGP collections plus a separately labeled 200 EGP
+courier-to-drawer transfer. Repeat failure/redispatch, cancel the close warning,
+partial payment, reload during a lost response, both themes, Arabic/English and the
+target touchscreen. This manual gate is not replaced by mocked browser tests.

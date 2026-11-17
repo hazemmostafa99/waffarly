@@ -179,11 +179,11 @@ Orders also exposes authenticated `GET /pos/orders/:id` for the selling workspac
 
 ## Ownership
 
-Shifts provides a bounded employee-scoped delivery-handover recipient list of
-active same-branch employees eligible to sell/open shifts, excluding the actor.
-POS releases only explicit pre-commit close rejections for editing; ambiguous
-outcomes keep the exact durable command. Existing transactional recipient and
-supervisor checks remain authoritative.
+Shifts keeps the recipient-list route only for older POS clients. Current shift
+close previews return the branch's pending delivery count; a close request must
+carry the cashier's explicit confirmation. The close transaction freezes the
+pending balances without assigning an employee. Ordinary cash-variance approvals
+remain separate, and ambiguous outcomes keep the exact durable command.
 
 Cash custody (2026-10-27) remains in Shifts: branch safes, pending handoffs,
 independent receipt, receipt differences, statements and post-close custody are
@@ -193,7 +193,8 @@ remains blind. No new cross-module dependency was introduced. See
 [Drawer custody and safe receipts](../features/pos/CASH_CUSTODY.md).
 
 Tracked POS delivery (2026-10-26) stays in Orders: dispatch, customer delivery/failure,
-responsibility, bounded cross-device queue and partial courier remittance.
+branch-scoped queue and partial courier remittance. Follow-up is available to any
+authorized cashier at the active branch; no employee is assigned at shift close.
 Orders also owns the merchant-scoped courier directory and branch-filtered POS
 options. Courier records are operational identities without login or compensation
 data; dispatch history and courier-level performance remain separate follow-up work.
@@ -202,8 +203,8 @@ delivery can post a drawer payment into an explicit open same-branch receiving
 shift. A courier-held customer payment retains source-shift attribution but has no
 drawer journal effect; `PosDeliveryRemittance` records its actual receiving shift
 and employee. Shifts adds remittances to expected drawer cash separately from cash
-sales and permits only explicit named/supervisor-approved delivery handover at
-close. The frozen handover snapshot is a dedicated safe owner-report field.
+sales and requires cashier confirmation to close with pending deliveries. The
+frozen pending-delivery snapshot is a dedicated owner-report field.
 Shifts exports `readDeliveryBalances` deliberately for Orders' bounded queue and
 its own reconciliation; no reverse module dependency is added. Compound tenant/
 branch foreign keys and a payment same-branch trigger preserve scope after

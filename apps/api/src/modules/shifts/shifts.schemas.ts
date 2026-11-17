@@ -132,6 +132,7 @@ export const closePosShiftSchema = z
     countedCash: nonNegativeAmount,
     reason: z.string().trim().min(1).max(500).optional(),
     approval: approvalSchema.optional(),
+    confirmPendingDeliveries: z.boolean().optional(),
     deliveryHandover: deliveryHandoverSchema.optional(),
   })
   .strict();
@@ -140,6 +141,7 @@ export const posShiftClosePreviewSchema = z
   .object({
     countedCash: nonNegativeAmount,
     reason: z.string().trim().min(1).max(500).optional(),
+    confirmPendingDeliveries: z.boolean().optional(),
     deliveryHandover: deliveryHandoverSchema.optional(),
   })
   .strict();
@@ -165,6 +167,9 @@ export function withoutShiftCloseApproval(
     requestId: input.requestId,
     countedCash: input.countedCash,
     ...(input.reason ? { reason: input.reason } : {}),
+    ...(input.confirmPendingDeliveries !== undefined
+      ? { confirmPendingDeliveries: input.confirmPendingDeliveries }
+      : {}),
     ...(input.deliveryHandover ? { deliveryHandover: input.deliveryHandover } : {}),
   };
 }

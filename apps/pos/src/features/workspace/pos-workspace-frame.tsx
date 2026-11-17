@@ -1,17 +1,18 @@
 import { cn, useLocale } from '@waffarly/ui';
 import {
+  ClipboardList,
   Clock3,
   LayoutDashboard,
   LayoutGrid,
   LogOut,
   Moon,
   Monitor,
-  ReceiptText,
   ShoppingBag,
   Sun,
   Utensils,
   UserRound,
   WifiOff,
+  type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
@@ -86,7 +87,12 @@ export function PosWorkspaceFrame({
       .match(/[\p{L}\p{N}]/gu)
       ?.slice(0, 2)
       .join('') ?? '';
-  const navigation = [
+  const navigation: Array<{
+    to: string;
+    label: string;
+    icon: LucideIcon;
+    end?: boolean;
+  }> = [
     ...(employee.permissions.includes('sell')
       ? [
           { to: '/catalog', label: 'New sale', icon: ShoppingBag },
@@ -95,10 +101,10 @@ export function PosWorkspaceFrame({
         ]
       : []),
     ...(hasPosEmployeePermission(employee, 'view_orders')
-      ? [{ to: '/', label: 'Incoming orders', icon: LayoutDashboard, end: true }]
+      ? [{ to: '/kitchen', label: 'Kitchen', icon: LayoutDashboard }]
       : []),
     ...(hasPosEmployeePermission(employee, 'view_receipts')
-      ? [{ to: '/receipts', label: 'Receipts', icon: ReceiptText }]
+      ? [{ to: '/orders', label: canSell ? 'Orders' : 'Receipts', icon: ClipboardList }]
       : []),
     ...(hasPosEmployeePermission(employee, 'view_inventory')
       ? [{ to: '/inventory', label: 'Inventory', icon: LayoutGrid }]
@@ -160,11 +166,11 @@ export function PosWorkspaceFrame({
             <LayoutGrid aria-hidden="true" size={24} />
           </NavLink>
           <div className="flex w-full flex-row gap-1 lg:flex-col lg:gap-3">
-            {navigation.map(({ to, label, icon: Icon, ...props }) => (
+            {navigation.map(({ to, label, icon: Icon, end }) => (
               <NavLink
                 key={to}
                 to={to}
-                end={'end' in props ? props.end : false}
+                end={end ?? false}
                 title={t(label)}
                 className={({ isActive }) =>
                   cn(
@@ -200,9 +206,7 @@ export function PosWorkspaceFrame({
             selling && 'h-full min-h-0 group-data-[input-mode=true]/pos:pb-0',
           )}
         >
-          <header
-            className="flex min-h-12 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 py-1.5 group-data-[input-mode=true]/pos:hidden sm:px-4"
-          >
+          <header className="flex min-h-12 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 py-1.5 group-data-[input-mode=true]/pos:hidden sm:px-4">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               {employee.deviceRegister?.name && (
                 <span
@@ -257,17 +261,15 @@ export function PosWorkspaceFrame({
                 className="relative flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary focus-within:ring-2 focus-within:ring-ring"
                 title={t('Theme')}
               >
-                  {selectedTheme === 'dark' ? (
-                    <Moon aria-hidden="true" size={16} />
-                  ) : (
-                    <Sun aria-hidden="true" size={16} />
-                  )}
+                {selectedTheme === 'dark' ? (
+                  <Moon aria-hidden="true" size={16} />
+                ) : (
+                  <Sun aria-hidden="true" size={16} />
+                )}
                 <select
                   aria-label={t('Theme')}
                   value={theme}
-                  onChange={(event) =>
-                    setTheme(event.target.value as 'light' | 'dark' | 'system')
-                  }
+                  onChange={(event) => setTheme(event.target.value as 'light' | 'dark' | 'system')}
                   className="absolute inset-0 size-full cursor-pointer opacity-0"
                 >
                   {themeOptions.map(({ value, label }) => (

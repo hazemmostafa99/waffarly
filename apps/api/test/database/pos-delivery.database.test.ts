@@ -42,11 +42,7 @@ it(
       const branch = await db.branch.create({
         data: { merchantId, name: `Branch ${token}`, createdBy: 'test', updatedBy: 'test' },
       });
-      const createCourier = async (
-        name: string,
-        assignedBranchId = branch.id,
-        active = true,
-      ) => {
+      const createCourier = async (name: string, assignedBranchId = branch.id, active = true) => {
         const courier = await db.deliveryCourier.create({
           data: { merchantId, name, active, createdBy: 'test', updatedBy: 'test' },
         });
@@ -238,49 +234,11 @@ it(
       assert.equal(initialAttempts.length, 1);
       assert.equal(initialAttempts[0]?.courierId, courier.id);
       assert.equal(initialAttempts[0]?.status, 'out_for_delivery');
-      const sideRegister = await registers.createRegister(merchantId, 'test', {
-        branchId: branch.id,
-        name: 'Other drawer',
-      });
-      const sideShift = await shifts.openShift(ahmed, {
-        registerId: sideRegister.id,
-        requestId: randomUUID(),
-        openingFloat: '0.00',
-      });
       await assert.rejects(
-        delivery.command(ahmed, order.id, {
-          action: 'claim',
+        shifts.closeShift(ahmed, first.id, {
           requestId: randomUUID(),
-          revision: current.revision,
-          receivingShiftId: sideShift.id,
+          countedCash: '50.00',
         }),
-        ConflictException,
-      );
-      await assert.rejects(
-        checkPayments.recordCheckPayment(ahmed, order.id, order.checks[0]!.id, {
-          requestId: randomUUID(),
-          revision: current.orderRevision,
-          receivingShiftId: sideShift.id,
-          tenders: [{ method: 'cash', amount: '1.00', receivedAmount: '1.00' }],
-        }),
-        ConflictException,
-      );
-      assert.equal((await delivery.summary(ahmed, order.id)).customerDue, '300.00');
-      await shifts.closeShift(ahmed, sideShift.id, {
-        requestId: randomUUID(),
-        countedCash: '0.00',
-      });
-      await assert.rejects(
-        shifts.closeShift(
-          ahmed,
-          first.id,
-          {
-            requestId: randomUUID(),
-            countedCash: '50.00',
-            deliveryHandover: { recipientUsername: mona.username },
-          },
-          supervisor.id,
-        ),
         ConflictException,
       );
       await db.posOrderCheck.update({
@@ -297,56 +255,25 @@ it(
       assert.equal('expectedCash' in live, false);
       await assert.rejects(
         shifts.closeShift(ahmed, first.id, { requestId: randomUUID(), countedCash: '50.00' }),
-        ForbiddenException,
-      );
-      await assert.rejects(
-        shifts.closeShift(
-          ahmed,
-          first.id,
-          {
-            requestId: randomUUID(),
-            countedCash: '50.00',
-            deliveryHandover: { recipientUsername: ahmed.username },
-          },
-          supervisor.id,
-        ),
-        ForbiddenException,
+        ConflictException,
       );
       const close = {
         requestId: randomUUID(),
         countedCash: '50.00',
-        deliveryHandover: { recipientUsername: mona.username },
+        confirmPendingDeliveries: true,
       };
-      const firstReport = await shifts.closeShift(ahmed, first.id, close, supervisor.id);
+      const firstReport = await shifts.closeShift(ahmed, first.id, close);
       assert.equal(firstReport.expectedCash, '50.00');
       assert.equal(firstReport.variance, '0.00');
       assert.equal(firstReport.deliveryHandover?.deliveries[0]?.customerDue, '300.00');
-      assert.equal(firstReport.deliveryHandover?.recipientName, 'Mona');
-      assert.equal(
-        (await shifts.closeShift(ahmed, first.id, close, supervisor.id)).id,
-        firstReport.id,
-      );
+      assert.equal(firstReport.deliveryHandover?.recipientName, null);
+      assert.equal((await shifts.closeShift(ahmed, first.id, close)).id, firstReport.id);
       const second = await shifts.openShift(mona, {
         registerId: register.id,
         requestId: randomUUID(),
         openingFloat: '20.00',
       });
       current = await delivery.summary(mona, order.id);
-      await assert.rejects(
-        delivery.command(ahmed, order.id, {
-          action: 'claim',
-          revision: current.revision,
-          requestId: randomUUID(),
-          receivingShiftId: second.id,
-        }),
-        ForbiddenException,
-      );
-      current = await delivery.command(mona, order.id, {
-        action: 'claim',
-        revision: current.revision,
-        requestId: randomUUID(),
-        receivingShiftId: second.id,
-      });
       // Delivery can complete before money returns. No stock movement or fake payment.
       current = await delivery.command(mona, order.id, {
         action: 'delivered',
@@ -653,17 +580,12 @@ it(
         revision: racing.revision,
       });
       const race = await Promise.allSettled([
-        shifts.closeShift(
-          ahmed,
-          fourth.id,
-          {
-            requestId: randomUUID(),
-            countedCash: '0.00',
-            reason: 'Close/remit race',
-            deliveryHandover: { recipientUsername: mona.username },
-          },
-          supervisor.id,
-        ),
+        shifts.closeShift(ahmed, fourth.id, {
+          requestId: randomUUID(),
+          countedCash: '0.00',
+          reason: 'Close/remit race',
+          confirmPendingDeliveries: true,
+        }),
         delivery.command(mona, raceOrder.id, {
           action: 'remit',
           requestId: randomUUID(),
@@ -676,7 +598,12 @@ it(
       assert.equal(race.filter((result) => result.status === 'fulfilled').length, 1);
       if (race[0]!.status === 'fulfilled') {
         assert.equal(race[0]!.value.expectedCash, '0.00');
-        assert.equal(race[0]!.value.deliveryHandover?.deliveries[0]?.courierCashHeld, '300.00');
+        assert.equal(
+          race[0]!.value.deliveryHandover?.deliveries.find(
+            (entry) => entry.orderId === raceOrder.id,
+          )?.courierCashHeld,
+          '300.00',
+        );
       } else {
         assert.equal(
           (

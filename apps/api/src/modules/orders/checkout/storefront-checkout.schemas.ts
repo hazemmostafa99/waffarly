@@ -78,4 +78,19 @@ export const posOrderPageSchema = z
 export const posActiveSalesPageSchema = posOrderPageSchema.extend({
   search: z.string().trim().max(120).optional(),
   mode: z.enum(['active', 'history']).default('active'),
+  status: z
+    .enum(['pending', 'accepted', 'rejected', 'preparing', 'ready', 'completed', 'cancelled'])
+    .optional(),
+  fulfillmentType: z.enum(['dine_in', 'takeaway', 'delivery']).optional(),
+  settlement: z.enum(['open', 'settled']).optional(),
+  createdFrom: z.coerce.date().optional(),
+  createdTo: z.coerce.date().optional(),
+}).superRefine((query, context) => {
+  if (query.createdFrom && query.createdTo && query.createdFrom > query.createdTo) {
+    context.addIssue({
+      code: 'custom',
+      path: ['createdTo'],
+      message: 'The end date must be on or after the start date.',
+    });
+  }
 });

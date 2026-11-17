@@ -106,6 +106,8 @@ export interface PosShiftLiveSummary {
 export interface PosShiftClosePreviewRequest {
   countedCash: string;
   reason?: string | undefined;
+  confirmPendingDeliveries?: boolean | undefined;
+  /** Legacy saved close commands may still include this field. */
   deliveryHandover?: { recipientUsername: string } | undefined;
 }
 
@@ -115,7 +117,7 @@ export interface PosShiftClosePreview {
   requiresReason: boolean;
   requiresSupervisorApproval: boolean;
   pendingDeliveryCount?: number;
-  requiresDeliveryHandover?: boolean;
+  requiresDeliveryConfirmation?: boolean;
 }
 
 export interface RecordPosShiftCashMovementRequest {
@@ -139,6 +141,8 @@ export interface ClosePosShiftRequest {
   countedCash: string;
   reason?: string | undefined;
   approval?: { username: string; password: string } | undefined;
+  confirmPendingDeliveries?: boolean | undefined;
+  /** Legacy saved close commands may still include this field. */
   deliveryHandover?: { recipientUsername: string } | undefined;
 }
 

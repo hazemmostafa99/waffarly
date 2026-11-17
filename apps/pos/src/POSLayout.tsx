@@ -29,6 +29,7 @@ export function POSLayout() {
   const signOutMutation = useMutation({ mutationFn: signOutPosEmployee });
   const employee = sessionQuery.data;
   const hydrateWorkspace = usePosWorkspaceStore((state) => state.hydrate);
+  const selectWorkspaceBranch = usePosWorkspaceStore((state) => state.selectBranch);
 
   useEffect(() => {
     if (sessionQuery.error instanceof ApiError && sessionQuery.error.statusCode === 401) {
@@ -37,8 +38,16 @@ export function POSLayout() {
   }, [navigate, sessionQuery.error]);
 
   useEffect(() => {
-    if (employee) hydrateWorkspace(employee.merchantId, employee.id);
-  }, [employee?.id, employee?.merchantId, hydrateWorkspace]);
+    if (!employee) return;
+    hydrateWorkspace(employee.merchantId, employee.id);
+    selectWorkspaceBranch(employee.merchantId, employee.id, employee.branch.id);
+  }, [
+    employee?.branch.id,
+    employee?.id,
+    employee?.merchantId,
+    hydrateWorkspace,
+    selectWorkspaceBranch,
+  ]);
 
   async function signOut() {
     try {

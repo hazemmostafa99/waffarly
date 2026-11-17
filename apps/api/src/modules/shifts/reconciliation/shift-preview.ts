@@ -81,14 +81,14 @@ export async function previewCloseShift(
         unsettledCheckCount: reconciliation.unsettledCheckCount,
         requiresReason: reconciliation.unsettledCheckCount === 0 && variance && !request.reason,
         requiresSupervisorApproval:
-          (reconciliation.unsettledCheckCount === 0 &&
-            variance &&
-            !actorPermissions.includes('approve_shift_close')) ||
-          Boolean(reconciliation.pendingDeliveryCount),
+          reconciliation.unsettledCheckCount === 0 &&
+          variance &&
+          !actorPermissions.includes('approve_shift_close'),
         ...(reconciliation.pendingDeliveryCount
           ? {
               pendingDeliveryCount: reconciliation.pendingDeliveryCount,
-              requiresDeliveryHandover: !request.deliveryHandover,
+              requiresDeliveryConfirmation:
+                !request.confirmPendingDeliveries && !request.deliveryHandover,
             }
           : {}),
       };

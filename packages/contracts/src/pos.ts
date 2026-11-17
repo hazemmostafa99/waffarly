@@ -98,9 +98,9 @@ export function hasPosEmployeePermission(
 }
 
 export function posEmployeeHome(employee: Pick<PosEmployeeSession, 'permissions'>): string {
-  if (hasPosEmployeePermission(employee, 'view_orders')) return '/';
+  if (hasPosEmployeePermission(employee, 'view_orders')) return '/kitchen';
   if (hasPosEmployeePermission(employee, 'view_inventory')) return '/inventory';
-  if (hasPosEmployeePermission(employee, 'view_receipts')) return '/receipts';
+  if (hasPosEmployeePermission(employee, 'view_receipts')) return '/orders';
   return '/access';
 }
 

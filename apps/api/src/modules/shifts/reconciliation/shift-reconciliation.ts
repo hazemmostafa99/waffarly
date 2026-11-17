@@ -70,7 +70,7 @@ export async function buildShiftReconciliation(
       FROM unsettled
     `,
     db.posDeliveryRemittance.aggregate({ where, _sum: { amount: true } }),
-    readDeliveryBalances(db, shift.merchantId, { shiftId: shift.id, limit: 501 }),
+    readDeliveryBalances(db, shift.merchantId, { branchId: shift.branchId, limit: 501 }),
   ]);
 
   const sum = (value: { toString(): string } | null | undefined): bigint =>

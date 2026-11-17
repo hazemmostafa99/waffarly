@@ -665,12 +665,27 @@ export function ShiftReportsPage() {
 
               {selectedReport.deliveryHandover && (
                 <section className="shift-report-delivery-section">
-                  <h3>{text('Delivery handover', 'تسليم عهدة التوصيل')}</h3>
-                  <p>
-                    {text('Received by', 'استلمها')} {selectedReport.deliveryHandover.recipientName}{' '}
-                    · {text('Approved by', 'اعتمدها')}{' '}
-                    {selectedReport.deliveryHandover.approvedByName}
-                  </p>
+                  <h3>
+                    {selectedReport.deliveryHandover.recipientName
+                      ? text('Delivery handover', 'تسليم عهدة التوصيل')
+                      : text('Pending deliveries at close', 'طلبات توصيل معلّقة وقت القفل')}
+                  </h3>
+                  {(selectedReport.deliveryHandover.recipientName ||
+                    selectedReport.deliveryHandover.approvedByName) && (
+                    <p>
+                      {selectedReport.deliveryHandover.recipientName && (
+                        <>
+                          {text('Received by', 'استلمها')} {selectedReport.deliveryHandover.recipientName}
+                        </>
+                      )}
+                      {selectedReport.deliveryHandover.approvedByName && (
+                        <>
+                          {' · '}
+                          {text('Approved by', 'اعتمدها')} {selectedReport.deliveryHandover.approvedByName}
+                        </>
+                      )}
+                    </p>
+                  )}
                   <div className="shift-report-delivery-list">
                     {selectedReport.deliveryHandover.deliveries.map((delivery) => (
                       <div key={delivery.orderId}>
