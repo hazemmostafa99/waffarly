@@ -115,7 +115,6 @@ export function POSLayout() {
   return (
     <PosWorkspaceFrame
       employee={employee}
-      branchName={employee.branch.name}
       signingOut={signOutMutation.isPending}
       onSignOut={() => void signOut()}
     >

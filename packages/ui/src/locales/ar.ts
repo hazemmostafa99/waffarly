@@ -412,6 +412,10 @@ export const ar: Record<string, string> = {
     'تغيّر المنتج. راجع السعر المحدّث قبل إضافته.',
   'A selected variant is no longer available.': 'الخيار المحدد لم يعد متاحًا.',
   'The product stock handling is not supported.': 'إعداد إدارة مخزون المنتج غير مدعوم.',
+  'Configure this product inventory and record current item costs before selling it.':
+    'اضبط مخزون هذا المنتج وسجّل التكلفة الحالية للأصناف المرتبطة به من لوحة التاجر قبل بيعه.',
+  'Record a current cost for every stock item before confirming this sale.':
+    'سجّل تكلفة حالية لكل صنف مخزون مستخدم في الطلب من لوحة التاجر قبل تأكيد البيع.',
   'A selected variant does not have enough stock.': 'مخزون الخيار المحدد غير كافٍ.',
   "The order's assigned stock warehouse is no longer available.":
     'مخزون الطلب المخصص لم يعد متاحًا.',
@@ -2085,6 +2089,11 @@ export const ar: Record<string, string> = {
   'New sale': 'بيع جديد',
   'Kitchen orders': 'طلبات المطبخ',
   'Incoming orders': 'الطلبات الواردة',
+  'Order page navigation': 'التنقل بين صفحات الطلبات',
+  Previous: 'السابق',
+  Next: 'التالي',
+  'Page {{page}}': 'الصفحة {{page}}',
+  'Could not load the next order page.': 'تعذر تحميل صفحة الطلبات التالية.',
   'Dine-in rounds appear after you send them. Recipe stock is deducted on acceptance; direct stock is recorded at sale.':
     'تظهر جولات الصالة بعد إرسالها. يُخصم مخزون الوصفات عند القبول، ويُسجل المخزون المباشر وقت البيع.',
   'Station: {{station}}': 'المحطة: {{station}}',
@@ -2105,6 +2114,8 @@ export const ar: Record<string, string> = {
   'Search products': 'ابحث عن المنتجات',
   'Search products...': 'ابحث عن منتج...',
   'No open shift': 'لا توجد وردية مفتوحة',
+  'Loading shift…': 'جارٍ تحميل الوردية…',
+  'Shift status unavailable': 'تعذر تحميل حالة الوردية',
   'Offline - drafts saved': 'غير متصل — المسودات محفوظة',
   'Prices are confirmed by the server. Orders are saved online and can be retried safely.':
     'يؤكد الخادم الأسعار. تُحفظ الطلبات عند الاتصال ويمكن إعادة محاولتها بأمان.',

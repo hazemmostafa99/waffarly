@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useNavigate, useLocation, NavLink } from 'react-router-dom';
-import { useLocale, LanguageSwitcher } from '@waffarly/ui';
+import { useLocale } from '@waffarly/ui';
 import { useCallback, useEffect, useState } from 'react';
 import type { OwnerProfile } from '@waffarly/contracts';
 import { apiRequest } from './lib/api-client.js';
@@ -255,7 +255,6 @@ export function MerchantLayout() {
               <Icon name="help" />
             </button>
           </div>
-          <LanguageSwitcher />
           <NavLink
             to="/account"
             aria-label={locale === 'ar' ? 'فتح حسابي' : 'Open my account'}

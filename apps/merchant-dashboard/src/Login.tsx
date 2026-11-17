@@ -1,4 +1,4 @@
-import { useLocale, Input, Button, LanguageSwitcher } from '@waffarly/ui';
+import { useLocale, Input, Button } from '@waffarly/ui';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { LoginRequest, OwnerProfile } from '@waffarly/contracts';
@@ -44,7 +44,6 @@ export function Login() {
     >
       <div className="merchant-login-topbar">
         <div className="merchant-login-brand">{t('Waffarly · Merchant')}</div>
-        <LanguageSwitcher className="merchant-login-language" />
       </div>
       <section className="merchant-login-card" aria-labelledby="merchant-login-title">
         <header className="merchant-login-heading">

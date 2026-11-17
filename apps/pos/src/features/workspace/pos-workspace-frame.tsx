@@ -1,18 +1,20 @@
 import { cn, useLocale } from '@waffarly/ui';
 import {
+  Clock3,
   LayoutDashboard,
   LayoutGrid,
   LogOut,
   Moon,
-  Palette,
+  Monitor,
   ReceiptText,
   ShoppingBag,
   Sun,
   Utensils,
   UserRound,
+  WifiOff,
 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   hasPosEmployeePermission,
@@ -24,22 +26,21 @@ import { usePosViewport } from '../../lib/use-pos-viewport.js';
 import { isReadablePosLabel } from '../../lib/display-label.js';
 import { usePosAppearanceStore } from '../../app/pos-appearance-store.js';
 import { getPosAppearance, posAppearanceKey } from './pos-appearance.api.js';
+import { getCurrentPosShift, posCurrentShiftKey } from '../shifts/pos-shifts.api.js';
 import '@waffarly/ui/pos-theme.css';
 
 export function PosWorkspaceFrame({
   employee,
-  branchName,
   signingOut,
   onSignOut,
   children,
 }: {
   employee: PosEmployeeSession;
-  branchName: string;
   signingOut: boolean;
   onSignOut: () => void;
   children: ReactNode;
 }) {
-  const { t, locale, setLocale } = useLocale();
+  const { t } = useLocale();
   const location = useLocation();
   const theme = usePosAppearanceStore((state) => state.theme);
   const setTheme = usePosAppearanceStore((state) => state.setTheme);
@@ -49,11 +50,23 @@ export function PosWorkspaceFrame({
     staleTime: 60_000,
     retry: false,
   });
+  const registerId = employee.deviceRegister?.id ?? '';
+  const branchId = employee.branch.id;
+  const canSell = employee.permissions.includes('sell');
+  const shiftQuery = useQuery({
+    queryKey: posCurrentShiftKey(employee.merchantId, branchId, registerId),
+    queryFn: ({ signal }) => getCurrentPosShift(registerId, signal),
+    enabled: canSell && Boolean(branchId && registerId),
+    refetchOnWindowFocus: true,
+  });
   const accent = appearanceQuery.data?.accent ?? 'orange';
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia('(prefers-color-scheme: dark)').matches,
   );
   const viewport = usePosViewport();
+  const [isOnline, setIsOnline] = useState(
+    () => typeof navigator === 'undefined' || navigator.onLine,
+  );
   const selling = location.pathname === '/catalog';
   useEffect(() => {
     if (!selling || !viewport.editing) return;
@@ -73,17 +86,16 @@ export function PosWorkspaceFrame({
       .match(/[\p{L}\p{N}]/gu)
       ?.slice(0, 2)
       .join('') ?? '';
-  const visibleBranchName = isReadablePosLabel(branchName) ? branchName.trim() : t('Branch');
   const navigation = [
-    ...(hasPosEmployeePermission(employee, 'view_orders')
-      ? [{ to: '/', label: 'Incoming orders', icon: LayoutDashboard, end: true }]
-      : []),
     ...(employee.permissions.includes('sell')
       ? [
           { to: '/catalog', label: 'New sale', icon: ShoppingBag },
           { to: '/dining', label: 'Tables', icon: Utensils },
           { to: '/deliveries', label: 'Delivery follow-up', icon: ShoppingBag },
         ]
+      : []),
+    ...(hasPosEmployeePermission(employee, 'view_orders')
+      ? [{ to: '/', label: 'Incoming orders', icon: LayoutDashboard, end: true }]
       : []),
     ...(hasPosEmployeePermission(employee, 'view_receipts')
       ? [{ to: '/receipts', label: 'Receipts', icon: ReceiptText }]
@@ -95,12 +107,27 @@ export function PosWorkspaceFrame({
       ? [{ to: '/shift', label: 'Register shift', icon: LayoutGrid }]
       : []),
   ];
+  const themeOptions = [
+    { value: 'light', label: t('Light') },
+    { value: 'dark', label: t('Dark') },
+    { value: 'system', label: t('System') },
+  ] as const;
 
   useEffect(() => {
     const preference = window.matchMedia('(prefers-color-scheme: dark)');
     const update = () => setSystemDark(preference.matches);
     preference.addEventListener('change', update);
     return () => preference.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    const updateOnline = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', updateOnline);
+    window.addEventListener('offline', updateOnline);
+    return () => {
+      window.removeEventListener('online', updateOnline);
+      window.removeEventListener('offline', updateOnline);
+    };
   }, []);
 
   return (
@@ -174,84 +201,93 @@ export function PosWorkspaceFrame({
           )}
         >
           <header
-            className={cn(
-              'flex min-h-[76px] shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-3 py-3 group-data-[input-mode=true]/pos:hidden sm:px-5 xl:px-7',
-              selling && 'min-h-16 gap-2 py-2',
-            )}
+            className="flex min-h-12 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 py-1.5 group-data-[input-mode=true]/pos:hidden sm:px-4"
           >
-            <div className={cn('flex min-w-0 items-center gap-3', selling && 'hidden lg:flex')}>
-              <span className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-border sm:flex">
-                <LayoutGrid aria-hidden="true" size={17} strokeWidth={1.6} />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">
-                  {visibleBranchName}{' '}
-                  <span className="mx-2 font-normal text-muted-foreground">/</span>
-                  <span className="font-normal text-muted-foreground">{operatorName}</span>
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">{t('POS workspace')}</p>
-              </div>
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              {employee.deviceRegister?.name && (
+                <span
+                  className="inline-flex min-w-0 items-center gap-1.5 rounded-md bg-secondary px-2 py-1 text-xs text-muted-foreground"
+                  aria-label={`${t('Cashier register')}: ${employee.deviceRegister.name}`}
+                  title={`${t('Cashier register')}: ${employee.deviceRegister.name}`}
+                >
+                  <Monitor aria-hidden="true" size={14} />
+                  <span className="hidden max-w-32 truncate sm:inline">
+                    {employee.deviceRegister.name}
+                  </span>
+                </span>
+              )}
+              {canSell && (
+                <span
+                  className={cn(
+                    'inline-flex min-h-7 items-center gap-1.5 rounded-md px-2 text-xs',
+                    shiftQuery.data
+                      ? 'bg-[var(--pos-active)] text-[var(--pos-active-ink)]'
+                      : 'bg-[var(--pos-note)] text-[var(--pos-note-ink)]',
+                  )}
+                  role={shiftQuery.isError && !shiftQuery.data ? 'alert' : 'status'}
+                >
+                  <Clock3 aria-hidden="true" size={14} />
+                  {shiftQuery.isLoading
+                    ? t('Loading shift…')
+                    : shiftQuery.isError && !shiftQuery.data
+                      ? t('Shift status unavailable')
+                      : shiftQuery.data
+                        ? t('Shift open')
+                        : t('No open shift')}
+                  {!shiftQuery.isLoading && !shiftQuery.data && (
+                    <Link className="underline" to="/shift">
+                      {t('Open shift')}
+                    </Link>
+                  )}
+                </span>
+              )}
+              {!isOnline && (
+                <span
+                  className="inline-flex size-7 items-center justify-center rounded-md bg-[var(--pos-note)] text-[var(--pos-note-ink)]"
+                  role="status"
+                  aria-label={t('Offline - drafts saved')}
+                  title={t('Offline - drafts saved')}
+                >
+                  <WifiOff aria-hidden="true" size={15} />
+                </span>
+              )}
             </div>
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-              <span className="me-2 hidden items-center gap-1.5 text-xs text-success xl:inline-flex">
-                <span className="size-1.5 rounded-full bg-current" />
-                {t('Live POS')}
-              </span>
-              <div className="flex h-10 items-center gap-1 rounded-lg border border-border px-2">
-                {selectedTheme === 'dark' ? (
-                  <Moon aria-hidden="true" size={15} />
-                ) : (
-                  <Sun aria-hidden="true" size={15} />
-                )}
+            <div className="flex shrink-0 items-center justify-end gap-1.5">
+              <label
+                className="relative flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary focus-within:ring-2 focus-within:ring-ring"
+                title={t('Theme')}
+              >
+                  {selectedTheme === 'dark' ? (
+                    <Moon aria-hidden="true" size={16} />
+                  ) : (
+                    <Sun aria-hidden="true" size={16} />
+                  )}
                 <select
                   aria-label={t('Theme')}
                   value={theme}
-                  onChange={(event) => setTheme(event.target.value as 'light' | 'dark' | 'system')}
-                  className="max-w-24 bg-transparent text-xs"
+                  onChange={(event) =>
+                    setTheme(event.target.value as 'light' | 'dark' | 'system')
+                  }
+                  className="absolute inset-0 size-full cursor-pointer opacity-0"
                 >
-                  <option value="light">{t('Light')}</option>
-                  <option value="dark">{t('Dark')}</option>
-                  <option value="system">{t('System')}</option>
+                  {themeOptions.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
-              </div>
-              <span
-                className="pos-merchant-accent flex min-h-10 items-center gap-2 rounded-lg border border-border px-2.5 text-xs font-medium"
-                aria-label={
-                  appearanceQuery.isError
-                    ? t('Merchant accent unavailable; using orange default')
-                    : t('Merchant accent')
-                }
-                title={
-                  appearanceQuery.isError
-                    ? t('Merchant accent unavailable; using orange default')
-                    : t('Set by merchant')
-                }
-              >
-                <Palette aria-hidden="true" size={15} />
-                <span className="hidden sm:inline">{t('Accent')}</span>
-                <span className="size-3.5 rounded-full bg-primary ring-2 ring-background ring-offset-1 ring-offset-border" />
-              </span>
-              <PosButton
-                type="button"
-                variant="outline"
-                aria-label={t('Change language')}
-                className="pos-workspace-language min-h-10 rounded-lg px-3 text-xs"
-                onClick={() => setLocale(locale === 'en' ? 'ar' : 'en')}
-              >
-                {locale === 'en' ? 'العربية' : 'English'}
-              </PosButton>
+              </label>
               <PosButton
                 type="button"
                 variant="outline"
                 aria-label={signingOut ? t('Signing out…') : t('Sign out')}
-                className="min-h-10 gap-2 rounded-lg px-3 text-xs"
+                title={signingOut ? t('Signing out…') : t('Sign out')}
+                size="sm"
+                className="h-8 w-8 min-h-0 rounded-md p-0"
                 disabled={signingOut}
                 onClick={onSignOut}
               >
                 <LogOut aria-hidden="true" size={15} />
-                <span className="hidden sm:inline">
-                  {signingOut ? t('Signing out…') : t('Sign out')}
-                </span>
               </PosButton>
             </div>
           </header>

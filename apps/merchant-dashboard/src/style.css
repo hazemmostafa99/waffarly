@@ -814,10 +814,6 @@
     width: 18px;
     height: 18px;
   }
-  .merchant-topbar .language-switcher {
-    margin: 0;
-    white-space: nowrap;
-  }
   .merchant-user {
     display: flex;
     align-items: center;

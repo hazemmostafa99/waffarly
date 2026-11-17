@@ -1,5 +1,5 @@
 import { Menu, ShieldCheck } from 'lucide-react';
-import { Button, LanguageSwitcher, useLocale } from '@waffarly/ui';
+import { Button, useLocale } from '@waffarly/ui';
 import { useAdminUiStore } from '../stores/admin-ui-store.js';
 import { useContext } from 'react';
 import { PageTitleContext } from '../lib/page-title-context.js';
@@ -36,8 +36,6 @@ export function AdminTopbar({ adminName, onSignOut, signingOut }: AdminTopbarPro
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        <LanguageSwitcher />
-        <span className="hidden h-8 w-px bg-waffarly-border sm:block" aria-hidden="true" />
         <div className="hidden items-center gap-2 sm:flex">
           <span
             className="grid size-9 place-items-center rounded-full bg-waffarly-kpi-mint text-waffarly-primary"

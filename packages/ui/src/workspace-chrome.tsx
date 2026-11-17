@@ -1,6 +1,6 @@
 'use client';
 import type { ReactNode } from 'react';
-import { LanguageSwitcher, useLocale } from './i18n.js';
+import { useLocale } from './i18n.js';
 
 export function WorkspaceChrome({ children }: { children: ReactNode }) {
   const { t } = useLocale();
@@ -19,7 +19,6 @@ export function WorkspaceChrome({ children }: { children: ReactNode }) {
           </span>
           {t('Waffarly')}
         </span>
-        <LanguageSwitcher />
       </div>
       {children}
     </>

@@ -283,9 +283,6 @@
   gap: 12px;
   margin-bottom: 24px;
 }
-.workspace-tools .language-switcher {
-  margin: 0;
-}
 .skip-link {
   position: fixed;
   top: -100px;

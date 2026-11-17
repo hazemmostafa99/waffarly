@@ -951,82 +951,25 @@ export function POSCatalogScreen() {
             cartExpanded ? 'hidden' : mobileView === 'order' && 'hidden lg:block',
           )}
         >
-          <div className="p-3">
-            <div className="mb-2 grid gap-2 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center">
-              <header className="flex flex-wrap items-center justify-between gap-3 lg:col-start-1 lg:row-start-1">
-                <div>
-                  <span className="sr-only">{t('Live merchant menu')}</span>
-                  <h2 id="pos-catalog-heading" className="text-base font-semibold">
-                    {amendingOrderId
-                      ? t('Add items to order')
-                      : t(confirmedOrder ? 'Menu' : 'New order')}
-                  </h2>
-                </div>
-                <PosButton
-                  type="button"
-                  variant="outline"
-                  className="pos-new-draft-button h-10"
-                  onClick={amendingOrderId ? leaveKitchenAmendment : createDraft}
-                  disabled={Boolean(pendingSale || pendingKitchenAmendment)}
-                >
-                  {amendingOrderId ? (
-                    <ReceiptText aria-hidden="true" size={16} />
-                  ) : (
-                    <Plus aria-hidden="true" size={16} />
-                  )}
-                  {t(amendingOrderId ? 'Back to order' : 'New order')}
-                </PosButton>
-              </header>
-
-              <div className="grid gap-2 lg:contents">
-                <div className="flex flex-wrap items-center gap-2 lg:col-start-2 lg:row-start-1 lg:justify-end">
-                  <div className="grid min-w-32 gap-1 text-[10px] text-muted-foreground">
-                    <span>{t('Cashier register')}</span>
-                    <strong className="max-w-40 truncate text-xs text-foreground">
-                      {employee.deviceRegister?.name}
-                    </strong>
-                  </div>
-                  <span
-                    className={cn(
-                      'inline-flex min-h-8 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-semibold',
-                      shiftQuery.data
-                        ? 'bg-[var(--pos-active)] text-[var(--pos-active-ink)]'
-                        : 'bg-[var(--pos-note)] text-[var(--pos-note-ink)]',
-                    )}
-                    role="status"
-                  >
-                    {shiftQuery.data ? t('Shift open') : t('No open shift')}
-                    {!shiftQuery.data && (
-                      <Link className="underline" to="/shift">
-                        {t('Open shift')}
-                      </Link>
-                    )}
-                  </span>
-                  <span
-                    className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-secondary px-2.5 text-[10px] font-semibold text-muted-foreground"
-                    role="status"
-                  >
-                    <span
-                      className={cn('size-1.5 rounded-full', online ? 'bg-success' : 'bg-warning')}
-                    />
-                    {online ? t('Online') : t('Offline - drafts saved')}
-                  </span>
-                </div>
-                <label className="relative flex min-h-10 w-full min-w-0 items-center gap-2 rounded-xl border border-border bg-card px-3 text-muted-foreground lg:col-span-2">
-                  <Search aria-hidden="true" size={17} />
-                  <span className="sr-only">{t('Search products')}</span>
-                  <Input
-                    type="search"
-                    value={search}
-                    placeholder={t('Search products...')}
-                    onChange={(event) => setSearch(event.target.value)}
-                    className="h-11 min-w-0 border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0 lg:h-9 lg:text-xs"
-                  />
-                  <kbd className="hidden rounded border border-border px-1.5 text-[10px] sm:inline-flex">
-                    /
-                  </kbd>
-                </label>
-              </div>
+          <div className="p-2 sm:p-3">
+            <h2 id="pos-catalog-heading" className="sr-only">
+              {amendingOrderId ? t('Add items to order') : t('Live merchant menu')}
+            </h2>
+            <div className="mb-2">
+              <label className="relative flex min-h-10 w-full min-w-0 items-center gap-2 rounded-xl border border-border bg-card px-3 text-muted-foreground">
+                <Search aria-hidden="true" size={15} />
+                <span className="sr-only">{t('Search products')}</span>
+                <Input
+                  type="search"
+                  value={search}
+                  placeholder={t('Search products...')}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="h-11 min-w-0 border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0 lg:h-9 lg:text-xs"
+                />
+                <kbd className="hidden rounded border border-border px-1.5 text-[10px] sm:inline-flex">
+                  /
+                </kbd>
+              </label>
             </div>
 
             {(persistenceError || operationError) && (
@@ -1047,7 +990,7 @@ export function POSCatalogScreen() {
                 aria-pressed={categoryId === null}
                 onClick={() => setCategoryId(null)}
                 className={cn(
-                  'flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-[11px] font-medium',
+                  'flex min-h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-medium max-[767px]:min-h-11 [@media(pointer:coarse)]:min-h-11',
                   categoryId === null
                     ? 'border-primary bg-primary text-primary-foreground'
                     : 'border-border bg-card text-muted-foreground hover:text-foreground',
@@ -1064,7 +1007,7 @@ export function POSCatalogScreen() {
                   aria-pressed={categoryId === category.id}
                   onClick={() => setCategoryId(category.id)}
                   className={cn(
-                    'flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-[11px] font-medium',
+                    'flex min-h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-medium max-[767px]:min-h-11 [@media(pointer:coarse)]:min-h-11',
                     categoryId === category.id
                       ? 'border-primary bg-primary text-primary-foreground'
                       : 'border-border bg-card text-muted-foreground hover:text-foreground',
@@ -1082,13 +1025,8 @@ export function POSCatalogScreen() {
               ))}
             </div>
 
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-xs font-semibold">
-                {categoryId
-                  ? (categories.find((category) => category.id === categoryId)?.name ?? '')
-                  : t('All menu items')}
-              </h3>
-              <span className="text-[11px] text-muted-foreground">
+            <div className="mb-1 flex justify-end">
+              <span className="text-[10px] text-muted-foreground">
                 {visibleProducts.length} {t('items')}
               </span>
             </div>
@@ -1101,21 +1039,21 @@ export function POSCatalogScreen() {
               </p>
             )}
             {catalogQuery.isLoading ? (
-              <p className="py-12 text-center text-sm text-muted-foreground" role="status">
+              <p className="py-8 text-center text-sm text-muted-foreground" role="status">
                 {t('Loading catalog...')}
               </p>
             ) : visibleProducts.length === 0 && !catalogError ? (
               <div
-                className="rounded-lg border border-border bg-card py-16 text-center"
+                className="rounded-lg border border-border bg-card py-8 text-center"
                 role="status"
               >
                 <Search
                   aria-hidden="true"
                   className="mx-auto mb-3 text-muted-foreground"
-                  size={28}
+                  size={24}
                 />
-                <h3 className="font-medium">{t('No matching items')}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <h3 className="font-medium text-sm">{t('No matching items')}</h3>
+                <p className="mt-1 text-xs text-muted-foreground">
                   {normalizedSearch || categoryId
                     ? t('Try another name or category.')
                     : t('No products are available in the catalog.')}
@@ -1123,7 +1061,7 @@ export function POSCatalogScreen() {
               </div>
             ) : (
               <div
-                className="pos-live-product-grid grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-2"
+                className="pos-live-product-grid grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-1.5"
                 data-testid="product-grid"
               >
                 {visibleProducts.map((product) => (
@@ -1150,9 +1088,11 @@ export function POSCatalogScreen() {
               <div className="flex justify-center py-5">
                 <PosButton
                   variant="outline"
+                  size="sm"
                   type="button"
                   disabled={catalogQuery.isFetchingNextPage}
                   onClick={() => void catalogQuery.fetchNextPage()}
+                  className="h-8 min-h-0 text-xs max-[767px]:h-11"
                 >
                   {catalogQuery.isFetchingNextPage ? t('Loading...') : t('Load more products')}
                 </PosButton>
@@ -1174,7 +1114,7 @@ export function POSCatalogScreen() {
           }}
           className={cn(
             'relative min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:flex lg:shrink-0 [&>aside>header]:pe-14',
-            cartExpanded ? 'flex' : 'lg:w-[360px] lg:flex-none xl:w-[400px]',
+            cartExpanded ? 'flex' : 'lg:w-[320px] lg:flex-none xl:w-[360px]',
             !cartExpanded && (mobileView === 'menu' ? 'hidden' : 'flex'),
           )}
         >
@@ -1267,10 +1207,10 @@ export function POSCatalogScreen() {
                     </div>
                   </div>
                 ) : (
-                  <div className="shrink-0 border-b border-border py-2 ps-3 pe-14">
-                    <div className="flex min-h-9 items-center gap-3">
-                      <span className="text-sm font-semibold">{t('Current order')}</span>
-                      <span className="font-mono text-xs text-primary">
+                  <div className="shrink-0 border-b border-border py-1.5 ps-3 pe-12">
+                    <div className="flex min-h-8 items-center gap-2">
+                      <span className="text-[13px] font-semibold">{t('Current order')}</span>
+                      <span className="font-mono text-[11px] text-primary">
                         #{activeDraft?.id.slice(0, 6) ?? '—'}
                       </span>
                       <PosButton
@@ -1278,9 +1218,10 @@ export function POSCatalogScreen() {
                         variant="outline"
                         size="icon"
                         aria-label={t('New order')}
+                        title={t('New order')}
                         disabled={Boolean(pendingSale)}
                         onClick={createDraft}
-                        className="ms-auto size-9 shrink-0"
+                        className="ms-auto size-8 shrink-0 max-[767px]:size-11 [@media(pointer:coarse)]:size-11"
                       >
                         <Plus aria-hidden="true" size={16} />
                       </PosButton>
@@ -1393,7 +1334,7 @@ export function POSCatalogScreen() {
                 )}
 
                 <div
-                  className="order-scroll shrink-0 px-3 py-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
+                  className="order-scroll shrink-0 px-2.5 py-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
                   data-testid="cart-items-scroll"
                 >
                   {amendingOrderId && (
@@ -1458,7 +1399,7 @@ export function POSCatalogScreen() {
                           const selectionSummary = summarizeSelections(product, line, t);
                           return (
                             <article
-                              className="pos-live-cart-line @container/item rounded-xl border border-border bg-background/40 px-3 py-1.5"
+                              className="pos-live-cart-line @container/item rounded-lg border border-border bg-background/40 px-2.5 py-1"
                               data-testid="order-draft-line"
                               key={line.id}
                             >
@@ -1475,7 +1416,7 @@ export function POSCatalogScreen() {
                                 >
                                   <div
                                     className={cn(
-                                      'flex items-start justify-between gap-3 text-start text-sm font-semibold leading-5',
+                                      'flex items-start justify-between gap-2 text-start text-[13px] font-semibold leading-4',
                                       !cartExpanded && 'lg:col-span-2',
                                     )}
                                   >
@@ -1485,7 +1426,7 @@ export function POSCatalogScreen() {
                                     >
                                       {product?.name ?? t('Product')}
                                     </span>
-                                    <strong className="shrink-0 text-sm tabular-nums text-primary">
+                                    <strong className="shrink-0 text-[13px] tabular-nums text-primary">
                                       {quote
                                         ? formatNumber(Number(quote.lineTotal), {
                                             style: 'currency',
@@ -1496,7 +1437,7 @@ export function POSCatalogScreen() {
                                   </div>
                                   <div
                                     className={cn(
-                                      'mt-1 flex flex-wrap items-baseline gap-x-3 text-xs leading-5 text-muted-foreground',
+                                      'mt-0.5 flex flex-wrap items-baseline gap-x-2 text-[11px] leading-4 text-muted-foreground',
                                       !cartExpanded && 'lg:contents',
                                     )}
                                   >
@@ -1518,7 +1459,7 @@ export function POSCatalogScreen() {
                                         !cartExpanded && 'lg:col-span-2 lg:row-start-3',
                                       )}
                                     >
-                                      <summary className="cursor-pointer break-words">
+                                      <summary className="cursor-pointer break-words text-[11px]">
                                         {line.note
                                           ? `${t('Item note')}: ${line.note}`
                                           : t('Item note')}
@@ -1583,7 +1524,7 @@ export function POSCatalogScreen() {
                                         <Minus size={14} />
                                       </span>
                                     </PosButton>
-                                    <span className="min-w-7 text-center text-sm font-semibold tabular-nums text-primary">
+                                    <span className="min-w-6 text-center text-xs font-semibold tabular-nums text-primary">
                                       {formatNumber(line.quantity)}
                                     </span>
                                     <PosButton
@@ -1603,7 +1544,7 @@ export function POSCatalogScreen() {
                                       type="button"
                                       variant="outline"
                                       size="icon"
-                                      className="ms-2 size-8 max-[767px]:size-11 [@media(pointer:coarse)]:size-11"
+                                      className="ms-1 size-8 max-[767px]:size-11 [@media(pointer:coarse)]:size-11"
                                       aria-label={`${t('Remove item')}: ${product?.name ?? ''}`}
                                       disabled={Boolean(pendingSale)}
                                       onClick={() => changeLineQuantity(line.id, 0)}
@@ -1619,9 +1560,8 @@ export function POSCatalogScreen() {
                       </div>
                     </section>
                   ) : (
-                    <div className="flex flex-col items-center gap-3 py-14 text-center text-muted-foreground">
-                      <ReceiptText aria-hidden="true" size={32} strokeWidth={1.25} />
-                      <p className="text-sm">{t('A fresh order starts here.')}</p>
+                    <div className="flex flex-col items-center gap-2 py-8 text-center text-muted-foreground">
+                      <ReceiptText aria-hidden="true" size={24} strokeWidth={1.25} />
                       <p className="text-xs">{t('Choose something from the menu.')}</p>
                     </div>
                   )}
@@ -1645,7 +1585,7 @@ export function POSCatalogScreen() {
                     </div>
                     <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
                       <strong className="text-[13px]">{t('New order total')}</strong>
-                      <strong className="text-xl tabular-nums tracking-tight text-primary">
+                      <strong className="text-base tabular-nums tracking-tight text-primary">
                         {formatNumber(Number(amendedOrderTotal), {
                           style: 'currency',
                           currency: 'EGP',
@@ -1657,7 +1597,7 @@ export function POSCatalogScreen() {
                   <div className="text-sm">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-[13px] font-semibold">{t('Total')}</span>
-                      <strong className="text-xl tabular-nums tracking-tight text-primary">
+                      <strong className="text-base tabular-nums tracking-tight text-primary">
                         {formatNumber(Number(subtotal), { style: 'currency', currency: 'EGP' })}
                       </strong>
                     </div>
@@ -1708,7 +1648,7 @@ export function POSCatalogScreen() {
                   type="button"
                   variant="solid"
                   className={cn(
-                    'h-11 w-full text-sm font-bold',
+                    'h-10 min-h-0 w-full text-xs font-bold max-[767px]:h-11',
                     !amendingOrderId && 'col-start-2 row-start-1',
                   )}
                   disabled={
@@ -1939,6 +1879,7 @@ function LiveProductCard({
   const image = product.images.find((candidate) => candidate.isPrimary) ?? product.images[0];
   const { t } = useLocale();
   const configurable = productHasChoices(product);
+  const description = product.description?.trim();
   return (
     <button
       type="button"
@@ -1951,7 +1892,7 @@ function LiveProductCard({
         quantity > 0 && 'border-primary',
       )}
     >
-      <div className="relative h-[76px] bg-secondary p-1 text-[var(--pos-art-ink)]">
+      <div className="relative h-14 bg-secondary p-1 text-[var(--pos-art-ink)]">
         {image ? (
           <img
             className="h-full w-full rounded-lg object-cover"
@@ -1960,37 +1901,32 @@ function LiveProductCard({
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full items-center justify-center rounded-lg bg-[var(--pos-active)] text-2xl font-bold text-[var(--pos-active-ink)]">
+          <div className="flex h-full items-center justify-center rounded-lg bg-[var(--pos-active)] text-xl font-bold text-[var(--pos-active-ink)]">
             {product.name.slice(0, 1)}
           </div>
         )}
         {configurable && (
-          <span className="absolute start-2 top-2 rounded-md border border-border/70 bg-card/95 px-1.5 py-1 text-[9px] font-medium text-foreground shadow-sm">
+          <span className="absolute start-2 top-2 rounded-md border border-border/70 bg-card/95 px-1.5 py-0.5 text-[10px] font-medium text-foreground shadow-sm">
             {t('Customizable')}
           </span>
         )}
         {quantity > 0 && (
-          <span className="absolute end-2 top-2 flex size-5 items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
+          <span className="absolute end-2 top-2 flex size-[18px] items-center justify-center rounded-full bg-primary text-[10px] font-semibold text-primary-foreground">
             {quantity}
           </span>
         )}
       </div>
-      <div className="p-2">
+      <div className="p-1.5">
         <h3 className="line-clamp-1 text-xs font-semibold leading-4">{product.name}</h3>
-        <p className="mt-1 min-h-7 line-clamp-2 text-[9px] leading-[13px] text-muted-foreground">
-          {product.description ||
-            (product.variants.length > 0 || product.modifierGroups.length > 0
-              ? [
-                  product.variants.length > 0 &&
-                    t('{{count}} sizes', { count: product.variants.length }),
-                  product.modifierGroups.length > 0 &&
-                    t('{{count}} option groups', { count: product.modifierGroups.length }),
-                ]
-                  .filter(Boolean)
-                  .join(' · ')
-              : t('Available now'))}
-        </p>
-        <div className="mt-1.5 flex items-center justify-between gap-2">
+        {description && (
+          <p
+            className="mt-0.5 line-clamp-1 text-[10px] leading-4 text-muted-foreground"
+            title={description}
+          >
+            {description}
+          </p>
+        )}
+        <div className="mt-1 flex items-center justify-between gap-2">
           <strong className="text-xs tabular-nums">
             {formatNumber(Number(product.basePrice), {
               style: 'currency',
@@ -1999,11 +1935,11 @@ function LiveProductCard({
           </strong>
           <span
             className={cn(
-              'flex size-8 shrink-0 items-center justify-center rounded-lg',
+              'flex size-6 shrink-0 items-center justify-center rounded-md',
               quantity > 0 ? 'bg-primary text-primary-foreground' : 'bg-secondary',
             )}
           >
-            <Plus aria-hidden="true" size={17} />
+            <Plus aria-hidden="true" size={14} />
           </span>
         </div>
       </div>

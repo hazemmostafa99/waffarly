@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { LanguageSwitcher, useLocale } from '@waffarly/ui';
+import { useLocale } from '@waffarly/ui';
 import type { OwnerProfile } from '@waffarly/contracts';
 import { CatalogWorkspace, type CatalogSnapshot } from './CatalogWorkspace.js';
 import { StorefrontSettings } from './StorefrontSettings.js';
@@ -627,7 +627,6 @@ export function MerchantWorkspace({
               <Icon name="help" />
             </button>
           </div>
-          <LanguageSwitcher />
           <div className="merchant-user">
             <span className="merchant-avatar">{profile.ownerName.slice(0, 1).toUpperCase()}</span>
             <span>

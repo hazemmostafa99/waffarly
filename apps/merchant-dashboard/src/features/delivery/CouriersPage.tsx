@@ -42,6 +42,7 @@ export function CouriersPage() {
   const [performance, setPerformance] = useState<DeliveryCourierPerformanceReport | null>(null);
   const [branches, setBranches] = useState<InventoryBranch[]>([]);
   const [history, setHistory] = useState<Array<string | undefined>>([]);
+  const [activeTab, setActiveTab] = useState<'list' | 'performance'>('list');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<CourierStatus>('all');
   const [editing, setEditing] = useState<DeliveryCourierSummary | null>(null);
@@ -359,178 +360,237 @@ export function CouriersPage() {
 
   return (
     <section className="courier-workspace" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <h1 className="sr-only">{text('Delivery couriers', 'طيارو التوصيل')}</h1>
-
-      {loadError && (
-        <div className="products-error courier-load-error" role="alert">
-          <span>{loadError}</span>
-          <button
-            className="products-button"
-            type="button"
-            disabled={loading}
-            onClick={() => setRefresh((value) => value + 1)}
-          >
-            {text('Retry', 'إعادة المحاولة')}
-          </button>
+      <header className="courier-page-header">
+        <div>
+          <h1>{text('Delivery couriers', 'طيارو التوصيل')}</h1>
+          <p>
+            {text(
+              'Manage your team and follow delivery performance.',
+              'إدارة فريق التوصيل ومتابعة أداء الطيارين من مكان واحد.',
+            )}
+          </p>
         </div>
-      )}
+        <button className="products-button primary" type="button" onClick={startCreate}>
+          <Icon name="plus" />
+          {text('Add courier', 'إضافة طيار')}
+        </button>
+      </header>
+
+      <div
+        className="courier-tabs"
+        role="tablist"
+        aria-label={text('Courier workspace', 'أقسام إدارة الطيارين')}
+      >
+        {(['list', 'performance'] as const).map((tab) => (
+          <button
+            key={tab}
+            id={`courier-tab-${tab}`}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === tab}
+            aria-controls={`courier-panel-${tab}`}
+            tabIndex={activeTab === tab ? 0 : -1}
+            onClick={() => setActiveTab(tab)}
+            onKeyDown={(event) => {
+              let nextTab: typeof activeTab;
+              if (event.key === 'Home') nextTab = 'list';
+              else if (event.key === 'End') nextTab = 'performance';
+              else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                nextTab = tab === 'list' ? 'performance' : 'list';
+              } else return;
+              event.preventDefault();
+              setActiveTab(nextTab);
+              document.getElementById(`courier-tab-${nextTab}`)?.focus();
+            }}
+          >
+            {tab === 'list'
+              ? text('Courier management', 'إدارة الطيارين')
+              : text('Performance & statistics', 'الأداء والإحصائيات')}
+          </button>
+        ))}
+      </div>
+
       {notice && (
         <p className="products-notice" role="status">
           {notice}
         </p>
       )}
 
-      <DashboardCard
-        className="courier-performance-card"
-        title={text('Courier performance · last 30 days', 'أداء الطيارين · آخر ٣٠ يومًا')}
-        description={text(
-          'Each dispatch is counted separately, so a failed attempt stays with the courier who handled it. These are operating measures only; no courier pay is tracked.',
-          'كل خروج للتوصيل بيتحسب كمحاولة مستقلة، فالمحاولة الفاشلة بتفضل محسوبة على الطيار اللي استلمها. دي مؤشرات تشغيلية فقط ومفيش تسجيل لأجور الطيارين.',
-        )}
+      <div
+        id="courier-panel-list"
+        className="courier-tab-panel"
+        role="tabpanel"
+        aria-labelledby="courier-tab-list"
+        hidden={activeTab !== 'list'}
+        tabIndex={0}
       >
-        {performanceError && (
-          <div className="products-error courier-performance-error" role="alert">
-            <span>{performanceError}</span>
-            <button
-              className="products-button"
-              type="button"
-              disabled={performanceLoading}
-              onClick={() => setPerformanceRefresh((value) => value + 1)}
-            >
-              {text('Retry', 'إعادة المحاولة')}
-            </button>
+        <DashboardCard
+          className="courier-table-card"
+          title={text('Courier list', 'قائمة الطيارين')}
+          description={text(
+            'Manage courier contact details, branch assignments, and availability.',
+            'إدارة بيانات التواصل والفروع المعيّنة وحالة التوفر للطيارين.',
+          )}
+        >
+          {loadError && (
+            <div className="products-error courier-load-error" role="alert">
+              <span>{loadError}</span>
+              <button
+                className="products-button"
+                type="button"
+                disabled={loading}
+                onClick={() => setRefresh((value) => value + 1)}
+              >
+                {text('Retry', 'إعادة المحاولة')}
+              </button>
+            </div>
+          )}
+          <div className="courier-toolbar">
+            <div className="products-filters courier-list-filters">
+              <label className="products-search">
+                <Icon name="search" />
+                <input
+                  aria-label={text('Search delivery couriers', 'ابحث عن طياري التوصيل')}
+                  placeholder={text('Search by name or phone', 'البحث بالاسم أو رقم الهاتف')}
+                  value={search}
+                  maxLength={160}
+                  type="search"
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setHistory([]);
+                  }}
+                />
+              </label>
+              <select
+                aria-label={text('Courier status', 'حالة الطيار')}
+                value={status}
+                onChange={(event) => {
+                  setStatus(event.target.value as CourierStatus);
+                  setHistory([]);
+                }}
+              >
+                <option value="all">{text('All couriers', 'كل الطيارين')}</option>
+                <option value="active">{text('Active', 'نشط')}</option>
+                <option value="inactive">{text('Inactive', 'غير نشط')}</option>
+              </select>
+            </div>
           </div>
-        )}
-        {performance && (
-          <p className="courier-performance-period">
-            {text('Since', 'من')} {new Intl.DateTimeFormat(
-              locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB',
-              { dateStyle: 'medium' },
-            ).format(new Date(performance.periodStart))}
-          </p>
-        )}
-        {(!performanceError || performance) && (
           <DataTable
-            columns={performanceColumns}
-            rows={performance?.items ?? []}
-            rowKey={(courier) => courier.courierId}
-            caption={text('Courier performance', 'أداء الطيارين')}
-            loading={performanceLoading}
-            loadingState={text('Loading performance…', 'جارٍ تحميل الأداء…')}
+            columns={columns}
+            rows={page.items}
+            rowKey={(courier) => courier.id}
+            caption={text('Courier list', 'قائمة الطيارين')}
+            loading={loading}
+            loadingState={text('Loading couriers…', 'جارٍ تحميل الطيارين…')}
             emptyState={
               <div className="courier-empty">
-                <strong>{text('No courier records yet', 'لا توجد بيانات طيارين بعد')}</strong>
+                <strong>
+                  {hasFilters
+                    ? text('No matching couriers', 'لا يوجد طيارون مطابقون')
+                    : text('No couriers yet', 'لا يوجد طيارون بعد')}
+                </strong>
                 <p>
-                  {text(
-                    'Dispatch a delivery to start collecting performance history.',
-                    'ابدأ بتسليم طلب لطيار عشان يبدأ تسجيل الأداء.',
-                  )}
+                  {hasFilters
+                    ? text(
+                        'Try another search or change the status filter.',
+                        'جرّب بحثًا آخر أو غيّر فلتر الحالة.',
+                      )
+                    : text(
+                        'Add a courier and assign the branches they can serve.',
+                        'أضف طيارًا وعيّن له الفروع التي يعمل بها.',
+                      )}
                 </p>
               </div>
             }
           />
-        )}
-      </DashboardCard>
-
-      <div className="courier-toolbar">
-        <div className="products-filters courier-list-filters">
-          <label className="products-search">
-            <Icon name="search" />
-            <input
-              aria-label={text('Search delivery couriers', 'ابحث عن طياري التوصيل')}
-              placeholder={text('Search by name or phone', 'البحث بالاسم أو رقم الهاتف')}
-              value={search}
-              maxLength={160}
-              type="search"
-              onChange={(event) => {
-                setSearch(event.target.value);
-                setHistory([]);
-              }}
-            />
-          </label>
-          <select
-            aria-label={text('Courier status', 'حالة الطيار')}
-            value={status}
-            onChange={(event) => {
-              setStatus(event.target.value as CourierStatus);
-              setHistory([]);
-            }}
-          >
-            <option value="all">{text('All couriers', 'كل الطيارين')}</option>
-            <option value="active">{text('Active', 'نشط')}</option>
-            <option value="inactive">{text('Inactive', 'غير نشط')}</option>
-          </select>
-        </div>
-        <div className="courier-toolbar-actions">
-          <button className="products-button primary" type="button" onClick={startCreate}>
-            <Icon name="plus" />
-            {text('Add courier', 'إضافة طيار')}
-          </button>
-        </div>
+          <div className="courier-pagination">
+            <span>
+              {text('Couriers on this page:', 'الطيارون في هذه الصفحة:')} {page.items.length}
+            </span>
+            <div>
+              <button
+                className="products-button"
+                type="button"
+                disabled={!history.length || loading}
+                onClick={() => setHistory((current) => current.slice(0, -1))}
+              >
+                {text('Previous', 'السابق')}
+              </button>
+              <button
+                className="products-button"
+                type="button"
+                disabled={!page.nextCursor || loading}
+                onClick={() => {
+                  if (page.nextCursor) setHistory((current) => [...current, page.nextCursor!]);
+                }}
+              >
+                {text('Next', 'التالي')}
+              </button>
+            </div>
+          </div>
+        </DashboardCard>
       </div>
 
-      <DashboardCard
-        className="courier-table-card"
-        title={text('Courier list', 'قائمة الطيارين')}
-        description={text(
-          'Manage courier contact details, branch assignments, and availability.',
-          'إدارة بيانات التواصل والفروع المعيّنة وحالة التوفر للطيارين.',
-        )}
+      <div
+        id="courier-panel-performance"
+        className="courier-tab-panel"
+        role="tabpanel"
+        aria-labelledby="courier-tab-performance"
+        hidden={activeTab !== 'performance'}
+        tabIndex={0}
       >
-        <DataTable
-          columns={columns}
-          rows={page.items}
-          rowKey={(courier) => courier.id}
-          caption={text('Courier list', 'قائمة الطيارين')}
-          loading={loading}
-          loadingState={text('Loading couriers…', 'جارٍ تحميل الطيارين…')}
-          emptyState={
-            <div className="courier-empty">
-              <strong>
-                {hasFilters
-                  ? text('No matching couriers', 'لا يوجد طيارون مطابقون')
-                  : text('No couriers yet', 'لا يوجد طيارون بعد')}
-              </strong>
-              <p>
-                {hasFilters
-                  ? text(
-                      'Try another search or change the status filter.',
-                      'جرّب بحثًا آخر أو غيّر فلتر الحالة.',
-                    )
-                  : text(
-                      'Add a courier and assign the branches they can serve.',
-                      'أضف طيارًا وعيّن له الفروع التي يعمل بها.',
-                    )}
-              </p>
+        <DashboardCard
+          className="courier-performance-card"
+          title={text('Courier performance · last 30 days', 'أداء الطيارين · آخر ٣٠ يومًا')}
+          description={text(
+            'Each dispatch is counted separately, so a failed attempt stays with the courier who handled it. These are operating measures only; no courier pay is tracked.',
+            'كل خروج للتوصيل بيتحسب كمحاولة مستقلة، فالمحاولة الفاشلة بتفضل محسوبة على الطيار اللي استلمها. دي مؤشرات تشغيلية فقط ومفيش تسجيل لأجور الطيارين.',
+          )}
+        >
+          {performanceError && (
+            <div className="products-error courier-performance-error" role="alert">
+              <span>{performanceError}</span>
+              <button
+                className="products-button"
+                type="button"
+                disabled={performanceLoading}
+                onClick={() => setPerformanceRefresh((value) => value + 1)}
+              >
+                {text('Retry', 'إعادة المحاولة')}
+              </button>
             </div>
-          }
-        />
-        <div className="courier-pagination">
-          <span>
-            {text('Couriers on this page:', 'الطيارون في هذه الصفحة:')} {page.items.length}
-          </span>
-          <div>
-            <button
-              className="products-button"
-              type="button"
-              disabled={!history.length || loading}
-              onClick={() => setHistory((current) => current.slice(0, -1))}
-            >
-              {text('Previous', 'السابق')}
-            </button>
-            <button
-              className="products-button"
-              type="button"
-              disabled={!page.nextCursor || loading}
-              onClick={() => {
-                if (page.nextCursor) setHistory((current) => [...current, page.nextCursor!]);
-              }}
-            >
-              {text('Next', 'التالي')}
-            </button>
-          </div>
-        </div>
-      </DashboardCard>
+          )}
+          {performance && (
+            <p className="courier-performance-period">
+              {text('Since', 'من')} {new Intl.DateTimeFormat(
+                locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB',
+                { dateStyle: 'medium' },
+              ).format(new Date(performance.periodStart))}
+            </p>
+          )}
+          {(!performanceError || performance) && (
+            <DataTable
+              columns={performanceColumns}
+              rows={performance?.items ?? []}
+              rowKey={(courier) => courier.courierId}
+              caption={text('Courier performance', 'أداء الطيارين')}
+              loading={performanceLoading}
+              loadingState={text('Loading performance…', 'جارٍ تحميل الأداء…')}
+              emptyState={
+                <div className="courier-empty">
+                  <strong>{text('No courier records yet', 'لا توجد بيانات طيارين بعد')}</strong>
+                  <p>
+                    {text(
+                      'Dispatch a delivery to start collecting performance history.',
+                      'ابدأ بتسليم طلب لطيار عشان يبدأ تسجيل الأداء.',
+                    )}
+                  </p>
+                </div>
+              }
+            />
+          )}
+        </DashboardCard>
+      </div>
 
       {editorOpen && (
         <DashboardDialog

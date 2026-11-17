@@ -254,29 +254,6 @@ html[dir='rtl'] .merchant-body {
   top: 2px;
   right: 3px;
 }
-.merchant-topbar .language-switcher {
-  order: 4;
-  padding: 0;
-  width: 28px;
-  height: 28px;
-  min-height: 0;
-  border: 0;
-  box-shadow: none;
-  border-radius: 50%;
-  color: var(--dashboard-muted);
-  background: #f6f8fb;
-}
-.merchant-topbar .language-switcher > span:first-child {
-  font-size: 18px;
-}
-.merchant-topbar .language-switcher > span:last-child {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  clip-path: inset(50%);
-  overflow: hidden;
-}
 .merchant-user {
   order: 3;
   flex-direction: row-reverse;

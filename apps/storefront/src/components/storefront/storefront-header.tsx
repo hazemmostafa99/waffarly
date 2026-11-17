@@ -5,7 +5,7 @@ import Link, { useStorefrontBasePath } from './storefront-link';
 import { usePathname } from 'next/navigation';
 import { Gift, Heart, House, Menu, ShoppingBag, Sparkles, UserRound } from 'lucide-react';
 import type { PublicStorefrontCatalog } from '@waffarly/contracts';
-import { Button, LanguageSwitcher } from '@waffarly/ui';
+import { Button } from '@waffarly/ui';
 import { useLocale } from '@waffarly/ui';
 import { storefrontCopy } from '../../lib/storefront-copy';
 import { useStorefrontStore } from '../../providers/storefront-providers';
@@ -126,7 +126,6 @@ export function StorefrontHeader({ catalog }: { catalog: PublicStorefrontCatalog
             >
               <UserRound className="size-5" aria-hidden="true" />
             </Link>
-            <LanguageSwitcher className="hidden px-2 text-xs sm:flex sm:px-3" />
             <Button
               asChild
               className="relative size-11 rounded-full bg-transparent p-0 text-store-ink hover:bg-store-page hover:text-store-primary-deep"

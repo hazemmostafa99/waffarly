@@ -1,8 +1,8 @@
 import type { PosEmployeeSession, StorefrontOrderSummary } from '@waffarly/contracts';
 import { useMutation, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { cn, useLocale } from '@waffarly/ui';
-import { ArrowRight, Clock3 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { ArrowRight, ChevronLeft, ChevronRight, Clock3, RefreshCw } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { PosButton } from './components/pos-button.js';
 import { ApiError } from './lib/api-client.js';
@@ -41,6 +41,7 @@ export function POSScreen() {
     () => typeof navigator === 'undefined' || navigator.onLine,
   );
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
+  const [activePageIndex, setActivePageIndex] = useState(0);
   const isWorkspaceHydrated = hydratedScope === scope;
   const branchId = employee.branch.id;
 
@@ -70,21 +71,38 @@ export function POSScreen() {
     staleTime: 5_000,
   });
 
+  useEffect(() => {
+    setActivePageIndex(0);
+  }, [branchId]);
+
   const actionMutation = useMutation({
     mutationFn: ({ orderId, action }: { orderId: string; action: PendingPosAction }) =>
       runPosOrderAction(orderId, action),
   });
 
-  const orders = useMemo(
-    () => ordersQuery.data?.pages.flatMap((page) => page.items) ?? [],
-    [ordersQuery.data],
-  );
+  const loadedPages = ordersQuery.data?.pages ?? [];
+  const currentPageIndex = Math.min(activePageIndex, Math.max(loadedPages.length - 1, 0));
+  const orders = loadedPages[currentPageIndex]?.items ?? [];
+  const hasLoadedNextPage = currentPageIndex < loadedPages.length - 1;
+  const canGoToNextPage = hasLoadedNextPage || (ordersQuery.hasNextPage && !ordersQuery.isFetching);
   const pendingActions = workspace?.pendingActions ?? {};
   const activeOrderId = actionMutation.isPending ? actionMutation.variables?.orderId : null;
   const ordersQueryError = ordersQuery.error instanceof Error ? ordersQuery.error.message : '';
   const queueRefreshingWithSavedData =
     ordersQuery.isFetching && !ordersQuery.isFetchingNextPage && Boolean(ordersQuery.data);
   const queueNeedsFreshRead = ordersQuery.isRefetchError || queueRefreshingWithSavedData;
+
+  async function goToNextPage() {
+    const nextPageIndex = currentPageIndex + 1;
+    if (hasLoadedNextPage) {
+      setActivePageIndex(nextPageIndex);
+      return;
+    }
+    if (!ordersQuery.hasNextPage || ordersQuery.isFetching) return;
+
+    const result = await ordersQuery.fetchNextPage();
+    if (result.data?.pages[nextPageIndex]) setActivePageIndex(nextPageIndex);
+  }
 
   async function performAction(
     order: StorefrontOrderSummary,
@@ -164,36 +182,30 @@ export function POSScreen() {
   }
 
   return (
-    <section className="space-y-5 p-4 sm:p-6 lg:p-8" aria-labelledby="pos-orders-heading">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="min-w-0">
-          <span className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-            {t('Kitchen orders')}
-          </span>
-          <h2 id="pos-orders-heading" className="m-0 mt-1 text-xl font-semibold sm:text-2xl">
-            {t('Incoming orders')}
-          </h2>
-        </div>
-        <div className="flex flex-wrap items-end justify-start gap-3 md:justify-end">
-          <PosButton
-            variant="outline"
-            type="button"
-            onClick={() => void ordersQuery.refetch()}
-            disabled={ordersQuery.isFetching || !branchId}
-            className="min-h-10"
-          >
-            {ordersQuery.isFetching ? t('Refreshing…') : t('Refresh')}
-          </PosButton>
-        </div>
-      </div>
-      <p className="m-0 max-w-none text-sm text-muted-foreground">
-        {t(
-          'Dine-in rounds appear after you send them. Recipe stock is deducted on acceptance; direct stock is recorded at sale.',
-        )}
-      </p>
+    <section className="space-y-3 p-3 sm:p-4 lg:p-5" aria-labelledby="pos-orders-heading">
+      <header className="flex items-center justify-between gap-2">
+        <h2 id="pos-orders-heading" className="m-0 text-base font-semibold sm:text-lg">
+          {t('Incoming orders')}
+        </h2>
+        <PosButton
+          variant="outline"
+          size="sm"
+          type="button"
+          onClick={() => void ordersQuery.refetch()}
+          disabled={ordersQuery.isFetching || !branchId}
+          className="h-8 min-h-0 gap-1.5 px-2.5 text-xs max-[767px]:h-11"
+        >
+          <RefreshCw
+            aria-hidden="true"
+            size={14}
+            className={ordersQuery.isFetching ? 'animate-spin' : undefined}
+          />
+          {ordersQuery.isFetching ? t('Refreshing…') : t('Refresh')}
+        </PosButton>
+      </header>
       {!isOnline && (
         <p
-          className="m-0 max-w-none rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm text-foreground"
+          className="m-0 max-w-none rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground"
           role="status"
         >
           {ordersQuery.dataUpdatedAt
@@ -208,7 +220,7 @@ export function POSScreen() {
       )}
       {isOnline && ordersQuery.isRefetchError && ordersQuery.dataUpdatedAt > 0 && (
         <p
-          className="m-0 max-w-none rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm text-foreground"
+          className="m-0 max-w-none rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-foreground"
           role="alert"
         >
           {t(
@@ -220,7 +232,7 @@ export function POSScreen() {
         </p>
       )}
       {isOnline && ordersQuery.dataUpdatedAt > 0 && !ordersQuery.isRefetchError && (
-        <p className="m-0 text-xs text-muted-foreground" role="status">
+        <p className="m-0 text-[11px] text-muted-foreground" role="status">
           {t('Last updated')}: {formatDate(new Date(ordersQuery.dataUpdatedAt).toISOString(), true)}
           {ordersQuery.isFetching ? ` · ${t('Refreshing…')}` : ''}
         </p>
@@ -247,13 +259,13 @@ export function POSScreen() {
         </p>
       ) : orders.length === 0 && (!ordersQueryError || Boolean(ordersQuery.data)) ? (
         <div
-          className="rounded-xl border border-dashed border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground"
+          className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground"
           role="status"
         >
           {t('No incoming kitchen orders for this branch.')}
         </div>
       ) : orders.length > 0 ? (
-        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+        <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2 2xl:grid-cols-3">
           {orders.map((order) => {
             const pending = pendingActions[order.id];
             const lineReadiness = Boolean(order.kitchenTicket) && order.status === 'preparing';
@@ -289,33 +301,33 @@ export function POSScreen() {
               );
             return (
               <article
-                className="min-w-0 overflow-hidden rounded-2xl border border-border bg-card"
+                className="min-w-0 overflow-hidden rounded-xl border border-border bg-card"
                 key={order.id}
               >
-                <header className="flex items-start justify-between gap-3 border-b border-border bg-secondary/40 px-4 py-3">
-                  <div className="flex min-w-0 items-start gap-3">
+                <header className="flex items-start justify-between gap-2 border-b border-border bg-secondary/40 px-3 py-2">
+                  <div className="flex min-w-0 items-start gap-2">
                     <span
-                      className="flex min-h-10 shrink-0 items-center justify-center rounded-lg bg-secondary px-2 text-xs font-semibold tabular-nums"
+                      className="flex min-h-8 shrink-0 items-center justify-center rounded-md bg-secondary px-2 text-[11px] font-semibold tabular-nums"
                       title={order.id}
                     >
                       {order.orderReference ?? `#${order.id.slice(0, 6).toUpperCase()}`}
                     </span>
-                    <div className="grid min-w-0 gap-1.5">
-                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                        <strong className="max-w-full truncate text-sm font-semibold">
+                    <div className="grid min-w-0 gap-1">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
+                        <strong className="max-w-full truncate text-[13px] font-semibold">
                           {order.customerName ?? t('Walk-in customer')}
                         </strong>
-                        <span className="rounded-md bg-card px-2 py-0.5 text-xs text-muted-foreground">
+                        <span className="rounded-md bg-card px-1.5 py-0.5 text-[11px] text-muted-foreground">
                           {t(order.fulfillmentType)}
                         </span>
                         {order.tableCode && (
-                          <span className="rounded-md bg-card px-2 py-0.5 text-xs text-muted-foreground">
+                          <span className="rounded-md bg-card px-1.5 py-0.5 text-[11px] text-muted-foreground">
                             {t('Table')} <bdi>{order.tableCode}</bdi>
                           </span>
                         )}
                       </div>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        <span className="inline-flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">
                           <Clock3 size={13} aria-hidden="true" />
                           <time dateTime={order.createdAt}>
                             {formatDate(order.createdAt, true)}
@@ -357,29 +369,29 @@ export function POSScreen() {
                   </div>
                   <span
                     className={cn(
-                      'shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold',
+                      'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold',
                       getStatusClass(order.status),
                     )}
                   >
                     {t(order.status)}
                   </span>
                 </header>
-                <ul className="m-0 grid list-none divide-y divide-border px-4">
+                <ul className="m-0 grid list-none divide-y divide-border px-3">
                   {order.lines.map((line) => (
-                    <li className="flex items-start gap-3 py-3" key={line.id}>
-                      <strong className="flex size-8 shrink-0 items-center justify-center rounded-md bg-secondary text-sm tabular-nums">
+                    <li className="flex items-start gap-2 py-2" key={line.id}>
+                      <strong className="flex size-7 shrink-0 items-center justify-center rounded-md bg-secondary text-xs tabular-nums">
                         {formatNumber(line.quantity)}
                       </strong>
-                      <div className="grid min-w-0 flex-1 gap-1">
-                        <strong className="break-words text-sm font-medium">
+                      <div className="grid min-w-0 flex-1 gap-0.5">
+                        <strong className="break-words text-[13px] font-medium">
                           {line.productName}
                         </strong>
                         {line.variantName && (
-                          <span className="text-xs text-muted-foreground">{line.variantName}</span>
+                          <span className="text-[11px] text-muted-foreground">{line.variantName}</span>
                         )}
                         {line.selections.map((selection, index) => (
                           <span
-                            className="text-xs text-muted-foreground"
+                            className="text-[11px] text-muted-foreground"
                             key={`${line.id}-${index}`}
                           >
                             {selection.quantity && selection.quantity > 1
@@ -389,12 +401,12 @@ export function POSScreen() {
                           </span>
                         ))}
                         {line.note && (
-                          <span className="mt-1 border-s-2 border-primary/70 bg-secondary/60 px-2 py-1 text-xs text-foreground">
+                          <span className="mt-0.5 border-s-2 border-primary/70 bg-secondary/60 px-2 py-1 text-[11px] text-foreground">
                             {t('Note: {{note}}', { note: line.note })}
                           </span>
                         )}
                         {lineReadiness && line.kitchenReadyAt && (
-                          <span className="text-xs text-success">
+                          <span className="text-[11px] text-success">
                             {t('Ready at {{date}}', {
                               date: formatDate(line.kitchenReadyAt, true),
                             })}
@@ -431,7 +443,7 @@ export function POSScreen() {
                               line.id,
                             )
                           }
-                          className="min-h-9 shrink-0 px-3 text-xs"
+                          className="min-h-9 shrink-0 px-2.5 text-xs"
                         >
                           {pending?.action === 'item_ready' && pending.lineId === line.id
                             ? t('Retry saved action')
@@ -440,7 +452,7 @@ export function POSScreen() {
                               : t('Mark ready')}
                         </PosButton>
                       )}
-                      <span className="shrink-0 pt-1 text-sm font-medium tabular-nums">
+                      <span className="shrink-0 pt-1 text-xs font-medium tabular-nums">
                         {formatNumber(Number(line.lineTotal), {
                           style: 'currency',
                           currency: order.currency,
@@ -450,7 +462,7 @@ export function POSScreen() {
                   ))}
                 </ul>
                 {(order.deliveryAddress || order.inventoryLifecycle?.branchName) && (
-                  <div className="grid gap-1 border-t border-border px-4 py-3 text-xs text-muted-foreground">
+                  <div className="grid gap-1 border-t border-border px-3 py-2 text-xs text-muted-foreground">
                     {order.deliveryAddress && (
                       <span className="break-words" aria-label={t('Delivery address')}>
                         {order.deliveryAddress}
@@ -461,10 +473,10 @@ export function POSScreen() {
                     )}
                   </div>
                 )}
-                <footer className="grid gap-3 border-t border-border bg-secondary/20 p-4">
+                <footer className="grid gap-2 border-t border-border bg-secondary/20 p-3">
                   {order.status === 'cancelled' && (
                     <p
-                      className="m-0 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                      className="m-0 rounded-lg border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive"
                       role="status"
                     >
                       {t(
@@ -476,10 +488,10 @@ export function POSScreen() {
                     </p>
                   )}
                   <div className="flex items-center justify-between gap-3">
-                    <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {t('Total')}
                     </span>
-                    <strong className="text-base tabular-nums">
+                    <strong className="text-sm tabular-nums">
                       {formatNumber(Number(order.total), {
                         style: 'currency',
                         currency: order.currency,
@@ -503,7 +515,7 @@ export function POSScreen() {
                   {canHandover && (
                     <p
                       className={cn(
-                        'm-0 rounded-lg px-3 py-2 text-xs',
+                        'm-0 rounded-lg px-2.5 py-1.5 text-[11px]',
                         handoverBlocked
                           ? 'bg-warning/10 text-warning'
                           : 'bg-success/10 text-success',
@@ -526,7 +538,7 @@ export function POSScreen() {
                         (handoverBlocked && pending?.action !== 'handover')
                       }
                       onClick={() => void performAction(order, pending)}
-                      className="min-h-11 w-full justify-center"
+                      className="min-h-9 w-full justify-center text-xs max-[767px]:min-h-11"
                     >
                       {activeOrderId === order.id
                         ? t('Saving…')
@@ -548,9 +560,9 @@ export function POSScreen() {
                   )}
                 </footer>
                 {(pending || actionErrors[order.id]) && (
-                  <div className="grid gap-3 px-4 pb-4">
+                  <div className="grid gap-2 px-3 pb-3">
                     {pending && (
-                      <p className="m-0 max-w-none rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning">
+                      <p className="m-0 max-w-none rounded-lg bg-warning/10 px-2.5 py-2 text-xs text-warning">
                         {t(
                           'A previous reply was uncertain. Retry the saved action before continuing.',
                         )}
@@ -558,7 +570,7 @@ export function POSScreen() {
                     )}
                     {actionErrors[order.id] && (
                       <p
-                        className="m-0 max-w-none rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+                        className="m-0 max-w-none rounded-lg border border-destructive/30 bg-destructive/10 p-2.5 text-xs text-destructive"
                         role="alert"
                       >
                         {formatOrderActionError(actionErrors[order.id]!, locale, errorText)}
@@ -571,18 +583,47 @@ export function POSScreen() {
           })}
         </div>
       ) : null}
-      {ordersQuery.hasNextPage && (
-        <div className="flex justify-center py-6">
+      {ordersQuery.isFetchNextPageError && (
+        <p
+          className="m-0 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+          role="alert"
+        >
+          {errorText(ordersQueryError || t('Could not load the next order page.'))}
+        </p>
+      )}
+      {(currentPageIndex > 0 || ordersQuery.hasNextPage) && (
+        <nav
+          className="flex items-center justify-center gap-2 pt-1"
+          aria-label={t('Order page navigation')}
+        >
           <PosButton
             variant="outline"
+            size="sm"
             type="button"
-            disabled={ordersQuery.isFetchingNextPage}
-            onClick={() => void ordersQuery.fetchNextPage()}
-            className="min-h-11"
+            disabled={currentPageIndex === 0}
+            onClick={() => setActivePageIndex(currentPageIndex - 1)}
+            className="h-8 min-h-0 gap-1 px-2 text-xs max-[767px]:h-11"
           >
-            {ordersQuery.isFetchingNextPage ? t('Loading…') : t('Load more orders')}
+            <ChevronLeft aria-hidden="true" size={15} className="rtl:rotate-180" />
+            {t('Previous')}
           </PosButton>
-        </div>
+          <span className="min-w-16 text-center text-xs text-muted-foreground" aria-live="polite">
+            {t('Page {{page}}', { page: formatNumber(currentPageIndex + 1) })}
+          </span>
+          <PosButton
+            variant="outline"
+            size="sm"
+            type="button"
+            disabled={!canGoToNextPage || (!hasLoadedNextPage && ordersQuery.isFetching)}
+            onClick={() => void goToNextPage()}
+            className="h-8 min-h-0 gap-1 px-2 text-xs max-[767px]:h-11"
+          >
+            {ordersQuery.isFetchingNextPage && !hasLoadedNextPage
+              ? t('Loading…')
+              : t('Next')}
+            <ChevronRight aria-hidden="true" size={15} className="rtl:rotate-180" />
+          </PosButton>
+        </nav>
       )}
     </section>
   );

@@ -1,4 +1,4 @@
-import { useLocale, Input, Button, LanguageSwitcher } from '@waffarly/ui';
+import { useLocale, Input, Button } from '@waffarly/ui';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { LoginRequest } from '@waffarly/contracts';
@@ -68,7 +68,6 @@ export function Login() {
           >
             W
           </span>
-          <LanguageSwitcher />
         </div>
         <section className="z-10 w-full max-w-[460px] rounded-2xl border border-waffarly-border bg-waffarly-surface p-6 shadow-[0_18px_60px_rgba(20,32,62,0.08)] sm:p-10">
           <div className="mb-8 flex items-center gap-3">

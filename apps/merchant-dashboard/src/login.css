@@ -21,12 +21,6 @@
   font-weight: 700;
 }
 
-.merchant-login .merchant-login-language {
-  min-height: 40px;
-  border-radius: 12px;
-  font-size: 13px;
-}
-
 .merchant-login-card {
   padding: 32px;
   border: 1px solid var(--storefront-border);
