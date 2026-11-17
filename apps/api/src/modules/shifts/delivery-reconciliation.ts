@@ -10,6 +10,7 @@ export interface DeliveryBalanceRow {
   revision: number;
   orderRevision: number;
   orderStatus: string;
+  courierId: string | null;
   courierName: string;
   status: 'out_for_delivery' | 'delivered' | 'failed';
   dispatchedAt: Date;
@@ -39,7 +40,7 @@ export async function readDeliveryBalances(
       CAST(COUNT(*) OVER () AS int) AS "pendingTotalCount",
       (SUM(COALESCE(due.amount, 0) + COALESCE(held.amount, 0)) OVER ())::text AS "pendingTotalBalance",
       d."followupShiftId", d."revision", o."revision" AS "orderRevision",
-      o."status" AS "orderStatus", d."courierName", d."status", d."dispatchedAt",
+      o."status" AS "orderStatus", d."courierId", d."courierName", d."status", d."dispatchedAt",
       d."deliveredAt", d."failureReason", d."custodianEmployeeId", e."displayName" AS "custodianName",
       COALESCE(due.amount, 0)::text AS "customerDue", COALESCE(held.amount, 0)::text AS "courierCashHeld"
     FROM "pos_deliveries" d

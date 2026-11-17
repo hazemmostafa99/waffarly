@@ -91,6 +91,7 @@ Always run the normal checks. Then choose the relevant database command:
 | Shift lifecycle and delivery cash                   | Opening races, close reconciliation, COD cash, custody and retries           | `test:shifts-db`            |
 | Returns                                             | Quantity caps, saved waste records and bounded owner reports                 | `test:pos-returns-db`       |
 | Staff roles and sessions                            | Branch assignment, current grants and session revocation                     | `test:employees-db`         |
+| Delivery courier directory                          | Merchant ownership, branch assignments, inactive couriers and POS options    | `test:db delivery-couriers` |
 | Subscriptions and merchant onboarding               | Coverage, priced actions, duplicate collection prevention, atomic assignment | `test:subscriptions-db`     |
 | Customer ownership/contact records                  | Tenant associations and customer history                                     | `test:customers-db`         |
 | Customer authentication                             | Identity/session persistence                                                 | `test:customer-auth-db`     |

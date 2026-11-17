@@ -187,7 +187,7 @@ export class PosDiningService {
             where: {
               id: sessionId,
               merchantId: employee.merchantId,
-              branchId: { in: employee.branches.map((b) => b.id) },
+              branchId: employee.branch.id,
               status: 'open',
             },
             select: { tableId: true, branchId: true },

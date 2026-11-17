@@ -19,7 +19,7 @@ export const employeePermissionLabels: Record<PosEmployeePermission, [string, st
     'Approve cash-in and cash-out',
     '\u0627\u0639\u062a\u0645\u0627\u062f \u062d\u0631\u0643\u0627\u062a \u0627\u0644\u0625\u064a\u062f\u0627\u0639 \u0648\u0627\u0644\u0633\u062d\u0628 \u0627\u0644\u0646\u0642\u062f\u064a',
   ],
-  view_orders: ['View assigned-branch orders', 'عرض طلبات الفروع المعيّنة'],
+  view_orders: ['View orders at the assigned branch', 'عرض طلبات الفرع المعيّن'],
   accept_recipe_orders: ['Accept recipe orders', 'قبول طلبات التحضير'],
   start_preparation: ['Start preparation', 'بدء التحضير'],
   open_register_shift: ['Open register shifts', 'فتح ورديات نقاط البيع'],

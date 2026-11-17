@@ -24,7 +24,7 @@ type Draft = {
   password: string;
   active: boolean;
   role: PosEmployeeRole | null;
-  branches: BranchChoice[];
+  branch: BranchChoice | null;
 };
 
 function emptyDraft(): Draft {
@@ -34,7 +34,7 @@ function emptyDraft(): Draft {
     password: '',
     active: true,
     role: 'cashier',
-    branches: [],
+    branch: null,
   };
 }
 
@@ -49,7 +49,6 @@ export function EmployeesPage() {
   const [editing, setEditing] = useState<PosEmployeeSummary | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
-  const [branchPicker, setBranchPicker] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -107,7 +106,6 @@ export function EmployeesPage() {
     setEditing(null);
     setEditorOpen(true);
     setDraft(emptyDraft());
-    setBranchPicker('');
     setError('');
     setNotice('');
   }
@@ -121,9 +119,8 @@ export function EmployeesPage() {
       password: '',
       active: employee.active,
       role: employee.role,
-      branches: employee.branches,
+      branch: employee.branch.archivedAt ? null : employee.branch,
     });
-    setBranchPicker('');
     setError('');
     setNotice('');
   }
@@ -133,17 +130,14 @@ export function EmployeesPage() {
     setEditorOpen(false);
     setEditing(null);
     setDraft(emptyDraft());
-    setBranchPicker('');
     setError('');
   }
 
-  function addBranch(branch: Pick<InventoryBranch, 'id' | 'name'> | null) {
-    setBranchPicker('');
-    if (!branch || draft.branches.some((candidate) => candidate.id === branch.id)) return;
+  function chooseBranch(branch: Pick<InventoryBranch, 'id' | 'name'> | null) {
     setError('');
     setDraft((current) => ({
       ...current,
-      branches: [...current.branches, { ...branch, archivedAt: null }],
+      branch: branch ? { ...branch, archivedAt: null } : null,
     }));
   }
 
@@ -152,8 +146,8 @@ export function EmployeesPage() {
     if (busy) return;
     setError('');
     setNotice('');
-    if (draft.active && !draft.branches.some((branch) => !branch.archivedAt)) {
-      setError(text('Assign at least one active branch.', 'عيّن فرعًا نشطًا واحدًا على الأقل.'));
+    if (!draft.branch || draft.branch.archivedAt) {
+      setError(text('Choose an active branch.', 'اختر فرعًا نشطًا.'));
       return;
     }
     setBusy(true);
@@ -164,9 +158,7 @@ export function EmployeesPage() {
             displayName: draft.displayName,
             active: draft.active,
             role: draft.role,
-            branchIds: draft.branches
-              .filter((branch) => !branch.archivedAt)
-              .map((branch) => branch.id),
+            branchId: draft.branch.id,
             ...(draft.password ? { password: draft.password } : {}),
           }
         : {
@@ -174,9 +166,7 @@ export function EmployeesPage() {
             displayName: draft.displayName,
             password: draft.password,
             role: draft.role,
-            branchIds: draft.branches
-              .filter((branch) => !branch.archivedAt)
-              .map((branch) => branch.id),
+            branchId: draft.branch.id,
           };
       const saved = await apiRequest<PosEmployeeSummary>(
         editing ? `/owner/employees/${editing.id}` : '/owner/employees',
@@ -190,7 +180,6 @@ export function EmployeesPage() {
       setEditing(null);
       setEditorOpen(false);
       setDraft(emptyDraft());
-      setBranchPicker('');
       setRefresh((value) => value + 1);
       if (!editing) setHistory([]);
       if (editing?.active && !saved.active)
@@ -242,24 +231,15 @@ export function EmployeesPage() {
     },
     {
       id: 'branches',
-      header: text('Assigned branches', 'الفروع المعيّنة'),
+      header: text('Assigned branch', 'الفرع المعيّن'),
       cell: (employee) => (
         <div className="employee-table-branches">
-          {employee.branches.length ? (
-            employee.branches.map((branch) => (
-              <span
-                key={branch.id}
-                className={`products-pill ${branch.archivedAt ? 'cream' : 'blue'}`}
-              >
-                {branch.name}
-                {branch.archivedAt ? ` · ${text('Archived', 'مؤرشف')}` : ''}
-              </span>
-            ))
-          ) : (
-            <span className="employee-muted">
-              {text('No branches assigned', 'لم يتم تعيين فروع')}
-            </span>
-          )}
+          <span
+            className={`products-pill ${employee.branch.archivedAt ? 'cream' : 'blue'}`}
+          >
+            {employee.branch.name}
+            {employee.branch.archivedAt ? ` · ${text('Archived', 'مؤرشف')}` : ''}
+          </span>
         </div>
       ),
     },
@@ -367,8 +347,8 @@ export function EmployeesPage() {
         className="employee-table-card"
         title={text('Employee list', 'قائمة الموظفين')}
         description={text(
-          'Each employee can use only the actions allowed by their role in their assigned branches.',
-          'يستخدم كل موظف الإجراءات المسموح بها لدوره داخل الفروع المعيّنة له فقط.',
+          'Each employee can use only the actions allowed by their role in their assigned branch.',
+          'يستخدم كل موظف الإجراءات المسموح بها لدوره داخل الفرع المعيّن له فقط.',
         )}
       >
         <DataTable
@@ -392,8 +372,8 @@ export function EmployeesPage() {
                       'جرّب بحثًا آخر أو غيّر فلتر الحالة.',
                     )
                   : text(
-                      'Add your first employee and assign their branches to get started.',
-                      'أضف أول موظف وعيّن الفروع المسموح له بالوصول إليها.',
+                      'Add your first employee and assign one branch to get started.',
+                      'أضف أول موظف وعيّن له فرعًا واحدًا للبدء.',
                     )}
               </p>
             </div>
@@ -538,8 +518,8 @@ export function EmployeesPage() {
                   </ul>
                   <p>
                     {text(
-                      'Access applies only to the assigned active branches below. Employees sign in through the employee/POS workspace.',
-                      'يقتصر الوصول على الفروع النشطة المعيّنة أدناه. يسجل الموظف دخوله من مساحة الموظفين / نقاط البيع.',
+                      'Access applies only to the assigned active branch below. Employees sign in through the employee/POS workspace.',
+                      'يقتصر الوصول على الفرع النشط المعيّن أدناه. يسجل الموظف دخوله من مساحة الموظفين / نقاط البيع.',
                     )}
                   </p>
                   <p>
@@ -551,47 +531,23 @@ export function EmployeesPage() {
                 </div>
               </details>
               <fieldset className="employee-branches">
-                <legend>{text('Assigned branches', 'الفروع المعيّنة')}</legend>
+                <legend>{text('Assigned branch', 'الفرع المعيّن')}</legend>
                 <div className="employee-branch-picker">
                   <PagedEntitySelect<Pick<InventoryBranch, 'id' | 'name'>>
-                    key={branchPicker}
                     path="/owner/inventory/branches"
-                    value={branchPicker}
-                    label={text('Add an active branch', 'إضافة فرع نشط')}
+                    value={draft.branch?.id ?? ''}
+                    label={text('Choose an active branch', 'اختر فرعًا نشطًا')}
                     required={false}
                     emptyLabel={text('Choose a branch', 'اختر فرعًا')}
                     searchMode="combobox"
-                    onSelect={addBranch}
+                    onSelect={chooseBranch}
                   />
                 </div>
-                {draft.branches.length ? (
-                  <ul className="employee-branch-list">
-                    {draft.branches.map((branch) => (
-                      <li key={branch.id}>
-                        <span>
-                          {branch.name}
-                          {branch.archivedAt ? ` · ${text('Archived', 'مؤرشف')}` : ''}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setDraft((current) => ({
-                              ...current,
-                              branches: current.branches.filter((item) => item.id !== branch.id),
-                            }))
-                          }
-                        >
-                          {text('Remove', 'إزالة')}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
+                {draft.branch ? (
+                  <p>{draft.branch.name}</p>
                 ) : (
-                  <p>
-                    {text(
-                      'Choose at least one active branch.',
-                      'اختر فرعًا نشطًا واحدًا على الأقل.',
-                    )}
+                  <p role="status">
+                    {text('Choose an active branch.', 'اختر فرعًا نشطًا.')}
                   </p>
                 )}
               </fieldset>

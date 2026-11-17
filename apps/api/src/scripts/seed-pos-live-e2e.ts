@@ -59,6 +59,7 @@ try {
     await tx.posEmployee.create({
       data: {
         merchantId: merchant.id,
+        branchId: branch.id,
         username: 'cashier',
         displayName: 'Live E2E cashier',
         passwordHash,
@@ -66,25 +67,12 @@ try {
         permissions: [],
         createdBy: 'pos-live-e2e',
         updatedBy: 'pos-live-e2e',
-        branches: {
-          create: [
-            {
-              createdBy: 'pos-live-e2e',
-              branch: { connect: { id_merchantId: { id: branch.id, merchantId: merchant.id } } },
-            },
-            {
-              createdBy: 'pos-live-e2e',
-              branch: {
-                connect: { id_merchantId: { id: isolatedBranch.id, merchantId: merchant.id } },
-              },
-            },
-          ],
-        },
       },
     });
     await tx.posEmployee.create({
       data: {
         merchantId: merchant.id,
+        branchId: isolatedBranch.id,
         username: 'isolated-cashier',
         displayName: 'Live E2E isolated cashier',
         passwordHash: isolatedEmployeePasswordHash,
@@ -92,19 +80,12 @@ try {
         permissions: ['view_orders', 'view_receipts'],
         createdBy: 'pos-live-e2e',
         updatedBy: 'pos-live-e2e',
-        branches: {
-          create: {
-            createdBy: 'pos-live-e2e',
-            branch: {
-              connect: { id_merchantId: { id: isolatedBranch.id, merchantId: merchant.id } },
-            },
-          },
-        },
       },
     });
     await tx.posEmployee.create({
       data: {
         merchantId: merchant.id,
+        branchId: branch.id,
         username: 'manager',
         displayName: 'Live E2E branch manager',
         passwordHash: managerPasswordHash,
@@ -112,17 +93,12 @@ try {
         permissions: [],
         createdBy: 'pos-live-e2e',
         updatedBy: 'pos-live-e2e',
-        branches: {
-          create: {
-            createdBy: 'pos-live-e2e',
-            branch: { connect: { id_merchantId: { id: branch.id, merchantId: merchant.id } } },
-          },
-        },
       },
     });
     await tx.posEmployee.create({
       data: {
         merchantId: merchant.id,
+        branchId: branch.id,
         username: 'supervisor',
         displayName: 'Live E2E supervisor',
         passwordHash: supervisorPasswordHash,
@@ -130,12 +106,6 @@ try {
         permissions: [],
         createdBy: 'pos-live-e2e',
         updatedBy: 'pos-live-e2e',
-        branches: {
-          create: {
-            createdBy: 'pos-live-e2e',
-            branch: { connect: { id_merchantId: { id: branch.id, merchantId: merchant.id } } },
-          },
-        },
       },
     });
     await tx.posRegister.create({

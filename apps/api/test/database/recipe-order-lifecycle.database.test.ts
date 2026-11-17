@@ -106,22 +106,14 @@ async function fixture(tx: Prisma.TransactionClient, scoped: never) {
       merchantId,
       username: 'recipe-cashier',
       displayName: 'Recipe Cashier',
+      branchId: branch.id,
       passwordHash: 'test-hash',
       createdBy: actor,
       updatedBy: actor,
-      branches: {
-        create: {
-          createdBy: actor,
-          branch: { connect: { id_merchantId: { id: branch.id, merchantId } } },
-        },
-      },
     },
   });
   const missingDefault = await tx.branch.create({
     data: { merchantId, name: 'No default', createdBy: actor, updatedBy: actor },
-  });
-  await tx.posEmployeeBranch.create({
-    data: { merchantId, employeeId: employee.id, branchId: missingDefault.id, createdBy: actor },
   });
   await openTestBranchShift(tx, merchantId, branch.id, employee.id);
   await openTestBranchShift(tx, merchantId, missingDefault.id, employee.id);
@@ -411,7 +403,7 @@ it(
                 posActor,
                 order.id,
                 { requestId: randomUUID(), branchId: f.missingDefault.id },
-                [f.branch.id],
+                f.branch.id,
               ),
             );
             const accepted = await f.lifecycle.acceptFromPos(
@@ -419,7 +411,7 @@ it(
               posActor,
               order.id,
               accept,
-              [f.branch.id],
+              f.branch.id,
             );
             assert.equal(accepted.status, 'accepted');
             assert.equal(await f.balance(), '74');
@@ -473,7 +465,7 @@ it(
               posActor,
               next.id,
               { requestId: randomUUID(), branchId: f.branch.id },
-              [f.branch.id],
+              f.branch.id,
             );
             assert.equal(await f.balance(), '-2');
             const prepare = { requestId: randomUUID() };
@@ -483,7 +475,7 @@ it(
                 posActor,
                 next.id,
                 { requestId: randomUUID() },
-                [f.missingDefault.id],
+                f.missingDefault.id,
               ),
             );
             const preparing = await f.lifecycle.startPreparationFromPos(
@@ -491,13 +483,17 @@ it(
               posActor,
               next.id,
               prepare,
-              [f.branch.id],
+              f.branch.id,
             );
             assert.equal(preparing.status, 'preparing');
             assert.deepEqual(
-              await f.lifecycle.startPreparationFromPos(f.merchantId, posActor, next.id, prepare, [
+              await f.lifecycle.startPreparationFromPos(
+                f.merchantId,
+                posActor,
+                next.id,
+                prepare,
                 f.branch.id,
-              ]),
+              ),
               preparing,
             );
             const balanceBeforeReady = await f.balance();
@@ -507,14 +503,18 @@ it(
               posActor,
               next.id,
               readyRequest,
-              [f.branch.id],
+              f.branch.id,
             );
             assert.equal(ready.status, 'ready');
             assert.ok(ready.readyAt);
             assert.deepEqual(
-              await f.lifecycle.markReadyFromPos(f.merchantId, posActor, next.id, readyRequest, [
+              await f.lifecycle.markReadyFromPos(
+                f.merchantId,
+                posActor,
+                next.id,
+                readyRequest,
                 f.branch.id,
-              ]),
+              ),
               ready,
             );
             assert.equal(await f.balance(), balanceBeforeReady);
@@ -653,26 +653,19 @@ it(
               displayName: f.employee.displayName,
               role: 'cashier',
               permissions: ['sell'],
-              branches: [{ id: f.branch.id, name: f.branch.name, archivedAt: null }],
+              branch: { id: f.branch.id, name: f.branch.name, archivedAt: null },
             };
             const supervisor = await tx.posEmployee.create({
               data: {
                 merchantId: f.merchantId,
                 username: `pos-cancel-supervisor-${randomUUID()}`,
                 displayName: 'POS Cancellation Supervisor',
+                branchId: f.branch.id,
                 passwordHash: 'database-test-only',
                 role: 'supervisor',
                 permissions: [],
                 createdBy: actor,
                 updatedBy: actor,
-                branches: {
-                  create: {
-                    createdBy: actor,
-                    branch: {
-                      connect: { id_merchantId: { id: f.branch.id, merchantId: f.merchantId } },
-                    },
-                  },
-                },
               },
             });
             const pricing = new ProductPricingService(scoped);
@@ -927,7 +920,7 @@ it(
               `pos:${cashier.id}`,
               created.id,
               { requestId: randomUUID(), branchId: f.branch.id },
-              [f.branch.id],
+              f.branch.id,
             );
             assert.equal(accepted.status, 'accepted');
             assert.equal(await f.balance(), '0');
@@ -1109,7 +1102,7 @@ it(
               `pos:${cashier.id}`,
               amendmentOrder.id,
               { requestId: randomUUID(), branchId: f.branch.id },
-              [f.branch.id],
+              f.branch.id,
             );
             assert.equal(acceptedAmendment.status, 'accepted');
             assert.equal(
@@ -1271,7 +1264,6 @@ it(
         await client.warehouse.deleteMany({ where });
         await client.posShift.deleteMany({ where });
         await client.posRegister.deleteMany({ where });
-        await client.posEmployeeBranch.deleteMany({ where });
         await client.posEmployee.deleteMany({ where });
         await client.branch.deleteMany({ where });
         await client.stockItemUnit.deleteMany({ where });
@@ -1317,17 +1309,10 @@ it(
             username: 'cashier-create-test',
             displayName: 'Cashier Create Test',
             password: 'new-password-long-enough',
-            branchIds: [branch.id],
+            branchId: branch.id,
           });
 
-          assert.equal(created.branches.length, 1);
-          assert.equal(created.branches[0]?.id, branch.id);
-          assert.equal(
-            await tx.posEmployeeBranch.count({
-              where: { merchantId: merchant.id, branchId: branch.id },
-            }),
-            1,
-          );
+          assert.equal(created.branch.id, branch.id);
           throw rollback;
         }),
         rollback,
@@ -1372,17 +1357,10 @@ it(
               merchantId: merchant.id,
               username: 'cashier1',
               displayName: 'Cashier One',
+              branchId: branch.id,
               passwordHash: 'initial-test-hash',
               createdBy: actor,
               updatedBy: actor,
-              branches: {
-                create: {
-                  createdBy: actor,
-                  branch: {
-                    connect: { id_merchantId: { id: branch.id, merchantId: merchant.id } },
-                  },
-                },
-              },
             },
           });
           const employees = new PosEmployeeService(scoped);
@@ -1402,7 +1380,7 @@ it(
             revision: 1,
             displayName: employee.displayName,
             active: true,
-            branchIds: [branch.id],
+            branchId: branch.id,
             password: 'new-password-long-enough',
           });
           assert.equal(afterPasswordReset.revision, 2);
@@ -1422,7 +1400,7 @@ it(
             revision: 2,
             displayName: employee.displayName,
             active: false,
-            branchIds: [branch.id],
+            branchId: branch.id,
           });
           assert.equal(afterDeactivation.active, false);
           assert.equal(

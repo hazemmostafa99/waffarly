@@ -6,11 +6,35 @@ an operation, and the operation owns related database writes. Cashier operations
 responsible service directly; the former cashier forwarding facade is removed.
 Other legacy service entry points remain where their migration is still pending.
 
+## Pairing a POS browser with its cashier register
+
+1. `POST /auth/pos/login` authenticates the employee, reuses or creates the
+   browser's HttpOnly `waffarly_pos_device` UUID, stores it in the new POS
+   `AuthSession.deviceId` column and issues the POS session cookie.
+2. `GET /auth/pos/me` returns the employee's one assigned branch and the
+   register associated with the browser UUID. If no register is paired, the POS
+   layout shows setup instead of the selling workspace.
+3. Setup calls `GET /pos/registers?branchId=...`; Shifts returns only active,
+   unpaired registers from that branch. `POST /pos/registers/bind` locks and
+   assigns the chosen register, with a unique tenant/device constraint handling
+   concurrent pairing attempts.
+4. `PosEmployeeGuard` blocks other POS routes until pairing and rejects a
+   mismatched requested `registerId` after pairing. Shift and financial
+   operations also check the assigned register in their owning service or
+   transaction, so a stale or altered client request cannot redirect a write.
+5. The owner can unpair a register from POS Registers after its shift is closed.
+   Unpairing checks the register revision, updates its audit actor, and makes
+   the browser eligible to pair again at the employee's assigned branch.
+
+The device UUID survives POS logout. Clearing the browser cookie creates a new
+browser identity; if the old UUID is still paired, the owner must unpair it
+after the shift closes before that browser profile can be set up again.
+
 ## Confirming a cashier sale
 
 1. `POST /pos/orders` enters
    [the cashier controller](../../apps/api/src/modules/orders/http/pos/pos-orders.controller.ts).
-   Auth supplies the current employee and branch assignments.
+   Auth supplies the current employee and its single assigned branch.
 2. The controller calls
    [`PosSaleService.create`](../../apps/api/src/modules/orders/pos-sales/pos-sale.service.ts).
    Nest injects the operation dependencies. The service validates the command and

@@ -13,7 +13,7 @@ import type { Prisma } from '@waffarly/database';
 export function assertDeliveryBranchAccess(employee: PosEmployeeSession, branchId: string) {
   if (
     !employee.permissions.includes('sell') ||
-    !employee.branches.some((branch) => branch.id === branchId && branch.archivedAt === null)
+    employee.branch.id !== branchId || employee.branch.archivedAt !== null
   )
     throw new ForbiddenException('This employee cannot manage deliveries at this branch.');
 }
@@ -37,7 +37,8 @@ export async function readCurrentDeliveryPermissions(
       id: employee.id,
       merchantId: employee.merchantId,
       active: true,
-      branches: { some: { branchId, branch: { archivedAt: null } } },
+      branchId,
+      branch: { archivedAt: null },
     },
     select: { role: true, permissions: true },
   });

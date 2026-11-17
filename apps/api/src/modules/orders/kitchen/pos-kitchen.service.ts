@@ -54,10 +54,7 @@ export class PosKitchenService {
   ): Promise<StorefrontOrderSummary> {
     requireEmployeePermission(employee, 'sell');
     const request: DispatchPosKitchenOrderRequest = parseDispatchPosKitchenOrderRequest(input);
-    const branchIds = employee.branches
-      .filter((branch) => branch.archivedAt === null)
-      .map((branch) => branch.id);
-    if (!branchIds.length) throw new ForbiddenException('This employee has no active branches.');
+    const branchId = employee.branch.id;
 
     const actor = `pos:${employee.id}`;
     const fingerprint = createHash('sha256')
@@ -94,7 +91,7 @@ export class PosKitchenService {
               id: orderId,
               merchantId: employee.merchantId,
               source: 'pos',
-              branchId: { in: branchIds },
+              branchId,
             },
             include: orderInclude,
           });
@@ -167,9 +164,7 @@ export class PosKitchenService {
       acknowledgePosKitchenCancellationSchema,
       input,
     ) as AcknowledgePosKitchenCancellationRequest;
-    const branchIds = employee.branches
-      .filter((branch) => branch.archivedAt === null)
-      .map((branch) => branch.id);
+    const branchId = employee.branch.id;
     const actor = `pos:${employee.id}`;
     const fingerprint = createHash('sha256')
       .update(JSON.stringify({ action: 'pos_cancel_ack', orderId }))
@@ -187,13 +182,8 @@ export class PosKitchenService {
               id: employee.id,
               merchantId: employee.merchantId,
               active: true,
-              branches: {
-                some: {
-                  merchantId: employee.merchantId,
-                  branchId: { in: branchIds },
-                  branch: { archivedAt: null },
-                },
-              },
+              branchId,
+              branch: { archivedAt: null },
             },
             select: { role: true, permissions: true },
           });
@@ -229,7 +219,7 @@ export class PosKitchenService {
               id: orderId,
               merchantId: employee.merchantId,
               source: 'pos',
-              branchId: { in: branchIds },
+              branchId,
               status: 'cancelled',
               kitchenTicket: { isNot: null },
             },

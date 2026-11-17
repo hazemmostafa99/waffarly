@@ -50,7 +50,7 @@ test('web order preparation requires an open branch shift', async () => {
 test('POS cannot mark a web order ready without an open branch shift', async () => {
   const f = fixture();
   await assert.rejects(
-    f.service.markReadyFromPos(merchant, 'pos:cashier', orderId, { requestId }, [branchId]),
+    f.service.markReadyFromPos(merchant, 'pos:cashier', orderId, { requestId }, branchId),
     ConflictException,
   );
   assert.equal(f.writes(), 0);
@@ -58,7 +58,7 @@ test('POS cannot mark a web order ready without an open branch shift', async () 
 test('POS cannot hand over a web order without an open branch shift', async () => {
   const f = fixture();
   await assert.rejects(
-    f.service.handoverFromPos(merchant, 'pos:cashier', orderId, { requestId }, [branchId]),
+    f.service.handoverFromPos(merchant, 'pos:cashier', orderId, { requestId }, branchId),
     ConflictException,
   );
   assert.equal(f.writes(), 0);

@@ -679,7 +679,6 @@ export function inventoryCopy(
       'هذا مجمل الربح قبل الإيجار والمرتبات والمرافق ورسوم الدفع وباقي مصاريف التشغيل.',
     From: 'من',
     To: 'إلى',
-    Branch: 'الفرع',
     'Group by': 'تجميع حسب',
     'All branches': 'كل الفروع',
     Product: 'الصنف',

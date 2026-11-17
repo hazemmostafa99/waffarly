@@ -30,7 +30,7 @@ export class PosReceiptQueryService {
             status: { in: ['ready', 'completed'] },
           },
         ],
-        branchId: { in: employee.branches.map((branch) => branch.id) },
+        branchId: employee.branch.id,
       },
       select: {
         checks: {
@@ -49,7 +49,7 @@ export class PosReceiptQueryService {
     input: CursorPageQuery & { branchId: string },
   ): Promise<PosReceiptHistoryPage> {
     requireEmployeePermission(employee, 'view_receipts');
-    if (!employee.branches.some((branch) => branch.id === input.branchId)) {
+    if (employee.branch.id !== input.branchId) {
       throw new ForbiddenException('This employee is not assigned to the selected branch.');
     }
     const scopedReceiptWhere: Prisma.PosCheckReceiptWhereInput = {

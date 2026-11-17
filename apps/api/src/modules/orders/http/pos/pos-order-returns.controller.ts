@@ -52,9 +52,7 @@ export class PosOrderReturnsController {
     const input = parseRecordPosItemReturnRequest(body);
     requireEmployeePermission(employee, 'sell');
     if (
-      !employee.branches.some(
-        (branch) => branch.id === input.branchId && branch.archivedAt === null,
-      )
+      employee.branch.id !== input.branchId || employee.branch.archivedAt !== null
     )
       throw new ForbiddenException('This employee is not assigned to the selected branch.');
     const approverEmployeeId = employee.permissions.includes('approve_refunds')

@@ -176,6 +176,7 @@ export function PurchaseInvoiceReviewDialog({
             rows={invoice.lines}
             rowKey={(line) => line.id}
             caption={text('Items and quantities')}
+            emptyState={text('No invoice items.')}
           />
           <details className="inventory-section-details invoice-review-calculation">
             <summary>{text('Cost breakdown and invoice notes')}</summary>

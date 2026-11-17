@@ -68,6 +68,9 @@ const PurchaseInvoicesPage = lazy(() =>
 const EmployeesPage = lazy(() =>
   import('./features/staff/EmployeesPage.js').then((module) => ({ default: module.EmployeesPage })),
 );
+const CouriersPage = lazy(() =>
+  import('./features/delivery/CouriersPage.js').then((module) => ({ default: module.CouriersPage })),
+);
 const RegistersPage = lazy(() =>
   import('./features/pos/RegistersPage.js').then((module) => ({ default: module.RegistersPage })),
 );
@@ -181,6 +184,7 @@ export const router = createBrowserRouter([
       { path: 'discounts', element: loadOnRoute(<DiscountsPage />) },
       { path: 'branches', element: loadOnRoute(<BranchesPage />) },
       { path: 'employees', element: loadOnRoute(<EmployeesPage />) },
+      { path: 'delivery-couriers', element: loadOnRoute(<CouriersPage />) },
       { path: 'pos-registers', element: loadOnRoute(<RegistersPage />) },
       { path: 'pos-cash', element: loadOnRoute(<CashCustodyPage />) },
       { path: 'pos-tables', element: loadOnRoute(<TablesPage />) },

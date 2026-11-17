@@ -4,7 +4,10 @@ import { ConflictException, ForbiddenException } from '@nestjs/common';
 import type { PosEmployeeSession } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 
-import { assertShiftBranchAssignment } from '../access/shift-access.rules.js';
+import {
+  assertPosRegisterAssignment,
+  assertShiftBranchAssignment,
+} from '../access/shift-access.rules.js';
 
 export async function lockOpenShiftForSale(
   tx: Prisma.TransactionClient,
@@ -13,6 +16,7 @@ export async function lockOpenShiftForSale(
 ): Promise<{ id: string; branchId: string }> {
   if (!employee.permissions.includes('sell'))
     throw new ForbiddenException('This employee is not authorized to sell.');
+  assertPosRegisterAssignment(employee, registerId);
   const rows = await tx.$queryRaw<Array<{ id: string; branchId: string }>>`
       SELECT s."id", s."branchId"
       FROM "pos_shifts" s
@@ -40,7 +44,7 @@ export async function recordCashSale(
     amount: string;
   },
 ): Promise<void> {
-  const rows = await tx.$queryRaw<Array<{ id: string }>>`
+  const rows = await tx.$queryRaw<Array<{ id: string; registerId: string }>>`
       SELECT "id"
       FROM "pos_shifts"
       WHERE "id" = ${input.shiftId}::uuid
@@ -63,10 +67,15 @@ export async function recordCashSale(
 
 export async function lockOpenShiftForPayment(
   tx: Prisma.TransactionClient,
-  input: { merchantId: string; shiftId: string; branchId: string },
+  input: {
+    merchantId: string;
+    shiftId: string;
+    branchId: string;
+    employee: PosEmployeeSession;
+  },
 ): Promise<void> {
-  const rows = await tx.$queryRaw<Array<{ id: string }>>`
-      SELECT "id"
+  const rows = await tx.$queryRaw<Array<{ id: string; registerId: string }>>`
+      SELECT "id", "registerId"
       FROM "pos_shifts"
       WHERE "id" = ${input.shiftId}::uuid
         AND "merchantId" = ${input.merchantId}::uuid
@@ -76,6 +85,8 @@ export async function lockOpenShiftForPayment(
     `;
   if (rows.length === 0)
     throw new ConflictException('The register shift for this order is not open.');
+  assertShiftBranchAssignment(input.employee, input.branchId);
+  assertPosRegisterAssignment(input.employee, rows[0]!.registerId);
 }
 
 export async function lockDeliveryReceivingShift(
@@ -85,6 +96,7 @@ export async function lockDeliveryReceivingShift(
     branchId: string;
     shiftId: string;
     followupShiftId: string | null;
+    employee: PosEmployeeSession;
   },
 ): Promise<void> {
   await lockOpenShiftForPayment(tx, input);
@@ -104,8 +116,8 @@ export async function lockOpenShiftForRefund(
   tx: Prisma.TransactionClient,
   input: { merchantId: string; shiftId: string; branchId: string; employee: PosEmployeeSession },
 ): Promise<void> {
-  const rows = await tx.$queryRaw<Array<{ id: string }>>`
-      SELECT s."id"
+  const rows = await tx.$queryRaw<Array<{ id: string; registerId: string }>>`
+      SELECT s."id", s."registerId"
       FROM "pos_shifts" s
       INNER JOIN "pos_registers" r
         ON r."id" = s."registerId" AND r."branchId" = s."branchId"
@@ -119,6 +131,7 @@ export async function lockOpenShiftForRefund(
   if (rows.length === 0)
     throw new ConflictException('Choose an open register shift for this refund.');
   assertShiftBranchAssignment(input.employee, input.branchId);
+  assertPosRegisterAssignment(input.employee, rows[0]!.registerId);
 }
 
 export async function recordCashRefund(

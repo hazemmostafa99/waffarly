@@ -3,14 +3,15 @@ import { ConflictException } from '@nestjs/common';
 
 import type { PosEmployeeSession } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
+import { assertPosRegisterAssignment } from '../access/shift-access.rules.js';
 
 export async function lockOpenShiftForCashMovement(
   tx: Prisma.TransactionClient,
   employee: PosEmployeeSession,
   shiftId: string,
-): Promise<{ id: string; branchId: string }> {
-  const rows = await tx.$queryRaw<Array<{ id: string; branchId: string }>>`
-    SELECT s."id", s."branchId"
+): Promise<{ id: string; branchId: string; registerId: string }> {
+  const rows = await tx.$queryRaw<Array<{ id: string; branchId: string; registerId: string }>>`
+    SELECT s."id", s."branchId", s."registerId"
     FROM "pos_shifts" s
     INNER JOIN "pos_registers" r
       ON r."id" = s."registerId" AND r."branchId" = s."branchId"
@@ -25,5 +26,6 @@ export async function lockOpenShiftForCashMovement(
   `;
   const shift = rows[0];
   if (!shift) throw new ConflictException('Choose an open register shift for this cash movement.');
+  assertPosRegisterAssignment(employee, shift.registerId);
   return shift;
 }

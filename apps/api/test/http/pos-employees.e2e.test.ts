@@ -51,7 +51,7 @@ const employee: PosEmployeeSession = {
   displayName: 'Cashier One',
   role: null,
   permissions: ['accept_recipe_orders', 'start_preparation', 'sell'],
-  branches: [{ id: branchId, name: 'Main', archivedAt: null }],
+  branch: { id: branchId, name: 'Main', archivedAt: null },
 };
 
 describe('POS employee endpoints', () => {
@@ -230,7 +230,7 @@ describe('POS employee endpoints', () => {
       username: 'cashier1',
       displayName: 'Cashier One',
       password: 'long-enough-password',
-      branchIds: [branchId],
+      branchId,
     };
     await request(app.getHttpServer()).post('/owner/employees').send(create).expect(201);
     assert.deepEqual(calls.at(-1), {
@@ -335,7 +335,7 @@ describe('POS employee endpoints', () => {
     assert.deepEqual(calls.at(-1), {
       service: 'lifecycle',
       method: 'acceptFromPos',
-      args: [merchantId, `pos:${employeeId}`, orderId, { requestId, branchId }, [branchId]],
+      args: [merchantId, `pos:${employeeId}`, orderId, { requestId, branchId }, branchId],
     });
 
     await request(app.getHttpServer())
@@ -345,7 +345,7 @@ describe('POS employee endpoints', () => {
     assert.deepEqual(calls.at(-1), {
       service: 'lifecycle',
       method: 'startPreparationFromPos',
-      args: [merchantId, `pos:${employeeId}`, orderId, { requestId }, [branchId]],
+      args: [merchantId, `pos:${employeeId}`, orderId, { requestId }, branchId],
     });
 
     employeeAuthorized = false;
@@ -361,7 +361,7 @@ describe('POS employee endpoints', () => {
     assert.deepEqual(calls.at(-1), {
       service: 'lifecycle',
       method: 'markKitchenItemReadyFromPos',
-      args: [merchantId, `pos:${employeeId}`, orderId, lineId, { requestId }, [branchId]],
+      args: [merchantId, `pos:${employeeId}`, orderId, lineId, { requestId }, branchId],
     });
 
     await request(app.getHttpServer())

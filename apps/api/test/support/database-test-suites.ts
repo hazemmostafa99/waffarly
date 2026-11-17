@@ -11,6 +11,7 @@ export const databaseTestSuites = {
   shifts: ['shift-reconciliation', 'shifts', 'pos-delivery', 'cash-custody'],
   cash: ['cash-custody'],
   employees: ['employee-roles'],
+  'delivery-couriers': ['delivery-couriers'],
   'pos-appearance': ['merchant-pos-appearance'],
   'pos-returns': ['pos-returns', 'pos-returns-report'],
   activities: ['activities-modules'],

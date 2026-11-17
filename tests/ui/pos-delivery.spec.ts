@@ -9,6 +9,7 @@ const shiftId = '55555555-5555-4555-8555-555555555555';
 const orderId = '66666666-6666-4666-8666-666666666666';
 const paymentId = '77777777-7777-4777-8777-777777777777';
 const checkId = '88888888-8888-4888-8888-888888888888';
+const courierId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const shift = {
   id: shiftId,
   branchId,
@@ -33,7 +34,7 @@ async function session(page: Page) {
         displayName: 'Mona',
         role: 'cashier',
         permissions: ['sell', 'open_register_shift'],
-        branches: [{ id: branchId, name: 'Main', archivedAt: null }],
+        branch: { id: branchId, name: 'Main', archivedAt: null },
       },
     }),
   );
@@ -44,6 +45,9 @@ async function session(page: Page) {
     route.fulfill({ json: [{ id: registerId, branchId, name: 'Front drawer' }] }),
   );
   await page.route('**/pos/shifts/current**', (route) => route.fulfill({ json: shift }));
+  await page.route('**/pos/delivery-couriers?**', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
 }
 
 function row(): PosDeliverySummary {
@@ -55,6 +59,7 @@ function row(): PosDeliverySummary {
     revision: 1,
     orderRevision: 1,
     orderStatus: 'completed',
+    courierId,
     courierName: 'Courier Ali',
     status: 'delivered',
     dispatchedAt: '2026-10-26T08:00:00Z',
@@ -69,6 +74,116 @@ function row(): PosDeliverySummary {
     remittances: [],
   };
 }
+
+for (const locale of ['en', 'ar'] as const) {
+  test(`dispatch selects a registered courier by ID (${locale})`, async ({ page }) => {
+    await session(page);
+    await page.route('**/pos/delivery-couriers?**', (route) =>
+      route.fulfill({
+        json: { items: [{ id: courierId, name: 'Courier Ali' }], nextCursor: null },
+      }),
+    );
+    await page.route('**/pos/deliveries/ready?**', (route) =>
+      route.fulfill({
+        json: {
+          items: [
+            {
+              id: orderId,
+              orderReference: 'D-100',
+              revision: 1,
+              total: '300.00',
+              customerName: 'Test customer',
+            },
+          ],
+          nextCursor: null,
+        },
+      }),
+    );
+    await page.route('**/pos/deliveries?**', (route) =>
+      route.fulfill({ json: { items: [], nextCursor: null } }),
+    );
+    await page.route(`**/pos/deliveries/${orderId}/actions`, (route) =>
+      route.fulfill({ json: row() }),
+    );
+
+    await page.goto('/deliveries');
+    if (locale === 'ar') await page.getByRole('button', { name: 'Change language' }).click();
+    const request = page.waitForRequest(
+      (candidate) =>
+        candidate.method() === 'POST' &&
+        candidate.url().includes(`/pos/deliveries/${orderId}/actions`),
+    );
+    await page
+      .getByLabel(locale === 'ar' ? 'اختار الطيار' : 'Choose a courier', { exact: true })
+      .selectOption(courierId);
+    await page
+      .getByRole('button', { name: locale === 'ar' ? 'تسليم للطيار' : 'Dispatch order' })
+      .click();
+    expect((await request).postDataJSON()).toMatchObject({ action: 'dispatch', courierId });
+  });
+}
+
+test('failed delivery redispatch sends the selected courier ID', async ({ page }) => {
+  await session(page);
+  const failedDelivery: PosDeliverySummary = {
+    ...row(),
+    revision: 2,
+    status: 'failed',
+    deliveredAt: null,
+    customerDue: '0.00',
+    courierCashHeld: '0.00',
+  };
+  await page.route('**/pos/delivery-couriers?**', (route) =>
+    route.fulfill({
+      json: { items: [{ id: courierId, name: 'Courier Ali' }], nextCursor: null },
+    }),
+  );
+  await page.route('**/pos/deliveries/ready?**', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.route('**/pos/deliveries?**', (route) =>
+    route.fulfill({ json: { items: [failedDelivery], nextCursor: null } }),
+  );
+  await page.route(`**/pos/deliveries/${orderId}/actions`, (route) =>
+    route.fulfill({ json: { ...failedDelivery, status: 'out_for_delivery', revision: 3 } }),
+  );
+
+  await page.goto('/deliveries');
+  await page.getByRole('tab', { name: 'Delivery follow-up' }).click();
+  const request = page.waitForRequest(
+    (candidate) =>
+      candidate.method() === 'POST' &&
+      candidate.url().includes(`/pos/deliveries/${orderId}/actions`),
+  );
+  await page.getByRole('button', { name: 'Send again', exact: true }).click();
+  expect((await request).postDataJSON()).toMatchObject({ action: 'dispatch', courierId });
+});
+
+test('cash custody groups use courier identity when names match', async ({ page }) => {
+  await session(page);
+  const sameNameCourierId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  const secondOrderId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  const deliveries: PosDeliverySummary[] = [
+    { ...row(), orderReference: 'D-101' },
+    {
+      ...row(),
+      orderId: secondOrderId,
+      orderReference: 'D-102',
+      courierId: sameNameCourierId,
+      courierCashHeld: '250.00',
+    },
+  ];
+  await page.route('**/pos/deliveries/ready?**', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.route('**/pos/deliveries?**', (route) =>
+    route.fulfill({ json: { items: deliveries, nextCursor: null } }),
+  );
+
+  await page.goto('/deliveries');
+  await page.getByRole('tab', { name: 'Courier cash' }).click();
+  await expect(page.getByRole('heading', { name: 'Courier Ali', exact: true })).toHaveCount(2);
+});
 
 for (const locale of ['en', 'ar'] as const) {
   test(`delivery distinguishes customer balance and courier custody (${locale})`, async ({

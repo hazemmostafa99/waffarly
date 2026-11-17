@@ -21,7 +21,7 @@ import {
 } from '../shifts.schemas.js';
 
 import { closeReportInclude, ownerCloseReportSelect } from '../shift-records.js';
-import { requireShiftAccess } from '../access/shift-access.rules.js';
+import { assertPosRegisterAssignment, requireShiftAccess } from '../access/shift-access.rules.js';
 
 export async function listOwnerCloseReports(
   prisma: PrismaService,
@@ -71,17 +71,14 @@ export async function getLatestCloseReport(
 ): Promise<PosShiftCloseReportContract | null> {
   requireShiftAccess(employee);
   const query = parseRequest(posCurrentShiftSchema, { registerId });
+  assertPosRegisterAssignment(employee, query.registerId);
   const report = await prisma.posShiftCloseReport.findFirst({
     where: {
       merchantId: employee.merchantId,
       shift: {
         registerId: query.registerId,
         status: 'closed',
-        branchId: {
-          in: employee.branches
-            .filter((branch) => branch.archivedAt === null)
-            .map((branch) => branch.id),
-        },
+        branchId: employee.branch.id,
         register: { merchantId: employee.merchantId },
       },
     },
@@ -102,10 +99,9 @@ export async function getCloseReport(
       shiftId,
       merchantId: employee.merchantId,
       shift: {
-        branchId: {
-          in: employee.branches
-            .filter((branch) => branch.archivedAt === null)
-            .map((branch) => branch.id),
+        is: {
+          branchId: employee.branch.id,
+          ...(employee.deviceRegister ? { registerId: employee.deviceRegister.id } : {}),
         },
       },
     },

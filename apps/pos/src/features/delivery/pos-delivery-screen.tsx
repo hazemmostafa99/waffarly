@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   CursorPage,
+  DeliveryCourierOption,
   PosDeliveryCommand,
   PosDeliverySummary,
   PosEmployeeSession,
@@ -14,9 +15,7 @@ import { PosButton } from '../../components/pos-button.js';
 import { apiRequest, ApiError } from '../../lib/api-client.js';
 import {
   getCurrentPosShift,
-  listPosRegisters,
   posCurrentShiftKey,
-  posRegisterKey,
 } from '../shifts/pos-shifts.api.js';
 import { recordPosCheckPayment } from '../payments/pos-payments.api.js';
 import { useDeliveryRecovery, type PendingDeliveryWrite } from './delivery-recovery.js';
@@ -45,7 +44,14 @@ export function PosDeliveryRecoveryNotice({ employee }: { employee: PosEmployeeS
   useEffect(() => {
     if (scope) recovery.hydrate(scope);
   }, [scope, recovery.hydrate]);
-  if (!scope || recovery.scope !== scope || (!recovery.pending && !recovery.error)) return null;
+  const hasPendingForAssignedBranch = recovery.pending?.branchId === employee.branch.id;
+  const hasRecoveryErrorWithoutPending = !recovery.pending && Boolean(recovery.error);
+  if (
+    !scope ||
+    recovery.scope !== scope ||
+    (!hasPendingForAssignedBranch && !hasRecoveryErrorWithoutPending)
+  )
+    return null;
   return (
     <div role="alert" className="m-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
       <Link to="/deliveries" className="underline">
@@ -69,19 +75,16 @@ export function PosDeliveryScreen() {
     storedWorkspace.employeeId === employee.id
       ? storedWorkspace
       : null;
-  const selectBranch = usePosWorkspaceStore((s) => s.selectBranch);
   const recovery = useDeliveryRecovery();
-  const branches = employee.branches.filter((b) => b.archivedAt === null);
   const scope = workspace
     ? `waffarly:delivery:${employee.merchantId}:${employee.id}:${workspace.deviceId}`
     : '';
-  const pending = recovery.scope === scope ? recovery.pending : null;
-  const branchId =
-    pending?.branchId ??
-    branches.find((branch) => branch.id === workspace?.selectedBranchId)?.id ??
-    branches[0]?.id ??
-    '';
-  const [registerId, setRegisterId] = useState('');
+  const branchId = employee.branch.id;
+  const pending =
+    recovery.scope === scope && recovery.pending?.branchId === branchId
+      ? recovery.pending
+      : null;
+  const registerId = employee.deviceRegister?.id ?? '';
   const [cursor, setCursor] = useState<string | undefined>();
   const [readyCursor, setReadyCursor] = useState<string | undefined>();
   const [activeView, setActiveView] = useState<DeliveryView>('ready');
@@ -101,18 +104,10 @@ export function PosDeliveryScreen() {
   useEffect(() => {
     if (scope) recovery.hydrate(scope);
   }, [scope, recovery.hydrate]);
-  const registers = useQuery({
-    queryKey: posRegisterKey(employee.merchantId, branchId),
-    queryFn: ({ signal }) => listPosRegisters(branchId, signal),
-    enabled: Boolean(branchId),
-  });
-  const selectedRegister = registers.data?.some((r) => r.id === registerId)
-    ? registerId
-    : (registers.data?.[0]?.id ?? '');
   const shift = useQuery({
-    queryKey: posCurrentShiftKey(employee.merchantId, branchId, selectedRegister),
-    queryFn: ({ signal }) => getCurrentPosShift(selectedRegister, signal),
-    enabled: Boolean(selectedRegister),
+    queryKey: posCurrentShiftKey(employee.merchantId, branchId, registerId),
+    queryFn: ({ signal }) => getCurrentPosShift(registerId, signal),
+    enabled: Boolean(registerId),
   });
   const list = useQuery({
     queryKey: ['pos-deliveries', employee.merchantId, branchId, cursor, activeView === 'history'],
@@ -133,6 +128,20 @@ export function PosDeliveryScreen() {
       ),
     enabled: Boolean(branchId),
     refetchInterval: 15_000,
+  });
+  const courierPages = useInfiniteQuery({
+    queryKey: ['pos-delivery-couriers', employee.merchantId, branchId],
+    initialPageParam: undefined as string | undefined,
+    queryFn: ({ pageParam, signal }) => {
+      const params = new URLSearchParams({ limit: '50' });
+      if (pageParam) params.set('cursor', pageParam);
+      return apiRequest<CursorPage<DeliveryCourierOption>>(
+        `/pos/delivery-couriers?${params.toString()}`,
+        { signal },
+      );
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    enabled: Boolean(branchId),
   });
   const write = useMutation({
     mutationFn: (saved: PendingDeliveryWrite) =>
@@ -203,9 +212,18 @@ export function PosDeliveryScreen() {
     (write.error instanceof Error ? write.error.message : '') ||
     (list.error instanceof Error ? list.error.message : '') ||
     (ready.error instanceof Error ? ready.error.message : '') ||
-    (shift.error instanceof Error ? shift.error.message : '') ||
-    (registers.error instanceof Error ? registers.error.message : '');
+    (shift.error instanceof Error ? shift.error.message : '');
   const deliveries = list.data?.items ?? [];
+  const courierPicker = {
+    options: courierPages.data?.pages.flatMap((page) => page.items) ?? [],
+    loading: courierPages.isLoading,
+    error:
+      courierPages.error instanceof Error ? errorText(courierPages.error.message) : '',
+    hasMore: Boolean(courierPages.hasNextPage),
+    loadingMore: courierPages.isFetchingNextPage,
+    loadMore: () => void courierPages.fetchNextPage(),
+    retry: () => void courierPages.refetch(),
+  };
   const deliveryFollowups = deliveries.filter(
     (delivery) => delivery.status !== 'delivered' || delivery.customerDue !== '0.00',
   );
@@ -218,12 +236,15 @@ export function PosDeliveryScreen() {
   );
   const cashGroups = Array.from(
     cashDeliveries.reduce((groups, delivery) => {
-      const group = groups.get(delivery.courierName) ?? [];
-      group.push(delivery);
-      groups.set(delivery.courierName, group);
+      const identity = delivery.courierId ?? `legacy:${delivery.courierName}`;
+      const group = groups.get(identity);
+      if (group) group.orders.push(delivery);
+      else groups.set(identity, { courierName: delivery.courierName, orders: [delivery] });
       return groups;
-    }, new Map<string, PosDeliverySummary[]>()),
-  ).sort(([a], [b]) => a.localeCompare(b, locale));
+    }, new Map<string, { courierName: string; orders: PosDeliverySummary[] }>()),
+  )
+    .map(([id, group]) => ({ id, ...group }))
+    .sort((left, right) => left.courierName.localeCompare(right.courierName, locale));
   const disabled =
     !online ||
     write.isPending ||
@@ -255,7 +276,7 @@ export function PosDeliveryScreen() {
             void list.refetch();
             void ready.refetch();
             void shift.refetch();
-            void registers.refetch();
+            void courierPages.refetch();
           }}
         >
           {text('Refresh', 'تحديث')}
@@ -337,44 +358,10 @@ export function PosDeliveryScreen() {
             )}
         </div>
       )}
-      <div className="grid gap-3 rounded-xl border border-border bg-card p-3 sm:grid-cols-2 xl:grid-cols-[minmax(12rem,1fr)_minmax(12rem,1fr)_auto] xl:items-end">
-        <label>
-          {text('Branch', 'الفرع')}
-          <select
-            className="mt-1 min-h-11 w-full rounded border border-input bg-background px-3"
-            value={branchId}
-            disabled={Boolean(pending)}
-            onChange={(event) => {
-              selectBranch(employee.merchantId, employee.id, event.target.value);
-              setRegisterId('');
-              setCursor(undefined);
-              setReadyCursor(undefined);
-            }}
-          >
-            {branches.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
+      <div className="grid gap-3 rounded-xl border border-border bg-card p-3 sm:grid-cols-1 xl:grid-cols-[minmax(12rem,1fr)_auto] xl:items-end">
+        <div>
           {text('Receiving drawer', 'الدرج اللي هيستلم الكاش')}
-          <select
-            className="mt-1 min-h-11 w-full rounded border border-input bg-background px-3"
-            value={selectedRegister}
-            disabled={Boolean(pending)}
-            onChange={(event) => setRegisterId(event.target.value)}
-          >
-            {!registers.data?.length && (
-              <option value="">{text('No available drawer', 'مفيش درج متاح')}</option>
-            )}
-            {registers.data?.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
+          <strong className="mt-1 block text-sm">{employee.deviceRegister?.name}</strong>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 text-xs">
             <span className={shift.data ? 'text-foreground' : 'text-warning'}>
               {shift.data
@@ -393,7 +380,7 @@ export function PosDeliveryScreen() {
               {text('Manage shift', 'إدارة الوردية')}
             </Link>
           </div>
-        </label>
+        </div>
         <p className="text-xs text-muted-foreground xl:max-w-48">
           {text(
             'Customer payment and courier cash are tracked separately.',
@@ -492,8 +479,9 @@ export function PosDeliveryScreen() {
                   key={order.id}
                   order={order}
                   disabled={disabled}
+                  couriers={courierPicker}
                   text={text}
-                  onSubmit={(courierName) =>
+                  onSubmit={(courierId) =>
                     submit({
                       branchId,
                       orderId: order.id,
@@ -502,7 +490,7 @@ export function PosDeliveryScreen() {
                         action: 'dispatch',
                         requestId: crypto.randomUUID(),
                         revision: order.revision,
-                        courierName,
+                        courierId,
                       },
                     })
                   }
@@ -547,6 +535,7 @@ export function PosDeliveryScreen() {
                   employee={employee}
                   shift={shift.data ?? null}
                   disabled={disabled || shift.isFetching || shift.isError}
+                  couriers={courierPicker}
                   text={text}
                   submit={submit}
                 />
@@ -585,14 +574,14 @@ export function PosDeliveryScreen() {
                   )}
                 </p>
               )}
-              {cashGroups.map(([courierName, orders]) => {
+              {cashGroups.map(({ id, courierName, orders }) => {
                 const totalCents = orders.reduce(
                   (sum, order) => sum + amountToCents(order.courierCashHeld),
                   0,
                 );
                 return (
                   <section
-                    key={courierName}
+                    key={id}
                     className="overflow-hidden rounded-xl border border-border bg-card"
                   >
                     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/30 px-4 py-3">
@@ -672,6 +661,7 @@ export function PosDeliveryScreen() {
                   shift={shift.data ?? null}
                   disabled
                   readOnly
+                  couriers={courierPicker}
                   text={text}
                   submit={submit}
                 />
@@ -694,21 +684,23 @@ export function PosDeliveryScreen() {
 function DispatchCard({
   order,
   disabled,
+  couriers,
   text,
   onSubmit,
 }: {
   order: ReadyDelivery;
   disabled: boolean;
+  couriers: CourierPickerState;
   text: (en: string, ar: string) => string;
-  onSubmit: (name: string) => void;
+  onSubmit: (courierId: string) => void;
 }) {
-  const [name, setName] = useState('');
+  const [courierId, setCourierId] = useState('');
   return (
     <form
       className="grid gap-4 rounded-xl border border-border bg-card p-4 lg:grid-cols-[minmax(0,1fr)_minmax(14rem,20rem)_auto] lg:items-end"
       onSubmit={(event) => {
         event.preventDefault();
-        onSubmit(name.trim());
+        onSubmit(courierId);
       }}
     >
       <div className="min-w-0">
@@ -730,21 +722,114 @@ function DispatchCard({
           </strong>
         </p>
       </div>
-      <label className="grid gap-1">
-        {text('Courier name or reference', 'اسم الطيار أو مرجعه')}
-        <Input
-          aria-label={text('Courier name or reference', 'اسم الطيار أو مرجعه')}
-          placeholder={text('Enter courier name', 'اكتب اسم الطيار')}
-          required
-          maxLength={160}
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-        />
-      </label>
-      <PosButton type="submit" disabled={disabled || !name.trim()}>
+      <CourierPicker
+        label={text('Choose a courier', 'اختار الطيار')}
+        value={courierId}
+        onChange={setCourierId}
+        disabled={disabled}
+        couriers={couriers}
+        text={text}
+      />
+      <PosButton
+        type="submit"
+        disabled={
+          disabled ||
+          !courierId ||
+          couriers.loading ||
+          Boolean(couriers.error) ||
+          !couriers.options.some((courier) => courier.id === courierId)
+        }
+      >
         {text('Dispatch order', 'تسليم للطيار')}
       </PosButton>
     </form>
+  );
+}
+
+type CourierPickerState = {
+  options: DeliveryCourierOption[];
+  loading: boolean;
+  error: string;
+  hasMore: boolean;
+  loadingMore: boolean;
+  loadMore: () => void;
+  retry: () => void;
+};
+
+function CourierPicker({
+  label,
+  value,
+  onChange,
+  disabled,
+  couriers,
+  text,
+}: {
+  label: string;
+  value: string;
+  onChange: (courierId: string) => void;
+  disabled: boolean;
+  couriers: CourierPickerState;
+  text: (en: string, ar: string) => string;
+}) {
+  const selectDisabled =
+    disabled || couriers.loading || Boolean(couriers.error) || couriers.options.length === 0;
+  return (
+    <div className="grid min-w-0 gap-1">
+      <label className="grid gap-1">
+        {label}
+        <select
+          aria-label={label}
+          className="min-h-11 w-full rounded border border-input bg-background px-3"
+          required
+          value={value}
+          disabled={selectDisabled}
+          onChange={(event) => onChange(event.target.value)}
+        >
+          <option value="">
+            {couriers.loading
+              ? text('Loading couriers…', 'جارٍ تحميل الطيارين…')
+              : couriers.error
+                ? text('Courier list unavailable', 'قائمة الطيارين غير متاحة')
+                : couriers.options.length === 0
+                  ? text('No active couriers for this branch', 'لا يوجد طيارون نشطون للفرع')
+                  : text('Choose a courier', 'اختار الطيار')}
+          </option>
+          {couriers.options.map((courier) => (
+            <option key={courier.id} value={courier.id}>
+              {courier.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      {couriers.error && (
+        <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-destructive">
+          <span>{couriers.error}</span>
+          <PosButton type="button" variant="outline" onClick={couriers.retry}>
+            {text('Retry', 'إعادة المحاولة')}
+          </PosButton>
+        </div>
+      )}
+      {couriers.hasMore && (
+        <PosButton
+          type="button"
+          variant="outline"
+          disabled={disabled || couriers.loadingMore}
+          onClick={couriers.loadMore}
+        >
+          {couriers.loadingMore
+            ? text('Loading more…', 'جارٍ تحميل المزيد…')
+            : text('Load more couriers', 'تحميل طيارين إضافيين')}
+        </PosButton>
+      )}
+      {couriers.options.length === 0 && !couriers.loading && !couriers.error && (
+        <small className="text-muted-foreground">
+          {text(
+            'Ask the owner to add a courier for this branch.',
+            'اطلب من المالك إضافة طيار للفرع ده.',
+          )}
+        </small>
+      )}
+    </div>
   );
 }
 
@@ -920,6 +1005,7 @@ function DeliveryCard({
   shift,
   disabled,
   readOnly = false,
+  couriers,
   text,
   submit,
 }: {
@@ -928,6 +1014,7 @@ function DeliveryCard({
   shift: PosShiftSummary | null;
   disabled: boolean;
   readOnly?: boolean;
+  couriers: CourierPickerState;
   text: (en: string, ar: string) => string;
   submit: (saved: PendingDeliveryWrite) => void;
 }) {
@@ -936,7 +1023,7 @@ function DeliveryCard({
     d.courierPayments.find((payment) => payment.remaining !== '0.00')?.remaining ?? '',
   );
   const [reason, setReason] = useState('');
-  const [courier, setCourier] = useState(d.courierName);
+  const [courierId, setCourierId] = useState(d.courierId ?? '');
   const [checkId, setCheckId] = useState(d.checks.find((c) => c.balanceDue !== '0.00')?.id ?? '');
   const [paymentId, setPaymentId] = useState(
     d.courierPayments.find((p) => p.remaining !== '0.00')?.id ?? '',
@@ -945,6 +1032,9 @@ function DeliveryCard({
   const [reference, setReference] = useState('');
   const mine =
     d.custodianEmployeeId === employee.id || employee.permissions.includes('approve_shift_close');
+  const selectedCourierId = couriers.options.some((courier) => courier.id === courierId)
+    ? courierId
+    : '';
   const action = (command: PosDeliveryCommand) =>
     submit({ branchId: d.branchId, orderId: d.orderId, kind: 'action', request: command });
   const base = () => ({ requestId: crypto.randomUUID(), revision: d.revision });
@@ -1092,22 +1182,29 @@ function DeliveryCard({
       )}
       {mine && d.status === 'failed' && (
         <form
-          className="flex flex-wrap gap-2"
+          className="grid gap-2 sm:grid-cols-[minmax(14rem,22rem)_auto] sm:items-end"
           onSubmit={(event) => {
             event.preventDefault();
-            action({ ...base(), action: 'dispatch', courierName: courier.trim() });
+            action({ ...base(), action: 'dispatch', courierId: selectedCourierId });
           }}
         >
-          <Input
-            aria-label={text('Courier name', 'اسم الطيار')}
-            required
-            maxLength={160}
-            value={courier}
-            onChange={(e) => setCourier(e.target.value)}
+          <CourierPicker
+            label={text('Choose a courier', 'اختار الطيار')}
+            value={selectedCourierId}
+            onChange={setCourierId}
+            disabled={disabled || d.courierCashHeld !== '0.00'}
+            couriers={couriers}
+            text={text}
           />
           <PosButton
             type="submit"
-            disabled={disabled || !courier.trim() || d.courierCashHeld !== '0.00'}
+            disabled={
+              disabled ||
+              !selectedCourierId ||
+              couriers.loading ||
+              Boolean(couriers.error) ||
+              d.courierCashHeld !== '0.00'
+            }
           >
             {text('Send again', 'خروج للتوصيل مرة تانية')}
           </PosButton>

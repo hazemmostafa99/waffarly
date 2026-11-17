@@ -16,7 +16,7 @@ import { ownerPosRegisterListSchema, type OwnerPosRegisterListQuery } from '../s
 
 import { registerInclude } from '../shift-records.js';
 import { toRegisterSummary } from '../shift.mapper.js';
-import { assertShiftBranchAssignment, requireShiftAccess } from '../access/shift-access.rules.js';
+import { assertShiftBranchAssignment } from '../access/shift-access.rules.js';
 import { posRegisterListSchema } from '../shifts.schemas.js';
 
 export async function listOwnerRegisters(
@@ -68,14 +68,15 @@ export async function listRegistersForEmployee(
   employee: PosEmployeeSession,
   input: unknown,
 ): Promise<PosRegisterOption[]> {
-  requireShiftAccess(employee);
   const query = parseRequest(posRegisterListSchema, input);
   assertShiftBranchAssignment(employee, query.branchId);
+  if (employee.deviceRegister) return [employee.deviceRegister];
   return prisma.posRegister.findMany({
     where: {
       merchantId: employee.merchantId,
       branchId: query.branchId,
       active: true,
+      deviceId: null,
       branch: { archivedAt: null },
     },
     select: { id: true, branchId: true, name: true },

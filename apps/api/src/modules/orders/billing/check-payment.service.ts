@@ -74,7 +74,7 @@ export class CheckPaymentService {
                   status: { in: ['ready', 'completed'] },
                 },
               ],
-              branchId: { in: employee.branches.map((branch) => branch.id) },
+              branchId: employee.branch.id,
             },
             select: { branchId: true, posShiftId: true, fulfillmentType: true, delivery: true },
           });
@@ -98,9 +98,8 @@ export class CheckPaymentService {
                 id: employee.id,
                 merchantId: employee.merchantId,
                 active: true,
-                branches: {
-                  some: { branchId: observedOrder.branchId, branch: { archivedAt: null } },
-                },
+                branchId: observedOrder.branchId,
+                branch: { archivedAt: null },
               },
               select: { role: true, permissions: true },
             });
@@ -137,12 +136,14 @@ export class CheckPaymentService {
                 shiftId: paymentShiftId,
                 branchId: observedOrder.branchId,
                 followupShiftId: observedOrder.delivery.followupShiftId,
+                employee,
               });
             else
               await this.shifts.lockOpenShiftForPayment(tx, {
                 merchantId: employee.merchantId,
                 shiftId: paymentShiftId,
                 branchId: observedOrder.branchId,
+                employee,
               });
           }
           await tx.$queryRaw`SELECT "id" FROM "storefront_orders" WHERE "id" = ${orderId}::uuid AND "merchantId" = ${employee.merchantId}::uuid FOR UPDATE`;
@@ -159,7 +160,7 @@ export class CheckPaymentService {
                   status: { in: ['ready', 'completed'] },
                 },
               ],
-              branchId: { in: employee.branches.map((branch) => branch.id) },
+              branchId: employee.branch.id,
             },
             select: {
               id: true,

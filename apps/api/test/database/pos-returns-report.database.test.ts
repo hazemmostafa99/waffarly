@@ -51,6 +51,7 @@ it(
           const employee = await transaction.posEmployee.create({
             data: {
               merchantId: merchant.id,
+              branchId: branchA.id,
               username: `return-report-${token}`,
               displayName: 'Return report cashier',
               passwordHash: 'database-test-only',
@@ -190,6 +191,7 @@ it(
           const foreignEmployee = await transaction.posEmployee.create({
             data: {
               merchantId: foreignMerchant.id,
+              branchId: foreignBranch.id,
               username: `foreign-return-report-${token}`,
               displayName: 'Foreign Return report cashier',
               passwordHash: 'database-test-only',

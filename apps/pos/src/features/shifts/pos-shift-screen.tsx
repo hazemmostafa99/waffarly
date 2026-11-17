@@ -11,7 +11,7 @@ import {
   UserRound,
   Wallet,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { usePosWorkspaceStore } from '../../app/pos-workspace-store.js';
 import { PosButton } from '../../components/pos-button.js';
@@ -21,11 +21,9 @@ import { PosShiftCashManagement } from './pos-shift-cash-management.js';
 import { PosCarryoverSelect } from './pos-cash-custody.js';
 import {
   getCurrentPosShift,
-  listPosRegisters,
   openPosShift,
   posCurrentShiftKey,
   posLatestShiftCloseKey,
-  posRegisterKey,
   posShiftReconciliationKey,
 } from './pos-shifts.api.js';
 
@@ -37,19 +35,26 @@ export function PosShiftScreen() {
   const queryClient = useQueryClient();
   const hydrate = usePosWorkspaceStore((state) => state.hydrate);
   const workspace = usePosWorkspaceStore((state) => state.workspace);
-  const selectBranch = usePosWorkspaceStore((state) => state.selectBranch);
   const savePendingShiftOpen = usePosWorkspaceStore((state) => state.savePendingShiftOpen);
   const removePendingShiftOpen = usePosWorkspaceStore((state) => state.removePendingShiftOpen);
   const persistenceError = usePosWorkspaceStore((state) => state.persistenceError);
-  const pendingShiftOpen = workspace?.pendingShiftOpen ?? null;
-  const pendingShiftCashMovement = workspace?.pendingShiftCashMovement ?? null;
-  const pendingShiftClose = workspace?.pendingShiftClose ?? null;
-  const branches = useMemo(
-    () => employee.branches.filter((branch) => branch.archivedAt === null),
-    [employee.branches],
-  );
-  const [branchId, setBranchId] = useState<string | null>(null);
-  const [registerId, setRegisterId] = useState('');
+  const branchId = employee.branch.id;
+  const registerId = employee.deviceRegister?.id ?? '';
+  const pendingShiftOpen =
+    workspace?.pendingShiftOpen?.branchId === branchId &&
+    workspace?.pendingShiftOpen?.registerId === registerId
+      ? (workspace.pendingShiftOpen ?? null)
+      : null;
+  const pendingShiftCashMovement =
+    workspace?.pendingShiftCashMovement?.branchId === branchId &&
+    workspace?.pendingShiftCashMovement?.registerId === registerId
+      ? (workspace.pendingShiftCashMovement ?? null)
+      : null;
+  const pendingShiftClose =
+    workspace?.pendingShiftClose?.branchId === branchId &&
+    workspace?.pendingShiftClose?.registerId === registerId
+      ? (workspace.pendingShiftClose ?? null)
+      : null;
   const [openingFloat, setOpeningFloat] = useState('');
   const [sourceShiftId, setSourceShiftId] = useState('');
   useEffect(() => {
@@ -64,40 +69,6 @@ export function PosShiftScreen() {
   }, [employee.id, employee.merchantId, hydrate]);
 
   useEffect(() => {
-    const pendingBranchId =
-      pendingShiftOpen?.branchId ??
-      pendingShiftCashMovement?.branchId ??
-      pendingShiftClose?.branchId;
-    const preferred = pendingBranchId ?? workspace?.selectedBranchId;
-    const next = branches.find((branch) => branch.id === preferred)?.id ?? branches[0]?.id ?? null;
-    setBranchId(next);
-    if (
-      next &&
-      workspace &&
-      workspace.selectedBranchId !== next &&
-      !pendingShiftOpen &&
-      !pendingShiftCashMovement &&
-      !pendingShiftClose
-    ) {
-      try {
-        selectBranch(employee.merchantId, employee.id, next);
-      } catch (error) {
-        setFormError(error instanceof Error ? error.message : t('Could not save this branch.'));
-      }
-    }
-  }, [
-    branches,
-    employee.id,
-    employee.merchantId,
-    pendingShiftCashMovement,
-    pendingShiftClose,
-    pendingShiftOpen,
-    selectBranch,
-    t,
-    workspace,
-  ]);
-
-  useEffect(() => {
     const updateOnline = () => setOnline(navigator.onLine);
     window.addEventListener('online', updateOnline);
     window.addEventListener('offline', updateOnline);
@@ -106,36 +77,6 @@ export function PosShiftScreen() {
       window.removeEventListener('offline', updateOnline);
     };
   }, []);
-
-  const registersQuery = useQuery({
-    queryKey: posRegisterKey(employee.merchantId, branchId ?? ''),
-    queryFn: ({ signal }) => listPosRegisters(branchId!, signal),
-    enabled: canOpenShift && Boolean(branchId),
-    staleTime: 30_000,
-    refetchOnWindowFocus: true,
-  });
-  const registers = registersQuery.data ?? [];
-
-  useEffect(() => {
-    if (!registers.length) {
-      setRegisterId('');
-      return;
-    }
-    const preferred =
-      pendingShiftOpen?.registerId ??
-      pendingShiftCashMovement?.registerId ??
-      pendingShiftClose?.registerId ??
-      registerId;
-    setRegisterId(
-      registers.some((register) => register.id === preferred) ? preferred : registers[0]!.id,
-    );
-  }, [
-    pendingShiftCashMovement?.registerId,
-    pendingShiftClose?.registerId,
-    pendingShiftOpen?.registerId,
-    registerId,
-    registers,
-  ]);
 
   const currentShiftKey = posCurrentShiftKey(employee.merchantId, branchId ?? '', registerId);
   const currentShiftQuery = useQuery({
@@ -178,17 +119,6 @@ export function PosShiftScreen() {
     removePendingShiftOpen,
   ]);
 
-  function handleBranchChange(nextBranchId: string) {
-    setFormError('');
-    setBranchId(nextBranchId);
-    setRegisterId('');
-    try {
-      selectBranch(employee.merchantId, employee.id, nextBranchId);
-    } catch (error) {
-      setFormError(error instanceof Error ? error.message : t('Could not save this branch.'));
-    }
-  }
-
   function handleOpen(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError('');
@@ -207,8 +137,8 @@ export function PosShiftScreen() {
       });
       return;
     }
-    if (!branchId || !registerId) {
-      setFormError(t('Select a branch and register first.'));
+    if (!registerId) {
+      setFormError(t('Select a register first.'));
       return;
     }
     if (!/^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(openingFloat)) {
@@ -252,19 +182,14 @@ export function PosShiftScreen() {
   }
 
   const queryError =
-    registersQuery.error instanceof Error
-      ? registersQuery.error.message
-      : currentShiftQuery.error instanceof Error
-        ? currentShiftQuery.error.message
-        : '';
-  const selectedRegister = registers.find((register) => register.id === registerId);
-  const selectedBranch = branches.find((branch) => branch.id === branchId);
+    currentShiftQuery.error instanceof Error ? currentShiftQuery.error.message : '';
+  const selectedRegister = employee.deviceRegister;
+  const selectedBranch = employee.branch;
   const openedByName = isReadablePosLabel(activeShift?.openedByName ?? '')
     ? activeShift!.openedByName
     : t('Cashier name unavailable');
 
   function refreshShiftData() {
-    if (branchId) void registersQuery.refetch();
     if (branchId && registerId) {
       void currentShiftQuery.refetch();
       void queryClient.refetchQueries({ queryKey: cashStatusKey, type: 'active' });
@@ -285,7 +210,7 @@ export function PosShiftScreen() {
             {t('Open register shift')}
           </h2>
           <p className="m-0 mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            {t('Review the selected register and opening cash, or start a new shift.')}
+            {t('Review this register and opening cash, or start a new shift.')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -295,7 +220,6 @@ export function PosShiftScreen() {
             className="min-h-9 px-3"
             disabled={
               !branchId ||
-              registersQuery.isFetching ||
               currentShiftQuery.isFetching ||
               cashStatusFetching > 0
             }
@@ -325,7 +249,6 @@ export function PosShiftScreen() {
             variant="outline"
             disabled={
               !branchId ||
-              registersQuery.isFetching ||
               currentShiftQuery.isFetching ||
               cashStatusFetching > 0
             }
@@ -359,91 +282,15 @@ export function PosShiftScreen() {
         </p>
       )}
 
-      <div className="grid gap-4 rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm sm:grid-cols-2 sm:p-5">
-        <label className="grid min-w-0 gap-2 text-sm font-medium">
-          <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-            <Store size={15} aria-hidden="true" />
-            {t('Branch')}
-          </span>
-          <select
-            className="min-h-12 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring"
-            value={branchId ?? ''}
-            disabled={
-              Boolean(pendingShiftOpen || pendingShiftCashMovement || pendingShiftClose) ||
-              branches.length === 0
-            }
-            onChange={(event) => handleBranchChange(event.target.value)}
-          >
-            {branches.length === 0 && <option value="">{t('No active branches assigned')}</option>}
-            {branches.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid min-w-0 gap-2 text-sm font-medium">
-          <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-            <Wallet size={15} aria-hidden="true" />
-            {t('Register')}
-          </span>
-          <select
-            className="min-h-12 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring"
-            value={registerId}
-            disabled={
-              Boolean(pendingShiftOpen) ||
-              Boolean(pendingShiftCashMovement || pendingShiftClose) ||
-              branches.length === 0 ||
-              registers.length === 0 ||
-              registersQuery.isLoading
-            }
-            onChange={(event) => setRegisterId(event.target.value)}
-          >
-            {registers.length === 0 && <option value="">{t('Select a register')}</option>}
-            {registers.map((register) => (
-              <option key={register.id} value={register.id}>
-                {register.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-5">
+        <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+          <Wallet size={15} aria-hidden="true" />
+          {t('Cashier register')}
+        </span>
+        <strong className="text-sm font-semibold">{selectedRegister?.name}</strong>
       </div>
 
-      {branches.length === 0 ? (
-        <div className="grid gap-2 rounded-xl border border-dashed border-border bg-card p-5 text-card-foreground sm:p-7">
-          <h3 className="m-0 text-base font-semibold">
-            {t('No active branches are assigned to this account.')}
-          </h3>
-          <p className="m-0 text-sm text-muted-foreground">
-            {t('Ask the merchant owner to assign you to an active POS branch.')}
-          </p>
-        </div>
-      ) : registersQuery.isLoading ? (
-        <p
-          className="m-0 rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground"
-          role="status"
-        >
-          {t('Loading registers...')}
-        </p>
-      ) : registersQuery.isError ? (
-        <div className="grid gap-2 rounded-xl border border-warning/30 bg-warning/10 p-5 text-foreground sm:p-7">
-          <h3 className="m-0 text-base font-semibold">
-            {t('Could not verify register availability.')}
-          </h3>
-          <p className="m-0 text-sm text-muted-foreground">
-            {t('Retry the register lookup before opening a shift.')}
-          </p>
-        </div>
-      ) : registers.length === 0 ? (
-        <div className="grid gap-2 rounded-xl border border-dashed border-border bg-card p-5 text-card-foreground sm:p-7">
-          <h3 className="m-0 text-base font-semibold">
-            {t('No active registers at this branch.')}
-          </h3>
-          <p className="m-0 text-sm text-muted-foreground">
-            {t('Ask the merchant owner to create a POS register before opening a shift.')}
-          </p>
-        </div>
-      ) : currentShiftQuery.isLoading ? (
+      {currentShiftQuery.isLoading ? (
         <p
           className="m-0 rounded-xl border border-border bg-card p-5 text-sm text-muted-foreground"
           role="status"
@@ -527,7 +374,7 @@ export function PosShiftScreen() {
             </h3>
             <p className="m-0 flex items-center gap-2 text-sm text-muted-foreground">
               <Wallet size={15} aria-hidden="true" />
-              {selectedRegister?.name ?? t('Select a register')}
+              {selectedRegister?.name ?? t('Cashier register')}
             </p>
           </div>
           <label className="grid max-w-lg gap-2 text-sm font-medium">

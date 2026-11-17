@@ -283,39 +283,6 @@
   font-size: 11px;
   line-height: 1.5;
 }
-.employee-branch-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.employee-branch-list li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 100%;
-  padding: 7px 11px;
-  border: 1px solid #d5e7dc;
-  border-radius: 20px;
-  background: #f1f8f3;
-  color: #245b43;
-  font-size: 12px;
-}
-.employee-branch-list li > span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.employee-branch-list button {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-}
 .employee-workspace .products-dialog {
   width: min(680px, calc(100% - 28px));
   max-height: calc(100dvh - 32px);

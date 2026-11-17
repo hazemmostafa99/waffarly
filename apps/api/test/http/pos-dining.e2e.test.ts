@@ -40,7 +40,7 @@ const employee: PosEmployeeSession = {
   displayName: 'Cashier',
   role: 'cashier',
   permissions: ['sell'],
-  branches: [{ id: branchId, name: 'Main', archivedAt: null }],
+  branch: { id: branchId, name: 'Main', archivedAt: null },
 };
 
 describe('POS dining endpoints', () => {

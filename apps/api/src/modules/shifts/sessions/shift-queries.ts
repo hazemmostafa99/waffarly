@@ -19,6 +19,7 @@ import { deliveryHandoverRecipientsSchema, posCurrentShiftSchema } from '../shif
 import { shiftInclude } from '../shift-records.js';
 import {
   readCurrentShiftPermissions,
+  assertPosRegisterAssignment,
   assertShiftBranchAssignment,
   requireShiftAccess,
 } from '../access/shift-access.rules.js';
@@ -38,7 +39,8 @@ export async function listDeliveryHandoverRecipients(
     merchantId: employee.merchantId,
     id: { not: employee.id },
     active: true,
-    branches: { some: { branchId: q.branchId, branch: { archivedAt: null } } },
+    branchId: q.branchId,
+    branch: { archivedAt: null },
     OR: [
       { role: { in: ['cashier', 'supervisor', 'branch_manager'] } },
       { role: null, permissions: { hasEvery: ['sell', 'open_register_shift'] } },
@@ -70,6 +72,7 @@ export async function getCurrentShift(
 ): Promise<PosShiftSummary | null> {
   requireShiftAccess(employee);
   const query = parseRequest(posCurrentShiftSchema, { registerId });
+  assertPosRegisterAssignment(employee, query.registerId);
   const register = await prisma.posRegister.findFirst({
     where: { id: query.registerId, merchantId: employee.merchantId },
     select: { id: true, branchId: true, active: true },
@@ -91,9 +94,10 @@ export async function getShiftBranch(
   requireShiftAccess(employee);
   const shift = await prisma.posShift.findFirst({
     where: { id: shiftId, merchantId: employee.merchantId },
-    select: { branchId: true },
+    select: { branchId: true, registerId: true },
   });
   if (!shift) throw new NotFoundException('The register shift was not found.');
   assertShiftBranchAssignment(employee, shift.branchId);
+  assertPosRegisterAssignment(employee, shift.registerId);
   return shift.branchId;
 }

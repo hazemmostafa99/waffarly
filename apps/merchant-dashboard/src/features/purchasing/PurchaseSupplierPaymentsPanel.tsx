@@ -65,7 +65,7 @@ export function PurchaseSupplierPaymentsPanel({
     try {
       await apiRequest(`/owner/purchasing/invoices/${invoice.id}/payments`, {
         method: 'POST',
-        body: {
+        body: JSON.stringify({
           requestId: crypto.randomUUID(),
           amount: amount.trim(),
           reason: reason.trim(),
@@ -74,7 +74,7 @@ export function PurchaseSupplierPaymentsPanel({
             movementId: selected.movementId,
             ...(selected.sourceType === 'drawer' ? { shiftId: selected.shiftId } : {}),
           },
-        },
+        }),
       });
       const refreshed = await apiRequest<PurchaseInvoice>(
         `/owner/purchasing/invoices/${invoice.id}`,

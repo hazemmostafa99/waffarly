@@ -7,6 +7,7 @@ export interface PosDeliverySummary {
   revision: number;
   orderRevision: number;
   orderStatus: string;
+  courierId: string | null;
   courierName: string;
   status: 'out_for_delivery' | 'delivered' | 'failed';
   dispatchedAt: string;
@@ -30,6 +31,8 @@ export type PosDeliveryCommand = {
   requestId: string;
   revision: number;
 } & (
+  | { action: 'dispatch'; courierId: string }
+  // Allows exact recovery of a dispatch saved by an older POS client.
   | { action: 'dispatch'; courierName: string }
   | { action: 'delivered' }
   | { action: 'failed'; reason: string }

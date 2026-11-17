@@ -17,14 +17,15 @@ export async function requireEmployeeCashBranch(
   manage = false,
   db: PrismaService | Prisma.TransactionClient = prisma,
 ): Promise<void> {
-  if (!employee.branches.some((branch) => branch.id === branchId && branch.archivedAt === null))
+  if (employee.branch.id !== branchId || employee.branch.archivedAt !== null)
     throw new ForbiddenException('Branch is not assigned.');
   const record = await db.posEmployee.findFirst({
     where: {
       id: employee.id,
       merchantId: employee.merchantId,
       active: true,
-      branches: { some: { branchId, branch: { archivedAt: null } } },
+      branchId,
+      branch: { archivedAt: null },
     },
   });
   const permissions = record

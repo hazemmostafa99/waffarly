@@ -405,6 +405,7 @@ export interface StorefrontOrderReceipt {
 }
 
 export interface StorefrontOrderSummary {
+  source?: 'storefront' | 'pos';
   subtotal?: string;
   deliveryFee?: string;
   orderReference?: string | null;

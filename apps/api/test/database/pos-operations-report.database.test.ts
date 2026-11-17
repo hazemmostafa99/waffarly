@@ -51,6 +51,7 @@ it(
           const employee = await transaction.posEmployee.create({
             data: {
               merchantId: merchant.id,
+              branchId: branchA.id,
               username: `operations-report-${token}`,
               displayName: 'Operations Report Cashier',
               passwordHash: 'database-test-only',
@@ -63,6 +64,7 @@ it(
           const paymentOperator = await transaction.posEmployee.create({
             data: {
               merchantId: merchant.id,
+              branchId: branchA.id,
               username: `operations-payment-operator-${token}`,
               displayName: 'Operations Payment Operator',
               passwordHash: 'database-test-only',

@@ -83,9 +83,7 @@ export class KitchenOrderAmendmentService {
     requirePosSellPermission(employee);
     const request: AddPosKitchenItemsRequest = parseAddPosKitchenItemsRequest(input);
     const actor = `pos:${employee.id}`;
-    const branchIds = employee.branches
-      .filter((branch) => branch.archivedAt === null)
-      .map((branch) => branch.id);
+    const branchId = employee.branch.id;
     const fingerprint = createHash('sha256')
       .update(JSON.stringify({ action: 'pos_kitchen_amendment', orderId, ...request }))
       .digest('hex');
@@ -109,7 +107,7 @@ export class KitchenOrderAmendmentService {
               id: orderId,
               merchantId: employee.merchantId,
               source: 'pos',
-              branchId: { in: branchIds },
+              branchId,
             },
             select: { branchId: true, posShiftId: true },
           });
@@ -121,6 +119,7 @@ export class KitchenOrderAmendmentService {
             merchantId: employee.merchantId,
             shiftId: observed.posShiftId,
             branchId: observed.branchId,
+            employee,
           });
           const locked = await tx.$queryRaw<Array<{ id: string }>>`
             SELECT "id" FROM "storefront_orders"
@@ -144,7 +143,7 @@ export class KitchenOrderAmendmentService {
               id: orderId,
               merchantId: employee.merchantId,
               source: 'pos',
-              branchId: { in: branchIds },
+              branchId,
             },
             include: {
               ...orderSummaryInclude,

@@ -44,7 +44,7 @@ try {
       branches: { select: { id: true, archivedAt: true } },
       posEmployees: {
         where: { active: true },
-        select: { id: true, branches: { select: { branchId: true } } },
+        select: { id: true, branchId: true },
       },
     },
   });
@@ -66,7 +66,7 @@ try {
       branches = [{ id: branch.id, archivedAt: null }];
     }
     const assigned = merchant.posEmployees.filter((employee) =>
-      employee.branches.some((link) => branches.some((branch) => branch.id === link.branchId)),
+      branches.some((branch) => branch.id === employee.branchId),
     ).length;
     console.log(
       JSON.stringify({

@@ -885,7 +885,7 @@ function OpeningCostEditor({
 }) {
   const { locale } = useLocale();
   const text = copy;
-  const [unitCode, setUnitCode] = useState(item.baseUnit);
+  const [unitCode, setUnitCode] = useState<string>(item.baseUnit);
   const [unitCost, setUnitCost] = useState('');
   const [reason, setReason] = useState('');
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());

@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { InventoryLedgerService } from '../../src/modules/inventory/inventory-ledger.service.js';
+import { InventoryCostService } from '../../src/modules/inventory/inventory-cost.service.js';
 import { InventoryLocationsService } from '../../src/modules/inventory/inventory-locations.service.js';
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
 import { PurchaseSuppliersService } from '../../src/modules/purchasing/purchase-suppliers.service.js';
@@ -50,8 +51,9 @@ it(
       const inventory = new InventoryService(prisma);
       const locations = new InventoryLocationsService(prisma);
       const ledger = new InventoryLedgerService(prisma);
+      const costs = new InventoryCostService(prisma);
       const suppliers = new PurchaseSuppliersService(prisma);
-      const purchasing = new PurchasingService(prisma, ledger);
+      const purchasing = new PurchasingService(prisma, ledger, costs);
       const branch = await locations.createBranch(merchant.id, actor, {
         name: 'Central branch',
         defaultWarehouseName: 'Receiving',
@@ -330,8 +332,9 @@ it(
       const inventory = new InventoryService(prisma);
       const locations = new InventoryLocationsService(prisma);
       const ledger = new InventoryLedgerService(prisma);
+      const costs = new InventoryCostService(prisma);
       const suppliers = new PurchaseSuppliersService(prisma);
-      const purchasing = new PurchasingService(prisma, ledger);
+      const purchasing = new PurchasingService(prisma, ledger, costs);
       const branch = await locations.createBranch(merchant.id, actor, { name: 'Branch' });
       const item = await inventory.create(merchant.id, actor, {
         requestId: randomUUID(),

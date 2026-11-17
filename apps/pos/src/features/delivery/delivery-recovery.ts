@@ -29,7 +29,8 @@ export function decodeDeliveryRecovery(value: unknown): PendingDeliveryWrite {
     throw new Error('Invalid saved delivery action.');
   if (value.kind === 'action' && keys(value, ['branchId', 'orderId', 'kind', 'request'])) {
     const allowed = ['requestId', 'revision', 'action'];
-    if (
+    if (r.action === 'dispatch' && uuid(r.courierId)) allowed.push('courierId');
+    else if (
       r.action === 'dispatch' &&
       typeof r.courierName === 'string' &&
       r.courierName.trim() &&

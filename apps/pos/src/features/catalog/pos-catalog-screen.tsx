@@ -61,9 +61,7 @@ import { PosCheckoutDialog } from '../payments/pos-checkout-dialog.js';
 import { PosButton } from '../../components/pos-button.js';
 import {
   getCurrentPosShift,
-  listPosRegisters,
   posCurrentShiftKey,
-  posRegisterKey,
 } from '../shifts/pos-shifts.api.js';
 
 type LayoutContext = { employee: PosEmployeeSession };
@@ -101,14 +99,8 @@ export function POSCatalogScreen() {
   const closeConfirmedOrder = usePosWorkspaceStore((state) => state.closeConfirmedOrder);
   const savePendingSale = usePosWorkspaceStore((state) => state.savePendingSale);
   const persistenceError = usePosWorkspaceStore((state) => state.persistenceError);
-  const branches = useMemo(
-    () => employee.branches.filter((branch) => branch.archivedAt === null),
-    [employee.branches],
-  );
-  const selectedBranchId = branches.some((branch) => branch.id === workspace?.selectedBranchId)
-    ? (workspace?.selectedBranchId ?? branches[0]?.id ?? '')
-    : (branches[0]?.id ?? '');
-  const [registerId, setRegisterId] = useState('');
+  const selectedBranchId = employee.branch.id;
+  const registerId = employee.deviceRegister?.id ?? '';
   const [search, setSearch] = useState('');
   const [orderSearch, setOrderSearch] = useState('');
   const [orderMode, setOrderMode] = useState<'active' | 'history'>('active');
@@ -357,24 +349,6 @@ export function POSCatalogScreen() {
     workspace,
     confirmedOrder,
   ]);
-
-  const registersQuery = useQuery({
-    queryKey: posRegisterKey(employee.merchantId, selectedBranchId),
-    queryFn: ({ signal }) => listPosRegisters(selectedBranchId, signal),
-    enabled: canSell && Boolean(selectedBranchId),
-    staleTime: 30_000,
-  });
-  const registers = registersQuery.data ?? [];
-
-  useEffect(() => {
-    if (!registers.length) {
-      setRegisterId('');
-      return;
-    }
-    if (!registers.some((register) => register.id === registerId)) {
-      setRegisterId(registers[0]!.id);
-    }
-  }, [registerId, registers]);
 
   const currentShiftKey = posCurrentShiftKey(employee.merchantId, selectedBranchId, registerId);
   const shiftQuery = useQuery({
@@ -1006,39 +980,12 @@ export function POSCatalogScreen() {
 
               <div className="grid gap-2 lg:contents">
                 <div className="flex flex-wrap items-center gap-2 lg:col-start-2 lg:row-start-1 lg:justify-end">
-                  <label className="grid min-w-32 gap-1 text-[10px] text-muted-foreground">
-                    <span>{t('Branch')}</span>
-                    <select
-                      className="min-h-9 rounded-lg border border-border bg-card px-3 text-[11px] text-foreground"
-                      value={selectedBranchId}
-                      disabled={!branches.length || Boolean(pendingSale || amendingOrderId)}
-                      onChange={(event) => {
-                        selectBranch(employee.merchantId, employee.id, event.target.value);
-                        setRegisterId('');
-                      }}
-                    >
-                      {branches.map((branch) => (
-                        <option key={branch.id} value={branch.id}>
-                          {branch.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="grid min-w-32 gap-1 text-[10px] text-muted-foreground">
-                    <span>{t('Register')}</span>
-                    <select
-                      className="min-h-9 rounded-lg border border-border bg-card px-3 text-[11px] text-foreground"
-                      value={registerId}
-                      disabled={registers.length === 0 || Boolean(pendingSale || amendingOrderId)}
-                      onChange={(event) => setRegisterId(event.target.value)}
-                    >
-                      {registers.map((register) => (
-                        <option key={register.id} value={register.id}>
-                          {register.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  <div className="grid min-w-32 gap-1 text-[10px] text-muted-foreground">
+                    <span>{t('Cashier register')}</span>
+                    <strong className="max-w-40 truncate text-xs text-foreground">
+                      {employee.deviceRegister?.name}
+                    </strong>
+                  </div>
                   <span
                     className={cn(
                       'inline-flex min-h-8 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-semibold',

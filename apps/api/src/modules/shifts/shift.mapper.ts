@@ -118,7 +118,7 @@ export function toMatchingRetry(
   openingFloat: string,
   sourceShiftId?: string,
 ): PosShiftSummary {
-  if (!employee.branches.some((branch) => branch.id === shift.branchId)) {
+  if (employee.branch.id !== shift.branchId) {
     throw new ForbiddenException('This employee is not assigned to the selected branch.');
   }
   if (
@@ -143,6 +143,7 @@ export function toRegisterSummary(register: RegisterRecord): PosRegisterSummary 
     name: register.name,
     active: register.active,
     revision: register.revision,
+    devicePaired: register.deviceId !== null,
   };
 }
 

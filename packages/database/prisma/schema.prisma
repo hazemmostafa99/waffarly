@@ -120,6 +120,7 @@ model Merchant {
   profileUpdatedBy         String?                 @db.VarChar(80)
   owner                    OwnerAccount?
   posEmployees             PosEmployee[]
+  deliveryCouriers         DeliveryCourier[]
   application              MerchantApplication?
   restaurantProfile        RestaurantProfile?
   storefront               MerchantStorefront?
@@ -315,7 +316,8 @@ model Branch {
   merchant          Merchant            @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   warehouses        Warehouse[]
   recipeOrders      StorefrontOrder[]
-  posEmployees      PosEmployeeBranch[]
+  posEmployees      PosEmployee[]
+  deliveryCourierAssignments DeliveryCourierBranch[]
   posRegisters      PosRegister[]
   posShifts         PosShift[]
   posDiningTables   PosDiningTable[]
@@ -327,6 +329,59 @@ model Branch {
   @@unique([merchantId, name])
   @@index([merchantId, archivedAt, createdAt, id])
   @@map("branches")
+}
+
+// A merchant-managed courier who can be selected for deliveries at assigned branches.
+model DeliveryCourier {
+  id         String   @id @default(uuid()) @db.Uuid
+  merchantId String   @db.Uuid
+  name       String   @db.VarChar(160)
+  phone      String?  @db.VarChar(32)
+  active     Boolean  @default(true)
+  revision   Int      @default(1)
+  createdBy  String   @db.VarChar(80)
+  updatedBy  String   @db.VarChar(80)
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(6)
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  branches   DeliveryCourierBranch[]
+  deliveries PosDelivery[]
+  attempts   DeliveryCourierAttempt[]
+
+  @@unique([id, merchantId])
+  @@index([merchantId, active, createdAt, id])
+  @@map("delivery_couriers")
+}
+
+// Keeps courier branch access inside the same merchant as both records.
+model DeliveryCourierBranch {
+  merchantId String          @db.Uuid
+  courierId  String          @db.Uuid
+  branchId   String          @db.Uuid
+  courier    DeliveryCourier @relation(fields: [courierId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  branch     Branch          @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@id([merchantId, courierId, branchId])
+  @@index([merchantId, branchId, courierId])
+  @@map("delivery_courier_branches")
+}
+
+// Preserves one courier's result for each dispatch, including failed redispatch attempts.
+model DeliveryCourierAttempt {
+  id            String          @id @default(uuid()) @db.Uuid
+  merchantId    String          @db.Uuid
+  orderId       String          @db.Uuid
+  courierId     String          @db.Uuid
+  courierName   String          @db.VarChar(160)
+  status        String          @default("out_for_delivery") @db.VarChar(24)
+  dispatchedAt  DateTime        @default(now()) @db.Timestamptz(6)
+  completedAt   DateTime?       @db.Timestamptz(6)
+  delivery      PosDelivery     @relation(fields: [orderId, merchantId], references: [orderId, merchantId], onDelete: Restrict)
+  courier       DeliveryCourier @relation(fields: [courierId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@index([merchantId, courierId, dispatchedAt])
+  @@index([merchantId, orderId, status])
+  @@map("delivery_courier_attempts")
 }
 
 // Warehouses remain distinct even when a branch currently operates one location.
@@ -660,6 +715,7 @@ model PosEmployee {
   deliveryRemittances PosDeliveryRemittance[]
   id                   String                 @id @default(uuid()) @db.Uuid
   merchantId           String                 @db.Uuid
+  branchId             String                 @db.Uuid
   username             String                 @db.VarChar(80)
   displayName          String                 @db.VarChar(160)
   passwordHash         String                 @db.VarChar(255)
@@ -672,7 +728,7 @@ model PosEmployee {
   createdAt            DateTime               @default(now()) @db.Timestamptz(6)
   updatedAt            DateTime               @updatedAt @db.Timestamptz(6)
   merchant             Merchant               @relation(fields: [merchantId], references: [id], onDelete: Restrict)
-  branches             PosEmployeeBranch[]
+  branch               Branch                 @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
   openedShifts         PosShift[]
   openedDiningSessions PosDiningSession[]
   posOrders            StorefrontOrder[]
@@ -694,22 +750,9 @@ model PosEmployee {
 
   @@unique([id, merchantId])
   @@unique([merchantId, username])
+  @@index([merchantId, branchId])
   @@index([merchantId, active, createdAt, id])
   @@map("pos_employees")
-}
-
-model PosEmployeeBranch {
-  employeeId String      @db.Uuid
-  merchantId String      @db.Uuid
-  branchId   String      @db.Uuid
-  createdBy  String      @db.VarChar(80)
-  createdAt  DateTime    @default(now()) @db.Timestamptz(6)
-  employee   PosEmployee @relation(fields: [employeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
-  branch     Branch      @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
-
-  @@id([employeeId, branchId])
-  @@index([merchantId, branchId, employeeId])
-  @@map("pos_employee_branches")
 }
 
 // A merchant-managed till identity anchored to one branch.
@@ -717,6 +760,7 @@ model PosRegister {
   id         String     @id @default(uuid()) @db.Uuid
   merchantId String     @db.Uuid
   branchId   String     @db.Uuid
+  deviceId   String?    @db.Uuid
   name       String     @db.VarChar(80)
   active     Boolean    @default(true)
   revision   Int        @default(1)
@@ -731,6 +775,7 @@ model PosRegister {
   @@unique([id, merchantId])
   @@unique([id, branchId, merchantId])
   @@unique([branchId, name])
+  @@unique([merchantId, deviceId])
   @@index([merchantId, branchId, active, createdAt, id])
   @@map("pos_registers")
 }
@@ -872,6 +917,7 @@ model AuthSession {
   tokenHash   String   @id @db.VarChar(64)
   subjectKind String   @db.VarChar(24)
   subjectId   String   @db.VarChar(80)
+  deviceId    String?  @db.Uuid
   expiresAt   DateTime @db.Timestamptz(6)
   createdAt   DateTime @default(now()) @db.Timestamptz(6)
 
@@ -1787,6 +1833,7 @@ model PosDelivery {
   branchId            String @db.Uuid
   followupShiftId     String? @db.Uuid
   custodianEmployeeId String @db.Uuid
+  courierId           String? @db.Uuid
   courierName         String @db.VarChar(160)
   status              String @default("out_for_delivery") @db.VarChar(24)
   revision            Int @default(1)
@@ -1797,12 +1844,15 @@ model PosDelivery {
   branch              Branch @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
   followupShift       PosShift? @relation(fields: [followupShiftId, branchId, merchantId], references: [id, branchId, merchantId], onDelete: Restrict)
   custodian           PosEmployee @relation(fields: [custodianEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  courier             DeliveryCourier? @relation(fields: [courierId, merchantId], references: [id, merchantId], onDelete: Restrict)
   remittances         PosDeliveryRemittance[]
+  attempts            DeliveryCourierAttempt[]
 
   @@unique([orderId, merchantId])
   @@unique([orderId, branchId, merchantId])
   @@index([merchantId, branchId, dispatchedAt, orderId])
   @@index([merchantId, followupShiftId])
+  @@index([merchantId, courierId, dispatchedAt])
   @@map("pos_deliveries")
 }
 

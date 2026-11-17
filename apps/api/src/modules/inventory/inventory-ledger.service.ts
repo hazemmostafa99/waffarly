@@ -219,11 +219,11 @@ type QuantityActionLine = {
   unitCode: string;
 };
 
-async function prepareQuantityMovements(
+async function prepareQuantityMovements<T extends QuantityActionLine>(
   transaction: Prisma.TransactionClient,
   merchantId: string,
-  lines: readonly QuantityActionLine[],
-  warehouseId: (line: QuantityActionLine) => string,
+  lines: readonly T[],
+  warehouseId: (line: T) => string,
   debit: boolean,
 ) {
   const itemIds = [...new Set(lines.map((line) => line.stockItemId))];

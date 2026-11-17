@@ -11,6 +11,6 @@ export function assertDiningSellAccess(employee: PosEmployeeSession): void {
 }
 
 export function assertDiningBranchAccess(employee: PosEmployeeSession, branchId: string): void {
-  if (!employee.branches.some((branch) => branch.id === branchId && branch.archivedAt === null))
+  if (employee.branch.id !== branchId || employee.branch.archivedAt !== null)
     throw new ForbiddenException('This employee is not assigned to the selected branch.');
 }

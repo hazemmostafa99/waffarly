@@ -17,7 +17,7 @@ paths do not change HTTP URLs, request/response contracts or order source values
 | `dining`           | Table configuration, table sessions, attachment and moving sessions.                                               |
 | `billing`          | Check allocation, pickup collection preparation, payment and monetary refund commands.                             |
 | `receipts`         | Immutable check receipt issuance, saved snapshot parsing and receipt history.                                      |
-| `delivery`         | Existing POS delivery queue, dispatch/failure/completion and courier remittance.                                   |
+| `delivery`         | Merchant courier directory, POS delivery queue, dispatch attempts, performance and courier remittance.               |
 | `returns`          | Physical item returns and their informational waste reports.                                                       |
 | `customers`        | Customer/guest ownership and access; separately, merchant-local customer associations.                             |
 | `stock`            | Frozen stock requirements, inventory consumption and restoration.                                                  |
@@ -86,8 +86,11 @@ customer-visible response (`customer-order.mapper.ts`). The service still
 coordinates explicit guest claims. Guest identity caching remains per request;
 account and guest access are not inferred from contact details.
 
-Delivery separates work-list reads (`delivery-queue.query.ts`) from employee and
-custodian checks (`delivery-access.rules.ts`) and its existing command transaction.
+Delivery separates the merchant courier directory and its owner/POS entry points
+from work-list reads (`delivery-queue.query.ts`), employee/custodian checks
+(`delivery-access.rules.ts`) and the existing command transaction. Dispatch,
+failure and completion remain in one transaction so the current delivery state,
+attempt history and exact replay result cannot diverge.
 Item returns separate read/report queries (`item-return.queries.ts`) and response
 mapping (`item-return.mapper.ts`) from the write command. Dining table setup lives
 in `dining-tables.ts`; its owner routes live under `http/owner`.

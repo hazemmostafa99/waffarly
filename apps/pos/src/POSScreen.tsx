@@ -35,7 +35,6 @@ export function POSScreen() {
   const hydratedScope = usePosWorkspaceStore((state) => state.hydratedScope);
   const persistenceError = usePosWorkspaceStore((state) => state.persistenceError);
   const hydrate = usePosWorkspaceStore((state) => state.hydrate);
-  const selectBranch = usePosWorkspaceStore((state) => state.selectBranch);
   const savePendingAction = usePosWorkspaceStore((state) => state.savePendingAction);
   const removePendingAction = usePosWorkspaceStore((state) => state.removePendingAction);
   const [isOnline, setIsOnline] = useState(
@@ -43,11 +42,7 @@ export function POSScreen() {
   );
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
   const isWorkspaceHydrated = hydratedScope === scope;
-  const firstAssignedBranch = employee.branches[0]?.id ?? '';
-  const savedBranchId = workspace?.selectedBranchId;
-  const branchId = employee.branches.some((branch) => branch.id === savedBranchId)
-    ? savedBranchId!
-    : firstAssignedBranch;
+  const branchId = employee.branch.id;
 
   useEffect(() => {
     hydrate(employee.merchantId, employee.id);
@@ -158,18 +153,6 @@ export function POSScreen() {
     }
   }
 
-  function changeBranch(nextBranchId: string) {
-    try {
-      selectBranch(employee.merchantId, employee.id, nextBranchId);
-      setActionErrors({});
-    } catch (cause) {
-      setActionErrors((current) => ({
-        ...current,
-        workspace: cause instanceof Error ? cause.message : t('Could not save this POS workspace.'),
-      }));
-    }
-  }
-
   function getStatusClass(status: StorefrontOrderSummary['status']) {
     if (status === 'pending') return 'bg-warning/15 text-warning';
     if (status === 'accepted') return 'bg-info/15 text-info';
@@ -192,20 +175,6 @@ export function POSScreen() {
           </h2>
         </div>
         <div className="flex flex-wrap items-end justify-start gap-3 md:justify-end">
-          <label className="grid min-w-44 flex-1 gap-1.5 text-xs text-muted-foreground sm:flex-none">
-            {t('Branch')}
-            <select
-              className="min-h-10 rounded-lg border border-input bg-card px-3 text-sm text-foreground"
-              value={branchId}
-              onChange={(event) => changeBranch(event.target.value)}
-            >
-              {employee.branches.map((branch) => (
-                <option key={branch.id} value={branch.id}>
-                  {branch.name}
-                </option>
-              ))}
-            </select>
-          </label>
           <PosButton
             variant="outline"
             type="button"
@@ -276,13 +245,6 @@ export function POSScreen() {
         <p className="m-0 text-sm text-muted-foreground" role="status">
           {t('Loading orders…')}
         </p>
-      ) : !employee.branches.length ? (
-        <div
-          className="rounded-xl border border-dashed border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground"
-          role="status"
-        >
-          {t('No branches are assigned to this employee.')}
-        </div>
       ) : orders.length === 0 && (!ordersQueryError || Boolean(ordersQuery.data)) ? (
         <div
           className="rounded-xl border border-dashed border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground"

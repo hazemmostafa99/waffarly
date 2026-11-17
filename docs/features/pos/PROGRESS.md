@@ -23,7 +23,8 @@ After every implementation slice:
 
 ## Current status
 
-- Last updated: 2026-10-20.
+- Last updated: 2026-11-17.
+- Current bounded slice: M2/POS-D19 implements the single-branch employee and fixed browser/register flow across Auth, Shifts, POS and owner register setup. The focused pairing unit suite passes 11/11; contracts/database compilation, Prisma Client generation, and API/POS/dashboard typechecks pass. Local PostgreSQL is offline, so the new migration is authored but not applied. Full suites and cashier/owner manual acceptance remain pending.
 - Current bounded slice: M1/POS-D14 merchant accent is now saved in Merchants and read by the cashier workspace; M9.24 adds that read to the guarded live CI journey. API, database, owner UI and cashier UI tests pass. The real browser/API journey and owner/cashier acceptance remain pending. POS discount application, approval flow and reporting are deferred under user-confirmed POS-D17.
 - Latest completed verification: a fresh PostgreSQL 17 rehearsal applied all 51 migrations; all ten CI database suites passed **25/25** and Prisma reported the database up to date. The full API HTTP/unit suite passed **184/184**, POS unit suite **26/26**, merchant accent owner UI **2/2** desktop/mobile and POS accent/fallback UI **4/4** desktop/mobile. API/POS/dashboard typecheck, lint and builds pass; the POS and dashboard builds retain their existing chunk-size advisories.
 - Latest cross-page UI verification: all eight mocked POS Playwright configs (checkout, dining, login, employees, Kitchen queue, receipt detail, receipts and shift) passed **154 tests** with **2 skipped**. No real sale, payment or API write was submitted.
@@ -412,6 +413,14 @@ Reference-alignment decisions confirmed on 2026-10-17:
 
 Do not ask again whether orange/configurable branding or 80mm/PDF is wanted. Ask for remaining hardware specifics when their implementation depends on them; do not schedule ETA integration unless its scope is reopened.
 
+### Decision register addendum — POS-D19
+
+| ID | Status | Decision / next action | Gate |
+| --- | --- | --- | --- |
+| POS-D19 | CONFIRMED, 2026-11-17 | Each POS employee has one assigned branch; each browser stays paired with one cashier register. Owner unpairing is allowed after its shift is closed. | M2 |
+
+POS-D12 is now partial: POS-D19 resolves branch/register provisioning; deployment topology, timezone/business day, retention, load and measurable performance budget remain open.
+
 ## Milestone checklist
 
 ### M0 — Contract and source audit
@@ -466,6 +475,7 @@ This slice refines the prototype/design system; it does not mark production sale
 - [x] Enforce cashier/supervisor capabilities server-side. Role resolution preserves legacy grants and adds only preset capabilities; implemented void/refund/cash/shift-close commands validate their owning permission and supervisor approval at the API boundary. Unit, HTTP and rollback-only database checks cover grants, denial and attribution. POS discount application and workflow are deferred under POS-D17; existing supervisor grants are unchanged.
 - [x] Build the POS opening screen with React Query and durable Zustand recovery, plus the owner register setup page.
 - [x] HTTP/unit and browser-stub checks cover role permissions, auth boundaries, request validation, register setup and shift opening. PostgreSQL coverage includes duplicate replay, competing opens, foreign-tenant/branch denial, explicit POS logout revoking only that device's session, and employee deactivation revoking its sessions.
+- [~] POS-D19 pairs a browser with one active register on the employee's single assigned branch; POS hides register selection afterward, guarded routes reject a different register, and owner unpairing waits for shift closure. Prisma Client generation passes; local PostgreSQL is offline, so the migration is not applied and behavior is not runtime-verified.
 - [~] Complete the live cashier browser journey and operator walkthrough; no configured cashier device/account was available for acceptance.
 
 Exit: an authorized operator can open a valid register shift. The PostgreSQL concurrency and tenant/branch boundary checks pass; a complete cashier browser journey and revoked-session verification remain. Closing/reconciliation is still M8.
@@ -565,6 +575,31 @@ Exit: operators can reconcile a complete business shift and owners can explain a
 Exit: launch is reviewable with real evidence. No mandatory task remains incomplete or silently deferred.
 
 ## Verification ledger
+
+### 2026-11-17 — POS-D19 browser/register pairing source review
+
+| Check | Result | Scope / limitations |
+| --- | --- | --- |
+| Source review | COMPLETE | Reviewed Auth session/device cookie, employee guard, pairing/unpair services, shift/cash assignment checks and POS/owner flows. This is not a compile or runtime check. |
+| Contracts compile | PASS | `packages/contracts/node_modules/.bin/tsc.cmd -p tsconfig.json`. |
+| Prisma Client + database package compile | PASS | `prisma generate --config prisma.config.ts`, then `packages/database/node_modules/.bin/tsc.cmd -p tsconfig.json`. |
+| API typecheck | PASS | `apps/api/node_modules/.bin/tsc.cmd --noEmit -p tsconfig.json`, after rebuilding workspace contracts and database outputs. |
+| POS typecheck | PASS | `apps/pos/node_modules/.bin/tsc.cmd --noEmit -p tsconfig.json`, after rebuilding workspace contracts and database outputs. |
+| Merchant Dashboard typecheck | PASS | `apps/merchant-dashboard/node_modules/.bin/tsc.cmd --noEmit -p tsconfig.json`, after rebuilding workspace contracts and database outputs. |
+| Local migration status | BLOCKED | `prisma migrate status --config prisma.config.ts` reached PostgreSQL at `localhost:5433` but its schema engine failed; `Test-NetConnection localhost:5433` returned `False`. Docker Compose cannot resolve required `POSTGRES_USER`, so no database was started or migration applied. |
+| POS register binding unit tests | PASS — 11/11 | `node --import tsx --test test/unit/pos-register-device-binding.test.ts`; mocks verify setup gating, register mismatch rejection, branch/activity scope, single-browser/register conflicts and safe owner unpairing. No live PostgreSQL behavior is proven. |
+| Targeted ESLint | PASS | Auth, Shifts, changed POS order callers and tests; POS layout/register/shift/catalog/delivery screens; owner Registers page; shared contracts and Arabic locale. |
+| Scoped `git diff --check` | PASS | No whitespace errors in this slice; Git reported only its normal LF-to-CRLF notices for the Windows workspace. |
+| Full API/POS/browser suites | NOT RUN | Cashier/owner manual acceptance remains pending. |
+| Browser `/shift` acceptance | NOT VERIFIED | The desktop Chrome window exposed a different local app, and the browser provider did not expose Chrome (`Browser is not available: chrome`). No UI result is claimed. |
+
+Targeted ESLint commands (all from the repository root):
+
+```text
+.\node_modules\.bin\eslint.cmd apps\api\src\modules\auth apps\api\src\modules\shifts apps\api\src\modules\orders\billing\check-payment.service.ts apps\api\src\modules\orders\delivery\pos-delivery.service.ts apps\api\src\modules\orders\kitchen\kitchen-order-amendment.service.ts apps\api\test\unit\pos-register-device-binding.test.ts apps\api\test\unit\order-lifecycle.test.ts apps\api\test\database\recipe-order-lifecycle.database.test.ts apps\api\test\http\pos-appearance.e2e.test.ts
+.\node_modules\.bin\eslint.cmd apps\pos\src\POSLayout.tsx apps\pos\src\features\registers\pos-register-pairing.tsx apps\pos\src\features\shifts\pos-shift-screen.tsx apps\pos\src\features\catalog\pos-catalog-screen.tsx apps\pos\src\features\delivery\pos-delivery-screen.tsx
+.\node_modules\.bin\eslint.cmd apps\merchant-dashboard\src\features\pos\RegistersPage.tsx packages\contracts\src\index.ts packages\contracts\src\pos.ts packages\contracts\src\shifts.ts packages\ui\src\locales\ar.ts
+```
 
 ### M5.5 latest checks
 
@@ -869,6 +904,15 @@ The live receipt print button invokes the browser print dialog, where an operato
 - Environment note: an initial batch of simultaneous Node checks exceeded the local heap. Serial reruns of POS typecheck and Prisma validation passed. Migrations are applied only to the configured local development/test database; no production migration or deployment occurred.
 
 ## Delivery log
+
+### 2026-11-17 — POS-D19 single-branch employee and browser/register binding
+
+- Added the POS browser UUID to POS auth sessions and a unique merchant/browser binding on `PosRegister`; login persists the UUID in an HttpOnly cookie across logout.
+- Added one-time cashier pairing from active, unpaired registers on the employee's assigned branch. The POS guard permits setup routes before pairing, then pins shift and cash operations to that register.
+- Added owner unpairing with revision and audit actor checks; it refuses unpairing while a shift is open or closing. The owner Registers page reports pairing status and provides the unpair action.
+- Removed register selection from shift, catalog and delivery screens; they display the browser's paired cashier station. POS setup now offers sign-out on a blocked session, and the layout imports its existing delivery recovery notice.
+- Rollout: apply `20261117190000_pos_register_device_binding` before API rollout. Existing POS sessions without a device UUID must sign in again. Browser identity relies on an HttpOnly cookie and is not hardware attestation.
+- Verification is recorded above; cashier/owner acceptance remains pending.
 
 ### 2026-10-17 — POS planning and architecture
 

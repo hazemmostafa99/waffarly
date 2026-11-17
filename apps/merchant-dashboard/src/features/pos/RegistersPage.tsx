@@ -34,6 +34,7 @@ export function RegistersPage() {
   const [editing, setEditing] = useState<PosRegisterSummary | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [draft, setDraft] = useState<RegisterDraft>(emptyDraft);
+  const [confirmUnpairId, setConfirmUnpairId] = useState<string | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -127,6 +128,35 @@ export function RegistersPage() {
     }
   }
 
+  async function unpairDevice(register: PosRegisterSummary) {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      await apiRequest<PosRegisterSummary>(`/owner/pos/registers/${register.id}/unpair`, {
+        method: 'POST',
+        body: JSON.stringify({ revision: register.revision }),
+      });
+      setConfirmUnpairId(null);
+      setNotice(
+        text(
+          `Browser unpaired from ${register.name}.`,
+          `تم فك ربط المتصفح من ${register.name}.`,
+        ),
+      );
+      setRefresh((value) => value + 1);
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? errorText(cause.message)
+          : text('Could not unpair this browser.', 'تعذر فك ربط المتصفح.'),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const columns: DataTableColumn<PosRegisterSummary>[] = [
     {
       id: 'register',
@@ -149,16 +179,58 @@ export function RegistersPage() {
       ),
     },
     {
+      id: 'device',
+      header: text('Browser', 'المتصفح'),
+      cell: (register) => (
+        <span className={`products-pill ${register.devicePaired ? 'mint' : 'cream'}`}>
+          {register.devicePaired ? text('Paired', 'مرتبط') : text('Not paired', 'غير مرتبط')}
+        </span>
+      ),
+    },
+    {
       id: 'actions',
       header: text('Actions', 'الإجراءات'),
       cell: (register) => (
-        <button
-          className="products-button register-edit-button"
-          type="button"
-          onClick={() => startEdit(register)}
-        >
-          {text('Edit', 'تعديل')}
-        </button>
+        <div className="register-actions">
+          <button
+            className="products-button register-edit-button"
+            type="button"
+            disabled={busy}
+            onClick={() => startEdit(register)}
+          >
+            {text('Edit', 'تعديل')}
+          </button>
+          {register.devicePaired &&
+            (confirmUnpairId === register.id ? (
+              <>
+                <button
+                  className="products-button register-unpair-button"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void unpairDevice(register)}
+                >
+                  {busy ? text('Unpairing…', 'جارٍ فك الربط…') : text('Confirm unpair', 'تأكيد فك الربط')}
+                </button>
+                <button
+                  className="products-button register-edit-button"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setConfirmUnpairId(null)}
+                >
+                  {text('Cancel', 'إلغاء')}
+                </button>
+              </>
+            ) : (
+              <button
+                className="products-button register-unpair-button"
+                type="button"
+                disabled={busy}
+                onClick={() => setConfirmUnpairId(register.id)}
+              >
+                {text('Unpair browser', 'فك ربط المتصفح')}
+              </button>
+            ))}
+        </div>
       ),
     },
   ];

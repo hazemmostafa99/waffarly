@@ -19,6 +19,7 @@ import { posShiftClosePreviewSchema } from '../shifts.schemas.js';
 import { shiftInclude } from '../shift-records.js';
 import { buildShiftReconciliation } from './shift-reconciliation.js';
 import {
+  assertPosRegisterAssignment,
   readCurrentShiftPermissions,
   assertShiftBranchAssignment,
   requireShiftAccess,
@@ -42,6 +43,7 @@ export async function getReconciliation(
   });
   if (!shift) throw new NotFoundException('The open register shift was not found.');
   assertShiftBranchAssignment(employee, shift.branchId);
+  assertPosRegisterAssignment(employee, shift.registerId);
   return toLiveShiftSummary(await buildShiftReconciliation(prisma, shift));
 }
 
@@ -67,6 +69,7 @@ export async function previewCloseShift(
       });
       if (!shift) throw new NotFoundException('The open register shift was not found.');
       assertShiftBranchAssignment(employee, shift.branchId);
+      assertPosRegisterAssignment(employee, shift.registerId);
       const actorPermissions = await readCurrentShiftPermissions(tx, employee, shift.branchId);
       if (!actorPermissions.includes('open_register_shift'))
         throw new ForbiddenException(

@@ -12,6 +12,7 @@ import { cashPageSchema } from '../cash-custody.schemas.js';
 import { page, toCashTransferSummary, transferInclude } from './custody-records.js';
 
 import { requireEmployeeCashBranch } from './custody-access.js';
+import { assertPosRegisterAssignment } from '../access/shift-access.rules.js';
 
 export async function listTransfers(
   prisma: PrismaService,
@@ -20,14 +21,18 @@ export async function listTransfers(
   employee?: PosEmployeeSession,
 ): Promise<CursorPage<CashTransferSummary>> {
   const q = parseRequest(cashPageSchema, input);
-  if (employee) await requireEmployeeCashBranch(prisma, employee, q.branchId ?? '');
+  if (employee) {
+    await requireEmployeeCashBranch(prisma, employee, q.branchId ?? '');
+    if (q.registerId) assertPosRegisterAssignment(employee, q.registerId);
+  }
+  const registerId = employee?.deviceRegister?.id ?? q.registerId;
   const where: Prisma.PosCashTransferWhereInput = {
     merchantId,
     ...(q.branchId ? { branchId: q.branchId } : {}),
     ...(q.safeId ? { destinationSafeId: q.safeId } : {}),
     ...(q.shiftId ? { sourceShiftId: q.shiftId } : {}),
     ...(q.status ? { status: q.status } : {}),
-    ...(q.registerId ? { sourceShift: { registerId: q.registerId } } : {}),
+    ...(registerId ? { sourceShift: { registerId } } : {}),
     ...(employee
       ? {
           OR: [

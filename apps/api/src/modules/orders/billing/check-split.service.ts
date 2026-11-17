@@ -68,7 +68,7 @@ export class CheckSplitService {
               id: orderId,
               merchantId: employee.merchantId,
               source: 'pos',
-              branchId: { in: employee.branches.map((branch) => branch.id) },
+              branchId: employee.branch.id,
             },
             include: { lines: { orderBy: [{ position: 'asc' }, { id: 'asc' }] } },
           });

@@ -71,7 +71,7 @@ describe('cash custody HTTP boundaries', () => {
                 id,
                 merchantId,
                 permissions: ['open_register_shift'],
-                branches: [{ id: branchId, archivedAt: null }],
+                branch: { id: branchId, archivedAt: null },
               };
             },
           },

@@ -53,6 +53,14 @@ export type OwnerPosShiftCloseReportsInput = z.infer<typeof ownerPosShiftCloseRe
 export const posRegisterListSchema = z.object({ branchId: uuid }).strict();
 export type PosRegisterListQuery = z.infer<typeof posRegisterListSchema>;
 
+export const pairPosRegisterSchema = z.object({ registerId: uuid }).strict();
+export type PairPosRegisterRequest = z.infer<typeof pairPosRegisterSchema>;
+
+export const unpairPosRegisterSchema = z
+  .object({ revision: z.number().int().positive().max(2_147_483_646) })
+  .strict();
+export type UnpairPosRegisterRequest = z.infer<typeof unpairPosRegisterSchema>;
+
 export const posCurrentShiftSchema = z.object({ registerId: uuid }).strict();
 
 export const createPosRegisterSchema = z.object({ branchId: uuid, name: registerName }).strict();

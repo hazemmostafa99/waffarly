@@ -86,7 +86,7 @@ export function CreateStockItemDialog({
         onKeyDown={(event) => {
           if (
             event.key === 'Enter' &&
-            !event.isComposing &&
+            !event.nativeEvent.isComposing &&
             event.target instanceof HTMLInputElement
           ) {
             event.preventDefault();

@@ -223,7 +223,7 @@ async function openCheckout(
         displayName: 'Cashier',
         role: 'cashier',
         permissions: ['sell', 'open_register_shift'],
-        branches: [{ id: branchId, name: 'Main branch', archivedAt: null }],
+        branch: { id: branchId, name: 'Main branch', archivedAt: null },
       },
     }),
   );

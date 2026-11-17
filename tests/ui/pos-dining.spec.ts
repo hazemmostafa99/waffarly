@@ -19,7 +19,7 @@ test('cashier moves a table session and splits whole quantities from the dining 
     displayName: 'Cashier',
     role: 'cashier',
     permissions: ['sell', 'open_register_shift'],
-    branches: [{ id: branchId, name: 'Main branch', archivedAt: null }],
+    branch: { id: branchId, name: 'Main branch', archivedAt: null },
   };
   const session = {
     id: sessionId,
@@ -276,7 +276,7 @@ test('dining keeps an empty branch clear without inventing tables or sessions', 
         displayName: 'Cashier',
         role: 'cashier',
         permissions: ['sell', 'open_register_shift'],
-        branches: [{ id: branchId, name: 'Main branch', archivedAt: null }],
+        branch: { id: branchId, name: 'Main branch', archivedAt: null },
       },
     }),
   );

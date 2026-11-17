@@ -21,9 +21,9 @@ export function PosPaymentRecoveryNotice({ employee }: { employee: PosEmployeeSe
       : EMPTY_PENDING_PAYMENTS,
   );
   const [recoveryTarget, setRecoveryTarget] = useState<RecoveryTarget | null>(null);
-  const assignedBranches = new Map(employee.branches.map((branch) => [branch.id, branch.name]));
+  const assignedBranch = employee.branch;
   const recoverable = Object.entries(pendingPayments).filter(([, pending]) =>
-    assignedBranches.has(pending.branchId),
+    pending.branchId === assignedBranch.id,
   );
 
   return (
@@ -50,7 +50,7 @@ export function PosPaymentRecoveryNotice({ employee }: { employee: PosEmployeeSe
                   <strong>{t('Order #{{id}}', { id: orderId.slice(0, 8) })}</strong>
                   <span className="text-muted-foreground">
                     {t('Branch: {{branch}}', {
-                      branch: assignedBranches.get(pending.branchId) ?? pending.branchId,
+                      branch: assignedBranch.name,
                     })}
                   </span>
                 </span>

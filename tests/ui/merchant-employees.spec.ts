@@ -13,8 +13,7 @@ const employee = {
   savedPermissions: ['accept_recipe_orders', 'start_preparation'],
   active: true,
   revision: 3,
-  branchIds: [branchId],
-  branches: [{ id: branchId, name: 'Central', archivedAt: null }],
+  branch: { id: branchId, name: 'Central', archivedAt: null },
   createdAt: '2026-10-15T12:00:00Z',
   updatedAt: '2026-10-15T12:00:00Z',
 };
@@ -72,11 +71,11 @@ async function setup(page: Page, locale: string, empty = false, failFirstWrite =
       ...employee,
       ...body,
       revision: 4,
-      branches: (body.branchIds as string[]).map((id) => ({
-        id,
+      branch: {
+        id: body.branchId as string,
         name: 'Central',
         archivedAt: null,
-      })),
+      },
     } as typeof employee;
     rows = [saved];
     return route.fulfill({ json: saved });
@@ -178,11 +177,11 @@ for (const locale of ['en', 'ar']) {
     });
     await save.click();
     await expect(dialog.getByRole('alert')).toContainText(
-      ar ? 'عيّن فرعًا نشطًا واحدًا على الأقل.' : 'Assign at least one active branch.',
+      ar ? 'اختر فرعًا نشطًا.' : 'Choose an active branch.',
     );
     expect(writes).toHaveLength(0);
     const branchPicker = dialog.getByRole('combobox', {
-      name: ar ? 'إضافة فرع نشط' : 'Add an active branch',
+      name: ar ? 'اختر فرعًا نشطًا' : 'Choose an active branch',
       exact: true,
     });
     await branchPicker.fill('Central');
@@ -208,7 +207,7 @@ for (const locale of ['en', 'ar']) {
         username: 'amira1',
         password: 'browser-test-password',
         role: 'cashier',
-        branchIds: [branchId],
+        branchId,
       },
     });
     await expect(page.getByText('@amira1', { exact: true })).toBeVisible();
@@ -229,7 +228,6 @@ for (const locale of ['en', 'ar']) {
       .getByLabel(ar ? 'اسم الموظف' : 'Employee name', { exact: true })
       .fill('Amira Updated');
     await dialog.getByLabel(ar ? 'الحساب نشط' : 'Account active', { exact: true }).uncheck();
-    await dialog.getByRole('button', { name: ar ? 'إزالة' : 'Remove', exact: true }).click();
     await dialog
       .getByRole('button', { name: ar ? 'حفظ الموظف' : 'Save employee', exact: true })
       .click();
@@ -242,7 +240,7 @@ for (const locale of ['en', 'ar']) {
           displayName: 'Amira Updated',
           active: false,
           role: 'cashier',
-          branchIds: [],
+          branchId,
         },
       },
     ]);

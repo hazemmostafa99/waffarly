@@ -74,17 +74,17 @@ export class OrderLifecycleService {
     actor: string,
     orderId: string,
     input: AcceptRecipeOrderRequest,
-    branchIds: readonly string[],
+    branchId: string,
   ) {
     const parsed = parseRequest(acceptRecipeOrderSchema, input);
-    if (!branchIds.includes(parsed.branchId))
+    if (branchId !== parsed.branchId)
       throw new ForbiddenException('This employee is not assigned to the selected branch.');
     return this.applyOrderTransition(
       merchantId,
       actor,
       orderId,
       { action: 'accept', input: parsed },
-      branchIds,
+      branchId,
     );
   }
   startPreparation(
@@ -104,14 +104,14 @@ export class OrderLifecycleService {
     actor: string,
     orderId: string,
     input: StartOrderPreparationRequest,
-    branchIds: readonly string[],
+    branchId: string,
   ) {
     return this.applyOrderTransition(
       merchantId,
       actor,
       orderId,
       { action: 'prepare', input: parseRequest(startOrderPreparationSchema, input) },
-      branchIds,
+      branchId,
     );
   }
 
@@ -120,14 +120,14 @@ export class OrderLifecycleService {
     actor: string,
     orderId: string,
     input: MarkOrderReadyRequest,
-    branchIds: readonly string[],
+    branchId: string,
   ) {
     return this.applyOrderTransition(
       merchantId,
       actor,
       orderId,
       { action: 'ready', input: parseRequest(markOrderReadySchema, input) },
-      branchIds,
+      branchId,
     );
   }
 
@@ -137,7 +137,7 @@ export class OrderLifecycleService {
     orderId: string,
     lineId: string,
     input: MarkKitchenItemReadyRequest,
-    branchIds: readonly string[],
+    branchId: string,
   ) {
     return this.applyOrderTransition(
       merchantId,
@@ -148,7 +148,7 @@ export class OrderLifecycleService {
         lineId,
         input: parseRequest(markKitchenItemReadySchema, input),
       },
-      branchIds,
+      branchId,
     );
   }
 
@@ -157,14 +157,14 @@ export class OrderLifecycleService {
     actor: string,
     orderId: string,
     input: HandoverPosOrderRequest,
-    branchIds: readonly string[],
+    branchId: string,
   ) {
     return this.applyOrderTransition(
       merchantId,
       actor,
       orderId,
       { action: 'handover', input: parseRequest(handoverPosOrderSchema, input) },
-      branchIds,
+      branchId,
     );
   }
 
@@ -195,7 +195,7 @@ export class OrderLifecycleService {
         input: parsed,
         ...(approverEmployeeId ? { approverEmployeeId } : {}),
       },
-      employee.branches.map((branch) => branch.id),
+      employee.branch.id,
       { employeeId: employee.id, branchId: input.branchId },
     );
   }
@@ -206,7 +206,7 @@ export class OrderLifecycleService {
     actor: string,
     orderId: string,
     command: OrderTransitionCommand,
-    branchIds?: readonly string[],
+    branchId?: string,
     posCancelActor?: { employeeId: string; branchId: string },
   ): Promise<StorefrontOrderSummary> {
     const fingerprint = createHash('sha256')
@@ -238,7 +238,7 @@ export class OrderLifecycleService {
             merchantId,
             orderId,
             command,
-            branchIds,
+            branchId,
             posCancelActor,
           );
           // 3. Return the earlier result when this exact request already succeeded.

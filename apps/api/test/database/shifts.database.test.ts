@@ -67,6 +67,7 @@ it(
       const employeeRecord = await prisma.posEmployee.create({
         data: {
           merchantId: merchant.id,
+          branchId: branch.id,
           username: `shift-${token}`,
           displayName: 'POS shift cashier',
           passwordHash: 'database-test-only',
@@ -76,17 +77,10 @@ it(
           updatedBy: 'pos-shift-database-test',
         },
       });
-      await prisma.posEmployeeBranch.create({
-        data: {
-          merchantId: merchant.id,
-          employeeId: employeeRecord.id,
-          branchId: branch.id,
-          createdBy: 'pos-shift-database-test',
-        },
-      });
       const otherEmployeeRecord = await prisma.posEmployee.create({
         data: {
           merchantId: otherMerchantRecord.id,
+          branchId: otherBranch.id,
           username: `other-shift-${token}`,
           displayName: 'Other POS shift cashier',
           passwordHash: 'database-test-only',
@@ -94,14 +88,6 @@ it(
           permissions: ['open_register_shift', 'sell'],
           createdBy: 'pos-shift-database-test',
           updatedBy: 'pos-shift-database-test',
-        },
-      });
-      await prisma.posEmployeeBranch.create({
-        data: {
-          merchantId: otherMerchantRecord.id,
-          employeeId: otherEmployeeRecord.id,
-          branchId: otherBranch.id,
-          createdBy: 'pos-shift-database-test',
         },
       });
 
@@ -123,7 +109,7 @@ it(
         displayName: employeeRecord.displayName,
         role: 'cashier',
         permissions: ['open_register_shift', 'sell'],
-        branches: [{ id: branch.id, name: branch.name, archivedAt: null }],
+        branch: { id: branch.id, name: branch.name, archivedAt: null },
       };
 
       const retry = {
@@ -166,7 +152,7 @@ it(
 
       await assert.rejects(
         service.openShift(
-          { ...employee, branches: [] },
+          { ...employee, branch: { ...employee.branch, id: 'another-branch' } },
           {
             registerId: register.id,
             requestId: randomUUID(),
@@ -182,7 +168,7 @@ it(
         displayName: otherEmployeeRecord.displayName,
         role: 'cashier',
         permissions: ['open_register_shift', 'sell'],
-        branches: [{ id: otherBranch.id, name: otherBranch.name, archivedAt: null }],
+        branch: { id: otherBranch.id, name: otherBranch.name, archivedAt: null },
       };
       await assert.rejects(
         service.openShift(otherMerchant, {
@@ -198,7 +184,6 @@ it(
           await prisma.$transaction(async (tx) => {
             await tx.posShift.deleteMany({ where: { merchantId } });
             await tx.posRegister.deleteMany({ where: { merchantId } });
-            await tx.posEmployeeBranch.deleteMany({ where: { merchantId } });
             await tx.posEmployee.deleteMany({ where: { merchantId } });
             await tx.branch.deleteMany({ where: { merchantId } });
             // Remove the subscription created with this test merchant before its parent row.

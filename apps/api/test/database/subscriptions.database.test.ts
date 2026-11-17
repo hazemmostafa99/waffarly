@@ -301,18 +301,13 @@ it(
             const employee = await tx.posEmployee.create({
               data: {
                 merchantId: merchant.id,
+                branchId: branch.id,
                 username: 'recovery-cashier',
                 displayName: 'Recovery cashier',
                 passwordHash: 'unused',
                 role: 'cashier',
                 createdBy: 'subscription-test',
                 updatedBy: 'subscription-test',
-                branches: {
-                  create: {
-                    branchId: branch.id,
-                    createdBy: 'subscription-test',
-                  },
-                },
               },
             });
             const posToken = randomUUID();

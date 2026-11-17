@@ -95,7 +95,7 @@ describe('POS employee role permissions', () => {
       username: 'employee1',
       displayName: 'Employee One',
       password: 'a-long-password',
-      branchIds: ['33333333-3333-4333-8333-333333333333'],
+      branchId: '33333333-3333-4333-8333-333333333333',
     };
     for (const role of POS_EMPLOYEE_ROLES) {
       assert.equal(createPosEmployeeSchema.safeParse({ ...input, role }).success, true);
@@ -104,7 +104,7 @@ describe('POS employee role permissions', () => {
           displayName: input.displayName,
           active: true,
           revision: 1,
-          branchIds: input.branchIds,
+          branchId: input.branchId,
           role,
         }).success,
         true,
@@ -117,7 +117,7 @@ describe('POS employee role permissions', () => {
           displayName: input.displayName,
           active: true,
           revision: 1,
-          branchIds: input.branchIds,
+          branchId: input.branchId,
           role,
         }).success,
         false,

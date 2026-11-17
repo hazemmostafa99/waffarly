@@ -174,7 +174,7 @@ export class PosDeliveryService {
         );
       const result = previous.result as unknown as PosDeliverySummary;
       assertDeliveryBranchAccess(employee, result.branchId);
-      return result;
+      return { ...result, courierId: result.courierId ?? null };
     };
     const prior = await this.db.storefrontOrderAction.findUnique({
       where: {
@@ -220,6 +220,7 @@ export class PosDeliveryService {
               branchId: observed.branchId,
               shiftId: command.receivingShiftId,
               followupShiftId: observed.delivery?.followupShiftId ?? null,
+              employee,
             });
           await tx.$queryRaw`SELECT "id" FROM "storefront_orders" WHERE "id" = ${orderId}::uuid AND "merchantId" = ${employee.merchantId}::uuid FOR UPDATE`;
           const existingAction = await tx.storefrontOrderAction.findUnique({
@@ -249,6 +250,7 @@ export class PosDeliveryService {
                 merchantId: employee.merchantId,
                 branchId: observed.branchId,
                 shiftId: observed.posShiftId,
+                employee,
               });
             if (order.delivery) {
               const [balance] = await readDeliveryBalances(tx, employee.merchantId, {
@@ -266,6 +268,13 @@ export class PosDeliveryService {
                 permissions,
               );
             }
+            const courier = await resolveDispatchCourier(
+              tx,
+              employee.merchantId,
+              observed.branchId,
+              command,
+            );
+            const dispatchedAt = new Date();
             await tx.posDelivery.upsert({
               where: { orderId },
               create: {
@@ -274,14 +283,26 @@ export class PosDeliveryService {
                 branchId: observed.branchId,
                 followupShiftId: observed.posShiftId,
                 custodianEmployeeId: employee.id,
-                courierName: command.courierName,
+                courierId: courier.id,
+                courierName: courier.name,
+                dispatchedAt,
               },
               update: {
-                courierName: command.courierName,
+                courierId: courier.id,
+                courierName: courier.name,
                 status: 'out_for_delivery',
                 failureReason: null,
-                dispatchedAt: new Date(),
+                dispatchedAt,
                 revision: { increment: 1 },
+              },
+            });
+            await tx.deliveryCourierAttempt.create({
+              data: {
+                merchantId: employee.merchantId,
+                orderId,
+                courierId: courier.id,
+                courierName: courier.name,
+                dispatchedAt,
               },
             });
           } else {
@@ -348,11 +369,19 @@ export class PosDeliveryService {
                   'Only an outgoing delivery can be marked delivered or failed.',
                 );
               const delivered = command.action === 'delivered';
+              const completedAt = new Date();
+              await tx.deliveryCourierAttempt.updateMany({
+                where: { merchantId: employee.merchantId, orderId, status: 'out_for_delivery' },
+                data: {
+                  status: delivered ? 'delivered' : 'failed',
+                  completedAt,
+                },
+              });
               await tx.posDelivery.update({
                 where: { orderId },
                 data: {
                   status: delivered ? 'delivered' : 'failed',
-                  deliveredAt: delivered ? new Date() : null,
+                  deliveredAt: delivered ? completedAt : null,
                   failureReason: command.action === 'failed' ? command.reason : null,
                   revision: { increment: 1 },
                 },
@@ -360,7 +389,7 @@ export class PosDeliveryService {
               if (delivered)
                 await tx.storefrontOrder.update({
                   where: { id: orderId },
-                  data: { status: 'completed', completedAt: new Date() },
+                  data: { status: 'completed', completedAt },
                 });
             }
           }
@@ -400,4 +429,44 @@ export class PosDeliveryService {
       throw error;
     }
   }
+}
+
+async function resolveDispatchCourier(
+  tx: Prisma.TransactionClient,
+  merchantId: string,
+  branchId: string,
+  command: Extract<PosDeliveryCommand, { action: 'dispatch' }>,
+): Promise<{ id: string; name: string }> {
+  const branchAssignment = {
+    some: { branchId, branch: { archivedAt: null } },
+  };
+  if ('courierId' in command) {
+    const courier = await tx.deliveryCourier.findFirst({
+      where: {
+        id: command.courierId,
+        merchantId,
+        active: true,
+        branches: branchAssignment,
+      },
+      select: { id: true, name: true },
+    });
+    if (courier) return courier;
+    throw new ConflictException('Choose an active courier assigned to this branch.');
+  }
+
+  // Resolve a saved pre-directory command only when its name identifies one eligible courier.
+  const matches = await tx.deliveryCourier.findMany({
+    where: {
+      merchantId,
+      active: true,
+      name: { equals: command.courierName, mode: 'insensitive' },
+      branches: branchAssignment,
+    },
+    select: { id: true, name: true },
+    take: 2,
+  });
+  if (matches.length === 1) return matches[0]!;
+  throw new ConflictException(
+    'The saved courier name is no longer unique for this branch. Select an active courier again.',
+  );
 }

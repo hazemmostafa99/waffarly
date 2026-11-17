@@ -1,4 +1,4 @@
-/** Manages staff accounts, their roles and assigned branches for one merchant. */
+/** Manages staff accounts, their roles and single-branch assignment for one merchant. */
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   POS_LEGACY_EMPLOYEE_PERMISSIONS,
@@ -23,10 +23,7 @@ import {
 } from './pos-employee.schemas.js';
 
 const employeeInclude = {
-  branches: {
-    orderBy: { branch: { name: 'asc' as const } },
-    select: { branch: { select: { id: true, name: true, archivedAt: true } } },
-  },
+  branch: { select: { id: true, name: true, archivedAt: true } },
 } satisfies Prisma.PosEmployeeInclude;
 
 @Injectable()
@@ -76,15 +73,14 @@ export class PosEmployeeService {
 
   async create(merchantId: string, actor: string, input: unknown): Promise<PosEmployeeSummary> {
     const parsed = parseRequest(createPosEmployeeSchema, input);
-    if (parsed.branchIds.length === 0)
-      throw new ConflictException('Assign at least one active branch.');
     const passwordHash = await hashPassword(parsed.password);
     try {
       return await this.prisma.$transaction(async (tx) => {
-        await this.assertActiveBranches(tx, merchantId, parsed.branchIds);
+        await this.assertActiveBranch(tx, merchantId, parsed.branchId);
         const employee = await tx.posEmployee.create({
           data: {
             merchantId,
+            branchId: parsed.branchId,
             username: parsed.username,
             displayName: parsed.displayName,
             passwordHash,
@@ -95,12 +91,6 @@ export class PosEmployeeService {
                 : [],
             createdBy: actor,
             updatedBy: actor,
-            branches: {
-              create: parsed.branchIds.map((branchId) => ({
-                createdBy: actor,
-                branch: { connect: { id_merchantId: { id: branchId, merchantId } } },
-              })),
-            },
           },
           include: employeeInclude,
         });
@@ -120,14 +110,22 @@ export class PosEmployeeService {
     input: unknown,
   ): Promise<PosEmployeeSummary> {
     const parsed = parseRequest(updatePosEmployeeSchema, input);
-    if (parsed.active && parsed.branchIds.length === 0)
-      throw new ConflictException('Assign at least one active branch to an active employee.');
     const passwordHash = parsed.password ? await hashPassword(parsed.password) : undefined;
     return this.prisma.$transaction(async (tx) => {
-      await this.assertActiveBranches(tx, merchantId, parsed.branchIds);
+      const current = await tx.posEmployee.findFirst({
+        where: { id: employeeId, merchantId },
+        select: { branchId: true, revision: true },
+      });
+      if (!current) throw new NotFoundException('Employee was not found.');
+      if (current.revision !== parsed.revision) {
+        throw new ConflictException('Employee changed since it was loaded. Refresh and try again.');
+      }
+
+      await this.assertActiveBranch(tx, merchantId, parsed.branchId);
       const changed = await tx.posEmployee.updateMany({
         where: { id: employeeId, merchantId, revision: parsed.revision },
         data: {
+          branchId: parsed.branchId,
           displayName: parsed.displayName,
           active: parsed.active,
           ...(parsed.role !== undefined ? { role: parsed.role } : {}),
@@ -137,25 +135,9 @@ export class PosEmployeeService {
         },
       });
       if (changed.count !== 1) {
-        const exists = await tx.posEmployee.findFirst({
-          where: { id: employeeId, merchantId },
-          select: { id: true },
-        });
-        if (!exists) throw new NotFoundException('Employee was not found.');
         throw new ConflictException('Employee changed since it was loaded. Refresh and try again.');
       }
-      await tx.posEmployeeBranch.deleteMany({ where: { employeeId, merchantId } });
-      if (parsed.branchIds.length) {
-        await tx.posEmployeeBranch.createMany({
-          data: parsed.branchIds.map((branchId) => ({
-            employeeId,
-            merchantId,
-            branchId,
-            createdBy: actor,
-          })),
-        });
-      }
-      if (passwordHash || !parsed.active) {
+      if (passwordHash || !parsed.active || current.branchId !== parsed.branchId) {
         await tx.authSession.deleteMany({ where: { subjectKind: 'POS', subjectId: employeeId } });
       }
       const employee = await tx.posEmployee.findFirst({
@@ -167,19 +149,18 @@ export class PosEmployeeService {
     });
   }
 
-  private async assertActiveBranches(
+  private async assertActiveBranch(
     tx: Prisma.TransactionClient,
     merchantId: string,
-    branchIds: string[],
+    branchId: string,
   ): Promise<void> {
-    if (branchIds.length === 0) return;
-    const branches = await tx.branch.findMany({
-      where: { id: { in: branchIds }, merchantId, archivedAt: null },
+    const branch = await tx.branch.findFirst({
+      where: { id: branchId, merchantId, archivedAt: null },
       select: { id: true },
     });
-    if (branches.length !== branchIds.length)
+    if (!branch)
       throw new ConflictException(
-        'Every assigned branch must be active and belong to this business.',
+        'Select an active branch that belongs to this business.',
       );
   }
 }
@@ -194,13 +175,14 @@ function toEmployeeSummary(employee: {
   revision: number;
   createdAt: Date;
   updatedAt: Date;
-  branches: Array<{ branch: { id: string; name: string; archivedAt: Date | null } }>;
+  branch: { id: string; name: string; archivedAt: Date | null };
 }): PosEmployeeSummary {
-  const branches = employee.branches.map(({ branch }) => ({
-    id: branch.id,
-    name: branch.name,
-    archivedAt: branch.archivedAt?.toISOString() ?? null,
-  }));
+  const assignedBranch = employee.branch;
+  const branch = {
+    id: assignedBranch.id,
+    name: assignedBranch.name,
+    archivedAt: assignedBranch.archivedAt?.toISOString() ?? null,
+  };
   return {
     id: employee.id,
     username: employee.username,
@@ -215,8 +197,7 @@ function toEmployeeSummary(employee: {
     ),
     active: employee.active,
     revision: employee.revision,
-    branchIds: branches.map((branch) => branch.id),
-    branches,
+    branch,
     createdAt: employee.createdAt.toISOString(),
     updatedAt: employee.updatedAt.toISOString(),
   };

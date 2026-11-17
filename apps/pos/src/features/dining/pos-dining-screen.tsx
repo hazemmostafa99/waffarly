@@ -26,13 +26,8 @@ export function PosDiningScreen() {
   const { employee } = useOutletContext<LayoutContext>();
   const { t, errorText, formatNumber } = useLocale();
   const queryClient = useQueryClient();
-  const workspace = usePosWorkspaceStore((state) => state.workspace);
   const hydrate = usePosWorkspaceStore((state) => state.hydrate);
-  const selectBranch = usePosWorkspaceStore((state) => state.selectBranch);
-  const branches = employee.branches.filter((branch) => branch.archivedAt === null);
-  const selectedBranchId = branches.some((branch) => branch.id === workspace?.selectedBranchId)
-    ? (workspace?.selectedBranchId ?? branches[0]?.id ?? '')
-    : (branches[0]?.id ?? '');
+  const selectedBranchId = employee.branch.id;
   const [selectedOrder, setSelectedOrder] = useState<{
     order: PosDiningSessionSummary['orders'][number];
     sessionTable: string;
@@ -44,17 +39,6 @@ export function PosDiningScreen() {
     () => hydrate(employee.merchantId, employee.id),
     [employee.id, employee.merchantId, hydrate],
   );
-  useEffect(() => {
-    if (!selectedBranchId || workspace?.selectedBranchId === selectedBranchId) return;
-    selectBranch(employee.merchantId, employee.id, selectedBranchId);
-  }, [
-    employee.id,
-    employee.merchantId,
-    selectBranch,
-    selectedBranchId,
-    workspace?.selectedBranchId,
-  ]);
-
   const tablesQuery = useQuery({
     queryKey: posDiningTablesKey(employee.merchantId, selectedBranchId),
     queryFn: ({ signal }) => getPosDiningTables(selectedBranchId, signal),
@@ -91,7 +75,7 @@ export function PosDiningScreen() {
     },
   });
 
-  const activeBranch = branches.find((branch) => branch.id === selectedBranchId);
+  const activeBranch = employee.branch;
   const message = tablesQuery.error ?? sessionsQuery.error ?? moveMutation.error;
 
   return (
@@ -107,24 +91,6 @@ export function PosDiningScreen() {
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
-          {branches.length > 1 && (
-            <label className="grid min-w-52 gap-1 text-xs text-muted-foreground">
-              {t('Branch')}
-              <select
-                className="min-h-10 rounded-lg border border-border bg-card px-3 text-sm text-foreground"
-                value={selectedBranchId}
-                onChange={(event) =>
-                  selectBranch(employee.merchantId, employee.id, event.target.value)
-                }
-              >
-                {branches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           <PosButton
             type="button"
             size="sm"

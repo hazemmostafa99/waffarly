@@ -82,11 +82,7 @@ export class CheckRefundService {
               id: orderId,
               merchantId: employee.merchantId,
               source: 'pos',
-              branchId: {
-                in: employee.branches
-                  .filter((branch) => branch.archivedAt === null)
-                  .map((branch) => branch.id),
-              },
+              branchId: employee.branch.id,
             },
             select: {
               id: true,
@@ -106,13 +102,8 @@ export class CheckRefundService {
               id: employee.id,
               merchantId: employee.merchantId,
               active: true,
-              branches: {
-                some: {
-                  merchantId: employee.merchantId,
-                  branchId: order.branchId,
-                  branch: { archivedAt: null },
-                },
-              },
+              branchId: order.branchId,
+              branch: { archivedAt: null },
             },
             select: { displayName: true, role: true, permissions: true },
           });
@@ -135,13 +126,8 @@ export class CheckRefundService {
                 id: approverEmployeeId,
                 merchantId: employee.merchantId,
                 active: true,
-                branches: {
-                  some: {
-                    merchantId: employee.merchantId,
-                    branchId: order.branchId,
-                    branch: { archivedAt: null },
-                  },
-                },
+                branchId: order.branchId,
+                branch: { archivedAt: null },
               },
               select: { displayName: true, role: true, permissions: true },
             });

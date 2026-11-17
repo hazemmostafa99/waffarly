@@ -36,7 +36,7 @@ const employee: PosEmployeeSession = {
   displayName: 'Cashier',
   role: 'cashier',
   permissions: ['sell'],
-  branches: [{ id: branchId, name: 'Main', archivedAt: null }],
+  branch: { id: branchId, name: 'Main', archivedAt: null },
 };
 
 describe('POS payment endpoint', () => {
@@ -270,7 +270,7 @@ describe('POS payment endpoint', () => {
       .send({ requestId })
       .expect(200, { id: orderId, status: 'ready' });
     assert.deepEqual(readyCalls, [
-      [merchantId, `pos:${employeeId}`, orderId, { requestId }, [branchId]],
+      [merchantId, `pos:${employeeId}`, orderId, { requestId }, branchId],
     ]);
   });
 
@@ -295,7 +295,7 @@ describe('POS payment endpoint', () => {
       .post(`/pos/orders/${orderId}/handover`)
       .send(body)
       .expect(200, { id: orderId, status: 'completed' });
-    assert.deepEqual(handoverCalls, [[merchantId, `pos:${employeeId}`, orderId, body, [branchId]]]);
+    assert.deepEqual(handoverCalls, [[merchantId, `pos:${employeeId}`, orderId, body, branchId]]);
   });
 
   it('requires an employee and loads payment state for an order', async () => {

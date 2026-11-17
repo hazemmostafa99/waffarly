@@ -57,8 +57,14 @@ export function PosShiftCashManagement({
   );
   const savePendingShiftClose = usePosWorkspaceStore((state) => state.savePendingShiftClose);
   const removePendingShiftClose = usePosWorkspaceStore((state) => state.removePendingShiftClose);
-  const pendingMovement = workspace?.pendingShiftCashMovement ?? null;
-  const pendingClose = workspace?.pendingShiftClose ?? null;
+  const pendingMovement =
+    workspace?.pendingShiftCashMovement?.branchId === branchId
+      ? (workspace.pendingShiftCashMovement ?? null)
+      : null;
+  const pendingClose =
+    workspace?.pendingShiftClose?.branchId === branchId
+      ? (workspace.pendingShiftClose ?? null)
+      : null;
   const canManageCash = employee.permissions.includes('manage_cash_movements');
   const canApproveClose = employee.permissions.includes('approve_shift_close');
   const canSell = employee.permissions.includes('sell');

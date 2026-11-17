@@ -3,6 +3,35 @@ import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
 import { decodeDeliveryRecovery } from './delivery-recovery.js';
 
+test('delivery recovery accepts new courier IDs and preserves older saved name commands', () => {
+  const orderId = randomUUID();
+  const branchId = randomUUID();
+  const requestId = randomUUID();
+  const newCommand = {
+    kind: 'action',
+    orderId,
+    branchId,
+    request: { action: 'dispatch', requestId, revision: 1, courierId: randomUUID() },
+  };
+  const oldCommand = {
+    ...newCommand,
+    request: {
+      action: 'dispatch',
+      requestId: randomUUID(),
+      revision: 1,
+      courierName: 'Courier Ali',
+    },
+  };
+  assert.deepEqual(decodeDeliveryRecovery(newCommand), newCommand);
+  assert.deepEqual(decodeDeliveryRecovery(oldCommand), oldCommand);
+  assert.throws(() =>
+    decodeDeliveryRecovery({
+      ...newCommand,
+      request: { ...newCommand.request, courierName: 'unexpected extra field' },
+    }),
+  );
+});
+
 test('delivery recovery preserves partial cash receipt and rejects credentials and altered payment shapes', () => {
   const saved = {
     kind: 'action',

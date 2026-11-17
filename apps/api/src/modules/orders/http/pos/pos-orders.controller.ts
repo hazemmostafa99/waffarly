@@ -78,7 +78,7 @@ export class PosOrdersController {
   list(@CurrentPosEmployee() employee: PosEmployeeSession, @Query() query: unknown) {
     requireEmployeePermission(employee, 'view_orders');
     const parsed = parseRequest(posOrderPageSchema, query);
-    if (!employee.branches.some((branch) => branch.id === parsed.branchId)) {
+    if (employee.branch.id !== parsed.branchId) {
       throw new ForbiddenException('This employee is not assigned to the selected branch.');
     }
     return this.orders.listForPos(employee.merchantId, parsed.branchId, {
@@ -100,7 +100,7 @@ export class PosOrdersController {
       `pos:${employee.id}`,
       id,
       input,
-      employee.branches.map((branch) => branch.id),
+      employee.branch.id,
     );
   }
 
@@ -117,7 +117,7 @@ export class PosOrdersController {
       `pos:${employee.id}`,
       id,
       parseRequest(handoverPosOrderSchema, body),
-      employee.branches.map((branch) => branch.id),
+      employee.branch.id,
     );
   }
 
@@ -130,7 +130,7 @@ export class PosOrdersController {
   ) {
     const input = parseRequest(cancelPosOrderSchema, body);
     requireEmployeePermission(employee, 'sell');
-    if (!employee.branches.some((branch) => branch.id === input.branchId))
+    if (employee.branch.id !== input.branchId)
       throw new ForbiddenException('This employee is not assigned to the selected branch.');
     const approverEmployeeId = employee.permissions.includes('approve_voids')
       ? undefined

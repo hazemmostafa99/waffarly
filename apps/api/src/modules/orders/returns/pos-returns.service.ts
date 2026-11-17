@@ -62,10 +62,7 @@ export class PosReturnsService {
       .digest('hex');
 
     return this.prisma.$transaction(async (tx) => {
-      const activeBranchIds = employee.branches
-        .filter((branch) => branch.archivedAt === null)
-        .map((branch) => branch.id);
-      if (!activeBranchIds.includes(input.branchId))
+      if (employee.branch.id !== input.branchId || employee.branch.archivedAt !== null)
         throw new ForbiddenException('This employee is not assigned to the selected branch.');
 
       // 2. Recheck the employee and any supervisor approval before recording a return.
@@ -74,13 +71,8 @@ export class PosReturnsService {
           id: employee.id,
           merchantId: employee.merchantId,
           active: true,
-          branches: {
-            some: {
-              merchantId: employee.merchantId,
-              branchId: input.branchId,
-              branch: { archivedAt: null },
-            },
-          },
+          branchId: input.branchId,
+          branch: { archivedAt: null },
         },
         select: { displayName: true, role: true, permissions: true },
       });
@@ -119,13 +111,8 @@ export class PosReturnsService {
             id: approverEmployeeId,
             merchantId: employee.merchantId,
             active: true,
-            branches: {
-              some: {
-                merchantId: employee.merchantId,
-                branchId: input.branchId,
-                branch: { archivedAt: null },
-              },
-            },
+            branchId: input.branchId,
+            branch: { archivedAt: null },
           },
           select: { displayName: true, role: true, permissions: true },
         });

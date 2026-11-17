@@ -194,6 +194,9 @@ remains blind. No new cross-module dependency was introduced. See
 
 Tracked POS delivery (2026-10-26) stays in Orders: dispatch, customer delivery/failure,
 responsibility, bounded cross-device queue and partial courier remittance.
+Orders also owns the merchant-scoped courier directory and branch-filtered POS
+options. Courier records are operational identities without login or compensation
+data; dispatch history and courier-level performance remain separate follow-up work.
 Payments adds explicit cash custody. Order-origin shift remains immutable; tracked
 delivery can post a drawer payment into an explicit open same-branch receiving
 shift. A courier-held customer payment retains source-shift attribution but has no
@@ -386,6 +389,10 @@ result scope, independently of the cursor page. The additive
 does not create stock ledger entries.
 
 ## Compatibility and verification
+
+### POS browser/register pairing
+
+POS browser/register pairing spans Auth and Shifts. POS login reuses or creates a server-issued UUID in an HttpOnly browser cookie and stores it with the POS session. Auth returns the employee's single assigned branch and the register paired to that browser. Until pairing, `PosEmployeeGuard` permits only the register-list and bind routes; Shifts lists active, unpaired registers at that branch and binds one under a row lock. Once paired, the POS has no register selector, and route plus transaction checks reject a different register. Owners can unpair a browser through the revision-checked register endpoint only when the register has no open or closing shift. The UUID identifies a browser profile by cookie; it is not hardware attestation. Existing POS sessions without a device UUID require a fresh login after the additive migration is deployed.
 
 Structural changes preserve existing routes (including `/auth/owner/storefront`),
 cookie/session behavior, validation error formats, decimal-string money values,

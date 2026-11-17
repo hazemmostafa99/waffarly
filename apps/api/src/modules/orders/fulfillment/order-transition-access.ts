@@ -14,11 +14,11 @@ export async function assertOrderTransitionAccess(
   merchantId: string,
   orderId: string,
   command: OrderTransitionCommand,
-  branchIds?: readonly string[],
+  branchId?: string,
   posCancelActor?: PosCancellationActor,
 ): Promise<void> {
   // Check routed storefront scope before returning any saved retry result.
-  if (branchIds) {
+  if (branchId) {
     const target = await tx.storefrontOrder.findFirst({
       where: { id: orderId, merchantId },
       select: { source: true, branchId: true },
@@ -28,17 +28,17 @@ export async function assertOrderTransitionAccess(
         where: { id: target.branchId, merchantId, archivedAt: null },
         select: { id: true },
       });
-      if (!branch || !branchIds.includes(target.branchId))
+      if (!branch || branchId !== target.branchId)
         throw new NotFoundException('Order was not found.');
       if (command.action === 'accept' && command.input.branchId !== target.branchId)
         throw new ConflictException('Accept this order at its receiving branch.');
     }
   }
 
-  if (branchIds && command.action === 'accept' && !branchIds.includes(command.input.branchId))
+  if (branchId && command.action === 'accept' && branchId !== command.input.branchId)
     throw new ForbiddenException('This employee is not assigned to the selected branch.');
   if (
-    branchIds &&
+    branchId &&
     (command.action === 'prepare' ||
       command.action === 'ready' ||
       command.action === 'ready_item' ||
@@ -48,7 +48,7 @@ export async function assertOrderTransitionAccess(
       where: {
         id: orderId,
         merchantId,
-        branchId: { in: [...branchIds] },
+        branchId,
         OR: [
           { source: 'pos', kitchenTicket: { isNot: null } },
           { source: 'storefront', branchId: { not: null } },
@@ -63,7 +63,7 @@ export async function assertOrderTransitionAccess(
     if (
       !posCancelActor ||
       command.branchId !== posCancelActor.branchId ||
-      !branchIds?.includes(posCancelActor.branchId)
+      branchId !== posCancelActor.branchId
     )
       throw new ForbiddenException('This employee is not assigned to the selected branch.');
     const actorEmployee = await tx.posEmployee.findFirst({
@@ -71,13 +71,8 @@ export async function assertOrderTransitionAccess(
         id: posCancelActor.employeeId,
         merchantId,
         active: true,
-        branches: {
-          some: {
-            merchantId,
-            branchId: posCancelActor.branchId,
-            branch: { archivedAt: null },
-          },
-        },
+        branchId: posCancelActor.branchId,
+        branch: { archivedAt: null },
       },
       select: { role: true, permissions: true },
     });
@@ -99,13 +94,8 @@ export async function assertOrderTransitionAccess(
           id: command.approverEmployeeId,
           merchantId,
           active: true,
-          branches: {
-            some: {
-              merchantId,
-              branchId: posCancelActor.branchId,
-              branch: { archivedAt: null },
-            },
-          },
+          branchId: posCancelActor.branchId,
+          branch: { archivedAt: null },
         },
         select: { role: true, permissions: true },
       });

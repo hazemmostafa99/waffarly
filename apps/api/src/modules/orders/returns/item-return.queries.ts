@@ -137,11 +137,7 @@ export async function readOrderReturnsState(
       id: orderId,
       merchantId: employee.merchantId,
       source: 'pos',
-      branchId: {
-        in: employee.branches
-          .filter((branch) => branch.archivedAt === null)
-          .map((branch) => branch.id),
-      },
+      branchId: employee.branch.id,
     },
     select: {
       id: true,

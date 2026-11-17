@@ -15,6 +15,9 @@ import { CustomerOrderAccessController } from './http/marketplace/customer-order
 import { CustomerOrderAccessService } from './customers/customer-order-access.service.js';
 import { PosDeliveryController } from './http/pos/pos-delivery.controller.js';
 import { PosDeliveryService } from './delivery/pos-delivery.service.js';
+import { OwnerDeliveryCouriersController } from './http/owner/owner-delivery-couriers.controller.js';
+import { PosDeliveryCouriersController } from './http/pos/pos-delivery-couriers.controller.js';
+import { DeliveryCourierService } from './delivery/delivery-courier.service.js';
 import { AuthModule } from '../auth/index.js';
 import { InventoryModule } from '../inventory/index.js';
 import { OrderLifecycleService } from './fulfillment/order-lifecycle.service.js';
@@ -63,6 +66,8 @@ import { OwnerPosItemReturnsController } from './http/owner/pos-returns.controll
     OrderCustomerController,
     CustomerOrdersController,
     PosDeliveryController,
+    OwnerDeliveryCouriersController,
+    PosDeliveryCouriersController,
     OwnerPosItemReturnsController,
     OwnerStorefrontOrdersController,
     PosOrdersController,
@@ -80,6 +85,7 @@ import { OwnerPosItemReturnsController } from './http/owner/pos-returns.controll
     CustomerOrderAccessService,
     OrderCustomerService,
     PosDeliveryService,
+    DeliveryCourierService,
     StorefrontOrdersService,
     StorefrontOrderStatusService,
     OrderLifecycleService,

@@ -21,7 +21,7 @@ const employee: PosEmployeeSession = {
   displayName: 'Cashier',
   role: 'cashier',
   permissions: ['sell'],
-  branches: [{ id: branchId, name: 'Main', archivedAt: null }],
+  branch: { id: branchId, name: 'Main', archivedAt: null },
 };
 
 describe('POS kitchen tickets', () => {
@@ -265,7 +265,7 @@ describe('POS kitchen tickets', () => {
             id: orderId,
             merchantId,
             source: 'pos',
-            branchId: { in: [branchId] },
+            branchId,
           });
           return currentOrder;
         },

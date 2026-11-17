@@ -33,6 +33,12 @@ export class ProductProfitabilityReportController {
     @CurrentOwner() owner: OwnerProfile,
     @Query() query: unknown,
   ): Promise<OwnerProductProfitabilityReport> {
-    return this.reports.get(owner.merchantId, parseRequest(querySchema, query));
+    const parsed = parseRequest(querySchema, query);
+    return this.reports.get(owner.merchantId, {
+      from: parsed.from,
+      to: parsed.to,
+      limit: parsed.limit,
+      ...(parsed.branchId ? { branchId: parsed.branchId } : {}),
+    });
   }
 }

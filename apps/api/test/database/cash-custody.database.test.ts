@@ -65,6 +65,7 @@ it(
         const row = await prisma.posEmployee.create({
           data: {
             merchantId: merchant.id,
+            branchId: branch.id,
             username: `${name}-${token}`,
             displayName: name,
             passwordHash: 'test-only',
@@ -72,14 +73,6 @@ it(
             permissions: [],
             createdBy: 'test',
             updatedBy: 'test',
-          },
-        });
-        await prisma.posEmployeeBranch.create({
-          data: {
-            merchantId: merchant.id,
-            employeeId: row.id,
-            branchId: branch.id,
-            createdBy: 'test',
           },
         });
         return {
@@ -94,7 +87,7 @@ it(
             'approve_shift_close',
             'manage_cash_movements',
           ],
-          branches: [{ id: branch.id, name: branch.name, archivedAt: null }],
+          branch: { id: branch.id, name: branch.name, archivedAt: null },
         };
       };
       const cashier = await makeEmployee('Cashier');
@@ -402,7 +395,6 @@ it(
       });
       await prisma.posShift.deleteMany({ where: { merchantId: { in: tenants } } });
       await prisma.posRegister.deleteMany({ where: { merchantId: { in: tenants } } });
-      await prisma.posEmployeeBranch.deleteMany({ where: { merchantId: { in: tenants } } });
       await prisma.posEmployee.deleteMany({ where: { merchantId: { in: tenants } } });
       await prisma.branch.deleteMany({ where: { merchantId: { in: tenants } } });
       // Merchant creation also creates a subscription; remove only these test tenants' records.

@@ -39,7 +39,7 @@ const employee: PosEmployeeSession = {
   displayName: 'Cashier One',
   role: 'cashier',
   permissions: ['accept_recipe_orders', 'open_register_shift', 'sell', 'start_preparation'],
-  branches: [{ id: branchId, name: 'Main', archivedAt: null }],
+  branch: { id: branchId, name: 'Main', archivedAt: null },
 };
 
 describe('POS register and shift endpoints', () => {

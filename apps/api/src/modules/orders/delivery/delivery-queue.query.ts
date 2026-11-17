@@ -149,6 +149,7 @@ async function buildDeliverySummaries(
       revision: row.revision,
       orderRevision: row.orderRevision,
       orderStatus: row.orderStatus,
+      courierId: row.courierId,
       courierName: row.courierName,
       status: row.status,
       failureReason: row.failureReason,

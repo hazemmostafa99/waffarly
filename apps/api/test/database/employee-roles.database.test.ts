@@ -45,6 +45,14 @@ it(
                 updatedBy: 'test',
               },
             });
+            const replacementBranch = await tx.branch.create({
+              data: {
+                merchantId: merchant.id,
+                name: 'Replacement',
+                createdBy: 'test',
+                updatedBy: 'test',
+              },
+            });
             const otherBranch = await tx.branch.create({
               data: { merchantId: other.id, name: 'Foreign', createdBy: 'test', updatedBy: 'test' },
             });
@@ -61,7 +69,7 @@ it(
               username: 'staff',
               displayName: 'Role Test',
               password: 'long-test-password',
-              branchIds: [branch.id],
+              branchId: branch.id,
             };
             for (const role of POS_EMPLOYEE_ROLES) {
               const saved = await employees.create(merchant.id, 'owner', {
@@ -70,7 +78,7 @@ it(
                 role,
               });
               assert.equal(saved.role, role);
-              assert.deepEqual(saved.branchIds, [branch.id]);
+              assert.equal(saved.branch.id, branch.id);
               const filtered = await employees.list(merchant.id, {
                 role,
                 search: '',
@@ -89,7 +97,7 @@ it(
             await assert.rejects(
               employees.create(merchant.id, 'owner', {
                 ...input,
-                branchIds: [otherBranch.id],
+                branchId: otherBranch.id,
                 role: 'accountant',
               }),
               /belong to this business/,
@@ -191,7 +199,7 @@ it(
               displayName: 'Role Test',
               active: true,
               role: 'accountant',
-              branchIds: [branch.id],
+              branchId: branch.id,
             });
             assert.deepEqual(accountant.permissions, ['view_receipts']);
             assert.deepEqual((await auth.requirePosEmployee(request)).permissions, [
@@ -202,7 +210,7 @@ it(
                 revision: accountant.revision,
                 displayName: 'Role Test',
                 active: false,
-                branchIds: [],
+                branchId: branch.id,
               }),
               /not found/,
             );
@@ -212,17 +220,17 @@ it(
                 displayName: 'Role Test',
                 active: true,
                 role: 'branch_manager',
-                branchIds: [branch.id],
+                branchId: branch.id,
               }),
               /changed since/,
             );
             await tx.branch.update({ where: { id: branch.id }, data: { archivedAt: new Date() } });
-            await assert.rejects(auth.requirePosEmployee(request), /No active branch/);
+            await assert.rejects(auth.requirePosEmployee(request), /assigned branch is inactive/);
             await employees.update(merchant.id, 'owner', cashier.id, {
               revision: accountant.revision,
               displayName: 'Role Test',
               active: false,
-              branchIds: [],
+              branchId: replacementBranch.id,
             });
             await assert.rejects(auth.requirePosEmployee(request), /Session has expired/);
             throw rollback;

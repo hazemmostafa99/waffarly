@@ -76,6 +76,7 @@ export function toSummary(order: {
   } | null;
   diningSession?: { table: { code: string } } | null;
   id: string;
+  source?: string;
   status: string;
   customerName: string | null;
   customerPhone: string | null;
@@ -162,6 +163,9 @@ export function toSummary(order: {
         }
       : {}),
     id: order.id,
+    ...(order.source === 'storefront' || order.source === 'pos'
+      ? { source: order.source }
+      : {}),
     status: order.status as StorefrontOrderStatus,
     customerName: order.customerName,
     customerPhone: order.customerPhone,

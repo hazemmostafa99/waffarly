@@ -300,6 +300,7 @@ export type {
   PosEmployeeRole,
   PosEmployeePermission,
   PosEmployeeBranch,
+  PosEmployeeRegister,
   PosEmployeeSummary,
   PosEmployeeSession,
   PosLoginRequest,
@@ -311,6 +312,15 @@ export type {
   PosDeliveryCommand,
   PosDeliveryHandoverSnapshot,
 } from './pos-delivery.js';
+export type {
+  DeliveryCourierBranch,
+  DeliveryCourierSummary,
+  DeliveryCourierOption,
+  DeliveryCourierPerformance,
+  DeliveryCourierPerformanceReport,
+  CreateDeliveryCourierRequest,
+  UpdateDeliveryCourierRequest,
+} from './delivery-couriers.js';
 export type { SubscriptionMonths, PlanTerm } from './plans.js';
 export type {
   MerchantAccountProfile,

@@ -2,9 +2,8 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import type { PosEmployeeSession } from '@waffarly/contracts';
 import { Input, useLocale } from '@waffarly/ui';
 import { Printer, ReceiptText, RefreshCw, Search } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { usePosWorkspaceStore } from '../../app/pos-workspace-store.js';
 import { PosButton } from '../../components/pos-button.js';
 import { PosReceiptView } from './pos-receipt-view.js';
 import { listPosReceipts, posReceiptHistoryKey } from './pos-receipts.api.js';
@@ -12,28 +11,12 @@ import { listPosReceipts, posReceiptHistoryKey } from './pos-receipts.api.js';
 export function PosReceiptsScreen() {
   const { employee } = useOutletContext<{ employee: PosEmployeeSession }>();
   const { t, errorText, formatNumber } = useLocale();
-  const workspace = usePosWorkspaceStore((state) => state.workspace);
-  const selectBranch = usePosWorkspaceStore((state) => state.selectBranch);
-  const branches = employee.branches;
-  const selectedBranchId = branches.some((branch) => branch.id === workspace?.selectedBranchId)
-    ? (workspace?.selectedBranchId ?? branches[0]?.id ?? '')
-    : (branches[0]?.id ?? '');
+  const selectedBranchId = employee.branch.id;
   const [search, setSearch] = useState('');
   const [activeReceipt, setActiveReceipt] = useState<{
     orderId: string;
     checkId: string;
   } | null>(null);
-
-  useEffect(() => {
-    if (!selectedBranchId || workspace?.selectedBranchId === selectedBranchId) return;
-    selectBranch(employee.merchantId, employee.id, selectedBranchId);
-  }, [
-    employee.id,
-    employee.merchantId,
-    selectBranch,
-    selectedBranchId,
-    workspace?.selectedBranchId,
-  ]);
 
   const receiptsQuery = useInfiniteQuery({
     queryKey: posReceiptHistoryKey(employee.merchantId, selectedBranchId),
@@ -85,24 +68,6 @@ export function PosReceiptsScreen() {
           </p>
         </div>
         <div className="flex w-full flex-wrap items-end gap-2 sm:w-auto sm:justify-end">
-          {branches.length > 1 && (
-            <label className="grid min-w-44 flex-1 gap-1 text-xs font-medium text-muted-foreground sm:flex-none">
-              {t('Branch')}
-              <select
-                className="min-h-10 rounded-lg border border-border bg-card px-3 text-sm text-foreground"
-                value={selectedBranchId}
-                onChange={(event) =>
-                  selectBranch(employee.merchantId, employee.id, event.target.value)
-                }
-              >
-                {branches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           <PosButton
             type="button"
             size="sm"
@@ -156,19 +121,7 @@ export function PosReceiptsScreen() {
         </p>
       )}
 
-      {!selectedBranchId ? (
-        <div className="flex max-w-2xl items-start gap-3 rounded-xl border border-dashed border-border bg-card/60 p-4 sm:p-5">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
-            <ReceiptText aria-hidden="true" size={20} />
-          </span>
-          <div className="text-sm">
-            <strong>{t('No POS branches assigned')}</strong>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">
-              {t('Ask an owner to assign a branch before viewing receipts.')}
-            </p>
-          </div>
-        </div>
-      ) : receiptsQuery.isLoading ? (
+      {receiptsQuery.isLoading ? (
         <div className="grid gap-2" role="status" aria-label={t('Loading receipts...')}>
           {[0, 1, 2].map((item) => (
             <div

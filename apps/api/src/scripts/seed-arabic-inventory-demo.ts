@@ -556,7 +556,7 @@ async function ensurePosEmployee(merchantId: string, branchId: string) {
     username: DEMO.employeeUsername,
     displayName: 'كاشير التدريب',
     password: DEMO.password,
-    branchIds: [branchId],
+    branchId,
   });
 }
 

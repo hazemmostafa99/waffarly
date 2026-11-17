@@ -37,6 +37,7 @@ import {
 import { carryoverOptions, drawerLedger, drawers } from './custody/drawers.js';
 import { listSafes, safeLedger } from './custody/safe.query.js';
 import { listTransfers } from './custody/transfer.query.js';
+import { assertPosRegisterAssignment } from './access/shift-access.rules.js';
 
 @Injectable()
 export class CashCustodyService {
@@ -115,6 +116,7 @@ export class CashCustodyService {
       const shift = await tx.posShift.findFirst({ where: { id: shiftId, merchantId } });
       if (!shift) throw new NotFoundException('Shift not found.');
       if (employee) {
+        assertPosRegisterAssignment(employee, shift.registerId);
         await requireEmployeeCashBranch(this.prisma, employee, shift.branchId, false, tx);
         if (shift.openedByEmployeeId !== employee.id)
           await requireEmployeeCashBranch(this.prisma, employee, shift.branchId, true, tx);

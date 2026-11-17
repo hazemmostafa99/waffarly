@@ -69,14 +69,13 @@ try {
     const username = 'waffarly-cashier';
     const existing = await client.posEmployee.findFirst({
       where: { merchantId: merchant.id, username },
-      select: { id: true, createdBy: true, active: true, branches: { select: { branchId: true } } },
+      select: { id: true, createdBy: true, active: true, branchId: true },
     });
     if (existing) {
       if (
         existing.createdBy !== actor ||
         !existing.active ||
-        existing.branches.length !== 1 ||
-        existing.branches[0]!.branchId !== branchId
+        existing.branchId !== branchId
       )
         throw new Error('Existing account requires owner review.');
       console.log(
@@ -125,7 +124,7 @@ try {
       displayName: 'كاشير وفرلي',
       password: protect(record.encryptedPassword, true),
       role: 'cashier',
-      branchIds: [branchId],
+      branchId,
     });
     if (
       !['accept_recipe_orders', 'start_preparation', 'sell'].every((permission) =>

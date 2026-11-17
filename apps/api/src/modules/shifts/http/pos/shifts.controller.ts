@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import type {
   PosEmployeeSession,
+  PosEmployeeRegister,
   PosRegisterOption,
   PosShiftCloseReport,
   PosShiftClosePreview,
@@ -48,11 +49,18 @@ export class PosShiftsController {
     @CurrentPosEmployee() employee: PosEmployeeSession,
     @Query() query: unknown,
   ): Promise<PosRegisterOption[]> {
-    requireShiftPermission(employee);
     return this.registers.listRegistersForEmployee(
       employee,
       parseRequest(posRegisterListSchema, query),
     );
+  }
+
+  @Post('registers/bind')
+  pairRegister(
+    @CurrentPosEmployee() employee: PosEmployeeSession,
+    @Body() input: unknown,
+  ): Promise<PosEmployeeRegister> {
+    return this.registers.pairDeviceToRegister(employee, input);
   }
 
   @Get('shifts/delivery-handover-recipients')

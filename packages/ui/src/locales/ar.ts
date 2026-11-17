@@ -1678,9 +1678,6 @@ export const ar: Record<string, string> = {
   Receipts: 'الإيصالات',
   'POS documents': 'مستندات نقاط البيع',
   'Receipts shown': 'الإيصالات المعروضة',
-  'No POS branches assigned': 'لا توجد فروع نقاط بيع مخصصة لك',
-  'Ask an owner to assign a branch before viewing receipts.':
-    'اطلب من المالك تخصيص فرع لك قبل عرض الإيصالات.',
   'Find and reprint a completed check without collecting payment again.':
     'ابحث عن إيصال حساب مكتمل وأعد طباعته بدون تحصيل المبلغ مرة أخرى.',
   'Search receipt or order number': 'ابحث برقم الإيصال أو الطلب',
@@ -2008,16 +2005,35 @@ export const ar: Record<string, string> = {
   Blue: 'أزرق',
   'Edit order details': 'تعديل تفاصيل الطلب',
   'Details locked after sending': 'التفاصيل مقفلة بعد الإرسال',
+  'POS device setup': 'إعداد جهاز نقطة البيع',
+  'Connect this browser to a register': 'اربط هذا المتصفح بجهاز كاشير',
+  'Choose the cashier station for this browser. It will stay fixed for this branch.':
+    'اختر جهاز الكاشير لهذا المتصفح. سيظل مرتبطًا به في هذا الفرع.',
+  'Assigned branch': 'الفرع المعيّن',
+  'Cashier register': 'جهاز الكاشير',
+  'Could not pair this browser.': 'تعذر ربط هذا المتصفح بجهاز الكاشير.',
+  'Loading available registers…': 'جارٍ تحميل أجهزة الكاشير المتاحة…',
+  'Choose a register': 'اختر جهاز كاشير',
+  'No available registers at this branch.': 'لا توجد أجهزة كاشير متاحة في هذا الفرع.',
+  'Ask the owner to add a register or unpair a browser after its shift is closed.':
+    'اطلب من المالك إضافة جهاز أو فك ربط متصفح بعد إغلاق ورديته.',
+  'Connecting…': 'جارٍ الربط…',
+  'Connect register': 'ربط جهاز الكاشير',
+  'Pair this browser with a POS register before continuing.':
+    'اربط هذا المتصفح بجهاز كاشير قبل المتابعة.',
+  'This browser can only use its paired POS register.':
+    'لا يمكن لهذا المتصفح استخدام إلا جهاز الكاشير المرتبط به.',
+  'This browser is no longer paired with the selected POS register.':
+    'لم يعد هذا المتصفح مرتبطًا بجهاز الكاشير المحدد.',
+  'Sign in again to register this browser.': 'سجّل الدخول مجددًا لربط هذا المتصفح بجهاز كاشير.',
   'Register shift': 'وردية الكاشير',
   'Register control': 'إدارة الوردية',
   'Open register shift': 'فتح وردية الكاشير',
-  'Review the selected register and opening cash, or start a new shift.':
-    'راجع جهاز الكاشير المحدد والعهدة الافتتاحية، أو ابدأ وردية جديدة.',
-  'No active branches assigned': 'لا توجد فروع نشطة مخصصة',
-  'No active branches are assigned to this account.':
-    'لا توجد فروع نقاط بيع نشطة مخصصة لهذا الحساب.',
-  'Ask the merchant owner to assign you to an active POS branch.':
-    'اطلب من مالك النشاط إضافتك إلى فرع نقاط بيع نشط.',
+  'Review this register and opening cash, or start a new shift.':
+    'راجع جهاز الكاشير والعهدة الافتتاحية، أو ابدأ وردية جديدة.',
+  'The assigned branch is inactive.': 'الفرع المعيّن لهذا الحساب متوقف.',
+  'Select an active branch that belongs to this business.':
+    'اختر فرعًا نشطًا تابعًا لهذا النشاط.',
   Register: 'جهاز الكاشير',
   Online: 'متصل',
   'Offline - shift opening unavailable': 'غير متصل - لا يمكن فتح الوردية',
@@ -2052,7 +2068,7 @@ export const ar: Record<string, string> = {
     'يُسجَّل مبلغ العهدة مرة واحدة، ويُعاد استخدام الطلب نفسه بأمان عند انقطاع الإنترنت.',
   'Enter a non-negative amount with up to two decimal places.':
     'أدخل مبلغًا موجبًا أو صفرًا وبحد أقصى منزلتين عشريتين.',
-  'Select a branch and register first.': 'اختر فرعًا وجهاز كاشير أولًا.',
+  'Select a register first.': 'اختر جهاز كاشير أولًا.',
   'Could not open this shift.': 'تعذر فتح الوردية.',
   'Could not save this branch.': 'تعذر حفظ هذا الفرع.',
   'Could not save this POS workspace. Check browser storage settings.':

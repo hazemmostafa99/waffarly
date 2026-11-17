@@ -33,6 +33,8 @@ import {
 } from '../../infrastructure/database/prisma-errors.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import {
+  assertCurrentPosRegisterPair,
+  assertPosRegisterAssignment,
   assertShiftBranchAssignment,
   readCurrentShiftPermissions,
   requireCurrentApprover,
@@ -148,6 +150,7 @@ export class ShiftsService {
     approverEmployeeId?: string,
   ): Promise<RecordPosShiftCashMovementResponse> {
     requireShiftAccess(employee);
+    await getShiftBranch(this.prisma, employee, shiftId);
     const parsed = parseRequest(recordPosShiftCashMovementSchema, input);
     const request = withoutShiftCashMovementApproval(parsed);
     const fingerprint = createHash('sha256')
@@ -279,6 +282,7 @@ export class ShiftsService {
     approverEmployeeId?: string,
   ): Promise<PosShiftCloseReportContract> {
     requireShiftAccess(employee);
+    await getShiftBranch(this.prisma, employee, shiftId);
     // 1. Keep the exact close request so retrying cannot close the shift twice.
     const parsed = parseRequest(closePosShiftSchema, input);
     const request = withoutShiftCloseApproval(parsed);
@@ -304,8 +308,10 @@ export class ShiftsService {
           if (prior)
             return replayShiftClose(this.prisma, employee, prior, shiftId, fingerprint, tx);
 
-          const locked = await tx.$queryRaw<Array<{ id: string; branchId: string }>>`
-            SELECT s."id", s."branchId"
+          const locked = await tx.$queryRaw<
+            Array<{ id: string; branchId: string; registerId: string }>
+          >`
+            SELECT s."id", s."branchId", s."registerId"
             FROM "pos_shifts" s
             INNER JOIN "pos_registers" r
               ON r."id" = s."registerId" AND r."branchId" = s."branchId"
@@ -318,6 +324,7 @@ export class ShiftsService {
           if (!lockedShift)
             throw new ConflictException('This register shift is already closed or unavailable.');
           assertShiftBranchAssignment(employee, lockedShift.branchId);
+          assertPosRegisterAssignment(employee, lockedShift.registerId);
           const actorPermissions = await readCurrentShiftPermissions(
             tx,
             employee,
@@ -356,9 +363,8 @@ export class ShiftsService {
                 merchantId: employee.merchantId,
                 username: request.deliveryHandover.recipientUsername,
                 active: true,
-                branches: {
-                  some: { branchId: lockedShift.branchId, branch: { archivedAt: null } },
-                },
+                branchId: lockedShift.branchId,
+                branch: { archivedAt: null },
               },
               select: { id: true, displayName: true, role: true, permissions: true },
             });
@@ -517,7 +523,12 @@ export class ShiftsService {
 
   async lockOpenShiftForPayment(
     tx: Prisma.TransactionClient,
-    input: { merchantId: string; shiftId: string; branchId: string },
+    input: {
+      merchantId: string;
+      shiftId: string;
+      branchId: string;
+      employee: PosEmployeeSession;
+    },
   ): Promise<void> {
     return lockOpenShiftForPayment(tx, input);
   }
@@ -530,6 +541,7 @@ export class ShiftsService {
       branchId: string;
       shiftId: string;
       followupShiftId: string | null;
+      employee: PosEmployeeSession;
     },
   ): Promise<void> {
     return lockDeliveryReceivingShift(tx, input);
@@ -559,11 +571,30 @@ export class ShiftsService {
     requireShiftAccess(employee);
     // 1. Check the opening details and the employee access.
     const parsed = parseRequest(openPosShiftSchema, input);
+    assertPosRegisterAssignment(employee, parsed.registerId);
     const openingFloat = normalizeOpeningFloat(parsed.openingFloat);
 
     try {
       // 2. Save the opening cash and any carryover with the shift.
       return await this.prisma.$transaction(async (tx) => {
+        const locked = await tx.$queryRaw<
+          Array<{
+            id: string;
+            branchId: string;
+            active: boolean;
+            deviceId: string | null;
+          }>
+        >`
+          SELECT "id", "branchId", "active", "deviceId"
+          FROM "pos_registers"
+          WHERE "id" = ${parsed.registerId} AND "merchantId" = ${employee.merchantId}
+          FOR UPDATE
+        `;
+        const register = locked[0];
+        if (!register || !register.active) throw new NotFoundException('Register was not found.');
+        assertShiftBranchAssignment(employee, register.branchId);
+        assertCurrentPosRegisterPair(employee, register.id, register.deviceId);
+
         const prior = await tx.posShift.findFirst({
           where: { merchantId: employee.merchantId, openRequestId: parsed.requestId },
           include: shiftInclude,
@@ -576,16 +607,6 @@ export class ShiftsService {
             openingFloat,
             parsed.sourceShiftId,
           );
-
-        const locked = await tx.$queryRaw<Array<{ id: string; branchId: string; active: boolean }>>`
-          SELECT "id", "branchId", "active"
-          FROM "pos_registers"
-          WHERE "id" = ${parsed.registerId} AND "merchantId" = ${employee.merchantId}
-          FOR UPDATE
-        `;
-        const register = locked[0];
-        if (!register || !register.active) throw new NotFoundException('Register was not found.');
-        assertShiftBranchAssignment(employee, register.branchId);
 
         if (parsed.sourceShiftId) {
           const permissions = await readCurrentShiftPermissions(tx, employee, register.branchId);

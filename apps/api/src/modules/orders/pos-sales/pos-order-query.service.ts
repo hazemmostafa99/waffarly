@@ -48,9 +48,7 @@ export class PosOrderQueryService {
   ) {
     requirePosSellPermission(employee);
     if (
-      !employee.branches.some(
-        (branch) => branch.id === input.branchId && branch.archivedAt === null,
-      )
+      employee.branch.id !== input.branchId || employee.branch.archivedAt !== null
     )
       throw new ForbiddenException('This employee is not assigned to the selected branch.');
     const where: Prisma.StorefrontOrderWhereInput = {
@@ -114,11 +112,7 @@ export class PosOrderQueryService {
         id: orderId,
         merchantId: employee.merchantId,
         source: 'pos',
-        branchId: {
-          in: employee.branches
-            .filter((branch) => branch.archivedAt === null)
-            .map((branch) => branch.id),
-        },
+        branchId: employee.branch.id,
       },
       include: orderSummaryInclude,
     });
@@ -144,11 +138,7 @@ export class PosOrderQueryService {
             status: { in: ['ready', 'completed'] },
           },
         ],
-        branchId: {
-          in: employee.branches
-            .filter((branch) => branch.archivedAt === null)
-            .map((branch) => branch.id),
-        },
+        branchId: employee.branch.id,
       },
       include: {
         ...orderSummaryInclude,

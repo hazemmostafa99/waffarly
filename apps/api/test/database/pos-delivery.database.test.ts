@@ -10,6 +10,7 @@ import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { resolvePosEmployeePermissions, type PosEmployeeSession } from '@waffarly/contracts';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { PosDeliveryService } from '../../src/modules/orders/delivery/pos-delivery.service.js';
+import { DeliveryCourierService } from '../../src/modules/orders/delivery/delivery-courier.service.js';
 
 import { PosDiningService } from '../../src/modules/orders/dining/pos-dining.service.js';
 import { PaymentsService } from '../../src/modules/payments/payments.service.js';
@@ -41,6 +42,25 @@ it(
       const branch = await db.branch.create({
         data: { merchantId, name: `Branch ${token}`, createdBy: 'test', updatedBy: 'test' },
       });
+      const createCourier = async (
+        name: string,
+        assignedBranchId = branch.id,
+        active = true,
+      ) => {
+        const courier = await db.deliveryCourier.create({
+          data: { merchantId, name, active, createdBy: 'test', updatedBy: 'test' },
+        });
+        await db.deliveryCourierBranch.create({
+          data: { merchantId, courierId: courier.id, branchId: assignedBranchId },
+        });
+        return courier;
+      };
+      const courier = await createCourier('Courier Ali');
+      const inactiveCourier = await createCourier('Inactive courier', branch.id, false);
+      const otherBranch = await db.branch.create({
+        data: { merchantId, name: `Other branch ${token}`, createdBy: 'test', updatedBy: 'test' },
+      });
+      const otherBranchCourier = await createCourier('Other branch courier', otherBranch.id);
       const employee = async (
         name: string,
         role: 'cashier' | 'supervisor' | 'accountant',
@@ -48,6 +68,7 @@ it(
         const row = await db.posEmployee.create({
           data: {
             merchantId,
+            branchId: branch.id,
             username: `${name}-${token}`,
             displayName: name,
             passwordHash: 'test-only',
@@ -55,12 +76,6 @@ it(
             permissions: [],
             createdBy: 'test',
             updatedBy: 'test',
-            branches: {
-              create: {
-                createdBy: 'test',
-                branch: { connect: { id_merchantId: { id: branch.id, merchantId } } },
-              },
-            },
           },
         });
         return {
@@ -70,7 +85,7 @@ it(
           displayName: row.displayName,
           role,
           permissions: resolvePosEmployeePermissions(role, []),
-          branches: [{ id: branch.id, name: branch.name, archivedAt: null }],
+          branch: { id: branch.id, name: branch.name, archivedAt: null },
         };
       };
       const ahmed = await employee('Ahmed', 'cashier');
@@ -105,7 +120,10 @@ it(
         ),
       );
       await assert.rejects(
-        shifts.listDeliveryHandoverRecipients({ ...ahmed, branches: [] }, { branchId: branch.id }),
+        shifts.listDeliveryHandoverRecipients(
+          { ...ahmed, branch: { ...ahmed.branch, id: 'another-branch' } },
+          { branchId: branch.id },
+        ),
       );
       const delivery = new PosDeliveryService(db as unknown as PrismaService, shifts);
       const { checkRefunds, checkPayments } = createPosOrderServices(
@@ -171,12 +189,37 @@ it(
       };
       const order = await createOrder();
       const normal = await createOrder('takeaway');
+      for (const courierId of [inactiveCourier.id, otherBranchCourier.id, randomUUID()]) {
+        await assert.rejects(
+          delivery.command(ahmed, order.id, {
+            action: 'dispatch',
+            revision: order.revision,
+            requestId: randomUUID(),
+            courierId,
+          }),
+          ConflictException,
+        );
+      }
+      const duplicateNameCourier = await createCourier('Courier Ali');
+      await assert.rejects(
+        delivery.command(ahmed, order.id, {
+          action: 'dispatch',
+          revision: order.revision,
+          requestId: randomUUID(),
+          courierName: 'Courier Ali',
+        }),
+        ConflictException,
+      );
+      await db.deliveryCourier.update({
+        where: { id_merchantId: { id: duplicateNameCourier.id, merchantId } },
+        data: { active: false },
+      });
       await assert.rejects(
         delivery.command(ahmed, normal.id, {
           action: 'dispatch',
           revision: normal.revision,
           requestId: randomUUID(),
-          courierName: 'Courier',
+          courierId: courier.id,
         }),
       );
       const dispatch = {
@@ -187,6 +230,14 @@ it(
       };
       let current = await delivery.command(ahmed, order.id, dispatch);
       assert.deepEqual(await delivery.command(ahmed, order.id, dispatch), current);
+      assert.equal(current.courierId, courier.id);
+      assert.equal(current.courierName, courier.name);
+      const initialAttempts = await db.deliveryCourierAttempt.findMany({
+        where: { merchantId, orderId: order.id },
+      });
+      assert.equal(initialAttempts.length, 1);
+      assert.equal(initialAttempts[0]?.courierId, courier.id);
+      assert.equal(initialAttempts[0]?.status, 'out_for_delivery');
       const sideRegister = await registers.createRegister(merchantId, 'test', {
         branchId: branch.id,
         name: 'Other drawer',
@@ -435,7 +486,7 @@ it(
         action: 'dispatch',
         requestId: randomUUID(),
         revision: failedOrder.revision,
-        courierName: 'First courier',
+        courierId: courier.id,
       });
       await checkPayments.recordCheckPayment(mona, failedOrder.id, failedOrder.checks[0]!.id, {
         requestId: randomUUID(),
@@ -462,6 +513,11 @@ it(
         revision: failed.revision,
         reason: 'Customer requested another delivery time',
       });
+      const failedAttempt = await db.deliveryCourierAttempt.findFirstOrThrow({
+        where: { merchantId, orderId: failedOrder.id },
+      });
+      assert.equal(failedAttempt.courierId, courier.id);
+      assert.equal(failedAttempt.status, 'failed');
       assert.equal(failed.customerDue, '0.00');
       assert.equal(failed.courierCashHeld, '200.00');
       await assert.rejects(
@@ -469,7 +525,7 @@ it(
           action: 'dispatch',
           requestId: randomUUID(),
           revision: failed.revision,
-          courierName: 'Replacement',
+          courierId: courier.id,
         }),
         ConflictException,
       );
@@ -529,17 +585,33 @@ it(
       );
       assert.equal((await delivery.summary(mona, failedOrder.id)).courierCashHeld, '200.00');
       failed = await delivery.command(mona, failedOrder.id, failedRemit);
+      const replacementCourier = await createCourier('Replacement');
       failed = await delivery.command(mona, failedOrder.id, {
         action: 'dispatch',
         requestId: randomUUID(),
         revision: failed.revision,
-        courierName: 'Replacement',
+        courierId: replacementCourier.id,
       });
+      assert.equal(failed.courierId, replacementCourier.id);
+      assert.equal(failed.courierName, replacementCourier.name);
+      const attemptsAfterRedispatch = await db.deliveryCourierAttempt.findMany({
+        where: { merchantId, orderId: failedOrder.id },
+        orderBy: { dispatchedAt: 'asc' },
+      });
+      assert.equal(attemptsAfterRedispatch.length, 2);
+      assert.equal(attemptsAfterRedispatch[0]?.status, 'failed');
+      assert.equal(attemptsAfterRedispatch[1]?.courierId, replacementCourier.id);
+      assert.equal(attemptsAfterRedispatch[1]?.status, 'out_for_delivery');
       await delivery.command(mona, failedOrder.id, {
         action: 'delivered',
         requestId: randomUUID(),
         revision: failed.revision,
       });
+      const completedAttempt = await db.deliveryCourierAttempt.findFirstOrThrow({
+        where: { merchantId, orderId: failedOrder.id, courierId: replacementCourier.id },
+      });
+      assert.equal(completedAttempt.status, 'delivered');
+      assert.ok(completedAttempt.completedAt);
       assert.equal(
         (
           await shifts.closeShift(mona, third.id, {
@@ -561,7 +633,7 @@ it(
         action: 'dispatch',
         requestId: randomUUID(),
         revision: raceOrder.revision,
-        courierName: 'Race courier',
+        courierId: courier.id,
       });
       const racePayment = await checkPayments.recordCheckPayment(
         mona,
@@ -620,13 +692,26 @@ it(
         await db.posOrderPayment.count({ where: { merchantId, orderId: raceOrder.id } }),
         1,
       );
+      const performance = await new DeliveryCourierService(
+        db as unknown as PrismaService,
+      ).performanceForOwner(merchantId);
+      const aliPerformance = performance.items.find((item) => item.courierId === courier.id);
+      assert.ok(aliPerformance);
+      assert.equal(aliPerformance.attemptCount, 3);
+      assert.equal(aliPerformance.deliveredCount, 2);
+      assert.equal(aliPerformance.failedCount, 1);
+      assert.equal(aliPerformance.successRate, 66.7);
+      assert.notEqual(aliPerformance.averageDeliveryMinutes, null);
       await assert.rejects(delivery.summary({ ...mona, merchantId: randomUUID() }, order.id));
       await assert.rejects(
-        delivery.list({ ...mona, merchantId: randomUUID(), branches: [] }, { branchId: branch.id }),
+        delivery.list(
+          { ...mona, merchantId: randomUUID(), branch: { ...mona.branch, id: 'another-branch' } },
+          { branchId: branch.id },
+        ),
         ForbiddenException,
       );
       await assert.rejects(
-        delivery.summary({ ...mona, branches: [] }, order.id),
+        delivery.summary({ ...mona, branch: { ...mona.branch, id: 'another-branch' } }, order.id),
         ForbiddenException,
       );
       assert.equal(await db.stockMovementBatch.count({ where: { merchantId } }), 0);
@@ -634,6 +719,7 @@ it(
       await db.$transaction(async (tx) => {
         await tx.posShiftCloseReport.deleteMany({ where: { merchantId } });
         await tx.posDeliveryRemittance.deleteMany({ where: { merchantId } });
+        await tx.deliveryCourierAttempt.deleteMany({ where: { merchantId } });
         await tx.posDelivery.deleteMany({ where: { merchantId } });
         await tx.posShiftCashMovement.deleteMany({ where: { merchantId } });
         await tx.posCheckReceipt.deleteMany({ where: { merchantId } });
@@ -641,9 +727,10 @@ it(
         await tx.posOrderCheck.deleteMany({ where: { merchantId } });
         await tx.storefrontOrderAction.deleteMany({ where: { merchantId } });
         await tx.storefrontOrder.deleteMany({ where: { merchantId } });
+        await tx.deliveryCourierBranch.deleteMany({ where: { merchantId } });
+        await tx.deliveryCourier.deleteMany({ where: { merchantId } });
         await tx.posShift.deleteMany({ where: { merchantId } });
         await tx.posRegister.deleteMany({ where: { merchantId } });
-        await tx.posEmployeeBranch.deleteMany({ where: { merchantId } });
         await tx.posEmployee.deleteMany({ where: { merchantId } });
         await tx.branch.deleteMany({ where: { merchantId } });
         await deleteTestMerchantSubscriptions(tx, [merchantId]);

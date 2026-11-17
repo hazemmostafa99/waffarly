@@ -101,7 +101,7 @@ test.beforeEach(async ({ page }) => {
         displayName: 'Cashier',
         role: 'cashier',
         permissions: ['sell', 'open_register_shift', 'accept_recipe_orders', 'start_preparation'],
-        branches: [{ id: branchId, name: 'Main branch', archivedAt: null }],
+        branch: { id: branchId, name: 'Main branch', archivedAt: null },
       },
     }),
   );

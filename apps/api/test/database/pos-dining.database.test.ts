@@ -63,17 +63,12 @@ it(
           merchantId: merchant.id,
           username: `dining-${token}`,
           displayName: 'Dining Cashier',
+          branchId: branch.id,
           passwordHash: 'database-test-only',
           role: 'cashier',
           permissions: ['sell'],
           createdBy: 'pos-dining-test',
           updatedBy: 'pos-dining-test',
-          branches: {
-            create: {
-              createdBy: 'pos-dining-test',
-              branch: { connect: { id_merchantId: { id: branch.id, merchantId: merchant.id } } },
-            },
-          },
         },
       });
       const otherEmployee = await prisma.posEmployee.create({
@@ -81,19 +76,12 @@ it(
           merchantId: merchant.id,
           username: `other-dining-${token}`,
           displayName: 'Other Branch Cashier',
+          branchId: otherBranch.id,
           passwordHash: 'database-test-only',
           role: 'cashier',
           permissions: ['sell'],
           createdBy: 'pos-dining-test',
           updatedBy: 'pos-dining-test',
-          branches: {
-            create: {
-              createdBy: 'pos-dining-test',
-              branch: {
-                connect: { id_merchantId: { id: otherBranch.id, merchantId: merchant.id } },
-              },
-            },
-          },
         },
       });
       const employee: PosEmployeeSession = {
@@ -103,7 +91,7 @@ it(
         displayName: employeeRecord.displayName,
         role: 'cashier',
         permissions: ['sell'],
-        branches: [{ id: branch.id, name: branch.name, archivedAt: null }],
+        branch: { id: branch.id, name: branch.name, archivedAt: null },
       };
       const otherBranchSession: PosEmployeeSession = {
         id: otherEmployee.id,
@@ -112,7 +100,7 @@ it(
         displayName: otherEmployee.displayName,
         role: 'cashier',
         permissions: ['sell'],
-        branches: [{ id: otherBranch.id, name: otherBranch.name, archivedAt: null }],
+        branch: { id: otherBranch.id, name: otherBranch.name, archivedAt: null },
       };
       const dining = new PosDiningService(prisma as unknown as PrismaService);
       const tables = await Promise.all(
@@ -176,17 +164,12 @@ it(
           merchantId: merchant.id,
           username: `supervisor-${token}`,
           displayName: 'POS Supervisor',
+          branchId: branch.id,
           passwordHash: 'database-test-only',
           role: 'supervisor',
           permissions: [],
           createdBy: 'pos-cancellation-test',
           updatedBy: 'pos-cancellation-test',
-          branches: {
-            create: {
-              createdBy: 'pos-cancellation-test',
-              branch: { connect: { id_merchantId: { id: branch.id, merchantId: merchant.id } } },
-            },
-          },
         },
       });
       const kitchenEmployeeRecord = await prisma.posEmployee.create({
@@ -194,17 +177,12 @@ it(
           merchantId: merchant.id,
           username: `kitchen-${token}`,
           displayName: 'Kitchen Operator',
+          branchId: branch.id,
           passwordHash: 'database-test-only',
           role: 'kitchen',
           permissions: ['accept_recipe_orders'],
           createdBy: 'pos-cancellation-test',
           updatedBy: 'pos-cancellation-test',
-          branches: {
-            create: {
-              createdBy: 'pos-cancellation-test',
-              branch: { connect: { id_merchantId: { id: branch.id, merchantId: merchant.id } } },
-            },
-          },
         },
       });
       const kitchenEmployee: PosEmployeeSession = {
@@ -214,7 +192,7 @@ it(
         displayName: kitchenEmployeeRecord.displayName,
         role: 'kitchen',
         permissions: ['accept_recipe_orders'],
-        branches: [{ id: branch.id, name: branch.name, archivedAt: null }],
+        branch: { id: branch.id, name: branch.name, archivedAt: null },
       };
       const cancellationOrder = await prisma.storefrontOrder.create({
         data: {
@@ -394,7 +372,7 @@ it(
         orderQueries.detail(
           {
             ...employee,
-            branches: [{ id: otherBranch.id, name: otherBranch.name, archivedAt: null }],
+            branch: { id: otherBranch.id, name: otherBranch.name, archivedAt: null },
           },
           roundOrderId,
         ),
@@ -404,7 +382,7 @@ it(
         orderQueries.detail(
           {
             ...employee,
-            branches: [{ id: branch.id, name: branch.name, archivedAt: new Date().toISOString() }],
+            branch: { id: branch.id, name: branch.name, archivedAt: new Date().toISOString() },
           },
           roundOrderId,
         ),
@@ -596,10 +574,7 @@ it(
         orderQueries.paymentState(
           {
             ...employee,
-            branches: employee.branches.map((branch) => ({
-              ...branch,
-              archivedAt: new Date().toISOString(),
-            })),
+            branch: { ...employee.branch, archivedAt: new Date().toISOString() },
           },
           roundOrderId,
         ),
@@ -617,7 +592,7 @@ it(
         orderQueries.paymentState(
           {
             ...employee,
-            branches: [{ id: otherBranch.id, name: otherBranch.name, archivedAt: null }],
+            branch: { id: otherBranch.id, name: otherBranch.name, archivedAt: null },
           },
           roundOrderId,
         ),
@@ -1034,14 +1009,14 @@ it(
           `pos:${employee.id}`,
           id,
           { requestId: randomUUID(), branchId: branch.id },
-          [branch.id],
+          branch.id,
         );
         await lifecycle.startPreparationFromPos(
           merchant.id,
           `pos:${employee.id}`,
           id,
           { requestId: randomUUID() },
-          [branch.id],
+          branch.id,
         );
         const lines = await prisma.storefrontOrderLine.findMany({
           where: { orderId: id, merchantId: merchant.id },
@@ -1059,7 +1034,7 @@ it(
             id,
             line.id,
             { requestId: lastReadyRequestId },
-            [branch.id],
+            branch.id,
           );
           assert.equal(readyOrder.status, index === lines.length - 1 ? 'ready' : 'preparing');
         }
@@ -1071,7 +1046,7 @@ it(
             id,
             lines.at(-1)!.id,
             { requestId: lastReadyRequestId },
-            [branch.id],
+            branch.id,
           ),
           readyOrder,
         );
@@ -1085,7 +1060,7 @@ it(
           `pos:${employee.id}`,
           handoverOrderId,
           { requestId },
-          [branch.id],
+          branch.id,
         );
       await assert.rejects(
         handover(randomUUID()),
@@ -1148,7 +1123,7 @@ it(
         `pos:${employee.id}`,
         laterRoundOrderId,
         { requestId: randomUUID() },
-        [branch.id],
+        branch.id,
       );
       assert.equal(laterRoundCompleted.status, 'completed');
       assert.equal(
@@ -1250,7 +1225,7 @@ it(
           'approve_shift_close',
           'manage_cash_movements',
         ],
-        branches: employee.branches,
+        branch: employee.branch,
       };
       const reconciliationRegister = await registers.createRegister(
         merchant.id,
@@ -1364,7 +1339,6 @@ it(
             await tx.posDiningTable.deleteMany({ where: { merchantId } });
             await tx.posShift.deleteMany({ where: { merchantId } });
             await tx.posRegister.deleteMany({ where: { merchantId } });
-            await tx.posEmployeeBranch.deleteMany({ where: { merchantId } });
             await tx.posEmployee.deleteMany({ where: { merchantId } });
             await tx.branch.deleteMany({ where: { merchantId } });
             // Remove the subscription created with this test merchant before its parent row.

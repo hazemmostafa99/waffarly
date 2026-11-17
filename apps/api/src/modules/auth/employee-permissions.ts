@@ -15,7 +15,7 @@ export function requireEmployeePermission(
 }
 
 export function requireEmployeeBranch(employee: PosEmployeeSession, branchId: string): void {
-  if (!employee.branches.some((branch) => branch.id === branchId)) {
+  if (employee.branch.id !== branchId) {
     throw new ForbiddenException('This employee is not assigned to the selected branch.');
   }
 }

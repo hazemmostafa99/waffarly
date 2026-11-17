@@ -21,7 +21,6 @@ const openShift = {
 };
 
 type ShiftPageOptions = {
-  branches?: Array<{ id: string; name: string; archivedAt: null }>;
   registers?: Array<{ id: string; branchId: string; name: string }>;
   shift?: typeof openShift | null;
   failRegisters?: boolean;
@@ -75,7 +74,7 @@ async function openCashManagementPage(
         displayName: 'Sarah Ahmed',
         role: 'cashier',
         permissions: ['sell', 'open_register_shift'],
-        branches: [{ id: branchId, name: 'Main branch', archivedAt: null }],
+        branch: { id: branchId, name: 'Main branch', archivedAt: null },
       },
     }),
   );
@@ -180,7 +179,6 @@ async function openCashManagementPage(
 }
 
 async function openShiftPage(page: Page, options: ShiftPageOptions = {}) {
-  const branches = options.branches ?? [{ id: branchId, name: 'Main branch', archivedAt: null }];
   const registers = options.registers ?? [{ id: registerId, branchId, name: 'Front register' }];
   let failRegisters = options.failRegisters ?? false;
   let failCurrentShift = options.failCurrentShift ?? false;
@@ -206,7 +204,7 @@ async function openShiftPage(page: Page, options: ShiftPageOptions = {}) {
         displayName: 'Sarah Ahmed',
         role: 'cashier',
         permissions: ['sell', 'open_register_shift'],
-        branches,
+        branch: { id: branchId, name: 'Main branch', archivedAt: null },
       },
     }),
   );
@@ -473,47 +471,7 @@ test('open shift shows register attribution and opening float in both themes', a
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
 });
 
-test('missing branch assignment has its own actionable empty state', async ({ page }) => {
-  let registerRequests = 0;
-  await page.route('**/pos/cash/**', (route) =>
-    route.fulfill({
-      json: {
-        items: route.request().url().includes('/safes')
-          ? [{ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', branchId, name: 'Main safe' }]
-          : [],
-        nextCursor: null,
-      },
-    }),
-  );
-  await page.route('**/auth/pos/me', (route) =>
-    route.fulfill({
-      json: {
-        id: employeeId,
-        merchantId,
-        username: 'cashier',
-        displayName: 'Sarah Ahmed',
-        role: 'cashier',
-        permissions: ['sell', 'open_register_shift'],
-        branches: [],
-      },
-    }),
-  );
-  await page.route('**/pos/registers**', (route) => {
-    registerRequests += 1;
-    return route.fulfill({ json: [] });
-  });
-
-  await page.goto('/shift');
-  await expect(
-    page.getByRole('heading', { name: 'No active branches are assigned to this account.' }),
-  ).toBeVisible();
-  await expect(
-    page.getByText('Ask the merchant owner to assign you to an active POS branch.'),
-  ).toBeVisible();
-  expect(registerRequests).toBe(0);
-});
-
-test('empty register list is distinct from missing branch assignment', async ({ page }) => {
+test('an empty register list shows the assigned branch register state', async ({ page }) => {
   await openShiftPage(page, { registers: [] });
 
   await expect(
@@ -522,9 +480,6 @@ test('empty register list is distinct from missing branch assignment', async ({ 
   await expect(
     page.getByText('Ask the merchant owner to create a POS register before opening a shift.'),
   ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'No active branches are assigned to this account.' }),
-  ).toHaveCount(0);
 });
 
 test('retry recovers the current shift query instead of retrying only the register list', async ({

@@ -55,7 +55,7 @@ describe('employee role boundaries', () => {
         'start_preparation',
         'sell',
       ]),
-      branches: [{ id: branchId, name: 'Assigned', archivedAt: null }],
+      branch: { id: branchId, name: 'Assigned', archivedAt: null },
     };
   }
 
@@ -217,7 +217,7 @@ describe('employee role boundaries', () => {
           status: { in: ['ready', 'completed'] },
         },
       ],
-      branchId: { in: [branchId] },
+      branchId,
     });
     await request(app.getHttpServer()).post('/pos/orders/quote').send({}).expect(403);
     await request(app.getHttpServer())

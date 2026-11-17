@@ -18,6 +18,7 @@ const navigation = [
   { id: 'discounts', label: 'Discounts', icon: 'discounts' },
   { id: 'branches', label: 'Branches', icon: 'branches' },
   { id: 'employees', label: 'Employees', icon: 'customers' },
+  { id: 'delivery-couriers', label: 'Delivery couriers', icon: 'branches' },
   { id: 'pos-registers', label: 'Registers', icon: 'orders' },
   { id: 'pos-cash', label: 'Cash drawers & safes', icon: 'revenue' },
   { id: 'pos-tables', label: 'Tables', icon: 'grid' },
@@ -86,6 +87,7 @@ export function MerchantLayout() {
       if (item.id === 'pos-item-returns') return 'مرتجعات وهالك';
       if (item.id === 'profitability') return 'ربحية المنتجات';
       if (item.id === 'employees') return 'الموظفون';
+      if (item.id === 'delivery-couriers') return 'طيارو التوصيل';
     }
     return t(item.label);
   }

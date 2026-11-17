@@ -34,7 +34,7 @@ describe('delivery employee endpoints', () => {
       displayName: 'Cashier',
       role: 'cashier',
       permissions: ['sell', 'open_register_shift'],
-      branches: [{ id: branchId, name: 'Main', archivedAt: null }],
+      branch: { id: branchId, name: 'Main', archivedAt: null },
     };
     const module = await Test.createTestingModule({
       controllers: [PosDeliveryController],
@@ -82,7 +82,7 @@ describe('delivery employee endpoints', () => {
     authorized = true;
     employee = { ...employee, permissions: [] };
     await request(app.getHttpServer()).get(`/pos/deliveries?branchId=${branchId}`).expect(403);
-    employee = { ...employee, permissions: ['sell'], branches: [] };
+    employee = { ...employee, permissions: ['sell'], branch: { ...employee.branch, id: 'another-branch' } };
     await request(app.getHttpServer())
       .get(`/pos/deliveries/ready?branchId=${branchId}`)
       .expect(403);
@@ -111,6 +111,19 @@ describe('delivery employee endpoints', () => {
         amount: '0',
       })
       .expect(400);
+    const dispatch = { action: 'dispatch', requestId: randomUUID(), revision: 1 };
+    await request(app.getHttpServer())
+      .post(`/pos/deliveries/${orderId}/actions`)
+      .send(dispatch)
+      .expect(400);
+    await request(app.getHttpServer())
+      .post(`/pos/deliveries/${orderId}/actions`)
+      .send({ ...dispatch, courierId: randomUUID() })
+      .expect(404);
+    await request(app.getHttpServer())
+      .post(`/pos/deliveries/${orderId}/actions`)
+      .send({ ...dispatch, courierName: 'Legacy courier' })
+      .expect(404);
     await request(app.getHttpServer())
       .post('/pos/deliveries/not-a-uuid/actions')
       .send({})

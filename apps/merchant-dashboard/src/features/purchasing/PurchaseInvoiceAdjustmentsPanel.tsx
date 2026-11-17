@@ -96,7 +96,7 @@ export function PurchaseInvoiceAdjustmentsPanel({
     onBusyChange?.(true);
     setError('');
     try {
-      await apiRequest(path, { method: 'POST', body });
+      await apiRequest(path, { method: 'POST', body: JSON.stringify(body) });
       const refreshed = await apiRequest<PurchaseInvoice>(
         `/owner/purchasing/invoices/${invoice.id}`,
       );

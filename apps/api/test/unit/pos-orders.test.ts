@@ -19,7 +19,7 @@ const employee: PosEmployeeSession = {
   displayName: 'Cashier One',
   role: 'cashier',
   permissions: ['sell'],
-  branches: [{ id: branchId, name: 'Main', archivedAt: null }],
+  branch: { id: branchId, name: 'Main', archivedAt: null },
 };
 
 function quote(product: string, price: string) {
@@ -110,7 +110,7 @@ describe('POS sales', () => {
     );
     await assert.rejects(
       service.listActiveSales(
-        { ...employee, branches: [] },
+        { ...employee, branch: { ...employee.branch, id: 'another-branch' } },
         { branchId, mode: 'active', limit: 25 },
       ),
       ForbiddenException,

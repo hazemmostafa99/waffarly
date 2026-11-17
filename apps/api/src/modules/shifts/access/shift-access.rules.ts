@@ -18,7 +18,8 @@ export async function readCurrentShiftPermissions(
       id: employee.id,
       merchantId: employee.merchantId,
       active: true,
-      branches: { some: { branchId, branch: { archivedAt: null } } },
+      branchId,
+      branch: { archivedAt: null },
     },
     select: { role: true, permissions: true },
   });
@@ -43,7 +44,8 @@ export async function requireCurrentApprover(
       id: approverEmployeeId,
       merchantId: actor.merchantId,
       active: true,
-      branches: { some: { branchId, branch: { archivedAt: null } } },
+      branchId,
+      branch: { archivedAt: null },
     },
     select: { id: true, role: true, permissions: true },
   });
@@ -59,8 +61,34 @@ export async function requireCurrentApprover(
 }
 
 export function assertShiftBranchAssignment(employee: PosEmployeeSession, branchId: string): void {
-  if (!employee.branches.some((branch) => branch.id === branchId)) {
+  if (employee.branch.id !== branchId) {
     throw new ForbiddenException('This employee is not assigned to the selected branch.');
+  }
+}
+
+/** Keeps register operations on the one cashier station paired with this browser. */
+export function assertPosRegisterAssignment(
+  employee: PosEmployeeSession,
+  registerId: string,
+): void {
+  // Old in-process callers may omit device state; authenticated POS sessions never do.
+  if (employee.deviceRegister === undefined) return;
+  if (!employee.deviceRegister) {
+    throw new ForbiddenException('Pair this browser with a POS register before continuing.');
+  }
+  if (employee.deviceRegister.id !== registerId) {
+    throw new ForbiddenException('This browser can only use its paired POS register.');
+  }
+}
+
+export function assertCurrentPosRegisterPair(
+  employee: PosEmployeeSession,
+  registerId: string,
+  deviceId: string | null,
+): void {
+  assertPosRegisterAssignment(employee, registerId);
+  if (employee.deviceId !== undefined && employee.deviceId !== deviceId) {
+    throw new ForbiddenException('This browser is no longer paired with the selected POS register.');
   }
 }
 

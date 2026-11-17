@@ -65,7 +65,8 @@ stock, storefront and dining tests. Test Arabic/English UI and mobile layout.
 
 1. Open **Delivery follow-up** (`/deliveries`) as an assigned cashier/supervisor.
    Pick the branch and the drawer that will physically receive cash. Outgoing
-   delivery candidates are ready POS delivery orders; enter a courier name/reference.
+   delivery candidates are ready POS delivery orders; choose an active courier
+   assigned to that branch.
 2. Record **delivered to customer** or **failed**, with a mandatory failure reason.
    Both events are distinct from customer payment. Outgoing tickets move out of the
    kitchen queue into delivery follow-up. A failed order remains ready for explicit
@@ -108,11 +109,60 @@ Owner **POS Shift Reports** adds courier cash received and frozen handover detai
 and attributes receipts to the receiving employee, including CSV. Remittances never
 increase sales, customer collections or net collected a second time.
 
+## Courier directory foundation — 2026-11-17
+
+The first directory slice adds merchant-owned courier records with a stable ID,
+display name, optional phone, active state, revision and assigned branches. Owners
+can manage the bounded directory through authenticated owner routes. POS staff can
+read only active couriers assigned to their own active branch and only when their
+current permissions allow delivery work. A courier has no POS login or compensation
+fields. Existing delivery rows keep their saved names; they are not assigned to a
+new courier by name matching. Courier-level cash and storefront delivery remain
+later slices. Manual acceptance is pending.
+
+## Registered POS courier dispatch — 2026-11-17
+
+POS dispatch and failed-delivery redispatch select an active courier assigned to
+the employee's active branch. Orders revalidates the authenticated merchant,
+branch assignment and courier active state in the dispatch transaction. New
+dispatch commands use the stable courier ID; `PosDelivery` stores that ID with a
+copy of the courier name so existing queue, handover and cash views retain their
+historical wording when an owner later renames the directory record.
+
+The courier ID is nullable for delivery rows created before this slice. No old
+name is backfilled or matched automatically. A legacy saved dispatch can resolve
+by name only when exactly one active courier with that name is assigned to the
+branch; ambiguous or unmatched saved requests must be dismissed through the
+existing recovery flow and selected again. Already committed legacy requests keep
+their exact replay behavior. No courier compensation or wage data is recorded.
+Each accepted dispatch also creates a separate attempt record. Delivery completion
+or failure closes that attempt; redispatch starts a new attempt, preserving the
+previous courier's result instead of overwriting it. Existing deliveries are not
+backfilled into attempt history.
+
+## Courier performance — 2026-11-17
+
+The owner courier page shows a rolling 30-day operating summary per courier:
+dispatch attempts, delivered attempts, failed attempts, currently active attempts,
+success rate among completed attempts and average minutes for successful deliveries.
+The rate is a descriptive measure, not a score or compensation calculation.
+Dispatches outside the window and deliveries created before attempt tracking are
+not included. Inactive courier records remain visible for historical context.
+No wages, per-delivery pay or courier balances are calculated.
+
+Manual acceptance remains pending: dispatch a ready order with an assigned
+courier, retry a failed delivery with a different assigned courier after resolving
+cash, verify both courier attempts appear in performance, reject inactive or
+other-branch IDs, and retry or explicitly dismiss a legacy saved dispatch.
+
 ## Rollout and acceptance
 
 Migration `20261026090000_pos_delivery_collections` is additive and preserves
 historical amounts/custody. It was applied only to the configured development
 PostgreSQL `waffarly` at `localhost:5433`, without reset. There are 54 migrations.
+Apply the courier directory, courier identity and attempt-history migrations in
+timestamp order before deploying the API and clients. They add new tables/nullable
+identity fields and do not rewrite existing delivery or payment history.
 Deploy contracts/database/API before clients. Existing payments default to drawer
 custody; old orders are not automatically assigned couriers or new responsibilities.
 After real remittances exist, rolling back to old financial code requires an

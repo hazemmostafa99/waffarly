@@ -78,9 +78,10 @@ export class AuthController {
   @HttpCode(200)
   async posLogin(
     @Body() body: unknown,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<{ authenticated: true }> {
-    await this.auth.loginPos(parseRequest(posLoginSchema, body), response);
+    await this.auth.loginPos(parseRequest(posLoginSchema, body), request, response);
     return { authenticated: true };
   }
 

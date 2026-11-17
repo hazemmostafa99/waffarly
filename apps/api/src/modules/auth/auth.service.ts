@@ -2,6 +2,7 @@ import {
   isPosEmployeeRole,
   resolvePosEmployeePermissions,
   type PosEmployeePermission,
+  type PosEmployeeRegister,
   type BusinessActivityKey,
   type OwnerProfile,
   type PosEmployeeSession,
@@ -9,7 +10,7 @@ import {
   type ResetMerchantOwnerPasswordRequest,
   type ResetMerchantOwnerPasswordResponse,
 } from '@waffarly/contracts';
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import {
   ForbiddenException,
   Inject,
@@ -31,6 +32,9 @@ const SESSION_LIFETIME_MS = 8 * 60 * 60 * 1000;
 const ADMIN_COOKIE = 'waffarly_admin_session';
 const OWNER_COOKIE = 'waffarly_owner_session';
 const POS_COOKIE = 'waffarly_pos_session';
+const POS_DEVICE_COOKIE = 'waffarly_pos_device';
+const POS_DEVICE_COOKIE_LIFETIME_MS = 5 * 365 * 24 * 60 * 60 * 1000;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function tokenHash(token: string): string {
   return createHash('sha256').update(token).digest('hex');
@@ -117,7 +121,7 @@ export class AuthService {
     });
   }
 
-  async loginPos(input: PosLoginRequest, response: Response): Promise<void> {
+  async loginPos(input: PosLoginRequest, request: Request, response: Response): Promise<void> {
     const merchant = await this.prisma.merchant.findUnique({
       where: { storefrontSlug: input.storefrontSlug.trim().toLowerCase() },
       select: { id: true, firstMonthActivatedAt: true },
@@ -130,19 +134,21 @@ export class AuthService {
               username: input.username.trim().toLowerCase(),
             },
           },
+          include: { branch: { select: { archivedAt: true } } },
         })
       : null;
     if (!merchant || !employee || !(await verifyPassword(input.password, employee.passwordHash))) {
       throw new UnauthorizedException('Invalid credentials.');
     }
     if (!employee.active) throw new UnauthorizedException('Invalid credentials.');
-    // POS sessions may settle existing work; guards block new operations when inactive.
-    const activeBranchCount = await this.prisma.posEmployeeBranch.count({
-      where: { employeeId: employee.id, merchantId: merchant.id, branch: { archivedAt: null } },
+    if (employee.branch.archivedAt)
+      throw new ForbiddenException('The assigned branch is inactive.');
+    const deviceId = this.getOrCreatePosDeviceId(request);
+    await this.startSession('POS', employee.id, POS_COOKIE, response, undefined, deviceId);
+    response.cookie(POS_DEVICE_COOKIE, deviceId, {
+      ...this.cookieOptions(),
+      maxAge: POS_DEVICE_COOKIE_LIFETIME_MS,
     });
-    if (activeBranchCount === 0)
-      throw new ForbiddenException('No active branch is assigned to this account.');
-    await this.startSession('POS', employee.id, POS_COOKIE, response);
   }
 
   async requireAdmin(request: Request): Promise<string> {
@@ -178,16 +184,12 @@ export class AuthService {
   }
 
   async requirePosEmployee(request: Request): Promise<PosEmployeeSession> {
-    const subjectId = await this.readSession(request, POS_COOKIE, 'POS');
+    const session = await this.readPosSession(request);
     const employee = await this.prisma.posEmployee.findUnique({
-      where: { id: subjectId },
+      where: { id: session.subjectId },
       include: {
         merchant: true,
-        branches: {
-          where: { branch: { archivedAt: null } },
-          orderBy: { branch: { name: 'asc' } },
-          select: { branch: { select: { id: true, name: true } } },
-        },
+        branch: { select: { id: true, name: true, archivedAt: true } },
       },
     });
     if (!employee || !employee.active) throw new UnauthorizedException('POS session is invalid.');
@@ -195,9 +197,31 @@ export class AuthService {
     if (!access.allowed && !isSubscriptionRecoveryRequest(request.method, request.path)) {
       throw new ForbiddenException('Subscription is not active.');
     }
-    const branches = employee.branches.map(({ branch }) => ({ ...branch, archivedAt: null }));
-    if (branches.length === 0)
-      throw new ForbiddenException('No active branch is assigned to this account.');
+    if (employee.branch.archivedAt)
+      throw new ForbiddenException('The assigned branch is inactive.');
+    const pairedRegister = await this.prisma.posRegister.findFirst({
+      where: { merchantId: employee.merchantId, deviceId: session.deviceId },
+      select: {
+        id: true,
+        branchId: true,
+        name: true,
+        active: true,
+        branch: { select: { archivedAt: true } },
+      },
+    });
+    if (pairedRegister && pairedRegister.branchId !== employee.branch.id) {
+      throw new ForbiddenException(
+        'This browser is paired with a register at another branch. Ask the owner to unpair it.',
+      );
+    }
+    if (pairedRegister && (!pairedRegister.active || pairedRegister.branch.archivedAt)) {
+      throw new ForbiddenException(
+        'The register paired with this browser is inactive. Ask the owner to review the register.',
+      );
+    }
+    const deviceRegister: PosEmployeeRegister | null = pairedRegister
+      ? { id: pairedRegister.id, branchId: pairedRegister.branchId, name: pairedRegister.name }
+      : null;
     return {
       id: employee.id,
       merchantId: employee.merchantId,
@@ -208,7 +232,9 @@ export class AuthService {
         isPosEmployeeRole(employee.role) ? employee.role : null,
         employee.permissions,
       ),
-      branches,
+      branch: { ...employee.branch, archivedAt: null },
+      deviceId: session.deviceId,
+      deviceRegister,
     };
   }
 
@@ -231,10 +257,7 @@ export class AuthService {
         },
       },
       include: {
-        branches: {
-          where: { branch: { archivedAt: null } },
-          select: { branchId: true },
-        },
+        branch: { select: { id: true, archivedAt: true } },
       },
     });
     if (
@@ -246,7 +269,7 @@ export class AuthService {
     }
     if (employee.id === input.actingEmployeeId)
       throw new ForbiddenException('A different supervisor must approve this action.');
-    if (!employee.branches.some((branch) => branch.branchId === input.branchId))
+    if (employee.branch.archivedAt || employee.branch.id !== input.branchId)
       throw new ForbiddenException('The supervisor is not assigned to this branch.');
     const role = isPosEmployeeRole(employee.role) ? employee.role : null;
     if (!resolvePosEmployeePermissions(role, employee.permissions).includes(input.permission))
@@ -273,6 +296,7 @@ export class AuthService {
     cookieName: string,
     response: Response,
     verifiedOwnerPasswordHash?: string,
+    deviceId?: string,
   ): Promise<void> {
     const token = randomBytes(32).toString('base64url');
     await this.prisma.authSession.deleteMany({ where: { expiresAt: { lt: new Date() } } });
@@ -280,6 +304,7 @@ export class AuthService {
       tokenHash: tokenHash(token),
       subjectKind,
       subjectId,
+      ...(deviceId ? { deviceId } : {}),
       expiresAt: new Date(Date.now() + SESSION_LIFETIME_MS),
     };
 
@@ -321,6 +346,28 @@ export class AuthService {
       throw new UnauthorizedException('Session has expired.');
     }
     return session.subjectId;
+  }
+
+  private async readPosSession(request: Request): Promise<{ subjectId: string; deviceId: string }> {
+    const token = readCookie(request, POS_COOKIE);
+    if (!token) throw new UnauthorizedException('Sign in is required.');
+    const session = await this.prisma.authSession.findUnique({
+      where: { tokenHash: tokenHash(token) },
+    });
+    if (
+      !session ||
+      session.subjectKind !== 'POS' ||
+      session.expiresAt <= new Date() ||
+      !session.deviceId
+    ) {
+      throw new UnauthorizedException('POS session has expired. Sign in again to register this browser.');
+    }
+    return { subjectId: session.subjectId, deviceId: session.deviceId };
+  }
+
+  private getOrCreatePosDeviceId(request: Request): string {
+    const current = readCookie(request, POS_DEVICE_COOKIE);
+    return current && UUID_PATTERN.test(current) ? current : randomUUID();
   }
 
   private cookieOptions(): { httpOnly: true; sameSite: 'lax'; secure: boolean; path: string } {

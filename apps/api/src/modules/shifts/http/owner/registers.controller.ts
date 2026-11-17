@@ -23,6 +23,7 @@ import { CurrentOwner, OwnerGuard } from '../../../auth/index.js';
 import {
   createPosRegisterSchema,
   ownerPosRegisterListSchema,
+  unpairPosRegisterSchema,
   updatePosRegisterSchema,
 } from '../../shifts.schemas.js';
 import { PosRegistersService } from '../../registers/pos-registers.service.js';
@@ -59,5 +60,14 @@ export class OwnerPosRegistersController {
     input: UpdatePosRegisterRequest,
   ): Promise<PosRegisterSummary> {
     return this.registers.updateRegister(owner.merchantId, owner.username, id, input);
+  }
+
+  @Post(':id/unpair')
+  unpairDevice(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(new ZodValidationPipe(unpairPosRegisterSchema, { format: 'messages' })) input: unknown,
+  ): Promise<PosRegisterSummary> {
+    return this.registers.unpairDevice(owner.merchantId, owner.username, id, input);
   }
 }

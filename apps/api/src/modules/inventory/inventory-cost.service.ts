@@ -196,7 +196,7 @@ export class InventoryCostService {
         'opening',
       );
     });
-    return this.getCostSummary(merchantId, stockItemId, {});
+    return this.getCostSummary(merchantId, stockItemId, { limit: 25 });
   }
 
   async recordPurchaseConfirmation(

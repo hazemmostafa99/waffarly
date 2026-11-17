@@ -69,7 +69,7 @@ export class PosOrderKitchenController {
       `pos:${employee.id}`,
       id,
       parseRequest(startOrderPreparationSchema, body),
-      employee.branches.map((branch) => branch.id),
+      employee.branch.id,
     );
   }
 
@@ -86,7 +86,7 @@ export class PosOrderKitchenController {
       `pos:${employee.id}`,
       id,
       parseRequest(markOrderReadySchema, body),
-      employee.branches.map((branch) => branch.id),
+      employee.branch.id,
     );
   }
 
@@ -105,7 +105,7 @@ export class PosOrderKitchenController {
       id,
       lineId,
       parseRequest(markKitchenItemReadySchema, body),
-      employee.branches.map((branch) => branch.id),
+      employee.branch.id,
     );
   }
 

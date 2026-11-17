@@ -21,6 +21,7 @@ import { cashPageSchema, type CashPageQuery } from '../cash-custody.schemas.js';
 import { cashAmountCents, page } from './custody-records.js';
 
 import { requireEmployeeCashBranch } from './custody-access.js';
+import { assertPosRegisterAssignment } from '../access/shift-access.rules.js';
 
 export function drawerLedger(
   prisma: PrismaService,
@@ -38,6 +39,7 @@ export async function carryoverOptions(
 ): Promise<CursorPage<CashDrawerSummary>> {
   const q = parseRequest(cashPageSchema, input);
   await requireEmployeeCashBranch(prisma, employee, q.branchId ?? '');
+  if (q.registerId) assertPosRegisterAssignment(employee, q.registerId);
   if (
     !q.registerId ||
     !(await prisma.posRegister.findFirst({
@@ -66,11 +68,16 @@ export async function drawers(
       if (employee) {
         if (!q.branchId) throw new ForbiddenException('Choose an assigned branch.');
         await requireEmployeeCashBranch(prisma, employee, q.branchId, false, tx);
+        if (q.registerId) assertPosRegisterAssignment(employee, q.registerId);
       }
       const where: Prisma.PosShiftWhereInput = {
         merchantId,
         ...(q.branchId ? { branchId: q.branchId } : {}),
-        ...(q.registerId ? { registerId: q.registerId } : {}),
+        ...(employee?.deviceRegister
+          ? { registerId: employee.deviceRegister.id }
+          : q.registerId
+            ? { registerId: q.registerId }
+            : {}),
         ...(closedOnly ? { status: 'closed' } : {}),
         ...(employee ? { openedByEmployeeId: employee.id, status: 'closed' } : {}),
         ...(q.shiftId ? { id: q.shiftId } : {}),

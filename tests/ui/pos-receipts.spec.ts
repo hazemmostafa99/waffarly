@@ -3,7 +3,6 @@ import { expect, test } from '@playwright/test';
 const merchantId = '11111111-1111-4111-8111-111111111111';
 const employeeId = '22222222-2222-4222-8222-222222222222';
 const branchId = '33333333-3333-4333-8333-333333333333';
-const otherBranchId = '44444444-4444-4444-8444-444444444444';
 const orderId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const checkId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
@@ -101,16 +100,13 @@ test.beforeEach(async ({ page }) => {
         displayName: 'Test cashier',
         role: 'cashier',
         permissions: ['sell', 'open_register_shift'],
-        branches: [
-          { id: branchId, name: 'Main branch', archivedAt: null },
-          { id: otherBranchId, name: 'Airport branch', archivedAt: null },
-        ],
+        branch: { id: branchId, name: 'Main branch', archivedAt: null },
       },
     }),
   );
 });
 
-test('receipt history supports branch scope, search, pagination and opening a saved receipt', async ({
+test('receipt history stays on the assigned branch, supports search and opens a saved receipt', async ({
   page,
 }, testInfo) => {
   let listRequests = 0;
@@ -119,13 +115,6 @@ test('receipt history supports branch scope, search, pagination and opening a sa
   await page.route('**/pos/receipts?**', async (route) => {
     listRequests += 1;
     const url = new URL(route.request().url());
-    const requestedBranch = url.searchParams.get('branchId');
-    if (requestedBranch === otherBranchId) {
-      await route.fulfill({
-        json: { items: [olderReceipt], nextCursor: null },
-      });
-      return;
-    }
     if (url.searchParams.get('cursor') === 'older-page') {
       await route.fulfill({ json: { items: [olderReceipt], nextCursor: null } });
       return;
@@ -164,12 +153,6 @@ test('receipt history supports branch scope, search, pagination and opening a sa
   await page.getByRole('button', { name: 'Refresh' }).click();
   await expect.poll(() => listRequests).toBeGreaterThanOrEqual(3);
   await expect(page.getByRole('article')).toHaveCount(2);
-
-  await page.getByLabel('Branch').selectOption(otherBranchId);
-  await expect(page.getByRole('article', { name: olderReceipt.receiptNumber })).toBeVisible();
-  await expect(page.getByRole('article', { name: recentReceipt.receiptNumber })).toHaveCount(0);
-  await page.getByLabel('Branch').selectOption(branchId);
-  await expect(page.getByRole('article', { name: recentReceipt.receiptNumber })).toBeVisible();
 
   await page
     .getByRole('article', { name: recentReceipt.receiptNumber })
@@ -219,11 +202,11 @@ test('receipt errors do not look like an empty history and can be refreshed', as
   await expect(page.getByRole('article', { name: recentReceipt.receiptNumber })).toBeVisible();
 });
 
-test('a genuine empty branch history and an unassigned cashier have separate states', async ({
+test('an assigned branch can have a genuine empty receipt history', async ({
   page,
 }) => {
-  let branches = [{ id: branchId, name: 'Main branch', archivedAt: null }];
   let listRequests = 0;
+  const requestedBranches: string[] = [];
   await page.route('**/auth/pos/me', (route) =>
     route.fulfill({
       json: {
@@ -233,25 +216,21 @@ test('a genuine empty branch history and an unassigned cashier have separate sta
         displayName: 'Test cashier',
         role: 'cashier',
         permissions: ['sell'],
-        branches,
+        branch: { id: branchId, name: 'Main branch', archivedAt: null },
       },
     }),
   );
   await page.route('**/pos/receipts?**', (route) => {
     listRequests += 1;
+    requestedBranches.push(new URL(route.request().url()).searchParams.get('branchId') ?? '');
     return route.fulfill({ json: { items: [], nextCursor: null } });
   });
 
   await page.goto('/receipts');
   await expect(page.getByText('No receipts yet')).toBeVisible();
-  const requestsWithBranch = listRequests;
-  expect(requestsWithBranch).toBeGreaterThan(0);
-
-  branches = [];
-  await page.reload();
-  await expect(page.getByText('No POS branches assigned')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Refresh' })).toBeDisabled();
-  expect(listRequests).toBe(requestsWithBranch);
+  expect(listRequests).toBeGreaterThan(0);
+  expect(requestedBranches.every((value) => value === branchId)).toBe(true);
+  await expect(page.getByRole('button', { name: 'Refresh' })).toBeEnabled();
 });
 
 test('Arabic receipt history stays RTL and fits a phone viewport', async ({ page }, testInfo) => {

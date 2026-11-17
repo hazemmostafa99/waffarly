@@ -3,7 +3,6 @@ import type { CursorPage, PosEmployeeSession, StockBalance } from '@waffarly/con
 import { Input, useLocale } from '@waffarly/ui';
 import { useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { usePosWorkspaceStore } from '../../app/pos-workspace-store.js';
 import { PosButton } from '../../components/pos-button.js';
 import { apiRequest } from '../../lib/api-client.js';
 
@@ -11,12 +10,7 @@ export function EmployeeInventoryScreen() {
   const { employee } = useOutletContext<{ employee: PosEmployeeSession }>();
   const { locale, errorText, formatNumber } = useLocale();
   const text = (en: string, ar: string) => (locale === 'ar' ? ar : en);
-  const workspace = usePosWorkspaceStore((state) => state.workspace);
-  const selectBranch = usePosWorkspaceStore((state) => state.selectBranch);
-  const branchId =
-    employee.branches.find((branch) => branch.id === workspace?.selectedBranchId)?.id ??
-    employee.branches[0]?.id ??
-    '';
+  const branchId = employee.branch.id;
   const [search, setSearch] = useState('');
   const [cursors, setCursors] = useState<Array<string | undefined>>([]);
   const cursor = cursors.at(-1);
@@ -37,28 +31,11 @@ export function EmployeeInventoryScreen() {
           <h1 className="text-2xl font-bold">{text('Stock balances', 'أرصدة المخزون')}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {text(
-              'Read-only stock balances for your assigned branches.',
-              'عرض أرصدة المخزون للفروع المعيّنة لك فقط.',
+              'Read-only stock balances for your assigned branch.',
+              'عرض أرصدة المخزون للفرع المعيّن لك فقط.',
             )}
           </p>
         </div>
-        <label className="grid gap-1 text-sm">
-          {text('Branch', 'الفرع')}
-          <select
-            className="min-h-11 rounded-lg border border-border bg-card px-3"
-            value={branchId}
-            onChange={(event) => {
-              setCursors([]);
-              selectBranch(employee.merchantId, employee.id, event.target.value);
-            }}
-          >
-            {employee.branches.map((branch) => (
-              <option key={branch.id} value={branch.id}>
-                {branch.name}
-              </option>
-            ))}
-          </select>
-        </label>
       </header>
       <div className="flex flex-wrap items-end gap-3">
         <label className="grid flex-1 gap-1 text-sm">

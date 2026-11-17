@@ -128,12 +128,6 @@ export interface PosRefundSummary {
   issuedBy?: string;
   approvedBy?: string | null;
   tenders: PosRefundTenderSummary[];
-}
-
-export interface PosRefundReceipt extends PosRefundSummary {
-  orderId: string;
-  issuedBy: string;
-  approvedBy: string | null;
   lineAllocations?: Array<{
     orderLineId: string;
     productName: string;
@@ -141,6 +135,12 @@ export interface PosRefundReceipt extends PosRefundSummary {
     quantity: number;
     revenueReversalAmount: string;
   }>;
+}
+
+export interface PosRefundReceipt extends PosRefundSummary {
+  orderId: string;
+  issuedBy: string;
+  approvedBy: string | null;
 }
 
 export interface RecordPosCheckRefundResponse {

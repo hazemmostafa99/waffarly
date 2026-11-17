@@ -5,6 +5,7 @@ export interface PosRegisterSummary {
   name: string;
   active: boolean;
   revision: number;
+  devicePaired?: boolean;
 }
 
 export interface PosRegisterOption {

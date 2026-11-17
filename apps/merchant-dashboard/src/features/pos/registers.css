@@ -101,6 +101,20 @@
   font-size: 11px;
 }
 
+.register-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.register-unpair-button {
+  min-height: 32px;
+  padding: 6px 12px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .register-pagination {
   display: flex;
   align-items: center;

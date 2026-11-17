@@ -49,6 +49,7 @@ it(
       const cashierRecord = await prisma.posEmployee.create({
         data: {
           merchantId: merchant.id,
+          branchId: branch.id,
           username: `reconcile-cashier-${token}`,
           displayName: 'Reconciliation cashier',
           passwordHash: 'database-test-only',
@@ -61,6 +62,7 @@ it(
       const supervisorRecord = await prisma.posEmployee.create({
         data: {
           merchantId: merchant.id,
+          branchId: branch.id,
           username: `reconcile-supervisor-${token}`,
           displayName: 'Reconciliation supervisor',
           passwordHash: 'database-test-only',
@@ -70,14 +72,6 @@ it(
           updatedBy: 'pos-shift-reconciliation-test',
         },
       });
-      await prisma.posEmployeeBranch.createMany({
-        data: [cashierRecord, supervisorRecord].map((employee) => ({
-          merchantId: merchant.id,
-          employeeId: employee.id,
-          branchId: branch.id,
-          createdBy: 'pos-shift-reconciliation-test',
-        })),
-      });
       const cashier: PosEmployeeSession = {
         id: cashierRecord.id,
         merchantId: merchant.id,
@@ -85,7 +79,7 @@ it(
         displayName: cashierRecord.displayName,
         role: 'cashier',
         permissions: ['open_register_shift', 'sell'],
-        branches: [{ id: branch.id, name: branch.name, archivedAt: null }],
+        branch: { id: branch.id, name: branch.name, archivedAt: null },
       };
       const supervisor: PosEmployeeSession = {
         id: supervisorRecord.id,
@@ -99,7 +93,7 @@ it(
           'approve_shift_close',
           'manage_cash_movements',
         ],
-        branches: [{ id: branch.id, name: branch.name, archivedAt: null }],
+        branch: { id: branch.id, name: branch.name, archivedAt: null },
       };
       const service = new ShiftsService(prisma as unknown as PrismaService);
       const registers = new PosRegistersService(prisma as unknown as PrismaService);
@@ -429,6 +423,7 @@ it(
       const otherEmployeeRecord = await prisma.posEmployee.create({
         data: {
           merchantId: otherMerchant.id,
+          branchId: otherBranch.id,
           username: `foreign-report-cashier-${token}`,
           displayName: 'Foreign report cashier',
           passwordHash: 'database-test-only',
@@ -438,14 +433,6 @@ it(
           updatedBy: 'pos-shift-reconciliation-test',
         },
       });
-      await prisma.posEmployeeBranch.create({
-        data: {
-          merchantId: otherMerchant.id,
-          employeeId: otherEmployeeRecord.id,
-          branchId: otherBranch.id,
-          createdBy: 'pos-shift-reconciliation-test',
-        },
-      });
       const otherEmployee: PosEmployeeSession = {
         id: otherEmployeeRecord.id,
         merchantId: otherMerchant.id,
@@ -453,7 +440,7 @@ it(
         displayName: otherEmployeeRecord.displayName,
         role: 'cashier',
         permissions: ['open_register_shift', 'sell'],
-        branches: [{ id: otherBranch.id, name: otherBranch.name, archivedAt: null }],
+        branch: { id: otherBranch.id, name: otherBranch.name, archivedAt: null },
       };
       const otherRegister = await registers.createRegister(
         otherMerchant.id,
@@ -532,7 +519,6 @@ it(
             await tx.storefrontOrder.deleteMany({ where: { merchantId } });
             await tx.posShift.deleteMany({ where: { merchantId } });
             await tx.posRegister.deleteMany({ where: { merchantId } });
-            await tx.posEmployeeBranch.deleteMany({ where: { merchantId } });
             await tx.posEmployee.deleteMany({ where: { merchantId } });
             await tx.branch.deleteMany({ where: { merchantId } });
             // Remove the subscription created with this test merchant before its parent row.

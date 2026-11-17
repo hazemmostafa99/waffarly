@@ -45,13 +45,11 @@ const posEmployee: PosEmployeeSession = {
   displayName: 'Cashier',
   role: null,
   permissions: ['accept_recipe_orders', 'start_preparation'],
-  branches: [
-    {
-      id: '33333333-3333-4333-8333-333333333333',
-      name: 'Central',
-      archivedAt: null,
-    },
-  ],
+  branch: {
+    id: '33333333-3333-4333-8333-333333333333',
+    name: 'Central',
+    archivedAt: null,
+  },
 };
 
 describe('catalog owner endpoints', () => {
