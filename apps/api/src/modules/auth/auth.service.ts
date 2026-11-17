@@ -6,20 +6,25 @@ import {
   type OwnerProfile,
   type PosEmployeeSession,
   type PosLoginRequest,
+  type ResetMerchantOwnerPasswordRequest,
+  type ResetMerchantOwnerPasswordResponse,
 } from '@waffarly/contracts';
 import { createHash, randomBytes } from 'node:crypto';
 import {
   ForbiddenException,
   Inject,
   Injectable,
+  NotFoundException,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 
 import { AppConfiguration } from '../../config/app-configuration.js';
+import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
-import { verifyPassword } from './password.js';
+import { hashPassword, verifyPassword } from './password.js';
+import { resetMerchantOwnerPasswordSchema } from './owner-password-reset.schemas.js';
 import { SubscriptionService, isSubscriptionRecoveryRequest } from '../subscriptions/index.js';
 
 const SESSION_LIFETIME_MS = 8 * 60 * 60 * 1000;
@@ -71,7 +76,45 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials.');
     }
     // Owners can sign in to inspect subscription status even while operations are restricted.
-    await this.startSession('OWNER', account.id, OWNER_COOKIE, response);
+    await this.startSession('OWNER', account.id, OWNER_COOKIE, response, account.passwordHash);
+  }
+
+  async resetMerchantOwnerPassword(
+    merchantId: string,
+    administrator: string,
+    input: ResetMerchantOwnerPasswordRequest,
+  ): Promise<ResetMerchantOwnerPasswordResponse> {
+    const { password } = parseRequest(resetMerchantOwnerPasswordSchema, input, {
+      format: 'messages',
+    });
+    // Hashing is deliberately outside the transaction to keep the account lock short.
+    const passwordHash = await hashPassword(password);
+
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Serialize resets with owner session creation on this same account row.
+      const [account] = await tx.$queryRaw<{ id: string; username: string }[]>`
+        SELECT "id", "username" FROM "owner_accounts"
+        WHERE "merchantId" = ${merchantId}::uuid
+        FOR UPDATE
+      `;
+      if (!account) throw new NotFoundException('Merchant owner account was not found.');
+
+      // 2. Commit the password and its attribution together with session revocation.
+      const passwordResetAt = new Date();
+      await tx.ownerAccount.update({
+        where: { id: account.id, merchantId },
+        data: { passwordHash, passwordResetAt, passwordResetBy: administrator },
+      });
+      await tx.authSession.deleteMany({
+        where: { subjectKind: 'OWNER', subjectId: account.id },
+      });
+
+      return {
+        merchantId,
+        username: account.username,
+        passwordResetAt: passwordResetAt.toISOString(),
+      };
+    });
   }
 
   async loginPos(input: PosLoginRequest, response: Response): Promise<void> {
@@ -229,17 +272,35 @@ export class AuthService {
     subjectId: string,
     cookieName: string,
     response: Response,
+    verifiedOwnerPasswordHash?: string,
   ): Promise<void> {
     const token = randomBytes(32).toString('base64url');
     await this.prisma.authSession.deleteMany({ where: { expiresAt: { lt: new Date() } } });
-    await this.prisma.authSession.create({
-      data: {
-        tokenHash: tokenHash(token),
-        subjectKind,
-        subjectId,
-        expiresAt: new Date(Date.now() + SESSION_LIFETIME_MS),
-      },
-    });
+    const data = {
+      tokenHash: tokenHash(token),
+      subjectKind,
+      subjectId,
+      expiresAt: new Date(Date.now() + SESSION_LIFETIME_MS),
+    };
+
+    if (subjectKind === 'OWNER') {
+      await this.prisma.$transaction(async (tx) => {
+        // A reset may have committed while scrypt verified the previously read hash.
+        const [account] = await tx.$queryRaw<{ passwordHash: string }[]>`
+          SELECT "passwordHash" FROM "owner_accounts"
+          WHERE "id" = ${subjectId}::uuid
+          FOR UPDATE
+        `;
+        if (!account || account.passwordHash !== verifiedOwnerPasswordHash) {
+          throw new UnauthorizedException('Invalid credentials.');
+        }
+        await tx.authSession.create({ data });
+      });
+    } else {
+      await this.prisma.authSession.create({ data });
+    }
+
+    // Never send a session cookie until its database transaction has committed.
     response.cookie(cookieName, token, {
       ...this.cookieOptions(),
       maxAge: SESSION_LIFETIME_MS,

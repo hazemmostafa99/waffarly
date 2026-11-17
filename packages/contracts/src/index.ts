@@ -129,6 +129,8 @@ export type {
   ActivateFirstMonthRequest,
   ApproveMerchantApplicationRequest,
   CreateMerchantRequest,
+  ResetMerchantOwnerPasswordRequest,
+  ResetMerchantOwnerPasswordResponse,
   LoginRequest,
   MerchantApplicationSummary,
   RejectedMerchantApplicationSummary,

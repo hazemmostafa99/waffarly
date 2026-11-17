@@ -641,12 +641,15 @@ model MerchantApplication {
 }
 
 model OwnerAccount {
-  id           String   @id @default(uuid()) @db.Uuid
-  merchantId   String   @unique @db.Uuid
-  username     String   @unique @db.VarChar(80)
-  passwordHash String   @db.VarChar(255)
-  createdAt    DateTime @default(now()) @db.Timestamptz(6)
-  merchant     Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  id              String    @id @default(uuid()) @db.Uuid
+  merchantId      String    @unique @db.Uuid
+  username        String    @unique @db.VarChar(80)
+  passwordHash    String    @db.VarChar(255)
+  // Only the latest administrative reset is recorded; existing accounts have no reset metadata.
+  passwordResetAt DateTime? @db.Timestamptz(6)
+  passwordResetBy String?   @db.VarChar(80)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+  merchant        Merchant  @relation(fields: [merchantId], references: [id], onDelete: Restrict)
 
   @@map("owner_accounts")
 }

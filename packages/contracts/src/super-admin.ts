@@ -27,6 +27,18 @@ export interface CreateMerchantRequest {
   password: string;
 }
 
+/** The merchant is selected by the admin route; password confirmation stays in the UI. */
+export interface ResetMerchantOwnerPasswordRequest {
+  password: string;
+}
+
+/** A successful reset acknowledgement never returns the password or its hash. */
+export interface ResetMerchantOwnerPasswordResponse {
+  merchantId: string;
+  username: string;
+  passwordResetAt: string;
+}
+
 export interface SubmitMerchantApplicationRequest {
   name: string;
   activity?: BusinessActivityKey;

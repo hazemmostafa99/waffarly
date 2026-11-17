@@ -6,12 +6,14 @@ import { Button, Card, useLocale } from '@waffarly/ui';
 import { PageHeader } from '../../components/PageHeader.js';
 import { useMerchantsQuery } from './merchant-queries.js';
 import { StorefrontAddressPanel } from './StorefrontAddressPanel.js';
+import { ResetMerchantPasswordDialog } from './ResetMerchantPasswordDialog.js';
 
 export function MerchantDetailsPage() {
   const { merchantId } = useParams();
   const { t, errorText, locale } = useLocale();
   const isArabic = locale === 'ar';
   const merchants = useMerchantsQuery();
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [businessCodeCopyState, setBusinessCodeCopyState] = useState<'copied' | 'failed' | null>(
     null,
   );
@@ -93,6 +95,13 @@ export function MerchantDetailsPage() {
           </>
         }
       />
+      {resetPasswordOpen && (
+        <ResetMerchantPasswordDialog
+          key={merchant.id}
+          merchant={merchant}
+          onClose={() => setResetPasswordOpen(false)}
+        />
+      )}
 
       {merchants.isError && (
         <p
@@ -194,6 +203,14 @@ export function MerchantDetailsPage() {
             />
             <DetailField label={t('Owner username')} value={merchant.username} direction="ltr" />
           </dl>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!merchant.username}
+            onClick={() => setResetPasswordOpen(true)}
+          >
+            {isArabic ? 'إعادة تعيين كلمة المرور' : 'Reset password'}
+          </Button>
         </Card>
 
         <StorefrontAddressPanel key={merchant.id} merchant={merchant} />
