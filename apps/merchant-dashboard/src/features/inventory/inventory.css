@@ -2794,3 +2794,374 @@ html[dir='rtl'] .inventory-editor .products-dialog-footer {
     min-height: 44px;
   }
 }
+
+/* Invoice review has one scroll area, with a persistent title and action footer. */
+.inventory-page.inventory-workspace .products-dialog.invoice-review-dialog {
+  width: min(920px, calc(100vw - 28px));
+  height: min(86dvh, 820px);
+  max-height: min(86dvh, 820px);
+  padding: 0;
+  overflow: hidden;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.invoice-review-dialog[open] {
+  display: grid;
+}
+.inventory-page.inventory-workspace .invoice-review-dialog > header {
+  margin: 0;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--dashboard-border);
+}
+.invoice-review-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 20px;
+}
+.invoice-review-identity {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.invoice-review-identity > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.invoice-review-identity strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+.invoice-review-identity span {
+  color: #5d6c80;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.invoice-review-currency {
+  margin: 6px 0 14px;
+}
+.invoice-review-navigation {
+  position: sticky;
+  top: -16px;
+  z-index: 2;
+  background: white;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 0 0 16px;
+  border-bottom: 1px solid var(--dashboard-border);
+}
+.invoice-review-navigation button {
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 9px 0;
+  color: #5d6c80;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.invoice-review-navigation button[aria-pressed='true'] {
+  color: #00654d;
+  border-bottom-color: currentColor;
+  font-weight: 500;
+}
+.invoice-review-navigation button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+.invoice-review-dialog [hidden] {
+  display: none !important;
+}
+.invoice-review-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 24px;
+  margin: 0 0 14px;
+}
+.invoice-review-facts dt {
+  color: #5d6c80;
+  font-size: 12px;
+}
+.invoice-review-facts dd {
+  margin: 3px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.invoice-review-amounts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+  margin: 0;
+  background: #f5f8f6;
+  border-radius: 7px;
+}
+.invoice-review-amounts dt {
+  color: #5d6c80;
+  font-size: 12px;
+}
+.invoice-review-amounts dd {
+  margin: 4px 0 0;
+  color: var(--dashboard-ink);
+  font-size: 17px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.invoice-review-corrected-total {
+  margin: 10px 0;
+  font-size: 13px;
+}
+.invoice-review-section-title {
+  margin: 16px 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.invoice-review-calculation {
+  margin-top: 14px;
+}
+.invoice-line-breakdown,
+.invoice-event-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.invoice-line-breakdown > li,
+.invoice-event-list > li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--dashboard-border);
+}
+.invoice-line-breakdown > li:last-child,
+.invoice-event-list > li:last-child {
+  border-bottom: 0;
+}
+.invoice-line-breakdown > li > strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.invoice-line-breakdown .invoice-review-facts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 0;
+}
+.invoice-review-notes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 10px 0;
+  font-size: 12px;
+}
+.inventory-page.inventory-workspace .invoice-review-dialog > .invoice-review-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 20px;
+  margin: 0;
+  border-top: 1px solid var(--dashboard-border);
+  background: white;
+}
+.invoice-review-footer-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.invoice-review-footer-actions [role='status'] {
+  font-size: 12px;
+  color: #5d6c80;
+}
+.invoice-review-action-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 14px 0;
+}
+.invoice-review-action-intro p {
+  margin: 0;
+  color: #5d6c80;
+  font-size: 12px;
+}
+.invoice-payment-history,
+.invoice-adjustment-history {
+  margin-top: 18px;
+}
+.invoice-event-list > li > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+.invoice-event-list strong {
+  font-weight: 500;
+}
+.invoice-event-list :is(span, small, p) {
+  color: #5d6c80;
+  font-size: 12px;
+}
+.invoice-event-list p {
+  margin: 5px 0;
+}
+.invoice-event-list small {
+  overflow-wrap: anywhere;
+}
+.invoice-operation-form {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  margin-top: 14px;
+  background: #fafcfb;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 8px;
+}
+.invoice-operation-form :is(h3, h4) {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.invoice-operation-form label {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+}
+.invoice-operation-form label small {
+  font-size: 12px;
+  font-weight: 400;
+  color: #5d6c80;
+}
+.invoice-operation-form .invoice-correction-line {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 180px);
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--dashboard-border);
+}
+.invoice-correction-line > input {
+  grid-column: 2;
+  grid-row: 1 / 3;
+}
+.invoice-correction-line > small {
+  grid-column: 1;
+}
+.invoice-operation-choices small {
+  color: #805311;
+  font-size: 12px;
+}
+.invoice-full-field {
+  grid-column: 1/-1;
+}
+.invoice-operation-submit {
+  display: flex;
+  justify-content: flex-start;
+}
+.invoice-operation-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.invoice-operation-choices button {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 7px;
+  color: var(--dashboard-ink);
+  background: white;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.invoice-operation-choices strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+.invoice-operation-choices span {
+  color: #5d6c80;
+  font-size: 12px;
+}
+.invoice-operation-choices button[aria-pressed='true'] {
+  border-color: #126447;
+  background: #f3faf6;
+}
+.invoice-operation-choices button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+.invoice-operation-form > [data-slot='button'] {
+  justify-self: start;
+}
+.invoice-operation-form .inventory-payment-line {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--dashboard-border);
+}
+.invoice-operation-form .inventory-payment-line > :is(strong, small) {
+  grid-column: 1/-1;
+}
+.invoice-operation-form .inventory-payment-line > strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.invoice-operation-form .inventory-payment-line > small {
+  font-size: 12px;
+  color: #5d6c80;
+}
+.invoice-adjustment-history h4 {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 12px 0 6px;
+}
+@media (max-width: 650px) {
+  .inventory-page.inventory-workspace .products-dialog.invoice-review-dialog {
+    width: calc(100vw - 20px);
+    height: calc(100dvh - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+  .inventory-page.inventory-workspace .invoice-review-dialog > header,
+  .invoice-review-body {
+    padding: 12px 14px;
+  }
+  .inventory-page.inventory-workspace .invoice-review-dialog > .invoice-review-footer {
+    padding: 10px 14px;
+  }
+  .invoice-review-navigation {
+    top: -12px;
+    gap: 4px 14px;
+  }
+  .invoice-review-amounts {
+    gap: 8px;
+    padding: 10px;
+  }
+  .invoice-review-amounts dd {
+    font-size: 15px;
+  }
+  .invoice-operation-choices,
+  .invoice-operation-form .inventory-payment-line,
+  .invoice-line-breakdown .invoice-review-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .invoice-operation-form .invoice-correction-line {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .invoice-correction-line > input {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .invoice-review-action-intro {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+@media (pointer: coarse) {
+  .invoice-review-navigation button {
+    min-height: 44px;
+  }
+}

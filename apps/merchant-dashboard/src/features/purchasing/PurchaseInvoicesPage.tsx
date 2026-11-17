@@ -25,8 +25,7 @@ import { InventoryHeader } from '../inventory/InventoryHeader.js';
 import type { SupplierFields } from './purchasing.types.js';
 import { SupplierEditor } from './SupplierEditor.js';
 import { PurchaseInvoiceEditor } from './PurchaseInvoiceEditor.js';
-import { PurchaseSupplierPaymentsPanel } from './PurchaseSupplierPaymentsPanel.js';
-import { PurchaseInvoiceAdjustmentsPanel } from './PurchaseInvoiceAdjustmentsPanel.js';
+import { PurchaseInvoiceReviewDialog } from './PurchaseInvoiceReviewDialog.js';
 
 type SupplierEditorState = { supplier: PurchaseSupplier | null; key: string };
 
@@ -890,213 +889,28 @@ export function PurchaseInvoicesPage() {
         />
       )}
       {invoiceReview && (
-        <DashboardDialog
-          title={text('Review supplier invoice')}
-          closeLabel={text('Close')}
+        <PurchaseInvoiceReviewDialog
+          key={invoiceReview.id}
+          invoice={invoiceReview}
+          busy={busy}
+          error={loadError}
+          copy={text}
           onClose={() => {
             if (busy) return;
             if (sourceInvoiceId) navigate('/inventory/purchases', { replace: true });
             else setInvoiceReview(null);
           }}
-          busy={busy}
-          wide
-        >
-          <div className="products-dialog-body inventory-review">
-            {loadError && (
-              <p className="inventory-error" role="alert">
-                {loadError}
-              </p>
-            )}
-            {invoiceReview.status === 'draft' && (
-              <ol className="inventory-flow" aria-label={text('Purchase progress')}>
-                <li>{text('Supplier and warehouse')}</li>
-                <li>{text('Items and quantities')}</li>
-                <li aria-current="step">{text('Review and receive')}</li>
-              </ol>
-            )}
-            {invoiceReview.status === 'draft' && (
-              <p className="inventory-note">
-                {text('Receiving this purchase adds the quantities below to:')}{' '}
-                <strong>{formatDigits(invoiceReview.warehouseName)}</strong>
-              </p>
-            )}
-            <p>
-              <strong>{text('Supplier')}:</strong> {formatDigits(invoiceReview.supplierName)}
-            </p>
-            <p>
-              <strong>{text('Supplier invoice number')}:</strong>{' '}
-              {formatDigits(invoiceReview.supplierInvoiceNumber || '—')}
-            </p>
-            <p>
-              <strong>{text('Warehouse')}:</strong>{' '}
-              {formatDigits(`${invoiceReview.branchName} · ${invoiceReview.warehouseName}`)}
-            </p>
-            <div className="inventory-invoice-review-metadata">
-              {invoiceReview.invoiceDate && (
-                <p>
-                  <strong>{text('Invoice date')}:</strong>{' '}
-                  <span dir="ltr">{formatDigits(invoiceReview.invoiceDate)}</span>
-                </p>
-              )}
-              {invoiceReview.discountType === 'percentage' && (
-                <p>
-                  <strong>{text('Discount')}:</strong>{' '}
-                  {formatDigits(invoiceReview.discountValue ?? '0')}%
-                </p>
-              )}
-              {invoiceReview.notes && (
-                <p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-                  <strong>{text('Notes')}:</strong> {invoiceReview.notes}
-                </p>
-              )}
-            </div>
-            <div className="inventory-invoice-review-totals">
-              <p>
-                <strong>{text('Subtotal (EGP)')}:</strong>{' '}
-                {invoiceReview.subtotalAmount === null
-                  ? text('Cost not recorded')
-                  : formatDigits(invoiceReview.subtotalAmount)}
-              </p>
-              <p>
-                <strong>{text('Discount (EGP)')}:</strong>{' '}
-                {invoiceReview.discountAmount === null
-                  ? text('Cost not recorded')
-                  : formatDigits(invoiceReview.discountAmount)}
-              </p>
-              <p>
-                <strong>{text('Shipping (EGP)')}:</strong>{' '}
-                {invoiceReview.shippingAmount === null
-                  ? text('Cost not recorded')
-                  : formatDigits(invoiceReview.shippingAmount)}
-              </p>
-              <p>
-                <strong>{text('Invoice total (EGP)')}:</strong>{' '}
-                {invoiceReview.totalAmount === null
-                  ? text('Cost not recorded')
-                  : formatDigits(invoiceReview.totalAmount)}
-              </p>
-              {invoiceReview.correctedTotalAmount &&
-                invoiceReview.correctedTotalAmount !== invoiceReview.totalAmount && (
-                  <p>
-                    <strong>{text('Corrected invoice total (EGP)')}:</strong>{' '}
-                    {formatDigits(invoiceReview.correctedTotalAmount)}
-                  </p>
-                )}
-            </div>
-            <p className="inventory-note">
-              {text('Taxes are not included in this invoice total yet.')}
-            </p>
-            {invoiceReview.status === 'draft' &&
-              invoiceReview.lines.some(
-                (line) => line.unitCost === null || line.lineTotal === null,
-              ) && (
-                <p className="inventory-error" role="alert">
-                  {text('Add a unit cost to every line before confirming this invoice.')}
-                </p>
-              )}
-            <p>
-              {text(
-                invoiceReview.status === 'draft'
-                  ? 'This invoice is a draft. Saving it does not affect stock.'
-                  : 'A confirmed purchase invoice cannot be edited. Correct stock with a separate reviewed movement.',
-              )}
-            </p>
-            {invoiceReview.status === 'confirmed' && (
-              <>
-                <PurchaseSupplierPaymentsPanel
-                  invoice={invoiceReview}
-                  onInvoiceChange={(updated) => {
-                    setInvoiceReview(updated);
-                    setRefreshKey((key) => key + 1);
-                  }}
-                />
-                <PurchaseInvoiceAdjustmentsPanel
-                  invoice={invoiceReview}
-                  onInvoiceChange={(updated) => {
-                    setInvoiceReview(updated);
-                    setRefreshKey((key) => key + 1);
-                  }}
-                />
-              </>
-            )}
-            <ul>
-              {invoiceReview.lines.map((line) => (
-                <li key={line.id}>
-                  <strong>{formatDigits(line.stockItemName)}</strong>
-                  <span dir="ltr">{formatDigits(`${line.quantity} ${line.unitCode}`)}</span>
-                  <small>
-                    {text(line.condition === 'available' ? 'Available' : 'Non-Sellable')} ·{' '}
-                    {formatDigits(`${line.baseUnit} (${line.unitName})`)}
-                  </small>
-                  <small>
-                    {text('Unit cost (EGP)')}:{' '}
-                    {line.unitCost === null
-                      ? text('Cost not recorded')
-                      : formatDigits(line.unitCost)}
-                  </small>
-                  <small>
-                    {text('Line subtotal (EGP)')}:{' '}
-                    {line.lineSubtotal === null
-                      ? text('Cost not recorded')
-                      : formatDigits(line.lineSubtotal)}
-                  </small>
-                  <small>
-                    {text('Discount share')}:{' '}
-                    {line.discountAllocation === null
-                      ? text('Cost not recorded')
-                      : formatDigits(line.discountAllocation)}{' '}
-                    · {text('Shipping share')}:{' '}
-                    {line.shippingAllocation === null
-                      ? text('Cost not recorded')
-                      : formatDigits(line.shippingAllocation)}
-                  </small>
-                  <small>
-                    {text('Final line total (EGP)')}:{' '}
-                    {line.lineTotal === null
-                      ? text('Cost not recorded')
-                      : formatDigits(line.lineTotal)}
-                  </small>
-                </li>
-              ))}
-            </ul>
-          </div>
-          {invoiceReview.status === 'draft' && (
-            <footer className="products-dialog-footer">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={() => setInvoiceReview(null)}
-              >
-                {text('Close')}
-              </Button>
-              <Button
-                type="button"
-                disabled={
-                  busy ||
-                  invoiceReview.lines.some(
-                    (line) => line.unitCost === null || line.lineTotal === null,
-                  )
-                }
-                onClick={() => void confirmInvoice()}
-              >
-                {text(busy ? 'Posting…' : 'Confirm receipt')}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={() => {
-                  setLoadError('');
-                  setInvoiceReview(null);
-                  navigate(`/inventory/purchases/${invoiceReview.id}/edit`);
-                }}
-              >
-                {text('Edit draft')}
-              </Button>
-            </footer>
-          )}
-        </DashboardDialog>
+          onConfirm={() => void confirmInvoice()}
+          onEdit={() => {
+            setLoadError('');
+            setInvoiceReview(null);
+            navigate(`/inventory/purchases/${invoiceReview.id}/edit`);
+          }}
+          onInvoiceChange={(updated) => {
+            setInvoiceReview(updated);
+            setRefreshKey((key) => key + 1);
+          }}
+        />
       )}
       {supplierArchive && (
         <DashboardDialog

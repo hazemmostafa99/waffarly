@@ -6,6 +6,30 @@ export function inventoryCopy(
   const arabic: Record<string, string> = {
     'Stock balances': 'أرصدة المخزون',
     'Stock operations': 'عمليات المخزون',
+    'Supplier invoice details': 'تفاصيل فاتورة المورد',
+    Confirmed: 'تم الاستلام',
+    'Open cash and safe': 'فتح النقدية والخزنة',
+    'No recorded unit costs are available to correct.': 'لا توجد أسعار مسجلة قابلة للتصحيح.',
+    'No received quantities remain to return.': 'لا توجد كميات مستلمة متبقية للإرجاع.',
+    'Invoice sections': 'أقسام الفاتورة',
+    'Corrections and returns': 'التصحيح والمرتجعات',
+    'Original unit cost (EGP)': 'سعر الوحدة الأصلي (جنيه)',
+    'Cost breakdown and invoice notes': 'تفاصيل التكلفة وملاحظات الفاتورة',
+    'Link an existing cash outflow to this invoice. No new cash movement is created.':
+      'اربط حركة سحب نقدي مسجلة بهذه الفاتورة. لن يتم إنشاء حركة نقدية جديدة.',
+    'Add supplier payment': 'تسجيل سداد للمورد',
+    'Loading recorded cash movements…': 'جارٍ تحميل الحركات النقدية المسجلة…',
+    'No recorded cash outflows are available to link.':
+      'لا توجد حركات سحب نقدي متاحة للربط حاليًا.',
+    'Available cash amount': 'المتاح للربط من الحركة (جنيه)',
+    'Supplier payment history': 'سجل سداد المورد',
+    'No supplier payments recorded yet.': 'لم يتم تسجيل سداد لهذه الفاتورة بعد.',
+    'Change recorded prices without changing received quantities.':
+      'تصحيح الأسعار المسجلة دون تغيير الكميات المستلمة.',
+    'Return quantities and record supplier credit, without a cash refund.':
+      'إرجاع كميات وتسجيل رصيد دائن للمورد، دون رد نقدي.',
+    'Correction and return history': 'سجل التصحيح والمرتجعات',
+    'Not available': 'غير متاح',
     'e.g. Milk or flour': 'مثال: حليب أو دقيق',
     'Save stock item': 'حفظ الصنف',
     Details: 'التفاصيل',
