@@ -38,6 +38,12 @@ export class CatalogQueryService {
       backgroundColor: merchant.storefront?.backgroundColor ?? '#faf8f4',
       surfaceColor: merchant.storefront?.surfaceColor ?? '#ffffff',
       logoScale: storefrontLogoScale(merchant.storefront?.logoScale),
+      heroTitle: merchant.storefront?.heroTitle ?? null,
+      heroEyebrow: merchant.storefront?.heroEyebrow ?? null,
+      heroEmphasis: merchant.storefront?.heroEmphasis ?? null,
+      heroShade: merchant.storefront?.heroShade === 'light' || merchant.storefront?.heroShade === 'strong'
+        ? merchant.storefront.heroShade
+        : 'medium',
       logoData:
         imageSource(merchant.restaurantProfile?.logoImage) ?? merchant.storefront?.logoData ?? null,
       coverImageUrl: imageSource(merchant.restaurantProfile?.coverImage),
@@ -167,6 +173,10 @@ export class CatalogQueryService {
             backgroundColor: true,
             surfaceColor: true,
             logoScale: true,
+            heroTitle: true,
+            heroEyebrow: true,
+            heroEmphasis: true,
+            heroShade: true,
             logoData: true,
             layout: true,
           },

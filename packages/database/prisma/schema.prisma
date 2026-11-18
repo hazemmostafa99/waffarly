@@ -975,6 +975,10 @@ model MerchantStorefront {
   backgroundColor String            @db.VarChar(7)
   surfaceColor    String             @db.VarChar(7)
   logoScale       String             @default("medium") @db.VarChar(10)
+  heroTitle       String?            @db.VarChar(80)
+  heroEyebrow     String?            @db.VarChar(80)
+  heroEmphasis    String?            @db.VarChar(80)
+  heroShade       String             @default("medium") @db.VarChar(10)
   logoData        String?            @db.Text
   revision        Int                @default(1)
   updatedAt       DateTime           @updatedAt @db.Timestamptz(6)
@@ -2517,6 +2521,9 @@ model StaffAdvance {
   requestId String @db.Uuid
   fingerprint String @db.VarChar(64)
   cashMovementId String @db.Uuid
+  revision Int @default(1)
+  cancelledAt DateTime? @db.Timestamptz(6)
+  corrections StaffAdvanceCorrection[]
   amount Decimal @db.Decimal(12, 2)
   installmentAmount Decimal @db.Decimal(12, 2)
   firstInstallmentMonth DateTime @db.Date
@@ -2602,4 +2609,25 @@ model ExpensePayment {
   @@unique([cashMovementId, merchantId])
   @@index([merchantId, expenseId, paidAt])
   @@map("expense_payments")
+}
+
+// Immutable owner corrections; the cash ledger retains the original withdrawal.
+model StaffAdvanceCorrection {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  advanceId String @db.Uuid
+  staffMemberId String @db.Uuid
+  requestId String @db.Uuid
+  fingerprint String @db.VarChar(64)
+  action String @db.VarChar(16)
+  reason String @db.VarChar(500)
+  createdBy String @db.VarChar(80)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  before Json
+  after Json
+  advance StaffAdvance @relation(fields: [advanceId, staffMemberId, merchantId], references: [id, staffMemberId, merchantId], onDelete: Restrict, map: "staff_advance_corrections_advance_fkey")
+
+  @@unique([merchantId, requestId])
+  @@index([merchantId, advanceId, createdAt])
+  @@map("staff_advance_corrections")
 }

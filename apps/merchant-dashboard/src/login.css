@@ -4,7 +4,7 @@
   margin-inline: auto;
   padding: clamp(24px, 7vh, 72px) 24px 40px;
   color: var(--storefront-ink);
-  font-family: var(--font-admin);
+  font-family: var(--merchant-dashboard-font);
 }
 
 .merchant-login-topbar {

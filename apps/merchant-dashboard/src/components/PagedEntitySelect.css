@@ -371,7 +371,7 @@
 
 .entity-picker-floating-menu {
   inset-inline: auto;
-  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  font-family: var(--merchant-dashboard-font);
   color: #273345;
 }
 .entity-picker-floating-menu .entity-picker-option {

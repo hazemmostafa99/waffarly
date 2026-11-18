@@ -184,6 +184,7 @@ export function MerchantLayout() {
           tabIndex={-1}
           className={`merchant-content ${location.pathname === '/' ? 'merchant-content-dashboard' : location.pathname === '/settings' ? 'merchant-content-settings' : ''}`}
         >
+          <div className="merchant-page-navigation">
           {breadcrumbs.length > 0 && (
             <nav
               className="merchant-breadcrumbs"
@@ -203,6 +204,8 @@ export function MerchantLayout() {
               ))}
             </nav>
           )}
+          <div id="merchant-page-actions" />
+          </div>
           {error && (
             <p className="error" role="alert">
               {errorText(error)}

@@ -148,6 +148,7 @@ export {
 export type {
   MerchantStorefrontSettings,
   SaveMerchantStorefrontRequest,
+  StorefrontHeroSettings,
   StorefrontLayout,
 } from './merchant-storefront.js';
 export type {
@@ -271,7 +272,11 @@ export type {
   OwnerPosItemReturnReportsQuery,
 } from './pos-returns.js';
 export type { OwnerPosOperationsReport } from './pos-reports.js';
-export type { OwnerProductProfitabilityReport, OwnerProductProfitabilityRow, OwnerProfitabilityDimensionRow } from './profitability.js';
+export type {
+  OwnerProductProfitabilityReport,
+  OwnerProductProfitabilityRow,
+  OwnerProfitabilityDimensionRow,
+} from './profitability.js';
 export type {
   PosReceipt,
   PosReceiptLine,
@@ -410,8 +415,17 @@ export type {
   SetStaffAttendanceRequest,
   CreatePayrollAdjustmentRequest,
   CreateStaffAdvanceRequest,
+  UpdateStaffAdvanceRequest,
+  CancelStaffAdvanceRequest,
   RecordPayrollPaymentRequest,
   CreateMerchantExpenseRequest,
   UpdateMerchantExpenseRequest,
   RecordExpensePaymentRequest,
 } from './hr.js';
+export type {
+  OwnerBusinessReport,
+  BusinessReportPeriod,
+  BusinessReportDay,
+  BusinessReportAmountRow,
+  BusinessReportBalances,
+} from './business-reports.js';

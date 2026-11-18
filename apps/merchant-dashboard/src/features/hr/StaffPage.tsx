@@ -195,6 +195,10 @@ export function StaffPage() {
       );
       return;
     }
+    if (draft.endDate && draft.endDate < draft.startDate) {
+      setError(text('End date must follow start date.', 'تاريخ نهاية العمل ما ينفعش يسبق تاريخ البداية.'));
+      return;
+    }
     setBusy(true);
     try {
       const profile = {
@@ -276,7 +280,6 @@ export function StaffPage() {
   return (
     <HrPageShell
       title="Employees"
-      description="Manage employee records, branch assignments and pay rates."
       actions={<Button onClick={openCreate}>{text('Add employee', 'إضافة موظف')}</Button>}
     >
       {error && (

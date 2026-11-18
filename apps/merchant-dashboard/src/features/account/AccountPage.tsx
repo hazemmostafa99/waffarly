@@ -304,7 +304,7 @@ export function AccountPage() {
       )}
 
       <Card
-        className="relative overflow-hidden p-5 sm:p-7"
+        className="relative overflow-hidden p-4 sm:p-5"
         aria-label={text('Account overview', 'ملخص الحساب')}
       >
         <div className="absolute inset-y-0 start-0 w-1 bg-primary" aria-hidden="true" />
@@ -401,7 +401,7 @@ export function AccountPage() {
             )}
           </Card>
 
-          <Card className="space-y-5 p-5 sm:p-6" aria-labelledby="account-storefront-heading">
+          <Card className="space-y-3 p-4 sm:p-5" aria-labelledby="account-storefront-heading">
             <div className="flex items-center gap-3">
               <span className="flex size-10 items-center justify-center rounded-xl bg-primary/5 text-primary">
                 <Icon name="store" />
@@ -410,9 +410,6 @@ export function AccountPage() {
                 <h2 id="account-storefront-heading" className="m-0 text-lg font-bold">
                   {text('Your online store', 'متجرك الإلكتروني')}
                 </h2>
-                <p className="m-0 mt-1 text-xs text-muted-foreground">
-                  {text('Share this link with your customers.', 'شارك الرابط ده مع عملائك.')}
-                </p>
               </div>
             </div>
             <div className="space-y-2 rounded-xl border border-border bg-background p-4">
@@ -444,8 +441,8 @@ export function AccountPage() {
                 {text('Copy link', 'نسخ الرابط')}
               </Button>
               <Button variant="ghost" size="sm" asChild>
-                <Link to="/settings?section=design#settings-identity">
-                  {text('Independent storefront design', 'مظهر المتجر المستقل')}
+                <Link to="/settings?section=identity">
+                  {text('Identity and appearance', 'الهوية والمظهر')}
                 </Link>
               </Button>
             </div>

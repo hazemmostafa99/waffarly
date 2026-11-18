@@ -96,6 +96,8 @@ export interface PayrollRunSummary {
 }
 
 export interface StaffAdvanceSummary {
+  revision: number;
+  cancelledAt: string | null;
   id: string;
   staffMemberId: string;
   employeeName: string;
@@ -211,5 +213,18 @@ export interface RecordExpensePaymentRequest {
   requestId: string;
   safeId: string;
   amount: string;
+  reason: string;
+}
+
+export interface CancelStaffAdvanceRequest {
+  requestId: string;
+  revision: number;
+  correctionReason: string;
+}
+
+export interface UpdateStaffAdvanceRequest extends CancelStaffAdvanceRequest {
+  amount: string;
+  installmentAmount: string;
+  firstInstallmentMonth: string;
   reason: string;
 }

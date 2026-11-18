@@ -5,6 +5,8 @@ const color = z
   .regex(/^#[0-9a-fA-F]{6}$/)
   .transform((value) => value.toLowerCase());
 
+const heroLine = z.string().trim().max(80).nullable().transform((value) => value || null);
+
 const logoData = z
   .string()
   .max(65_570)
@@ -33,6 +35,10 @@ export const saveSchema = z
     backgroundColor: color,
     surfaceColor: color,
     logoScale: z.enum(['small', 'medium', 'large']),
+    heroTitle: heroLine.optional(),
+    heroEyebrow: heroLine.optional(),
+    heroEmphasis: heroLine.optional(),
+    heroShade: z.enum(['light', 'medium', 'strong']).optional(),
     logoData,
     revision: z.number().int().min(0).max(2147483646),
   })

@@ -32,7 +32,7 @@ export function SettingsRoute() {
         </Link>
         <a className="is-active" href="#settings-identity" aria-current="page">
           <Icon name="store" />
-          <span>{t('Store identity')}</span>
+          <span>{text('Identity and appearance', 'الهوية والمظهر')}</span>
         </a>
       </nav>
       <div className="settings-sections">
@@ -40,12 +40,6 @@ export function SettingsRoute() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-1">
               <h2 className="m-0 text-lg font-bold">{t('Contact details')}</h2>
-              <p className="m-0 max-w-none text-sm text-muted-foreground">
-                {text(
-                  'Manage your business details and subscription from My account.',
-                  'تقدر تعدّل بيانات نشاطك وتراجع اشتراكك من صفحة حسابي.',
-                )}
-              </p>
             </div>
             <Button variant="outline" size="sm" asChild>
               <Link to="/account">{text('Manage account', 'إدارة الحساب')}</Link>

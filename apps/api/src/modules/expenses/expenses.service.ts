@@ -76,19 +76,23 @@ export class ExpensesService {
     );
   }
 
-  async summary(merchantId: string, month: string): Promise<ExpenseMonthSummary> {
-    parseRequest(expenseMonthSchema, { month });
+  async summary(merchantId: string, month: string, branchId?: string): Promise<ExpenseMonthSummary> {
+    parseRequest(expenseMonthSchema, { month, ...(branchId ? { branchId } : {}) });
     const start = monthStartDate(month);
     const end = nextMonth(start);
     const [expenses, paid, outstanding] = await Promise.all([
       this.prisma.merchantExpense.aggregate({
-        where: { merchantId, incurredOn: { gte: start, lt: end } },
+        where: { merchantId, incurredOn: { gte: start, lt: end }, ...(branchId ? { branchId } : {}) },
         _sum: { amount: true },
       }),
-      this.prisma.expensePayment.aggregate({
-        where: { merchantId, paidAt: { gte: start, lt: end } },
-        _sum: { amount: true },
-      }),
+      this.prisma.$queryRaw<Array<{ amount: string }>>`
+        SELECT COALESCE(SUM(p."amount"),0)::text AS amount
+        FROM "expense_payments" p
+        JOIN "merchant_expenses" e ON e."id"=p."expenseId" AND e."merchantId"=p."merchantId"
+        WHERE p."merchantId"=${merchantId}::uuid
+          AND (${branchId ?? null}::uuid IS NULL OR e."branchId"=${branchId ?? null}::uuid)
+          AND p."paidAt">=(${month + '-01'}::date::timestamp AT TIME ZONE 'Africa/Cairo')
+          AND p."paidAt"<((${month + '-01'}::date+INTERVAL '1 month')::timestamp AT TIME ZONE 'Africa/Cairo')`,
       this.prisma.$queryRaw<Array<{ amount: string }>>`
         SELECT COALESCE(SUM(expense."amount" - COALESCE(paid."amount", 0)), 0)::text AS "amount"
         FROM "merchant_expenses" expense
@@ -99,13 +103,14 @@ export class ExpensesService {
           GROUP BY "expenseId"
         ) paid ON paid."expenseId" = expense."id"
         WHERE expense."merchantId" = ${merchantId}::uuid
+          AND (${branchId ?? null}::uuid IS NULL OR expense."branchId"=${branchId ?? null}::uuid)
           AND expense."incurredOn" >= ${start}
           AND expense."incurredOn" < ${end}`,
     ]);
     return {
       month,
       incurredAmount: expenses._sum.amount?.toFixed(2) ?? '0.00',
-      paidDuringMonth: paid._sum.amount?.toFixed(2) ?? '0.00',
+      paidDuringMonth: formatCents(toCents(paid[0]?.amount ?? '0.00')),
       outstandingAmount: formatCents(toCents(outstanding[0]?.amount ?? '0.00')),
     };
   }

@@ -2,7 +2,7 @@
 import { z } from 'zod';
 
 const uuid = z.string().uuid();
-const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const date = z.string().date();
 const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 const money = z.string().regex(/^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/);
 const positiveMoney = money.refine((value) => /[1-9]/.test(value), 'Amount must be positive.');
@@ -15,7 +15,7 @@ export const listExpensesSchema = z
     limit: z.coerce.number().int().min(1).max(100).default(50),
   })
   .strict();
-export const expenseMonthSchema = z.object({ month }).strict();
+export const expenseMonthSchema = z.object({ month, branchId: uuid.optional() }).strict();
 export const createExpenseSchema = z
   .object({
     branchId: uuid,

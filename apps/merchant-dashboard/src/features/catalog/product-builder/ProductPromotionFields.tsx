@@ -49,7 +49,7 @@ export function ProductPromotionFields({
           onChange={(event) => onEnabledChange(event.target.checked)}
         />
         <span>
-          <strong>{text('Enable direct discount', 'تفعيل الخصم المباشر')}</strong>
+          <strong>{text('Enable discount', 'تفعيل الخصم')}</strong>
           <small>
             {text(
               'Customers see the reduced price automatically. No coupon code is needed.',
@@ -58,63 +58,66 @@ export function ProductPromotionFields({
           </small>
         </span>
       </label>
-      <div className="product-promotion-fields">
-        <label className="builder-field">
-          <span>{text('Discount type', 'نوع الخصم')}</span>
-          <select
-            value={type}
-            onChange={(event) => onTypeChange(event.target.value as typeof type)}
-          >
-            <option value="percentage">{text('Percentage', 'نسبة مئوية')}</option>
-            <option value="amount">{text('Fixed EGP amount', 'مبلغ ثابت بالجنيه')}</option>
-          </select>
-        </label>
-        <label className="builder-field">
-          <span>
-            {text('Discount value', 'قيمة الخصم')} {type === 'percentage' ? '(%)' : '(EGP)'}
-          </span>
-          <input
-            type="number"
-            min="0.01"
-            max={type === 'percentage' ? '99.99' : undefined}
-            step="0.01"
-            inputMode="decimal"
-            dir="ltr"
-            value={value}
-            onChange={(event) => onValueChange(event.target.value)}
-            placeholder="0.00"
-          />
-        </label>
-        <label className="builder-field">
-          <span>{text('Starts at (optional)', 'يبدأ في (اختياري)')}</span>
-          <input
-            type="datetime-local"
-            dir="ltr"
-            value={startsAt}
-            onChange={(event) => onStartsAtChange(event.target.value)}
-          />
-        </label>
-        <label className="builder-field">
-          <span>{text('Ends at (optional)', 'ينتهي في (اختياري)')}</span>
-          <input
-            type="datetime-local"
-            dir="ltr"
-            value={endsAt}
-            onChange={(event) => onEndsAtChange(event.target.value)}
-          />
-        </label>
-      </div>
-      <small className="product-promotion-timezone">
-        {text('Schedule uses Cairo time.', 'مواعيد العرض بتوقيت القاهرة.')}
-      </small>
-      {hasValidValue && originalPrice > 0 && (
-        <p className="product-promotion-preview">
-          {text('Lowest listed price:', 'أقل سعر حالي:')}{' '}
-          <del dir="ltr">EGP {formatNumber(originalPrice, { minimumFractionDigits: 2 })}</del>
-          {'  →  '}
-          <strong dir="ltr">EGP {formatNumber(previewPrice, { minimumFractionDigits: 2 })}</strong>
-          {!enabled && <span> · {text('paused preview', 'معاينة عند التفعيل')}</span>}
-        </p>
+      {enabled && (
+        <div className="product-promotion-details">
+          <div className="product-promotion-fields">
+            <label className="builder-field">
+              <span>{text('Discount type', 'نوع الخصم')}</span>
+              <select
+                value={type}
+                onChange={(event) => onTypeChange(event.target.value as typeof type)}
+              >
+                <option value="percentage">{text('Percentage', 'نسبة مئوية')}</option>
+                <option value="amount">{text('Fixed EGP amount', 'مبلغ ثابت بالجنيه')}</option>
+              </select>
+            </label>
+            <label className="builder-field">
+              <span>
+                {text('Discount value', 'قيمة الخصم')} {type === 'percentage' ? '(%)' : '(EGP)'}
+              </span>
+              <input
+                type="number"
+                min="0.01"
+                max={type === 'percentage' ? '99.99' : undefined}
+                step="0.01"
+                inputMode="decimal"
+                dir="ltr"
+                value={value}
+                onChange={(event) => onValueChange(event.target.value)}
+                placeholder="0.00"
+              />
+            </label>
+            <label className="builder-field">
+              <span>{text('Starts at (optional)', 'يبدأ في (اختياري)')}</span>
+              <input
+                type="datetime-local"
+                dir="ltr"
+                value={startsAt}
+                onChange={(event) => onStartsAtChange(event.target.value)}
+              />
+            </label>
+            <label className="builder-field">
+              <span>{text('Ends at (optional)', 'ينتهي في (اختياري)')}</span>
+              <input
+                type="datetime-local"
+                dir="ltr"
+                value={endsAt}
+                onChange={(event) => onEndsAtChange(event.target.value)}
+              />
+            </label>
+          </div>
+          <small className="product-promotion-timezone">
+            {text('Schedule uses Cairo time.', 'مواعيد العرض بتوقيت القاهرة.')}
+          </small>
+          {hasValidValue && originalPrice > 0 && (
+            <p className="product-promotion-preview">
+              {text('Lowest listed price:', 'أقل سعر حالي:')}{' '}
+              <del dir="ltr">EGP {formatNumber(originalPrice, { minimumFractionDigits: 2 })}</del>
+              {'  →  '}
+              <strong dir="ltr">EGP {formatNumber(previewPrice, { minimumFractionDigits: 2 })}</strong>
+            </p>
+          )}
+        </div>
       )}
     </fieldset>
   );

@@ -83,6 +83,12 @@ export function moneyValue(value: string): number {
 }
 
 export function validPositiveMoney(value: string): boolean {
-  return /^\d+(?:\.\d{1,2})?$/.test(value) && Number(value) > 0;
+  return /^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(value) && Number(value) > 0;
 }
 
+
+/** Converts a validated decimal amount to integer cents. */
+export function moneyCents(value: string): bigint {
+  const [whole, fraction = ''] = value.split('.');
+  return BigInt(whole || '0') * 100n + BigInt(fraction.padEnd(2, '0'));
+}

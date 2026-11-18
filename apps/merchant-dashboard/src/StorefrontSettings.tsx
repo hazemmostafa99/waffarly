@@ -1,16 +1,19 @@
 import type { LocalizedMessage } from '@waffarly/ui';
-import { useEffect, useState, type ChangeEvent, type CSSProperties, type FormEvent } from 'react';
+import { useEffect, useImperativeHandle, useState, type ChangeEvent, type FormEvent, type Ref } from 'react';
 import type {
   MerchantStorefrontSettings,
   OwnerProfile,
-  OwnerRestaurantSettings,
   SaveMerchantStorefrontRequest,
+  StorefrontHeroSettings,
 } from '@waffarly/contracts';
 import { useLocale, Button, Input, Card } from '@waffarly/ui';
 import { apiRequest, apiUpload } from './lib/api-client.js';
 import { Icon } from './Icons.js';
 import { storefrontUrl } from './lib/storefront-url.js';
-import { Link } from 'react-router-dom';
+import { SettingsFeedback, SettingsHeading, SettingsSaveBar, type SettingsEditorActions } from './features/restaurant/SettingsComponents.js';
+import { StorefrontPreview } from './features/restaurant/StorefrontPreview.js';
+import { SettingsChoices } from './features/restaurant/SettingsChoices.js';
+import type { RestaurantIdentityDraft } from './features/restaurant/RestaurantSettings.js';
 import './storefront-appearance-controls.css';
 
 const maxLogoBytes = 10 * 1024 * 1024;
@@ -48,6 +51,38 @@ const palettes = [
     backgroundColor: '#f1f8fa',
     surfaceColor: '#ffffff',
   },
+  {
+    name: 'Clay',
+    nameAr: 'طين',
+    primaryColor: '#783f32',
+    accentColor: '#d48a64',
+    backgroundColor: '#fcf4ee',
+    surfaceColor: '#fffdfa',
+  },
+  {
+    name: 'Olive',
+    nameAr: 'زيتوني',
+    primaryColor: '#47512e',
+    accentColor: '#b69b54',
+    backgroundColor: '#f6f4eb',
+    surfaceColor: '#fffefa',
+  },
+  {
+    name: 'Berry',
+    nameAr: 'توت',
+    primaryColor: '#663754',
+    accentColor: '#d68ca5',
+    backgroundColor: '#fbf3f7',
+    surfaceColor: '#ffffff',
+  },
+  {
+    name: 'Slate',
+    nameAr: 'رمادي مزرق',
+    primaryColor: '#30445f',
+    accentColor: '#7f9db3',
+    backgroundColor: '#f2f6fa',
+    surfaceColor: '#ffffff',
+  },
 ] as const;
 
 const colorFields = [
@@ -65,6 +100,16 @@ const logoScales = [
   { value: 'medium', ar: 'متوسط', en: 'Medium' },
   { value: 'large', ar: 'كبير', en: 'Large' },
 ] as const satisfies readonly { value: LogoScale; ar: string; en: string }[];
+const heroShades = [
+  { value: 'light', ar: 'خفيف', en: 'Light' },
+  { value: 'medium', ar: 'متوسط', en: 'Medium' },
+  { value: 'strong', ar: 'قوي', en: 'Strong' },
+] as const satisfies readonly { value: StorefrontHeroSettings['heroShade']; ar: string; en: string }[];
+const heroTextFields = [
+  { key: 'heroEyebrow', ar: 'نص الشارة', en: 'Badge text', defaultAr: 'أطباق طازجة ولحظات أحلى', defaultEn: 'Fresh plates, brighter moments' },
+  { key: 'heroTitle', ar: 'العنوان', en: 'Headline', defaultAr: 'أشهى الوجبات', defaultEn: 'Fresh food' },
+  { key: 'heroEmphasis', ar: 'السطر المميز', en: 'Highlight', defaultAr: 'طعم على ذوقك', defaultEn: 'Made for you' },
+] as const;
 
 function colorValues(
   palette: Pick<MerchantStorefrontSettings, ColorKey>,
@@ -84,77 +129,13 @@ function savedAppearance(settings: MerchantStorefrontSettings): SaveMerchantStor
     layout: settings.layout,
     ...colorValues(settings),
     logoScale: settings.logoScale,
+    heroTitle: settings.heroTitle ?? null,
+    heroEyebrow: settings.heroEyebrow ?? null,
+    heroEmphasis: settings.heroEmphasis ?? null,
+    heroShade: settings.heroShade ?? 'medium',
     logoData: settings.logoData,
     revision: settings.revision,
   };
-}
-
-function contrastText(hex: string): string {
-  const channels = [0, 2, 4].map(
-    (offset) => Number.parseInt(hex.slice(offset + 1, offset + 3), 16) / 255,
-  );
-  const [red, green, blue] = channels.map((value) =>
-    value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4,
-  );
-  const luminance = red! * 0.2126 + green! * 0.7152 + blue! * 0.0722;
-  const whiteContrast = 1.05 / (luminance + 0.05);
-  const darkContrast = (luminance + 0.05) / 0.057;
-  return whiteContrast >= darkContrast ? '#ffffff' : '#172330';
-}
-
-function mixWithBlack(hex: string, amount: number): string {
-  const channels = [0, 2, 4].map((offset) =>
-    Math.round(Number.parseInt(hex.slice(offset + 1, offset + 3), 16) * (1 - amount)),
-  );
-  return '#' + channels.map((channel) => channel.toString(16).padStart(2, '0')).join('');
-}
-
-function contrastRatio(first: string, second: string): number {
-  const luminance = (hex: string) => {
-    const channels = [0, 2, 4].map((offset) => {
-      const value = Number.parseInt(hex.slice(offset + 1, offset + 3), 16) / 255;
-      return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-    });
-    return channels[0]! * 0.2126 + channels[1]! * 0.7152 + channels[2]! * 0.0722;
-  };
-  const values = [luminance(first), luminance(second)].sort((left, right) => right - left);
-  return (values[0]! + 0.05) / (values[1]! + 0.05);
-}
-
-function readableForeground(backgrounds: string[]): string {
-  const options = ['#ffffff', '#172330'];
-  return options
-    .map((color) => ({
-      color,
-      contrast: Math.min(...backgrounds.map((background) => contrastRatio(color, background))),
-    }))
-    .sort((first, second) => second.contrast - first.contrast)[0]!.color;
-}
-
-function readableBrandColor(color: string, backgrounds: string[]): string {
-  return Math.min(...backgrounds.map((background) => contrastRatio(color, background))) >= 4.5
-    ? color
-    : readableForeground(backgrounds);
-}
-
-function storefrontPreviewStyle(draft: SaveMerchantStorefrontRequest): CSSProperties {
-  const primaryDeep = mixWithBlack(draft.primaryColor, 0.55);
-  const pageSurfaces = [draft.backgroundColor, draft.surfaceColor];
-  const accentOnPrimaryDeep =
-    contrastRatio(draft.accentColor, primaryDeep) >= 4.5
-      ? draft.accentColor
-      : contrastText(primaryDeep);
-  return {
-    '--preview-ink': readableForeground(pageSurfaces),
-    '--preview-primary-deep': primaryDeep,
-    '--preview-primary-deep-foreground': contrastText(primaryDeep),
-    '--preview-primary-deep-text': readableBrandColor(primaryDeep, pageSurfaces),
-    '--preview-accent-on-primary-deep': accentOnPrimaryDeep,
-    '--preview-accent': draft.accentColor,
-    '--preview-accent-foreground': contrastText(draft.accentColor),
-    '--preview-background': draft.backgroundColor,
-    '--preview-surface': draft.surfaceColor,
-  } as CSSProperties;
 }
 
 export function StorefrontSettings({
@@ -162,11 +143,17 @@ export function StorefrontSettings({
   onDirtyChange,
   onBusyChange,
   identity,
+  actionsRef,
+  onInvalidChange,
+  showPreview = true,
 }: {
   profile: OwnerProfile;
   onDirtyChange?: (dirty: boolean) => void;
   onBusyChange?: (busy: boolean) => void;
-  identity?: Pick<OwnerRestaurantSettings, 'logoImage' | 'coverImage'> | undefined;
+  identity?: RestaurantIdentityDraft | undefined;
+  actionsRef?: Ref<SettingsEditorActions>;
+  onInvalidChange?: (invalid: boolean) => void;
+  showPreview?: boolean;
 }) {
   const { t, errorText, locale, formatNumber } = useLocale();
   const [settings, setSettings] = useState<MerchantStorefrontSettings | null>(null);
@@ -180,25 +167,22 @@ export function StorefrontSettings({
   const [colorInputs, setColorInputs] = useState<Record<ColorKey, string>>(
     colorValues(palettes[0]),
   );
-  const [previewViewport, setPreviewViewport] = useState<'desktop' | 'mobile'>('desktop');
 
   const baseline = settings ? savedAppearance(settings) : null;
   const dirty = !!draft && !!baseline &&
-    (draft.layout !== baseline.layout ||
-      draft.logoScale !== baseline.logoScale ||
+    (draft.logoScale !== baseline.logoScale ||
+      draft.heroTitle !== baseline.heroTitle ||
+      draft.heroEyebrow !== baseline.heroEyebrow ||
+      draft.heroEmphasis !== baseline.heroEmphasis ||
+      draft.heroShade !== baseline.heroShade ||
       draft.logoData !== baseline.logoData ||
       colorFields.some(({ key }) => colorInputs[key].toLowerCase() !== baseline[key].toLowerCase()));
   const invalidColors = colorFields.some(({ key }) => !isHexColor(colorInputs[key]));
-  const logo = identity ? identity.logoImage?.src : draft?.logoData;
-  const cover = identity ? identity.coverImage?.src : settings?.coverImageUrl;
   const ar = locale === 'ar';
-  const layoutLabels = {
-    hero: ar ? 'مقدمة المتجر أولًا' : 'Welcome section first',
-    menu: ar ? 'القائمة أولًا' : 'Product menu first',
-  };
 
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
   useEffect(() => onBusyChange?.(busy), [busy, onBusyChange]);
+  useEffect(() => onInvalidChange?.(invalidColors), [invalidColors, onInvalidChange]);
 
   useEffect(() => {
     setDescription(
@@ -266,6 +250,11 @@ export function StorefrontSettings({
     setNotice('');
   }
 
+  function changeHero<K extends keyof StorefrontHeroSettings>(key: K, value: StorefrontHeroSettings[K]) {
+    setDraft((current) => (current ? { ...current, [key]: value } : current));
+    setNotice('');
+  }
+
   function uploadLogo(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
     if (!file || !draft || busy) return;
@@ -301,12 +290,11 @@ export function StorefrontSettings({
       });
   }
 
-  async function save(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!draft || busy || !dirty) return;
+  async function save(): Promise<boolean> {
+    if (!draft || busy || !dirty) return false;
     if (invalidColors) {
       setError(locale === 'ar' ? 'أدخل كل لون بصيغة HEX مثل #315B43.' : 'Enter each color as HEX, such as #315B43.');
-      return;
+      return false;
     }
     setOperation('saving');
     setError('');
@@ -319,132 +307,118 @@ export function StorefrontSettings({
       setSettings(updated);
       setDraft(savedAppearance(updated));
       setColorInputs(colorValues(updated));
-      setNotice(ar ? 'تم حفظ المظهر. افتح المتجر وحدّث الصفحة لمراجعته.' : 'Appearance saved. Open and refresh your store to see it.');
+      if (!actionsRef) setNotice(ar ? 'تم الحفظ.' : 'Saved.');
+      return true;
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not save the appearance.');
+      return false;
     } finally {
       setOperation(null);
     }
   }
 
-  return (
-    <Card
-      id="settings-identity"
-      className="panel merchant-appearance settings-card settings-identity-card"
-      aria-labelledby="merchant-appearance-heading"
-    >
-      <div className="settings-card-heading">
-        <div className="settings-heading-copy">
-          <span className="settings-section-icon mint">
-            <Icon name="store" />
-          </span>
-          <div>
-            <h2 id="merchant-appearance-heading">
-              {profile.activity === 'restaurant'
-                ? locale === 'ar'
-                  ? 'مظهر متجرك المستقل'
-                  : 'Your independent storefront'
-                : t('Storefront appearance')}
-            </h2>
-            <p>
-              {profile.activity === 'restaurant'
-                ? locale === 'ar'
-                  ? 'غيّر ترتيب الصفحة والألوان هنا. شعار المطعم وغلافه يتعدلان من هوية المطعم.'
-                  : 'Choose a homepage layout and colors here. Edit the shared logo and cover in Restaurant identity.'
-                : locale === 'ar'
-                  ? 'تحكم في الشعار وترتيب الصفحة والألوان التي يراها العملاء على رابطك الخاص.'
-                  : 'Control the logo, homepage layout, and colors customers see on your storefront.'}
-            </p>
-          </div>
-        </div>
-      </div>
+  function discard() {
+    if (!settings) return;
+    setDraft(savedAppearance(settings));
+    setColorInputs(colorValues(settings));
+    setError('');
+    setNotice('');
+  }
+  useImperativeHandle(actionsRef, () => ({ save, discard }));
 
-      {error && (
-        <p className="error" role="alert">
-          {errorText(error)}
-        </p>
-      )}
-      {notice && (
-        <p className="merchant-appearance-notice" role="status">
-          {t(notice)}
-        </p>
-      )}
+  const Panel = actionsRef ? 'div' : Card;
+  const Fields = actionsRef ? 'div' : 'form';
+
+  return (
+    <Panel
+      id={profile.activity === 'restaurant' ? 'settings-appearance' : 'settings-identity'}
+      className={actionsRef ? "rs-appearance-fields" : "panel merchant-appearance settings-card settings-identity-card"}
+      aria-labelledby={actionsRef ? undefined : "merchant-appearance-heading"}
+    >
+      {!actionsRef && <SettingsHeading
+        id="merchant-appearance-heading"
+        icon="settings"
+        title={ar ? 'الهوية والمظهر' : 'Identity and appearance'}
+      /> }
+      <SettingsFeedback error={error ? errorText(error) : ''} notice={notice ? t(notice) : ''} />
 
       {loading ? (
         <p>{locale === 'ar' ? 'جارٍ تحميل مظهر المتجر…' : 'Loading storefront appearance…'}</p>
       ) : !settings || !draft ? null : (
-        <form className="settings-identity-form" onSubmit={(event) => void save(event)}>
+        <Fields
+          className="settings-identity-form"
+          onSubmit={actionsRef ? undefined : (event: FormEvent<HTMLElement>) => {
+            event.preventDefault();
+            void save();
+          }}
+        >
+          {profile.activity === 'restaurant' && (
+            <fieldset className="settings-cover-copy" disabled={busy}>
+              <legend>{ar ? 'نص الغلاف' : 'Cover text'}</legend>
+              <div className="settings-cover-lines has-badge">
+                {heroTextFields.map((field) => {
+                  const label = ar ? field.ar : field.en;
+                  const defaultText = ar ? field.defaultAr : field.defaultEn;
+                  return (
+                    <div key={field.key}>
+                      <div className="settings-cover-field-heading">
+                        <label htmlFor={field.key}>{label}</label>
+                        <Button type="button" variant="ghost" size="sm"
+                          className="settings-cover-reset"
+                          aria-label={ar ? 'رجّع ' + label + ' للافتراضي' : 'Reset ' + label}
+                          disabled={draft[field.key] == null}
+                          onClick={() => changeHero(field.key, null)}>
+                          {ar ? 'افتراضي' : 'Reset'}
+                        </Button>
+                      </div>
+                      <Input
+                        id={field.key}
+                        maxLength={80}
+                        value={draft[field.key] ?? defaultText}
+                        onChange={(event) => changeHero(field.key, event.target.value)}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="settings-cover-shade">
+                <SettingsChoices<StorefrontHeroSettings['heroShade']>
+                  label={ar ? 'تعتيم الصورة' : 'Image shade'}
+                  value={draft.heroShade ?? 'medium'}
+                  options={heroShades.map(({ value, ar: arabic, en }) => ({
+                    value, label: ar ? arabic : en,
+                  }))}
+                  onChange={(value) => changeHero('heroShade', value)}
+                />
+                <Button type="button" variant="ghost" size="sm" className="settings-cover-reset"
+                  aria-label={ar ? 'رجّع التعتيم للافتراضي' : 'Reset image shade'}
+                  disabled={(draft.heroShade ?? 'medium') === 'medium'}
+                  onClick={() => changeHero('heroShade', 'medium')}>
+                  {ar ? 'افتراضي' : 'Reset'}
+                </Button>
+              </div>
+            </fieldset>
+          )}
           <div className="settings-public-storefront">
             <div className="settings-storefront-address">
               <span>{locale === 'ar' ? 'رابط المتجر للعملاء' : 'Customer storefront'}</span>
               <a href={customerUrl} dir="ltr" target="_blank" rel="noreferrer">
                 {customerUrl}
               </a>
-              {!handle && (
-                <small>
-                  {locale === 'ar'
-                    ? 'هذا هو الرابط الحالي. يمكن تعيين عنوان فرعي للمتجر من الإدارة.'
-                    : 'Current address. An administrator can assign a storefront subdomain.'}
-                </small>
-              )}
             </div>
             <div className="settings-storefront-actions">
-              <Button type="button" variant="outline" onClick={() => void copyStorefrontUrl()}>
+              <Button type="button" size="sm" variant="outline" onClick={() => void copyStorefrontUrl()}>
                 {locale === 'ar' ? 'نسخ الرابط' : 'Copy link'}
               </Button>
-              <a
-                className="settings-open-store"
-                href={customerUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {locale === 'ar' ? 'فتح المتجر' : 'Open store'} <Icon name="arrow" />
-              </a>
+              <Button asChild size="sm" variant="solid">
+                <a href={customerUrl} target="_blank" rel="noreferrer">
+                  {ar ? 'فتح المتجر' : 'Open store'} <Icon name="arrow" />
+                </a>
+              </Button>
             </div>
           </div>
           <fieldset className="settings-appearance-fields" disabled={busy}>
-            {profile.activity === 'restaurant' ? (
-              <section
-                className="settings-shared-identity"
-                aria-label={locale === 'ar' ? 'هوية المطعم المشتركة' : 'Shared restaurant identity'}
-              >
-                <div className="settings-shared-identity-copy">
-                  <strong>
-                    {locale === 'ar'
-                      ? 'هوية واحدة في وفرلي ومتجرك'
-                      : 'One identity across Waffarly and your store'}
-                  </strong>
-                  <p>
-                    {locale === 'ar'
-                      ? 'الاسم والشعار والغلاف بيتداروا من هوية المطعم. الشعار والغلاف هنا للمعاينة فقط.'
-                      : 'Manage your name, logo, and cover from Restaurant identity. Their storefront preview is shown here.'}
-                  </p>
-                  <Link to="/settings?section=identity">
-                    {locale === 'ar' ? 'تعديل هوية المطعم' : 'Edit restaurant identity'}
-                    <Icon name="arrow" />
-                  </Link>
-                </div>
-                <div className="settings-shared-identity-images">
-                  <div className="settings-shared-logo">
-                    {logo ? (
-                      <img
-                        src={logo}
-                        alt={locale === 'ar' ? 'شعار ' + profile.merchantName : profile.merchantName + ' logo'}
-                      />
-                    ) : (
-                      <strong>{profile.merchantName.slice(0, 1)}</strong>
-                    )}
-                  </div>
-                  {cover && (
-                    <img
-                      className="settings-shared-cover"
-                      src={cover}
-                      alt={locale === 'ar' ? 'غلاف المطعم' : 'Restaurant cover'}
-                    />
-                  )}
-                </div>
-              </section>
-            ) : (
+            {profile.activity !== 'restaurant' && (
               <div className="settings-identity-grid">
                 <div className="settings-logo-column">
                   <div className="settings-field-label">{t('Store logo')}</div>
@@ -508,21 +482,14 @@ export function StorefrontSettings({
               aria-label={locale === 'ar' ? 'إعدادات مظهر المتجر' : 'Storefront appearance settings'}
             >
               <div className="settings-appearance-section-heading">
-                <div>
-                  <h3>{locale === 'ar' ? 'ألوان متجرك المستقل' : 'Independent storefront colors'}</h3>
-                  <p>
-                    {locale === 'ar'
-                      ? 'الألوان دي بتظهر على رابط متجرك فقط.'
-                      : 'These colors appear on your standalone storefront.'}
-                  </p>
-                </div>
+                <h3>{ar ? 'الألوان' : 'Colors'}</h3>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => choosePalette(palettes[0])}
                 >
-                  {locale === 'ar' ? 'استعادة الألوان الافتراضية' : 'Restore default colors'}
+                  {ar ? 'الألوان الافتراضية' : 'Default colors'}
                 </Button>
               </div>
 
@@ -582,162 +549,37 @@ export function StorefrontSettings({
                 ))}
               </div>
 
-              <fieldset className="settings-radio-group">
-                <legend>{locale === 'ar' ? 'حجم الشعار على المتجر' : 'Storefront logo size'}</legend>
-                {logoScales.map(({ value, ar, en }) => (
-                  <label key={value}>
-                    <input
-                      type="radio"
-                      name="storefront-logo-size"
-                      value={value}
-                      checked={draft.logoScale === value}
-                      onChange={() =>
-                        setDraft((current) => (current ? { ...current, logoScale: value } : current))
-                      }
-                    />
-                    {locale === 'ar' ? ar : en}
-                  </label>
-                ))}
-              </fieldset>
+              <SettingsChoices<LogoScale>
+                label={ar ? 'حجم الشعار' : 'Logo size'}
+                value={draft.logoScale}
+                options={logoScales.map(({ value, ar: arabic, en }) => ({
+                  value, label: ar ? arabic : en,
+                }))}
+                onChange={(logoScale) => setDraft((current) => current ? { ...current, logoScale } : current)}
+              />
 
-              <fieldset className="settings-radio-group">
-                <legend>{locale === 'ar' ? 'ترتيب الصفحة الرئيسية' : 'Homepage layout'}</legend>
-                {(['hero', 'menu'] as const).map((layout) => (
-                  <label key={layout}>
-                    <input
-                      type="radio"
-                      name="storefront-layout"
-                      value={layout}
-                      checked={draft.layout === layout}
-                      onChange={() =>
-                        setDraft((current) => (current ? { ...current, layout } : current))
-                      }
-                    />
-                    {layoutLabels[layout]}
-                  </label>
-                ))}
-              </fieldset>
             </section>
 
-            <section
-              className="settings-live-preview-section"
-              aria-label={locale === 'ar' ? 'معاينة المتجر' : 'Storefront preview'}
-            >
-              <div className="settings-appearance-section-heading">
-                <div>
-                  <h3>{locale === 'ar' ? 'معاينة مباشرة' : 'Live preview'}</h3>
-                  <p>
-                    {locale === 'ar'
-                      ? 'شوف تأثير الشعار والألوان قبل الحفظ.'
-                      : 'See how the logo and colors look before saving.'}
-                  </p>
-                </div>
-                <div
-                  className="settings-preview-toggle"
-                  role="group"
-                  aria-label={locale === 'ar' ? 'حجم المعاينة' : 'Preview size'}
-                >
-                  {(['desktop', 'mobile'] as const).map((viewport) => (
-                    <button
-                      key={viewport}
-                      type="button"
-                      aria-pressed={previewViewport === viewport}
-                      onClick={() => setPreviewViewport(viewport)}
-                    >
-                      {viewport === 'desktop'
-                        ? locale === 'ar'
-                          ? 'كمبيوتر'
-                          : 'Desktop'
-                        : locale === 'ar'
-                          ? 'موبايل'
-                          : 'Mobile'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div
-                className={'settings-live-preview ' + previewViewport + (draft.layout === 'menu' ? ' is-menu-first' : '')}
-                style={storefrontPreviewStyle(draft)}
-              >
-                <div className="settings-preview-header">
-                  <span className={'settings-preview-logo ' + draft.logoScale}>
-                    {logo ? (
-                      <img src={logo} alt="" />
-                    ) : (
-                      profile.merchantName.slice(0, 1)
-                    )}
-                  </span>
-                        <strong>{profile.merchantName}</strong>
-                  <span className="settings-preview-links">
-                    {locale === 'ar' ? 'الرئيسية　 المنيو　 مفضلاتي' : 'Home　 Menu　 Favorites'}
-                  </span>
-                </div>
-                <div className="settings-preview-hero">
-                  {cover && <img src={cover} alt="" />}
-                  <div>
-                    <small>
-                      {locale === 'ar'
-                        ? profile.activity === 'restaurant'
-                          ? 'مطعمك، بطريقتك'
-                          : 'علامتك، بطريقتك'
-                        : profile.activity === 'restaurant'
-                          ? 'Your restaurant, your way'
-                          : 'Your brand, your way'}
-                    </small>
-                    <strong>
-                      {locale === 'ar' ? 'طعم يستاهل التجربة' : 'A taste worth coming back for'}
-                    </strong>
-                    <span className="settings-preview-cta">{ar ? 'اطلب الآن' : 'Order now'}</span>
-                  </div>
-                </div>
-                <div className="settings-preview-product">
-                  <span className="settings-preview-food" aria-hidden="true" />
-                  <div>
-                    <strong>{locale === 'ar' ? 'وجبة مميزة' : 'Signature meal'}</strong>
-                    <small>{locale === 'ar' ? 'طازج ولذيذ كل مرة' : 'Fresh and delicious every time'}</small>
-                  </div>
-                  <b>{locale === 'ar' ? '١٨٠ ج.م' : 'EGP 180'}</b>
-                </div>
-              </div>
-            </section>
           </fieldset>
+          {showPreview && (
+            <StorefrontPreview slug={settings.storefrontSlug} identity={identity} appearance={draft} />
+          )}
           {invalidColors && (
             <p className="error" role="status">
               {ar ? 'اكتب اللون بصيغة زي #315B43.' : 'Use a color code such as #315B43.'}
             </p>
           )}
-          <footer className="rs-savebar settings-appearance-savebar">
-            <span role="status">
-              <i className={dirty ? 'is-dirty' : ''} />
-              {operation === 'uploading'
-                ? ar ? 'جارٍ رفع الصورة…' : 'Uploading image…'
-                : operation === 'saving'
-                  ? t('Saving…')
-                  : dirty
-                    ? ar ? 'عندك تغييرات غير محفوظة' : 'Unsaved changes'
-                    : ar ? 'مفيش تغييرات جديدة' : 'No new changes'}
-            </span>
-            <div>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy || !dirty}
-                onClick={() => {
-                  setDraft(savedAppearance(settings));
-                  setColorInputs(colorValues(settings));
-                  setError('');
-                  setNotice('');
-                }}
-              >
-                {ar ? 'تراجع عن التغييرات' : 'Discard changes'}
-              </Button>
-              <Button type="submit" disabled={busy || !dirty || invalidColors}>
-                {ar ? 'حفظ المظهر' : 'Save appearance'}
-              </Button>
-            </div>
-          </footer>
-        </form>
+          {!actionsRef && (
+            <SettingsSaveBar
+              dirty={dirty}
+              operation={operation}
+              invalid={invalidColors}
+              label={ar ? 'حفظ' : 'Save'}
+              onDiscard={discard}
+            />
+          )}
+        </Fields>
       )}
-    </Card>
+    </Panel>
   );
 }

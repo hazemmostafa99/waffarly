@@ -176,3 +176,33 @@ accounting journal/financial statements, and direct cash-drawer payments.
 4. An EGP 2,000 advance with EGP 500 monthly instalments creates a EGP 2,000
    cash withdrawal at disbursement and reduces payroll net due by EGP 500 for
    each approved instalment until the recorded balance reaches zero.
+
+## Advance corrections
+
+Owners can update or cancel advances from the advances table. Cancellation retains
+history and excludes the advance from future payroll. The history checkbox shows
+settled/cancelled records. Employee and original safe cannot change.
+
+POST /owner/payroll/advances/:id/update accepts requestId, revision, amount,
+installmentAmount, firstInstallmentMonth, reason and correctionReason.
+POST /owner/payroll/advances/:id/cancel accepts requestId, revision and
+correctionReason. Both commands are merchant scoped and idempotent. Immutable
+correction rows retain before/after snapshots, actor and reason. Original cash
+withdrawals and creation fingerprints remain unchanged.
+
+Increases withdraw the difference, reductions deposit the difference, and
+cancellation deposits the full original amount into the original safe. Confirm
+only after cash has actually moved. Revision checks and serializable transactions
+protect corrections against concurrent edits and payroll approval. Cash movements,
+correction history and advance updates commit together. Insufficient cash rejects
+an increase. Retrying a request never repeats its cash movement.
+
+After any approved repayment, cancellation, amount changes and first-month changes
+are blocked. Only installment and reason can change. Existing payroll snapshots
+remain immutable; future repayments retain the existing remaining-balance and
+available-pay caps.
+
+Manual QA pending: increase 200 to 300 (withdraw 100), reduce to 150 (deposit 50),
+cancel (deposit 150 once), duplicate requests, stale revision, foreign tenants,
+insufficient funds, concurrent approval, cancelled history, and installment edits
+after repayment. No automated checks were run, following project preference.

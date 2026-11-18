@@ -158,6 +158,7 @@ export const merchantNavigationGroups: MerchantNavigationGroup[] = [
     ar: 'التقارير',
     icon: 'receipt',
     links: [
+      { path: '/reports', en: 'Business reports', ar: 'مركز التقارير', icon: 'revenue' },
       { path: '/pos-shift-reports', en: 'Shift reports', ar: 'تقارير الورديات', icon: 'receipt' },
       {
         path: '/pos-item-returns',
@@ -192,16 +193,18 @@ export function findMerchantNavigationLink(pathname: string): MerchantNavigation
 export function getMerchantBreadcrumbs(pathname: string, search: string): MerchantBreadcrumb[] {
   if (pathname === '/settings') {
     const settings = new URLSearchParams(search).get('section') ?? 'identity';
+    const branding = { en: 'Identity and appearance', ar: 'الهوية والمظهر' };
     const section = {
-      identity: { en: 'Store identity', ar: 'هوية المتجر' },
+      identity: branding,
+      design: branding,
+      publication: { en: 'Visibility on Waffarly', ar: 'الظهور على وفرلي' },
       hours: { en: 'Opening hours', ar: 'مواعيد العمل' },
       delivery: { en: 'Delivery & pickup', ar: 'التوصيل والاستلام' },
-      design: { en: 'Storefront design', ar: 'مظهر المتجر المستقل' },
       account: { en: 'Account & subscription', ar: 'الحساب والاشتراك' },
     }[settings];
     return [
       { en: 'Settings', ar: 'الإعدادات', to: '/settings?section=identity' },
-      section ?? { en: 'Store identity', ar: 'هوية المتجر' },
+      section ?? branding,
     ];
   }
 

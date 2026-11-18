@@ -11,8 +11,11 @@ import type {
 } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
-import { toCents } from '../../common/money/money.js';
-import { isUniqueConstraintError } from '../../infrastructure/database/prisma-errors.js';
+import { formatCents, toCents } from '../../common/money/money.js';
+import {
+  isSerializationConflict,
+  isUniqueConstraintError,
+} from '../../infrastructure/database/prisma-errors.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { AttendanceService } from '../attendance/index.js';
 import { StaffService } from '../employees/index.js';
@@ -25,6 +28,8 @@ import {
   type PayrollStaffSource,
 } from './payroll.rules.js';
 import {
+  cancelStaffAdvanceSchema,
+  updateStaffAdvanceSchema,
   createPayrollAdjustmentSchema,
   createPayrollRunSchema,
   createStaffAdvanceSchema,
@@ -242,7 +247,11 @@ export class PayrollService {
     });
     return advances
       .map(toAdvanceSummary)
-      .filter((advance) => query.status === 'all' || toCents(advance.remainingBalance) > 0n);
+      .filter(
+        (advance) =>
+          query.status === 'all' ||
+          (!advance.cancelledAt && toCents(advance.remainingBalance) > 0n),
+      );
   }
 
   async createAdvance(
@@ -317,6 +326,121 @@ export class PayrollService {
         throw new ConflictException(
           'Advance or cash record already exists. Refresh and retry the saved request.',
         );
+      throw error;
+    }
+  }
+
+  /** Corrects an advance and its safe balance atomically; never rewrites approved payroll. */
+  async correctAdvance(
+    merchantId: string,
+    actor: string,
+    id: string,
+    action: 'update' | 'cancel',
+    input: unknown,
+  ): Promise<StaffAdvanceSummary> {
+    const update = action === 'update' ? parseRequest(updateStaffAdvanceSchema, input) : null;
+    const command = update ?? parseRequest(cancelStaffAdvanceSchema, input);
+    const fingerprint = hash({ id, action, ...command });
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          await tx.$queryRaw`SELECT "id" FROM "staff_advances" WHERE "id"=${id}::uuid AND "merchantId"=${merchantId}::uuid FOR UPDATE`;
+          const advance = await tx.staffAdvance.findFirst({
+            where: { id, merchantId },
+            include: {
+              cashMovement: true,
+              staffMember: { select: { displayName: true } },
+              branch: { select: { id: true, name: true } },
+              repayments: { select: { amount: true } },
+            },
+          });
+          if (!advance) throw new NotFoundException('Staff advance was not found.');
+          const previous = await tx.staffAdvanceCorrection.findUnique({
+            where: { merchantId_requestId: { merchantId, requestId: command.requestId } },
+          });
+          if (previous) {
+            if (previous.fingerprint !== fingerprint)
+              throw new ConflictException(
+                'This request ID was used with different correction details.',
+              );
+            return toAdvanceSummary(advance);
+          }
+          if (advance.cancelledAt)
+            throw new ConflictException('This advance is already cancelled.');
+          if (advance.revision !== command.revision)
+            throw new ConflictException('Advance changed. Refresh before trying again.');
+          const hasRepayments = advance.repayments.length > 0;
+          if (
+            hasRepayments &&
+            (action === 'cancel' ||
+              (update &&
+                (toCents(update.amount) !== toCents(advance.amount.toFixed(2)) ||
+                  update.firstInstallmentMonth !== formatMonth(advance.firstInstallmentMonth))))
+          ) {
+            throw new ConflictException(
+              'Approved payroll has repaid this advance. Only the future installment and reason can change.',
+            );
+          }
+          const newAmount = action === 'cancel' ? 0n : toCents(update!.amount);
+          const difference = newAmount - toCents(advance.amount.toFixed(2));
+          if (difference !== 0n) {
+            await recordSafeMovementInTransaction(tx, {
+              merchantId,
+              branchId: advance.branchId,
+              safeId: advance.cashMovement.safeId,
+              requestId: command.requestId,
+              actor,
+              amount: formatCents(difference < 0n ? -difference : difference),
+              kind: difference > 0n ? 'withdrawal' : 'deposit',
+              purpose: 'hr_advance',
+              reason: `Advance ${action} ${id}: ${command.correctionReason}`.slice(0, 500),
+            });
+          }
+          const saved = await tx.staffAdvance.update({
+            where: { id },
+            data: {
+              revision: { increment: 1 },
+              ...(update
+                ? {
+                    amount: update.amount,
+                    installmentAmount: update.installmentAmount,
+                    firstInstallmentMonth: monthStartDate(update.firstInstallmentMonth),
+                    reason: update.reason,
+                  }
+                : { cancelledAt: new Date() }),
+            },
+            include: {
+              staffMember: { select: { displayName: true } },
+              branch: { select: { id: true, name: true } },
+              repayments: { select: { amount: true } },
+            },
+          });
+          const before = toAdvanceSummary(advance);
+          const after = toAdvanceSummary(saved);
+          await tx.staffAdvanceCorrection.create({
+            data: {
+              merchantId,
+              advanceId: id,
+              staffMemberId: advance.staffMemberId,
+              requestId: command.requestId,
+              fingerprint,
+              action,
+              reason: command.correctionReason,
+              createdBy: actor,
+              before: { ...before },
+              after: { ...after },
+            },
+          });
+          return after;
+        },
+        { isolationLevel: 'Serializable' },
+      );
+    } catch (error) {
+      if (isSerializationConflict(error) || isUniqueConstraintError(error)) {
+        throw new ConflictException(
+          'Advance or cash records changed. Refresh and retry the same saved request.',
+        );
+      }
       throw error;
     }
   }
@@ -467,6 +591,7 @@ export class PayrollService {
         where: {
           merchantId,
           staffMemberId: { in: staffIds },
+          cancelledAt: null,
           firstInstallmentMonth: { lte: monthStart },
         },
         include: { repayments: { select: { amount: true } } },
@@ -656,6 +781,8 @@ function toAdjustmentSummary(row: {
 }
 
 function toAdvanceSummary(advance: {
+  revision: number;
+  cancelledAt: Date | null;
   id: string;
   staffMemberId: string;
   branchId: string;
@@ -672,6 +799,8 @@ function toAdvanceSummary(advance: {
   return {
     id: advance.id,
     staffMemberId: advance.staffMemberId,
+    revision: advance.revision,
+    cancelledAt: advance.cancelledAt?.toISOString() ?? null,
     employeeName: advance.staffMember.displayName,
     branchId: advance.branch.id,
     branchName: advance.branch.name,
@@ -680,7 +809,9 @@ function toAdvanceSummary(advance: {
     firstInstallmentMonth: formatMonth(advance.firstInstallmentMonth),
     reason: advance.reason,
     repaidAmount,
-    remainingBalance: subtractAmount(advance.amount.toFixed(2), repaidAmount),
+    remainingBalance: advance.cancelledAt
+      ? '0.00'
+      : subtractAmount(advance.amount.toFixed(2), repaidAmount),
     createdAt: advance.createdAt.toISOString(),
   };
 }

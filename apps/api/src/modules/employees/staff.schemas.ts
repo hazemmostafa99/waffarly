@@ -2,7 +2,7 @@
 import { z } from 'zod';
 
 const uuid = z.string().uuid();
-const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const date = z.string().date();
 const money = z.string().regex(/^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/);
 const positiveMoney = money.refine((value) => /[1-9]/.test(value), 'Amount must be positive.');
 

@@ -41,6 +41,24 @@ export class PayrollController {
     return this.payroll.createAdvance(owner.merchantId, owner.username, input);
   }
 
+  @Post('advances/:id/update')
+  updateAdvance(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() input: unknown,
+  ) {
+    return this.payroll.correctAdvance(owner.merchantId, owner.username, id, 'update', input);
+  }
+
+  @Post('advances/:id/cancel')
+  cancelAdvance(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() input: unknown,
+  ) {
+    return this.payroll.correctAdvance(owner.merchantId, owner.username, id, 'cancel', input);
+  }
+
   @Get()
   async month(
     @CurrentOwner() owner: OwnerProfile,

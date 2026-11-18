@@ -41,9 +41,9 @@ export class ExpensesController {
   summary(
     @CurrentOwner() owner: OwnerProfile,
     @Query(new ZodValidationPipe(expenseMonthSchema, { format: 'messages' }))
-    query: { month: string },
+    query: { month: string; branchId?: string },
   ): Promise<ExpenseMonthSummary> {
-    return this.expenses.summary(owner.merchantId, query.month);
+    return this.expenses.summary(owner.merchantId, query.month, query.branchId);
   }
 
   @Get()

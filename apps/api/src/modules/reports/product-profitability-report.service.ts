@@ -1,5 +1,7 @@
+/** Reports saved product revenue and consumption, respecting cancellation and stock restoration. */
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { OwnerProductProfitabilityReport, OwnerProfitabilityDimensionRow } from '@waffarly/contracts';
+import type { Prisma } from '@waffarly/database';
 import { formatCents } from '../../common/money/money.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 
@@ -44,16 +46,19 @@ type DimensionMetricRow = {
 export class ProductProfitabilityReportService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
-  async get(merchantId: string, query: ProductProfitabilityQuery): Promise<OwnerProductProfitabilityReport> {
+  async get(
+    merchantId: string, query: ProductProfitabilityQuery,
+    db: Prisma.TransactionClient = this.prisma,
+  ): Promise<OwnerProductProfitabilityReport> {
     if (query.branchId) {
-      const branch = await this.prisma.branch.findFirst({
-        where: { id: query.branchId, merchantId, archivedAt: null },
+      const branch = await db.branch.findFirst({
+        where: { id: query.branchId, merchantId },
         select: { id: true },
       });
       if (!branch) throw new NotFoundException('Branch was not found.');
     }
     const branchId = query.branchId ?? null;
-    const rows = await this.prisma.$queryRaw<ProductMetricRow[]>`
+    const rows = await db.$queryRaw<ProductMetricRow[]>`
       WITH sales AS (
         SELECT l."productId", MAX(l."productName") AS "productName",
           SUM(l."quantity")::bigint AS "quantitySold",
@@ -63,6 +68,7 @@ export class ProductProfitabilityReportService {
         FROM "storefront_order_lines" l
         JOIN "storefront_orders" o ON o."id" = l."orderId" AND o."merchantId" = l."merchantId"
         WHERE l."merchantId" = ${merchantId}::uuid
+          AND o."cancelledAt" IS NULL AND o."status" NOT IN ('cancelled','rejected')
           AND l."revenueRecognizedAt" >= (${query.from}::date::timestamp AT TIME ZONE 'Africa/Cairo')
           AND l."revenueRecognizedAt" < ((${query.to}::date + 1)::timestamp AT TIME ZONE 'Africa/Cairo')
           AND (${branchId}::uuid IS NULL OR o."branchId" = ${branchId}::uuid)
@@ -84,6 +90,7 @@ export class ProductProfitabilityReportService {
         FROM "storefront_order_lines" l
         JOIN "storefront_orders" o ON o."id" = l."orderId" AND o."merchantId" = l."merchantId"
         WHERE l."merchantId" = ${merchantId}::uuid
+          AND ((o."cancelledAt" IS NULL AND o."status" NOT IN ('cancelled','rejected')) OR o."stockRestored"=false)
           AND l."costSnapshotAt" >= (${query.from}::date::timestamp AT TIME ZONE 'Africa/Cairo')
           AND l."costSnapshotAt" < ((${query.to}::date + 1)::timestamp AT TIME ZONE 'Africa/Cairo')
           AND (${branchId}::uuid IS NULL OR o."branchId" = ${branchId}::uuid)
@@ -112,36 +119,41 @@ export class ProductProfitabilityReportService {
         "productName" ASC
       LIMIT ${query.limit}`;
 
-    const totals = await this.prisma.$queryRaw<TotalsRow[]>`
+    const totals = await db.$queryRaw<TotalsRow[]>`
       WITH event_totals AS (
         SELECT
           COALESCE((SELECT SUM(l."quantity") FROM "storefront_order_lines" l
             JOIN "storefront_orders" o ON o."id"=l."orderId" AND o."merchantId"=l."merchantId"
             WHERE l."merchantId"=${merchantId}::uuid
+              AND o."cancelledAt" IS NULL AND o."status" NOT IN ('cancelled','rejected')
               AND l."revenueRecognizedAt">=(${query.from}::date::timestamp AT TIME ZONE 'Africa/Cairo')
               AND l."revenueRecognizedAt"< ((${query.to}::date+1)::timestamp AT TIME ZONE 'Africa/Cairo')
               AND (${branchId}::uuid IS NULL OR o."branchId"=${branchId}::uuid)), 0)::bigint AS "quantitySold",
           COALESCE((SELECT COUNT(*) FROM "storefront_order_lines" l
             JOIN "storefront_orders" o ON o."id"=l."orderId" AND o."merchantId"=l."merchantId"
             WHERE l."merchantId"=${merchantId}::uuid
+              AND o."cancelledAt" IS NULL AND o."status" NOT IN ('cancelled','rejected')
               AND l."revenueRecognizedAt">=(${query.from}::date::timestamp AT TIME ZONE 'Africa/Cairo')
               AND l."revenueRecognizedAt"< ((${query.to}::date+1)::timestamp AT TIME ZONE 'Africa/Cairo')
               AND (${branchId}::uuid IS NULL OR o."branchId"=${branchId}::uuid)), 0)::bigint AS "salesLines",
           COALESCE((SELECT COUNT(*) FROM "storefront_order_lines" l
             JOIN "storefront_orders" o ON o."id"=l."orderId" AND o."merchantId"=l."merchantId"
-            WHERE l."merchantId"=${merchantId}::uuid AND l."costSnapshotTotal" IS NULL
+            WHERE l."merchantId"=${merchantId}::uuid
+              AND o."cancelledAt" IS NULL AND o."status" NOT IN ('cancelled','rejected') AND l."costSnapshotTotal" IS NULL
               AND l."revenueRecognizedAt">=(${query.from}::date::timestamp AT TIME ZONE 'Africa/Cairo')
               AND l."revenueRecognizedAt"< ((${query.to}::date+1)::timestamp AT TIME ZONE 'Africa/Cairo')
               AND (${branchId}::uuid IS NULL OR o."branchId"=${branchId}::uuid)), 0)::bigint AS "unknownCostLines",
           COALESCE((SELECT SUM(l."recognizedRevenueAmount") FROM "storefront_order_lines" l
             JOIN "storefront_orders" o ON o."id"=l."orderId" AND o."merchantId"=l."merchantId"
             WHERE l."merchantId"=${merchantId}::uuid
+              AND o."cancelledAt" IS NULL AND o."status" NOT IN ('cancelled','rejected')
               AND l."revenueRecognizedAt">=(${query.from}::date::timestamp AT TIME ZONE 'Africa/Cairo')
               AND l."revenueRecognizedAt"< ((${query.to}::date+1)::timestamp AT TIME ZONE 'Africa/Cairo')
               AND (${branchId}::uuid IS NULL OR o."branchId"=${branchId}::uuid)), 0) AS revenue,
           COALESCE((SELECT SUM(l."costSnapshotTotal") FROM "storefront_order_lines" l
             JOIN "storefront_orders" o ON o."id"=l."orderId" AND o."merchantId"=l."merchantId"
             WHERE l."merchantId"=${merchantId}::uuid
+              AND ((o."cancelledAt" IS NULL AND o."status" NOT IN ('cancelled','rejected')) OR o."stockRestored"=false)
               AND l."costSnapshotAt">=(${query.from}::date::timestamp AT TIME ZONE 'Africa/Cairo')
               AND l."costSnapshotAt"< ((${query.to}::date+1)::timestamp AT TIME ZONE 'Africa/Cairo')
               AND (${branchId}::uuid IS NULL OR o."branchId"=${branchId}::uuid)), 0) AS cost,
@@ -180,11 +192,14 @@ export class ProductProfitabilityReportService {
       FROM event_totals`;
 
     const summary = totals[0]!;
-    const dimensions = await this.prisma.$queryRaw<DimensionMetricRow[]>`
+    const dimensions = await db.$queryRaw<DimensionMetricRow[]>`
       WITH base_lines AS (
         SELECT l."id" AS "lineId", l."menuSectionIdAtSale", l."menuSectionNameAtSale",
-          o."branchId", o."branchName", l."quantity", l."recognizedRevenueAmount",
-          l."revenueRecognizedAt", l."costSnapshotTotal", l."costSnapshotAt"
+          o."branchId", o."branchName", l."quantity",
+          CASE WHEN o."cancelledAt" IS NULL AND o."status" NOT IN ('cancelled','rejected') THEN l."recognizedRevenueAmount" END AS "recognizedRevenueAmount",
+          CASE WHEN o."cancelledAt" IS NULL AND o."status" NOT IN ('cancelled','rejected') THEN l."revenueRecognizedAt" END AS "revenueRecognizedAt",
+          CASE WHEN (o."cancelledAt" IS NULL AND o."status" NOT IN ('cancelled','rejected')) OR o."stockRestored"=false THEN l."costSnapshotTotal" END AS "costSnapshotTotal",
+          CASE WHEN (o."cancelledAt" IS NULL AND o."status" NOT IN ('cancelled','rejected')) OR o."stockRestored"=false THEN l."costSnapshotAt" END AS "costSnapshotAt"
         FROM "storefront_order_lines" l
         JOIN "storefront_orders" o ON o."id"=l."orderId" AND o."merchantId"=l."merchantId"
         WHERE l."merchantId"=${merchantId}::uuid

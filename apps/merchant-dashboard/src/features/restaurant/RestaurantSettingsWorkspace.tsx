@@ -1,47 +1,43 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useBlocker, useSearchParams } from 'react-router-dom';
 import { Button, Card, Dialog, useLocale } from '@waffarly/ui';
-import type { OwnerProfile, OwnerRestaurantSettings } from '@waffarly/contracts';
+import type { OwnerProfile } from '@waffarly/contracts';
 import { Icon } from '../../Icons.js';
 import { StorefrontSettings } from '../../StorefrontSettings.js';
-import { RestaurantSettings } from './RestaurantSettings.js';
+import { RestaurantSettings, type RestaurantIdentityDraft } from './RestaurantSettings.js';
+import { SettingsFeedback, SettingsHeading, SettingsSaveBar, type SettingsEditorActions } from './SettingsComponents.js';
 import './restaurant-settings.css';
-type Tab = 'identity' | 'hours' | 'delivery' | 'design' | 'account';
-const tabs: { id: Tab; icon: string; ar: string; en: string; description: string }[] = [
+type Tab = 'identity' | 'publication' | 'hours' | 'delivery' | 'account';
+const tabs: { id: Tab; icon: string; ar: string; en: string }[] = [
   {
     id: 'identity',
     icon: 'store',
-    ar: 'هوية المطعم',
-    en: 'Restaurant identity',
-    description: 'الاسم والشعار والغلاف في وفرلي ومتجرك',
+    ar: 'الهوية والمظهر',
+    en: 'Identity and appearance',
+  },
+  {
+    id: 'publication',
+    icon: 'store',
+    ar: 'الظهور على وفرلي',
+    en: 'Visibility on Waffarly',
   },
   {
     id: 'hours',
     icon: 'clock',
     ar: 'مواعيد العمل',
     en: 'Opening hours',
-    description: 'الجدول الأسبوعي والإجازات',
   },
   {
     id: 'delivery',
     icon: 'location',
     ar: 'التوصيل والاستلام',
     en: 'Delivery & pickup',
-    description: 'الرسوم والمناطق والمدة',
-  },
-  {
-    id: 'design',
-    icon: 'settings',
-    ar: 'مظهر المتجر المستقل',
-    en: 'Storefront design',
-    description: 'ترتيب الصفحة والألوان وحجم الشعار',
   },
   {
     id: 'account',
     icon: 'customers',
     ar: 'الحساب والاشتراك',
     en: 'Account & subscription',
-    description: 'بيانات المالك وتسجيل الدخول والاشتراك',
   },
 ];
 export function RestaurantSettingsWorkspace({
@@ -52,11 +48,13 @@ export function RestaurantSettingsWorkspace({
   onNameSaved: (name: string) => void;
 }) {
   const { locale } = useLocale();
+  const ar = locale === 'ar';
   const [params, setParams] = useSearchParams();
   const selected = params.get('section');
   const active: Tab = tabs.find((entry) => entry.id === selected)?.id ?? 'identity';
   const setActive = (id: Tab) => {
-    if (id === active) return;
+    if (id === active || saving.current) return;
+    setSummary(null);
     const next = new URLSearchParams(params);
     next.set('section', id);
     setParams(next);
@@ -65,10 +63,40 @@ export function RestaurantSettingsWorkspace({
   const [designDirty, setDesignDirty] = useState(false);
   const [profileBusy, setProfileBusy] = useState(false);
   const [designBusy, setDesignBusy] = useState(false);
-  const [identity, setIdentity] =
-    useState<Pick<OwnerRestaurantSettings, 'logoImage' | 'coverImage'>>();
+  const [identity, setIdentity] = useState<RestaurantIdentityDraft>();
+  const [sectionDirty, setSectionDirty] = useState(false);
+  const [invalidColors, setInvalidColors] = useState(false);
+  const [savingAll, setSavingAll] = useState(false);
+  const [summary, setSummary] = useState<{ identity?: boolean; appearance?: boolean } | null>(null);
+  const saving = useRef(false);
+  const restaurantEditor = useRef<SettingsEditorActions>(null);
+  const appearanceEditor = useRef<SettingsEditorActions>(null);
+  const branding = active === 'identity';
+  const activeDirty = sectionDirty || (branding && designDirty);
+  const currentTab = tabs.find(({ id }) => id === active)!;
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!activeDirty || busy || saving.current || (branding && invalidColors)) return;
+    saving.current = true;
+    setSavingAll(true);
+    setSummary(null);
+    const results: { identity?: boolean; appearance?: boolean } = {};
+    try {
+      if (sectionDirty && restaurantEditor.current) {
+        results.identity = await restaurantEditor.current.save();
+      }
+      if (branding && designDirty && appearanceEditor.current) {
+        results.appearance = await appearanceEditor.current.save();
+      }
+      if (branding) setSummary(results);
+    } finally {
+      saving.current = false;
+      setSavingAll(false);
+    }
+  }
   const dirty = profileDirty || designDirty;
-  const busy = profileBusy || designBusy;
+  const busy = savingAll || profileBusy || designBusy;
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       (dirty || busy) && currentLocation.pathname !== nextLocation.pathname,
@@ -88,9 +116,10 @@ export function RestaurantSettingsWorkspace({
       <aside className="rs-navigation">
         <nav aria-label={locale === 'ar' ? 'أقسام الإعدادات' : 'Settings sections'}>
           {tabs.map((entry) => (
-            <button
+            <Button
               key={entry.id}
               type="button"
+              variant="ghost"
               aria-current={active === entry.id ? 'page' : undefined}
               className={active === entry.id ? 'is-active' : ''}
               onClick={() => setActive(entry.id)}
@@ -100,44 +129,76 @@ export function RestaurantSettingsWorkspace({
               </span>
               <span>
                 <strong>{locale === 'ar' ? entry.ar : entry.en}</strong>
-                <small>{entry.description}</small>
               </span>
-            </button>
+            </Button>
           ))}
         </nav>
       </aside>
       <div className="rs-main">
-        <div hidden={!['identity', 'hours', 'delivery'].includes(active)}>
-          <RestaurantSettings
-            profile={profile}
-            onSaved={({ name, logoImage, coverImage }) => {
-              onNameSaved(name);
-              setIdentity({ logoImage, coverImage });
-            }}
-            onDirtyChange={setProfileDirty}
-            onBusyChange={setProfileBusy}
-            activeSection={active === 'hours' || active === 'delivery' ? active : 'identity'}
+        <Card className="rs-panel rs-unified-panel" hidden={active === 'account'}>
+          <SettingsHeading
+            id="restaurant-settings-heading"
+            icon={currentTab.icon}
+            title={ar ? currentTab.ar : currentTab.en}
           />
-        </div>
-        <div hidden={active !== 'design'} className="rs-design">
-          <StorefrontSettings
-            profile={profile}
-            onDirtyChange={setDesignDirty}
-            onBusyChange={setDesignBusy}
-            identity={identity}
-          />
-        </div>
-        <div hidden={active !== 'account'}>
-          <Card className="rs-panel">
-            <div className="rs-card-heading">
-              <span className="rs-section-icon">
-                <Icon name="customers" />
-              </span>
-              <div>
-                <h3>حسابك واشتراكك</h3>
-                <p>بيانات المالك والتواصل والفواتير في صفحة الحساب.</p>
+          <form aria-labelledby="restaurant-settings-heading" noValidate onSubmit={(event) => void save(event)}>
+            <fieldset className="rs-unified-fields" disabled={savingAll}>
+              <RestaurantSettings
+                profile={profile}
+                onSaved={({ name }) => onNameSaved(name)}
+                onIdentityDraftChange={setIdentity}
+                onSectionDirtyChange={setSectionDirty}
+                onDirtyChange={setProfileDirty}
+                onBusyChange={setProfileBusy}
+                actionsRef={restaurantEditor}
+                activeSection={active === 'account' ? 'identity' : active}
+              />
+              <div hidden={!branding}>
+                <StorefrontSettings
+                  profile={profile}
+                  onDirtyChange={setDesignDirty}
+                  onBusyChange={setDesignBusy}
+                  onInvalidChange={setInvalidColors}
+                  actionsRef={appearanceEditor}
+                  identity={identity}
+                  showPreview={branding}
+                />
               </div>
-            </div>
+            </fieldset>
+            {branding && summary && (
+              <SettingsFeedback
+                error={summary.identity === false || summary.appearance === false
+                  ? ar ? 'التعديلات اللي ما اتحفظتش لسه في المسودة.' : 'Unsaved edits are still in the draft.'
+                  : ''}
+                notice={summary.identity && summary.appearance
+                  ? ar ? 'تم حفظ الهوية والمظهر.' : 'Identity and appearance saved.'
+                  : summary.identity
+                    ? ar ? 'تم حفظ بيانات المطعم.' : 'Restaurant details saved.'
+                    : summary.appearance
+                      ? ar ? 'تم حفظ المظهر.' : 'Appearance saved.'
+                      : ''}
+              />
+            )}
+            <SettingsSaveBar
+              dirty={activeDirty}
+              operation={savingAll ? 'saving' : busy ? 'uploading' : null}
+              invalid={branding && invalidColors}
+              label={ar ? 'حفظ' : 'Save'}
+              onDiscard={() => {
+                restaurantEditor.current?.discard();
+                if (branding) appearanceEditor.current?.discard();
+                setSummary(null);
+              }}
+            />
+          </form>
+        </Card>
+        <div hidden={active !== 'account'}>
+          <Card className="rs-panel" aria-labelledby="settings-account-heading">
+            <SettingsHeading
+              id="settings-account-heading"
+              icon="customers"
+              title={locale === 'ar' ? 'حسابك واشتراكك' : 'Account and subscription'}
+            />
             <div className="rs-account-details">
               <div>
                 <small>اسم النشاط</small>

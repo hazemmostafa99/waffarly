@@ -121,6 +121,11 @@ const ProductProfitabilityPage = lazy(() =>
     default: module.ProductProfitabilityPage,
   })),
 );
+const BusinessReportsPage = lazy(() =>
+  import('./features/reports/BusinessReportsPage.js').then((module) => ({
+    default: module.BusinessReportsPage,
+  })),
+);
 const InventoryHealthPage = lazy(() =>
   import('./features/inventory/InventoryVisibilityPages.js').then((module) => ({
     default: module.InventoryHealthPage,
@@ -159,6 +164,7 @@ export const router = createBrowserRouter([
     element: <MerchantLayout />,
     children: [
       { index: true, element: loadOnRoute(<Dashboard />) },
+      { path: 'reports', element: loadOnRoute(<BusinessReportsPage />) },
       { path: 'dashboard', element: <Navigate to="/" replace /> },
       { path: 'products', element: loadOnRoute(<ProductsPage />) },
       { path: 'products/new', element: loadOnRoute(<ProductBuilderPage />) },

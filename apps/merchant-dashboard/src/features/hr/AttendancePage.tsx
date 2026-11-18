@@ -138,7 +138,6 @@ export function AttendancePage() {
   return (
     <HrPageShell
       title="Attendance"
-      description="Record daily attendance for all branches, then approve the month when it is complete."
       actions={data?.status === 'approved'
         ? <span className="hr-pill">{text('Month approved', 'الشهر معتمد')}</span>
         : <div className="hr-approval-action">{!isMonthComplete && <span className="hr-muted">{text("Available after month end", "متاح بعد نهاية الشهر")}</span>}<Button disabled={!isMonthComplete || busy || !data} onClick={() => setConfirmApproval(true)}>{text('Approve month', 'اعتماد الشهر')}</Button></div>}

@@ -1,5 +1,6 @@
 /** Validates owner commands for payroll runs, adjustments, advances and payout. */
 import { z } from 'zod';
+import { toCents } from '../../common/money/money.js';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 
 const uuid = z.string().uuid();
@@ -27,7 +28,18 @@ export const createStaffAdvanceSchema = z
     firstInstallmentMonth: month,
     reason: z.string().trim().min(1).max(500),
   })
-  .strict();
+  .strict()
+  .refine(
+    (value) => {
+      if (
+        !positiveMoney.safeParse(value.amount).success ||
+        !positiveMoney.safeParse(value.installmentAmount).success
+      )
+        return true;
+      return toCents(value.installmentAmount) <= toCents(value.amount);
+    },
+    { path: ['installmentAmount'], message: 'Installment cannot exceed the advance amount.' },
+  );
 export const listStaffAdvancesSchema = z
   .object({ staffMemberId: uuid.optional(), status: z.enum(['open', 'all']).default('open') })
   .strict();
@@ -48,3 +60,29 @@ export function monthStartDate(value: string): Date {
 export function formatMonth(value: Date): string {
   return value.toISOString().slice(0, 7);
 }
+
+export const cancelStaffAdvanceSchema = z
+  .object({
+    requestId: uuid,
+    revision: z.coerce.number().int().positive().max(2_147_483_646),
+    correctionReason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export const updateStaffAdvanceSchema = cancelStaffAdvanceSchema
+  .extend({
+    amount: positiveMoney,
+    installmentAmount: positiveMoney,
+    firstInstallmentMonth: month,
+    reason: z.string().trim().min(1).max(500),
+  })
+  .refine(
+    (value) => {
+      if (
+        !positiveMoney.safeParse(value.amount).success ||
+        !positiveMoney.safeParse(value.installmentAmount).success
+      )
+        return true;
+      return toCents(value.installmentAmount) <= toCents(value.amount);
+    },
+    { path: ['installmentAmount'], message: 'Installment cannot exceed the advance amount.' },
+  );

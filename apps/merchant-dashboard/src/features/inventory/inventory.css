@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
 
 /* Only the inventory workspace and profitability opt into this typography. */
 .inventory-page.inventory-workspace,
@@ -6,11 +5,11 @@
 .inventory-purchase-workspace .purchase-entry,
 .inventory-purchase-workspace :is(button, input, select, textarea),
 .inventory-page.inventory-workspace :is(button, input, select, textarea) {
-  font-family: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+  font-family: var(--merchant-dashboard-font);
 }
 .inventory-workspace-header {
   display: grid;
-  gap: 16px;
+  gap: 10px;
   min-width: 0;
 }
 .inventory-workspace-heading,
@@ -2681,7 +2680,7 @@ html[dir='rtl'] .inventory-editor .products-dialog-footer {
   font-size: 11px;
 }
 .stock-item-quick-dialog {
-  font-family: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+  font-family: var(--merchant-dashboard-font);
 }
 @media (pointer: fine) {
   .inventory-page.inventory-workspace [data-slot='button'] {

@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import type { RestaurantImage } from '@waffarly/contracts';
-import { Button, Input } from '@waffarly/ui';
+import { Button, Input, useLocale } from '@waffarly/ui';
 import { Icon } from '../../Icons.js';
 export function RestaurantImageField({
   kind,
@@ -14,7 +14,11 @@ export function RestaurantImageField({
   onUpload: (file?: File) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
-  const title = kind === 'logo' ? 'شعار المطعم' : 'غلاف المطعم';
+  const { locale } = useLocale();
+  const ar = locale === 'ar';
+  const title = kind === 'logo'
+    ? (ar ? 'شعار المطعم' : 'Restaurant logo')
+    : (ar ? 'غلاف المطعم' : 'Restaurant cover');
   return (
     <section className={`rs-image-card rs-image-${kind}`} aria-label={title}>
       <div className="rs-image-preview">
@@ -30,18 +34,22 @@ export function RestaurantImageField({
       <div className="rs-image-caption">
         <div>
           <strong>{title}</strong>
-          <small>{kind === 'logo' ? 'صورة مربعة واضحة' : 'صورة أفقية لكارت المطعم'}</small>
+          <small>
+            {kind === 'logo'
+              ? (ar ? 'صورة مربعة، حتى 10 ميجابايت' : 'Square image, up to 10 MB')
+              : (ar ? 'صورة أفقية، حتى 10 ميجابايت' : 'Landscape image, up to 10 MB')}
+          </small>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={() => input.current?.click()}>
           <Icon name="upload" />
-          {value ? 'تغيير' : 'رفع صورة'}
+          {value ? (ar ? 'تغيير' : 'Replace') : (ar ? 'رفع صورة' : 'Upload')}
         </Button>
       </div>
       <Input
         ref={input}
         className="rs-file-input"
         type="file"
-        aria-label={`رفع ${title}`}
+        aria-label={ar ? `رفع ${title}` : `Upload ${title.toLowerCase()}`}
         accept="image/jpeg,image/png,image/webp"
         onChange={(event) => {
           onUpload(event.target.files?.[0]);
@@ -49,9 +57,9 @@ export function RestaurantImageField({
         }}
       />
       <details className="rs-image-details">
-        <summary>رابط الصورة والتفاصيل</summary>
+        <summary>{ar ? 'رابط الصورة والتفاصيل' : 'Image link and details'}</summary>
         <label>
-          رابط الصورة
+          {ar ? 'رابط الصورة' : 'Image link'}
           <Input
             type="url"
             value={value?.src ?? ''}
@@ -64,7 +72,7 @@ export function RestaurantImageField({
           />
         </label>
         <label>
-          وصف الصورة
+          {ar ? 'وصف الصورة' : 'Image description'}
           <Input
             maxLength={500}
             value={value?.alt ?? ''}
@@ -76,7 +84,7 @@ export function RestaurantImageField({
         </label>
         {value && (
           <Button type="button" variant="ghost" size="sm" onClick={() => onChange(null)}>
-            إزالة الصورة
+            {ar ? 'إزالة الصورة' : 'Remove image'}
           </Button>
         )}
       </details>

@@ -391,13 +391,13 @@
 .hr-dialog,
 .employee-workspace,
 .employee-editor {
-  font-family: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+  font-family: var(--merchant-dashboard-font);
   color: var(--dashboard-ink, #1b2648);
   font-size: 13px;
   line-height: 1.65;
 }
 .hr-page {
-  gap: 16px;
+  gap: 12px;
   padding-top: 0;
 }
 .hr-page :is(button, input, select, textarea),
@@ -411,8 +411,8 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: 12px;
+  gap: 8px;
+  padding: 8px 12px;
   border: 1px solid #e7edf4;
   border-radius: 12px;
   background: white;
@@ -420,6 +420,9 @@
 .hr-page-actions {
   align-items: center;
   margin-inline-start: auto;
+}
+.merchant-page-navigation:has(#merchant-page-actions > .hr-page-actions) {
+  margin-bottom: 16px;
 }
 .hr-card {
   border-color: #e7edf4;
@@ -697,4 +700,58 @@
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.hr-history-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.hr-history-toggle-track {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 22px;
+  padding: 3px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: #cbd5e1;
+  transition: background-color 150ms ease;
+}
+.hr-history-toggle-track > span {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px #0002;
+  transition: transform 150ms ease;
+}
+.hr-history-toggle[aria-checked='true'] .hr-history-toggle-track {
+  background: var(--storefront-primary, #0f705a);
+}
+.hr-history-toggle[aria-checked='true'] .hr-history-toggle-track > span {
+  transform: translateX(14px);
+}
+html[dir='rtl'] .hr-history-toggle[aria-checked='true'] .hr-history-toggle-track > span {
+  transform: translateX(-14px);
+}
+.hr-history-toggle:focus-visible {
+  outline: 2px solid var(--storefront-primary, #0f705a);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hr-history-toggle-track,
+  .hr-history-toggle-track > span {
+    transition: none;
+  }
 }

@@ -43,6 +43,12 @@ export class StorefrontService {
       backgroundColor: selected?.backgroundColor ?? defaultBackground,
       surfaceColor: selected?.surfaceColor ?? defaultSurface,
       logoScale: logoScale(selected?.logoScale),
+      heroTitle: selected?.heroTitle ?? null,
+      heroEyebrow: selected?.heroEyebrow ?? null,
+      heroEmphasis: selected?.heroEmphasis ?? null,
+      heroShade: selected?.heroShade === 'light' || selected?.heroShade === 'strong'
+        ? selected.heroShade
+        : 'medium',
       logoData: imageSource(merchant.restaurantProfile?.logoImage) ?? selected?.logoData ?? null,
       coverImageUrl: imageSource(merchant.restaurantProfile?.coverImage),
       revision: selected?.revision ?? 0,
@@ -79,6 +85,18 @@ export class StorefrontService {
       }
     }
 
+    const appearance = {
+      layout: input.layout,
+      primaryColor: input.primaryColor,
+      accentColor: input.accentColor,
+      backgroundColor: input.backgroundColor,
+      surfaceColor: input.surfaceColor,
+      logoScale: input.logoScale,
+      ...(input.heroTitle !== undefined ? { heroTitle: input.heroTitle?.trim() || null } : {}),
+      ...(input.heroEyebrow !== undefined ? { heroEyebrow: input.heroEyebrow?.trim() || null } : {}),
+      ...(input.heroEmphasis !== undefined ? { heroEmphasis: input.heroEmphasis?.trim() || null } : {}),
+      ...(input.heroShade !== undefined ? { heroShade: input.heroShade } : {}),
+    };
     await this.prisma.$transaction(async (transaction) => {
       const merchant = await transaction.merchant.findUniqueOrThrow({ where: { id: merchantId } });
       const current = await transaction.merchantStorefront.findUnique({ where: { merchantId } });
@@ -103,12 +121,7 @@ export class StorefrontService {
         await transaction.merchantStorefront.create({
           data: {
             merchantId,
-            layout: input.layout,
-            primaryColor: input.primaryColor,
-            accentColor: input.accentColor,
-            backgroundColor: input.backgroundColor,
-            surfaceColor: input.surfaceColor,
-            logoScale: input.logoScale,
+            ...appearance,
             logoData: merchant.activity === 'restaurant' ? null : input.logoData,
           },
         });
@@ -118,12 +131,7 @@ export class StorefrontService {
       const updated = await transaction.merchantStorefront.updateMany({
         where: { merchantId, revision: input.revision },
         data: {
-          layout: input.layout,
-          primaryColor: input.primaryColor,
-          accentColor: input.accentColor,
-          backgroundColor: input.backgroundColor,
-          surfaceColor: input.surfaceColor,
-          logoScale: input.logoScale,
+          ...appearance,
           ...(merchant.activity === 'restaurant' ? {} : { logoData: input.logoData }),
           revision: { increment: 1 },
         },

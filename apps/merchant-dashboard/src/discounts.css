@@ -319,10 +319,7 @@ html[dir='ltr'] .discount-select > .merchant-icon {
   font-size: 10px;
 }
 .discount-code-chip code {
-  font:
-    700 10px 'Segoe UI',
-    Tahoma,
-    sans-serif;
+  font: 700 10px var(--merchant-dashboard-font);
   letter-spacing: 0.02em;
 }
 .discount-code-chip .merchant-icon {
@@ -458,10 +455,7 @@ html[dir='ltr'] .discount-select > .merchant-icon {
 }
 .discount-row > code {
   color: #1f65a7;
-  font:
-    700 9px 'Segoe UI',
-    Tahoma,
-    sans-serif;
+  font: 700 9px var(--merchant-dashboard-font);
   letter-spacing: 0.01em;
 }
 .discount-row > strong {

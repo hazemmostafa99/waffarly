@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button, DataTable, Input, useLocale, type DataTableColumn } from '@waffarly/ui';
 import type {
   InventoryBranch,
@@ -9,7 +10,9 @@ import type {
 import { InventoryHeader } from '../inventory/InventoryHeader.js';
 import { InventoryCard } from '../inventory/InventoryCard.js';
 import { inventoryCopy } from '../inventory/inventory-copy.js';
-import { apiRequest, apiRequestPage } from '../../lib/api-client.js';
+import { apiRequest } from '../../lib/api-client.js';
+import { ReportBars, ReportPanel } from './ReportComponents.js';
+import './business-reports.css';
 
 type ProfitabilityDisplayRow = {
   rowId: string;
@@ -41,12 +44,13 @@ function cairoMonthStart(value: Date): string {
 }
 
 export function ProductProfitabilityPage() {
+  const [searchParams] = useSearchParams();
   const { locale, t, errorText, formatDigits } = useLocale();
   const text = useCallback((value: string) => inventoryCopy(value, locale, t), [locale, t]);
   const now = new Date();
-  const [from, setFrom] = useState(() => cairoMonthStart(now));
-  const [to, setTo] = useState(() => cairoDate(now));
-  const [branchId, setBranchId] = useState('');
+  const [from, setFrom] = useState(() => searchParams.get('from') ?? cairoMonthStart(now));
+  const [to, setTo] = useState(() => searchParams.get('to') ?? cairoDate(now));
+  const [branchId, setBranchId] = useState(() => searchParams.get('branchId') ?? '');
   const [viewBy, setViewBy] = useState<'product' | 'menu' | 'branch'>('product');
   const [branches, setBranches] = useState<InventoryBranch[]>([]);
   const [report, setReport] = useState<OwnerProductProfitabilityReport | null>(null);
@@ -66,8 +70,8 @@ export function ProductProfitabilityPage() {
 
   useEffect(() => {
     let current = true;
-    void apiRequestPage<InventoryBranch>('/owner/inventory/branches?limit=100')
-      .then((page) => current && setBranches(page.items.filter((branch) => !branch.archivedAt)))
+    void apiRequest<InventoryBranch[]>('/owner/inventory/branches?limit=100&status=all')
+      .then((items) => current && setBranches(items))
       .catch(() => current && setBranches([]));
     return () => {
       current = false;
@@ -236,7 +240,7 @@ export function ProductProfitabilityPage() {
 
   return (
     <div
-      className="inventory-page inventory-workspace product-profitability-page"
+      className="inventory-page inventory-workspace product-profitability-page business-reports"
       dir={locale === 'ar' ? 'rtl' : 'ltr'}
     >
       <InventoryHeader
@@ -266,7 +270,7 @@ export function ProductProfitabilityPage() {
               <option value="">{text('All branches')}</option>
               {branches.map((branch) => (
                 <option key={branch.id} value={branch.id}>
-                  {formatDigits(branch.name)}
+                  {formatDigits(branch.name)}{branch.archivedAt ? (locale === 'ar' ? ' (مؤرشف)' : ' (archived)') : ''}
                 </option>
               ))}
             </select>
@@ -354,6 +358,14 @@ export function ProductProfitabilityPage() {
             {formatDigits(String(report.totals.unallocatedRefundCount))})
           </p>
         )}
+        {report && !loading && <ReportPanel
+          title={locale === 'ar' ? 'مجمل الربح في لمحة' : 'Gross profit at a glance'}
+          description={locale === 'ar' ? 'أول ٨ صفوف من التقرير؛ التفاصيل والإجماليات موجودة تحت.' : 'First 8 report rows; full details and totals follow.'}
+        >
+          <ReportBars locale={locale} rows={activeRows.slice(0, 8).map((row) => ({
+            id: row.rowId, label: row.displayName, amount: row.grossProfit,
+          }))} emptyText={locale === 'ar' ? 'مفيش حركة في الفترة دي.' : 'No activity in this period.'} />
+        </ReportPanel>}
         <p className="inventory-secondary-note profitability-table-help">
           {text('Select a product to review refunds and cost coverage.')}
         </p>

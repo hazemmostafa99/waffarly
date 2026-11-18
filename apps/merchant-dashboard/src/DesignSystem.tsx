@@ -132,7 +132,7 @@ export function DesignSystem() {
 
           <Section title="Typography" className="min-h-[330px]">
             <div className="grid min-h-[215px] content-between text-end">
-              <p className="m-0 text-sm text-waffarly-muted">Headings: Cairo Bold / ExtraBold</p>
+              <p className="m-0 text-sm text-waffarly-muted">IBM Plex Sans Arabic · Bold headings</p>
               <p className="m-0 font-heading text-3xl font-extrabold leading-tight sm:text-4xl">
                 وجبتك المفضلة
               </p>

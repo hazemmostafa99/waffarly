@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link, useOutletContext } from 'react-router-dom';
+import { Link, useOutletContext, useSearchParams } from 'react-router-dom';
 import type {
   AttendanceMonthSummary,
   CashSafeSummary,
@@ -13,8 +13,8 @@ import { Button, useLocale } from '@waffarly/ui';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { ApiError, apiRequest, apiRequestSingle } from '../../lib/api-client.js';
 import { HrPageShell } from './HrPageShell.js';
+import { validReportMonth } from '../reports/report-helpers.js';
 import {
-  currentMonth,
   listSafes,
   monthDays,
   moneyValue,
@@ -40,11 +40,12 @@ const emptyAdjustment = (): AdjustmentDraft => ({
   reason: '',
 });
 export function PayrollPage() {
+  const [searchParams] = useSearchParams();
   const { locale, errorText, formatNumber, formatDate, formatDigits } = useLocale();
   const { profile } = useOutletContext<{ profile: OwnerProfile }>();
   const text = (en: string, ar: string) => (locale === 'ar' ? ar : en);
   const storageKey = 'waffarly:hr:payroll:' + profile.merchantId + ':' + profile.username;
-  const [month, setMonth] = useState(currentMonth);
+  const [month, setMonth] = useState(() => validReportMonth(searchParams.get('month')));
   const [run, setRun] = useState<PayrollRunSummary | null>(null);
   const [attendanceStatus, setAttendanceStatus] = useState<AttendanceStatus | null>(null);
   const [staff, setStaff] = useState<StaffMemberSummary[]>([]);
@@ -310,7 +311,6 @@ export function PayrollPage() {
   return (
     <HrPageShell
       title="Payroll"
-      description="Review approved attendance, prepare payroll and track salary payments."
       actions={
         <div className="hr-inline-form">
           <label className="hr-field">

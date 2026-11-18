@@ -10,10 +10,24 @@ import { interpolate } from '../../lib/storefront-copy';
 import { StorefrontCategoryCard } from './storefront-category-card';
 import { StorefrontProductGrid } from './storefront-product-grid';
 
+const coverShades = {
+  light: { mobileMid: 48, mobileTop: 0, desktopEdge: 65, desktopMid: 12 },
+  medium: { mobileMid: 65, mobileTop: 5, desktopEdge: 100, desktopMid: 25 },
+  strong: { mobileMid: 83, mobileTop: 30, desktopEdge: 100, desktopMid: 55 },
+};
+
+function coverTint(strength: number): string {
+  return `color-mix(in srgb, var(--storefront-primary-deep) ${strength}%, transparent)`;
+}
+
 export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatalog }) {
   const { locale } = useLocale();
   const t = storefrontCopy(locale);
   const imageSource = catalog.coverImageUrl ?? '/storefront-assets/hero-burger.webp';
+  const shade = coverShades[catalog.heroShade ?? 'medium'] ?? coverShades.medium;
+  const mobileGradient = `linear-gradient(to top, var(--storefront-primary-deep), ${coverTint(shade.mobileMid)}, ${coverTint(shade.mobileTop)})`;
+  const direction = locale === 'ar' ? 'left' : 'right';
+  const desktopGradient = `linear-gradient(to ${direction}, ${coverTint(shade.desktopEdge)}, ${coverTint(shade.desktopMid)}, transparent)`;
   const Arrow = locale === 'ar' ? ArrowLeft : ArrowRight;
   const featuredProducts = catalog.products.slice(0, 4);
   const features = [
@@ -34,9 +48,6 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
     },
   ];
 
-  const menuFirst = catalog.layout === 'menu';
-  const HeroHeading = menuFirst ? 'h2' : 'h1';
-
   const hero = (
     <section className="relative isolate grid min-h-[360px] overflow-hidden rounded-3xl bg-store-primary-deep text-white shadow-[0_24px_70px_rgba(6,61,49,0.18)] sm:rounded-[2rem] lg:min-h-[400px] lg:grid-cols-2">
       <div className="absolute inset-0 -z-10 lg:hidden">
@@ -49,17 +60,17 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
           className="object-cover"
           unoptimized
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-store-primary-deep via-store-primary-deep/65 to-store-primary-deep/5" />
+        <div className="absolute inset-0" style={{ backgroundImage: mobileGradient }} />
       </div>
       <div className="relative z-10 flex flex-col items-start justify-end px-5 pt-12 pb-5 sm:justify-center sm:px-8 sm:py-12 lg:col-start-1 lg:row-start-1 lg:px-14 lg:py-11">
         <Badge className="border border-store-gold/30 bg-store-gold/15 px-3 text-store-gold">
           <Sparkles className="size-3.5" aria-hidden="true" />
-          {t.heroEyebrow}
+          {catalog.heroEyebrow || t.heroEyebrow}
         </Badge>
-        <HeroHeading className="mt-1 max-w-xl font-heading text-storefront-hero font-black text-balance sm:mt-3">
-          {t.heroTitle}
-          <span className="mt-1 block text-store-gold">{t.heroEmphasis}</span>
-        </HeroHeading>
+        <h1 className="mt-1 max-w-xl break-words font-heading text-storefront-hero font-black text-balance sm:mt-3">
+          {catalog.heroTitle || t.heroTitle}
+          <span className="mt-1 block text-store-gold">{catalog.heroEmphasis || t.heroEmphasis}</span>
+        </h1>
         <p className="mt-2 max-w-lg text-storefront-body-large text-white/80 sm:mt-3">
           {catalog.restaurantDescription ||
             interpolate(t.heroDescription, { name: catalog.merchantName })}
@@ -95,7 +106,7 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
           className="object-cover"
           unoptimized
         />
-        <div className="absolute inset-0 bg-gradient-to-l from-store-primary-deep via-store-primary-deep/25 to-transparent" />
+        <div className="absolute inset-0" style={{ backgroundImage: desktopGradient }} />
       </div>
     </section>
   );
@@ -212,26 +223,10 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
 
   return (
     <main id="main-content" className="mx-auto w-[calc(100%-2rem)] max-w-[1240px] pt-2 sm:pt-5">
-      {menuFirst && (
-        <h1 className="mt-2 font-heading text-storefront-section font-black text-store-ink">
-          {catalog.merchantName}
-        </h1>
-      )}
-      {menuFirst ? (
-        <>
-          {categories}
-          {featured}
-          {hero}
-          {highlights}
-        </>
-      ) : (
-        <>
-          {hero}
-          {highlights}
-          {categories}
-          {featured}
-        </>
-      )}
+      {hero}
+      {highlights}
+      {categories}
+      {featured}
     </main>
   );
 }

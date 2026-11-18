@@ -284,6 +284,18 @@ export function Icon({ name }: { name: string }) {
         <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
       </>
     ),
+    monitor: (
+      <>
+        <rect x="3" y="4" width="18" height="12" rx="2" />
+        <path d="M12 16v4m-4 0h8" />
+      </>
+    ),
+    smartphone: (
+      <>
+        <rect x="7" y="2" width="10" height="20" rx="2" />
+        <path d="M11 18h2" />
+      </>
+    ),
     phone: (
       <>
         <path d="M6.5 3.5 9 3l2 5-2 1.5a14 14 0 0 0 5.5 5.5L16 13l5 2 .5 2.5A3 3 0 0 1 18.5 21C10 21 3 14 3 5.5A3 3 0 0 1 6.5 3.5Z" />

@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 const uuid = z.string().uuid();
 const month = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
-const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const date = z.string().date();
 
 export const attendanceMonthSchema = z.object({ month, branchId: uuid.optional() }).strict();
 export const attendancePeriodParamSchema = z.object({ month }).strict();

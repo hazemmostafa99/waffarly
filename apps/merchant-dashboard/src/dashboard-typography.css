@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap');
+
+:root {
+  --merchant-dashboard-font: 'Noto Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif;
+}
+
+html,
+body,
+button,
+input,
+select,
+textarea,
+.font-heading,
+.font-body,
+.font-admin,
+.font-sans {
+  font-family: var(--merchant-dashboard-font);
+}
+
+/* Native controls and numeric cells must inherit the same dashboard font. */
+input::-webkit-datetime-edit,
+input::-webkit-calendar-picker-indicator,
+bdi,
+table,
+svg text {
+  font-family: var(--merchant-dashboard-font);
+}

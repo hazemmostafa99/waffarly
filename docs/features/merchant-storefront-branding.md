@@ -7,10 +7,11 @@ Restaurant identity and independent storefront styling have separate owners.
   storefront responses. The public tenant storefront uses the restaurant cover
   in its hero; Waffarly restaurant listings continue to use the same profile
   image fields.
-- MerchantStorefront owns the independent storefront layout, primary and accent
-  colors, page and card backgrounds, logo display size, and revision. The layout
-  is a simple `hero` or `menu` choice; it does not depend on a shared template.
-  These values affect the merchant storefront at /s/[slug] and its assigned host.
+- MerchantStorefront owns the independent storefront colors, logo display size,
+  cover headline, highlight line, image shade, and revision. The storefront has
+  one homepage layout. Empty cover lines use the existing localized copy, and
+  the shade defaults to medium. The live preview uses the same homepage and
+  applies these values from the merchant's draft.
 - Media uploads use the existing owner-scoped catalog media endpoint, which
   accepts JPEG, PNG, and WebP images up to 10 MB. New non-restaurant storefront
   logos are saved as uploaded media URLs. Existing inline logo data remains
@@ -27,6 +28,8 @@ database checks. The 20261118170000_remove_design_library_modules migration
 copies each merchant's existing layout into its storefront settings before
 removing shared template references and tables. It also removes the unused
 platform-module catalog while retaining business activity definitions.
+The 20261118180000_storefront_hero_settings migration adds the optional cover
+lines and the shade setting. Existing storefronts keep their default copy.
 
 Manual acceptance should cover logo and cover upload at the 10 MB limit, shared
 identity in Waffarly and the independent storefront, palette and logo-size save

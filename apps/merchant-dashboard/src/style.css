@@ -1,6 +1,6 @@
 @layer components {
   :root {
-    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--merchant-dashboard-font);
     color: #20231f;
     background: #fffaf1;
     font-synthesis: none;

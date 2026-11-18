@@ -1,11 +1,31 @@
 import { RestaurantImageField } from './RestaurantImageField.js';
-import { Link } from 'react-router-dom';
+import { SettingsFeedback, type SettingsEditorActions } from './SettingsComponents.js';
 import { RestaurantBranchFulfillment } from './RestaurantBranchFulfillment.js';
-import { Icon } from '../../Icons.js';
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import type { OwnerProfile, OwnerRestaurantSettings, RestaurantPeriod } from '@waffarly/contracts';
 import { Button, Card, Input, Textarea, useLocale } from '@waffarly/ui';
 import { ApiError, apiRequest, apiUpload } from '../../lib/api-client.js';
+
+const sectionFields = {
+  identity: ['name', 'description', 'cuisines', 'logoImage', 'coverImage'],
+  publication: ['published', 'displayOrder'],
+  hours: ['alwaysOpen', 'openingHours', 'scheduleExceptions', 'ordersPaused', 'pauseReason'],
+  delivery: [
+    'deliveryEnabled', 'pickupEnabled', 'deliveryFee', 'minimumDeliveryOrder',
+    'deliveryTimeMinMinutes', 'deliveryTimeMaxMinutes', 'deliveryAreas', 'branchFulfillment',
+  ],
+} as const satisfies Record<string, readonly (keyof OwnerRestaurantSettings)[]>;
+
+type RestaurantSection = keyof typeof sectionFields;
+export type RestaurantIdentityDraft = Pick<OwnerRestaurantSettings, 'name' | 'description' | 'logoImage' | 'coverImage'>;
+
+function copyFields(
+  base: OwnerRestaurantSettings,
+  source: OwnerRestaurantSettings,
+  fields: readonly (keyof OwnerRestaurantSettings)[],
+): OwnerRestaurantSettings {
+  return { ...base, ...Object.fromEntries(fields.map((field) => [field, source[field]])) };
+}
 
 function initial(profile: OwnerProfile): OwnerRestaurantSettings {
   return {
@@ -141,13 +161,19 @@ export function RestaurantSettings({
   onSaved,
   onDirtyChange,
   onBusyChange,
+  onSectionDirtyChange,
+  onIdentityDraftChange,
+  actionsRef,
   activeSection = 'identity',
 }: {
   profile: OwnerProfile;
   onSaved?: (settings: OwnerRestaurantSettings) => void;
   onDirtyChange?: (dirty: boolean) => void;
   onBusyChange?: (busy: boolean) => void;
-  activeSection?: 'identity' | 'hours' | 'delivery';
+  onSectionDirtyChange: (dirty: boolean) => void;
+  onIdentityDraftChange: (draft: RestaurantIdentityDraft) => void;
+  actionsRef: Ref<SettingsEditorActions>;
+  activeSection?: RestaurantSection;
 }) {
   const { locale } = useLocale();
   const [draft, setDraft] = useState(() => initial(profile));
@@ -162,12 +188,24 @@ export function RestaurantSettings({
   const [notice, setNotice] = useState('');
   const lock = useRef(false);
   const dirty = saved !== '' && saved !== JSON.stringify(draft);
+  const fields = sectionFields[activeSection];
+  const sectionDirty = dirty && fields.some(
+    (field) => JSON.stringify(draft[field]) !== JSON.stringify(savedDraft.current[field]),
+  );
   useEffect(() => {
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
   useEffect(() => {
     onBusyChange?.(busy);
   }, [busy, onBusyChange]);
+  useEffect(() => {
+    onSectionDirtyChange(sectionDirty);
+  }, [onSectionDirtyChange, sectionDirty]);
+  const { name, description, logoImage, coverImage } = draft;
+  useEffect(() => {
+    if (!loading && !failed) onIdentityDraftChange({ name, description, logoImage, coverImage });
+  }, [name, description, logoImage, coverImage, loading, failed, onIdentityDraftChange]);
+
   async function load() {
     setLoading(true);
     setFailed(false);
@@ -202,22 +240,26 @@ export function RestaurantSettings({
     setDraft((current) => ({ ...current, [key]: value }));
     setNotice('');
   }
-  async function save(event: FormEvent) {
-    event.preventDefault();
-    if (lock.current) return;
+  async function save(): Promise<boolean> {
+    if (lock.current || !sectionDirty || conflict || loading || failed) return false;
+    const input = copyFields(savedDraft.current, draft, fields);
+    const remainingFields = Object.values(sectionFields)
+      .filter((section) => section !== fields)
+      .flat()
+      .filter((field) => JSON.stringify(draft[field]) !== JSON.stringify(savedDraft.current[field]));
     const validation =
-      !draft.name.trim() || draft.cuisines.some((value) => !value.trim())
+      !input.name.trim() || input.cuisines.some((value) => !value.trim())
         ? 'راجع اسم المطعم وأنواع الأكل في هوية المطعم.'
-        : draft.deliveryTimeMaxMinutes < draft.deliveryTimeMinMinutes
+        : input.deliveryTimeMaxMinutes < input.deliveryTimeMinMinutes
           ? 'مدة التوصيل إلى لازم تكون أكبر من أو تساوي المدة من.'
-          : draft.scheduleExceptions.some((entry) => !entry.date)
+          : input.scheduleExceptions.some((entry) => !entry.date)
             ? 'حدد تاريخًا لكل يوم استثنائي في مواعيد العمل.'
-            : draft.deliveryAreas.some((entry) => !entry.name.trim())
+            : input.deliveryAreas.some((entry) => !entry.name.trim())
               ? 'اكتب اسم كل منطقة توصيل.'
               : '';
     if (validation) {
       setError(validation);
-      return;
+      return false;
     }
     lock.current = true;
     setOperation('saving');
@@ -227,18 +269,20 @@ export function RestaurantSettings({
       const next = editable(
         await apiRequest<OwnerRestaurantSettings>('/owner/restaurant', {
           method: 'PUT',
-          body: JSON.stringify(draft),
+          body: JSON.stringify(input),
         }),
       );
       savedDraft.current = structuredClone(next);
-      setDraft(next);
+      setDraft((current) => copyFields(next, current, remainingFields));
       setSaved(JSON.stringify(next));
       setConflict(false);
       onSaved?.(next);
-      setNotice('تم حفظ إعدادات المطعم. حدّث صفحة العميل لمراجعة التغييرات.');
+      if (activeSection !== 'identity') setNotice(locale === 'ar' ? 'تم الحفظ.' : 'Saved.');
+      return true;
     } catch (cause) {
       setConflict(cause instanceof ApiError && cause.statusCode === 409);
       setError(cause instanceof Error ? cause.message : 'تعذر الحفظ.');
+      return false;
     } finally {
       lock.current = false;
       setOperation(null);
@@ -266,6 +310,15 @@ export function RestaurantSettings({
       setOperation(null);
     }
   }
+  useImperativeHandle(actionsRef, () => ({
+    save,
+    discard: () => {
+      setDraft((current) => copyFields(current, savedDraft.current, fields));
+      setError('');
+      setNotice('');
+    },
+  }));
+
   if (loading)
     return (
       <Card className="p-5" role="status">
@@ -279,56 +332,10 @@ export function RestaurantSettings({
         <Button onClick={() => void load()}>إعادة المحاولة</Button>
       </Card>
     );
+  const ar = locale === 'ar';
   return (
-    <Card id="restaurant-settings" className="rs-panel" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-      <div className="rs-card-heading">
-        <span className="rs-section-icon">
-          <Icon
-            name={
-              activeSection === 'identity'
-                ? 'store'
-                : activeSection === 'hours'
-                  ? 'clock'
-                  : 'location'
-            }
-          />
-        </span>
-        <div>
-          <h3>
-            {activeSection === 'identity'
-              ? 'بيانات تعرّف العملاء بمطعمك'
-              : activeSection === 'hours'
-                ? 'حدد أوقات استقبال الطلبات'
-                : 'طرق استلام تناسب عملاءك'}
-          </h3>
-          <p>
-            {activeSection === 'identity'
-              ? 'الاسم والشعار والغلاف يعرّفوا مطعمك في وفرلي ومتجرك المستقل.'
-              : activeSection === 'hours'
-                ? 'تحكم في الجدول الأسبوعي والاستثناءات من مكان واحد.'
-                : 'حدد الرسوم والمدة والمناطق اللي بتوصل لها.'}
-          </p>
-        </div>
-      </div>
-      {activeSection === 'identity' && (
-        <div className="rs-identity-design-note">
-          <p>ألوان المتجر المستقل وترتيب صفحته بيتظبطوا من تبويب مظهر المتجر.</p>
-          <Link to="/settings?section=design">افتح مظهر المتجر</Link>
-        </div>
-      )}
-      {error && (
-        <p
-          role="alert"
-          className="mb-4 rounded-xl border border-destructive p-3 text-sm text-destructive"
-        >
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p role="status" className="mb-4 rounded-xl bg-secondary p-3 text-sm">
-          {notice}
-        </p>
-      )}
+    <div className="rs-restaurant-fields">
+      <SettingsFeedback error={error} notice={notice} />
       {conflict && (
         <div className="mb-4">
           <p className="text-sm">
@@ -339,12 +346,10 @@ export function RestaurantSettings({
           </Button>
         </div>
       )}
-      <form noValidate onSubmit={(event) => void save(event)}>
         <fieldset disabled={busy} className="m-0 min-w-0 space-y-6 border-0 p-0">
           <section hidden={activeSection !== 'identity'} className="rs-editor-section">
-            <h3 className="rs-section-title">الاسم والوصف</h3>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="اسم المطعم">
+              <Field label={ar ? 'اسم المطعم' : 'Restaurant name'}>
                 <Input
                   required
                   maxLength={160}
@@ -352,7 +357,7 @@ export function RestaurantSettings({
                   onChange={(event) => change('name', event.target.value)}
                 />
               </Field>
-              <Field label="أنواع الأكل — افصل بفاصلة">
+              <Field label={ar ? 'أنواع الأكل (افصل بفاصلة)' : 'Cuisines (comma separated)'}>
                 <Input
                   value={draft.cuisines.join('، ')}
                   onChange={(event) =>
@@ -365,7 +370,7 @@ export function RestaurantSettings({
                 />
               </Field>
             </div>
-            <Field label="وصف مختصر">
+            <Field label={ar ? 'وصف مختصر' : 'Short description'}>
               <Textarea
                 maxLength={1000}
                 rows={3}
@@ -387,6 +392,13 @@ export function RestaurantSettings({
                 onUpload={(file) => void upload('logoImage', file)}
               />
             </div>
+          </section>
+          <section hidden={activeSection !== 'publication'} className="rs-editor-section">
+            <p className="rs-hint">
+              {savedDraft.current.published
+                ? ar ? 'الحالة الحالية: منشور على وفرلي' : 'Current status: Published on Waffarly'
+                : ar ? 'الحالة الحالية: غير منشور' : 'Current status: Unpublished'}
+            </p>
             <div className="rs-publication">
               <label className="rs-toggle-label">
                 <input
@@ -395,9 +407,9 @@ export function RestaurantSettings({
                   checked={draft.published}
                   onChange={(event) => change('published', event.target.checked)}
                 />
-                نشر المطعم في وفرلي
+                {ar ? 'نشر المطعم على وفرلي' : 'Publish restaurant on Waffarly'}
               </label>
-              <Field label="ترتيب الظهور">
+              <Field label={ar ? 'ترتيب الظهور' : 'Display order'}>
                 <Input
                   type="number"
                   min={0}
@@ -674,37 +686,7 @@ export function RestaurantSettings({
               onChange={(branches) => change('branchFulfillment', branches)}
             />
           </div>
-          <footer className="rs-savebar">
-            <span role="status">
-              <i className={dirty ? 'is-dirty' : ''} />
-              {operation === 'uploading'
-                ? 'جارٍ رفع الصورة…'
-                : operation === 'saving'
-                  ? 'جارٍ حفظ التغييرات…'
-                  : dirty
-                    ? 'عندك تغييرات غير محفوظة'
-                    : 'كل التغييرات محفوظة'}
-            </span>
-            <div>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy || !dirty}
-                onClick={() => {
-                  setDraft(structuredClone(savedDraft.current));
-                  setError('');
-                  setNotice('');
-                }}
-              >
-                تراجع عن التغييرات
-              </Button>
-              <Button type="submit" disabled={busy || conflict || !dirty} className="rs-primary">
-                {operation === 'saving' ? 'جارٍ الحفظ…' : 'حفظ التغييرات'}
-              </Button>
-            </div>
-          </footer>
-        </fieldset>
-      </form>
-    </Card>
+      </fieldset>
+    </div>
   );
 }

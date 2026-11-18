@@ -338,6 +338,9 @@ export function Dashboard() {
           <p>{copy('Track orders from Waffarly, Storefront and POS.')}</p>
         </div>
         <div className="dashboard-date-tools">
+          <button type="button" className="dashboard-refresh" onClick={() => navigate('/reports')}>
+            {locale === 'ar' ? 'مركز التقارير' : 'Business reports'}
+          </button>
           <span className="dashboard-comparison">
             <Icon name="globe" />
             {copy('All order sources')}

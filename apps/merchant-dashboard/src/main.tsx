@@ -17,6 +17,8 @@ import './orders.css';
 import './branches.css';
 import './features/staff/employees.css';
 import './features/delivery/couriers.css';
+import './dashboard-typography.css';
+import './features/reports/report-design.css';
 
 const rootElement = document.getElementById('root');
 

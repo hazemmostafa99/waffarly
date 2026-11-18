@@ -348,7 +348,7 @@ export interface PublicStorefrontProduct {
   }>;
 }
 
-export interface PublicStorefrontCatalog {
+export interface PublicStorefrontCatalog extends Partial<import('./merchant-storefront.js').StorefrontHeroSettings> {
   slug: string;
   merchantName: string;
   activity: string;

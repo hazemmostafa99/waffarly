@@ -26,7 +26,7 @@
   display: grid;
   gap: 18px;
   color: #222c3d;
-  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  font-family: var(--merchant-dashboard-font);
   font-size: 14px;
   line-height: 1.5;
   min-width: 0;

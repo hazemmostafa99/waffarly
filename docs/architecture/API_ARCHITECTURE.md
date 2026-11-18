@@ -1,5 +1,15 @@
 # API architecture
 
+Business reporting center (2026-11-18): Reports owns the owner-only monthly
+`/owner/reports/business` read. It composes saved product profitability, recorded
+expenses, approved staff cost, independent inventory waste and current custody/
+obligations in one RepeatableRead transaction. Existing business modules retain
+all write ownership; there is no new module dependency or schema migration.
+The management report excludes cancelled revenue by current status, preserves
+consumption when stock was not restored, and labels incomplete costs/payroll.
+Source implementation is delivered; authenticated browser and SQL/manual
+acceptance remain pending. See [business reports](../features/business-reports/FEATURE.md).
+
 Current application ownership (2026-11-14): the reviewed Orders operations and
 primary write operations in Shifts, Inventory, Merchants, Catalog and Subscriptions
 execute in Nest application services. Rules, calculations, reads, mapping and

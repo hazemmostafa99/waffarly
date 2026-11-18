@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import type {
   CashSafeSummary,
   ExpenseMonthSummary,
@@ -11,8 +11,8 @@ import { Button, useLocale } from '@waffarly/ui';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { ApiError, apiBaseUrl, apiRequest, apiRequestPage, apiUpload } from '../../lib/api-client.js';
 import { HrPageShell } from './HrPageShell.js';
+import { validReportMonth } from '../reports/report-helpers.js';
 import {
-  currentMonth,
   listBranches,
   listSafes,
   localToday,
@@ -34,12 +34,13 @@ type PaymentDraft = { safeId: string; amount: string; reason: string };
 const emptyExpense = (): ExpenseDraft => ({ branchId: '', incurredOn: localToday(), category: '', amount: '', description: '' });
 
 export function ExpensesPage() {
+  const [searchParams] = useSearchParams();
   const { locale, errorText, formatNumber, formatDigits } = useLocale();
   const { profile } = useOutletContext<{ profile: OwnerProfile }>();
   const text = (en: string, ar: string) => (locale === 'ar' ? ar : en);
   const storageKey = 'waffarly:hr:expenses:' + profile.merchantId + ':' + profile.username;
-  const [month, setMonth] = useState(currentMonth);
-  const [branchFilter, setBranchFilter] = useState('');
+  const [month, setMonth] = useState(() => validReportMonth(searchParams.get('month')));
+  const [branchFilter, setBranchFilter] = useState(() => searchParams.get('branchId') ?? '');
   const [branches, setBranches] = useState<InventoryBranch[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [summary, setSummary] = useState<ExpenseMonthSummary | null>(null);
@@ -85,7 +86,7 @@ export function ExpensesPage() {
     if (cursor) query.set('cursor', cursor);
     void Promise.all([
       apiRequestPage<MerchantExpenseSummary>('/owner/expenses?' + query.toString()),
-      apiRequest<ExpenseMonthSummary>('/owner/expenses/summary?month=' + encodeURIComponent(month)),
+      apiRequest<ExpenseMonthSummary>('/owner/expenses/summary?' + new URLSearchParams({ month, ...(branchFilter ? { branchId: branchFilter } : {}) })),
     ])
       .then(([page, monthlySummary]) => {
         if (!live) return;
@@ -276,7 +277,7 @@ export function ExpensesPage() {
   const pageNumber = cursorStack.length;
 
   return (
-    <HrPageShell title="Expenses" description="Keep branch expenses, receipts and cash payments together." actions={<Button onClick={openCreate}>{text('Add expense', 'إضافة مصروف')}</Button>}>
+    <HrPageShell title="Expenses" actions={<Button onClick={openCreate}>{text('Add expense', 'إضافة مصروف')}</Button>}>
       {error && <p className="hr-message hr-message--error" role="alert">{error}</p>}
       {notice && <p className="hr-message hr-message--success" role="status">{notice}</p>}
       {pendingCommand && <div className="hr-message hr-message--info">
@@ -285,7 +286,7 @@ export function ExpensesPage() {
       <section className="hr-summary-grid" aria-label={text('Monthly expenses', 'مصروفات الشهر')}>
         <div className="hr-summary"><span>{text('Expenses incurred', 'المصروفات المسجلة')}</span><strong>{money(summary?.incurredAmount ?? '0.00')}</strong></div>
         <div className="hr-summary"><span>{text('Paid this month', 'المدفوع خلال الشهر')}</span><strong>{money(summary?.paidDuringMonth ?? '0.00')}</strong></div>
-        <div className="hr-summary"><span>{text('Outstanding', 'المتبقي')}</span><strong>{money(summary?.outstandingAmount ?? '0.00')}</strong></div>
+        <div className="hr-summary"><span>{text('Currently unpaid from this month', 'المتبقي حاليًا من مصروفات الشهر')}</span><strong>{money(summary?.outstandingAmount ?? '0.00')}</strong></div>
       </section>
       <section className="hr-card">
         <div className="hr-toolbar">

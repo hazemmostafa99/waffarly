@@ -348,7 +348,7 @@
   background: white;
   color: #1b2648;
   box-shadow: 0 24px 80px #1b26482e;
-  font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+  font-family: var(--merchant-dashboard-font);
 }
 .products-dialog::backdrop {
   background: #1b264860;
