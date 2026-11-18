@@ -347,8 +347,8 @@ export function EmployeesPage() {
         className="employee-table-card"
         title={text('Employee list', 'قائمة الموظفين')}
         description={text(
-          'Each employee can use only the actions allowed by their role in their assigned branch.',
-          'يستخدم كل موظف الإجراءات المسموح بها لدوره داخل الفرع المعيّن له فقط.',
+          'POS access by role and branch.',
+          'حسابات دخول نقاط البيع حسب الدور والفرع.',
         )}
       >
         <DataTable

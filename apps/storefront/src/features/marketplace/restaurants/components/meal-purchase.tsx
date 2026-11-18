@@ -1,6 +1,8 @@
 'use client';
 import { useQuery } from '@tanstack/react-query';
-import type { CatalogProductQuoteResponse } from '@waffarly/contracts';
+import { deliveryBranches, type CatalogProductQuoteResponse } from '@waffarly/contracts';
+import { useDeliveryArea } from '@/features/delivery/delivery-area-picker';
+import { RestaurantRouteFields } from '@/features/delivery/restaurant-route-fields';
 import { apiPost } from '@/lib/api-client';
 
 import { useState } from 'react';
@@ -37,6 +39,14 @@ export function MealPurchase({
   editLine?: { lineId: string; selection?: MealSelection; quantity: number };
   onSaved?: () => void;
 }) {
+  const locationId = useDeliveryArea();
+  const [fulfillment, setFulfillment] = useState<'delivery' | 'pickup'>('delivery');
+  const [pickup, setPickup] = useState('');
+  const settings = product.restaurantSettings;
+  const onlineBranches = settings?.onlineBranches;
+  const branch = fulfillment === 'delivery'
+    ? deliveryBranches(onlineBranches ?? [], locationId).find((entry) => entry.branch.acceptingOrders)?.branch
+    : onlineBranches?.find((entry) => entry.branchId === pickup && entry.pickup && entry.acceptingOrders);
   const [selection, setSelection] = useState<MealSelection>(() =>
     editLine ? structuredClone(editLine.selection ?? {}) : defaultMealSelection(product),
   );
@@ -77,6 +87,10 @@ export function MealPurchase({
 
   function addMeal(replace = false) {
     if (!quoteReady) return;
+    if (!editLine && onlineBranches !== undefined && !branch) {
+      setNotice('اختار منطقة توصيل متاحة أو فرع استلام.');
+      return;
+    }
     if (!validMealSelection(selection, product)) {
       setNotice('راجع الاختيارات المطلوبة والحد المسموح لكل مجموعة.');
       return;
@@ -98,15 +112,20 @@ export function MealPurchase({
       onSaved?.();
       return;
     }
-    const existing = cart.find(
+    const snapshot = branch ? { ...product, restaurantCartRoute: {
+      branchId: branch.branchId, branchName: branch.name, fulfillment,
+      ...(fulfillment === 'delivery' ? { areaId: locationId } : {}),
+    } } : product;
+    const conflict = conflictsWithRestaurant(cart, product.id, snapshot);
+    if (!replace && conflict) {
+      setReplaceOpen(true);
+      return;
+    }
+    const existing = conflict ? undefined : cart.find(
       (line) => cartLineId(line) === cartLineId({ productId: product.id, selection }),
     );
     if ((existing?.quantity ?? 0) + quantity > MAX_CART_QUANTITY) {
       setNotice('الكمية دي هتتجاوز الحد المسموح للصنف بنفس الاختيارات.');
-      return;
-    }
-    if (!replace && conflictsWithRestaurant(cart, product.id, product)) {
-      setReplaceOpen(true);
       return;
     }
     if (
@@ -115,7 +134,7 @@ export function MealPurchase({
         quantity,
         selection,
         replace,
-        serverProduct ? product : undefined,
+        serverProduct ? snapshot : undefined,
         quote.data ? Number(quote.data.totalPrice) : undefined,
       )
     ) {
@@ -141,6 +160,20 @@ export function MealPurchase({
       )}
       aria-label={serverProduct ? 'اختيارات الوجبة' : 'اختيارات الوجبة التجريبية'}
     >
+      {!editLine && settings && onlineBranches !== undefined && (
+        <div className="space-y-2 border-b border-border p-4 text-sm">
+          <label className="grid gap-1">
+            طريقة الاستلام
+            <select className="rounded-lg border border-border p-2" value={fulfillment}
+              onChange={(event) => setFulfillment(event.target.value === 'pickup' ? 'pickup' : 'delivery')}>
+              <option value="delivery">توصيل</option>
+              <option value="pickup">استلام من الفرع</option>
+            </select>
+          </label>
+          <RestaurantRouteFields settings={settings} fulfillment={fulfillment}
+            area="" pickup={pickup} onArea={() => {}} onPickup={setPickup} />
+        </div>
+      )}
       <div
         className={cn(
           'min-h-0 px-5 pb-4 pt-3',
@@ -396,8 +429,7 @@ export function MealPurchase({
         title="تبدأ سلة جديدة؟"
       >
         <p>
-          الطلب بيكون من مطعم واحد. الإضافة من {product.merchantName} هتستبدل الأصناف الموجودة في
-          السلة.
+          الطلب بيكون من مطعم وفرع واحد. الإضافة من {branch?.name ?? product.merchantName} هتستبدل الأصناف الموجودة في السلة.
         </p>
         <div className="grid gap-3">
           <Button

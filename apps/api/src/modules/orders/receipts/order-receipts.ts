@@ -4,6 +4,7 @@
 import { InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import type { PosEmployeeSession, PosReceipt } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
+import { formatCents, toCents } from '../../../common/money/money.js';
 
 import { randomUUID } from 'node:crypto';
 
@@ -71,6 +72,9 @@ export async function issueSettledCheckReceipt(
     ),
     quantity,
     unitPrice: line.unitPrice.toString(),
+    promotionType: line.promotionType as 'percentage' | 'amount' | null,
+    promotionValue: line.promotionValue?.toString() ?? null,
+    promotionDiscount: formatCents(toCents(line.promotionDiscount.toString()) * BigInt(quantity)),
     total,
   });
   const items =
@@ -95,7 +99,13 @@ export async function issueSettledCheckReceipt(
     merchantName: check.order.merchant.name,
     branchName: check.order.branch?.name ?? null,
     orderId: check.order.id,
+    ...(check.order.source === 'waffarly' ||
+    check.order.source === 'storefront' ||
+    check.order.source === 'pos'
+      ? { source: check.order.source }
+      : {}),
     orderReference: check.order.orderReference,
+    branchOrderNumber: check.order.branchOrderNumber,
     orderCreatedAt: check.order.createdAt,
     fulfillmentType: check.order.fulfillmentType as PosReceipt['fulfillmentType'],
     tableCode: check.order.diningSession?.table.code ?? null,

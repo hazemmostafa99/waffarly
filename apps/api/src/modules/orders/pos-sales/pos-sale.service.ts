@@ -32,7 +32,10 @@ import {
   posKitchenTicketInclude,
 } from '../kitchen/pos-kitchen.persistence.js';
 import { toSummary } from '../mapping/order.mapper.js';
-import { allocatePosOrderReference } from './pos-order-number.persistence.js';
+import {
+  allocatePosBranchOrderNumber,
+  allocatePosOrderReference,
+} from './pos-order-number.persistence.js';
 import {
   consumeDirectOrderRequirements,
   assertKnownCurrentCosts,
@@ -111,10 +114,17 @@ export class PosSaleService {
               employee.merchantId,
               shift.branchId,
             );
+            const branchOrderNumber = await allocatePosBranchOrderNumber(
+              tx,
+              employee.merchantId,
+              shift.branchOrderSessionId,
+            );
             const order = await tx.storefrontOrder.create({
               data: {
                 merchantId: employee.merchantId,
                 orderReference,
+                branchOrderSessionId: shift.branchOrderSessionId,
+                branchOrderNumber,
                 customerName: request.customerName?.trim() || null,
                 customerPhone: request.customerPhone?.trim() || null,
                 deliveryAddress:
@@ -262,6 +272,9 @@ export class PosSaleService {
                   variantName: variant?.name ?? null,
                   basePrice: lineQuote.basePrice,
                   modifierTotal: lineQuote.modifierTotal,
+                  promotionType: lineQuote.promotion?.type ?? null,
+                  promotionValue: lineQuote.promotion?.value ?? null,
+                  promotionDiscount: lineQuote.promotion?.discountAmount ?? '0.00',
                   quantity: item.quantity,
                   unitPrice: lineQuote.totalPrice,
                   lineTotal: formatCents(lineTotalCents),

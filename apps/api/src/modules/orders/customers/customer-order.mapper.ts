@@ -9,6 +9,7 @@ export const customerOrderProjection = {
   order: {
     select: {
       id: true,
+      branchName: true,
       status: true,
       createdAt: true,
       total: true,
@@ -45,6 +46,7 @@ export function toCustomerOrderDetails(row: Row) {
   return {
     id: order.id,
     restaurantName: order.merchant.name,
+    ...(order.branchName ? { branchName: order.branchName } : {}),
     status: order.status,
     createdAt: order.createdAt.toISOString(),
     total: order.total.toFixed(2),

@@ -225,7 +225,7 @@ export class OrderLifecycleService {
             operationTarget?.branchId ??
             (command.action === 'accept' ? command.input.branchId : null);
           const operationShift =
-            operationTarget?.source === 'storefront'
+            (operationTarget?.source === 'storefront' || operationTarget?.source === 'waffarly')
               ? await lockBranchOperationShift(tx, merchantId, operationBranch)
               : null;
           const locked = await tx.$queryRaw<
@@ -262,7 +262,7 @@ export class OrderLifecycleService {
           });
           // A completed retry is returned above without a new status write.
           if (
-            order.source === 'storefront' &&
+            (order.source === 'storefront' || order.source === 'waffarly') &&
             (!operationShift || (order.branchId && order.branchId !== operationBranch))
           )
             throw new ConflictException({
@@ -275,9 +275,11 @@ export class OrderLifecycleService {
               line.stockHandling === 'direct_acceptance',
           );
           const isDispatchedPosOrder = order.source === 'pos' && order.kitchenTicket !== null;
-          const isRoutedStorefrontOrder = order.source === 'storefront' && order.branchId !== null;
+          const isRoutedOnlineOrder =
+            (order.source === 'storefront' || order.source === 'waffarly') &&
+            order.branchId !== null;
           if (
-            isRoutedStorefrontOrder &&
+            isRoutedOnlineOrder &&
             command.action === 'accept' &&
             order.branchId !== command.input.branchId
           )
@@ -286,12 +288,12 @@ export class OrderLifecycleService {
             command.action !== 'pos_cancel' &&
             !inventoryLines.length &&
             !isDispatchedPosOrder &&
-            !isRoutedStorefrontOrder
+            !isRoutedOnlineOrder
           )
             throw new ConflictException('This action is only available for new recipe orders.');
-          if (command.action === 'cancel' && !inventoryLines.length && !isRoutedStorefrontOrder)
+          if (command.action === 'cancel' && !inventoryLines.length && !isRoutedOnlineOrder)
             throw new ConflictException('POS cancellation requires the cancellation workflow.');
-          if (isRoutedStorefrontOrder && command.action === 'cancel') {
+          if (isRoutedOnlineOrder && command.action === 'cancel') {
             const payment = await tx.posOrderPayment.findFirst({
               where: { orderId, merchantId },
               select: { id: true },

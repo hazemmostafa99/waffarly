@@ -24,7 +24,7 @@ export class PosReceiptQueryService {
         OR: [
           { source: 'pos' },
           {
-            source: 'storefront',
+            source: { in: ['waffarly', 'storefront'] },
             fulfillmentType: 'pickup',
             posShiftId: { not: null },
             status: { in: ['ready', 'completed'] },
@@ -33,6 +33,8 @@ export class PosReceiptQueryService {
         branchId: employee.branch.id,
       },
       select: {
+        branchOrderNumber: true,
+        source: true,
         checks: {
           where: { id: checkId, merchantId: employee.merchantId },
           select: { receipt: { select: { snapshot: true } } },
@@ -40,8 +42,15 @@ export class PosReceiptQueryService {
       },
     });
     const snapshot = order?.checks[0]?.receipt?.snapshot;
-    if (!snapshot) throw new NotFoundException('The POS receipt was not found.');
-    return parseStoredPosReceipt(snapshot);
+    if (!snapshot || !order) throw new NotFoundException('The POS receipt was not found.');
+    const receipt = parseStoredPosReceipt(snapshot);
+    return {
+      ...receipt,
+      ...(order.source === 'waffarly' || order.source === 'storefront' || order.source === 'pos'
+        ? { source: order.source }
+        : {}),
+      branchOrderNumber: receipt.branchOrderNumber ?? order.branchOrderNumber,
+    };
   }
 
   async listReceipts(
@@ -54,7 +63,9 @@ export class PosReceiptQueryService {
     }
     const scopedReceiptWhere: Prisma.PosCheckReceiptWhereInput = {
       merchantId: employee.merchantId,
-      order: { is: { source: 'pos', branchId: input.branchId } },
+      order: {
+        is: { source: { in: ['waffarly', 'storefront', 'pos'] }, branchId: input.branchId },
+      },
     };
     const anchor = input.cursor
       ? await this.prisma.posCheckReceipt.findFirst({
@@ -72,6 +83,7 @@ export class PosReceiptQueryService {
         orderId: true,
         checkId: true,
         snapshot: true,
+        order: { select: { branchOrderNumber: true, source: true } },
       },
       orderBy: [{ issuedAt: 'desc' }, { id: 'desc' }],
       take: input.limit + 1,
@@ -86,7 +98,9 @@ export class PosReceiptQueryService {
         issuedAt: row.issuedAt.toISOString(),
         orderId: row.orderId,
         checkId: row.checkId,
+        source: row.order.source,
         orderReference: snapshot.orderReference,
+        branchOrderNumber: snapshot.branchOrderNumber ?? row.order.branchOrderNumber,
         checkNumber: snapshot.checkNumber,
         amount: snapshot.amount,
         currency: snapshot.currency,

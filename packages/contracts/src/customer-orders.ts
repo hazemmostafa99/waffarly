@@ -2,6 +2,7 @@ import type { StorefrontOrderStatus } from './catalog.js';
 export interface CustomerOrderView {
   id: string;
   restaurantName: string;
+  branchName?: string | undefined;
   status: StorefrontOrderStatus;
   createdAt: string;
   total: string;

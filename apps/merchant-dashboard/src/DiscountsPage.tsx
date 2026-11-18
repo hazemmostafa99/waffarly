@@ -5,7 +5,7 @@ import type {
   MerchantDiscountStats,
 } from '@waffarly/contracts';
 import { Button, useLocale } from '@waffarly/ui';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useSearchParams } from 'react-router-dom';
 import type { MerchantOutletContext } from './lib/merchant-context.js';
 import { apiRequest, ApiError } from './lib/api-client.js';
 import { Icon } from './Icons.js';
@@ -53,6 +53,7 @@ function amount(value: string, locale: string) {
 export function DiscountsPage() {
   const { t, locale, formatNumber, errorText } = useLocale();
   const { profile } = useOutletContext<MerchantOutletContext>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const copy = (message: string) => discountsCopy(message, locale, t);
   const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -68,6 +69,16 @@ export function DiscountsPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('action') !== 'create') return;
+    setError('');
+    setEditing(null);
+    setEditorOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('action');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const reload = useCallback(async () => {
     setLoading(true);

@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button, DashboardCard, Input, useLocale } from '@waffarly/ui';
 import type { InventoryBranch, InventoryWarehouse } from '@waffarly/contracts';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
@@ -18,6 +19,7 @@ type ArchiveTarget =
 
 export function BranchesPage() {
   const { locale, t, errorText, formatDigits } = useLocale();
+  const [searchParams, setSearchParams] = useSearchParams();
   const text = (value: string) => inventoryCopy(value, locale, t);
   const [branches, setBranches] = useState<InventoryBranch[]>([]);
   const [expandedBranchId, setExpandedBranchId] = useState('');
@@ -35,6 +37,14 @@ export function BranchesPage() {
   const [warehouseEditor, setWarehouseEditor] = useState<WarehouseEditorState | null>(null);
   const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get('action') !== 'create') return;
+    setBranchEditor({ branch: null, key: crypto.randomUUID() });
+    const next = new URLSearchParams(searchParams);
+    next.delete('action');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     let current = true;

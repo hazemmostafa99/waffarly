@@ -1,4 +1,7 @@
 import { EmployeesModule } from './modules/employees/index.js';
+import { AttendanceModule } from './modules/attendance/index.js';
+import { PayrollModule } from './modules/payroll/index.js';
+import { ExpensesModule } from './modules/expenses/index.js';
 import { Module } from '@nestjs/common';
 import { CustomersModule } from './modules/customers/index.js';
 import { DiscountsModule } from './modules/discounts/index.js';
@@ -31,6 +34,9 @@ import { ShiftsModule } from './modules/shifts/index.js';
     DiscountsModule,
     AuthModule,
     EmployeesModule,
+    AttendanceModule,
+    PayrollModule,
+    ExpensesModule,
     HealthModule,
     MerchantsModule,
     PlansModule,

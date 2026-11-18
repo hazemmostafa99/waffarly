@@ -81,6 +81,20 @@ import {
   type OwnerPosShiftCloseReportsInput,
 } from './shifts.schemas.js';
 
+async function lockBranchOrderSessionLifecycle(
+  tx: Prisma.TransactionClient,
+  merchantId: string,
+  branchId: string,
+): Promise<void> {
+  const rows = await tx.$queryRaw<Array<{ id: string }>>`
+    SELECT "id"
+    FROM "branches"
+    WHERE "id" = ${branchId}::uuid AND "merchantId" = ${merchantId}::uuid
+    FOR UPDATE
+  `;
+  if (!rows[0]) throw new NotFoundException('Branch was not found.');
+}
+
 export { buildShiftReconciliation } from './reconciliation/shift-reconciliation.js';
 
 @Injectable()
@@ -306,10 +320,37 @@ export class ShiftsService {
           if (prior)
             return replayShiftClose(this.prisma, employee, prior, shiftId, fingerprint, tx);
 
+          const candidate = await tx.posShift.findFirst({
+            where: { id: shiftId, merchantId: employee.merchantId },
+            select: { branchId: true },
+          });
+          if (!candidate)
+            throw new ConflictException('This register shift is already closed or unavailable.');
+          await lockBranchOrderSessionLifecycle(tx, employee.merchantId, candidate.branchId);
+
+          const committedRetry = await tx.posShiftCloseReport.findFirst({
+            where: { merchantId: employee.merchantId, requestId: request.requestId },
+            include: closeReportInclude,
+          });
+          if (committedRetry)
+            return replayShiftClose(
+              this.prisma,
+              employee,
+              committedRetry,
+              shiftId,
+              fingerprint,
+              tx,
+            );
+
           const locked = await tx.$queryRaw<
-            Array<{ id: string; branchId: string; registerId: string }>
+            Array<{
+              id: string;
+              branchId: string;
+              registerId: string;
+              branchOrderSessionId: string;
+            }>
           >`
-            SELECT s."id", s."branchId", s."registerId"
+            SELECT s."id", s."branchId", s."registerId", s."branchOrderSessionId"
             FROM "pos_shifts" s
             INNER JOIN "pos_registers" r
               ON r."id" = s."registerId" AND r."branchId" = s."branchId"
@@ -437,6 +478,24 @@ export class ShiftsService {
           });
           if (changed.count !== 1)
             throw new ConflictException('This register shift was closed concurrently.');
+          const openShiftsInSession = await tx.posShift.count({
+            where: {
+              branchOrderSessionId: lockedShift.branchOrderSessionId,
+              merchantId: employee.merchantId,
+              status: { in: ['open', 'closing'] },
+            },
+          });
+          if (openShiftsInSession === 0) {
+            await tx.posBranchOrderSession.updateMany({
+              where: {
+                id: lockedShift.branchOrderSessionId,
+                merchantId: employee.merchantId,
+                branchId: lockedShift.branchId,
+                closedAt: null,
+              },
+              data: { closedAt },
+            });
+          }
           const savedReport = await tx.posShiftCloseReport.findFirstOrThrow({
             where: { id: report.id, merchantId: employee.merchantId },
             include: closeReportInclude,
@@ -464,7 +523,7 @@ export class ShiftsService {
     tx: Prisma.TransactionClient,
     employee: PosEmployeeSession,
     registerId: string,
-  ): Promise<{ id: string; branchId: string }> {
+  ): Promise<{ id: string; branchId: string; branchOrderSessionId: string }> {
     return lockOpenShiftForSale(tx, employee, registerId);
   }
 
@@ -536,6 +595,13 @@ export class ShiftsService {
     try {
       // 2. Save the opening cash and any carryover with the shift.
       return await this.prisma.$transaction(async (tx) => {
+        const candidate = await tx.posRegister.findFirst({
+          where: { id: parsed.registerId, merchantId: employee.merchantId },
+          select: { branchId: true },
+        });
+        if (!candidate) throw new NotFoundException('Register was not found.');
+        await lockBranchOrderSessionLifecycle(tx, employee.merchantId, candidate.branchId);
+
         const locked = await tx.$queryRaw<
           Array<{
             id: string;
@@ -598,10 +664,40 @@ export class ShiftsService {
         });
         if (current) throw new ConflictException('A shift is already open on this register.');
 
+        const activeShift = await tx.posShift.findFirst({
+          where: {
+            merchantId: employee.merchantId,
+            branchId: register.branchId,
+            status: { in: ['open', 'closing'] },
+          },
+          orderBy: [{ openedAt: 'asc' }, { id: 'asc' }],
+          select: { branchOrderSessionId: true },
+        });
+        const activeSession = activeShift
+          ? await tx.posBranchOrderSession.findFirst({
+              where: {
+                id: activeShift.branchOrderSessionId,
+                merchantId: employee.merchantId,
+                branchId: register.branchId,
+                closedAt: null,
+              },
+              select: { id: true },
+            })
+          : null;
+        if (activeShift && !activeSession)
+          throw new ConflictException('The active branch order session is unavailable.');
+        const orderSession =
+          activeSession ??
+          (await tx.posBranchOrderSession.create({
+            data: { merchantId: employee.merchantId, branchId: register.branchId },
+            select: { id: true },
+          }));
+
         const record = await tx.posShift.create({
           data: {
             merchantId: employee.merchantId,
             branchId: register.branchId,
+            branchOrderSessionId: orderSession.id,
             registerId: register.id,
             openRequestId: parsed.requestId,
             openedByEmployeeId: employee.id,

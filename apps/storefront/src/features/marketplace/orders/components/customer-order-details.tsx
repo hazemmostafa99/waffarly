@@ -192,6 +192,7 @@ export function CustomerOrderDetails({ orderId }: { orderId: string }) {
                           <div>
                             <h2 className="m-0 text-sm font-bold text-primary">
                               {order.restaurantName}
+                              {order.branchName && ` — ${order.branchName}`}
                             </h2>
                             <OrderReference id={order.id} />
                           </div>

@@ -19,6 +19,7 @@ export type MarketplaceProduct = ProductRecord &
     origin?: 'local-mock' | 'api';
     restaurantSlug?: string;
     restaurantSettings?: PublicRestaurantProfile;
+    restaurantCartRoute?: { fulfillment: 'pickup' | 'delivery'; branchId: string; branchName: string; areaId?: string };
     apiVariants?: PublicStorefrontProduct['variants'];
     apiModifierGroups?: PublicStorefrontProduct['modifierGroups'];
     menuSection?: string;

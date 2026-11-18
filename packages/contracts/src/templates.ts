@@ -8,15 +8,24 @@ export interface MerchantStorefrontSettings {
   storefrontSlug: string;
   storefrontHandle?: string | null;
   templateId: string | null;
+  primaryColor: string;
   accentColor: string;
+  backgroundColor: string;
+  surfaceColor: string;
+  logoScale: 'small' | 'medium' | 'large';
   logoData: string | null;
+  coverImageUrl: string | null;
   revision: number;
   templates: StorefrontTemplateSummary[];
 }
 
 export interface SaveMerchantStorefrontRequest {
   templateId: string;
+  primaryColor: string;
   accentColor: string;
+  backgroundColor: string;
+  surfaceColor: string;
+  logoScale: 'small' | 'medium' | 'large';
   logoData: string | null;
   revision: number;
 }

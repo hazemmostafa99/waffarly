@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   PosEmployeeSession,
   PosOrderPaymentStateResponse,
@@ -9,6 +9,7 @@ import { ClipboardList, Printer, RefreshCw, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { PosButton } from '../../components/pos-button.js';
+import { getPosOrderNumber } from '../orders/pos-order-number.js';
 import { listPosSales, posOrderKeys, type PosSalesFilters } from '../orders/pos-orders.api.js';
 import { getPosOrderPaymentState, posPaymentStateKey } from '../payments/pos-payments.api.js';
 import { PosReceiptView } from './pos-receipt-view.js';
@@ -35,6 +36,7 @@ export function PosOrdersScreen() {
 
 function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
   const { t, errorText, formatNumber } = useLocale();
+  const queryClient = useQueryClient();
   const selectedBranchId = employee.branch.id;
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<StorefrontOrderSummary['status'] | ''>('');
@@ -45,6 +47,7 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
   const [createdFrom, setCreatedFrom] = useState('');
   const [createdTo, setCreatedTo] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<StorefrontOrderSummary | null>(null);
+  const [receiptLoadingOrderId, setReceiptLoadingOrderId] = useState<string | null>(null);
   const [activeReceipt, setActiveReceipt] = useState<{ orderId: string; checkId: string } | null>(
     null,
   );
@@ -90,6 +93,27 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
     setSettlement('');
     setCreatedFrom('');
     setCreatedTo('');
+  }
+
+  async function openLatestOrderReceipt(order: StorefrontOrderSummary) {
+    setReceiptLoadingOrderId(order.id);
+    try {
+      const paymentState = await queryClient.fetchQuery({
+        queryKey: posPaymentStateKey(employee.merchantId, order.id),
+        queryFn: ({ signal }) => getPosOrderPaymentState(order.id, signal),
+        staleTime: 15_000,
+      });
+      const receipts = paymentState.checks.filter((check) => check.receipt);
+      if (receipts.length === 1) {
+        setActiveReceipt({ orderId: order.id, checkId: receipts[0]!.id });
+        return;
+      }
+      setSelectedOrder(order);
+    } catch {
+      setSelectedOrder(order);
+    } finally {
+      setReceiptLoadingOrderId(null);
+    }
   }
 
   if (activeReceipt) {
@@ -290,16 +314,16 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
               key={order.id}
               className="overflow-hidden rounded-lg border border-border bg-card"
             >
-              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 p-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:gap-3">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 p-2 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:gap-3">
                 <button
                   type="button"
                   className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-2 text-start"
                   aria-haspopup="dialog"
-                  aria-label={`${t('Order details')} #${getDisplayOrderNumber(order)}`}
+                  aria-label={`${t('Order details')} #${getPosOrderNumber(order)}`}
                   onClick={() => setSelectedOrder(order)}
                 >
                   <span className="flex min-h-9 min-w-10 items-center justify-center rounded-md bg-secondary px-2 text-xs font-bold tabular-nums">
-                    <bdi dir="ltr">#{getDisplayOrderNumber(order)}</bdi>
+                    <bdi dir="ltr">#{getPosOrderNumber(order)}</bdi>
                   </span>
                   <span className="grid min-w-0 gap-0.5">
                     <span className="truncate text-xs font-semibold">
@@ -307,12 +331,6 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
                       {order.tableCode ? ` · ${t('Table')} ${order.tableCode}` : ''}
                     </span>
                     <span className="truncate text-[11px] text-muted-foreground">
-                      <bdi dir="ltr">
-                        {order.orderReference || order.id.slice(0, 8).toUpperCase()}
-                      </bdi>
-                      <span aria-hidden="true" className="mx-1">
-                        ·
-                      </span>
                       {new Intl.DateTimeFormat(dateLocale, {
                         dateStyle: 'medium',
                         timeStyle: 'short',
@@ -341,6 +359,22 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
                 >
                   {t('Show order details')}
                 </PosButton>
+                {employee.permissions.includes('view_receipts') && (
+                  <PosButton
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="col-span-2 min-h-9 gap-1 text-xs sm:col-span-1"
+                    aria-haspopup="dialog"
+                    disabled={receiptLoadingOrderId !== null}
+                    onClick={() => void openLatestOrderReceipt(order)}
+                  >
+                    <Printer aria-hidden="true" size={14} />
+                    {receiptLoadingOrderId === order.id
+                      ? t('Loading receipt…')
+                      : t('View / print receipt')}
+                  </PosButton>
+                )}
               </div>
             </article>
           ))}
@@ -404,7 +438,7 @@ function PosOrderDetailsDialog({
         if (!open) onClose();
       }}
       title={`${t('Order')} #${getDisplayOrderNumber(order)}`}
-      description={order.orderReference || t('Order details')}
+      description={order.customerName || t(order.fulfillmentType)}
       closeLabel={t('Close')}
       className="flex max-h-[calc(100dvh-20px)] flex-col overflow-hidden"
     >
@@ -462,6 +496,15 @@ function PosOrderDetailsDialog({
                 {line.note && (
                   <p className="m-0 text-[11px] text-muted-foreground">
                     {t('Item note')}: {line.note}
+                  </p>
+                )}
+                {line.promotionDiscount && Number(line.promotionDiscount) > 0 && (
+                  <p className="m-0 text-[11px] font-medium text-emerald-700">
+                    {t('Product discount')}: −
+                    {formatNumber(Number(line.promotionDiscount) * line.quantity, {
+                      style: 'currency',
+                      currency: order.currency,
+                    })}
                   </p>
                 )}
               </li>
@@ -553,7 +596,9 @@ function PosReceiptHistoryScreen({ employee }: { employee: PosEmployeeSession })
     (receipt) =>
       !query ||
       receipt.receiptNumber.toLocaleLowerCase().includes(query) ||
-      receipt.orderReference.toLocaleLowerCase().includes(query),
+      receipt.orderReference.toLocaleLowerCase().includes(query) ||
+      (receipt.branchOrderNumber != null &&
+        String(receipt.branchOrderNumber).includes(query.replace(/^#/, ''))),
   );
   const dateLocale = document.documentElement.lang || undefined;
 
@@ -634,7 +679,27 @@ function PosReceiptHistoryScreen({ employee }: { employee: PosEmployeeSession })
               <div className="min-w-0">
                 <strong className="block truncate text-xs">{receipt.receiptNumber}</strong>
                 <span className="block truncate text-[11px] text-muted-foreground">
-                  {receipt.orderReference} ·{' '}
+                  {receipt.source && (
+                    <>
+                      {t(
+                        receipt.source === 'waffarly'
+                          ? 'Waffarly'
+                          : receipt.source === 'storefront'
+                            ? 'Storefront'
+                            : receipt.source === 'pos'
+                              ? 'POS'
+                              : receipt.source,
+                      )}{' '}
+                      <span aria-hidden="true">·</span>{' '}
+                    </>
+                  )}
+                  #
+                  {getPosOrderNumber({
+                    id: receipt.orderId,
+                    branchOrderNumber: receipt.branchOrderNumber,
+                    orderReference: receipt.orderReference,
+                  })}{' '}
+                  <span aria-hidden="true">·</span>{' '}
                   {new Intl.DateTimeFormat(dateLocale, {
                     dateStyle: 'medium',
                     timeStyle: 'short',
@@ -682,8 +747,7 @@ function PosReceiptHistoryScreen({ employee }: { employee: PosEmployeeSession })
 }
 
 function getDisplayOrderNumber(order: StorefrontOrderSummary): string {
-  const sequence = order.orderReference?.match(/^B\d+-\d{8}-(\d+)$/)?.[1];
-  return sequence ? String(Number(sequence)) : order.id.slice(0, 6).toUpperCase();
+  return getPosOrderNumber(order);
 }
 
 function toLocalDateBoundary(value: string, endOfDay: boolean): string | undefined {

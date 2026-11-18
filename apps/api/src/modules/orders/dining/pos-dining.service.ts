@@ -46,6 +46,7 @@ const sessionInclude = {
     select: {
       id: true,
       orderReference: true,
+      branchOrderNumber: true,
       total: true,
       currency: true,
       status: true,
@@ -290,6 +291,7 @@ function toSessionSummary(session: SessionRecord): PosDiningSessionSummary {
   const orders = session.orders.map((order) => ({
     id: order.id,
     orderReference: order.orderReference,
+    branchOrderNumber: order.branchOrderNumber,
     total: formatCents(toCents(order.total.toString())),
     currency: requireEgpCurrency(order.currency),
     status: order.status,

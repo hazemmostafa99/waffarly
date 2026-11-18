@@ -6,7 +6,19 @@ import type {
 } from '@waffarly/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 
-const defaultAccent = '#315b43';
+const defaultPrimary = '#0f705a';
+const defaultAccent = '#f5b544';
+const defaultBackground = '#faf8f4';
+const defaultSurface = '#ffffff';
+
+function imageSource(value: unknown): string | null {
+  if (typeof value !== 'object' || value === null || !('src' in value)) return null;
+  return typeof value.src === 'string' ? value.src : null;
+}
+
+function logoScale(value: string | undefined): MerchantStorefrontSettings['logoScale'] {
+  return value === 'small' || value === 'large' ? value : 'medium';
+}
 
 function templateSummary(record: {
   id: string;
@@ -39,7 +51,12 @@ export class StorefrontService {
   async getSettings(merchantId: string): Promise<MerchantStorefrontSettings> {
     const merchant = await this.prisma.merchant.findUniqueOrThrow({
       where: { id: merchantId },
-      select: { activity: true, storefrontSlug: true, storefrontHandle: true },
+      select: {
+        activity: true,
+        storefrontSlug: true,
+        storefrontHandle: true,
+        restaurantProfile: { select: { logoImage: true, coverImage: true } },
+      },
     });
     const [selected, available] = await Promise.all([
       this.prisma.merchantStorefront.findUnique({ where: { merchantId } }),
@@ -56,8 +73,13 @@ export class StorefrontService {
       storefrontSlug: merchant.storefrontSlug,
       storefrontHandle: merchant.storefrontHandle ?? null,
       templateId: selected?.templateId ?? null,
+      primaryColor: selected?.primaryColor ?? defaultPrimary,
       accentColor: selected?.accentColor ?? defaultAccent,
-      logoData: selected?.logoData ?? null,
+      backgroundColor: selected?.backgroundColor ?? defaultBackground,
+      surfaceColor: selected?.surfaceColor ?? defaultSurface,
+      logoScale: logoScale(selected?.logoScale),
+      logoData: imageSource(merchant.restaurantProfile?.logoImage) ?? selected?.logoData ?? null,
+      coverImageUrl: imageSource(merchant.restaurantProfile?.coverImage),
       revision: selected?.revision ?? 0,
       templates: available.map(templateSummary),
     };
@@ -67,7 +89,7 @@ export class StorefrontService {
     merchantId: string,
     input: SaveMerchantStorefrontRequest,
   ): Promise<MerchantStorefrontSettings> {
-    if (input.logoData) {
+    if (input.logoData?.startsWith('data:')) {
       const encoded = input.logoData.slice(input.logoData.indexOf(',') + 1);
       const logoBytes = Buffer.from(encoded, 'base64');
       if (logoBytes.length > 48 * 1024) {
@@ -108,6 +130,20 @@ export class StorefrontService {
       }
 
       const current = await transaction.merchantStorefront.findUnique({ where: { merchantId } });
+      if (
+        merchant.activity !== 'restaurant' &&
+        input.logoData &&
+        !input.logoData.startsWith('data:') &&
+        current?.logoData !== input.logoData
+      ) {
+        const uploadedLogo = await transaction.mediaAsset.findFirst({
+          where: { merchantId, publicUrl: input.logoData },
+          select: { id: true },
+        });
+        if (!uploadedLogo) {
+          throw new BadRequestException('Upload the logo to this business account before saving it.');
+        }
+      }
       if (!current) {
         if (input.revision !== 0) {
           throw new ConflictException('Storefront settings changed. Reload before saving again.');
@@ -116,8 +152,12 @@ export class StorefrontService {
           data: {
             merchantId,
             templateId: template.id,
+            primaryColor: input.primaryColor,
             accentColor: input.accentColor,
-            logoData: input.logoData,
+            backgroundColor: input.backgroundColor,
+            surfaceColor: input.surfaceColor,
+            logoScale: input.logoScale,
+            logoData: merchant.activity === 'restaurant' ? null : input.logoData,
           },
         });
         return;
@@ -127,8 +167,12 @@ export class StorefrontService {
         where: { merchantId, revision: input.revision },
         data: {
           templateId: template.id,
+          primaryColor: input.primaryColor,
           accentColor: input.accentColor,
-          logoData: input.logoData,
+          backgroundColor: input.backgroundColor,
+          surfaceColor: input.surfaceColor,
+          logoScale: input.logoScale,
+          ...(merchant.activity === 'restaurant' ? {} : { logoData: input.logoData }),
           revision: { increment: 1 },
         },
       });

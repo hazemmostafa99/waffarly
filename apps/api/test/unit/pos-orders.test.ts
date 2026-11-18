@@ -327,6 +327,7 @@ describe('POS sales', () => {
           });
           return { id: 'new-line' };
         },
+        update: async () => ({}),
       },
       product: {
         findFirst: async () => ({
@@ -334,7 +335,7 @@ describe('POS sales', () => {
           name: 'Added item',
           availability: 'available',
           revision: 3,
-          inventoryConfiguration: null,
+          inventoryConfiguration: { mode: 'RECIPE' },
           variants: [],
           modifierGroups: [],
         }),
@@ -361,7 +362,7 @@ describe('POS sales', () => {
     const { kitchenAmendments } = createPosOrderServices(
       prisma as never,
       pricing as never,
-      {} as never,
+      { requirements: async () => [] } as never,
       {} as never,
       shifts as never,
       {} as never,

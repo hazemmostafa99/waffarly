@@ -6,6 +6,17 @@ import { sellableInclude, toSellableResponse } from './products/product.mapper.j
 type PublicStorefrontCategory = PublicStorefrontCatalog['categories'][number];
 type PublicStorefrontProduct = PublicStorefrontCatalog['products'][number];
 
+function imageSource(value: unknown): string | null {
+  if (typeof value !== 'object' || value === null || !('src' in value)) return null;
+  return typeof value.src === 'string' ? value.src : null;
+}
+
+function storefrontLogoScale(
+  value: string | undefined,
+): PublicStorefrontCatalog['logoScale'] {
+  return value === 'small' || value === 'large' ? value : 'medium';
+}
+
 @Injectable()
 export class CatalogQueryService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
@@ -21,8 +32,15 @@ export class CatalogQueryService {
       slug: merchant.storefrontSlug,
       merchantName: merchant.name,
       activity: merchant.activity,
-      accentColor: merchant.storefront?.accentColor ?? '#315b43',
-      logoData: merchant.storefront?.logoData ?? null,
+      restaurantDescription: merchant.restaurantProfile?.description ?? null,
+      primaryColor: merchant.storefront?.primaryColor ?? '#0f705a',
+      accentColor: merchant.storefront?.accentColor ?? '#f5b544',
+      backgroundColor: merchant.storefront?.backgroundColor ?? '#faf8f4',
+      surfaceColor: merchant.storefront?.surfaceColor ?? '#ffffff',
+      logoScale: storefrontLogoScale(merchant.storefront?.logoScale),
+      logoData:
+        imageSource(merchant.restaurantProfile?.logoImage) ?? merchant.storefront?.logoData ?? null,
+      coverImageUrl: imageSource(merchant.restaurantProfile?.coverImage),
       template: merchant.storefront?.template
         ? {
             name: merchant.storefront.template.name,
@@ -103,6 +121,8 @@ export class CatalogQueryService {
           name: product.name,
           description: product.description,
           basePrice: product.basePrice,
+          promotion: product.promotion,
+          promotionalPrice: product.promotionalPrice,
           currency: 'EGP' as const,
           availability: product.availability,
           displayOrder: record.displayOrder,
@@ -117,10 +137,11 @@ export class CatalogQueryService {
           ),
           modifierGroups: product.modifierGroups,
           variants: product.variants.map(
-            ({ id, name, price, availability, position, attributes, stockQuantity }) => ({
+            ({ id, name, price, promotionalPrice, availability, position, attributes, stockQuantity }) => ({
               id,
               name,
               price,
+              promotionalPrice,
               availability:
                 availability === 'available' && stockQuantity !== 0 ? 'available' : 'unavailable',
               position,
@@ -141,9 +162,16 @@ export class CatalogQueryService {
         name: true,
         activity: true,
         storefrontSlug: true,
+        restaurantProfile: {
+          select: { description: true, logoImage: true, coverImage: true },
+        },
         storefront: {
           select: {
+            primaryColor: true,
             accentColor: true,
+            backgroundColor: true,
+            surfaceColor: true,
+            logoScale: true,
             logoData: true,
             template: { select: { name: true, layout: true } },
           },
@@ -267,6 +295,8 @@ export class CatalogQueryService {
         name: publicProduct.name,
         description: publicProduct.description,
         basePrice: publicProduct.basePrice,
+        promotion: publicProduct.promotion,
+        promotionalPrice: publicProduct.promotionalPrice,
         currency: 'EGP' as const,
         sellingUnit: 'piece' as const,
         images: publicProduct.images.map(({ publicUrl, isPrimary, position }) => ({
@@ -289,10 +319,11 @@ export class CatalogQueryService {
           selectionMode: group.selectionMode as 'single' | 'multiple',
         })),
         variants: publicProduct.variants.map(
-          ({ id, name, price, availability, position, stockQuantity, attributes }) => ({
+          ({ id, name, price, promotionalPrice, availability, position, stockQuantity, attributes }) => ({
             id,
             name,
             price,
+            promotionalPrice,
             availability:
               availability === 'available' && stockQuantity !== 0
                 ? ('available' as const)

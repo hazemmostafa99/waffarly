@@ -10,6 +10,7 @@ import { PosButton } from '../../components/pos-button.js';
 import { ApiError } from '../../lib/api-client.js';
 import { usePosViewport } from '../../lib/use-pos-viewport.js';
 import { PosReceiptView } from '../receipts/pos-receipt-view.js';
+import { getPosOrderNumber } from '../orders/pos-order-number.js';
 import { PosCheckoutOrderContext, PosCheckoutOrderIdentity } from './pos-checkout-order-context.js';
 import { parseMoneyCents } from './payment-form-model.js';
 import {
@@ -296,8 +297,14 @@ export function PosCheckoutDialog({
                 <div>
                   <p className="m-0 truncate text-xs text-muted-foreground">
                     <bdi dir="ltr">
-                      {paymentState.context?.order.orderReference ??
-                        `ORD-${orderId.slice(0, 8).toUpperCase()}`}
+                      #
+                      {getPosOrderNumber(
+                        paymentState.context?.order ?? {
+                          id: orderId,
+                          orderReference: null,
+                          branchOrderNumber: null,
+                        },
+                      )}
                     </bdi>
                   </p>
                   <PosCheckoutOrderIdentity state={paymentState} />

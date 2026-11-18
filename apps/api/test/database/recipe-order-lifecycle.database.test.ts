@@ -595,10 +595,15 @@ it(
                 updatedBy: actor,
               },
             });
+            const orderSession = await tx.posBranchOrderSession.create({
+              data: { merchantId: f.merchantId, branchId: f.branch.id },
+              select: { id: true },
+            });
             const shift = await tx.posShift.create({
               data: {
                 merchantId: f.merchantId,
                 branchId: f.branch.id,
+                branchOrderSessionId: orderSession.id,
                 registerId: register.id,
                 openRequestId: randomUUID(),
                 openedByEmployeeId: f.employee.id,

@@ -42,6 +42,16 @@ export function RestaurantCheckoutReview({
                 <p className="m-0 text-[12px] text-muted-foreground">
                   {products[0]?.merchantName ?? products[0]?.seller}
                 </p>
+                {quote?.branch && <p className="text-sm">الفرع: {quote.branch.name}
+                  {!delivery && quote.branch.address ? ` — ${quote.branch.address}` : ''}
+                </p>}
+                {quote?.branch && products[0]?.restaurantCartRoute &&
+                  quote.branch.id !== products[0].restaurantCartRoute.branchId && (
+                    <p className="text-sm text-accent">
+                      الفرع اتغيّر من {products[0].restaurantCartRoute.branchName}. راجع الفرع الجديد قبل التأكيد.
+                    </p>
+                )}
+                {quote?.deliveryAreaName && <p className="text-sm">{quote.deliveryAreaName}</p>}
               </div>
             </div>
             <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[12px] text-accent">

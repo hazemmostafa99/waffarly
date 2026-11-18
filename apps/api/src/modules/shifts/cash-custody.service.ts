@@ -16,9 +16,12 @@ import type {
 } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
-import { formatCents, toCents, toSignedCents } from '../../common/money/money.js';
+import { toCents } from '../../common/money/money.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
-import { remainingClosedCash } from './cash-custody.persistence.js';
+import {
+  recordSafeMovementInTransaction,
+  remainingClosedCash,
+} from './cash-custody.persistence.js';
 import {
   createSafeSchema,
   receiveCashSchema,
@@ -273,44 +276,17 @@ export class CashCustodyService {
     input: unknown,
   ): Promise<{ id: string }> {
     const q = parseRequest(safeMovementSchema, input);
-    const signed = formatCents(toCents(q.amount) * (q.kind === 'withdrawal' ? -1n : 1n));
     return runCashCustodyTransaction(this.prisma, async (tx) => {
-      await tx.$queryRaw`SELECT "id" FROM "pos_cash_safes" WHERE "id"=${safeId}::uuid AND "merchantId"=${merchantId}::uuid FOR UPDATE`;
-      const safe = await tx.posCashSafe.findFirst({ where: { id: safeId, merchantId } });
-      if (!safe) throw new NotFoundException('Safe not found.');
-      const prior = await tx.posCashSafeMovement.findFirst({
-        where: { merchantId, requestId: q.requestId },
+      return recordSafeMovementInTransaction(tx, {
+        merchantId,
+        safeId,
+        requestId: q.requestId,
+        actor,
+        amount: q.amount,
+        kind: q.kind,
+        purpose: null,
+        reason: q.reason,
       });
-      if (prior) {
-        if (
-          prior.safeId !== safeId ||
-          prior.kind !== q.kind ||
-          prior.amount.toFixed(2) !== signed ||
-          prior.reason !== q.reason ||
-          prior.createdBy !== actor
-        )
-          throw new ConflictException('The request was already used with different values.');
-        return { id: prior.id };
-      }
-      const balance = await tx.posCashSafeMovement.aggregate({
-        where: { merchantId, safeId },
-        _sum: { amount: true },
-      });
-      if (cashAmountCents(balance._sum.amount) + toSignedCents(signed) < 0n)
-        throw new ConflictException('The safe does not have enough cash.');
-      const movement = await tx.posCashSafeMovement.create({
-        data: {
-          merchantId,
-          branchId: safe.branchId,
-          safeId,
-          requestId: q.requestId,
-          kind: q.kind,
-          amount: signed,
-          reason: q.reason,
-          createdBy: actor,
-        },
-      });
-      return { id: movement.id };
     });
   }
 

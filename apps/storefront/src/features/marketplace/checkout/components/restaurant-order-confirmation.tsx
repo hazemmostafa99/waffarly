@@ -50,6 +50,7 @@ export function RestaurantOrderConfirmation({ receipt }: { receipt: StorefrontOr
         </p>
       </div>
       <div className="grid gap-4 p-4 sm:p-5">
+        {receipt.branchName && <p className="m-0 text-sm">الفرع: {receipt.branchName}</p>}
         <div className="flex items-center justify-between gap-3 rounded-xl border border-border px-3 py-2.5">
           <span className="text-[12px] text-muted-foreground">الحالة عند تسجيل الطلب</span>
           <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-primary">

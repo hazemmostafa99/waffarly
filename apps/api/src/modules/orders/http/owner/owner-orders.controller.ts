@@ -1,5 +1,5 @@
 /**
- * Receives owner requests to view website orders and act on their preparation or cancellation.
+ * Receives owner requests to browse and manage merchant orders.
  */
 import { StorefrontOrderStatusService } from '../../fulfillment/storefront-order-status.service.js';
 import { updateStatusSchema } from '../../checkout/storefront-checkout.schemas.js';
@@ -30,6 +30,7 @@ import {
   startOrderPreparationSchema,
 } from '../../fulfillment/order-lifecycle.schemas.js';
 import { StorefrontOrdersService } from '../../checkout/storefront-orders.service.js';
+import { ownerOrderListQuerySchema } from './owner-orders.schemas.js';
 
 @UseGuards(OwnerGuard)
 @Controller('owner/orders')
@@ -44,6 +45,19 @@ export class OwnerStorefrontOrdersController {
   @Get()
   async list(@CurrentOwner() owner: OwnerProfile, @Query() query: unknown) {
     return this.orders.listForOwner(owner.merchantId, parseCursorPageQuery(query));
+  }
+
+  @Get('inbox')
+  async listInbox(@CurrentOwner() owner: OwnerProfile, @Query() query: unknown) {
+    return this.orders.listInboxForOwner(
+      owner.merchantId,
+      parseRequest(ownerOrderListQuerySchema, query),
+    );
+  }
+
+  @Get(':id')
+  async get(@CurrentOwner() owner: OwnerProfile, @Param('id', new ParseUUIDPipe()) id: string) {
+    return this.orders.getForOwner(owner.merchantId, id);
   }
 
   @Post(':id/accept')

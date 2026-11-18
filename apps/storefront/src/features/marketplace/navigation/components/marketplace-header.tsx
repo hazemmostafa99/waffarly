@@ -20,6 +20,9 @@ import { useAccountStore } from '@/features/marketplace/account/hooks/use-accoun
 import { useCustomerSession } from '@/features/marketplace/account/hooks/use-customer-session';
 import { MarketplaceSearchForm } from '@/features/marketplace/search/components/marketplace-search-form';
 import type { MarketplaceSearchState } from '@/features/marketplace/search/model/search-state';
+import { deliveryLocations } from '@waffarly/contracts';
+import { DeliveryAreaPicker, useDeliveryArea } from '@/features/delivery/delivery-area-picker';
+import { MarketplaceDialog } from '@/components/marketplace/marketplace-dialog';
 
 export function MarketplaceHeader({
   onSearch,
@@ -35,6 +38,9 @@ export function MarketplaceHeader({
   navigation: ReactNode;
 }) {
   const [promoVisible, setPromoVisible] = useState(true);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const areaId = useDeliveryArea();
+  const deliveryArea = deliveryLocations.find((area) => area.id === areaId);
   const pathname = usePathname();
   const { query: ordersQuery } = useCustomerOrders();
   const activeOrder = !ordersQuery.isError
@@ -99,6 +105,12 @@ export function MarketplaceHeader({
   }
   return (
     <>
+      <MarketplaceDialog open={locationOpen} onClose={() => setLocationOpen(false)} title="التوصيل إلى">
+        <DeliveryAreaPicker />
+        <Button type="button" onClick={() => setLocationOpen(false)} className="mt-4 rounded-xl px-4 py-2">
+          تم
+        </Button>
+      </MarketplaceDialog>
       {promoVisible && (
         <div
           className={cn(
@@ -148,20 +160,20 @@ export function MarketplaceHeader({
                 alt="وفّرلي"
               />
             </Link>
-            <div
+            <button type="button" onClick={() => setLocationOpen(true)}
               className={cn(
                 'deliver min-w-0 max-w-36 flex items-center gap-[7px] [border-right-width:1px] [border-right-style:solid] [border-right-color:rgba(255,_255,_255,_0.16)] pr-[15px]',
-                '[&_small]:block [&_small]:text-[#d9cfe0] [&_small]:text-[11px] [&_strong]:text-[13px] [&_strong]:font-medium max-[700px]:hidden',
+                'bg-transparent text-start [&_small]:block [&_small]:text-[#d9cfe0] [&_small]:text-[11px] [&_strong]:text-[13px] [&_strong]:font-medium',
               )}
             >
               <MapPin size={16} strokeWidth={1.75} aria-hidden="true" />
               <div>
                 <small>التوصيل إلى</small>
-                <strong className="block truncate" title="دمياط الجديدة">
-                  دمياط الجديدة
+                <strong className="block truncate">
+                  {deliveryArea?.area ?? 'اختار منطقتك'}
                 </strong>
               </div>
-            </div>
+            </button>
           </div>
           <MarketplaceSearchForm
             key={`${searchState.category}:${searchState.term}`}

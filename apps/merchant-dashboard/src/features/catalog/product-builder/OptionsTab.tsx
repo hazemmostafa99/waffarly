@@ -257,36 +257,7 @@ export function OptionsTab({
               {text('Add extras', 'إضافة اختيارات')}
             </span>
           </button>
-          <button
-            type="button"
-            disabled={groups.length >= 30 || creatingGroup}
-            onClick={() => openNew('preparation')}
-          >
-            <span className="builder-template-icon">
-              <Icon name="check" />
-            </span>
-            <strong>{text('Preparation preferences', 'تفضيلات التحضير')}</strong>
-            <small>
-              {text(
-                'Regular or no salt — choose how it is prepared.',
-                'عادي أو بدون ملح — طريقة التحضير التي يفضلها العميل.',
-              )}
-            </small>
-            <span className="builder-template-action">
-              <Icon name="plus" />
-              {text('Add preferences', 'إضافة تفضيلات')}
-            </span>
-          </button>
         </div>
-        <button
-          type="button"
-          className="builder-text-button"
-          disabled={groups.length >= 30 || creatingGroup}
-          onClick={() => openNew('custom')}
-        >
-          <Icon name="plus" />
-          {text('Add custom choices', 'إضافة خيارات مخصصة')}
-        </button>
         <details className="builder-saved-choices">
           <summary>
             <Icon name="layers" />

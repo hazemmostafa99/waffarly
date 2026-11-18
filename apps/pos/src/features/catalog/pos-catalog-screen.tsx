@@ -59,6 +59,7 @@ import { PosConfirmedOrderPanel } from '../orders/pos-confirmed-order-panel.js';
 import { PosOrderSwitcher, type PosSwitcherEntry } from '../orders/pos-order-switcher.js';
 import { PosCheckoutDialog } from '../payments/pos-checkout-dialog.js';
 import { PosButton } from '../../components/pos-button.js';
+import { getPosOrderNumber } from '../orders/pos-order-number.js';
 import {
   getCurrentPosShift,
   posCurrentShiftKey,
@@ -906,10 +907,13 @@ export function POSCatalogScreen() {
       return {
         id: order.orderId,
         kind: 'confirmed',
-        reference:
-          cached?.orderReference ??
-          order.orderReference ??
-          `ORD-${order.orderId.slice(0, 8).toUpperCase()}`,
+        reference: `#${getPosOrderNumber(
+          cached ?? {
+            id: order.orderId,
+            orderReference: order.orderReference,
+            branchOrderNumber: order.branchOrderNumber,
+          },
+        )}`,
         title: cached?.customerName || t('Confirmed order'),
         subtitle: cached
           ? t('{{count}} items', {
@@ -1185,8 +1189,14 @@ export function POSCatalogScreen() {
                           {t('Add items to order')}
                         </span>
                         <h2 className="mt-1 truncate text-base font-semibold">
-                          {amendmentOrder?.orderReference ??
-                            `ORD-${amendingOrderId.slice(0, 8).toUpperCase()}`}
+                          #
+                          {getPosOrderNumber(
+                            amendmentOrder ?? {
+                              id: amendingOrderId,
+                              orderReference: null,
+                              branchOrderNumber: null,
+                            },
+                          )}
                         </h2>
                         <p className="mt-1 text-xs text-muted-foreground">
                           {t(
@@ -1210,9 +1220,7 @@ export function POSCatalogScreen() {
                   <div className="shrink-0 border-b border-border py-1.5 ps-3 pe-12">
                     <div className="flex min-h-8 items-center gap-2">
                       <span className="text-[13px] font-semibold">{t('Current order')}</span>
-                      <span className="font-mono text-[11px] text-primary">
-                        #{activeDraft?.id.slice(0, 6) ?? '—'}
-                      </span>
+                      <span className="font-mono text-[11px] text-primary">{t('Draft')}</span>
                       <PosButton
                         type="button"
                         variant="outline"
@@ -1426,14 +1434,33 @@ export function POSCatalogScreen() {
                                     >
                                       {product?.name ?? t('Product')}
                                     </span>
-                                    <strong className="shrink-0 text-[13px] tabular-nums text-primary">
-                                      {quote
-                                        ? formatNumber(Number(quote.lineTotal), {
-                                            style: 'currency',
-                                            currency: 'EGP',
-                                          })
-                                        : t('Updating...')}
-                                    </strong>
+                                    <span className="flex shrink-0 flex-col items-end text-[13px] tabular-nums text-primary">
+                                      {quote?.quote.promotion && quote.quote.originalTotalPrice && (
+                                        <del className="text-[10px] text-muted-foreground">
+                                          {formatNumber(
+                                            Number(quote.quote.originalTotalPrice) * line.quantity,
+                                            { style: 'currency', currency: 'EGP' },
+                                          )}
+                                        </del>
+                                      )}
+                                      <strong>
+                                        {quote
+                                          ? formatNumber(Number(quote.lineTotal), {
+                                              style: 'currency',
+                                              currency: 'EGP',
+                                            })
+                                          : t('Updating...')}
+                                      </strong>
+                                      {quote?.quote.promotion && (
+                                        <small className="font-semibold text-emerald-700">
+                                          {t('Product discount')} −
+                                          {formatNumber(
+                                            Number(quote.quote.promotion.discountAmount) * line.quantity,
+                                            { style: 'currency', currency: 'EGP' },
+                                          )}
+                                        </small>
+                                      )}
+                                    </span>
                                   </div>
                                   <div
                                     className={cn(
@@ -1766,7 +1793,7 @@ export function POSCatalogScreen() {
             : serverOrders.map((order) => ({
                 id: order.id,
                 kind: 'confirmed' as const,
-                reference: order.orderReference ?? `ORD-${order.id.slice(0, 8).toUpperCase()}`,
+                reference: `#${getPosOrderNumber(order)}`,
                 title:
                   order.customerName ||
                   (order.tableCode ? `${t('Table')} ${order.tableCode}` : t('Confirmed order')),
@@ -1814,6 +1841,7 @@ export function POSCatalogScreen() {
                   branchId: selectedBranchId,
                   createdAt: remote.createdAt,
                   orderReference: remote.orderReference,
+                  branchOrderNumber: remote.branchOrderNumber,
                 });
               } else selectConfirmedOrder(employee.merchantId, employee.id, entry.id);
             }
@@ -1880,6 +1908,15 @@ function LiveProductCard({
   const { t } = useLocale();
   const configurable = productHasChoices(product);
   const description = product.description?.trim();
+  const availableVariants = product.variants.filter((variant) => variant.availability === 'available');
+  const originalPrice = availableVariants.length
+    ? Math.min(...availableVariants.map((variant) => Number(variant.price)))
+    : Number(product.basePrice);
+  const sellingPrice = availableVariants.length
+    ? Math.min(
+        ...availableVariants.map((variant) => Number(variant.promotionalPrice ?? variant.price)),
+      )
+    : Number(product.promotionalPrice ?? product.basePrice);
   return (
     <button
       type="button"
@@ -1915,6 +1952,13 @@ function LiveProductCard({
             {quantity}
           </span>
         )}
+        {product.promotion?.status === 'active' && (
+          <span className="absolute start-2 top-2 rounded-md bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-destructive-foreground">
+            {product.promotion.type === 'percentage'
+              ? `-${Number(product.promotion.value)}%`
+              : t('Discount')}
+          </span>
+        )}
       </div>
       <div className="p-1.5">
         <h3 className="line-clamp-1 text-xs font-semibold leading-4">{product.name}</h3>
@@ -1928,11 +1972,19 @@ function LiveProductCard({
         )}
         <div className="mt-1 flex items-center justify-between gap-2">
           <strong className="text-xs tabular-nums">
-            {formatNumber(Number(product.basePrice), {
+            {formatNumber(sellingPrice, {
               style: 'currency',
               currency: product.currency,
             })}
           </strong>
+          {product.promotion?.status === 'active' && sellingPrice < originalPrice && (
+            <del className="text-[10px] tabular-nums text-muted-foreground">
+              {formatNumber(originalPrice, {
+                style: 'currency',
+                currency: product.currency,
+              })}
+            </del>
+          )}
           <span
             className={cn(
               'flex size-6 shrink-0 items-center justify-center rounded-md',
@@ -1989,7 +2041,12 @@ function ProductConfigurator({
       group.variantOverrides?.find((override) => override.variantId === variantId)?.available !==
       false,
   );
-  const basePriceCents = Math.round(Number(selectedVariant?.price ?? product.basePrice) * 100);
+  const regularBasePriceCents = Math.round(Number(selectedVariant?.price ?? product.basePrice) * 100);
+  const promotionalPrice = selectedVariant?.promotionalPrice ?? product.promotionalPrice;
+  const basePriceCents = Math.round(
+    Number(promotionalPrice ?? selectedVariant?.price ?? product.basePrice) * 100,
+  );
+  const promotionDiscountCents = Math.max(0, regularBasePriceCents - basePriceCents);
   const modifierPriceCents = visibleGroups.reduce(
     (total, group) =>
       total +
@@ -2104,11 +2161,19 @@ function ProductConfigurator({
                     className="accent-primary"
                   />
                   <span>{variant.name}</span>
-                  <strong className="text-xs tabular-nums">
-                    {formatNumber(Number(variant.price), {
+                  <strong className="flex flex-col items-end text-xs tabular-nums">
+                    {formatNumber(Number(variant.promotionalPrice ?? variant.price), {
                       style: 'currency',
                       currency: product.currency,
                     })}
+                    {variant.promotionalPrice && (
+                      <del className="font-normal text-muted-foreground">
+                        {formatNumber(Number(variant.price), {
+                          style: 'currency',
+                          currency: product.currency,
+                        })}
+                      </del>
+                    )}
                   </strong>
                 </label>
               ))
@@ -2248,6 +2313,26 @@ function ProductConfigurator({
         )}
       </div>
       <div className="shrink-0 border-t border-border bg-card px-4 py-3">
+        {promotionDiscountCents > 0 && (
+          <div className="mb-2 flex items-center justify-between gap-3 text-xs">
+            <span className="text-muted-foreground">{t('Product discount')}</span>
+            <span className="flex items-center gap-2">
+              <del className="text-muted-foreground">
+                {formatNumber((regularBasePriceCents + modifierPriceCents) / 100, {
+                  style: 'currency',
+                  currency: product.currency,
+                })}
+              </del>
+              <strong className="text-primary">
+                −
+                {formatNumber(promotionDiscountCents / 100, {
+                  style: 'currency',
+                  currency: product.currency,
+                })}
+              </strong>
+            </span>
+          </div>
+        )}
         <div className="mb-3 flex items-center justify-between gap-3">
           <span className="text-xs text-muted-foreground">{t('Estimated item total')}</span>
           <strong data-testid="pos-configured-item-total" className="text-base tabular-nums">

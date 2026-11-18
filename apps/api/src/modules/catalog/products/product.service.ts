@@ -37,6 +37,10 @@ import {
   assertInventoryConfigurationShape,
   inventoryConfigurationMatches,
 } from './product-inventory.rules.js';
+import {
+  assertProductPromotionPrices,
+  productPromotionData,
+} from './product-promotion.rules.js';
 import { productInclude, toProductResponse } from './product.mapper.js';
 import {
   assertBasePrice,
@@ -59,6 +63,11 @@ export class ProductService {
   async create(merchantId: string, actor: string, input: ProductInput) {
     assertBasePrice(input.basePrice);
     assertVariants(input.variants);
+    assertProductPromotionPrices(
+      input.promotion,
+      input.basePrice,
+      input.variants?.map((variant) => variant.price) ?? [],
+    );
     assertModifierConfigurationModes(input.modifierGroups, input.modifierGroupAssignments);
     if (input.availability === 'available' && !input.inventoryConfiguration) {
       throw new BadRequestException('Configure inventory before making a new product available.');
@@ -86,6 +95,7 @@ export class ProductService {
               name: input.name.trim(),
               description: input.description?.trim() || null,
               basePrice: input.basePrice,
+              ...productPromotionData(input.promotion),
               availability: input.availability,
               createdBy: actor,
               updatedBy: actor,
@@ -176,6 +186,7 @@ export class ProductService {
       where: { id, merchantId, revision },
       include: {
         images: true,
+        variants: { select: { price: true } },
         inventoryConfiguration: {
           include: {
             targets: {
@@ -197,6 +208,22 @@ export class ProductService {
     if (!primaryImageAssetId) throw new BadRequestException('At least one image is required.');
     if (input.basePrice !== undefined) assertBasePrice(input.basePrice);
     assertVariants(input.variants);
+    const promotionForValidation =
+      input.promotion === undefined
+        ? {
+            enabled: current.promotionEnabled,
+            type: current.promotionType as 'percentage' | 'amount' | null,
+            value: current.promotionValue?.toString() ?? null,
+            startsAt: current.promotionStartsAt?.toISOString() ?? null,
+            endsAt: current.promotionEndsAt?.toISOString() ?? null,
+          }
+        : input.promotion;
+    assertProductPromotionPrices(
+      promotionForValidation,
+      input.basePrice ?? current.basePrice.toString(),
+      input.variants?.map((variant) => variant.price) ??
+        current.variants.map((variant) => variant.price.toString()),
+    );
     assertModifierConfigurationModes(input.modifierGroups, input.modifierGroupAssignments);
     if (input.inventoryConfiguration) {
       assertInventoryConfigurationShape(input.inventoryConfiguration);
@@ -280,6 +307,7 @@ export class ProductService {
                 ? {}
                 : { description: input.description.trim() || null }),
               ...(input.basePrice === undefined ? {} : { basePrice: input.basePrice }),
+              ...(input.promotion === undefined ? {} : productPromotionData(input.promotion)),
               ...(input.availability === undefined ? {} : { availability: input.availability }),
               updatedBy: actor,
               revision: { increment: 1 },

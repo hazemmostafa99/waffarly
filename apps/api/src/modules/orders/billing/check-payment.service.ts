@@ -68,7 +68,7 @@ export class CheckPaymentService {
               OR: [
                 { source: 'pos' },
                 {
-                  source: 'storefront',
+                  source: { in: ['waffarly', 'storefront'] },
                   fulfillmentType: 'pickup',
                   posShiftId: { not: null },
                   status: { in: ['ready', 'completed'] },
@@ -147,7 +147,7 @@ export class CheckPaymentService {
               OR: [
                 { source: 'pos' },
                 {
-                  source: 'storefront',
+                  source: { in: ['waffarly', 'storefront'] },
                   fulfillmentType: 'pickup',
                   posShiftId: { not: null },
                   status: { in: ['ready', 'completed'] },

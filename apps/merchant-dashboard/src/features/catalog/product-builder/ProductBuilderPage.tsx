@@ -25,6 +25,7 @@ import { PreviewPublishTab } from './PreviewPublishTab.js';
 import { ProductPreview } from './ProductPreview.js';
 import { ProductCostPreviewPanel } from './ProductCostPreviewPanel.js';
 import { emptyInventoryComponent, inventoryTargetComplete } from './product-inventory.js';
+import { fromCairoDateTimeInput, toCairoDateTimeInput } from './product-promotion-time.js';
 
 const tabKeys = ['information', 'options', 'inventory', 'review'] as const;
 
@@ -46,6 +47,11 @@ export function ProductBuilderPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [basePrice, setBasePrice] = useState('');
+  const [promotionEnabled, setPromotionEnabled] = useState(false);
+  const [promotionType, setPromotionType] = useState<'percentage' | 'amount'>('percentage');
+  const [promotionValue, setPromotionValue] = useState('');
+  const [promotionStartsAt, setPromotionStartsAt] = useState('');
+  const [promotionEndsAt, setPromotionEndsAt] = useState('');
   const [availability, setAvailability] = useState<'available' | 'unavailable'>('available');
   const [categories, setCategories] = useState<CatalogCategorySummary[]>([]);
   const [media, setMedia] = useState<CatalogMediaAsset[]>([]);
@@ -112,6 +118,11 @@ export function ProductBuilderPage() {
       setName('');
       setDescription('');
       setBasePrice('');
+      setPromotionEnabled(false);
+      setPromotionType('percentage');
+      setPromotionValue('');
+      setPromotionStartsAt('');
+      setPromotionEndsAt('');
       setAvailability('available');
       setCategoryIds([]);
       setImageAssetIds([]);
@@ -144,6 +155,11 @@ export function ProductBuilderPage() {
         setName(product.name);
         setDescription(product.description ?? '');
         setBasePrice(product.basePrice);
+        setPromotionEnabled(product.promotion?.enabled ?? false);
+        setPromotionType(product.promotion?.type ?? 'percentage');
+        setPromotionValue(product.promotion?.value ?? '');
+        setPromotionStartsAt(toCairoDateTimeInput(product.promotion?.startsAt));
+        setPromotionEndsAt(toCairoDateTimeInput(product.promotion?.endsAt));
         setAvailability(product.availability);
         setCategoryIds(product.categories.map((category) => category.id));
         setImageAssetIds(productImages.map((image) => image.mediaAssetId));
@@ -320,6 +336,55 @@ export function ProductBuilderPage() {
           text('Enter a valid base price in EGP.', 'أدخل سعراً أساسياً صحيحاً بالجنيه المصري.'),
         );
         return false;
+      }
+      if (promotionEnabled || promotionValue.trim()) {
+        if (
+          !promotionValue.trim() ||
+          !/^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(promotionValue) ||
+          Number(promotionValue) <= 0 ||
+          (promotionType === 'percentage' && Number(promotionValue) >= 100)
+        ) {
+          setError(
+            text(
+              'Enter a positive discount value; a percentage must be below 100%.',
+              'أدخل قيمة خصم موجبة، ويجب أن تكون النسبة أقل من 100%.',
+            ),
+          );
+          return false;
+        }
+        const start = promotionStartsAt ? fromCairoDateTimeInput(promotionStartsAt) : null;
+        const end = promotionEndsAt ? fromCairoDateTimeInput(promotionEndsAt) : null;
+        if (
+          (promotionStartsAt && !start) ||
+          (promotionEndsAt && !end) ||
+          (start && end && Date.parse(end) <= Date.parse(start))
+        ) {
+          setError(
+            text(
+              'Check the promotion schedule. The end must be after the start.',
+              'راجع مواعيد العرض؛ وقت الانتهاء لازم يكون بعد وقت البداية.',
+            ),
+          );
+          return false;
+        }
+        const prices = variants.length ? variants.map((variant) => variant.price) : [basePrice];
+        const invalidPromotionPrice = prices.some((price) => {
+          const priceCents = Math.round(Number(price) * 100);
+          const discountCents =
+            promotionType === 'amount'
+              ? Math.round(Number(promotionValue) * 100)
+              : Math.round((priceCents * Math.round(Number(promotionValue) * 100)) / 10_000);
+          return !Number.isFinite(priceCents) || discountCents >= priceCents;
+        });
+        if (invalidPromotionPrice) {
+          setError(
+            text(
+              'The discount must leave every product option above EGP 0.00.',
+              'قيمة الخصم لازم تسيب سعر كل اختيار أعلى من ٠٫٠٠ جنيه.',
+            ),
+          );
+          return false;
+        }
       }
       if (!categoryIds.length) {
         setError(text('Choose at least one category.', 'اختر تصنيفاً واحداً على الأقل.'));
@@ -715,6 +780,17 @@ export function ProductBuilderPage() {
             name: name.trim(),
             description: description.trim(),
             basePrice: Number(basePrice).toFixed(2),
+            promotion: promotionValue.trim()
+              ? {
+                  enabled: promotionEnabled,
+                  type: promotionType,
+                  value: Number(promotionValue).toFixed(2),
+                  startsAt: promotionStartsAt
+                    ? fromCairoDateTimeInput(promotionStartsAt)
+                    : null,
+                  endsAt: promotionEndsAt ? fromCairoDateTimeInput(promotionEndsAt) : null,
+                }
+              : null,
             availability,
             imageAssetIds,
             primaryImageAssetId: imageAssetIds.includes(primaryImageAssetId)
@@ -749,16 +825,11 @@ export function ProductBuilderPage() {
 
   return (
     <div className="product-builder-page" dir={isArabic ? 'rtl' : 'ltr'}>
-      <header className="product-builder-topbar product-builder-actions-only">
-        <h1 className="sr-only">
-          {isEditing
-            ? text('Edit product', 'تعديل المنتج')
-            : text('Create a product', 'إضافة منتج')}
-        </h1>
-        <Link className="builder-button ghost" to="/products">
-          {text('Cancel', 'إلغاء')}
-        </Link>
-      </header>
+      <h1 className="sr-only">
+        {isEditing
+          ? text('Edit product', 'تعديل المنتج')
+          : text('Create a product', 'إضافة منتج')}
+      </h1>
 
       <div
         className="builder-steps"
@@ -854,6 +925,18 @@ export function ProductBuilderPage() {
                   basePrice={basePrice}
                   onBasePriceChange={setBasePrice}
                   productMode={productMode}
+                  promotionEnabled={promotionEnabled}
+                  onPromotionEnabledChange={setPromotionEnabled}
+                  promotionType={promotionType}
+                  onPromotionTypeChange={setPromotionType}
+                  promotionValue={promotionValue}
+                  onPromotionValueChange={setPromotionValue}
+                  promotionStartsAt={promotionStartsAt}
+                  onPromotionStartsAtChange={setPromotionStartsAt}
+                  promotionEndsAt={promotionEndsAt}
+                  onPromotionEndsAtChange={setPromotionEndsAt}
+                  previewPrices={variants.length ? variants.map((variant) => variant.price) : [basePrice]}
+                  formatNumber={formatNumber}
                   categories={categories}
                   categoryIds={categoryIds}
                   onCategoryIdsChange={setCategoryIds}
@@ -972,6 +1055,9 @@ export function ProductBuilderPage() {
                 </div>
               )}
               <footer className="builder-navigation">
+                <Link className="builder-button ghost" to="/products">
+                  {text('Cancel', 'إلغاء')}
+                </Link>
                 <button
                   type="button"
                   className="builder-button ghost"
@@ -1029,6 +1115,9 @@ export function ProductBuilderPage() {
             name={name}
             description={description}
             basePrice={basePrice}
+            promotionEnabled={promotionEnabled}
+            promotionType={promotionType}
+            promotionValue={promotionValue}
             image={primaryImage?.publicUrl}
             categoryName={selectedCategories[0]?.name}
             groups={groups}

@@ -51,7 +51,7 @@ describe('POS kitchen tickets', () => {
           status: { in: ['pending', 'accepted', 'preparing', 'ready'] },
         },
         {
-          lines: { some: { stockHandling: 'recipe_acceptance' } },
+          lines: { some: { stockHandling: { in: ['recipe_acceptance', 'direct_acceptance'] } } },
           OR: [
             {
               status: 'pending',

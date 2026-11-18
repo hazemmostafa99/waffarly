@@ -3,3 +3,4 @@ export { ShiftsService } from './shifts.service.js';
 export { readDeliveryBalances } from './delivery-reconciliation.js';
 
 export { lockBranchOperationShift } from './branch-operation-shift.js';
+export { recordSafeMovementInTransaction } from './cash-custody.persistence.js';

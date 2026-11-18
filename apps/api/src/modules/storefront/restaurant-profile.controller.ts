@@ -50,6 +50,9 @@ export class PublicRestaurantProfileController {
     const input = parseRequest(z.object({ cursor: z.uuid().optional() }).strict(), query);
     return this.service.menu(parseRequest(slugSchema, slug), input.cursor);
   }
+  @Get(':slug/fulfillment') fulfillment(@Param('slug') slug: string) {
+    return this.service.fulfillment(parseRequest(slugSchema, slug));
+  }
   @Get(':slug') detail(@Param('slug') slug: string) {
     return this.service.detail(parseRequest(slugSchema, slug));
   }

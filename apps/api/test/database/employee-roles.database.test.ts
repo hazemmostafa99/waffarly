@@ -100,7 +100,7 @@ it(
                 branchId: otherBranch.id,
                 role: 'accountant',
               }),
-              /belong to this business/,
+              /belongs to this business/,
             );
             const cashier = await employees.create(merchant.id, 'owner', {
               ...input,
@@ -117,6 +117,7 @@ it(
                 tokenHash: createHash('sha256').update(sessionToken).digest('hex'),
                 subjectKind: 'POS',
                 subjectId: cashier.id,
+                deviceId: '88888888-8888-4888-8888-888888888888',
                 expiresAt: new Date(Date.now() + 60_000),
               },
             });
@@ -127,6 +128,7 @@ it(
                 tokenHash: logoutSessionHash,
                 subjectKind: 'POS',
                 subjectId: cashier.id,
+                deviceId: '99999999-9999-4999-8999-999999999999',
                 expiresAt: new Date(Date.now() + 60_000),
               },
             });
@@ -187,7 +189,7 @@ it(
               await tx.authSession.findUnique({ where: { tokenHash: logoutSessionHash } }),
               null,
             );
-            await assert.rejects(auth.requirePosEmployee(logoutRequest), /Session has expired/);
+            await assert.rejects(auth.requirePosEmployee(logoutRequest), /session has expired/i);
             assert.ok(
               await tx.authSession.findUnique({
                 where: { tokenHash: createHash('sha256').update(sessionToken).digest('hex') },
@@ -232,7 +234,7 @@ it(
               active: false,
               branchId: replacementBranch.id,
             });
-            await assert.rejects(auth.requirePosEmployee(request), /Session has expired/);
+            await assert.rejects(auth.requirePosEmployee(request), /session has expired/i);
             throw rollback;
           },
           { timeout: 30_000 },

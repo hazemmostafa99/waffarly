@@ -9,6 +9,7 @@ import {
   type PendingPosRefund,
 } from '../../app/pos-workspace-store.js';
 import { PosButton } from '../../components/pos-button.js';
+import { getPosOrderNumber } from '../orders/pos-order-number.js';
 import { ApiError } from '../../lib/api-client.js';
 import { formatMoneyCents, parseMoneyCents } from './payment-form-model.js';
 import {
@@ -345,10 +346,13 @@ export function PosRefundDialog({
               <ReceiptRow label={t('Receipt number')} value={receipt.receiptNumber} />
               <ReceiptRow
                 label={t('Order')}
-                value={
-                  paymentState?.context?.order.orderReference ??
-                  `ORD-${receipt.orderId.slice(0, 8).toUpperCase()}`
-                }
+                value={`#${getPosOrderNumber(
+                  paymentState?.context?.order ?? {
+                    id: receipt.orderId,
+                    orderReference: null,
+                    branchOrderNumber: null,
+                  },
+                )}`}
               />
               <ReceiptRow label={t('Issued')} value={formatDate(receipt.issuedAt, true)} />
               <ReceiptRow label={t('Cashier')} value={receipt.issuedBy} />

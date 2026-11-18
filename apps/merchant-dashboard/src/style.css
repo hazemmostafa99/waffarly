@@ -1116,6 +1116,16 @@
     font-size: 0.73rem;
     white-space: nowrap;
   }
+  .merchant-product-prices {
+    display: grid;
+    justify-items: end;
+    gap: 2px;
+  }
+  .merchant-product-prices del {
+    color: #849088;
+    font-size: 0.63rem;
+    white-space: nowrap;
+  }
   .merchant-product-status {
     border-radius: 999px;
     padding: 4px 8px;

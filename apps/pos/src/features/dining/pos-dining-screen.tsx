@@ -7,6 +7,7 @@ import { Link, useOutletContext } from 'react-router-dom';
 import { usePosWorkspaceStore } from '../../app/pos-workspace-store.js';
 import { PosButton } from '../../components/pos-button.js';
 import { PosCheckoutDialog } from '../payments/pos-checkout-dialog.js';
+import { getPosOrderNumber } from '../orders/pos-order-number.js';
 import {
   getPosDiningSessions,
   getPosDiningTables,
@@ -319,7 +320,7 @@ export function PosDiningScreen() {
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <strong className="text-sm">
-                          {t('Order')} {order.orderReference ?? `#${order.id.slice(0, 8)}`}
+                          {t('Order')} #{getPosOrderNumber(order)}
                         </strong>
                         <span className="text-sm font-semibold">
                           {formatNumber(Number(order.total), {

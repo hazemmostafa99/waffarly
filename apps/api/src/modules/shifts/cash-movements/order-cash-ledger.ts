@@ -13,12 +13,14 @@ export async function lockOpenShiftForSale(
   tx: Prisma.TransactionClient,
   employee: PosEmployeeSession,
   registerId: string,
-): Promise<{ id: string; branchId: string }> {
+): Promise<{ id: string; branchId: string; branchOrderSessionId: string }> {
   if (!employee.permissions.includes('sell'))
     throw new ForbiddenException('This employee is not authorized to sell.');
   assertPosRegisterAssignment(employee, registerId);
-  const rows = await tx.$queryRaw<Array<{ id: string; branchId: string }>>`
-      SELECT s."id", s."branchId"
+  const rows = await tx.$queryRaw<
+    Array<{ id: string; branchId: string; branchOrderSessionId: string }>
+  >`
+      SELECT s."id", s."branchId", s."branchOrderSessionId"
       FROM "pos_shifts" s
       INNER JOIN "pos_registers" r
         ON r."id" = s."registerId" AND r."merchantId" = s."merchantId"
@@ -30,6 +32,8 @@ export async function lockOpenShiftForSale(
     `;
   const shift = rows[0];
   if (!shift) throw new ConflictException('Open a register shift before confirming a sale.');
+  if (!shift.branchOrderSessionId)
+    throw new ConflictException('This register shift is missing its branch order session.');
   assertShiftBranchAssignment(employee, shift.branchId);
   return shift;
 }

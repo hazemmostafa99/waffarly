@@ -13,7 +13,8 @@ export async function handoverOrder(
   merchantId: string,
 ): Promise<void> {
   const orderId = order.id;
-  const isRoutedStorefrontOrder = order.source === 'storefront' && order.branchId !== null;
+  const isRoutedOnlineOrder =
+    (order.source === 'storefront' || order.source === 'waffarly') && order.branchId !== null;
 
   if (
     await tx.posDelivery.findFirst({
@@ -24,9 +25,11 @@ export async function handoverOrder(
     throw new ConflictException('Confirm customer delivery from the delivery follow-up screen.');
   if (
     !(order.source === 'pos' && order.kitchenTicket) &&
-    !(isRoutedStorefrontOrder && order.fulfillmentType === 'pickup' && order.posShiftId)
+    !(isRoutedOnlineOrder && order.fulfillmentType === 'pickup' && order.posShiftId)
   )
-    throw new ConflictException('Only ticketed POS orders can be handed over here.');
+    throw new ConflictException(
+      'Only ticketed kitchen orders and collected pickups can be handed over here.',
+    );
   if (order.status !== 'ready')
     throw new ConflictException('Only ready orders can be handed over.');
 

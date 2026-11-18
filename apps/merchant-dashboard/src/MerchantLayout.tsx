@@ -5,29 +5,8 @@ import type { OwnerProfile } from '@waffarly/contracts';
 import { apiRequest } from './lib/api-client.js';
 import { Icon } from './Icons.js';
 import { dashboardCopy } from './dashboard-copy.js';
+import { MerchantNavigation } from './MerchantNavigation.js';
 import { SubscriptionStatusBadge } from './features/account/SubscriptionStatusBadge.js';
-
-const navigation = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'home' },
-  { id: 'orders', label: 'Orders', icon: 'orders' },
-  { id: 'products', label: 'Products', icon: 'box' },
-  { id: 'categories', label: 'Categories', icon: 'grid' },
-  { id: 'inventory', label: 'Inventory', icon: 'box' },
-  { id: 'media', label: 'Media Library', icon: 'image' },
-  { id: 'customers', label: 'Customers', icon: 'customers' },
-  { id: 'discounts', label: 'Discounts', icon: 'discounts' },
-  { id: 'branches', label: 'Branches', icon: 'branches' },
-  { id: 'employees', label: 'Employees', icon: 'customers' },
-  { id: 'delivery-couriers', label: 'Delivery couriers', icon: 'branches' },
-  { id: 'pos-registers', label: 'Registers', icon: 'orders' },
-  { id: 'pos-cash', label: 'Cash drawers & safes', icon: 'revenue' },
-  { id: 'pos-tables', label: 'Tables', icon: 'grid' },
-  { id: 'pos-shift-reports', label: 'Shift Reports', icon: 'receipt' },
-  { id: 'pos-item-returns', label: 'Returns & Waste', icon: 'receipt' },
-  { id: 'pos-operations', label: 'Operations', icon: 'revenue' },
-  { id: 'profitability', label: 'Product profitability', icon: 'revenue' },
-  { id: 'settings', label: 'Settings', icon: 'settings' },
-] as const;
 
 export function MerchantLayout() {
   const { t, locale, errorText } = useLocale();
@@ -59,54 +38,6 @@ export function MerchantLayout() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Sign out failed.');
     }
-  }
-
-  const current =
-    navigation.find(
-      (item) =>
-        location.pathname === `/${item.id}` ||
-        (item.id === 'inventory' && location.pathname.startsWith('/inventory/')) ||
-        (item.id === 'products' && location.pathname.startsWith('/products/')) ||
-        (item.id === 'dashboard' && location.pathname === '/'),
-    ) ?? navigation[0];
-  const isProductBuilder = [
-    '/products/new',
-    '/products/create',
-    '/products/builder',
-    '/product-builder',
-  ].includes(location.pathname);
-
-  function navigationLabel(item: (typeof navigation)[number]): string {
-    if (item.id === 'inventory') return copy('Inventory');
-    if (locale === 'ar') {
-      if (item.id === 'pos-cash') return 'النقدية والخزنة';
-      if (item.id === 'pos-operations') return 'تقارير التشغيل';
-      if (item.id === 'pos-registers') return 'نقاط البيع';
-      if (item.id === 'pos-tables') return 'ترابيزات';
-      if (item.id === 'pos-shift-reports') return 'تقارير الورديات';
-      if (item.id === 'pos-item-returns') return 'مرتجعات وهالك';
-      if (item.id === 'profitability') return 'ربحية المنتجات';
-      if (item.id === 'employees') return 'الموظفون';
-      if (item.id === 'delivery-couriers') return 'طيارو التوصيل';
-    }
-    return t(item.label);
-  }
-
-  function navigationLink(item: (typeof navigation)[number]) {
-    return (
-      <NavLink
-        key={item.id}
-        to={item.id === 'dashboard' ? '/' : `/${item.id}`}
-        end={item.id !== 'inventory'}
-        className={({ isActive }) =>
-          `merchant-nav-item ${isActive || (item.id === 'products' && isProductBuilder) ? 'active' : ''}`
-        }
-        onClick={() => setMenuOpen(false)}
-      >
-        <Icon name={item.icon} />
-        <span>{navigationLabel(item)}</span>
-      </NavLink>
-    );
   }
 
   return profile === undefined ? (
@@ -153,46 +84,7 @@ export function MerchantLayout() {
         >
           <Icon name="close" />
         </button>
-        <nav aria-label={t('Merchant navigation')}>
-          {navigation.map((item) => {
-            if (item.id === 'pos-registers') {
-              return (
-                <details
-                  key={`pos-${current.id}`}
-                  className="merchant-pos-navigation"
-                  open={current.id.startsWith('pos-')}
-                >
-                  <summary className="merchant-nav-item">
-                    <Icon name="store" />
-                    <span>{locale === 'ar' ? 'إدارة نقاط البيع' : 'Sales workspace'}</span>
-                    <Icon name="chevron" />
-                  </summary>
-                  <div className="merchant-pos-navigation-links">
-                    {navigation.filter((entry) => entry.id.startsWith('pos-')).map(navigationLink)}
-                  </div>
-                </details>
-              );
-            }
-            return item.id.startsWith('pos-') ? null : navigationLink(item);
-          })}
-        </nav>
-        <div className="merchant-sidebar-tip">
-          <span className="merchant-tip-icon">
-            <Icon name="store" />
-          </span>
-          <strong>{copy('Grow your business')}</strong>
-          <b>{copy('with Waffarly')}</b>
-          <p>{copy('Add more branches and reach more customers.')}</p>
-          <button
-            type="button"
-            onClick={() => {
-              navigate('/branches');
-              setMenuOpen(false);
-            }}
-          >
-            <Icon name="plus" /> {t('Add Branch')}
-          </button>
-        </div>
+        <MerchantNavigation onNavigate={() => setMenuOpen(false)} />
         <div className="merchant-sidebar-footer">
           <NavLink to="/account" className="min-w-0 no-underline">
             <SubscriptionStatusBadge status={profile.subscriptionStatus} />
@@ -209,17 +101,6 @@ export function MerchantLayout() {
             onClick={() => setMenuOpen(!menuOpen)}
           >
             {t('Menu')}
-          </button>
-          <button
-            type="button"
-            className="merchant-branch-switcher"
-            onClick={() => navigate('/branches')}
-          >
-            <span className="merchant-business-icon">
-              <Icon name="store" />
-            </span>
-            <span>{copy('Zamalek Branch')}</span>
-            <Icon name="chevron" />
           </button>
           <label className="merchant-search">
             <Icon name="search" />

@@ -101,6 +101,7 @@ export interface PosConfirmedOrderReference {
   branchId: string;
   createdAt: string;
   orderReference?: string | null | undefined;
+  branchOrderNumber?: number | null | undefined;
   lastOpenedAt?: string;
 }
 
@@ -150,7 +151,12 @@ interface WorkspaceState {
     employeeId: string,
     draftId: string,
     requestId: string,
-    order: { id: string; createdAt: string; orderReference?: string | null },
+    order: {
+      id: string;
+      createdAt: string;
+      orderReference?: string | null;
+      branchOrderNumber?: number | null;
+    },
   ) => void;
   openServerOrder: (
     merchantId: string,
@@ -1121,6 +1127,7 @@ export const usePosWorkspaceStore = create<WorkspaceState>((set, get) => ({
             branchId: draft.branchId,
             createdAt: order.createdAt,
             orderReference: order.orderReference,
+            branchOrderNumber: order.branchOrderNumber,
           },
         },
         selectedConfirmedOrderId: draft.branchId === current.selectedBranchId ? order.id : null,

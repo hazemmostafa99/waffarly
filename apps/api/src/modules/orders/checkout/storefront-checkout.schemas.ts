@@ -31,6 +31,8 @@ export const createOrderSchema = z
       .regex(/^[A-Z0-9][A-Z0-9_-]{2,31}$/)
       .optional(),
     deliveryAreaId: z.string().trim().min(1).max(80).optional(),
+    pickupBranchId: z.uuid().optional(),
+    fulfillmentQuoteKey: z.string().regex(/^[a-f0-9]{64}$/).optional(),
     restaurantSettingsRevision: z.number().int().positive().optional(),
     customerName: z.string().trim().min(2).max(120),
     customerPhone: z

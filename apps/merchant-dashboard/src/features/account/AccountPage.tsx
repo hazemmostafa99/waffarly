@@ -444,7 +444,9 @@ export function AccountPage() {
                 {text('Copy link', 'نسخ الرابط')}
               </Button>
               <Button variant="ghost" size="sm" asChild>
-                <Link to="/settings#settings-identity">{text('Store design', 'تصميم المتجر')}</Link>
+                <Link to="/settings?section=design#settings-identity">
+                  {text('Independent storefront design', 'مظهر المتجر المستقل')}
+                </Link>
               </Button>
             </div>
             <p className="m-0 max-w-none text-xs text-muted-foreground">

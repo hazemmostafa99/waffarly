@@ -11,6 +11,9 @@ export interface PosReceiptLineSource {
   quantity: number;
   unitPrice: string;
   total: string;
+  promotionType?: 'percentage' | 'amount' | null;
+  promotionValue?: string | null;
+  promotionDiscount?: string;
 }
 
 export type PosReceiptPaymentSource = PosReceiptPayment;
@@ -22,7 +25,9 @@ export interface PosReceiptSnapshotInput {
   merchantName: string;
   branchName: string | null;
   orderId: string;
+  source?: PosReceipt['source'];
   orderReference?: string | null;
+  branchOrderNumber?: number | null;
   orderCreatedAt: Date;
   fulfillmentType: PosReceipt['fulfillmentType'];
   tableCode: string | null;
@@ -54,7 +59,9 @@ export function buildPosReceiptSnapshot(input: PosReceiptSnapshotInput): PosRece
     merchantName: input.merchantName,
     branchName: input.branchName,
     orderId: input.orderId,
+    ...(input.source ? { source: input.source } : {}),
     orderReference: input.orderReference ?? `ORD-${input.orderId.slice(0, 8).toUpperCase()}`,
+    ...(input.branchOrderNumber != null ? { branchOrderNumber: input.branchOrderNumber } : {}),
     orderCreatedAt: input.orderCreatedAt.toISOString(),
     fulfillmentType: input.fulfillmentType,
     tableCode: input.tableCode,
@@ -68,6 +75,12 @@ export function buildPosReceiptSnapshot(input: PosReceiptSnapshotInput): PosRece
       ...item,
       unitPrice: formatCents(toCents(item.unitPrice)),
       total: formatCents(toCents(item.total)),
+      ...(item.promotionValue
+        ? { promotionValue: formatCents(toCents(item.promotionValue)) }
+        : {}),
+      ...(item.promotionDiscount
+        ? { promotionDiscount: formatCents(toCents(item.promotionDiscount)) }
+        : {}),
     })),
     payments: input.payments.map((payment) => ({
       ...payment,

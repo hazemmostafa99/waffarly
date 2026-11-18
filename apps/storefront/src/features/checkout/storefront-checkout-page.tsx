@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import Link from '../../components/storefront/storefront-link';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, CheckCircle2, LoaderCircle, ShoppingBag } from 'lucide-react';
@@ -13,7 +13,9 @@ import type {
 } from '@waffarly/contracts';
 import { Button, Card, Input, Textarea } from '@waffarly/ui';
 import { useLocale } from '@waffarly/ui';
-import { apiPost } from '../../lib/api-client';
+import { ApiError, apiPost } from '../../lib/api-client';
+import { RestaurantRouteFields, useRestaurantFulfillment } from '../delivery/restaurant-route-fields';
+import { useDeliveryArea } from '../delivery/delivery-area-picker';
 import { formatStorefrontPrice } from '../../lib/storefront-format';
 import { storefrontCopy } from '../../lib/storefront-copy';
 import { useStorefrontStore } from '../../providers/storefront-providers';
@@ -42,12 +44,28 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
   });
   const [quote, setQuote] = useState<StorefrontCheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState('');
+  const restaurant = catalog.activity === 'restaurant';
+  const options = useRestaurantFulfillment(restaurant ? catalog.slug : undefined);
+  const locationId = useDeliveryArea();
+  const [legacyArea, setLegacyArea] = useState('');
+  const [pickup, setPickup] = useState('');
+  const [reviewed, setReviewed] = useState<{ key: string; quote: StorefrontCheckoutQuote } | null>(null);
+  const attempt = useRef<CreateStorefrontOrderRequest | null>(null);
+  const [uncertain, setUncertain] = useState(false);
+  const branchRouting = options.data?.onlineBranches !== undefined;
+  const deliveryAreaId = branchRouting ? locationId : legacyArea;
+  const routeInput = fields.fulfillmentType === 'delivery' && deliveryAreaId ? { deliveryAreaId }
+    : fields.fulfillmentType === 'pickup' && branchRouting && pickup ? { pickupBranchId: pickup }
+      : {};
+  const reviewKey = JSON.stringify({ cart, fields, routeInput });
+  const reviewedQuote = reviewed?.key === reviewKey ? reviewed.quote : null;
 
   function quoteRequest() {
     return apiPost<StorefrontCheckoutQuote>(
       `/catalog/stores/${encodeURIComponent(catalog.slug)}/orders/quote`,
       {
         fulfillmentType: fields.fulfillmentType,
+        ...routeInput,
         items: cart.map((line) => ({
           productId: line.productId,
           ...(line.variantId ? { variantId: line.variantId } : {}),
@@ -61,9 +79,20 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
     );
   }
 
+  const reviewMutation = useMutation({
+    mutationFn: async () => ({ key: reviewKey, quote: await quoteRequest() }),
+    onSuccess: (result) => {
+      setReviewed(result);
+      setQuote(result.quote);
+    },
+  });
   const orderMutation = useMutation({
     mutationKey: storefrontQueryKeys.order(catalog.slug),
     mutationFn: async (checkout: CheckoutFields) => {
+      const post = (body: CreateStorefrontOrderRequest) => apiPost<StorefrontOrderReceipt>(
+        `/catalog/stores/${encodeURIComponent(catalog.slug)}/orders`, body, { credentials: 'include' },
+      );
+      if (attempt.current) return post(attempt.current);
       if (cart.length === 0) throw new Error(t.basketEmpty);
 
       await Promise.all(
@@ -82,6 +111,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
         customerName: checkout.customerName.trim(),
         customerPhone: checkout.customerPhone.trim(),
         fulfillmentType: checkout.fulfillmentType,
+        ...routeInput,
         ...(checkout.discountCode.trim()
           ? { discountCode: checkout.discountCode.trim().toUpperCase() }
           : {}),
@@ -95,18 +125,34 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
           quantity: line.quantity,
         })),
       };
-      const reviewedQuote = await quoteRequest();
-      request.reviewedTotal = reviewedQuote.total;
-      if (reviewedQuote.restaurantSettingsRevision)
-        request.restaurantSettingsRevision = reviewedQuote.restaurantSettingsRevision;
-
-      return apiPost<StorefrontOrderReceipt>(
-        `/catalog/stores/${encodeURIComponent(catalog.slug)}/orders`,
-        request,
-        { credentials: 'include' },
-      );
+      const finalQuote = reviewedQuote ?? await quoteRequest();
+      if (finalQuote.fulfillmentQuoteKey && !reviewedQuote)
+        throw new Error('راجع الفرع والسعر قبل تأكيد الطلب.');
+      request.reviewedTotal = finalQuote.total;
+      if (finalQuote.restaurantSettingsRevision)
+        request.restaurantSettingsRevision = finalQuote.restaurantSettingsRevision;
+      if (finalQuote.fulfillmentQuoteKey) {
+        request.fulfillmentQuoteKey = finalQuote.fulfillmentQuoteKey;
+        request.requestId = crypto.randomUUID();
+        attempt.current = request;
+      }
+      return post(request);
     },
-    onSuccess: () => clearCart(),
+    onSuccess: () => {
+      attempt.current = null;
+      setUncertain(false);
+      clearCart();
+    },
+    onError: (error) => {
+      if (attempt.current && !(error instanceof ApiError && [400, 401, 403, 404, 409, 422].includes(error.statusCode))) {
+        setUncertain(true);
+      } else {
+        attempt.current = null;
+        setUncertain(false);
+        setReviewed(null);
+        if (restaurant) void options.refetch();
+      }
+    },
   });
 
   function update<K extends keyof CheckoutFields>(key: K, value: CheckoutFields[K]) {
@@ -119,7 +165,13 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!orderMutation.isPending) orderMutation.mutate(fields);
+    if (orderMutation.isPending || reviewMutation.isPending) return;
+    if (!attempt.current && branchRouting && !reviewedQuote) {
+      orderMutation.reset();
+      reviewMutation.mutate();
+    } else {
+      orderMutation.mutate(fields);
+    }
   }
 
   if (!hasHydrated) {
@@ -164,6 +216,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
               </strong>
             </div>
           )}
+          {orderMutation.data.branchName && <p className="text-sm">الفرع: {orderMutation.data.branchName}</p>}
           <div className="flex items-center justify-between gap-4 border-t border-store-border pt-4">
             <span className="text-sm font-bold text-store-muted">{t.orderTotal}</span>
             <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
@@ -336,6 +389,14 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                 </label>
               ))}
             </fieldset>
+            {options.data && (
+              <fieldset disabled={uncertain || orderMutation.isPending || reviewMutation.isPending}>
+                <RestaurantRouteFields settings={options.data} fulfillment={fields.fulfillmentType}
+                  area={legacyArea} pickup={pickup}
+                  onArea={(id) => { setLegacyArea(id); setQuote(null); }}
+                  onPickup={(id) => { setPickup(id); setQuote(null); }} />
+              </fieldset>
+            )}
             {fields.fulfillmentType === 'delivery' && (
               <label className="grid gap-2 text-sm font-bold text-store-ink">
                 {t.address}
@@ -362,15 +423,28 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
             </p>
           )}
 
+          {options.isError && restaurant && <p role="alert">تعذر تحميل خيارات الاستلام.{' '}
+            <button type="button" onClick={() => void options.refetch()}>حاول تاني</button>
+          </p>}
+          {reviewMutation.isError && <p role="alert">{reviewMutation.error.message}</p>}
+          {reviewedQuote?.branch && !uncertain && <div className="rounded-xl border p-3 text-sm" role="status">
+            <p>الفرع: {reviewedQuote.branch.name}</p>
+            {fields.fulfillmentType === 'pickup' && reviewedQuote.branch.address && <p>{reviewedQuote.branch.address}</p>}
+            {reviewedQuote.deliveryAreaName && <p>{reviewedQuote.deliveryAreaName}</p>}
+            <p>الإجمالي: {formatStorefrontPrice(reviewedQuote.total, locale)}</p>
+          </div>}
           <Button
             type="submit"
-            disabled={orderMutation.isPending}
+            formNoValidate={uncertain}
+            disabled={orderMutation.isPending || reviewMutation.isPending || (restaurant && !options.data && !uncertain)}
             className="h-11 rounded-xl bg-store-accent font-heading text-sm font-extrabold hover:bg-store-primary-dark"
           >
             {orderMutation.isPending && (
               <LoaderCircle className="size-5 animate-spin" aria-hidden="true" />
             )}
-            {orderMutation.isPending ? t.submittingOrder : t.submitOrder}
+            {uncertain ? 'أعد نفس محاولة التأكيد' : orderMutation.isPending ? t.submittingOrder
+              : reviewMutation.isPending ? 'جارٍ مراجعة الطلب…'
+                : branchRouting && !reviewedQuote ? 'راجع الفرع والسعر' : t.submitOrder}
             {!orderMutation.isPending && <Arrow className="size-4" aria-hidden="true" />}
           </Button>
           <p className="text-center text-xs leading-5 text-store-muted">{t.noPayment}</p>
@@ -387,8 +461,11 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
               </span>
             </div>
             <ul className="mt-4 grid gap-3">
-              {cart.map((line) => {
+              {cart.map((line, index) => {
                 const product = catalog.products.find((item) => item.id === line.productId);
+                const promotion = quote?.promotions?.[index];
+                const unitPrice = quote?.unitPrices[index] ?? line.unitPriceSnapshot;
+                const originalUnitPrice = quote?.originalUnitPrices?.[index];
                 return (
                   <li
                     key={line.key}
@@ -397,9 +474,26 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                     <span className="min-w-0 font-medium text-store-muted">
                       {line.quantity} × {product?.name ?? t.unavailable}
                     </span>
-                    <strong className="shrink-0 font-bold text-store-ink">
-                      <bdi dir="auto">{formatStorefrontPrice(line.unitPriceSnapshot, locale)}</bdi>
-                    </strong>
+                    <span className="shrink-0 text-end">
+                      {promotion && originalUnitPrice && (
+                        <del className="block text-xs text-store-muted">
+                          <bdi dir="auto">
+                            {formatStorefrontPrice(originalUnitPrice, locale)}
+                          </bdi>
+                        </del>
+                      )}
+                      <strong className="font-bold text-store-ink">
+                        <bdi dir="auto">{formatStorefrontPrice(unitPrice, locale)}</bdi>
+                      </strong>
+                      {promotion && (
+                        <small className="block font-bold text-store-primary">
+                          {t.productDiscount} −
+                          <bdi dir="auto">
+                            {formatStorefrontPrice(promotion.discountAmount, locale)}
+                          </bdi>
+                        </small>
+                      )}
+                    </span>
                   </li>
                 );
               })}

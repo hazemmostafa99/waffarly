@@ -1,16 +1,20 @@
-import { RecipeOrderActions } from './features/orders/RecipeOrderActions.js';
-import { OrderCustomerAssignment } from './features/orders/OrderCustomerAssignment.js';
-import { Fragment, useEffect, useMemo, useState } from 'react';
-import type { StorefrontOrderStatus, StorefrontOrderSummary } from '@waffarly/contracts';
+import { Fragment, useEffect, useState } from 'react';
+import type {
+  StorefrontOrderListPage,
+  StorefrontOrderStatus,
+  StorefrontOrderSummary,
+} from '@waffarly/contracts';
 import { useLocale } from '@waffarly/ui';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { Icon } from './Icons.js';
-import { apiRequest } from './lib/api-client.js';
+import { apiRequestSingle } from './lib/api-client.js';
 import { ordersCopy } from './orders-copy.js';
 
-type DateRange = 'all' | 'today' | 'week' | 'month';
-type FulfillmentFilter = 'all' | 'pickup' | 'delivery';
+type FulfillmentFilter = 'all' | 'pickup' | 'delivery' | 'dine_in' | 'takeaway';
 type OrderStatusFilter = 'all' | StorefrontOrderStatus;
+type OrderSourceFilter = 'all' | 'waffarly' | 'storefront' | 'pos';
+type OrderListItem = StorefrontOrderListPage['items'][number];
+const pageSize = 25;
 
 const statusColors: Record<StorefrontOrderStatus, string> = {
   pending: '#f5bd59',
@@ -22,16 +26,6 @@ const statusColors: Record<StorefrontOrderStatus, string> = {
   rejected: '#e98978',
 };
 
-function matchesDateRange(createdAt: string, dateRange: DateRange) {
-  if (dateRange === 'all') return true;
-  const created = new Date(createdAt);
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  if (dateRange === 'today') return created >= start;
-  start.setDate(start.getDate() - (dateRange === 'week' ? 6 : 29));
-  return created >= start;
-}
-
 export function StorefrontOrdersPage() {
   const { t, locale, formatNumber, formatDigits } = useLocale();
   const language = locale === 'ar' ? 'ar' : 'en';
@@ -40,100 +34,120 @@ export function StorefrontOrdersPage() {
   const { search: globalSearch } = useOutletContext<{ search: string }>();
   const [searchParams] = useSearchParams();
   const linkedOrderId = searchParams.get('orderId');
-  const [orders, setOrders] = useState<StorefrontOrderSummary[]>([]);
-  const [dateRange, setDateRange] = useState<DateRange>('all');
+  const [orders, setOrders] = useState<StorefrontOrderListPage['items']>([]);
+  const [recentOrders, setRecentOrders] = useState<StorefrontOrderListPage['items']>([]);
+  const [pageData, setPageData] = useState<StorefrontOrderListPage | null>(null);
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
   const [fulfillment, setFulfillment] = useState<FulfillmentFilter>('all');
+  const [source, setSource] = useState<OrderSourceFilter>('all');
   const [status, setStatus] = useState<OrderStatusFilter>('all');
   const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(linkedOrderId);
+  const [details, setDetails] = useState<Record<string, StorefrontOrderSummary>>({});
+  const [detailsLoadingId, setDetailsLoadingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [actionError, setActionError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
-  const [confirmingRejectionId, setConfirmingRejectionId] = useState<string | null>(null);
+
+  const searchInput = (linkedOrderId ? [query] : [globalSearch, query])
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join(' ')
+    .slice(0, 120);
+  const [search, setSearch] = useState('');
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setSearch(searchInput), 300);
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
+  const filterKey = JSON.stringify([from, to, source, fulfillment, status, search]);
+  const [pagination, setPagination] = useState<{ filterKey: string; cursors: string[] }>({
+    filterKey: '',
+    cursors: [],
+  });
+  const history = pagination.filterKey === filterKey ? pagination.cursors : [];
+  const cursor = history.at(-1);
+  const pageNumber = history.length + 1;
+  const hasActiveFilters = Boolean(
+    from || to || source !== 'all' || status !== 'all' || fulfillment !== 'all' || search,
+  );
 
   useEffect(() => {
-    let current = true;
+    setRecentOrders([]);
+  }, [filterKey]);
+
+  useEffect(() => {
+    const controller = new AbortController();
     setLoading(true);
     setLoadError(false);
-    void apiRequest<StorefrontOrderSummary[]>('/owner/orders')
+    const params = new URLSearchParams({ limit: String(pageSize) });
+    if (cursor) params.set('cursor', cursor);
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    if (source !== 'all') params.set('source', source);
+    if (fulfillment !== 'all') params.set('fulfillment', fulfillment);
+    if (status !== 'all') params.set('status', status);
+    if (search) params.set('search', search);
+    void apiRequestSingle<StorefrontOrderListPage>(`/owner/orders/inbox?${params}`, {
+      signal: controller.signal,
+    })
       .then((result) => {
-        if (!current) return;
-        setOrders(result);
-        setSelectedId((selected) =>
-          selected && result.some((order) => order.id === selected) ? selected : null,
+        setPageData(result);
+        setOrders(result.items);
+        if (!cursor) setRecentOrders(result.items.slice(0, 3));
+        setPagination((current) =>
+          current.filterKey === filterKey ? current : { filterKey, cursors: [] },
         );
+        setSelectedId((selected) => {
+          if (!selected) return null;
+          if (selected === linkedOrderId || result.items.some((order) => order.id === selected)) {
+            return selected;
+          }
+          return null;
+        });
       })
       .catch(() => {
-        if (current) setLoadError(true);
+        if (!controller.signal.aborted) setLoadError(true);
       })
       .finally(() => {
-        if (current) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       });
-    return () => {
-      current = false;
-    };
-  }, [refreshKey]);
+    return () => controller.abort();
+  }, [cursor, filterKey, from, fulfillment, linkedOrderId, refreshKey, search, source, status, to]);
 
   useEffect(() => {
-    if (loading || !linkedOrderId || !orders.some((order) => order.id === linkedOrderId)) return;
-    setDateRange('all');
+    if (!linkedOrderId) return;
+    setFrom('');
+    setTo('');
     setFulfillment('all');
+    setSource('all');
     setStatus('all');
-    setQuery('');
+    setQuery(linkedOrderId);
     setSelectedId(linkedOrderId);
-  }, [linkedOrderId, loading, orders]);
+  }, [linkedOrderId]);
 
-  const terms = useMemo(
-    () => [globalSearch, query].map((value) => value.trim().toLocaleLowerCase()).filter(Boolean),
-    [globalSearch, query],
-  );
+  useEffect(() => {
+    if (!selectedId || details[selectedId]) return;
+    const controller = new AbortController();
+    setDetailsLoadingId(selectedId);
+    void apiRequestSingle<StorefrontOrderSummary>(`/owner/orders/${selectedId}`, {
+      signal: controller.signal,
+    })
+      .then((order) => setDetails((current) => ({ ...current, [order.id]: order })))
+      .catch(() => {
+        if (!controller.signal.aborted) setDetailsLoadingId(null);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setDetailsLoadingId(null);
+      });
+    return () => controller.abort();
+  }, [details, selectedId]);
 
-  const visibleOrders = useMemo(
-    () =>
-      orders.filter((order) => {
-        if (status !== 'all' && order.status !== status) return false;
-        if (fulfillment !== 'all' && order.fulfillmentType !== fulfillment) return false;
-        if (!matchesDateRange(order.createdAt, dateRange)) return false;
-        if (terms.length === 0) return true;
-        const searchable = [
-          order.id,
-          order.customerName,
-          order.customerPhone,
-          order.deliveryAddress ?? '',
-          ...order.lines.flatMap((line) => [
-            line.productName,
-            line.variantName ?? '',
-            ...line.selections.map((selection) => `${selection.groupName} ${selection.optionName}`),
-          ]),
-        ].map((value) => (value ?? '').toLocaleLowerCase());
-        return terms.every((term) => searchable.some((value) => value.includes(term)));
-      }),
-    [dateRange, fulfillment, orders, status, terms],
-  );
-
-  const selectedInventoryAcceptance = visibleOrders.find(
-    (order) =>
-      order.id === selectedId &&
-      (order.requiresInventoryAcceptance ?? order.requiresRecipeAcceptance),
-  );
-
-  const counts = useMemo(
-    () => ({
-      all: orders.length,
-      pending: orders.filter((order) => order.status === 'pending').length,
-      accepted: orders.filter((order) => order.status === 'accepted').length,
-      rejected: orders.filter((order) => order.status === 'rejected').length,
-      preparing: orders.filter((order) => order.status === 'preparing').length,
-      cancelled: orders.filter((order) => order.status === 'cancelled').length,
-    }),
-    [orders],
-  );
-
-  const orderValue = orders.reduce((sum, order) => sum + Number(order.total), 0);
-  const uniqueCustomers = new Set(orders.map((order) => order.customerPhone)).size;
-  const averageOrderValue = orders.length > 0 ? orderValue / orders.length : 0;
+  const counts = pageData?.stats?.statusCounts;
+  const orderCount = pageData?.stats?.totalOrders ?? 0;
+  const orderValue = pageData?.stats?.totalOrderValue ?? '0';
+  const uniqueCustomers = pageData?.stats?.uniqueCustomers ?? 0;
+  const averageOrderValue = pageData?.stats?.averageOrderValue ?? '0';
 
   const stats = [
     {
@@ -150,28 +164,28 @@ export function StorefrontOrdersPage() {
     },
     {
       label: copy('Total orders'),
-      value: formatNumber(orders.length),
+      value: formatNumber(orderCount),
       icon: 'calendar',
       tone: 'cream',
     },
     { label: copy('Total order value'), value: money(orderValue), icon: 'revenue', tone: 'mint' },
   ] as const;
 
-  const distribution = (['accepted', 'preparing', 'pending', 'rejected', 'cancelled'] as const).map(
-    (key) => ({
-      key,
-      count: counts[key],
-      color: statusColors[key],
-    }),
-  );
+  const distribution = (
+    ['accepted', 'preparing', 'pending', 'rejected', 'cancelled', 'ready', 'completed'] as const
+  ).map((key) => ({
+    key,
+    count: counts?.[key] ?? 0,
+    color: statusColors[key],
+  }));
   let donutPosition = 0;
   const donutSegments = distribution.map(({ count, color }) => {
-    const nextPosition = counts.all ? donutPosition + (count / counts.all) * 100 : 100;
+    const nextPosition = orderCount ? donutPosition + (count / orderCount) * 100 : 100;
     const segment = `${color} ${donutPosition}% ${nextPosition}%`;
     donutPosition = nextPosition;
     return segment;
   });
-  const donutBackground = counts.all ? `conic-gradient(${donutSegments.join(', ')})` : '#edf1f5';
+  const donutBackground = orderCount ? `conic-gradient(${donutSegments.join(', ')})` : '#edf1f5';
 
   function money(amount: string | number) {
     return new Intl.NumberFormat('en-EG-u-nu-latn', {
@@ -184,6 +198,7 @@ export function StorefrontOrdersPage() {
     return new Intl.DateTimeFormat(language === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG-u-nu-latn', {
       dateStyle: 'short',
       timeStyle: 'short',
+      timeZone: 'Africa/Cairo',
     }).format(new Date(value));
   }
 
@@ -195,55 +210,78 @@ export function StorefrontOrdersPage() {
           ? 'Accepted'
           : value === 'preparing'
             ? 'Preparing'
-            : value === 'cancelled'
-              ? 'Cancelled'
-              : 'Rejected',
+            : value === 'ready'
+              ? 'Ready'
+              : value === 'completed'
+                ? 'Completed'
+                : value === 'cancelled'
+                  ? 'Cancelled'
+                  : 'Rejected',
     );
   }
 
+  function sourceLabel(value: string) {
+    if (value === 'waffarly') return copy('Waffarly');
+    if (value === 'pos') return copy('POS');
+    if (value === 'storefront') return copy('Storefront');
+    return value;
+  }
+
+  function fulfillmentLabel(value: StorefrontOrderSummary['fulfillmentType']) {
+    if (value === 'pickup') return 'Pickup';
+    if (value === 'delivery') return 'Delivery';
+    if (value === 'dine_in') return 'Dine-in';
+    return 'Takeaway';
+  }
+
+  function orderNumber(order: OrderListItem) {
+    if (order.branchOrderNumber != null) return String(order.branchOrderNumber);
+    return order.orderReference || order.id.slice(0, 8).toLocaleUpperCase();
+  }
+
   function resetFilters() {
-    setDateRange('all');
+    setFrom('');
+    setTo('');
     setFulfillment('all');
+    setSource('all');
     setStatus('all');
     setQuery('');
+    setSelectedId(null);
+    setPagination({ filterKey, cursors: [] });
   }
 
-  async function updateStatus(orderId: string, nextStatus: 'accepted' | 'rejected') {
-    setBusyOrderId(orderId);
-    setActionError(false);
-    setConfirmingRejectionId(null);
-    try {
-      const saved = await apiRequest<StorefrontOrderSummary>(`/owner/orders/${orderId}/status`, {
-        method: 'PATCH',
-        body: JSON.stringify({ status: nextStatus }),
-      });
-      setOrders((current) => current.map((order) => (order.id === saved.id ? saved : order)));
-    } catch {
-      setActionError(true);
-    } finally {
-      setBusyOrderId(null);
-    }
-  }
-
-  const dateOptions: Array<[DateRange, string]> = [
-    ['all', 'All dates'],
-    ['today', 'Today'],
-    ['week', 'Last 7 days'],
-    ['month', 'Last 30 days'],
-  ];
   const fulfillmentOptions: Array<[FulfillmentFilter, string]> = [
     ['all', 'All fulfillment'],
     ['pickup', 'Pickup'],
     ['delivery', 'Delivery'],
+    ['dine_in', 'Dine-in'],
+    ['takeaway', 'Takeaway'],
+  ];
+  const sourceOptions: Array<[OrderSourceFilter, string]> = [
+    ['all', 'All sources'],
+    ['waffarly', 'Waffarly'],
+    ['storefront', 'Storefront'],
+    ['pos', 'POS'],
   ];
   const statusOptions: Array<[OrderStatusFilter, string]> = [
     ['all', 'All statuses'],
     ['pending', 'Pending'],
     ['accepted', 'Accepted'],
     ['preparing', 'Preparing'],
+    ['ready', 'Ready'],
+    ['completed', 'Completed'],
     ['cancelled', 'Cancelled'],
     ['rejected', 'Rejected'],
   ];
+
+  function goToNextPage() {
+    if (!pageData?.nextCursor) return;
+    setPagination({ filterKey, cursors: [...history, pageData.nextCursor] });
+  }
+
+  function goToPreviousPage() {
+    if (history.length) setPagination({ filterKey, cursors: history.slice(0, -1) });
+  }
 
   return (
     <section
@@ -262,7 +300,7 @@ export function StorefrontOrdersPage() {
               <div>
                 <span>{label}</span>
                 <strong dir="ltr">{value}</strong>
-                <small>{copy('Based on the latest orders in this inbox')}</small>
+                <small>{copy('Based on orders matching the filters')}</small>
               </div>
               <span className="orders-stat-icon">
                 <Icon name={icon} />
@@ -274,21 +312,24 @@ export function StorefrontOrdersPage() {
 
       <div className="orders-toolbar" role="search">
         <label className="orders-date-field">
-          <Icon name="calendar" />
-          <span className="sr-only">{copy('Date range')}</span>
-          <select
-            dir={language === 'ar' ? 'rtl' : 'ltr'}
-            aria-label={copy('Date range')}
-            value={dateRange}
-            onChange={(event) => setDateRange(event.target.value as DateRange)}
-          >
-            {dateOptions.map(([value, label]) => (
-              <option value={value} key={value}>
-                {copy(label)}
-              </option>
-            ))}
-          </select>
-          <Icon name="chevron" />
+          <span>{copy('From')}</span>
+          <input
+            type="date"
+            aria-label={copy('From date')}
+            value={from}
+            max={to || undefined}
+            onChange={(event) => setFrom(event.target.value)}
+          />
+        </label>
+        <label className="orders-date-field">
+          <span>{copy('To')}</span>
+          <input
+            type="date"
+            aria-label={copy('To date')}
+            value={to}
+            min={from || undefined}
+            onChange={(event) => setTo(event.target.value)}
+          />
         </label>
         <label className="orders-select-field">
           <span className="sr-only">{copy('Fulfillment')}</span>
@@ -322,13 +363,29 @@ export function StorefrontOrdersPage() {
           </select>
           <Icon name="chevron" />
         </label>
+        <label className="orders-select-field">
+          <span className="sr-only">{copy('Order source')}</span>
+          <select
+            dir={language === 'ar' ? 'rtl' : 'ltr'}
+            aria-label={copy('Order source')}
+            value={source}
+            onChange={(event) => setSource(event.target.value as OrderSourceFilter)}
+          >
+            {sourceOptions.map(([value, label]) => (
+              <option value={value} key={value}>
+                {copy(label)}
+              </option>
+            ))}
+          </select>
+          <Icon name="chevron" />
+        </label>
         <label className="orders-search-field">
           <Icon name="search" />
           <input
             type="search"
             dir={language === 'ar' ? 'rtl' : 'ltr'}
             aria-label={copy('Search orders')}
-            placeholder={copy('Search by order number or customer...')}
+            placeholder={copy('Search by order number, customer, or item...')}
             value={query}
             onChange={(event) => setQuery(event.currentTarget.value)}
           />
@@ -340,12 +397,6 @@ export function StorefrontOrdersPage() {
         </label>
       </div>
 
-      {actionError && (
-        <p className="storefront-orders-error" role="alert">
-          {copy('The order could not be updated. Please refresh and try again.')}
-        </p>
-      )}
-
       <div className="orders-content-grid">
         <section className="orders-table-card" aria-labelledby="orders-list-title">
           <div className="orders-table-heading">
@@ -353,8 +404,8 @@ export function StorefrontOrdersPage() {
               <h3 id="orders-list-title">{copy('Order list')}</h3>
               <p>
                 {copy('Showing {{count}} of {{total}} orders', {
-                  count: visibleOrders.length,
-                  total: orders.length,
+                  count: orders.length,
+                  total: pageData?.stats?.totalOrders ?? 0,
                 })}
               </p>
             </div>
@@ -385,6 +436,7 @@ export function StorefrontOrdersPage() {
                   <thead>
                     <tr>
                       <th>{copy('Order number')}</th>
+                      <th>{copy('Order source')}</th>
                       <th>{copy('Customer')}</th>
                       <th>{copy('Fulfillment')}</th>
                       <th>{copy('Items')}</th>
@@ -397,16 +449,18 @@ export function StorefrontOrdersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleOrders.map((order) => {
+                    {orders.map((order) => {
                       const isSelected = selectedId === order.id;
-                      const itemCount = order.lines.reduce((sum, line) => sum + line.quantity, 0);
+                      const itemCount = order.itemCount;
+                      const detail = details[order.id];
                       return (
                         <Fragment key={order.id}>
                           <tr className={isSelected ? 'is-selected' : ''}>
                             <td>
-                              <strong dir="ltr">
-                                #{formatDigits(order.id.slice(0, 8).toLocaleUpperCase())}
-                              </strong>
+                              <strong dir="ltr">#{formatDigits(orderNumber(order))}</strong>
+                            </td>
+                            <td>
+                              <span className="orders-source">{sourceLabel(order.source)}</span>
                             </td>
                             <td>
                               <strong>{order.customerName ?? copy('Walk-in customer')}</strong>
@@ -416,7 +470,7 @@ export function StorefrontOrdersPage() {
                             </td>
                             <td>
                               <span className="orders-fulfillment">
-                                {copy(order.fulfillmentType === 'pickup' ? 'Pickup' : 'Delivery')}
+                                {copy(fulfillmentLabel(order.fulfillmentType))}
                               </span>
                               {order.fulfillmentType === 'delivery' && order.deliveryAddress && (
                                 <small className="orders-address-cell">
@@ -428,13 +482,7 @@ export function StorefrontOrdersPage() {
                               <strong>
                                 {formatNumber(itemCount)} {copy(itemCount === 1 ? 'item' : 'items')}
                               </strong>
-                              {order.lines[0] && (
-                                <small>
-                                  {order.lines.length > 1
-                                    ? `${order.lines[0].productName} + ${formatNumber(order.lines.length - 1)}`
-                                    : order.lines[0].productName}
-                                </small>
-                              )}
+                              {order.previewItemName && <small>{order.previewItemName}</small>}
                             </td>
                             <td dir="ltr">{money(order.total)}</td>
                             <td>
@@ -448,7 +496,7 @@ export function StorefrontOrdersPage() {
                               <button
                                 type="button"
                                 className="orders-row-action"
-                                aria-label={`${copy('Order details')} ${formatDigits(order.id.slice(0, 8))}`}
+                                aria-label={`${copy('Order details')} ${formatDigits(orderNumber(order))}`}
                                 aria-expanded={isSelected}
                                 onClick={() => setSelectedId(isSelected ? null : order.id)}
                               >
@@ -458,123 +506,80 @@ export function StorefrontOrdersPage() {
                           </tr>
                           {isSelected && (
                             <tr className="orders-expanded-row">
-                              <td colSpan={8}>
+                              <td colSpan={9}>
                                 <div className="orders-expanded-detail">
-                                  <OrderCustomerAssignment
-                                    key={order.id}
-                                    orderId={order.id}
-                                    onSaved={() => setRefreshKey((key) => key + 1)}
-                                  />
-                                  <div className="orders-expanded-heading">
-                                    <div>
-                                      <strong>
-                                        {copy('Order details')}{' '}
-                                        <b dir="ltr">
-                                          #{formatDigits(order.id.slice(0, 8).toLocaleUpperCase())}
-                                        </b>
-                                      </strong>
-                                      <span>
-                                        {order.fulfillmentType === 'delivery'
-                                          ? order.deliveryAddress
-                                          : copy('Pickup')}
-                                      </span>
-                                    </div>
-                                    {order.customerPhone ? (
-                                      <a href={`tel:${order.customerPhone}`} dir="ltr">
-                                        {formatDigits(order.customerPhone)}
-                                      </a>
-                                    ) : (
-                                      <span>{order.customerName ?? copy('Walk-in customer')}</span>
-                                    )}
-                                  </div>
-                                  <div className="orders-expanded-lines">
-                                    {order.lines.map((line) => (
-                                      <div className="orders-expanded-line" key={line.id}>
+                                  {detail ? (
+                                    <>
+                                      <div className="orders-expanded-heading">
                                         <div>
                                           <strong>
-                                            {formatNumber(line.quantity)} × {line.productName}
-                                            {line.variantName ? ` — ${line.variantName}` : ''}
+                                            {copy('Order details')}{' '}
+                                            <b dir="ltr">
+                                              #{formatDigits(orderNumber(order))}
+                                            </b>
                                           </strong>
-                                          {line.selections.length > 0 && (
-                                            <small>
-                                              {line.selections
-                                                .map(
-                                                  (selection) =>
-                                                    `${selection.groupName}: ${selection.optionName} \u00d7 ${selection.quantity ?? 1}`,
-                                                )
-                                                .join(' · ')}
-                                            </small>
-                                          )}
-                                        </div>
-                                        <strong dir="ltr">{money(line.lineTotal)}</strong>
-                                      </div>
-                                    ))}
-                                  </div>
-                                  <div className="orders-expanded-footer">
-                                    {!(order.requiresInventoryAcceptance ?? order.requiresRecipeAcceptance) && (
-                                      <span>
-                                        {copy(
-                                          'Tracked stock remains reserved until the order is rejected.',
-                                        )}
-                                      </span>
-                                    )}
-                                    {order.status === 'pending' &&
-                                      !(order.requiresInventoryAcceptance ?? order.requiresRecipeAcceptance) &&
-                                      (confirmingRejectionId === order.id ? (
-                                        <div className="orders-action-group">
                                           <span>
-                                            {copy(
-                                              'Reject this order? Reserved tracked stock will be returned.',
-                                            )}
+                                            {sourceLabel(order.source)} ·{' '}
+                                            {order.fulfillmentType === 'delivery'
+                                              ? order.deliveryAddress
+                                              : copy(fulfillmentLabel(order.fulfillmentType))}
+                                            {order.fulfillmentType === 'dine_in' && detail.tableCode
+                                              ? ` · ${copy('Table')} ${detail.tableCode}`
+                                              : ''}
                                           </span>
-                                          <button
-                                            type="button"
-                                            className="orders-action-danger"
-                                            disabled={busyOrderId === order.id}
-                                            onClick={() => void updateStatus(order.id, 'rejected')}
-                                          >
-                                            {busyOrderId === order.id
-                                              ? copy('Rejecting…')
-                                              : copy('Confirm rejection')}
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className="orders-action-secondary"
-                                            onClick={() => setConfirmingRejectionId(null)}
-                                          >
-                                            {copy('Cancel')}
-                                          </button>
                                         </div>
-                                      ) : (
-                                        <div className="orders-action-group">
-                                          <button
-                                            type="button"
-                                            className="orders-action-primary"
-                                            disabled={busyOrderId === order.id}
-                                            onClick={() => void updateStatus(order.id, 'accepted')}
-                                          >
-                                            {busyOrderId === order.id
-                                              ? copy('Accepting…')
-                                              : copy('Accept order')}
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className="orders-action-danger"
-                                            disabled={busyOrderId === order.id}
-                                            onClick={() => setConfirmingRejectionId(order.id)}
-                                          >
-                                            {copy('Reject order')}
-                                          </button>
-                                        </div>
-                                      ))}
-                                    {order.status === 'rejected' && (
-                                      <strong className="orders-rejected-note">
-                                        {copy(
-                                          'This order was rejected and any reserved stock was returned.',
+                                        {order.customerPhone ? (
+                                          <a href={`tel:${order.customerPhone}`} dir="ltr">
+                                            {formatDigits(order.customerPhone)}
+                                          </a>
+                                        ) : (
+                                          <span>{order.customerName ?? copy('Walk-in customer')}</span>
                                         )}
-                                      </strong>
-                                    )}
-                                  </div>
+                                      </div>
+                                      <div className="orders-expanded-lines">
+                                        {detail.lines.map((line) => (
+                                          <div className="orders-expanded-line" key={line.id}>
+                                            <div>
+                                              <strong>
+                                                {formatNumber(line.quantity)} × {line.productName}
+                                                {line.variantName ? ` — ${line.variantName}` : ''}
+                                              </strong>
+                                              {line.selections.length > 0 && (
+                                                <small>
+                                                  {line.selections
+                                                    .map(
+                                                      (selection) =>
+                                                        `${selection.groupName}: ${selection.optionName} × ${selection.quantity ?? 1}`,
+                                                    )
+                                                    .join(' · ')}
+                                                </small>
+                                              )}
+                                              {line.promotionType &&
+                                                line.promotionDiscount &&
+                                                Number(line.promotionDiscount) > 0 && (
+                                                  <small className="orders-promotion-discount">
+                                                    {copy('Product discount')} −
+                                                    {money(
+                                                      (
+                                                        Number(line.promotionDiscount) *
+                                                        line.quantity
+                                                      ).toFixed(2),
+                                                    )}
+                                                  </small>
+                                                )}
+                                            </div>
+                                            <strong dir="ltr">{money(line.lineTotal)}</strong>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <p role="status">
+                                      {detailsLoadingId === order.id
+                                        ? copy('Loading order details…')
+                                        : copy('Order details could not be loaded.')}
+                                    </p>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -584,15 +589,13 @@ export function StorefrontOrdersPage() {
                     })}
                   </tbody>
                 </table>
-                {visibleOrders.length === 0 && (
+                {orders.length === 0 && (
                   <div className="orders-empty-state">
                     <Icon name="orders" />
                     <strong>
-                      {copy(
-                        orders.length === 0 ? 'No storefront orders yet.' : 'No matching orders.',
-                      )}
+                      {copy(hasActiveFilters ? 'No matching orders.' : 'No orders yet.')}
                     </strong>
-                    {orders.length > 0 && (
+                    {hasActiveFilters && (
                       <button type="button" className="orders-reset-button" onClick={resetFilters}>
                         {copy('Clear filters')}
                       </button>
@@ -600,28 +603,29 @@ export function StorefrontOrdersPage() {
                   </div>
                 )}
               </div>
-              {selectedInventoryAcceptance && (
-                <RecipeOrderActions
-                  key={selectedInventoryAcceptance.id}
-                  order={selectedInventoryAcceptance}
-                  onSaved={(saved) => {
-                    setOrders((current) =>
-                      current.map((item) => (item.id === saved.id ? saved : item)),
-                    );
-                    setRefreshKey((key) => key + 1);
-                  }}
-                  onReject={() => void updateStatus(selectedInventoryAcceptance.id, 'rejected')}
-                />
-              )}
-
               <div className="orders-pagination">
                 <span>
-                  {copy('Showing {{count}} of {{total}} orders', {
-                    count: visibleOrders.length,
-                    total: orders.length,
+                  {copy('Page {{page}} · {{total}} orders', {
+                    page: formatNumber(pageNumber),
+                    total: formatNumber(pageData?.stats?.totalOrders ?? 0),
                   })}
                 </span>
-                <span>{copy('Based on the latest orders in this inbox')}</span>
+                <div className="orders-pagination-actions">
+                  <button
+                    type="button"
+                    disabled={loading || history.length === 0}
+                    onClick={goToPreviousPage}
+                  >
+                    {copy('Previous')}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={loading || !pageData?.nextCursor}
+                    onClick={goToNextPage}
+                  >
+                    {copy('Next')}
+                  </button>
+                </div>
               </div>
             </>
           )}
@@ -640,7 +644,7 @@ export function StorefrontOrdersPage() {
                 aria-label={copy('Order status distribution chart')}
               >
                 <div>
-                  <strong>{formatNumber(counts.all)}</strong>
+                  <strong>{formatNumber(orderCount)}</strong>
                   <span>{copy('Total orders')}</span>
                 </div>
               </div>
@@ -656,8 +660,8 @@ export function StorefrontOrdersPage() {
                     {formatNumber(count)} {copy('orders')}
                   </span>
                   <strong>
-                    {counts.all
-                      ? `${formatNumber(Math.round((count / counts.all) * 100))}%`
+                    {orderCount
+                      ? `${formatNumber(Math.round((count / orderCount) * 100))}%`
                       : `${formatNumber(0)}%`}
                   </strong>
                 </li>
@@ -672,21 +676,22 @@ export function StorefrontOrdersPage() {
               </button>
             </div>
             <div className="orders-recent-list">
-              {orders.slice(0, 3).map((order) => (
+              {recentOrders.map((order) => (
                 <button
                   type="button"
                   className="orders-recent-row"
                   key={order.id}
                   onClick={() => {
-                    resetFilters();
+                    setPagination({ filterKey, cursors: [] });
                     setSelectedId(order.id);
                   }}
                 >
                   <span>
                     <strong dir="ltr">
-                      #{formatDigits(order.id.slice(0, 8).toLocaleUpperCase())}
+                      #{formatDigits(orderNumber(order))}
                     </strong>
                     <small>{order.customerName}</small>
+                    <small>{sourceLabel(order.source)}</small>
                   </span>
                   <span>
                     <b dir="ltr">{money(order.total)}</b>
@@ -698,8 +703,10 @@ export function StorefrontOrdersPage() {
                   <Icon name="arrow" />
                 </button>
               ))}
-              {orders.length === 0 && (
-                <p className="orders-recent-empty">{copy('No storefront orders yet.')}</p>
+              {!loading && recentOrders.length === 0 && (
+                <p className="orders-recent-empty">
+                  {copy(hasActiveFilters ? 'No matching orders.' : 'No orders yet.')}
+                </p>
               )}
             </div>
           </section>

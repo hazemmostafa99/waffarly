@@ -1,3 +1,5 @@
+import type { PublicRestaurantBranch, RestaurantBranchSettings } from './restaurant-fulfillment.js';
+
 export interface RestaurantImage {
   src: string;
   alt: string;
@@ -39,6 +41,7 @@ export interface RestaurantSettingsInput {
   deliveryTimeMinMinutes: number;
   deliveryTimeMaxMinutes: number;
   deliveryAreas: RestaurantArea[];
+  branchFulfillment?: RestaurantBranchSettings[] | undefined;
 }
 export interface RestaurantOperatingState {
   isOpen: boolean;
@@ -54,6 +57,7 @@ export interface PublicRestaurantProfile extends RestaurantSettingsInput, Restau
   revision: number;
   deliveryFeeFrom: string;
   deliveryFeeTo: string;
+  onlineBranches?: PublicRestaurantBranch[] | undefined;
   referenceData: { origin?: string; rating?: string; offer?: string; time?: string } | null;
 }
 export interface MarketplaceMenuProduct extends PublicStorefrontProduct {

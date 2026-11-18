@@ -588,3 +588,48 @@
     }
   }
 }
+
+@layer utilities {
+  .storefront-theme [class~='bg-white'] {
+    background-color: var(--storefront-surface);
+  }
+  .storefront-theme [class~='bg-white/95'] {
+    background-color: color-mix(in srgb, var(--storefront-surface) 95%, transparent);
+  }
+  .storefront-theme [class~='bg-white/90'] {
+    background-color: color-mix(in srgb, var(--storefront-surface) 90%, transparent);
+  }
+  .storefront-theme [class~='bg-white/40'] {
+    background-color: color-mix(in srgb, var(--storefront-surface) 40%, transparent);
+  }
+  .storefront-theme [class~='text-store-primary'] {
+    color: var(--storefront-primary-text);
+  }
+  .storefront-theme [class~='text-store-primary-dark'] {
+    color: var(--storefront-primary-dark-text);
+  }
+  .storefront-theme [class~='text-store-primary-deep'] {
+    color: var(--storefront-primary-deep-text);
+  }
+  .storefront-theme [class~='text-store-accent'],
+  .storefront-theme [class~='text-store-gold'] {
+    color: var(--storefront-accent-text);
+  }
+  .storefront-theme [class~='bg-store-primary'] {
+    color: var(--storefront-primary-foreground);
+  }
+  .storefront-theme [class~='bg-store-primary-dark'] {
+    color: var(--storefront-primary-dark-foreground);
+  }
+  .storefront-theme [class~='bg-store-primary-deep'] {
+    color: var(--storefront-primary-deep-foreground);
+  }
+  .storefront-theme [class~='bg-store-accent'],
+  .storefront-theme [class~='bg-store-gold'] {
+    color: var(--storefront-accent-foreground);
+  }
+  .storefront-theme [class*='from-store-primary-deep'] [class~='text-store-gold'],
+  .storefront-theme [class~='bg-store-primary-deep'] [class~='text-store-gold'] {
+    color: var(--storefront-accent-on-primary-deep);
+  }
+}

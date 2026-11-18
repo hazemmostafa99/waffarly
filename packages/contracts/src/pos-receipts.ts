@@ -9,7 +9,9 @@ export interface PosReceiptSummary {
 export interface PosReceiptHistoryItem extends PosReceiptSummary {
   orderId: string;
   checkId: string;
+  source?: string;
   orderReference: string;
+  branchOrderNumber?: number | null;
   checkNumber: number;
   amount: string;
   currency: 'EGP';
@@ -27,6 +29,10 @@ export interface PosReceiptLine {
   quantity: number;
   unitPrice: string;
   total: string;
+  promotionType?: 'percentage' | 'amount' | null;
+  promotionValue?: string | null;
+  /** Total product savings for this receipt line. */
+  promotionDiscount?: string;
 }
 
 export interface PosReceiptPayment {
@@ -46,7 +52,9 @@ export interface PosReceipt {
   merchantName: string;
   branchName: string | null;
   orderId: string;
+  source?: string;
   orderReference: string;
+  branchOrderNumber?: number | null;
   orderCreatedAt: string;
   fulfillmentType: 'takeaway' | 'delivery' | 'dine_in' | 'pickup';
   tableCode: string | null;

@@ -263,6 +263,16 @@
 .products-price {
   white-space: nowrap;
 }
+.products-price-values {
+  display: grid;
+  justify-items: start;
+  gap: 2px;
+}
+.products-price-values del,
+.products-price-values small {
+  color: #758398;
+  font-size: 11px;
+}
 .products-icon-button {
   display: inline-grid;
   place-items: center;

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ProductPromotionFields } from './ProductPromotionFields.js';
 
 export function BasicInformationTab({
   name,
@@ -8,6 +9,18 @@ export function BasicInformationTab({
   basePrice,
   onBasePriceChange,
   productMode,
+  promotionEnabled,
+  onPromotionEnabledChange,
+  promotionType,
+  onPromotionTypeChange,
+  promotionValue,
+  onPromotionValueChange,
+  promotionStartsAt,
+  onPromotionStartsAtChange,
+  promotionEndsAt,
+  onPromotionEndsAtChange,
+  previewPrices,
+  formatNumber,
   text,
 }: {
   name: string;
@@ -17,6 +30,18 @@ export function BasicInformationTab({
   basePrice: string;
   onBasePriceChange: (value: string) => void;
   productMode: 'simple' | 'variants';
+  promotionEnabled: boolean;
+  onPromotionEnabledChange: (value: boolean) => void;
+  promotionType: 'percentage' | 'amount';
+  onPromotionTypeChange: (value: 'percentage' | 'amount') => void;
+  promotionValue: string;
+  onPromotionValueChange: (value: string) => void;
+  promotionStartsAt: string;
+  onPromotionStartsAtChange: (value: string) => void;
+  promotionEndsAt: string;
+  onPromotionEndsAtChange: (value: string) => void;
+  previewPrices: string[];
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
   text: (english: string, arabic: string) => string;
 }) {
   const [descriptionOpen, setDescriptionOpen] = useState(Boolean(description));
@@ -75,6 +100,21 @@ export function BasicInformationTab({
           )}
         </label>
       </div>
+      <ProductPromotionFields
+        enabled={promotionEnabled}
+        onEnabledChange={onPromotionEnabledChange}
+        type={promotionType}
+        onTypeChange={onPromotionTypeChange}
+        value={promotionValue}
+        onValueChange={onPromotionValueChange}
+        startsAt={promotionStartsAt}
+        onStartsAtChange={onPromotionStartsAtChange}
+        endsAt={promotionEndsAt}
+        onEndsAtChange={onPromotionEndsAtChange}
+        previewPrices={previewPrices}
+        formatNumber={formatNumber}
+        text={text}
+      />
       <details
         className="basic-description"
         open={descriptionOpen}

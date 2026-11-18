@@ -20,8 +20,8 @@ const palette = ['#f3a628', '#e34e5b', '#357beb', '#06936d', '#8796b4'];
 
 function productStartingPrice(product: Product): number {
   return product.variants.length
-    ? Math.min(...product.variants.map((variant) => Number(variant.price)))
-    : Number(product.basePrice);
+    ? Math.min(...product.variants.map((variant) => Number(variant.promotionalPrice ?? variant.price)))
+    : Number(product.promotionalPrice ?? product.basePrice);
 }
 
 export function ProductsPage() {
@@ -251,27 +251,30 @@ export function ProductsPage() {
     },
     {
       id: 'price',
-      header: copy('Base price'),
+      header: copy('Selling price'),
       className: 'products-price',
       cell: (product) => {
-        const prices = product.variants.map((variant) => Number(variant.price));
-        if (!prices.length)
-          return (
-            <span dir="ltr">
-              EGP{' '}
-              {formatNumber(Number(product.basePrice), {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}
-            </span>
-          );
-        const minimum = Math.min(...prices);
-        const maximum = Math.max(...prices);
+        const prices = product.variants.map((variant) =>
+          Number(variant.promotionalPrice ?? variant.price),
+        );
+        const originalPrices = product.variants.map((variant) => Number(variant.price));
+        const currentPrices = prices.length ? prices : [Number(product.promotionalPrice ?? product.basePrice)];
+        const regularPrices = originalPrices.length ? originalPrices : [Number(product.basePrice)];
+        const range = (values: number[]) => {
+          const minimum = Math.min(...values);
+          const maximum = Math.max(...values);
+          return minimum === maximum
+            ? `EGP ${formatNumber(minimum, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+            : `EGP ${formatNumber(minimum, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} – ${formatNumber(maximum, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        };
+        const activePromotion = product.promotion?.status === 'active';
         return (
-          <span dir="ltr">
-            {minimum === maximum
-              ? `EGP ${formatNumber(minimum, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-              : `EGP ${formatNumber(minimum, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} – ${formatNumber(maximum, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          <span className="products-price-values" dir="ltr">
+            <strong>{range(currentPrices)}</strong>
+            {activePromotion && <del>{range(regularPrices)}</del>}
+            {product.promotion && !activePromotion && (
+              <small>{copy(`Promotion ${product.promotion.status}`)}</small>
+            )}
           </span>
         );
       },

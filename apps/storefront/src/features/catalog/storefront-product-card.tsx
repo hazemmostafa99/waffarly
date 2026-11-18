@@ -7,7 +7,11 @@ import { Heart, Plus, Utensils } from 'lucide-react';
 import type { PublicStorefrontProduct } from '@waffarly/contracts';
 import { Button, Card } from '@waffarly/ui';
 import { useLocale } from '@waffarly/ui';
-import { formatStorefrontPrice, getProductStartingPrice } from '../../lib/storefront-format';
+import {
+  formatStorefrontPrice,
+  getProductOriginalStartingPrice,
+  getProductStartingPrice,
+} from '../../lib/storefront-format';
 import { getStorefrontProductImage } from '../../lib/storefront-images';
 import { storefrontCopy } from '../../lib/storefront-copy';
 import { useStorefrontStore } from '../../providers/storefront-providers';
@@ -30,6 +34,8 @@ export function StorefrontProductCard({
     (variant) => variant.availability === 'available',
   );
   const displayPrice = getProductStartingPrice(product);
+  const originalPrice = getProductOriginalStartingPrice(product);
+  const hasPromotion = product.promotion?.status === 'active';
   const hasUnavailableVariants = product.variants.length > 0 && availableVariants.length === 0;
 
   return (
@@ -65,6 +71,13 @@ export function StorefrontProductCard({
           >
             <Heart className={`size-4 ${isFavorite ? 'fill-current' : ''}`} aria-hidden="true" />
           </button>
+          {hasPromotion && (
+            <span className="absolute bottom-2 start-2 rounded-full bg-store-error px-2.5 py-1 text-xs font-extrabold text-white shadow-sm">
+              {product.promotion.type === 'percentage'
+                ? `-${Number(product.promotion.value)}%`
+                : t.productDiscount}
+            </span>
+          )}
         </div>
 
         <div className="grid gap-2.5 p-3 sm:p-4">
@@ -92,6 +105,11 @@ export function StorefrontProductCard({
                   {hasUnavailableVariants ? '—' : formatStorefrontPrice(displayPrice, locale)}
                 </bdi>
               </strong>
+              {hasPromotion && (
+                <del className="ms-1 text-xs text-store-muted">
+                  <bdi dir="auto">{formatStorefrontPrice(originalPrice, locale)}</bdi>
+                </del>
+              )}
             </div>
             <Button
               type="button"

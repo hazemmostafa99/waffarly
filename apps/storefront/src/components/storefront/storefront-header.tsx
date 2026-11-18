@@ -11,6 +11,11 @@ import { storefrontCopy } from '../../lib/storefront-copy';
 import { useStorefrontStore } from '../../providers/storefront-providers';
 
 function Brand({ catalog }: { catalog: PublicStorefrontCatalog }) {
+  const logoSize = {
+    small: 'size-9',
+    medium: 'size-11',
+    large: 'size-14',
+  }[catalog.logoScale];
   return (
     <span className="flex min-w-0 items-center gap-3">
       {catalog.logoData ? (
@@ -18,13 +23,19 @@ function Brand({ catalog }: { catalog: PublicStorefrontCatalog }) {
           src={catalog.logoData}
           alt=""
           aria-hidden="true"
-          width={46}
-          height={46}
+          width={56}
+          height={56}
           unoptimized
-          className="size-11 rounded-2xl border border-store-border bg-white object-contain p-1"
+          className={logoSize + ' rounded-2xl border border-store-border bg-white object-contain p-1'}
         />
       ) : (
-        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-store-gold text-store-primary-deep shadow-sm">
+        <span
+          className={
+            'grid ' +
+            logoSize +
+            ' shrink-0 place-items-center rounded-2xl bg-store-gold text-store-primary-deep shadow-sm'
+          }
+        >
           <Sparkles className="size-5" aria-hidden="true" />
         </span>
       )}

@@ -6,6 +6,13 @@ execute in Nest application services. Rules, calculations, reads, mapping and
 active-transaction helpers remain ordinary functions. No extra forwarding service
 layer is required. See [the exact standard and reviewed scope](API_APPLICATION_STANDARD.md).
 
+Tenant storefront branding (2026-11-18): restaurant name, description, logo and
+cover remain owned by the restaurant profile and are projected into the owner
+account and independent storefront. Merchant storefront settings now own the
+independent template, four palette colors and logo display size. Existing inline
+logos remain a fallback; new media uploads use the owner-scoped 10 MB media
+endpoint. See the [branding behavior](../features/merchant-storefront-branding.md).
+
 Purchase cost P03 (2026-11-14): Inventory owns one current base-unit cost and
 revision-ordered source history per merchant stock item, including opening cost.
 Purchasing records purchase-sourced cost through InventoryCostService inside the
@@ -30,6 +37,14 @@ have separate homes. HTTP URLs, shared contracts and schema remain unchanged.
 See the [module navigation guide](API_MODULE_GUIDE.md) and
 [verification ledger](API_REFACTOR_PROGRESS.md).
 
+HR MVP (2026-11-18): Employees owns independent staff profiles and effective-dated
+pay rates; Attendance owns reasoned daily edits and month-end approval; Payroll
+freezes monthly calculations, advance repayments and safe-linked salary payments;
+Expenses owns categorized records, private receipt storage and safe-linked
+payments. All endpoints are owner-scoped. HR cash actions use the existing safe
+ledger within the same transaction as their business record. See the
+[HR feature rules](../features/hr/FEATURE.md).
+
 Orders organization (2026-11-14): HTTP entry points are grouped by application;
 order operations are grouped by business responsibility. Cashier routes share
 the `/pos/orders` prefix and are grouped into controllers for core order work,
@@ -37,6 +52,14 @@ kitchen, billing and returns. Each calls the existing operation service directly
 No route, schema or external module dependency changed. See the
 [Orders guide](../../apps/api/src/modules/orders/README.md) and
 [verification ledger](API_REFACTOR_PROGRESS.md).
+
+Merchant order inbox (2026-11-18): `/owner/orders/inbox` includes Waffarly,
+storefront and POS order origins and accepts server-side source, status,
+fulfillment, Cairo date-range and text filters. It returns a bounded cursor page
+with filtered database aggregates; bounded report requests include per-origin,
+daily, fulfillment and product aggregates. Full line details load through
+`/owner/orders/:id`. Dashboard consumers use bounded inbox reads; the older
+`/owner/orders` contract remains available for compatibility.
 
 Orders internal cleanup (2026-11-14): lifecycle actions use named helpers inside
 the existing transaction, with authorization/replay ordering preserved. Checkout
@@ -78,6 +101,12 @@ Discounts (2026-11-11): Discounts owns merchant-scoped coupon definitions,
 revisioned updates, branch scope, and redemption reporting. Owner APIs derive
 tenant identity from Auth. Monetary fields cross the API as decimal strings;
 Cairo calendar dates determine schedule state. See [Merchant discounts](../features/discounts.md).
+
+Product promotions (2026-11-18): Catalog owns one optional, scheduled direct price
+promotion per product. Catalog pricing applies it to the selected base price before
+modifier additions and returns the same authoritative quote to storefront and POS.
+Order lines snapshot the promotion and savings. Product promotions cannot combine
+with checkout coupon codes. See [product rules](../features/catalog/PRODUCTS.md).
 
 Customer authentication (2026-11-11): Auth owns Marketplace `CustomerAccount`
 credentials, email/mobile sign-in, hashed database-backed attempt limits and

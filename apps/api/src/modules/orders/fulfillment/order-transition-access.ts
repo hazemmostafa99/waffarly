@@ -17,13 +17,16 @@ export async function assertOrderTransitionAccess(
   branchId?: string,
   posCancelActor?: PosCancellationActor,
 ): Promise<void> {
-  // Check routed storefront scope before returning any saved retry result.
+  // Check routed online-order scope before returning any saved retry result.
   if (branchId) {
     const target = await tx.storefrontOrder.findFirst({
       where: { id: orderId, merchantId },
       select: { source: true, branchId: true },
     });
-    if (target?.source === 'storefront' && target.branchId) {
+    if (
+      (target?.source === 'storefront' || target?.source === 'waffarly') &&
+      target.branchId
+    ) {
       const branch = await tx.branch.findFirst({
         where: { id: target.branchId, merchantId, archivedAt: null },
         select: { id: true },
@@ -51,7 +54,7 @@ export async function assertOrderTransitionAccess(
         branchId,
         OR: [
           { source: 'pos', kitchenTicket: { isNot: null } },
-          { source: 'storefront', branchId: { not: null } },
+          { source: { in: ['waffarly', 'storefront'] }, branchId: { not: null } },
           { lines: { some: { stockHandling: { in: ['recipe_acceptance', 'direct_acceptance'] } } } },
         ],
       },

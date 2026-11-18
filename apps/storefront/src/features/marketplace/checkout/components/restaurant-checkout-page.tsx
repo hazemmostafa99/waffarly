@@ -22,6 +22,8 @@ import {
 import { CheckoutContactForm } from './checkout-contact-form';
 import { RestaurantCheckoutReview } from './restaurant-checkout-review';
 import { RestaurantOrderConfirmation } from './restaurant-order-confirmation';
+import { RestaurantRouteFields, useRestaurantFulfillment } from '@/features/delivery/restaurant-route-fields';
+import { useDeliveryArea } from '@/features/delivery/delivery-area-picker';
 
 export function RestaurantCheckoutPage() {
   const customerSession = useCustomerSession();
@@ -30,10 +32,17 @@ export function RestaurantCheckoutPage() {
   const products = cartProducts(lines);
   const restaurant = products[0];
   const slug = restaurant?.restaurantSlug;
-  const areas = restaurant?.restaurantSettings?.deliveryAreas ?? [];
-  const [draft, setDraft] = useState<CheckoutDraft>({ ...EMPTY_CHECKOUT });
+  const remote = useRestaurantFulfillment(slug);
+  const settings = remote.data ?? restaurant?.restaurantSettings;
+  const cartRoute = restaurant?.restaurantCartRoute;
+  const locationId = useDeliveryArea();
+  const [draft, setDraft] = useState<CheckoutDraft>(() => ({
+    ...EMPTY_CHECKOUT, ...(cartRoute ? { fulfillment: cartRoute.fulfillment } : {}),
+  }));
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [area, setArea] = useState('');
+  const [pickup, setPickup] = useState(cartRoute?.fulfillment === 'pickup' ? cartRoute.branchId : '');
+  const deliveryAreaId = settings?.onlineBranches === undefined ? area : locationId;
   const [quote, setQuote] = useState<StorefrontCheckoutQuote | null>(null);
   const [pending, setPending] = useState(false);
   const [notice, setNotice] = useState('');
@@ -69,6 +78,12 @@ export function RestaurantCheckoutPage() {
         .map((group) => ({ groupId: group.id, optionIds: line.selection?.[group.id] ?? [] })),
     }));
   }
+  function routeInput() {
+    if (draft.fulfillment === 'delivery' && deliveryAreaId) return { deliveryAreaId };
+    if (draft.fulfillment === 'pickup' && settings?.onlineBranches !== undefined && pickup)
+      return { pickupBranchId: pickup };
+    return {};
+  }
   async function review() {
     if (busy.current || envelope.current || !slug || !lines.length) return;
     const validation = validateCheckout(draft, false);
@@ -78,11 +93,17 @@ export function RestaurantCheckoutPage() {
       setNotice('السلة لازم تكون من مطعم واحد.');
       return;
     }
-    if (draft.fulfillment === 'delivery' && areas.length && !area) {
+    if (draft.fulfillment === 'delivery' &&
+      (settings?.onlineBranches !== undefined || settings?.deliveryAreas.length) && !deliveryAreaId) {
       setNotice('اختار منطقة التوصيل.');
       return;
     }
-    const snapshot = JSON.stringify(lines);
+    if (draft.fulfillment === 'pickup' && settings?.onlineBranches !== undefined && !pickup) {
+      setNotice('اختار فرع الاستلام.');
+      return;
+    }
+    const route = routeInput();
+    const snapshot = JSON.stringify({ lines, route });
     busy.current = true;
     setPending(true);
     setNotice('');
@@ -93,12 +114,13 @@ export function RestaurantCheckoutPage() {
         {
           fulfillmentType: draft.fulfillment,
           items: items(),
-          ...(draft.fulfillment === 'delivery' && area ? { deliveryAreaId: area } : {}),
+          ...route,
         },
       );
       reviewed.current = snapshot;
       setQuote(result);
     } catch (error) {
+      void remote.refetch();
       setNotice(
         error instanceof ApiError && error.statusCode === 403
           ? 'المطعم غير متاح لاستقبال طلبات جديدة حاليًا. جرّب لاحقًا أو اختار مطعمًا آخر.'
@@ -114,7 +136,7 @@ export function RestaurantCheckoutPage() {
   async function confirm() {
     if (busy.current) return;
     if (!envelope.current) {
-      if (!quote || !slug || reviewed.current !== JSON.stringify(lines)) {
+      if (!quote || !slug || reviewed.current !== JSON.stringify({ lines, route: routeInput() })) {
         setQuote(null);
         setNotice('السلة اتغيرت. راجع السعر من جديد.');
         return;
@@ -126,12 +148,14 @@ export function RestaurantCheckoutPage() {
           requestId: crypto.randomUUID(),
           reviewedTotal: quote.total,
           restaurantSettingsRevision: quote.restaurantSettingsRevision,
+          ...(quote.fulfillmentQuoteKey ? { fulfillmentQuoteKey: quote.fulfillmentQuoteKey } : {}),
           customerName: draft.name.trim(),
           customerPhone: draft.phone.trim(),
           fulfillmentType: draft.fulfillment,
           ...(draft.fulfillment === 'delivery'
-            ? { deliveryAddress: draft.address.trim(), ...(area ? { deliveryAreaId: area } : {}) }
+            ? { deliveryAddress: draft.address.trim() }
             : {}),
+          ...routeInput(),
           items: items(),
         },
       };
@@ -157,6 +181,7 @@ export function RestaurantCheckoutPage() {
         envelope.current = null;
         setQuote(null);
         setUncertain(false);
+        void remote.refetch();
       } else setUncertain(true);
       setNotice(
         definitive && error instanceof Error
@@ -213,6 +238,11 @@ export function RestaurantCheckoutPage() {
               )}
               {!quote && !uncertain ? (
                 <fieldset disabled={pending} className="m-0 min-w-0 border-0 p-0">
+                  {settings && <div className="mb-4 rounded-xl border border-border p-3">
+                    <RestaurantRouteFields settings={settings} fulfillment={draft.fulfillment}
+                      area={area} pickup={pickup} onArea={setArea} onPickup={setPickup} />
+                  </div>}
+                  {cartRoute && <p className="text-sm">الفرع وقت إضافة الأصناف: {cartRoute.branchName}</p>}
                   <CheckoutContactForm
                     demo={false}
                     draft={draft}
@@ -220,23 +250,6 @@ export function RestaurantCheckoutPage() {
                     onChange={change}
                     onContinue={review}
                   />
-                  {draft.fulfillment === 'delivery' && areas.length > 0 && (
-                    <label className="mt-4 grid gap-2 text-sm">
-                      منطقة التوصيل
-                      <select
-                        value={area}
-                        onChange={(event) => setArea(event.target.value)}
-                        className="rounded-xl border border-border bg-card p-3"
-                      >
-                        <option value="">اختار المنطقة</option>
-                        {areas.map((entry) => (
-                          <option key={entry.id} value={entry.id}>
-                            {entry.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
                   {pending && <p role="status">جارٍ مراجعة السعر مع الخادم…</p>}
                 </fieldset>
               ) : (

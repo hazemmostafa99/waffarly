@@ -9,6 +9,7 @@ import type {
 } from '@waffarly/contracts';
 import { formatCents, toCents } from '../../../common/money/money.js';
 export function toReceipt(order: {
+  branchName?: string | null;
   subtotal?: { toString(): string } | null;
   deliveryFee?: { toString(): string } | null;
   discountRedemption?: {
@@ -27,6 +28,7 @@ export function toReceipt(order: {
 }): StorefrontOrderReceipt {
   return {
     id: order.id,
+    ...(order.branchName ? { branchName: order.branchName } : {}),
     status: order.status as StorefrontOrderStatus,
     currency: 'EGP',
     ...(order.subtotal != null && order.deliveryFee != null
@@ -56,6 +58,7 @@ export function toSummary(order: {
   subtotal?: { toString(): string } | null;
   deliveryFee?: { toString(): string } | null;
   orderReference?: string | null;
+  branchOrderNumber?: number | null;
   branchId?: string | null;
   warehouseId?: string | null;
   branchName?: string | null;
@@ -91,6 +94,9 @@ export function toSummary(order: {
     variantName: string | null;
     basePrice: { toString(): string } | null;
     modifierTotal: { toString(): string } | null;
+    promotionType: string | null;
+    promotionValue: { toString(): string } | null;
+    promotionDiscount: { toString(): string };
     quantity: number;
     unitPrice: { toString(): string };
     lineTotal: { toString(): string };
@@ -118,6 +124,9 @@ export function toSummary(order: {
     hasRecipeAcceptance || order.lines.some((line) => line.stockHandling === 'direct_acceptance');
   return {
     ...(order.orderReference !== undefined ? { orderReference: order.orderReference } : {}),
+    ...(order.branchOrderNumber !== undefined
+      ? { branchOrderNumber: order.branchOrderNumber }
+      : {}),
     ...(order.cancelledAt !== undefined
       ? { cancelledAt: order.cancelledAt?.toISOString() ?? null }
       : {}),
@@ -163,7 +172,7 @@ export function toSummary(order: {
         }
       : {}),
     id: order.id,
-    ...(order.source === 'storefront' || order.source === 'pos'
+    ...(order.source === 'waffarly' || order.source === 'storefront' || order.source === 'pos'
       ? { source: order.source }
       : {}),
     status: order.status as StorefrontOrderStatus,
@@ -189,6 +198,11 @@ export function toSummary(order: {
       modifierTotal: line.modifierTotal
         ? formatCents(toCents(line.modifierTotal.toString()))
         : null,
+      promotionType: line.promotionType as 'percentage' | 'amount' | null,
+      promotionValue: line.promotionValue
+        ? formatCents(toCents(line.promotionValue.toString()))
+        : null,
+      promotionDiscount: formatCents(toCents(line.promotionDiscount.toString())),
       quantity: line.quantity,
       unitPrice: formatCents(toCents(line.unitPrice.toString())),
       lineTotal: formatCents(toCents(line.lineTotal.toString())),

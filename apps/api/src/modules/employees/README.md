@@ -1,7 +1,8 @@
 # Employees
 
-Employees owns owner-facing staff account configuration: listing, creation,
-editing, role assignment and active branch assignment at `/owner/employees`.
+Employees owns both POS account configuration at `/owner/employees` and HR staff
+records at `/owner/staff`. HR records have their own effective-dated pay rates and
+optionally link one same-branch POS login; credentials remain owned by Auth.
 
 Auth continues to own sign-in, sessions, session revocation checks, current
 permissions and supervisor credential verification. Employees imports Auth's

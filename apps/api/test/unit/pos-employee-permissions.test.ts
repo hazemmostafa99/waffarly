@@ -83,9 +83,9 @@ describe('POS employee role permissions', () => {
     };
     assert.equal(hasPosEmployeePermission(legacy, 'view_orders'), true);
     assert.equal(hasPosEmployeePermission(legacy, 'view_receipts'), false);
-    assert.equal(posEmployeeHome(legacy), '/');
+    assert.equal(posEmployeeHome(legacy), '/kitchen');
     assert.equal(posEmployeeHome({ permissions: ['view_inventory'] }), '/inventory');
-    assert.equal(posEmployeeHome({ permissions: ['view_receipts'] }), '/receipts');
+    assert.equal(posEmployeeHome({ permissions: ['view_receipts'] }), '/orders');
     assert.equal(posEmployeeHome({ permissions: [] }), '/access');
     assert.equal(hasPosEmployeePermission({ permissions: ['sell'] }, 'view_receipts'), true);
   });

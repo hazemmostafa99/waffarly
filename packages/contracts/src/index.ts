@@ -216,6 +216,12 @@ export type {
   StorefrontOrderStatus,
   StorefrontOrderReceipt,
   StorefrontOrderSummary,
+  StorefrontOrderListItem,
+  StorefrontOrderListStats,
+  StorefrontOrderSource,
+  StorefrontFulfillmentType,
+  StorefrontOrderListPage,
+  StorefrontOrderListQuery,
   DispatchPosKitchenOrderRequest,
   MarkKitchenItemReadyRequest,
   PosKitchenDispatchMode,
@@ -359,6 +365,7 @@ export type {
 export type { StorefrontCheckoutQuoteRequest, StorefrontCheckoutQuote } from './catalog.js';
 
 export type { OwnerRestaurantSettings } from './restaurant.js';
+export * from './restaurant-fulfillment.js';
 export { CUSTOMER_CHANNELS } from './customers.js';
 export type {
   CustomerProfile,
@@ -387,3 +394,32 @@ export type {
 } from './discounts.js';
 
 export type { CustomerOrderView, CustomerOrdersPage } from './customer-orders.js';
+
+export type {
+  StaffPayBasis,
+  StaffAttendanceStatus,
+  PayrollRunStatus,
+  PayrollAdjustmentKind,
+  StaffPayRateSummary,
+  StaffMemberSummary,
+  StaffAttendanceEntry,
+  AttendanceMonthSummary,
+  PayrollAdjustmentSummary,
+  AdvanceRepaymentPreview,
+  PayrollEmployeePreview,
+  PayrollLineSummary,
+  PayrollRunSummary,
+  StaffAdvanceSummary,
+  MerchantExpenseSummary,
+  ExpenseMonthSummary,
+  CreateStaffMemberRequest,
+  UpdateStaffMemberRequest,
+  CreateStaffPayRateRequest,
+  SetStaffAttendanceRequest,
+  CreatePayrollAdjustmentRequest,
+  CreateStaffAdvanceRequest,
+  RecordPayrollPaymentRequest,
+  CreateMerchantExpenseRequest,
+  UpdateMerchantExpenseRequest,
+  RecordExpensePaymentRequest,
+} from './hr.js';

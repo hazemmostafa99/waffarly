@@ -68,8 +68,27 @@ const PurchaseInvoicesPage = lazy(() =>
 const EmployeesPage = lazy(() =>
   import('./features/staff/EmployeesPage.js').then((module) => ({ default: module.EmployeesPage })),
 );
+const StaffPage = lazy(() =>
+  import('./features/hr/StaffPage.js').then((module) => ({ default: module.StaffPage })),
+);
+const AttendancePage = lazy(() =>
+  import('./features/hr/AttendancePage.js').then((module) => ({ default: module.AttendancePage })),
+);
+const PayrollPage = lazy(() =>
+  import('./features/hr/PayrollPage.js').then((module) => ({ default: module.PayrollPage })),
+);
+const StaffAdvancesPage = lazy(() =>
+  import('./features/hr/StaffAdvancesPage.js').then((module) => ({
+    default: module.StaffAdvancesPage,
+  })),
+);
+const ExpensesPage = lazy(() =>
+  import('./features/hr/ExpensesPage.js').then((module) => ({ default: module.ExpensesPage })),
+);
 const CouriersPage = lazy(() =>
-  import('./features/delivery/CouriersPage.js').then((module) => ({ default: module.CouriersPage })),
+  import('./features/delivery/CouriersPage.js').then((module) => ({
+    default: module.CouriersPage,
+  })),
 );
 const RegistersPage = lazy(() =>
   import('./features/pos/RegistersPage.js').then((module) => ({ default: module.RegistersPage })),
@@ -184,6 +203,11 @@ export const router = createBrowserRouter([
       { path: 'discounts', element: loadOnRoute(<DiscountsPage />) },
       { path: 'branches', element: loadOnRoute(<BranchesPage />) },
       { path: 'employees', element: loadOnRoute(<EmployeesPage />) },
+      { path: 'staff', element: loadOnRoute(<StaffPage />) },
+      { path: 'staff/attendance', element: loadOnRoute(<AttendancePage />) },
+      { path: 'staff/payroll', element: loadOnRoute(<PayrollPage />) },
+      { path: 'staff/advances', element: loadOnRoute(<StaffAdvancesPage />) },
+      { path: 'staff/expenses', element: loadOnRoute(<ExpensesPage />) },
       { path: 'delivery-couriers', element: loadOnRoute(<CouriersPage />) },
       { path: 'pos-registers', element: loadOnRoute(<RegistersPage />) },
       { path: 'pos-cash', element: loadOnRoute(<CashCustodyPage />) },

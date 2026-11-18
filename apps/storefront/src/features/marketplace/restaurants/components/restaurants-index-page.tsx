@@ -7,9 +7,12 @@ import { MarketplaceInput } from '@/components/marketplace/marketplace-form-cont
 import { MarketplaceButton } from '@/components/marketplace/marketplace-button';
 import { useRestaurants } from '../hooks/use-restaurants';
 import { restaurantHref } from '@/features/marketplace/restaurants/model/restaurants';
+import { deliveryBranches } from '@waffarly/contracts';
+import { DeliveryAreaPicker, useDeliveryArea } from '@/features/delivery/delivery-area-picker';
 
 export function RestaurantsIndexPage() {
   const remote = useRestaurants();
+  const locationId = useDeliveryArea();
   const data = { restaurants: remote.data ?? [] };
   const reference = data;
   const params = useSearchParams();
@@ -34,7 +37,10 @@ export function RestaurantsIndexPage() {
       (restaurant) =>
         `${restaurant.name} ${restaurant.meta}`.includes(query.trim()) &&
         (cuisine === 'all' || restaurant.meta.split('•')[0]!.trim() === cuisine) &&
-        (!openOnly || restaurant.settings?.acceptingOrders === true),
+        (!locationId || deliveryBranches(restaurant.settings?.onlineBranches ?? [], locationId).length > 0) &&
+        (!openOnly || (locationId
+          ? deliveryBranches(restaurant.settings?.onlineBranches ?? [], locationId).some(({ branch }) => branch.acceptingOrders)
+          : restaurant.settings?.acceptingOrders === true)),
     )
     .sort((a, b) => (sort === 'name' ? a.name.localeCompare(b.name, 'ar') : 0));
 
@@ -60,6 +66,7 @@ export function RestaurantsIndexPage() {
           الرئيسية
         </Link>
         <h1 className="mb-2 text-2xl font-black">اختار مطعمك</h1>
+        <div className="mb-4 rounded-xl border border-border p-3 text-sm"><DeliveryAreaPicker /></div>
         <p className="mb-5 text-sm leading-6 text-muted-foreground">
           تصفح منيو المطاعم واختار وجبتك. السعر النهائي ورسوم التوصيل بيتراجعوا قبل إرسال الطلب.
         </p>
@@ -140,7 +147,9 @@ export function RestaurantsIndexPage() {
                   <h2 className="m-0 text-lg font-bold">{restaurant.name}</h2>
                   <p className="m-0 text-sm text-muted-foreground">{restaurant.meta}</p>
                   <span className="block text-xs text-accent">
-                    {restaurant.settings?.acceptingOrders
+                    {(locationId
+                      ? deliveryBranches(restaurant.settings?.onlineBranches ?? [], locationId).some(({ branch }) => branch.acceptingOrders)
+                      : restaurant.settings?.acceptingOrders)
                       ? 'يستقبل طلبات الآن'
                       : 'لا يستقبل طلبات حاليًا'}
                   </span>
@@ -151,7 +160,8 @@ export function RestaurantsIndexPage() {
           </div>
         ) : (
           <div className="rounded-2xl bg-secondary p-8 text-center">
-            <p>مفيش مطاعم مطابقة. جرّب اسم تاني أو امسح الفلاتر.</p>
+            <p>{locationId ? 'مفيش مطاعم مطابقة للمنطقة. غيّر المنطقة أو امسح اختيارها لتصفح فروع الاستلام.'
+              : 'مفيش مطاعم مطابقة. جرّب اسم تاني أو امسح الفلاتر.'}</p>
             <Link href="/restaurants" className="font-bold text-accent">
               عرض كل المطاعم
             </Link>

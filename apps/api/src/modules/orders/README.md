@@ -32,13 +32,30 @@ pickup collection, tenders, refunds and check receipt lookup.
 These controllers call the existing operation services directly; their routes
 and contracts stay unchanged.
 
+## Merchant order inbox
+
+The Merchant inbox reads `GET /owner/orders/inbox` across all saved order
+sources: Waffarly, storefront and POS, with optional source, status, fulfillment,
+date and text filters. Date-only bounds use Cairo calendar days. The endpoint
+returns a bounded cursor page and includes only item counts and a line preview.
+Filtered totals and status counts are database aggregates; callers that only need
+the latest rows can pass `includeStats=false` to skip that aggregate query.
+Dashboard report requests also return source, date, fulfillment and product
+aggregates for the selected date window. The all-source date/order traversal is
+backed by a merchant, created-at and ID index; source-filtered traversal has its
+own matching index.
+`GET /owner/orders/:id` supplies full line details when the Merchant opens a
+row. The older `GET /owner/orders` response remains available to existing
+callers.
+
 ## How an operation runs
 
 Storefront submission goes through `http/storefront` to `StorefrontOrdersService`.
 Marketplace submission uses the existing `/customer` checkout variant, resolves
 account/guest identity, and uses the same checkout transaction. Marketplace does
-not have a duplicate order engine. Existing legacy storefront submission keeps
-its different ownership behavior.
+not have a duplicate order engine. That identity-aware route records source
+`waffarly`; regular storefront submission records `storefront`; cashier-created
+orders record `pos`. Fulfillment and payment actions keep this origin unchanged.
 
 Cashier HTTP routes call the service responsible for the requested work directly:
 

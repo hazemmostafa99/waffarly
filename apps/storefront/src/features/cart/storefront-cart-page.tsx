@@ -217,6 +217,17 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
                   </div>
                 </div>
                 <div className="text-end sm:min-w-28">
+                  {quote?.promotion && quote.originalTotalPrice && (
+                    <div className="mb-1 flex flex-col items-end">
+                      <del className="text-xs text-store-muted">
+                        <bdi dir="auto">{formatStorefrontPrice(quote.originalTotalPrice, locale)}</bdi>
+                      </del>
+                      <span className="text-xs font-bold text-store-primary">
+                        {t.productDiscount} −
+                        <bdi dir="auto">{formatStorefrontPrice(quote.promotion.discountAmount, locale)}</bdi>
+                      </span>
+                    </div>
+                  )}
                   <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
                     <bdi dir="auto">
                       {formatStorefrontPrice(quote?.totalPrice ?? line.unitPriceSnapshot, locale)}

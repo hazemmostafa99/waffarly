@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { parseEnvironment } from './environment.js';
 
 @Injectable()
@@ -19,6 +19,10 @@ export class AppConfiguration {
 
   get mediaStorageDirectory(): string {
     return resolve(process.cwd(), this.environment.MEDIA_STORAGE_DIRECTORY);
+  }
+
+  get privateMediaStorageDirectory(): string {
+    return resolve(dirname(this.mediaStorageDirectory), 'private-media');
   }
 
   get databaseUrl(): string {

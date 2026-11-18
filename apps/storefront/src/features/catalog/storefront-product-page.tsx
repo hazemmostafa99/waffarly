@@ -7,7 +7,11 @@ import { ChevronLeft, ChevronRight, Utensils } from 'lucide-react';
 import type { PublicStorefrontCatalog, PublicStorefrontProduct } from '@waffarly/contracts';
 import { Badge, Card } from '@waffarly/ui';
 import { useLocale } from '@waffarly/ui';
-import { formatStorefrontPrice, getProductStartingPrice } from '../../lib/storefront-format';
+import {
+  formatStorefrontPrice,
+  getProductOriginalStartingPrice,
+  getProductStartingPrice,
+} from '../../lib/storefront-format';
 import { getStorefrontProductImage } from '../../lib/storefront-images';
 import { storefrontCopy } from '../../lib/storefront-copy';
 import { StorefrontProductCustomizer } from './storefront-product-customizer';
@@ -161,6 +165,13 @@ export function StorefrontProductPage({
                         {formatStorefrontPrice(getProductStartingPrice(product), locale)}
                       </bdi>
                     </strong>
+                    {product.promotion?.status === 'active' && (
+                      <del className="ms-2 text-sm text-store-muted">
+                        <bdi dir="auto">
+                          {formatStorefrontPrice(getProductOriginalStartingPrice(product), locale)}
+                        </bdi>
+                      </del>
+                    )}
                   </>
                 )}
               </div>

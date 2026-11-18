@@ -82,32 +82,52 @@ html[dir='rtl'] .merchant-sidebar {
   color: var(--dashboard-green);
   font-weight: 650;
 }
-.merchant-pos-navigation summary {
+/* Shared, one-level collapsible sidebar groups. */
+.merchant-nav-group-toggle {
   display: flex;
   align-items: center;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  font-size: 12px;
   cursor: pointer;
-  list-style: none;
 }
-.merchant-pos-navigation summary::-webkit-details-marker {
-  display: none;
+.merchant-nav-group-toggle > span {
+  min-width: 0;
+  white-space: normal;
+  line-height: 1.6;
 }
-.merchant-pos-navigation summary > .merchant-icon:last-child {
+.merchant-nav-group-toggle.has-active-page {
+  color: var(--dashboard-green);
+  font-weight: 650;
+}
+.merchant-nav-group-toggle > .merchant-icon:last-child {
   margin-inline-start: auto;
   width: 14px;
   height: 14px;
   transition: transform 150ms ease;
 }
-.merchant-pos-navigation[open] summary > .merchant-icon:last-child {
+.merchant-nav-group-toggle[aria-expanded='true'] > .merchant-icon:last-child {
   transform: rotate(180deg);
 }
-.merchant-pos-navigation-links {
+.merchant-nav-group-links:not([hidden]) {
   display: grid;
   gap: 4px;
   margin: 4px 0 8px;
   padding-inline-start: 12px;
   border-inline-start: 1px solid var(--dashboard-border);
 }
-.merchant-pos-navigation summary:focus-visible {
+.merchant-nav-group-links[hidden] {
+  display: none;
+}
+.merchant-nav-group-links .merchant-nav-item > span {
+  white-space: normal;
+  line-height: 1.6;
+}
+.merchant-sidebar .merchant-nav-item:focus-visible {
   outline: 2px solid var(--dashboard-green);
   outline-offset: 2px;
 }
@@ -118,24 +138,6 @@ html[dir='rtl'] .merchant-sidebar {
   background: #fdf2de;
   color: #e4a13c;
   font-size: 9px;
-}
-.merchant-nav-item:nth-child(6) {
-  margin-top: 16px;
-  position: relative;
-}
-.merchant-nav-item:nth-child(6)::before {
-  content: '';
-  position: absolute;
-  inset-inline: 7px;
-  top: -11px;
-  height: 1px;
-  background: var(--dashboard-border);
-}
-.merchant-pos-navigation-links > .merchant-nav-item:nth-child(6)::before {
-  display: none;
-}
-.merchant-pos-navigation-links > .merchant-nav-item:nth-child(6) {
-  margin-top: 0;
 }
 .merchant-sidebar-tip {
   margin-top: auto;
@@ -664,6 +666,30 @@ html[dir='rtl'] .merchant-body {
   font-size: 8px;
   color: var(--dashboard-muted);
   font-weight: 500;
+}
+.dashboard-source-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 10px 8px;
+}
+.dashboard-source-stat {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 8px;
+  background: #fff;
+}
+.dashboard-source-stat > span,
+.dashboard-source-stat > small {
+  color: var(--dashboard-muted);
+  font-size: 9px;
+}
+.dashboard-source-stat > strong {
+  font-size: 15px;
+  line-height: 1.2;
 }
 .dashboard-chart {
   width: 100%;

@@ -26,7 +26,7 @@ export async function enableTestLegacyAccess(
 }
 
 export async function openTestBranchShift(
-  client: Pick<Prisma.TransactionClient, 'posRegister' | 'posShift'>,
+  client: Pick<Prisma.TransactionClient, 'posBranchOrderSession' | 'posRegister' | 'posShift'>,
   merchantId: string,
   branchId: string,
   employeeId: string,
@@ -40,10 +40,15 @@ export async function openTestBranchShift(
       updatedBy: 'test-fixture',
     },
   });
+  const orderSession = await client.posBranchOrderSession.create({
+    data: { merchantId, branchId },
+    select: { id: true },
+  });
   await client.posShift.create({
     data: {
       merchantId,
       branchId,
+      branchOrderSessionId: orderSession.id,
       registerId: register.id,
       openedByEmployeeId: employeeId,
       openRequestId: randomUUID(),

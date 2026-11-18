@@ -10,6 +10,8 @@ import {
 } from './checkout-policy.js';
 import {
   listOwnerStorefrontOrders,
+  getOwnerOrder,
+  listOwnerOrderInbox,
   listBranchOrderQueue,
 } from '../fulfillment/order-queue.query.js';
 import { createHash } from 'node:crypto';
@@ -24,7 +26,11 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import type { CreateStorefrontOrderRequest, StorefrontOrderReceipt } from '@waffarly/contracts';
+import type {
+  CreateStorefrontOrderRequest,
+  StorefrontOrderListQuery,
+  StorefrontOrderReceipt,
+} from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { type CursorPageQuery } from '../../../common/http/pagination.js';
 import { formatCents, toCents } from '../../../common/money/money.js';
@@ -73,6 +79,10 @@ export class StorefrontOrdersService {
         await this.subscriptions.requireActive(merchant.id, db);
         let subtotal = 0n;
         const unitPrices: string[] = [];
+        const originalUnitPrices: string[] = [];
+        const promotions: Array<
+          { type: 'percentage' | 'amount'; value: string; discountAmount: string } | null
+        > = [];
         for (const item of input.items) {
           const quote = await this.products.quoteForMerchant(
             merchant.id,
@@ -83,8 +93,12 @@ export class StorefrontOrdersService {
             db,
           );
           unitPrices.push(quote.totalPrice);
+          originalUnitPrices.push(quote.originalTotalPrice);
+          promotions.push(quote.promotion);
           subtotal += toCents(quote.totalPrice) * BigInt(item.quantity);
         }
+        if (promotions.some(Boolean) && input.discountCode?.trim())
+          throw new BadRequestException('Coupon codes cannot be combined with product discounts.');
         const coupon = await quoteCheckoutDiscount(db, merchant.id, input.discountCode, subtotal);
         const policy = await this.restaurantPolicy.assess(
           db,
@@ -92,8 +106,12 @@ export class StorefrontOrdersService {
           input.fulfillmentType,
           subtotal,
           input.deliveryAreaId,
+          undefined,
+          input.pickupBranchId,
         );
-        if (policy) await resolveRestaurantReceivingBranch(db, merchant.id);
+        const branch = policy
+          ? policy.receivingBranch ?? await resolveRestaurantReceivingBranch(db, merchant.id)
+          : null;
         const total =
           subtotal -
           (coupon?.snapshot.amount ? toCents(coupon.snapshot.amount) : 0n) +
@@ -102,12 +120,17 @@ export class StorefrontOrdersService {
           throw new BadRequestException('Order total exceeds the supported range.');
         return {
           unitPrices,
+          originalUnitPrices,
+          promotions,
           subtotal: formatCents(subtotal),
           deliveryFee: formatCents(policy?.fee ?? 0n),
           total: formatCents(total),
           currency: 'EGP' as const,
           ...(coupon ? { discount: coupon.snapshot } : {}),
           ...(policy ? { restaurantSettingsRevision: policy.snapshot.revision } : {}),
+          ...(branch ? { branch: { ...branch, address: 'address' in branch ? branch.address : null } } : {}),
+          ...(policy?.snapshot.areaName ? { deliveryAreaName: policy.snapshot.areaName } : {}),
+          ...(policy?.quoteKey ? { fulfillmentQuoteKey: policy.quoteKey } : {}),
           demo: false,
         };
       },
@@ -156,13 +179,6 @@ export class StorefrontOrdersService {
     const previous = await replay();
     if (previous) return previous;
 
-    // The browser never supplies prices. Reuse the catalog quote validator for every line.
-    const quotes = await Promise.all(
-      input.items.map((item) =>
-        this.products.quote(item.productId, item.selections, item.variantId, slug, item.quantity),
-      ),
-    );
-
     try {
       // 2. Save the order, its stock commitments and customer access together.
       return await this.prisma.$transaction(
@@ -170,6 +186,23 @@ export class StorefrontOrdersService {
           await this.subscriptions.requireActive(merchant.id, transaction);
           if (merchantCustomerId)
             await this.customers.requireActive(merchant.id, merchantCustomerId, transaction);
+          // Requote within the sale transaction so an offer that just ended is not honored.
+          const quotes = await Promise.all(
+            input.items.map((item) =>
+              this.products.quoteForMerchant(
+                merchant.id,
+                item.productId,
+                item.selections,
+                item.variantId,
+                item.quantity,
+                transaction,
+              ),
+            ),
+          );
+          if (quotes.some((quote) => quote.promotion) && input.discountCode?.trim())
+            throw new BadRequestException(
+              'Coupon codes cannot be combined with product discounts.',
+            );
           const order = await transaction.storefrontOrder.create({
             data: {
               merchant: { connect: { id: merchant.id } },
@@ -187,6 +220,7 @@ export class StorefrontOrdersService {
               customerName: input.customerName.trim(),
               customerPhone: input.customerPhone.trim(),
               fulfillmentType: input.fulfillmentType,
+              source: identity ? 'waffarly' : 'storefront',
               deliveryAddress:
                 input.fulfillmentType === 'delivery' ? input.deliveryAddress!.trim() : null,
               total: '0.00',
@@ -228,9 +262,13 @@ export class StorefrontOrdersService {
             orderTotalCents,
             input.deliveryAreaId,
             input.restaurantSettingsRevision,
+            input.pickupBranchId,
           );
+          if ((policy?.quoteKey ?? undefined) !== input.fulfillmentQuoteKey
+              || (policy?.quoteKey && input.reviewedTotal === undefined))
+            throw new ConflictException('الفرع أو إعدادات التوصيل اتغيرت. راجع الطلب من جديد.');
           const receivingBranch = policy
-            ? await resolveRestaurantReceivingBranch(transaction, merchant.id)
+            ? policy.receivingBranch ?? await resolveRestaurantReceivingBranch(transaction, merchant.id)
             : null;
           const deliveryFeeCents = policy?.fee ?? 0n;
           const totalCents = orderTotalCents - discountCents + deliveryFeeCents;
@@ -309,6 +347,16 @@ export class StorefrontOrdersService {
 
   async listForOwner(merchantId: string, page: CursorPageQuery = { limit: 25 }) {
     return listOwnerStorefrontOrders(this.prisma, merchantId, page);
+  }
+
+  async listInboxForOwner(merchantId: string, query: StorefrontOrderListQuery) {
+    return listOwnerOrderInbox(this.prisma, merchantId, query);
+  }
+
+  async getForOwner(merchantId: string, orderId: string) {
+    const order = await getOwnerOrder(this.prisma, merchantId, orderId);
+    if (!order) throw new NotFoundException('The order was not found.');
+    return order;
   }
 
   async listForPos(merchantId: string, branchId: string, page: CursorPageQuery = { limit: 25 }) {

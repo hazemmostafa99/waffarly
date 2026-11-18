@@ -23,7 +23,10 @@ need them. A folder split alone does not require another Nest module.
 | Inventory     | [Guide](../../apps/api/src/modules/inventory/README.md)             | Stock identities, locations, policy, ledger, visibility and latest stock-item cost history. |
 | Merchants     | [Guide](../../apps/api/src/modules/merchants/README.md)             | Onboarding, applications, public addresses and account settings.                         |
 | Catalog       | [Guide](../../apps/api/src/modules/catalog/README.md)               | Product commands/queries, configuration helpers and authoritative pricing.               |
-| Employees     | [Guide](../../apps/api/src/modules/employees/README.md)             | Staff account, role and branch configuration.                                            |
+| Employees     | [Guide](../../apps/api/src/modules/employees/README.md)             | POS accounts and independent HR employee records/pay-rate history.                      |
+| Attendance    | [HR feature](../features/hr/FEATURE.md)                             | Daily entries, corrections and monthly approval.                                        |
+| Payroll       | [HR feature](../features/hr/FEATURE.md)                             | Monthly calculations, adjustments, advances and safe-linked pay.                       |
+| Expenses      | [HR feature](../features/hr/FEATURE.md)                             | Categorized expenses, private receipts and safe-linked payments.                        |
 | Auth          | [Employee boundary](../../apps/api/src/modules/employees/README.md) | Identity, sign-in, sessions, permission enforcement and supervisor verification.         |
 
 Each extracted file starts with a plain-English purpose comment. Longer commands

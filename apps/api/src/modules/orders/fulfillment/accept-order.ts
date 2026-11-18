@@ -102,11 +102,20 @@ export async function acceptOrder(
   };
   await consumeLines(recipeLines, consumeOrderRequirements);
   await consumeLines(directLines, (tx, inventory, tenant, user, source, location, lines) =>
-    consumeDirectOrderRequirements(tx, inventory, tenant, user, source, location, lines, 'storefront_order'),
+    consumeDirectOrderRequirements(
+      tx,
+      inventory,
+      tenant,
+      user,
+      source,
+      location,
+      lines,
+      'storefront_order',
+    ),
   );
 
   const acceptedAt = new Date();
-  if (order.source === 'storefront') {
+  if (order.source === 'storefront' || order.source === 'waffarly') {
     const revenueByLine = allocateCheckoutLineRevenue(
       order.lines.map((line) => ({
         id: line.id,

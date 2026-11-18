@@ -53,10 +53,18 @@ export class PosOrderQueryService {
     },
   ) {
     requirePosSellPermission(employee);
-    if (
-      employee.branch.id !== input.branchId || employee.branch.archivedAt !== null
-    )
+    if (employee.branch.id !== input.branchId || employee.branch.archivedAt !== null)
       throw new ForbiddenException('This employee is not assigned to the selected branch.');
+    const search = input.search?.trim();
+    const orderNumberCandidate = search?.replace(/^#/, '');
+    const branchOrderNumber =
+      orderNumberCandidate && /^\d+$/.test(orderNumberCandidate)
+        ? Number(orderNumberCandidate)
+        : null;
+    const branchOrderNumberSearch =
+      branchOrderNumber !== null && Number.isSafeInteger(branchOrderNumber)
+        ? branchOrderNumber
+        : null;
     const where: Prisma.StorefrontOrderWhereInput = {
       merchantId: employee.merchantId,
       branchId: input.branchId,
@@ -93,16 +101,19 @@ export class PosOrderQueryService {
             },
           }
         : {}),
-      ...(input.search
+      ...(search
         ? {
             AND: [
               {
                 OR: [
-                  { orderReference: { contains: input.search, mode: 'insensitive' } },
-                  { customerName: { contains: input.search, mode: 'insensitive' } },
+                  { orderReference: { contains: search, mode: 'insensitive' } },
+                  ...(branchOrderNumberSearch !== null
+                    ? [{ branchOrderNumber: branchOrderNumberSearch }]
+                    : []),
+                  { customerName: { contains: search, mode: 'insensitive' } },
                   {
                     diningSession: {
-                      is: { table: { code: { contains: input.search, mode: 'insensitive' } } },
+                      is: { table: { code: { contains: search, mode: 'insensitive' } } },
                     },
                   },
                 ],
@@ -161,7 +172,7 @@ export class PosOrderQueryService {
         OR: [
           { source: 'pos' },
           {
-            source: 'storefront',
+            source: { in: ['waffarly', 'storefront'] },
             fulfillmentType: 'pickup',
             posShiftId: { not: null },
             status: { in: ['ready', 'completed'] },

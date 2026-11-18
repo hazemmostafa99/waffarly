@@ -220,6 +220,7 @@ export class PurchasingService {
               id: parsed.source.movementId,
               merchantId,
               kind: 'withdrawal',
+              purpose: null,
               amount: { lt: 0 },
             },
             include: { safe: { select: { branchId: true } } },

@@ -120,6 +120,18 @@ model Merchant {
   profileUpdatedBy         String?                 @db.VarChar(80)
   owner                    OwnerAccount?
   posEmployees             PosEmployee[]
+  staffMembers             StaffMember[]
+  attendancePeriods        AttendancePeriod[]
+  attendanceEntries        StaffAttendance[]
+  attendanceChanges        StaffAttendanceChange[]
+  payrollRuns              StaffPayrollRun[]
+  payrollAdjustments       StaffPayrollAdjustment[]
+  payrollLines             StaffPayrollLine[]
+  payrollPayments          StaffPayrollPayment[]
+  staffAdvances             StaffAdvance[]
+  staffAdvanceRepayments   StaffAdvanceRepayment[]
+  merchantExpenses         MerchantExpense[]
+  expensePayments          ExpensePayment[]
   deliveryCouriers         DeliveryCourier[]
   application              MerchantApplication?
   restaurantProfile        RestaurantProfile?
@@ -141,6 +153,7 @@ model Merchant {
   purchaseInvoices         PurchaseInvoice[]
   posRegisters             PosRegister[]
   posShifts                PosShift[]
+  posBranchOrderSessions PosBranchOrderSession[]
   posDiningTables          PosDiningTable[]
   posDiningSessions        PosDiningSession[]
   posKitchenStations       PosKitchenStation[]
@@ -317,9 +330,14 @@ model Branch {
   warehouses        Warehouse[]
   recipeOrders      StorefrontOrder[]
   posEmployees      PosEmployee[]
+  staffMembers      StaffMember[]
+  staffAdvances     StaffAdvance[]
+  merchantExpenses  MerchantExpense[]
+  payrollLines     StaffPayrollLine[]
   deliveryCourierAssignments DeliveryCourierBranch[]
   posRegisters      PosRegister[]
   posShifts         PosShift[]
+  posBranchOrderSessions PosBranchOrderSession[]
   posDiningTables   PosDiningTable[]
   posDiningSessions PosDiningSession[]
   kitchenStations   PosKitchenStation[]
@@ -747,6 +765,7 @@ model PosEmployee {
   approvedCashMovements PosShiftManualCashMovement[] @relation("PosShiftCashMovementApprover")
   closedShiftReports   PosShiftCloseReport[] @relation("PosShiftCloseOperator")
   approvedShiftCloses  PosShiftCloseReport[] @relation("PosShiftCloseApprover")
+  staffMember          StaffMember?
 
   @@unique([id, merchantId])
   @@unique([merchantId, username])
@@ -780,6 +799,24 @@ model PosRegister {
   @@map("pos_registers")
 }
 
+// Registers at a branch share one order-number sequence while any shift remains open.
+model PosBranchOrderSession {
+  id         String            @id @default(uuid()) @db.Uuid
+  merchantId String            @db.Uuid
+  branchId   String            @db.Uuid
+  lastNumber Int               @default(0)
+  openedAt   DateTime          @default(now()) @db.Timestamptz(6)
+  closedAt   DateTime?         @db.Timestamptz(6)
+  merchant   Merchant          @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  branch     Branch            @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  shifts     PosShift[]
+  orders     StorefrontOrder[]
+
+  @@unique([id, branchId, merchantId])
+  @@index([merchantId, branchId, openedAt])
+  @@map("pos_branch_order_sessions")
+}
+
 // One active shift is enforced per register by a partial PostgreSQL unique index.
 model PosShift {
   outgoingTransfers PosCashTransfer[] @relation("CashTransferSource")
@@ -789,6 +826,7 @@ model PosShift {
   id                 String                 @id @default(uuid()) @db.Uuid
   merchantId         String                 @db.Uuid
   branchId           String                 @db.Uuid
+  branchOrderSessionId String               @db.Uuid
   registerId         String                 @db.Uuid
   openRequestId      String                 @db.Uuid
   openedByEmployeeId String                 @db.Uuid
@@ -799,6 +837,7 @@ model PosShift {
   closedAt           DateTime?              @db.Timestamptz(6)
   merchant           Merchant               @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   branch             Branch                 @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  branchOrderSession PosBranchOrderSession @relation(fields: [branchOrderSessionId, branchId, merchantId], references: [id, branchId, merchantId], onDelete: Restrict)
   register           PosRegister            @relation(fields: [registerId, branchId, merchantId], references: [id, branchId, merchantId], onDelete: Restrict)
   openedBy           PosEmployee            @relation(fields: [openedByEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
   orders             StorefrontOrder[]
@@ -814,6 +853,7 @@ model PosShift {
   @@unique([id, branchId, merchantId])
   @@index([merchantId, registerId, status, openedAt])
   @@index([merchantId, openedByEmployeeId, openedAt])
+  @@index([branchOrderSessionId, status])
   @@map("pos_shifts")
 }
 
@@ -948,14 +988,18 @@ model StorefrontTemplate {
 
 // Merchant-specific choices are separate from the shared presentation definition.
 model MerchantStorefront {
-  merchantId  String             @id @db.Uuid
-  templateId  String             @db.Uuid
-  accentColor String             @db.VarChar(7)
-  logoData    String?            @db.Text
-  revision    Int                @default(1)
-  updatedAt   DateTime           @updatedAt @db.Timestamptz(6)
-  merchant    Merchant           @relation(fields: [merchantId], references: [id], onDelete: Restrict)
-  template    StorefrontTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  merchantId      String             @id @db.Uuid
+  templateId      String             @db.Uuid
+  primaryColor    String             @db.VarChar(7)
+  accentColor     String             @db.VarChar(7)
+  backgroundColor String            @db.VarChar(7)
+  surfaceColor    String             @db.VarChar(7)
+  logoScale       String             @default("medium") @db.VarChar(10)
+  logoData        String?            @db.Text
+  revision        Int                @default(1)
+  updatedAt       DateTime           @updatedAt @db.Timestamptz(6)
+  merchant        Merchant           @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  template        StorefrontTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
 
   @@index([templateId])
   @@map("merchant_storefronts")
@@ -1123,6 +1167,11 @@ model Product {
   name                           String                           @db.VarChar(160)
   description                    String?                          @db.VarChar(1000)
   basePrice                      Decimal                          @db.Decimal(12, 2)
+  promotionEnabled               Boolean                          @default(false)
+  promotionType                  String?                          @db.VarChar(16)
+  promotionValue                 Decimal?                         @db.Decimal(12, 2)
+  promotionStartsAt              DateTime?                        @db.Timestamptz(6)
+  promotionEndsAt                DateTime?                        @db.Timestamptz(6)
   sellingUnit                    String                           @default("piece") @db.VarChar(16)
   availability                   String                           @db.VarChar(16)
   archivedAt                     DateTime?                        @db.Timestamptz(6)
@@ -1399,6 +1448,8 @@ model StorefrontOrder {
   fulfillmentType        String                      @db.VarChar(16)
   source                 String                      @default("storefront") @db.VarChar(16)
   posShiftId             String?                     @db.Uuid
+  branchOrderSessionId   String?                     @db.Uuid
+  branchOrderNumber      Int?
   createdByPosEmployeeId String?                     @db.Uuid
   deliveryAddress        String?                     @db.Text
   posDiningSessionId     String?                     @db.Uuid
@@ -1424,6 +1475,7 @@ model StorefrontOrder {
   branch                 Branch?                     @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
   warehouse              Warehouse?                  @relation(fields: [warehouseId, merchantId], references: [id, merchantId], onDelete: Restrict)
   posShift               PosShift?                   @relation(fields: [posShiftId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  branchOrderSession   PosBranchOrderSession?      @relation(fields: [branchOrderSessionId, branchId, merchantId], references: [id, branchId, merchantId], onDelete: Restrict)
   diningSession          PosDiningSession?           @relation(fields: [posDiningSessionId, branchId, merchantId], references: [id, branchId, merchantId], onDelete: Restrict)
   createdByPosEmployee   PosEmployee?                @relation(fields: [createdByPosEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
   actions                StorefrontOrderAction[]
@@ -1439,12 +1491,15 @@ model StorefrontOrder {
   @@unique([merchantId, orderReference])
   @@unique([id, branchId, merchantId])
   @@unique([id, posShiftId, merchantId])
+  @@unique([branchOrderSessionId, branchOrderNumber])
   @@index([merchantId, status, createdAt])
+  @@index([merchantId, createdAt, id])
   @@index([merchantId, warehouseId, status])
   @@index([merchantId, branchId, status])
-  @@index([merchantId, source, createdAt])
+  @@index([merchantId, source, createdAt, id])
   @@index([merchantId, merchantCustomerId, createdAt])
   @@index([merchantId, posShiftId, createdAt])
+  @@index([merchantId, branchId, branchOrderSessionId, branchOrderNumber])
   @@index([merchantId, posDiningSessionId, createdAt])
   @@map("storefront_orders")
 }
@@ -1469,6 +1524,9 @@ model StorefrontOrderLine {
   variantName               String?                               @db.VarChar(160)
   basePrice                 Decimal?                              @db.Decimal(12, 2)
   modifierTotal             Decimal?                              @db.Decimal(12, 2)
+  promotionType             String?                               @db.VarChar(16)
+  promotionValue            Decimal?                              @db.Decimal(12, 2)
+  promotionDiscount         Decimal                               @default(0) @db.Decimal(12, 2)
   quantity                  Int
   unitPrice                 Decimal                               @db.Decimal(12, 2)
   lineTotal                 Decimal                               @db.Decimal(12, 2)
@@ -2097,7 +2155,11 @@ model PosCashSafeMovement {
   safeId String @db.Uuid
   requestId String @db.Uuid
   transferId String? @unique @db.Uuid
+  purpose String? @db.VarChar(32)
   purchasePayments PurchaseSupplierPayment[]
+  staffAdvance StaffAdvance?
+  payrollPayment StaffPayrollPayment?
+  expensePayment ExpensePayment?
   kind String @db.VarChar(16)
   amount Decimal @db.Decimal(12, 2)
   reason String @db.VarChar(500)
@@ -2242,6 +2304,7 @@ model RestaurantProfile {
   deliveryTimeMinMinutes Int @default(0)
   deliveryTimeMaxMinutes Int @default(0)
   deliveryAreas Json @default("[]")
+  branchFulfillment Json @default("[]") @map("branch_fulfillment")
   referenceData Json?
   revision Int @default(1)
   updatedBy String @db.VarChar(80)
@@ -2264,4 +2327,313 @@ model CustomerOrderAccess {
   @@index([accountId, createdAt, orderId])
   @@index([guestHash, createdAt, orderId])
   @@map("customer_order_access")
+}
+
+// Holds business staff details separately from optional POS login credentials.
+model StaffMember {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  branchId String @db.Uuid
+  posEmployeeId String? @db.Uuid
+  employeeNumber String? @db.VarChar(40)
+  displayName String @db.VarChar(160)
+  jobTitle String @db.VarChar(100)
+  phone String? @db.VarChar(32)
+  startDate DateTime @db.Date
+  endDate DateTime? @db.Date
+  active Boolean @default(true)
+  revision Int @default(1)
+  createdBy String @db.VarChar(80)
+  updatedBy String @db.VarChar(80)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  branch Branch @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  posEmployee PosEmployee? @relation(fields: [posEmployeeId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  payRates StaffPayRate[]
+  attendance StaffAttendance[]
+  attendanceChanges StaffAttendanceChange[]
+  payrollAdjustments StaffPayrollAdjustment[]
+  payrollLines StaffPayrollLine[]
+  payrollPayments StaffPayrollPayment[]
+  advances StaffAdvance[]
+  advanceRepayments StaffAdvanceRepayment[]
+
+  @@unique([id, merchantId])
+  @@unique([id, branchId, merchantId])
+  @@unique([merchantId, employeeNumber])
+  @@unique([posEmployeeId, merchantId])
+  @@index([merchantId, branchId, active, displayName, id])
+  @@map("staff_members")
+}
+
+// Preserves every base-pay change with the date it starts to apply.
+model StaffPayRate {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  staffMemberId String @db.Uuid
+  effectiveDate DateTime @db.Date
+  basis String @db.VarChar(12)
+  amount Decimal @db.Decimal(12, 2)
+  createdBy String @db.VarChar(80)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  staffMember StaffMember @relation(fields: [staffMemberId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([merchantId, staffMemberId, effectiveDate])
+  @@index([merchantId, staffMemberId, effectiveDate])
+  @@map("staff_pay_rates")
+}
+
+// One owner-approved attendance period is the source for daily payroll.
+model AttendancePeriod {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  monthStart DateTime @db.Date
+  status String @default("draft") @db.VarChar(12)
+  createdBy String @db.VarChar(80)
+  approvedBy String? @db.VarChar(80)
+  approvedAt DateTime? @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  entries StaffAttendance[]
+  changes StaffAttendanceChange[]
+  payrollRun StaffPayrollRun?
+
+  @@unique([id, merchantId])
+  @@unique([merchantId, monthStart])
+  @@index([merchantId, status, monthStart])
+  @@map("attendance_periods")
+}
+
+// Stores the current daily attendance entry for an employee and month.
+model StaffAttendance {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  attendancePeriodId String @db.Uuid
+  staffMemberId String @db.Uuid
+  attendanceDate DateTime @db.Date
+  status String @db.VarChar(12)
+  updatedBy String @db.VarChar(80)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  period AttendancePeriod @relation(fields: [attendancePeriodId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  staffMember StaffMember @relation(fields: [staffMemberId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([merchantId, staffMemberId, attendanceDate])
+  @@index([merchantId, attendancePeriodId, attendanceDate])
+  @@map("staff_attendance")
+}
+
+// Keeps an attributable history when the owner changes a day before approval.
+model StaffAttendanceChange {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  attendancePeriodId String @db.Uuid
+  staffMemberId String @db.Uuid
+  attendanceDate DateTime @db.Date
+  previousStatus String? @db.VarChar(12)
+  newStatus String? @db.VarChar(12)
+  reason String @db.VarChar(500)
+  changedBy String @db.VarChar(80)
+  changedAt DateTime @default(now()) @db.Timestamptz(6)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  period AttendancePeriod @relation(fields: [attendancePeriodId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  staffMember StaffMember @relation(fields: [staffMemberId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@index([merchantId, staffMemberId, attendanceDate, changedAt])
+  @@map("staff_attendance_changes")
+}
+
+// Freezes one monthly calculation after owner review.
+model StaffPayrollRun {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  attendancePeriodId String @db.Uuid
+  monthStart DateTime @db.Date
+  status String @default("draft") @db.VarChar(12)
+  createdBy String @db.VarChar(80)
+  approvedBy String? @db.VarChar(80)
+  approvedAt DateTime? @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  attendancePeriod AttendancePeriod @relation(fields: [attendancePeriodId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  adjustments StaffPayrollAdjustment[]
+  lines StaffPayrollLine[]
+
+  @@unique([id, merchantId])
+  @@unique([merchantId, monthStart])
+  @@unique([attendancePeriodId, merchantId])
+  @@index([merchantId, status, monthStart])
+  @@map("staff_payroll_runs")
+}
+
+// Stores an explained addition or deduction while a payroll is a draft.
+model StaffPayrollAdjustment {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  payrollRunId String @db.Uuid
+  staffMemberId String @db.Uuid
+  kind String @db.VarChar(12)
+  amount Decimal @db.Decimal(12, 2)
+  reason String @db.VarChar(500)
+  createdBy String @db.VarChar(80)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  payrollRun StaffPayrollRun @relation(fields: [payrollRunId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  staffMember StaffMember @relation(fields: [staffMemberId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@index([merchantId, payrollRunId, staffMemberId])
+  @@map("staff_payroll_adjustments")
+}
+
+// Is the immutable payroll calculation for one employee in a run.
+model StaffPayrollLine {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  payrollRunId String @db.Uuid
+  staffMemberId String @db.Uuid
+  employeeName String @db.VarChar(160)
+  branchName String @db.VarChar(160)
+  branchId String @db.Uuid
+  payBasis String @db.VarChar(12)
+  presentDays Int @default(0)
+  basePay Decimal @db.Decimal(12, 2)
+  additions Decimal @db.Decimal(12, 2)
+  deductions Decimal @db.Decimal(12, 2)
+  advanceDeduction Decimal @db.Decimal(12, 2)
+  netDue Decimal @db.Decimal(12, 2)
+  snapshot Json
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  payrollRun StaffPayrollRun @relation(fields: [payrollRunId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  staffMember StaffMember @relation(fields: [staffMemberId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  branch Branch @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  payments StaffPayrollPayment[]
+  advanceRepayments StaffAdvanceRepayment[]
+
+  @@unique([id, staffMemberId, merchantId])
+  @@unique([payrollRunId, staffMemberId])
+  @@index([merchantId, payrollRunId, staffMemberId])
+  @@map("staff_payroll_lines")
+}
+
+// Records a full or partial salary payment and its cash withdrawal together.
+model StaffPayrollPayment {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  payrollLineId String @db.Uuid
+  staffMemberId String @db.Uuid
+  requestId String @db.Uuid
+  fingerprint String @db.VarChar(64)
+  cashMovementId String @db.Uuid
+  amount Decimal @db.Decimal(12, 2)
+  paidAt DateTime @default(now()) @db.Timestamptz(6)
+  reason String @db.VarChar(500)
+  createdBy String @db.VarChar(80)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  payrollLine StaffPayrollLine @relation(fields: [payrollLineId, staffMemberId, merchantId], references: [id, staffMemberId, merchantId], onDelete: Restrict)
+  staffMember StaffMember @relation(fields: [staffMemberId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  cashMovement PosCashSafeMovement @relation(fields: [cashMovementId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([merchantId, requestId])
+  @@unique([cashMovementId, merchantId])
+  @@index([merchantId, payrollLineId, paidAt])
+  @@map("staff_payroll_payments")
+}
+
+// Records a staff advance and its single cash disbursement.
+model StaffAdvance {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  staffMemberId String @db.Uuid
+  branchId String @db.Uuid
+  requestId String @db.Uuid
+  fingerprint String @db.VarChar(64)
+  cashMovementId String @db.Uuid
+  amount Decimal @db.Decimal(12, 2)
+  installmentAmount Decimal @db.Decimal(12, 2)
+  firstInstallmentMonth DateTime @db.Date
+  reason String @db.VarChar(500)
+  createdBy String @db.VarChar(80)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  staffMember StaffMember @relation(fields: [staffMemberId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  branch Branch @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  cashMovement PosCashSafeMovement @relation(fields: [cashMovementId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  repayments StaffAdvanceRepayment[]
+
+  @@unique([id, staffMemberId, merchantId])
+  @@unique([merchantId, requestId])
+  @@unique([cashMovementId, merchantId])
+  @@index([merchantId, staffMemberId, firstInstallmentMonth, createdAt])
+  @@map("staff_advances")
+}
+
+// Links one approved advance instalment to the payroll line that deducted it.
+model StaffAdvanceRepayment {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  advanceId String @db.Uuid
+  payrollLineId String @db.Uuid
+  staffMemberId String @db.Uuid
+  amount Decimal @db.Decimal(12, 2)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  advance StaffAdvance @relation(fields: [advanceId, staffMemberId, merchantId], references: [id, staffMemberId, merchantId], onDelete: Restrict)
+  payrollLine StaffPayrollLine @relation(fields: [payrollLineId, staffMemberId, merchantId], references: [id, staffMemberId, merchantId], onDelete: Restrict)
+  staffMember StaffMember @relation(fields: [staffMemberId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([advanceId, payrollLineId])
+  @@index([merchantId, staffMemberId, createdAt])
+  @@map("staff_advance_repayments")
+}
+
+// Records business expenses independently from the cash payments made for them.
+model MerchantExpense {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  branchId String @db.Uuid
+  incurredOn DateTime @db.Date
+  category String @db.VarChar(80)
+  amount Decimal @db.Decimal(12, 2)
+  description String @db.VarChar(500)
+  revision Int @default(1)
+  receiptStorageKey String? @db.VarChar(500)
+  receiptMimeType String? @db.VarChar(80)
+  receiptSizeBytes Int?
+  createdBy String @db.VarChar(80)
+  updatedBy String @db.VarChar(80)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  branch Branch @relation(fields: [branchId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  payments ExpensePayment[]
+
+  @@unique([id, merchantId])
+  @@index([merchantId, branchId, incurredOn, id])
+  @@map("merchant_expenses")
+}
+
+// Links each partial expense payment to its unique cash withdrawal.
+model ExpensePayment {
+  id String @id @default(uuid()) @db.Uuid
+  merchantId String @db.Uuid
+  expenseId String @db.Uuid
+  requestId String @db.Uuid
+  fingerprint String @db.VarChar(64)
+  cashMovementId String @db.Uuid
+  amount Decimal @db.Decimal(12, 2)
+  paidAt DateTime @default(now()) @db.Timestamptz(6)
+  reason String @db.VarChar(500)
+  createdBy String @db.VarChar(80)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  expense MerchantExpense @relation(fields: [expenseId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  cashMovement PosCashSafeMovement @relation(fields: [cashMovementId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  @@unique([merchantId, requestId])
+  @@unique([cashMovementId, merchantId])
+  @@index([merchantId, expenseId, paidAt])
+  @@map("expense_payments")
 }

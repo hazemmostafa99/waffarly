@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useBlocker, useSearchParams } from 'react-router-dom';
 import { Button, Card, Dialog, useLocale } from '@waffarly/ui';
-import type { OwnerProfile } from '@waffarly/contracts';
+import type { OwnerProfile, OwnerRestaurantSettings } from '@waffarly/contracts';
 import { Icon } from '../../Icons.js';
 import { StorefrontSettings } from '../../StorefrontSettings.js';
 import { RestaurantSettings } from './RestaurantSettings.js';
@@ -13,7 +13,7 @@ const tabs: { id: Tab; icon: string; ar: string; en: string; description: string
     icon: 'store',
     ar: 'هوية المطعم',
     en: 'Restaurant identity',
-    description: 'الاسم والصور وظهور المطعم',
+    description: 'الاسم والشعار والغلاف في وفرلي ومتجرك',
   },
   {
     id: 'hours',
@@ -32,16 +32,16 @@ const tabs: { id: Tab; icon: string; ar: string; en: string; description: string
   {
     id: 'design',
     icon: 'settings',
-    ar: 'تصميم المتجر الخاص',
+    ar: 'مظهر المتجر المستقل',
     en: 'Storefront design',
-    description: 'القالب وألوان متجرك المستقل',
+    description: 'القالب والألوان وحجم الشعار',
   },
   {
     id: 'account',
     icon: 'customers',
     ar: 'الحساب والاشتراك',
     en: 'Account & subscription',
-    description: 'بيانات المالك وإدارة الحساب',
+    description: 'بيانات المالك وتسجيل الدخول والاشتراك',
   },
 ];
 export function RestaurantSettingsWorkspace({
@@ -56,15 +56,31 @@ export function RestaurantSettingsWorkspace({
   const selected = params.get('section');
   const active: Tab = tabs.find((entry) => entry.id === selected)?.id ?? 'identity';
   const setActive = (id: Tab) => {
+    if (id === active) return;
     const next = new URLSearchParams(params);
     next.set('section', id);
     setParams(next);
   };
   const [profileDirty, setProfileDirty] = useState(false);
+  const [designDirty, setDesignDirty] = useState(false);
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [designBusy, setDesignBusy] = useState(false);
+  const [identity, setIdentity] = useState<Pick<OwnerRestaurantSettings, 'logoImage' | 'coverImage'>>();
+  const dirty = profileDirty || designDirty;
+  const busy = profileBusy || designBusy;
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      profileDirty && currentLocation.pathname !== nextLocation.pathname,
+      (dirty || busy) && currentLocation.pathname !== nextLocation.pathname,
   );
+  useEffect(() => {
+    if (!dirty && !busy) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty, busy]);
   return (
     <div className="rs-workspace">
       <aside className="rs-navigation">
@@ -92,13 +108,22 @@ export function RestaurantSettingsWorkspace({
         <div hidden={!['identity', 'hours', 'delivery'].includes(active)}>
           <RestaurantSettings
             profile={profile}
-            onNameSaved={onNameSaved}
+            onSaved={({ name, logoImage, coverImage }) => {
+              onNameSaved(name);
+              setIdentity({ logoImage, coverImage });
+            }}
             onDirtyChange={setProfileDirty}
+            onBusyChange={setProfileBusy}
             activeSection={active === 'hours' || active === 'delivery' ? active : 'identity'}
           />
         </div>
         <div hidden={active !== 'design'} className="rs-design">
-          <StorefrontSettings profile={profile} />
+          <StorefrontSettings
+            profile={profile}
+            onDirtyChange={setDesignDirty}
+            onBusyChange={setDesignBusy}
+            identity={identity}
+          />
         </div>
         <div hidden={active !== 'account'}>
           <Card className="rs-panel">
@@ -134,12 +159,16 @@ export function RestaurantSettingsWorkspace({
         onOpenChange={(open) => {
           if (!open && blocker.state === 'blocked') blocker.reset();
         }}
-        title="عندك تغييرات غير محفوظة"
+        title={busy ? 'فيه عملية شغالة' : dirty ? 'عندك تغييرات غير محفوظة' : 'مغادرة الإعدادات'}
         closeLabel="إغلاق"
       >
         <div className="p-5">
           <p className="text-sm leading-6">
-            احفظ تغييرات المطعم قبل مغادرة الإعدادات، أو اختار المغادرة بدون حفظ.
+            {busy
+              ? 'استنى لحد ما الرفع أو الحفظ يخلص.'
+              : dirty
+                ? 'لو خرجت، التغييرات اللي لسه ما حفظتهاش هتضيع.'
+                : 'كل التغييرات محفوظة.'}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
@@ -148,17 +177,19 @@ export function RestaurantSettingsWorkspace({
                 if (blocker.state === 'blocked') blocker.reset();
               }}
             >
-              استمرار في الإعدادات
+              الرجوع للإعدادات
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                if (blocker.state === 'blocked') blocker.proceed();
-              }}
-            >
-              مغادرة بدون حفظ
-            </Button>
+            {!busy && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (blocker.state === 'blocked') blocker.proceed();
+                }}
+              >
+                {dirty ? 'تجاهل التغييرات والخروج' : 'خروج'}
+              </Button>
+            )}
           </div>
         </div>
       </Dialog>

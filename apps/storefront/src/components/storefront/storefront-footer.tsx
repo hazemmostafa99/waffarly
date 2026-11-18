@@ -10,6 +10,11 @@ import { storefrontCopy } from '../../lib/storefront-copy';
 export function StorefrontFooter({ catalog }: { catalog: PublicStorefrontCatalog }) {
   const { locale } = useLocale();
   const t = storefrontCopy(locale);
+  const logoSize = {
+    small: 'size-10',
+    medium: 'size-12',
+    large: 'size-14',
+  }[catalog.logoScale];
   const homeHref = `/s/${catalog.slug}`;
   const menuHref = `${homeHref}/menu`;
   const footerLinkClass =
@@ -20,7 +25,13 @@ export function StorefrontFooter({ catalog }: { catalog: PublicStorefrontCatalog
       <div className="mx-auto grid w-full max-w-[1240px] grid-cols-2 gap-x-8 gap-y-9 px-5 pt-10 pb-8 sm:px-8 sm:pt-12 lg:grid-cols-[1.15fr_1fr_1fr_0.9fr] lg:gap-12 lg:pt-11 lg:pb-9">
         <section className="col-span-2 grid content-start gap-4 text-start lg:col-span-1">
           <div className="flex items-center gap-3">
-            <span className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-store-gold text-store-primary-deep">
+            <span
+              className={
+                'relative grid ' +
+                logoSize +
+                ' shrink-0 place-items-center overflow-hidden rounded-2xl bg-store-gold text-store-primary-deep'
+              }
+            >
               {catalog.logoData ? (
                 <Image
                   src={catalog.logoData}

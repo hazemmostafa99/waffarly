@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { useLocale } from '@waffarly/ui';
-import type { OwnerProfile } from '@waffarly/contracts';
+import type { CatalogProductSummary, OwnerProfile } from '@waffarly/contracts';
 import { CatalogWorkspace, type CatalogSnapshot } from './CatalogWorkspace.js';
 import { StorefrontSettings } from './StorefrontSettings.js';
 
@@ -25,6 +25,21 @@ const navigation: { id: View; label: string; icon: string }[] = [
   { id: 'branches', label: 'Branches', icon: 'branches' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
 ];
+
+function productPrice(product: CatalogProductSummary) {
+  const availableVariants = product.variants.filter((variant) => variant.availability === 'available');
+  const currentPrices = availableVariants.map((variant) =>
+    Number(variant.promotionalPrice ?? variant.price),
+  );
+  const originalPrices = availableVariants.map((variant) => Number(variant.price));
+  return {
+    current: currentPrices.length
+      ? Math.min(...currentPrices)
+      : Number(product.promotionalPrice ?? product.basePrice),
+    original: originalPrices.length ? Math.min(...originalPrices) : Number(product.basePrice),
+    discounted: product.promotion?.status === 'active',
+  };
+}
 
 function Icon({ name }: { name: string }) {
   const paths: Record<string, ReactNode> = {
@@ -755,7 +770,9 @@ export function MerchantWorkspace({
                       </button>
                     </div>
                   ) : (
-                    preview.map((product) => (
+                    preview.map((product) => {
+                      const prices = productPrice(product);
+                      return (
                       <div className="merchant-product-row" key={product.id}>
                         {product.images[0] ? (
                           <img
@@ -782,9 +799,13 @@ export function MerchantWorkspace({
                         >
                           {t(product.availability === 'available' ? 'Available' : 'Unavailable')}
                         </span>
-                        <b>{money.format(Number(product.basePrice))}</b>
+                        <span className="merchant-product-prices">
+                          <b>{money.format(prices.current)}</b>
+                          {prices.discounted && <del>{money.format(prices.original)}</del>}
+                        </span>
                       </div>
-                    ))
+                      );
+                    })
                   )}
                 </section>
                 <section className="merchant-card">

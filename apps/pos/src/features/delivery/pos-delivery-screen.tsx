@@ -12,6 +12,7 @@ import type {
 import { Input, useLocale } from '@waffarly/ui';
 import { usePosWorkspaceStore } from '../../app/pos-workspace-store.js';
 import { PosButton } from '../../components/pos-button.js';
+import { getPosOrderNumber } from '../orders/pos-order-number.js';
 import { apiRequest, ApiError } from '../../lib/api-client.js';
 import {
   getCurrentPosShift,
@@ -23,6 +24,7 @@ import { useDeliveryRecovery, type PendingDeliveryWrite } from './delivery-recov
 type ReadyDelivery = {
   id: string;
   orderReference?: string | null;
+  branchOrderNumber?: number | null;
   revision: number;
   total: string;
   customerName: string | null;
@@ -670,7 +672,14 @@ function DispatchCard({
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
           {text('Order', 'طلب')}{' '}
-          <bdi dir="ltr">{order.orderReference ?? `#${order.id.slice(0, 8)}`}</bdi>
+          <bdi dir="ltr">
+            #
+            {getPosOrderNumber({
+              id: order.id,
+              orderReference: order.orderReference,
+              branchOrderNumber: order.branchOrderNumber,
+            })}
+          </bdi>
           <span className="mx-2">·</span>
           {text('Total', 'الإجمالي')}{' '}
           <strong className="tabular-nums">
@@ -860,7 +869,14 @@ function CourierCashOrder({
       <div className="min-w-0">
         <p className="font-semibold">
           {text('Order', 'طلب')}{' '}
-          <bdi dir="ltr">{d.orderReference ?? `#${d.orderId.slice(0, 8)}`}</bdi>
+          <bdi dir="ltr">
+            #
+            {getPosOrderNumber({
+              id: d.orderId,
+              orderReference: d.orderReference,
+              branchOrderNumber: d.branchOrderNumber,
+            })}
+          </bdi>
           <span className="mx-2 text-muted-foreground">·</span>
           {d.status === 'delivered'
             ? text('Delivered', 'تم التوصيل')
@@ -1031,7 +1047,14 @@ function DeliveryCard({
         <div className="flex flex-wrap items-center gap-2">
           <h3 className="font-semibold">
             {text('Order', 'طلب')}{' '}
-            <bdi dir="ltr">{d.orderReference ?? `#${d.orderId.slice(0, 8)}`}</bdi>
+            <bdi dir="ltr">
+              #
+              {getPosOrderNumber({
+                id: d.orderId,
+                orderReference: d.orderReference,
+                branchOrderNumber: d.branchOrderNumber,
+              })}
+            </bdi>
           </h3>
           <span
             className={`rounded-full px-2.5 py-1 text-xs ${d.status === 'failed' ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'}`}

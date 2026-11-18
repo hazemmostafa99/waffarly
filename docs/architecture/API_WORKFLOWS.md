@@ -40,14 +40,18 @@ after the shift closes before that browser profile can be set up again.
    Nest injects the operation dependencies. The service validates the command and
    keeps its request identity.
 3. Inside the existing sale transaction, the operation checks saved retries,
-   locks the open register shift, reviews current catalog pricing and product
-   revisions, and saves immutable line details. Catalog owns authoritative pricing.
+   locks the open register shift, atomically increments that shift's shared branch
+   order-session counter, reviews current catalog pricing and product revisions,
+   and saves immutable line details. Catalog owns authoritative pricing.
 4. The operation saves the order/check and applicable dining or kitchen facts.
    Direct stock effects and frozen recipe requirements use Orders' stock helpers
    and Inventory's ledger on that same transaction.
-5. It stores the action result and returns the confirmed order. An exact retry
-   returns the earlier result rather than another sale. Sale confirmation itself
-   does not represent a payment.
+5. The branch session is shared by every register shift at that branch and stays
+   active across midnight. Opening another shift joins it; the final shift close
+   ends it. The next shift opened after that starts a fresh number sequence.
+6. It stores the action result and returns the confirmed order and display number.
+   An exact retry returns the earlier result rather than another sale. Sale
+   confirmation itself does not represent a payment.
 
 Useful checks: `pos-orders.test.ts`, `pos-kitchen.test.ts`, and the Catalog,
 POS dining, stock and order-number database suites. This trace describes current
@@ -71,9 +75,9 @@ complete support for other business activities.
 5. The operation saves its replay result. Reopening a receipt reads the stored
    snapshot; it does not reconstruct a receipt from subsequently edited products.
 
-Ready website pickups call `PickupCollectionService.preparePickupCollection`
-directly before collection,
-and retain their storefront source. Refunds and physical item returns are separate
+Ready website and Waffarly pickups call `PickupCollectionService.preparePickupCollection`
+directly before collection and retain their original source. Shift reconciliation
+includes their open checks. Refunds and physical item returns are separate
 operations with separate money/stock meanings.
 
 Useful checks: `pos-payments.e2e.test.ts`, the POS dining, shift reconciliation,
@@ -89,15 +93,20 @@ operator-confirmed movement; the API does not call a payment processor.
 2. `StorefrontOrdersService.create` in
    [checkout](../../apps/api/src/modules/orders/checkout/storefront-orders.service.ts)
    checks matching saved requests and ownership before returning a replay.
-3. It reviews Catalog prices and opens the existing checkout transaction.
+3. It reviews the current Catalog price, including any active product promotion,
+   and opens the existing checkout transaction.
    Subscription eligibility is checked there.
 4. [`saveCheckoutLine`](../../apps/api/src/modules/orders/checkout/save-checkout-line.ts)
    validates current product versions, saves line names/choices/prices and
    reserves finished stock or freezes ingredient requirements.
-5. Checkout discount and restaurant operating/fulfillment policies determine the
-   final total and receiving branch. A supplied reviewed total must still match.
+5. Catalog snapshots any direct product discount on its order line. A checkout
+   coupon can apply to the discounted subtotal only when no product promotion is
+   active. Restaurant operating/fulfillment policies determine the receiving
+   branch. A supplied reviewed total must still match.
 6. The order total and applicable customer/guest access are saved with the stock
-   and discount effects. The returned receipt confirms an order, not collected money.
+   and discount effects. Identity-aware Marketplace checkout records `waffarly`;
+   ordinary tenant storefront checkout records `storefront`. The returned receipt
+   confirms an order, not collected money.
 
 Later acceptance/preparation/handover use
 [`OrderLifecycleService`](../../apps/api/src/modules/orders/fulfillment/order-lifecycle.service.ts)

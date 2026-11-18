@@ -29,3 +29,22 @@ export async function allocatePosOrderReference(
   if (!number) throw new InternalServerErrorException('Could not allocate an order number.');
   return number.reference;
 }
+
+/** Atomically allocates the next customer-facing number for a branch session. */
+export async function allocatePosBranchOrderNumber(
+  tx: Prisma.TransactionClient,
+  merchantId: string,
+  branchOrderSessionId: string,
+): Promise<number> {
+  const [counter] = await tx.$queryRaw<Array<{ lastNumber: number }>>`
+    UPDATE "pos_branch_order_sessions"
+    SET "lastNumber" = "lastNumber" + 1
+    WHERE "id" = ${branchOrderSessionId}::uuid
+      AND "merchantId" = ${merchantId}::uuid
+      AND "closedAt" IS NULL
+    RETURNING "lastNumber"
+  `;
+  if (!counter)
+    throw new InternalServerErrorException('Could not allocate the branch order number.');
+  return counter.lastNumber;
+}

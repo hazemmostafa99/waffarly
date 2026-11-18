@@ -21,6 +21,7 @@ import {
   type InventoryRequirementEffectInput,
 } from '../products/product-inventory.calculator.js';
 import { assertPersistedModifierGroup } from '../products/product.rules.js';
+import { calculatePromotionalPrice } from '../products/product-promotion.rules.js';
 @Injectable()
 export class ProductPricingService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
@@ -56,6 +57,11 @@ export class ProductPricingService {
         id: true,
         availability: true,
         basePrice: true,
+        promotionEnabled: true,
+        promotionType: true,
+        promotionValue: true,
+        promotionStartsAt: true,
+        promotionEndsAt: true,
         revision: true,
         inventoryConfiguration: { include: { targets: { include: { components: true } } } },
         variants: {
@@ -206,7 +212,14 @@ export class ProductPricingService {
       throw new ConflictException('Ingredient effects require RECIPE mode.');
 
     const basePriceCents = toCents((selectedVariant?.price ?? product.basePrice).toString());
-    if (basePriceCents + modifierTotalCents > 999_999_999_999n)
+    const pricePromotion = calculatePromotionalPrice(
+      formatCents(basePriceCents),
+      product,
+    );
+    const discountedBaseCents = pricePromotion.promotionalPrice
+      ? toCents(pricePromotion.promotionalPrice)
+      : basePriceCents;
+    if (discountedBaseCents + modifierTotalCents > 999_999_999_999n)
       throw new BadRequestException('Configured product price exceeds the supported range.');
     const variantAttributes =
       selectedVariant?.attributeSelections.map((selection) => ({
@@ -224,8 +237,11 @@ export class ProductPricingService {
       variantAttributes,
       currency: 'EGP',
       basePrice: formatCents(basePriceCents),
+      discountedBasePrice: formatCents(discountedBaseCents),
+      promotion: pricePromotion.appliedPromotion,
       modifierTotal: formatCents(modifierTotalCents),
-      totalPrice: formatCents(basePriceCents + modifierTotalCents),
+      originalTotalPrice: formatCents(basePriceCents + modifierTotalCents),
+      totalPrice: formatCents(discountedBaseCents + modifierTotalCents),
       selections: resolvedSelections,
     };
   }

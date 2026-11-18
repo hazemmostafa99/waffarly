@@ -30,7 +30,7 @@ export class PickupCollectionService {
           where: {
             id: orderId,
             merchantId: employee.merchantId,
-            source: 'storefront',
+            source: { in: ['waffarly', 'storefront'] },
             fulfillmentType: 'pickup',
             branchId: shift.branchId,
             branch: { archivedAt: null },

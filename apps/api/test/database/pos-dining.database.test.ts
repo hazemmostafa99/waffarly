@@ -121,10 +121,15 @@ it(
           updatedBy: 'pos-dining-test',
         },
       });
+      const orderSession = await prisma.posBranchOrderSession.create({
+        data: { merchantId: merchant.id, branchId: branch.id },
+        select: { id: true },
+      });
       const shift = await prisma.posShift.create({
         data: {
           merchantId: merchant.id,
           branchId: branch.id,
+          branchOrderSessionId: orderSession.id,
           registerId: register.id,
           openRequestId: randomUUID(),
           openedByEmployeeId: employee.id,

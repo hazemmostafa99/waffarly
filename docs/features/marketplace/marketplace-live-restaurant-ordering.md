@@ -196,6 +196,32 @@ earlier Arabic shift message are registered in the Arabic dictionary, avoiding
 the generic unexpected-error fallback. No broad 409 retry behavior was changed.
 Source reviewed only; no automated checks or live UI actions were run.
 
+## Origin source attribution — 2026-11-18
+
+Marketplace checkout persists `source: waffarly`; regular tenant-storefront
+checkout persists `source: storefront`; cashier-created orders retain `source:
+pos`. Status, payment and handover operations do not rewrite the source. The
+additive migration classifies historical orders as Waffarly only when a matching
+`customer_order_access` record proves that the identity-aware Marketplace route
+created them.
+
+The POS branch queue, pickup collection, tender/receipt reads and shift
+reconciliation now accept Waffarly-origin work where the same routed online
+pickup rules already applied to storefront orders. POS kitchen cards, receipt
+history and receipt views show the order origin. The cashier active-sales,
+refund and return workflows remain scoped to POS-origin sales. The Merchant
+inbox shows the origin, and the dashboard now reads a bounded
+latest-order page and requests source/date/fulfillment/product aggregates for a
+selected 7- or 30-day Cairo date range. Source-filtered cursor scans use a
+merchant/source/date/ID index. The existing POS operations report continues to
+describe POS-origin financial activity; the Merchant dashboard source summary
+provides the cross-source order comparison.
+
+No automated checks, migration deployment, order creation, payment or browser
+acceptance were run. Apply the migration before deploying the API and complete
+manual review of Marketplace → POS queue, pickup collection and dashboard
+source totals.
+
 ## Shift-error presentation correction
 
 The HTTP exception filter reads exception-body code and emits response errorCode.

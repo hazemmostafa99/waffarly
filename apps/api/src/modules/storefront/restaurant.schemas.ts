@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { deliveryLocations } from '@waffarly/contracts';
 const money = z.string().regex(/^(0|[1-9]\d{0,9})(\.\d{1,2})?$/);
 const clock = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const period = z
@@ -9,6 +10,29 @@ const image = z
   .object({ src: z.url().refine((value) => /^https?:\/\//.test(value)), alt: z.string().max(500) })
   .strict()
   .nullable();
+const locationId = z.string().refine((id) => deliveryLocations.some((location) => location.id === id));
+const branchSettings = z.object({
+  branchId: z.uuid(),
+  locationId,
+  paused: z.boolean(),
+  pickup: z.boolean(),
+  delivery: z.boolean(),
+  dailyHours: period.nullable(),
+  areas: z.array(z.object({
+    locationId,
+    fee: money,
+    minimum: money,
+    etaMinutes: z.number().int().min(1).max(1440),
+    priority: z.number().int().min(1).max(1000),
+  }).strict()).max(100),
+}).strict().refine((branch) => {
+  const governorate = deliveryLocations.find((location) => location.id === branch.locationId)?.governorate;
+  return (!branch.delivery || branch.areas.length > 0)
+    && new Set(branch.areas.map((area) => area.locationId)).size === branch.areas.length
+    && branch.areas.every((area) => deliveryLocations.some(
+      (location) => location.id === area.locationId && location.governorate === governorate,
+    ));
+}, 'Choose distinct delivery areas in the branch governorate.');
 export const restaurantSettingsSchema = z
   .object({
     name: z.string().trim().min(1).max(160).optional(),
@@ -56,6 +80,9 @@ export const restaurantSettingsSchema = z
       )
       .max(100)
       .refine((areas) => new Set(areas.map((area) => area.id)).size === areas.length),
+    branchFulfillment: z.array(branchSettings).max(100).refine(
+      (branches) => new Set(branches.map((branch) => branch.branchId)).size === branches.length,
+    ).optional(),
     revision: z.number().int().nonnegative(),
   })
   .strict()

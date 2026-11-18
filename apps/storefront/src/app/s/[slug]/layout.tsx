@@ -12,6 +12,8 @@ import { StorefrontHeader } from '../../../components/storefront/storefront-head
 import { StorefrontProviders } from '../../../providers/storefront-providers';
 import { StorefrontAddressProvider } from '../../../components/storefront/storefront-link';
 import { storefrontRequestHandle } from '../../../lib/storefront-address';
+import { storefrontThemeStyles } from '../../../lib/storefront-theme';
+import { RestaurantDeliveryPreview } from '../../../features/delivery/restaurant-delivery-preview';
 
 type StorefrontRouteProps = {
   params: Promise<{ slug: string }>;
@@ -56,8 +58,10 @@ export default async function StorefrontLayout({ children, params }: StorefrontL
         <StorefrontAddressProvider slug={catalog.slug} routeSlug={slug} hostBased={hostBased}>
           <div
             className={`${cairo.variable} ${tajawal.variable} storefront-theme min-h-screen bg-store-page font-body text-store-ink`}
+            style={storefrontThemeStyles(catalog)}
           >
             <StorefrontHeader catalog={catalog} />
+            {catalog.activity === 'restaurant' && <RestaurantDeliveryPreview slug={catalog.slug} />}
             <div className="pb-20 lg:pb-0">{children}</div>
             <StorefrontFooter catalog={catalog} />
           </div>

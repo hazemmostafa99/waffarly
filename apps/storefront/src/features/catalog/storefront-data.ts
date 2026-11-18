@@ -21,7 +21,7 @@ export const getStorefrontCatalog = cache(async (slug: string) => {
     technicalSlug = address.storefrontSlug;
   }
   return apiGet<PublicStorefrontCatalog>(`catalog/stores/${encodeURIComponent(technicalSlug)}`, {
-    revalidate: 300,
+    revalidate: 60,
     tags: [`storefront:${technicalSlug}`, `catalog:${technicalSlug}`],
   });
 });

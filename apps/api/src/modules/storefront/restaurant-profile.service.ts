@@ -1,11 +1,12 @@
 import { Prisma } from '@waffarly/database';
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { restaurantSettingsSchema } from './restaurant.schemas.js';
 import { toRestaurantSettings } from './restaurant-settings.mapper.js';
 import { restaurantOperatingState } from './restaurant-hours.js';
 import { CatalogQueryService } from '../catalog/index.js';
 import { formatCents, toCents } from '../../common/money/money.js';
+import { restaurantOnlineBranches } from './restaurant-branch-fulfillment.js';
 
 @Injectable()
 export class RestaurantProfileService {
@@ -37,6 +38,18 @@ export class RestaurantProfileService {
       referenceData: record.referenceData,
     };
   }
+  private async publicProfile(record: Prisma.RestaurantProfileModel) {
+    const { branchFulfillment, ...profile } = this.map(record);
+    return {
+      ...profile,
+      ...(branchFulfillment?.length ? {
+        onlineBranches: await restaurantOnlineBranches(this.prisma, record.merchantId, {
+          ...profile,
+          branchFulfillment,
+        }),
+      } : {}),
+    };
+  }
   async save(merchantId: string, actor: string, body: unknown) {
     const { revision, name, ...settings } = restaurantSettingsSchema.parse(body);
     await this.prisma.$transaction(async (db) => {
@@ -45,6 +58,13 @@ export class RestaurantProfileService {
         select: { id: true, name: true },
       });
       if (!merchant) throw new NotFoundException('Restaurant was not found.');
+      if (settings.branchFulfillment?.length) {
+        const count = await db.branch.count({
+          where: { merchantId, id: { in: settings.branchFulfillment.map((branch) => branch.branchId) } },
+        });
+        if (count !== settings.branchFulfillment.length)
+          throw new BadRequestException('Choose branches belonging to this restaurant.');
+      }
       if (name !== undefined && name !== merchant.name)
         await db.merchant.update({
           where: { id: merchantId },
@@ -56,6 +76,8 @@ export class RestaurantProfileService {
           },
         });
       const current = await db.restaurantProfile.findUnique({ where: { merchantId } });
+      if (current && settings.branchFulfillment?.length === 0 && toRestaurantSettings(current).branchFulfillment?.length)
+        throw new BadRequestException('أوقف استقبال الطلبات من آخر فرع بدل حذف إعداداته.');
       if (!current) {
         if (revision !== 0) throw new ConflictException('Reload restaurant settings.');
         const { logoImage, coverImage, ...rest } = settings;
@@ -100,10 +122,10 @@ export class RestaurantProfileService {
       ...(cursor ? { cursor: { merchantId: cursor }, skip: 1 } : {}),
     });
     return {
-      items: records.slice(0, 24).map((record) => {
+      items: await Promise.all(records.slice(0, 24).map(async (record) => {
         const { merchant, ...profile } = record;
-        return { ...this.map(profile), name: merchant.name, slug: merchant.storefrontSlug };
-      }),
+        return { ...await this.publicProfile(profile), name: merchant.name, slug: merchant.storefrontSlug };
+      })),
       nextCursor: records.length > 24 ? records[23]!.merchantId : null,
     };
   }
@@ -129,13 +151,21 @@ export class RestaurantProfileService {
       select: { id: true, name: true },
     });
     if (!merchant) throw new NotFoundException('Restaurant was not found.');
-    const profile = await this.get(merchant.id);
-    if (!profile.published) throw new NotFoundException('Restaurant was not found.');
+    const record = await this.prisma.restaurantProfile.findUnique({ where: { merchantId: merchant.id } });
+    if (!record?.published) throw new NotFoundException('Restaurant was not found.');
     return {
-      ...profile,
+      ...await this.publicProfile(record),
       name: merchant.name,
       slug,
       catalog: await this.catalog.getMarketplaceMenu(slug),
     };
+  }
+  async fulfillment(slug: string) {
+    const record = await this.prisma.restaurantProfile.findFirst({
+      where: { merchant: { storefrontSlug: slug, activity: 'restaurant' }, published: true },
+    });
+    if (!record) return { deliveryAreas: [] };
+    const { deliveryAreas, onlineBranches } = await this.publicProfile(record);
+    return { deliveryAreas, onlineBranches };
   }
 }

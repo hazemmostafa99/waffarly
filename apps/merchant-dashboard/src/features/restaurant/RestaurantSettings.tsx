@@ -1,4 +1,6 @@
 import { RestaurantImageField } from './RestaurantImageField.js';
+import { Link } from 'react-router-dom';
+import { RestaurantBranchFulfillment } from './RestaurantBranchFulfillment.js';
 import { Icon } from '../../Icons.js';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import type { OwnerProfile, OwnerRestaurantSettings, RestaurantPeriod } from '@waffarly/contracts';
@@ -52,6 +54,7 @@ function editable(data: OwnerRestaurantSettings): OwnerRestaurantSettings {
     deliveryTimeMinMinutes: data.deliveryTimeMinMinutes,
     deliveryTimeMaxMinutes: data.deliveryTimeMaxMinutes,
     deliveryAreas: data.deliveryAreas,
+    branchFulfillment: data.branchFulfillment,
     revision: data.revision,
   };
 }
@@ -135,13 +138,15 @@ function Periods({
 }
 export function RestaurantSettings({
   profile,
-  onNameSaved,
+  onSaved,
   onDirtyChange,
+  onBusyChange,
   activeSection = 'identity',
 }: {
   profile: OwnerProfile;
-  onNameSaved?: (name: string) => void;
+  onSaved?: (settings: OwnerRestaurantSettings) => void;
   onDirtyChange?: (dirty: boolean) => void;
+  onBusyChange?: (busy: boolean) => void;
   activeSection?: 'identity' | 'hours' | 'delivery';
 }) {
   const { locale } = useLocale();
@@ -150,15 +155,19 @@ export function RestaurantSettings({
   const savedDraft = useRef<OwnerRestaurantSettings>(initial(profile));
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [operation, setOperation] = useState<'saving' | 'uploading' | null>(null);
+  const busy = operation !== null;
   const [conflict, setConflict] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const lock = useRef(false);
   const dirty = saved !== '' && saved !== JSON.stringify(draft);
   useEffect(() => {
-    onDirtyChange?.(dirty || busy);
-  }, [dirty, busy, onDirtyChange]);
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+  useEffect(() => {
+    onBusyChange?.(busy);
+  }, [busy, onBusyChange]);
   async function load() {
     setLoading(true);
     setFailed(false);
@@ -186,15 +195,6 @@ export function RestaurantSettings({
   useEffect(() => {
     void load();
   }, [profile.merchantId]);
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
   function change<K extends keyof OwnerRestaurantSettings>(
     key: K,
     value: OwnerRestaurantSettings[K],
@@ -220,7 +220,7 @@ export function RestaurantSettings({
       return;
     }
     lock.current = true;
-    setBusy(true);
+    setOperation('saving');
     setError('');
     setNotice('');
     try {
@@ -234,14 +234,14 @@ export function RestaurantSettings({
       setDraft(next);
       setSaved(JSON.stringify(next));
       setConflict(false);
-      onNameSaved?.(next.name);
-      setNotice('تم حفظ إعدادات المطعم. ستظهر في وفرلي عند تحديث بيانات الصفحة.');
+      onSaved?.(next);
+      setNotice('تم حفظ إعدادات المطعم. حدّث صفحة العميل لمراجعة التغييرات.');
     } catch (cause) {
       setConflict(cause instanceof ApiError && cause.statusCode === 409);
       setError(cause instanceof Error ? cause.message : 'تعذر الحفظ.');
     } finally {
       lock.current = false;
-      setBusy(false);
+      setOperation(null);
     }
   }
   async function upload(key: 'logoImage' | 'coverImage', file?: File) {
@@ -254,7 +254,7 @@ export function RestaurantSettings({
       return;
     }
     lock.current = true;
-    setBusy(true);
+    setOperation('uploading');
     setError('');
     try {
       const asset = await apiUpload<{ publicUrl: string }>('/owner/catalog/media/upload', file);
@@ -263,7 +263,7 @@ export function RestaurantSettings({
       setError(cause instanceof Error ? cause.message : 'تعذر رفع الصورة.');
     } finally {
       lock.current = false;
-      setBusy(false);
+      setOperation(null);
     }
   }
   if (loading)
@@ -303,13 +303,19 @@ export function RestaurantSettings({
           </h3>
           <p>
             {activeSection === 'identity'
-              ? 'الاسم والوصف والصور اللي بتظهر في وفرلي.'
+              ? 'الاسم والشعار والغلاف يعرّفوا مطعمك في وفرلي ومتجرك المستقل.'
               : activeSection === 'hours'
                 ? 'تحكم في الجدول الأسبوعي والاستثناءات من مكان واحد.'
                 : 'حدد الرسوم والمدة والمناطق اللي بتوصل لها.'}
           </p>
         </div>
       </div>
+      {activeSection === 'identity' && (
+        <div className="rs-identity-design-note">
+          <p>ألوان وقالب المتجر المستقل بتتظبط من تبويب مظهر المتجر.</p>
+          <Link to="/settings?section=design">افتح مظهر المتجر</Link>
+        </div>
+      )}
       {error && (
         <p
           role="alert"
@@ -662,14 +668,20 @@ export function RestaurantSettings({
               إضافة منطقة
             </Button>
           </section>
+          <RestaurantBranchFulfillment
+            value={draft.branchFulfillment ?? []}
+            onChange={(branches) => change('branchFulfillment', branches)}
+          />
           <footer className="rs-savebar">
             <span role="status">
               <i className={dirty ? 'is-dirty' : ''} />
-              {busy
-                ? 'جارٍ حفظ التغييرات…'
-                : dirty
-                  ? 'عندك تغييرات غير محفوظة'
-                  : 'كل التغييرات محفوظة'}
+              {operation === 'uploading'
+                ? 'جارٍ رفع الصورة…'
+                : operation === 'saving'
+                  ? 'جارٍ حفظ التغييرات…'
+                  : dirty
+                    ? 'عندك تغييرات غير محفوظة'
+                    : 'كل التغييرات محفوظة'}
             </span>
             <div>
               <Button
@@ -685,7 +697,7 @@ export function RestaurantSettings({
                 تراجع عن التغييرات
               </Button>
               <Button type="submit" disabled={busy || conflict || !dirty} className="rs-primary">
-                {busy ? 'جارٍ الحفظ…' : 'حفظ التغييرات'}
+                {operation === 'saving' ? 'جارٍ الحفظ…' : 'حفظ التغييرات'}
               </Button>
             </div>
           </footer>

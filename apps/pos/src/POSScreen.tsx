@@ -323,6 +323,17 @@ export function POSScreen() {
                         <span className="rounded-md bg-card px-1.5 py-0.5 text-[11px] text-muted-foreground">
                           {t(order.fulfillmentType)}
                         </span>
+                        {order.source && (
+                          <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">
+                            {t(
+                              order.source === 'waffarly'
+                                ? 'Waffarly'
+                                : order.source === 'storefront'
+                                  ? 'Storefront'
+                                  : 'POS',
+                            )}
+                          </span>
+                        )}
                         {order.tableCode && (
                           <span className="rounded-md bg-card px-1.5 py-0.5 text-[11px] text-muted-foreground">
                             {t('Table')} <bdi>{order.tableCode}</bdi>

@@ -83,10 +83,15 @@ it(
               updatedBy: 'pos-operations-report-test',
             },
           });
+          const orderSession = await transaction.posBranchOrderSession.create({
+            data: { merchantId: merchant.id, branchId: branchA.id },
+            select: { id: true },
+          });
           const shift = await transaction.posShift.create({
             data: {
               merchantId: merchant.id,
               branchId: branchA.id,
+              branchOrderSessionId: orderSession.id,
               registerId: register.id,
               openRequestId: randomUUID(),
               openedByEmployeeId: employee.id,

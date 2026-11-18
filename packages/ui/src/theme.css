@@ -101,7 +101,7 @@
   --color-store-subtle: var(--storefront-muted);
   --color-store-border: var(--storefront-border);
   --color-store-error: var(--storefront-error);
-  --color-store-accent: var(--storefront-primary);
+  --color-store-accent: var(--storefront-accent);
   --font-heading: var(--font-cairo), 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
   --font-body: var(--font-tajawal), 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
 }
@@ -110,6 +110,16 @@
   --storefront-primary: #0f705a;
   --storefront-primary-dark: #0a5645;
   --storefront-primary-deep: #063d31;
+  --storefront-primary-foreground: #ffffff;
+  --storefront-primary-dark-foreground: #ffffff;
+  --storefront-primary-deep-foreground: #ffffff;
+  --storefront-primary-text: #0f705a;
+  --storefront-primary-dark-text: #0a5645;
+  --storefront-primary-deep-text: #063d31;
+  --storefront-accent: #f5b544;
+  --storefront-accent-foreground: #172330;
+  --storefront-accent-text: #936517;
+  --storefront-accent-on-primary-deep: #f5b544;
   --storefront-gold: #f5b544;
   --storefront-gold-muted: #dba13d;
   --storefront-gold-soft: #f9d88e;

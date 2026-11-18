@@ -25,6 +25,14 @@ export function fromMinorUnits(value: number): string {
 export function getProductStartingPrice(product: PublicStorefrontProduct): string {
   const availablePrices = product.variants
     .filter((variant) => variant.availability === 'available')
+    .map((variant) => Number(variant.promotionalPrice ?? variant.price));
+  if (availablePrices.length === 0) return product.promotionalPrice ?? product.basePrice;
+  return String(Math.min(...availablePrices));
+}
+
+export function getProductOriginalStartingPrice(product: PublicStorefrontProduct): string {
+  const availablePrices = product.variants
+    .filter((variant) => variant.availability === 'available')
     .map((variant) => Number(variant.price));
   if (availablePrices.length === 0) return product.basePrice;
   return String(Math.min(...availablePrices));

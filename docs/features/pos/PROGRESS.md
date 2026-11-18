@@ -1394,6 +1394,12 @@ shift remains separate; refresh the POS to load the updated client.
 - Unpaid-check and pending-delivery warnings remain conditional; manual cash movement history remains available.
 - Validation: POS typecheck, lint, production build, shared UI build; 38/38 shift/delivery browser tests passed on desktop/mobile. The added refresh request assertion also passed on both viewports (2/2).
 
+# 2026-11-17 — Shared branch order numbers
+
+Added a branch order session shared across register shifts. It remains active across midnight and closes only after the final register shift closes; a later shift starts a new sequence. POS sale creation increments the session counter in the order transaction, preserving idempotent retries. The migration groups historical shifts by overlapping operating windows and backfills existing POS orders. The POS now shows the display number in order history, the current confirmed sale, checkout, dining, delivery and printed receipts; technical references remain available for search. Order history and receipt history can search the display number. Orders also has a direct View / print receipt action; when there are multiple saved receipts it opens order details for selection.
+
+Manual database migration and cashier/device acceptance remain pending.
+
 # 2026-10-29 — POS order numbers and recovery
 
 Local recovery: the migration file's UTF-8 BOM initially caused PostgreSQL to reject it before any steps ran. The BOM was removed, the zero-step attempt was marked rolled back, and the corrected migration was applied to the local `waffarly` database. Read-only delivery-ready, active-sales and history service queries succeeded for the affected branch; number allocation succeeded in an intentionally rolled-back transaction. Concurrent database verification remains pending.

@@ -1,11 +1,19 @@
 # CAT-F02 — Products
 
-**Status:** Product core, Product Builder, sellable variants/attributes, reusable modifier assignments, authoritative configuration quote, and order-history deletion protection implemented
+**Status:** Product core, Product Builder, sellable variants/attributes, reusable modifier assignments, direct product promotions, authoritative configuration quote, and order-history deletion protection implemented
 
-**Last updated:** 2026-10-14
+**Last updated:** 2026-11-18
 **Parent:** [Catalog & Dynamic Product Builder Overview](OVERVIEW.md)  
 **Parent feature mapping:** Existing `CAT-01 — Categories and products`  
 **Identifier note:** `CAT-F02` is temporary because `CAT-01` through `CAT-03` already identify broader Catalog feature groups.
+
+## Current behavior update — 2026-11-18
+
+Catalog supports one direct price promotion per product. Owners can enable or pause a percentage or fixed EGP discount, with optional start and end timestamps entered in Cairo time. The promotion applies to the product or selected variant base price; paid modifier choices are added after the discount. Fixed discounts and rounded percentage discounts must leave every affected variant above EGP 0.00.
+
+Catalog pricing determines whether a promotion is active when it quotes an item. Product lists and the tenant storefront show the original and promotional prices; POS uses the same quote. Checkout stores the discount type, value and per-unit savings on each order line, so later product edits do not change order history. A checkout coupon cannot be combined with an active product promotion.
+
+This update supersedes older statements in this document and the Product Builder notes that product discounts are unapproved or out of scope. The coupon module remains a separate order-level feature.
 
 ## 1. Purpose
 
@@ -77,6 +85,7 @@ The product owner confirmed the following on 2026-10-13:
 - `POST /catalog/stores/:slug/orders` accepts customer name/phone, pickup or delivery (with a required address), and configured product lines. Prices are never accepted from the browser: the API re-quotes every line and checks the product revision again in the transaction.
 - Order creation snapshots product/variant/attribute/modifier IDs and names, assignment-level price adjustments, and fixed-precision EGP prices. A serializable transaction creates the order and atomically decrements tracked variant stock; untracked variants remain unreserved.
 - `GET /owner/orders` returns the signed-in owner's latest 100 orders. `PATCH /owner/orders/:id/status` allows a pending order to be accepted or rejected; rejection restores any still-existing tracked variant reservation, while acceptance keeps it consumed.
+- The Merchant order inbox uses `GET /owner/orders/inbox` for all saved order sources (currently storefront and POS), with server-side source, status, fulfillment, Cairo-local date, and text filters and bounded cursor pages. Its response includes database aggregates for the filtered set. `GET /owner/orders/:id` loads full line details when a row is opened. The existing storefront-only `/owner/orders` response remains available to other dashboard consumers.
 - Products with order lines cannot be permanently deleted. The owner may archive them while the order snapshots remain readable even if catalog definitions later change.
 - This is not a general Inventory ledger or fulfillment system. There is no online payment, delivery-fee calculation, tax/discount support, notification, POS order, branch routing, kitchen flow, or later fulfillment-state transition.
 
