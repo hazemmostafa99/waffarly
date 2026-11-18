@@ -24,15 +24,23 @@ Strict tracking requirements:
 
 ## Current Status
 
-- Overall: Core catalog-to-order pages plus the API-gap route UIs are implemented. The API-gap screens are explicitly preview-only; backend integration remains blocked on approved contracts and real data.
-- Current milestone: UI-first coverage of every planned storefront route; keep API-gap integration backlog open.
-- Current slice: Account preview flow now includes overview, profile, My Orders, and addresses pages with profile-icon navigation. Customer APIs remain blocked.
+- Overall: Core catalog-to-order pages plus the API-gap route UIs are implemented. Tenant account sign-in and merchant-scoped order history are now API-backed; unsupported profile/address/tracking routes remain previews.
+- Current milestone: Preserve the complete storefront journey while keeping Marketplace demo behavior separate from merchant-store accounts.
+- Current slice: Store-specific registration creates a merchant customer, signed-in checkouts link to that customer, and the tenant account shows scoped order history. Profile and address screens remain previews.
 - Visual reference: Supplied Waffarly Bistro UI kit remains the design source; user-provided Wafarly Marketplace screenshots guide relative typography and density only.
 - Target app: `apps/storefront`.
 - Primary route namespace: `/s/[slug]`.
-- Last updated: 2026-10-15.
-- Last verified state: Uncommitted worktree; no commit created. Storefront lint, typecheck, production build, and `git diff --check` passed. The six API-gap routes passed 36 RTL/LTR × mobile/tablet/desktop checks; the four account routes passed 24 checks at `390x844`, `768x1024`, and `1440x900` with no overflow or browser errors. Account profile/address form clearing and My Orders local filters passed. Screenshots are saved for offers-mobile, branches-desktop, account-orders-mobile, and account-profile-desktop. The real API was not used for account data; a temporary empty catalog-shell fixture was stopped after verification and the final build uses the configured `localhost:4000` API URL.
-- Worktree note: Preserve all pre-existing workspace edits. This slice added account/orders feature modules and route files, localized account links and navigation, updated the feature contract/progress, and saved verification screenshots. Existing number-formatting behavior and unrelated dirty API/workspace files were left untouched.
+- Last updated: 2026-11-14.
+- Last verified state: The prior 2026-10-15 viewport evidence remains historical. For the current slice, Prisma Client generation succeeded and the additive storefront-account migration was applied to the configured local database. No tests, app builds/typechecks, or browser account flows were run; manual acceptance is pending.
+- Worktree note: Preserve all pre-existing workspace edits. The current slice adds tenant-scoped auth, merchant customer creation, authenticated order linkage/history, and updates their route copy. Existing number-formatting behavior and unrelated dirty API/workspace files were left untouched.
+
+### 2026-11-14 - Merchant-Scoped Storefront Customer Accounts
+
+- The user clarified that an account created at `/s/[slug]/login` belongs only to that merchant, creates a customer-directory record, and remains separate from the global Waffarly Marketplace account.
+- Added merchant-local credentials and sessions, sign-up/login/me/logout routes, bounded attempt limits, same-merchant order linkage on signed-in checkout, and cursor-based account order history. Global customer authentication and Marketplace checkout routes remain separate.
+- Updated account copy and route descriptions: order history is live for the signed-in merchant account; profile/address editing and unsupported tracking flows remain visibly preview-only.
+- `node node_modules/prisma/build/index.js generate --config prisma.config.ts` from `packages/database`: succeeded. `migrate status`: only `20261114150000_merchant_customer_storefront_accounts` was pending. `migrate deploy`: succeeded; no database reset or backfill.
+- No tests, app builds/typechecks, or browser account registration/order flows were run, per the existing manual-QA preference. Manual acceptance is still needed for store isolation, signup visibility in `/owner/customers`, logged-in checkout linkage, and the order-history screen.
 
 ### 2026-10-15 - API-Gap Pages UI Scope Decision
 
@@ -235,11 +243,11 @@ Strict tracking requirements:
 
 ### 11. Customer Authentication and Account
 
-- [!] Blocked by unresolved customer identity requirements and missing public customer API.
-- [x] Build preview-only login/register form states and account dashboard shell; no authentication call, customer-data persistence, or fake success.
+- [~] Merchant-scoped storefront auth and order history are API-backed; browser acceptance is pending.
+- [x] Build the login/register form and account dashboard shell in the original UI-only slice; the form is now connected only to the merchant-scoped account API.
 - [x] Check both pages at mobile/tablet/desktop in RTL and LTR; registration view switches locally.
 - [x] Add the profile page with blank, transient, non-persisted fields and a visible preview notice.
-- [x] Add the My Orders page with local filter controls and an honest empty state; no order records or statuses are fabricated.
+- [~] Replace My Orders local-only content with authenticated same-merchant order history and empty/loading/error states. Browser acceptance is pending.
 - [x] Add the addresses page with an add-address preview form that clears without saving.
 - [x] Link account pages from the account overview, profile icon, mobile navigation, footer, and account sub-navigation.
 - [x] Check the account flow at mobile/tablet/desktop in RTL and LTR; profile/address fields clear after preview submission and order filters change locally.
@@ -265,36 +273,36 @@ Strict tracking requirements:
 
 Each completed page must record evidence for all applicable checks.
 
-| Check | Status | Latest evidence |
-| --- | --- | --- |
-| Storefront typecheck | Passed | `pnpm --filter @waffarly/storefront typecheck` passed on 2026-10-15 (Node 20.19.0 emitted the package's Node >=24.11 <25 engine warning) |
-| Storefront lint | Passed | `pnpm --filter @waffarly/storefront lint` passed on 2026-10-15 (same engine warning) |
-| Storefront production build | Passed | `pnpm --filter @waffarly/storefront build` passed on 2026-10-15; all current app routes compiled (same engine warning) |
-| Contracts typecheck/build | Not run | Outside this UI slice |
-| API typecheck/lint/tests | Not run | Outside this UI slice |
-| Shared UI lint | Passed | `pnpm --filter @waffarly/ui lint`; one existing `react-refresh/only-export-components` warning in `badge.tsx` |
-| Shared UI typecheck/build | Passed | `pnpm --filter @waffarly/ui typecheck` and `pnpm --filter @waffarly/ui build` |
-| Shared UI tests | Passed (no tests present) | `pnpm --filter @waffarly/ui test` exited successfully with zero tests |
-| Merchant dashboard lint/typecheck | Passed | `pnpm --filter @waffarly/merchant-dashboard lint` and `pnpm --filter @waffarly/merchant-dashboard typecheck` |
-| Merchant dashboard production build | Passed | `pnpm --filter @waffarly/merchant-dashboard build`; Vite emitted the existing >500 kB chunk-size advisory (Node 20.19.0 engine warning; sandboxed native-module/helper spawn needed approved escalation) |
-| Playwright primary journey | Not implemented | No primary journey test added in this slice |
-| HTTP smoke | Passed (live catalog) | Product route `/s/test-a5d13b8340d34e1fb85341be51ca4528/products/15533a31-d61a-4440-9707-63bedd525870` returned 200 from the production Next server at `localhost:3000` |
-| Runtime recovery | Passed | Fresh production product route returned 200 with no page errors or failed requests; the reported RSC module-factory error did not recur |
-| API connectivity | Unavailable today | Started the local API on 2026-10-15; `/health/db` returned 503 `DATABASE_UNAVAILABLE` and the catalog read returned 500. The API process was stopped; no seed or database write was made. The 2026-10-14 live catalog check previously returned 12 products and 8 categories |
-| Live store-route smoke | Previously passed; unavailable today | The 2026-10-14 user-provided slug resolved to a live catalog. Current screenshots are layout-only because today's API database check failed; no order was submitted and no API/database data was changed |
-| Live quote-to-basket flow | Passed | Changed to Brioche + extra cheddar; API quote returned `195.00` EGP and the configured item was added to local Zustand basket state |
-| Mobile visual comparison (`390x844`) | Passed (homepage shell) | Arabic and English homepage screenshots captured; `document.documentElement.scrollWidth` matched 390px. See `screenshots/homepage-rtl-2026-10-15-mobile.png`; catalog data is not live-verified |
-| Category card dimensions/type | Passed (runtime and screenshot) | At 390x844, 768x1024, and 1440x900: card `175x150px`, image `70x70px`, title `12px`, metadata `10px`; no document horizontal overflow |
-| Footer layout (`390x844` / `1440x900`) | Passed (homepage shell) | Arabic/English footer layout checked at 390x844, 768x1024, and 1440x900. Scoped legacy paragraph color leakage so the copyright row now renders with the intended light text token; catalog data is not live-verified |
-| Account preview pages (mobile/tablet/desktop, Arabic/English) | Passed | 24 browser checks across `/account`, `/account/profile`, `/account/orders`, and `/account/addresses`; `390x844`, `768x1024`, `1440x900`; correct direction, visible disclosure, no horizontal overflow or page errors |
-| Account preview interactions | Passed | Profile and address inputs clear after local preview submission; all three order filters switch `aria-pressed` state while retaining the honest empty state |
-| Menu visual comparison (`390x844` / `1440x900`) | Pending recheck | Prior `screenshots/menu-mobile.png` and `screenshots/menu-desktop.png` predate updated title, hero, and grid sizing |
-| Product detail visual comparison (`390x844` / `1440x900`) | Pending recheck | Prior product screenshots predate the compact title, image aspect, and card-spacing changes |
-| Tablet responsive check | Partial (homepage shell) | Arabic/English homepage shell checked at 768x1024; `document.documentElement.scrollWidth` matched 768px. Menu/product responsive checks remain pending |
-| Desktop visual comparison (`1440x900`) | Partial (homepage shell) | Arabic/English homepage and footer checked at 1440x900; `document.documentElement.scrollWidth` matched 1440px. Other routes remain pending |
-| RTL smoke check | Passed (homepage shell) | At 390x844, 768x1024, and 1440x900 `dir=rtl`, document width equaled viewport width, and homepage/footer copy updated after changing the locale |
-| LTR smoke check | Passed | Homepage at `390x844` and menu at `768x1024` rendered with `dir=ltr`; no horizontal overflow |
-| Keyboard/accessibility check | Passed (focused smoke) | Native radio arrow-key navigation moved to the next available live variant; this is not a full WCAG audit |
+| Check                                                         | Status                               | Latest evidence                                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Storefront typecheck                                          | Passed                               | `pnpm --filter @waffarly/storefront typecheck` passed on 2026-10-15 (Node 20.19.0 emitted the package's Node >=24.11 <25 engine warning)                                                                                                                                     |
+| Storefront lint                                               | Passed                               | `pnpm --filter @waffarly/storefront lint` passed on 2026-10-15 (same engine warning)                                                                                                                                                                                         |
+| Storefront production build                                   | Passed                               | `pnpm --filter @waffarly/storefront build` passed on 2026-10-15; all current app routes compiled (same engine warning)                                                                                                                                                       |
+| Contracts typecheck/build                                     | Not run                              | Outside this UI slice                                                                                                                                                                                                                                                        |
+| API typecheck/lint/tests                                      | Not run                              | Outside this UI slice                                                                                                                                                                                                                                                        |
+| Shared UI lint                                                | Passed                               | `pnpm --filter @waffarly/ui lint`; one existing `react-refresh/only-export-components` warning in `badge.tsx`                                                                                                                                                                |
+| Shared UI typecheck/build                                     | Passed                               | `pnpm --filter @waffarly/ui typecheck` and `pnpm --filter @waffarly/ui build`                                                                                                                                                                                                |
+| Shared UI tests                                               | Passed (no tests present)            | `pnpm --filter @waffarly/ui test` exited successfully with zero tests                                                                                                                                                                                                        |
+| Merchant dashboard lint/typecheck                             | Passed                               | `pnpm --filter @waffarly/merchant-dashboard lint` and `pnpm --filter @waffarly/merchant-dashboard typecheck`                                                                                                                                                                 |
+| Merchant dashboard production build                           | Passed                               | `pnpm --filter @waffarly/merchant-dashboard build`; Vite emitted the existing >500 kB chunk-size advisory (Node 20.19.0 engine warning; sandboxed native-module/helper spawn needed approved escalation)                                                                     |
+| Playwright primary journey                                    | Not implemented                      | No primary journey test added in this slice                                                                                                                                                                                                                                  |
+| HTTP smoke                                                    | Passed (live catalog)                | Product route `/s/test-a5d13b8340d34e1fb85341be51ca4528/products/15533a31-d61a-4440-9707-63bedd525870` returned 200 from the production Next server at `localhost:3000`                                                                                                      |
+| Runtime recovery                                              | Passed                               | Fresh production product route returned 200 with no page errors or failed requests; the reported RSC module-factory error did not recur                                                                                                                                      |
+| API connectivity                                              | Unavailable today                    | Started the local API on 2026-10-15; `/health/db` returned 503 `DATABASE_UNAVAILABLE` and the catalog read returned 500. The API process was stopped; no seed or database write was made. The 2026-10-14 live catalog check previously returned 12 products and 8 categories |
+| Live store-route smoke                                        | Previously passed; unavailable today | The 2026-10-14 user-provided slug resolved to a live catalog. Current screenshots are layout-only because today's API database check failed; no order was submitted and no API/database data was changed                                                                     |
+| Live quote-to-basket flow                                     | Passed                               | Changed to Brioche + extra cheddar; API quote returned `195.00` EGP and the configured item was added to local Zustand basket state                                                                                                                                          |
+| Mobile visual comparison (`390x844`)                          | Passed (homepage shell)              | Arabic and English homepage screenshots captured; `document.documentElement.scrollWidth` matched 390px. See `screenshots/homepage-rtl-2026-10-15-mobile.png`; catalog data is not live-verified                                                                              |
+| Category card dimensions/type                                 | Passed (runtime and screenshot)      | At 390x844, 768x1024, and 1440x900: card `175x150px`, image `70x70px`, title `12px`, metadata `10px`; no document horizontal overflow                                                                                                                                        |
+| Footer layout (`390x844` / `1440x900`)                        | Passed (homepage shell)              | Arabic/English footer layout checked at 390x844, 768x1024, and 1440x900. Scoped legacy paragraph color leakage so the copyright row now renders with the intended light text token; catalog data is not live-verified                                                        |
+| Account preview pages (mobile/tablet/desktop, Arabic/English) | Passed                               | 24 browser checks across `/account`, `/account/profile`, `/account/orders`, and `/account/addresses`; `390x844`, `768x1024`, `1440x900`; correct direction, visible disclosure, no horizontal overflow or page errors                                                        |
+| Account preview interactions                                  | Passed                               | Profile and address inputs clear after local preview submission; all three order filters switch `aria-pressed` state while retaining the honest empty state                                                                                                                  |
+| Menu visual comparison (`390x844` / `1440x900`)               | Pending recheck                      | Prior `screenshots/menu-mobile.png` and `screenshots/menu-desktop.png` predate updated title, hero, and grid sizing                                                                                                                                                          |
+| Product detail visual comparison (`390x844` / `1440x900`)     | Pending recheck                      | Prior product screenshots predate the compact title, image aspect, and card-spacing changes                                                                                                                                                                                  |
+| Tablet responsive check                                       | Partial (homepage shell)             | Arabic/English homepage shell checked at 768x1024; `document.documentElement.scrollWidth` matched 768px. Menu/product responsive checks remain pending                                                                                                                       |
+| Desktop visual comparison (`1440x900`)                        | Partial (homepage shell)             | Arabic/English homepage and footer checked at 1440x900; `document.documentElement.scrollWidth` matched 1440px. Other routes remain pending                                                                                                                                   |
+| RTL smoke check                                               | Passed (homepage shell)              | At 390x844, 768x1024, and 1440x900 `dir=rtl`, document width equaled viewport width, and homepage/footer copy updated after changing the locale                                                                                                                              |
+| LTR smoke check                                               | Passed                               | Homepage at `390x844` and menu at `768x1024` rendered with `dir=ltr`; no horizontal overflow                                                                                                                                                                                 |
+| Keyboard/accessibility check                                  | Passed (focused smoke)               | Native radio arrow-key navigation moved to the next available live variant; this is not a full WCAG audit                                                                                                                                                                    |
 
 ## Implementation Log
 
@@ -438,21 +446,20 @@ Each completed page must record evidence for all applicable checks.
 
 ## Decisions and Blockers
 
-| Date | Area | Decision or blocker | Status |
-| --- | --- | --- | --- |
-| 2026-10-14 | Visual reference | Use the supplied kit for presentation and interaction intent, not as production business logic. | Decided |
-| 2026-10-14 | Styling | Use Tailwind CSS 4 and shared shadcn primitives; do not port the prototype stylesheet. | Decided |
-| 2026-10-14 | Server data | Use Next.js server rendering and explicit cache tags for cacheable public reads. | Decided |
-| 2026-10-14 | Client server state | Use React Query for quotes, mutations, and supported tracking. | Decided |
-| 2026-10-14 | Client state | Use merchant-scoped Zustand persistence for cart/favorites/preferences only. | Decided |
-| 2026-10-14 | Pricing | Backend quotes and order creation remain authoritative. | Decided |
-| 2026-10-14 | Branches | Public branch data and order `branchId` are absent. | Blocked |
-| 2026-10-14 | Offers | Public offer data and promotion rules are absent. | Blocked |
-| 2026-10-14 | Tracking | No privacy-safe public order lookup endpoint is defined. | Blocked |
-| 2026-10-14 | Customer account | Authentication, profile, favorites sync, and history contracts are unresolved. | Blocked |
-| 2026-10-15 | API-gap route UI | User approved implementing missing storefront route UIs with isolated, visibly disclosed local preview behavior; backend gaps remain blocked and preview state cannot enter real flows. | Decided |
-| 2026-10-14 | Runtime recovery | Reinstall deps from local store, stop stale dev graph, and clear verified generated `.next/dev` cache; clean dev startup no longer reproduced module-factory error. | Resolved |
-| 2026-10-14 | Local API for dev smoke | User-provided slug `test-a5d13b8340d34e1fb85341be51ca4528` returns a public catalog at `localhost:4000`; keep read/write rules unchanged. | Resolved |
-| 2026-10-14 | Menu visual data | Live catalog now available for product `15533a31-d61a-4440-9707-63bedd525870`; continue rendering through the public catalog contract. | Verified |
-| 2026-10-14 | Product item notes | The prototype contains an optional note field, but the quote/create-order contracts and strict API schema do not accept notes. Keep it out of the production UI pending an approved end-to-end contract. | Blocked by API capability |
-
+| Date       | Area                    | Decision or blocker                                                                                                                                                                                      | Status                    |
+| ---------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| 2026-10-14 | Visual reference        | Use the supplied kit for presentation and interaction intent, not as production business logic.                                                                                                          | Decided                   |
+| 2026-10-14 | Styling                 | Use Tailwind CSS 4 and shared shadcn primitives; do not port the prototype stylesheet.                                                                                                                   | Decided                   |
+| 2026-10-14 | Server data             | Use Next.js server rendering and explicit cache tags for cacheable public reads.                                                                                                                         | Decided                   |
+| 2026-10-14 | Client server state     | Use React Query for quotes, mutations, and supported tracking.                                                                                                                                           | Decided                   |
+| 2026-10-14 | Client state            | Use merchant-scoped Zustand persistence for cart/favorites/preferences only.                                                                                                                             | Decided                   |
+| 2026-10-14 | Pricing                 | Backend quotes and order creation remain authoritative.                                                                                                                                                  | Decided                   |
+| 2026-10-14 | Branches                | Public branch data and order `branchId` are absent.                                                                                                                                                      | Blocked                   |
+| 2026-10-14 | Offers                  | Public offer data and promotion rules are absent.                                                                                                                                                        | Blocked                   |
+| 2026-10-14 | Tracking                | No privacy-safe public order lookup endpoint is defined.                                                                                                                                                 | Blocked                   |
+| 2026-10-14 | Customer account        | Authentication, profile, favorites sync, and history contracts are unresolved.                                                                                                                           | Blocked                   |
+| 2026-10-15 | API-gap route UI        | User approved implementing missing storefront route UIs with isolated, visibly disclosed local preview behavior; backend gaps remain blocked and preview state cannot enter real flows.                  | Decided                   |
+| 2026-10-14 | Runtime recovery        | Reinstall deps from local store, stop stale dev graph, and clear verified generated `.next/dev` cache; clean dev startup no longer reproduced module-factory error.                                      | Resolved                  |
+| 2026-10-14 | Local API for dev smoke | User-provided slug `test-a5d13b8340d34e1fb85341be51ca4528` returns a public catalog at `localhost:4000`; keep read/write rules unchanged.                                                                | Resolved                  |
+| 2026-10-14 | Menu visual data        | Live catalog now available for product `15533a31-d61a-4440-9707-63bedd525870`; continue rendering through the public catalog contract.                                                                   | Verified                  |
+| 2026-10-14 | Product item notes      | The prototype contains an optional note field, but the quote/create-order contracts and strict API schema do not accept notes. Keep it out of the production UI pending an approved end-to-end contract. | Blocked by API capability |

@@ -2,7 +2,10 @@ import data from '@/features/marketplace/data/reference.json';
 import { merchantScenarioProducts } from '@/features/marketplace/catalog/model/catalog';
 
 import type { PublicRestaurantProfile } from '@waffarly/contracts';
-export type MarketplaceRestaurant = (typeof data.restaurants)[number] & { slug?: string; settings?: PublicRestaurantProfile };
+export type MarketplaceRestaurant = (typeof data.restaurants)[number] & {
+  slug?: string;
+  settings?: PublicRestaurantProfile;
+};
 
 function decodeRestaurantId(restaurantId: string) {
   try {

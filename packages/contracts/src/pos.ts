@@ -98,9 +98,9 @@ export function hasPosEmployeePermission(
 }
 
 export function posEmployeeHome(employee: Pick<PosEmployeeSession, 'permissions'>): string {
-  if (hasPosEmployeePermission(employee, 'view_orders')) return '/';
+  if (hasPosEmployeePermission(employee, 'view_orders')) return '/kitchen';
   if (hasPosEmployeePermission(employee, 'view_inventory')) return '/inventory';
-  if (hasPosEmployeePermission(employee, 'view_receipts')) return '/receipts';
+  if (hasPosEmployeePermission(employee, 'view_receipts')) return '/orders';
   return '/access';
 }
 
@@ -120,8 +120,7 @@ export interface PosEmployeeSummary {
   savedPermissions?: PosEmployeePermission[];
   active: boolean;
   revision: number;
-  branchIds: string[];
-  branches: PosEmployeeBranch[];
+  branch: PosEmployeeBranch;
   createdAt: string;
   updatedAt: string;
 }
@@ -133,7 +132,17 @@ export interface PosEmployeeSession {
   displayName: string;
   role: PosEmployeeRole | null;
   permissions: PosEmployeePermission[];
-  branches: PosEmployeeBranch[];
+  branch: PosEmployeeBranch;
+  /** Stable browser identity used by POS sessions. Older in-process actors may omit it. */
+  deviceId?: string;
+  /** The single cashier register paired with this browser, or null during first-time setup. */
+  deviceRegister?: PosEmployeeRegister | null;
+}
+
+export interface PosEmployeeRegister {
+  id: string;
+  branchId: string;
+  name: string;
 }
 
 export interface PosLoginRequest {
@@ -147,7 +156,7 @@ export interface CreatePosEmployeeRequest {
   displayName: string;
   password: string;
   role?: PosEmployeeRole | null;
-  branchIds: string[];
+  branchId: string;
 }
 
 export interface UpdatePosEmployeeRequest {
@@ -155,6 +164,6 @@ export interface UpdatePosEmployeeRequest {
   displayName: string;
   active: boolean;
   role?: PosEmployeeRole | null;
-  branchIds: string[];
+  branchId: string;
   password?: string | undefined;
 }

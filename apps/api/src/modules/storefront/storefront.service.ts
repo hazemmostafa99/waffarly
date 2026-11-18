@@ -2,34 +2,21 @@ import { BadRequestException, ConflictException, Inject, Injectable } from '@nes
 import type {
   MerchantStorefrontSettings,
   SaveMerchantStorefrontRequest,
-  StorefrontTemplateSummary,
 } from '@waffarly/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 
-const defaultAccent = '#315b43';
+const defaultPrimary = '#0f705a';
+const defaultAccent = '#f5b544';
+const defaultBackground = '#faf8f4';
+const defaultSurface = '#ffffff';
 
-function templateSummary(record: {
-  id: string;
-  key: string;
-  name: string;
-  description: string;
-  activity: string;
-  layout: string;
-  accentColor: string;
-  status: string;
-  revision: number;
-  createdAt: Date;
-  updatedAt: Date;
-  updatedBy: string;
-}): StorefrontTemplateSummary {
-  return {
-    ...record,
-    activity: record.activity as StorefrontTemplateSummary['activity'],
-    layout: record.layout as StorefrontTemplateSummary['layout'],
-    status: record.status as StorefrontTemplateSummary['status'],
-    createdAt: record.createdAt.toISOString(),
-    updatedAt: record.updatedAt.toISOString(),
-  };
+function imageSource(value: unknown): string | null {
+  if (typeof value !== 'object' || value === null || !('src' in value)) return null;
+  return typeof value.src === 'string' ? value.src : null;
+}
+
+function logoScale(value: string | undefined): MerchantStorefrontSettings['logoScale'] {
+  return value === 'small' || value === 'large' ? value : 'medium';
 }
 
 @Injectable()
@@ -39,27 +26,32 @@ export class StorefrontService {
   async getSettings(merchantId: string): Promise<MerchantStorefrontSettings> {
     const merchant = await this.prisma.merchant.findUniqueOrThrow({
       where: { id: merchantId },
-      select: { activity: true, storefrontSlug: true, storefrontHandle: true },
+      select: {
+        storefrontSlug: true,
+        storefrontHandle: true,
+        restaurantProfile: { select: { logoImage: true, coverImage: true } },
+      },
     });
-    const [selected, available] = await Promise.all([
-      this.prisma.merchantStorefront.findUnique({ where: { merchantId } }),
-      this.prisma.storefrontTemplate.findMany({
-        where: {
-          activity: { in: ['general', merchant.activity] },
-          OR: [{ status: 'available' }, { merchants: { some: { merchantId } } }],
-        },
-        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      }),
-    ]);
+    const selected = await this.prisma.merchantStorefront.findUnique({ where: { merchantId } });
     return {
       merchantId,
       storefrontSlug: merchant.storefrontSlug,
       storefrontHandle: merchant.storefrontHandle ?? null,
-      templateId: selected?.templateId ?? null,
+      layout: selected?.layout === 'menu' ? 'menu' : 'hero',
+      primaryColor: selected?.primaryColor ?? defaultPrimary,
       accentColor: selected?.accentColor ?? defaultAccent,
-      logoData: selected?.logoData ?? null,
+      backgroundColor: selected?.backgroundColor ?? defaultBackground,
+      surfaceColor: selected?.surfaceColor ?? defaultSurface,
+      logoScale: logoScale(selected?.logoScale),
+      heroTitle: selected?.heroTitle ?? null,
+      heroEyebrow: selected?.heroEyebrow ?? null,
+      heroEmphasis: selected?.heroEmphasis ?? null,
+      heroShade: selected?.heroShade === 'light' || selected?.heroShade === 'strong'
+        ? selected.heroShade
+        : 'medium',
+      logoData: imageSource(merchant.restaurantProfile?.logoImage) ?? selected?.logoData ?? null,
+      coverImageUrl: imageSource(merchant.restaurantProfile?.coverImage),
       revision: selected?.revision ?? 0,
-      templates: available.map(templateSummary),
     };
   }
 
@@ -67,7 +59,7 @@ export class StorefrontService {
     merchantId: string,
     input: SaveMerchantStorefrontRequest,
   ): Promise<MerchantStorefrontSettings> {
-    if (input.logoData) {
+    if (input.logoData?.startsWith('data:')) {
       const encoded = input.logoData.slice(input.logoData.indexOf(',') + 1);
       const logoBytes = Buffer.from(encoded, 'base64');
       if (logoBytes.length > 48 * 1024) {
@@ -93,21 +85,35 @@ export class StorefrontService {
       }
     }
 
+    const appearance = {
+      layout: input.layout,
+      primaryColor: input.primaryColor,
+      accentColor: input.accentColor,
+      backgroundColor: input.backgroundColor,
+      surfaceColor: input.surfaceColor,
+      logoScale: input.logoScale,
+      ...(input.heroTitle !== undefined ? { heroTitle: input.heroTitle?.trim() || null } : {}),
+      ...(input.heroEyebrow !== undefined ? { heroEyebrow: input.heroEyebrow?.trim() || null } : {}),
+      ...(input.heroEmphasis !== undefined ? { heroEmphasis: input.heroEmphasis?.trim() || null } : {}),
+      ...(input.heroShade !== undefined ? { heroShade: input.heroShade } : {}),
+    };
     await this.prisma.$transaction(async (transaction) => {
       const merchant = await transaction.merchant.findUniqueOrThrow({ where: { id: merchantId } });
-      const template = await transaction.storefrontTemplate.findFirst({
-        where: {
-          id: input.templateId,
-          status: 'available',
-          activity: { in: ['general', merchant.activity] },
-        },
-        select: { id: true },
-      });
-      if (!template) {
-        throw new BadRequestException('Choose an available design for your business activity.');
-      }
-
       const current = await transaction.merchantStorefront.findUnique({ where: { merchantId } });
+      if (
+        merchant.activity !== 'restaurant' &&
+        input.logoData &&
+        !input.logoData.startsWith('data:') &&
+        current?.logoData !== input.logoData
+      ) {
+        const uploadedLogo = await transaction.mediaAsset.findFirst({
+          where: { merchantId, publicUrl: input.logoData },
+          select: { id: true },
+        });
+        if (!uploadedLogo) {
+          throw new BadRequestException('Upload the logo to this business account before saving it.');
+        }
+      }
       if (!current) {
         if (input.revision !== 0) {
           throw new ConflictException('Storefront settings changed. Reload before saving again.');
@@ -115,9 +121,8 @@ export class StorefrontService {
         await transaction.merchantStorefront.create({
           data: {
             merchantId,
-            templateId: template.id,
-            accentColor: input.accentColor,
-            logoData: input.logoData,
+            ...appearance,
+            logoData: merchant.activity === 'restaurant' ? null : input.logoData,
           },
         });
         return;
@@ -126,9 +131,8 @@ export class StorefrontService {
       const updated = await transaction.merchantStorefront.updateMany({
         where: { merchantId, revision: input.revision },
         data: {
-          templateId: template.id,
-          accentColor: input.accentColor,
-          logoData: input.logoData,
+          ...appearance,
+          ...(merchant.activity === 'restaurant' ? {} : { logoData: input.logoData }),
           revision: { increment: 1 },
         },
       });

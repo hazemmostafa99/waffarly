@@ -4,7 +4,6 @@ import { cookies } from 'next/headers';
 import { LocaleProvider } from '@waffarly/ui';
 import '@waffarly/ui/theme.css';
 import './globals.css';
-import '@waffarly/ui/storefront-design.css';
 
 export const metadata: Metadata = {
   title: 'Waffarly Storefront',

@@ -90,9 +90,7 @@ export function CategoriesPage() {
             null);
     setSelectedId(nextId);
     if (!creating) {
-      setDraft(
-        categoryDraft(nextCategories.find((category) => category.id === nextId) ?? null),
-      );
+      setDraft(categoryDraft(nextCategories.find((category) => category.id === nextId) ?? null));
     }
   }
 
@@ -368,44 +366,44 @@ export function CategoriesPage() {
       </div>
 
       <div className="categories-toolbar">
-      <div className="categories-filters">
-        <label className="products-search">
-          <Icon name="search" />
-          <input
-            aria-label={copy('Search categories')}
-            placeholder={copy('Search categories…')}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </label>
-        <select
-          aria-label={copy('All statuses')}
-          value={status}
-          onChange={(event) => setStatus(event.target.value)}
-        >
-          <option value="">{copy('All statuses')}</option>
-          <option value="available">{copy('Active')}</option>
-          <option value="unavailable">{copy('Inactive')}</option>
-          <option value="archived">{copy('Archived')}</option>
-        </select>
-        <select
-          aria-label={copy('Sort by')}
-          value={sort}
-          onChange={(event) => setSort(event.target.value)}
-        >
-          <option value="name">{copy('Name A–Z')}</option>
-          <option value="products">{copy('Most products')}</option>
-        </select>
-      </div>
+        <div className="categories-filters">
+          <label className="products-search">
+            <Icon name="search" />
+            <input
+              aria-label={copy('Search categories')}
+              placeholder={copy('Search categories…')}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+          <select
+            aria-label={copy('All statuses')}
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+          >
+            <option value="">{copy('All statuses')}</option>
+            <option value="available">{copy('Active')}</option>
+            <option value="unavailable">{copy('Inactive')}</option>
+            <option value="archived">{copy('Archived')}</option>
+          </select>
+          <select
+            aria-label={copy('Sort by')}
+            value={sort}
+            onChange={(event) => setSort(event.target.value)}
+          >
+            <option value="name">{copy('Name A–Z')}</option>
+            <option value="products">{copy('Most products')}</option>
+          </select>
+        </div>
         <div className="categories-toolbar-actions">
-        <button
-          type="button"
-          className="products-button primary"
-          disabled={loading || busy || !hasLoaded}
-          onClick={startCreating}
-        >
-          <Icon name="plus" /> {copy('Add Category')}
-        </button>
+          <button
+            type="button"
+            className="products-button primary"
+            disabled={loading || busy || !hasLoaded}
+            onClick={startCreating}
+          >
+            <Icon name="plus" /> {copy('Add Category')}
+          </button>
         </div>
       </div>
 
@@ -472,7 +470,9 @@ export function CategoriesPage() {
                     value={draft.description}
                     onChange={(event) => setDraft({ ...draft, description: event.target.value })}
                   />
-                  <small>{formatNumber(draft.description.length)}/{formatNumber(1000)}</small>
+                  <small>
+                    {formatNumber(draft.description.length)}/{formatNumber(1000)}
+                  </small>
                 </label>
                 <label>
                   {copy('Parent category')}

@@ -21,6 +21,7 @@ import { PageHeader } from '../../components/PageHeader.js';
 import { CompactStatCard } from '../../components/CompactStatCard.js';
 import { StatusBadge } from '../../components/StatusBadge.js';
 import { CreatedMerchantDialog } from './CreatedMerchantDialog.js';
+import { ResetMerchantPasswordDialog } from './ResetMerchantPasswordDialog.js';
 import { useCreatedMerchantStore } from './created-merchant-store.js';
 import {
   merchantHasAccess,
@@ -61,6 +62,7 @@ export function MerchantsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const merchants = useMerchantsQuery();
   const applications = useMerchantApplicationsQuery();
+  const [resetMerchant, setResetMerchant] = useState<MerchantSummary | null>(null);
   const [createdMerchant, setCreatedMerchant] = useState(
     () => useCreatedMerchantStore.getState().result,
   );
@@ -132,6 +134,13 @@ export function MerchantsPage() {
   return (
     <div className="admin-page">
       <CreatedMerchantDialog result={createdMerchant} onClose={() => setCreatedMerchant(null)} />
+      {resetMerchant && (
+        <ResetMerchantPasswordDialog
+          key={resetMerchant.id}
+          merchant={resetMerchant}
+          onClose={() => setResetMerchant(null)}
+        />
+      )}
       <PageHeader
         title={t('Businesses')}
         actions={
@@ -442,21 +451,34 @@ export function MerchantsPage() {
                           )}
                         </td>
                         <td className="px-5 py-5 align-middle">
-                          <Button
-                            asChild
-                            variant="outline"
-                            size="sm"
-                            className="h-10 whitespace-nowrap rounded-xl border-waffarly-border bg-white px-3 text-xs font-bold text-waffarly-ink hover:border-waffarly-success/30 hover:bg-waffarly-kpi-mint/30 hover:text-waffarly-primary"
-                          >
-                            <Link to={`/subscriptions?merchant=${merchant.id}`}>
-                              {t('Manage subscription')}
-                              {locale === 'ar' ? (
-                                <ChevronLeft size={15} aria-hidden="true" />
-                              ) : (
-                                <ChevronRight size={15} aria-hidden="true" />
-                              )}
-                            </Link>
-                          </Button>
+                          <div className="flex flex-col items-start gap-2">
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="h-10 whitespace-nowrap rounded-xl border-waffarly-border bg-white px-3 text-xs font-bold text-waffarly-ink hover:border-waffarly-success/30 hover:bg-waffarly-kpi-mint/30 hover:text-waffarly-primary"
+                            >
+                              <Link to={`/subscriptions?merchant=${merchant.id}`}>
+                                {t('Manage subscription')}
+                                {locale === 'ar' ? (
+                                  <ChevronLeft size={15} aria-hidden="true" />
+                                ) : (
+                                  <ChevronRight size={15} aria-hidden="true" />
+                                )}
+                              </Link>
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="min-h-10 h-auto whitespace-normal rounded-xl border-waffarly-border bg-white px-3 py-2 text-start text-xs text-waffarly-ink hover:bg-waffarly-input"
+                              disabled={!merchant.username}
+                              aria-label={`${locale === 'ar' ? 'إعادة تعيين كلمة المرور' : 'Reset password'}: ${merchant.name}`}
+                              onClick={() => setResetMerchant(merchant)}
+                            >
+                              {locale === 'ar' ? 'إعادة تعيين كلمة المرور' : 'Reset password'}
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     );

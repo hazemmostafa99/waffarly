@@ -2,9 +2,9 @@ import { ForbiddenException } from '@nestjs/common';
 import type { PosEmployeeSession } from '@waffarly/contracts';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { PosKitchenService } from '../../src/modules/orders/pos-kitchen.service.js';
-import { createPosKitchenTicket } from '../../src/modules/orders/pos-kitchen.persistence.js';
-import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
+import { PosKitchenService } from '../../src/modules/orders/kitchen/pos-kitchen.service.js';
+import { createPosKitchenTicket } from '../../src/modules/orders/kitchen/pos-kitchen.persistence.js';
+import { StorefrontOrdersService } from '../../src/modules/orders/checkout/storefront-orders.service.js';
 
 const merchantId = '11111111-1111-4111-8111-111111111111';
 const employeeId = '22222222-2222-4222-8222-222222222222';
@@ -21,11 +21,11 @@ const employee: PosEmployeeSession = {
   displayName: 'Cashier',
   role: 'cashier',
   permissions: ['sell'],
-  branches: [{ id: branchId, name: 'Main', archivedAt: null }],
+  branch: { id: branchId, name: 'Main', archivedAt: null },
 };
 
 describe('POS kitchen tickets', () => {
-  it('keeps the legacy recipe queue and scopes ticketed POS work to its branch and active statuses', async () => {
+  it('includes routed web orders and keeps legacy recipe and ticketed POS work scoped to the branch', async () => {
     let capturedWhere: unknown;
     const service = new StorefrontOrdersService(
       {
@@ -46,7 +46,12 @@ describe('POS kitchen tickets', () => {
       delivery: { is: null },
       OR: [
         {
-          lines: { some: { stockHandling: 'recipe_acceptance' } },
+          source: 'storefront',
+          branchId,
+          status: { in: ['pending', 'accepted', 'preparing', 'ready'] },
+        },
+        {
+          lines: { some: { stockHandling: { in: ['recipe_acceptance', 'direct_acceptance'] } } },
           OR: [
             {
               status: 'pending',
@@ -260,7 +265,7 @@ describe('POS kitchen tickets', () => {
             id: orderId,
             merchantId,
             source: 'pos',
-            branchId: { in: [branchId] },
+            branchId,
           });
           return currentOrder;
         },

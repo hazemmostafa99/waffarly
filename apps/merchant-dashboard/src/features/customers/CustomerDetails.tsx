@@ -280,13 +280,9 @@ function CustomerOrderHistory({ id, refresh }: { id: string; refresh: number }) 
             <li key={order.id}>
               <div>
                 <strong>
-                  {order.source === 'storefront' ? (
-                    <Link to={`/orders?orderId=${encodeURIComponent(order.id)}`}>
-                      {order.reference ?? order.id.slice(0, 8)}
-                    </Link>
-                  ) : (
-                    (order.reference ?? order.id.slice(0, 8))
-                  )}
+                  <Link to={`/orders?orderId=${encodeURIComponent(order.id)}`}>
+                    {order.reference ?? order.id.slice(0, 8)}
+                  </Link>
                 </strong>
                 <span>{orderStatusLabel(order.status, locale)}</span>
               </div>

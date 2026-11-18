@@ -1,3 +1,5 @@
+import type { CursorPage } from './pagination.js';
+
 export const STOCK_BASE_UNITS = ['piece', 'g', 'kg', 'ml', 'l'] as const;
 export type StockBaseUnit = (typeof STOCK_BASE_UNITS)[number];
 
@@ -66,6 +68,59 @@ export interface StockItemConversion {
   unitCode: string;
   baseUnit: StockBaseUnit;
   baseQuantity: string;
+}
+
+export type StockItemCostSource = 'opening' | 'purchase' | 'purchase_correction';
+
+export interface StockItemCostEvent {
+  id: string;
+  revision: number;
+  baseUnitCost: string;
+  baseUnit: StockBaseUnit;
+  sourceType: StockItemCostSource;
+  sourceInvoiceId: string | null;
+  sourceInvoiceNumber: string | null;
+  supplierName: string | null;
+  sourceWarehouseId: string | null;
+  sourceWarehouseName: string | null;
+  enteredUnitCode: string;
+  enteredUnitName: string;
+  enteredUnitCost: string;
+  reason: string | null;
+  actor: string;
+  createdAt: string;
+}
+
+export interface StockItemCostSnapshot {
+  revision: number;
+  baseUnitCost: string;
+  baseUnit: StockBaseUnit;
+  sourceType: StockItemCostSource;
+  sourceInvoiceId: string | null;
+  sourceInvoiceNumber: string | null;
+  supplierName: string | null;
+  sourceWarehouseId: string | null;
+  sourceWarehouseName: string | null;
+  enteredUnitCode: string;
+  enteredUnitName: string;
+  enteredUnitCost: string;
+  updatedBy: string;
+  updatedAt: string;
+}
+
+export interface StockItemCostSummary {
+  stockItemId: string;
+  itemName: string;
+  baseUnit: StockBaseUnit;
+  current: StockItemCostSnapshot | null;
+  history: CursorPage<StockItemCostEvent>;
+}
+
+export interface SetStockItemOpeningCostRequest {
+  requestId: string;
+  unitCode: string;
+  unitCost: string;
+  reason: string;
 }
 
 export const STOCK_CONDITIONS = ['available', 'non_sellable'] as const;
@@ -166,6 +221,27 @@ export interface CreateStockOpeningRequest {
   lines: StockOpeningLineRequest[];
 }
 
+export interface RecordStockWasteRequest {
+  requestId: string;
+  reason: string;
+  lines: StockOpeningLineRequest[];
+}
+
+export interface StockTransferLineRequest {
+  stockItemId: string;
+  condition: StockCondition;
+  quantity: string;
+  unitCode: string;
+}
+
+export interface TransferStockRequest {
+  requestId: string;
+  reason: string;
+  sourceWarehouseId: string;
+  destinationWarehouseId: string;
+  lines: StockTransferLineRequest[];
+}
+
 export interface StockMovement {
   id: string;
   batchId: string;
@@ -184,6 +260,11 @@ export interface StockMovement {
   unitCode: string;
   enteredQuantity: string;
   baseDelta: string;
+  costRevision: number | null;
+  baseUnitCost: string | null;
+  estimatedCostAmount: string | null;
+  costSourceType: StockItemCostSource | null;
+  costSourceInvoiceId: string | null;
   actor: string;
   createdAt: string;
 }

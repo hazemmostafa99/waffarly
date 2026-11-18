@@ -65,6 +65,13 @@ const refundAllocationSchema = z
   })
   .strict();
 
+const refundLineAllocationSchema = z
+  .object({
+    orderLineId: z.string().uuid(),
+    quantity: z.number().int().min(1).max(99),
+  })
+  .strict();
+
 const recordPosCheckRefundSchema = z
   .object({
     requestId: z.string().uuid(),
@@ -73,6 +80,7 @@ const recordPosCheckRefundSchema = z
     refundShiftId: z.string().uuid(),
     reason: z.string().trim().min(1).max(500),
     allocations: z.array(refundAllocationSchema).min(1).max(20),
+    lineAllocations: z.array(refundLineAllocationSchema).min(1).max(30).optional(),
     approval: z
       .object({ username: z.string().trim().min(1).max(80), password: z.string().min(1).max(256) })
       .strict()
@@ -88,6 +96,17 @@ const recordPosCheckRefundSchema = z
         code: 'custom',
         path: ['allocations'],
         message: 'Original payment IDs must be unique.',
+      });
+    }
+    if (
+      request.lineAllocations &&
+      new Set(request.lineAllocations.map((line) => line.orderLineId)).size !==
+        request.lineAllocations.length
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['lineAllocations'],
+        message: 'Order line IDs must be unique.',
       });
     }
   });
@@ -110,5 +129,6 @@ export function withoutPosRefundApproval(
     refundShiftId: input.refundShiftId,
     reason: input.reason,
     allocations: input.allocations,
+    ...(input.lineAllocations ? { lineAllocations: input.lineAllocations } : {}),
   };
 }

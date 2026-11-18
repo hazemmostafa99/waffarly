@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Button, DashboardCard, useLocale } from '@waffarly/ui';
+import { Button, useLocale } from '@waffarly/ui';
 import { Icon } from '../../Icons.js';
 import './pos-report-workspace.css';
 
@@ -12,22 +12,14 @@ export function PosReportFilters({
   footer?: ReactNode;
   actions?: ReactNode;
 }) {
-  const { locale } = useLocale();
   return (
-    <DashboardCard
-      title={locale === 'ar' ? 'فلاتر التقرير' : 'Report filters'}
-      description={
-        locale === 'ar'
-          ? 'اختر الفرع وفترة لا تتجاوز ٩٣ يومًا.'
-          : 'Choose a branch and a period of up to 93 days.'
-      }
-    >
+    <div className="report-panel pos-report-filter-panel">
       <div className={`pos-report-filters${actions ? ' pos-report-filters--with-actions' : ''}`}>
         {children}
         {actions && <div className="pos-report-filter-actions-inline">{actions}</div>}
       </div>
       {footer}
-    </DashboardCard>
+    </div>
   );
 }
 

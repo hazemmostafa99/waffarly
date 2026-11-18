@@ -167,7 +167,9 @@ export function Icon({ name }: { name: string }) {
     arrow: <path d="m9 5 7 7-7 7" />,
     plus: <path d="M12 5v14M5 12h14" />,
     check: <path d="m5 12 4 4L19 6" />,
-    refresh: <path d="M20 7v5h-5M4 17v-5h5m-3.5-2a7 7 0 0 1 12-2L20 12M4 12l2.5 4a7 7 0 0 0 12-2" />,
+    refresh: (
+      <path d="M20 7v5h-5M4 17v-5h5m-3.5-2a7 7 0 0 1 12-2L20 12M4 12l2.5 4a7 7 0 0 0 12-2" />
+    ),
     close: <path d="m6 6 12 12M6 18 18 6" />,
     'arrow-up': <path d="M12 19V5m-7 7 7-7 7 7" />,
     'arrow-down': <path d="M12 5v14m-7-7 7 7 7-7" />,
@@ -280,6 +282,18 @@ export function Icon({ name }: { name: string }) {
     download: (
       <>
         <path d="M12 3v12M7 10l5 5 5-5M5 21h14" />
+      </>
+    ),
+    monitor: (
+      <>
+        <rect x="3" y="4" width="18" height="12" rx="2" />
+        <path d="M12 16v4m-4 0h8" />
+      </>
+    ),
+    smartphone: (
+      <>
+        <rect x="7" y="2" width="10" height="20" rx="2" />
+        <path d="M11 18h2" />
       </>
     ),
     phone: (

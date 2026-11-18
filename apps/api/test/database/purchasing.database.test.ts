@@ -1,25 +1,27 @@
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
-import { config } from 'dotenv';
+import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+import { PrismaClient } from '@waffarly/database';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { InventoryLedgerService } from '../../src/modules/inventory/inventory-ledger.service.js';
+import { InventoryCostService } from '../../src/modules/inventory/inventory-cost.service.js';
 import { InventoryLocationsService } from '../../src/modules/inventory/inventory-locations.service.js';
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
 import { PurchaseSuppliersService } from '../../src/modules/purchasing/purchase-suppliers.service.js';
 import { PurchasingService } from '../../src/modules/purchasing/purchasing.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 const actor = 'purchasing-database-test';
 
 it(
   'keeps purchase drafts inert and atomically receives exact, tenant-scoped invoice quantities once',
   { skip: !databaseUrl },
-  async () => {
-    assert.ok(databaseUrl, 'Configure DATABASE_URL and apply the purchasing migration first.');
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+  async (testContext) => {
+    assert.ok(databaseUrl, 'Configure TEST_DATABASE_URL and apply the purchasing migration first.');
+    const client = createTestDatabaseClient(testContext);
     const merchantIds: string[] = [];
     try {
       const prisma = client as unknown as PrismaService;
@@ -49,8 +51,9 @@ it(
       const inventory = new InventoryService(prisma);
       const locations = new InventoryLocationsService(prisma);
       const ledger = new InventoryLedgerService(prisma);
+      const costs = new InventoryCostService(prisma);
       const suppliers = new PurchaseSuppliersService(prisma);
-      const purchasing = new PurchasingService(prisma, ledger);
+      const purchasing = new PurchasingService(prisma, ledger, costs);
       const branch = await locations.createBranch(merchant.id, actor, {
         name: 'Central branch',
         defaultWarehouseName: 'Receiving',
@@ -104,12 +107,14 @@ it(
             condition: 'available' as const,
             quantity: '1.5',
             unitCode: 'kg',
+            unitCost: '200.00',
           },
           {
             stockItemId: item.id,
             condition: 'non_sellable' as const,
             quantity: '1',
             unitCode: 'case-12',
+            unitCost: '2400.00',
           },
         ],
       };
@@ -170,6 +175,7 @@ it(
               condition: 'available',
               quantity: '1',
               unitCode: 'g',
+              unitCost: '0.10',
             },
           ],
         }),
@@ -185,6 +191,7 @@ it(
               condition: 'available',
               quantity: '1',
               unitCode: 'ml',
+              unitCost: '0.05',
             },
           ],
         }),
@@ -304,9 +311,9 @@ it(
 it(
   'serializes concurrent confirms and adds one receipt batch',
   { skip: !databaseUrl },
-  async () => {
-    assert.ok(databaseUrl, 'Configure DATABASE_URL and apply the purchasing migration first.');
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+  async (testContext) => {
+    assert.ok(databaseUrl, 'Configure TEST_DATABASE_URL and apply the purchasing migration first.');
+    const client = createTestDatabaseClient(testContext);
     let merchantId: string | undefined;
     try {
       const token = randomUUID().replaceAll('-', '');
@@ -325,8 +332,9 @@ it(
       const inventory = new InventoryService(prisma);
       const locations = new InventoryLocationsService(prisma);
       const ledger = new InventoryLedgerService(prisma);
+      const costs = new InventoryCostService(prisma);
       const suppliers = new PurchaseSuppliersService(prisma);
-      const purchasing = new PurchasingService(prisma, ledger);
+      const purchasing = new PurchasingService(prisma, ledger, costs);
       const branch = await locations.createBranch(merchant.id, actor, { name: 'Branch' });
       const item = await inventory.create(merchant.id, actor, {
         requestId: randomUUID(),
@@ -342,7 +350,15 @@ it(
         supplierId: supplier.id,
         warehouseId: branch.warehouses[0]!.id,
         supplierInvoiceNumber: `CON-${token}`,
-        lines: [{ stockItemId: item.id, condition: 'available', quantity: '750', unitCode: 'g' }],
+        lines: [
+          {
+            stockItemId: item.id,
+            condition: 'available',
+            quantity: '750',
+            unitCode: 'g',
+            unitCost: '0.25',
+          },
+        ],
       });
       const confirms = await Promise.all([
         purchasing.confirmInvoice(merchant.id, actor, invoice.id, {
@@ -369,6 +385,7 @@ it(
         await client.stockItemUnit.deleteMany({ where: { merchantId } });
         await client.stockItem.deleteMany({ where: { merchantId } });
         await client.purchaseSupplier.deleteMany({ where: { merchantId } });
+        await deleteTestMerchantSubscriptions(client, [merchantId]);
         await client.merchant.delete({ where: { id: merchantId } });
       }
       await client.$disconnect();
@@ -388,5 +405,6 @@ async function cleanupMerchants(client: PrismaClient, merchantIds: string[]) {
   await client.stockItemUnit.deleteMany({ where });
   await client.stockItem.deleteMany({ where });
   await client.purchaseSupplier.deleteMany({ where });
+  await deleteTestMerchantSubscriptions(client, merchantIds);
   await client.merchant.deleteMany({ where: { id: { in: merchantIds } } });
 }

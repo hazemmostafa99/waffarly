@@ -10,7 +10,12 @@ import {
   CursorPageControls as PageControls,
   type CursorPageState as PageState,
 } from '../../components/CursorPageControls.js';
-import { cacheStockItem, stockUnitOptions } from './stock-unit-options.js';
+import {
+  cacheStockItem,
+  stockDecimalLabel,
+  stockUnitLabel,
+  stockUnitOptions,
+} from './stock-unit-options.js';
 import { StockItemPicker, WarehousePicker } from './components/InventoryPickers.js';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -58,6 +63,8 @@ const movementLabels: Record<string, string> = {
   sale_restoration: 'Sale restoration',
   recipe_consumption: 'Recipe consumption',
   recipe_restoration: 'Recipe restoration',
+  waste: 'Stock waste',
+  transfer: 'Warehouse transfer',
   adjustment: 'Adjustment',
 };
 
@@ -335,7 +342,9 @@ export function InventoryOperationsPage({
       header: text('Stock item'),
       cell: (row) => (
         <div className="inventory-table-name">
-          <strong>{formatDigits(row.stockItemName)}</strong>
+          <Link className="inventory-detail-link" to={`/inventory/items/${row.stockItemId}`}>
+            {formatDigits(row.stockItemName)}
+          </Link>
           <small>
             {formatDigits(row.branchName)} · {formatDigits(row.warehouseName)}
           </small>
@@ -356,7 +365,7 @@ export function InventoryOperationsPage({
       header: text('Quantity'),
       cell: (row) => (
         <span className="inventory-quantity" dir="ltr">
-          {formatDigits(`${row.quantity} ${row.baseUnit}`)}
+          {formatDigits(stockDecimalLabel(row.quantity))} {stockUnitLabel(row.baseUnit, locale)}
         </span>
       ),
     },
@@ -404,6 +413,16 @@ export function InventoryOperationsPage({
           )}
         </span>
       ),
+    },
+    {
+      id: 'cost',
+      header: text('Cost snapshot'),
+      cell: (row) =>
+        row.costRevision === null
+          ? text('Unknown')
+          : formatDigits(
+              `${row.estimatedCostAmount ?? '0.00'} EGP · ${text('cost revision')} ${row.costRevision}`,
+            ),
     },
     { id: 'actor', header: text('Recorded by'), cell: (row) => formatDigits(row.actor) },
     {
@@ -528,132 +547,149 @@ export function InventoryOperationsPage({
 
   const hasOverviewFilters = Boolean(search || searchDraft || warehouseId || condition);
 
-  const overviewFilters = (view === 'overview' || view === 'history') ? (
-    <div className="inventory-filters inventory-overview-filters">
-      {view === 'overview' && (
-        <form
-          className="inventory-search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setSearch(searchDraft.trim());
-            setBalancePage({});
-            setBalanceHistory([]);
-          }}
-        >
-          <label className="sr-only" htmlFor="stock-search">{text('Search stock items')}</label>
-          <div>
-            <Input
-              id="stock-search"
-              aria-label={text('Search stock items')}
-              type="search"
-              value={searchDraft}
-              maxLength={160}
-              placeholder={text('Search by item name')}
-              onChange={(event) => setSearchDraft(event.target.value)}
-            />
-            <Button type="submit" variant="outline">{text('Search')}</Button>
-          </div>
-        </form>
-      )}
-      <div className="inventory-picker-field">
-        <span className="sr-only">{text('Filter by warehouse')}</span>
-        <WarehousePicker
-          value={warehouseId}
-          label={text('Filter by warehouse')}
-          searchMode="combobox"
-          required={false}
-          emptyLabel={text('All warehouses')}
-          onSelect={(warehouse) => {
-            setWarehouseId(warehouse?.id ?? '');
-            setBalancePage({});
-            setBalanceHistory([]);
-            setMovementPage({});
-            setMovementHistory([]);
-          }}
-        />
-      </div>
-      {view === 'history' && (
-        <>
-          <div className="inventory-picker-field">
-            <span className="sr-only">{text('Filter by item')}</span>
-            <StockItemPicker
-              value={movementItemId}
-              label={text('Filter by item')}
-              onSelect={(item) => {
-                setMovementItemId(item?.id ?? '');
-                setMovementPage({});
-                setMovementHistory([]);
-              }}
-            />
-          </div>
-          <label className="inventory-filter-status">
-            <span className="sr-only">{text('Movement type')}</span>
-            <select
-              aria-label={text('Movement type')}
-              value={movementKind}
-              onChange={(event) => {
-                setMovementKind(event.target.value);
-                setMovementPage({});
-                setMovementHistory([]);
-              }}
-            >
-              <option value="">{text('All')}</option>
-              {Object.entries(movementLabels).map(([value, label]) => (
-                <option key={value} value={value}>{text(label)}</option>
-              ))}
-            </select>
-          </label>
-        </>
-      )}
-      {view === 'overview' && (
-        <label className="inventory-filter-status">
-          <span className="sr-only">{text('Condition')}</span>
-          <select
-            aria-label={text('Condition')}
-            value={condition}
-            onChange={(event) => {
-              setCondition(event.target.value);
+  const overviewFilters =
+    view === 'overview' || view === 'history' ? (
+      <div className="inventory-filters inventory-overview-filters">
+        {view === 'overview' && (
+          <form
+            className="inventory-search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setSearch(searchDraft.trim());
+              setBalancePage({});
+              setBalanceHistory([]);
+            }}
+          >
+            <label className="sr-only" htmlFor="stock-search">
+              {text('Search stock items')}
+            </label>
+            <div>
+              <Input
+                id="stock-search"
+                aria-label={text('Search stock items')}
+                type="search"
+                value={searchDraft}
+                maxLength={160}
+                placeholder={text('Search by item name')}
+                onChange={(event) => setSearchDraft(event.target.value)}
+              />
+              <Button type="submit" variant="outline">
+                {text('Search')}
+              </Button>
+            </div>
+          </form>
+        )}
+        <div className="inventory-picker-field">
+          <span className="sr-only">{text('Filter by warehouse')}</span>
+          <WarehousePicker
+            value={warehouseId}
+            label={text('Filter by warehouse')}
+            searchMode="combobox"
+            required={false}
+            emptyLabel={text('All warehouses')}
+            onSelect={(warehouse) => {
+              setWarehouseId(warehouse?.id ?? '');
+              setBalancePage({});
+              setBalanceHistory([]);
+              setMovementPage({});
+              setMovementHistory([]);
+            }}
+          />
+        </div>
+        {view === 'history' && (
+          <>
+            <div className="inventory-picker-field">
+              <span className="sr-only">{text('Filter by item')}</span>
+              <StockItemPicker
+                value={movementItemId}
+                label={text('Filter by item')}
+                onSelect={(item) => {
+                  setMovementItemId(item?.id ?? '');
+                  setMovementPage({});
+                  setMovementHistory([]);
+                }}
+              />
+            </div>
+            <label className="inventory-filter-status">
+              <span className="sr-only">{text('Movement type')}</span>
+              <select
+                aria-label={text('Movement type')}
+                value={movementKind}
+                onChange={(event) => {
+                  setMovementKind(event.target.value);
+                  setMovementPage({});
+                  setMovementHistory([]);
+                }}
+              >
+                <option value="">{text('All')}</option>
+                {Object.entries(movementLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {text(label)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
+        {view === 'overview' && (
+          <details className="inventory-filter-disclosure">
+            <summary>
+              {text('More filters')}
+              {condition && (
+                <span className="inventory-active-filter">
+                  {text(condition === 'available' ? 'Available' : 'Non-Sellable')}
+                </span>
+              )}
+            </summary>
+            <label className="inventory-filter-status">
+              <span className="sr-only">{text('Condition')}</span>
+              <select
+                aria-label={text('Condition')}
+                value={condition}
+                onChange={(event) => {
+                  setCondition(event.target.value);
+                  setBalancePage({});
+                  setBalanceHistory([]);
+                  setMovementPage({});
+                  setMovementHistory([]);
+                }}
+              >
+                <option value="">{text('All conditions')}</option>
+                <option value="available">{text('Available')}</option>
+                <option value="non_sellable">{text('Non-Sellable')}</option>
+              </select>
+            </label>
+          </details>
+        )}
+        {(warehouseId || search || condition || searchDraft || movementItemId || movementKind) && (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setSearch('');
+              setSearchDraft('');
+              setWarehouseId('');
+              setCondition('');
+              setMovementItemId('');
+              setMovementKind('');
               setBalancePage({});
               setBalanceHistory([]);
               setMovementPage({});
               setMovementHistory([]);
             }}
           >
-            <option value="">{text('All')}</option>
-            <option value="available">{text('Available')}</option>
-            <option value="non_sellable">{text('Non-Sellable')}</option>
-          </select>
-        </label>
-      )}
-      {(warehouseId || search || condition || searchDraft || movementItemId || movementKind) && (
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => {
-            setSearch('');
-            setSearchDraft('');
-            setWarehouseId('');
-            setCondition('');
-            setMovementItemId('');
-            setMovementKind('');
-            setBalancePage({});
-            setBalanceHistory([]);
-            setMovementPage({});
-            setMovementHistory([]);
-          }}
-        >
-          {text('Clear filters')}
-        </Button>
-      )}
-    </div>
-  ) : null;
+            {text('Clear filters')}
+          </Button>
+        )}
+      </div>
+    ) : null;
 
   return (
-    <div className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="inventory-page inventory-workspace" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <InventoryHeader
         title={
           view === 'overview'
-            ? 'Stock overview'
+            ? 'Stock balances'
             : view === 'history'
               ? 'Movement history'
               : view === 'opening'
@@ -669,20 +705,12 @@ export function InventoryOperationsPage({
                 ? 'Enter the quantities already in your warehouse before you start recording purchases.'
                 : 'Choose how stock availability works for your business.'
         }
-        filters={overviewFilters}
         actions={
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => navigate('/inventory/items?new=1')}
-            >
-              {text('Add item')}
-            </Button>
+          view === 'overview' ? (
             <Button type="button" onClick={() => navigate('/inventory/purchases/new')}>
               {text('Record purchase')}
             </Button>
-          </>
+          ) : undefined
         }
       />
       {notice && (
@@ -714,6 +742,7 @@ export function InventoryOperationsPage({
 
       {view === 'settings' && (
         <InventoryCard
+          className="inventory-settings-card"
           title={text('Negative stock policy')}
           description={text(
             'This policy affects Available stock debits. Non-Sellable stock remains separate from sale and recipe consumption.',
@@ -745,7 +774,7 @@ export function InventoryOperationsPage({
               </label>
             ))}
           </fieldset>
-          <p className="inventory-note">
+          <p className="inventory-secondary-note">
             {text(
               'This policy applies to all branches and warehouses. Non-sellable stock is never used for sales or recipes.',
             )}
@@ -761,16 +790,9 @@ export function InventoryOperationsPage({
       )}
 
       {view === 'overview' && (
-        <InventoryCard
-          title={text('Stock health summary')}
-          description={text(
-            'Counts cover configured item and warehouse pairs across the selected merchant scope.',
-          )}
-          action={
-            <Button type="button" variant="outline" onClick={() => navigate('/inventory/health')}>
-              {text('View stock health')}
-            </Button>
-          }
+        <aside
+          className={`inventory-monitoring-strip ${healthSummary && healthSummary.lowStockItemLocations > 0 ? 'needs-attention' : ''}`}
+          aria-label={text('Stock health summary')}
         >
           {healthSummaryError ? (
             <div className="inventory-error" role="alert">
@@ -787,34 +809,47 @@ export function InventoryOperationsPage({
           ) : healthSummaryLoading ? (
             <p role="status">{text('Loading stock health…')}</p>
           ) : (
-            <div className="inventory-health-summary" aria-live="polite">
-              <div>
-                <strong>{formatDigits(String(healthSummary?.lowStockItemLocations ?? 0))}</strong>
-                <span>{text('Low stock item locations')}</span>
-              </div>
-              <div>
-                <strong>{formatDigits(String(healthSummary?.healthyItemLocations ?? 0))}</strong>
-                <span>{text('Healthy item locations')}</span>
-              </div>
-              <div>
-                <strong>{formatDigits(String(healthSummary?.configuredItemLocations ?? 0))}</strong>
-                <span>{text('Configured item locations')}</span>
-              </div>
+            <div className="inventory-monitoring-status" aria-live="polite">
+              <strong>
+                {text(
+                  !healthSummary?.configuredItemLocations
+                    ? 'Stock monitoring is not set up yet'
+                    : healthSummary.lowStockItemLocations > 0
+                      ? 'Stock needs attention'
+                      : 'No low stock in monitored locations',
+                )}
+              </strong>
+              <span>
+                {healthSummary?.configuredItemLocations
+                  ? `${formatDigits(String(healthSummary.lowStockItemLocations))} ${text('Low stock item locations')} · ${formatDigits(String(healthSummary.configuredItemLocations))} ${text('Monitored item locations')}`
+                  : text('Set a reorder point for each item and warehouse you want to monitor.')}
+              </span>
+              <small>{text('All warehouses · independent of the balance filters below')}</small>
             </div>
           )}
-          <p className="inventory-note inventory-health-note">
-            {text('Health uses Available stock only. Non-Sellable quantities are excluded.')}
-          </p>
-        </InventoryCard>
+          <Link className="inventory-detail-link" to="/inventory/health">
+            {text(
+              healthSummary?.configuredItemLocations
+                ? 'Review stock health'
+                : 'Set up stock monitoring',
+            )}
+          </Link>
+        </aside>
       )}
 
       {view === 'opening' && (
         <InventoryCard
+          className="inventory-operation-card"
           title={text('Opening stock')}
           description={text(
             'Enter your starting quantities, then review before posting. Use purchase invoices for new deliveries.',
           )}
         >
+          <ol className="inventory-flow-steps" aria-label={text('Opening stock')}>
+            <li>{text('Choose warehouse')}</li>
+            <li>{text('Add items and quantities')}</li>
+            <li>{text('Review before posting')}</li>
+          </ol>
           <form className="inventory-editor" onSubmit={startReview}>
             <p className="inventory-note">
               {text('Opening entries add to existing balances. They do not replace stock counts.')}
@@ -949,6 +984,7 @@ export function InventoryOperationsPage({
             'Quantities are shown in each stock item’s base unit, separated by condition.',
           )}
         >
+          {overviewFilters}
           <DataTable
             columns={balanceColumns}
             rows={balances}
@@ -1090,6 +1126,7 @@ export function InventoryOperationsPage({
             'Each posted change includes its source, reason, actor, location, and quantity snapshot.',
           )}
         >
+          {overviewFilters}
           <DataTable
             columns={movementColumns}
             rows={movements}

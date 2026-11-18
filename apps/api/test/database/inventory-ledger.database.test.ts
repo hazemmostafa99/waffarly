@@ -1,5 +1,8 @@
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
-import { config } from 'dotenv';
+import { InventoryPolicyService } from '../../src/modules/inventory/policy/inventory-policy.service.js';
+import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
@@ -9,18 +12,17 @@ import { InventoryLedgerService } from '../../src/modules/inventory/inventory-le
 import { InventoryLocationsService } from '../../src/modules/inventory/inventory-locations.service.js';
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'posts opening stock idempotently, preserves snapshots, scopes locations, and enforces policy',
   { skip: !databaseUrl },
-  async () => {
+  async (testContext) => {
     assert.ok(
       databaseUrl,
-      'Configure DATABASE_URL and apply the inventory ledger migration first.',
+      'Configure TEST_DATABASE_URL and apply the inventory ledger migration first.',
     );
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback inventory ledger verification fixtures');
     try {
       await assert.rejects(
@@ -49,6 +51,7 @@ it(
           const txClient = transactionPrisma(transaction);
           const inventory = new InventoryService(txClient);
           const locations = new InventoryLocationsService(txClient);
+          const policy = new InventoryPolicyService(txClient);
           const ledger = new InventoryLedgerService(txClient);
           const branch = await locations.createBranch(merchant.id, 'inventory-ledger-test', {
             name: 'Downtown',
@@ -175,7 +178,7 @@ it(
             /stock item was not found/i,
           );
 
-          const defaultPolicy = await locations.getPolicy(merchant.id);
+          const defaultPolicy = await policy.getPolicy(merchant.id);
           assert.equal(defaultPolicy.negativeStockPolicy, 'allow');
           await ledger.postMovementBatch(transaction, merchant.id, 'inventory-ledger-test', {
             requestId: randomUUID(),
@@ -325,7 +328,7 @@ it(
             /non-zero stock cannot be archived/i,
           );
 
-          await locations.updatePolicy(merchant.id, 'inventory-ledger-test', {
+          await policy.updatePolicy(merchant.id, 'inventory-ledger-test', {
             revision: defaultPolicy.revision,
             negativeStockPolicy: 'prevent',
           });
@@ -362,12 +365,12 @@ it(
 it(
   'allows independent postings while preserving balance increments and archive safety',
   { skip: !databaseUrl },
-  async () => {
+  async (testContext) => {
     assert.ok(
       databaseUrl,
-      'Configure DATABASE_URL and apply the inventory ledger migration first.',
+      'Configure TEST_DATABASE_URL and apply the inventory ledger migration first.',
     );
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+    const client = createTestDatabaseClient(testContext);
     let merchantId: string | undefined;
     try {
       const token = randomUUID().replaceAll('-', '');
@@ -508,6 +511,7 @@ it(
         await client.branch.deleteMany({ where: { merchantId } });
         await client.stockItemUnit.deleteMany({ where: { merchantId } });
         await client.stockItem.deleteMany({ where: { merchantId } });
+        await deleteTestMerchantSubscriptions(client, [merchantId]);
         await client.merchant.delete({ where: { id: merchantId } });
       }
       await client.$disconnect();

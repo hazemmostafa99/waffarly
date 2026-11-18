@@ -1,4 +1,15 @@
-import { useEffect, useEffectEvent, useId, useRef, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useRef,
+  useState,
+  useLayoutEffect,
+  type ReactNode,
+  type RefObject,
+  type CSSProperties,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { Button, Input, useLocale } from '@waffarly/ui';
 import type { OwnerProfile } from '@waffarly/contracts';
 import { useOutletContext } from 'react-router-dom';
@@ -21,6 +32,7 @@ export function PagedEntitySelect<T extends { id: string; name: string }>({
   searchMode = 'separate',
   onCreate,
   createLabel,
+  floatingMenu = false,
 }: {
   path: string;
   value: string;
@@ -35,6 +47,7 @@ export function PagedEntitySelect<T extends { id: string; name: string }>({
   searchMode?: 'separate' | 'combobox';
   onCreate?: ((search: string) => void) | undefined;
   createLabel?: string | undefined;
+  floatingMenu?: boolean;
 }) {
   const { locale, errorText } = useLocale();
   const { profile } = useOutletContext<{ profile: OwnerProfile }>();
@@ -51,6 +64,7 @@ export function PagedEntitySelect<T extends { id: string; name: string }>({
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const listboxId = `entity-picker-${useId()}-listbox`;
   const isCombobox = searchMode === 'combobox';
   const resolveSelection = useEffectEvent((item: T) => onResolve?.(item));
@@ -120,7 +134,11 @@ export function PagedEntitySelect<T extends { id: string; name: string }>({
   useEffect(() => {
     if (!isCombobox || !isOpen) return;
     const closeOnOutsidePointer = (event: PointerEvent) => {
-      if (event.target instanceof Node && !pickerRef.current?.contains(event.target)) {
+      if (
+        event.target instanceof Node &&
+        !pickerRef.current?.contains(event.target) &&
+        !menuRef.current?.contains(event.target)
+      ) {
         setIsOpen(false);
         setSearch('');
         setCursors([]);
@@ -199,7 +217,8 @@ export function PagedEntitySelect<T extends { id: string; name: string }>({
               onBlur={(event) => {
                 if (!(
                   event.relatedTarget instanceof Node &&
-                  pickerRef.current?.contains(event.relatedTarget)
+                  (pickerRef.current?.contains(event.relatedTarget) ||
+                    menuRef.current?.contains(event.relatedTarget))
                 )) {
                   closeCombobox();
                 }
@@ -242,7 +261,12 @@ export function PagedEntitySelect<T extends { id: string; name: string }>({
             </span>
           </div>
           {isOpen && (
-            <div className="entity-picker-menu">
+            <EntityPickerMenu
+              floating={floatingMenu}
+              anchorRef={pickerRef}
+              menuRef={menuRef}
+              direction={locale === 'ar' ? 'rtl' : 'ltr'}
+            >
               <div
                 className="entity-picker-listbox"
                 id={listboxId}
@@ -341,7 +365,7 @@ export function PagedEntitySelect<T extends { id: string; name: string }>({
                   </Button>
                 </div>
               )}
-            </div>
+            </EntityPickerMenu>
           )}
         </div>
       ) : (
@@ -443,4 +467,66 @@ export function PagedEntitySelect<T extends { id: string; name: string }>({
       )}
     </div>
   );
+}
+
+/** Table selectors use a portal so scrolling containers do not clip their options. */
+function EntityPickerMenu({
+  floating,
+  anchorRef,
+  menuRef,
+  direction,
+  children,
+}: {
+  floating: boolean;
+  anchorRef: RefObject<HTMLDivElement | null>;
+  menuRef: RefObject<HTMLDivElement | null>;
+  direction: 'rtl' | 'ltr';
+  children: ReactNode;
+}) {
+  const [position, setPosition] = useState<CSSProperties | null>(null);
+  useLayoutEffect(() => {
+    if (!floating) return;
+    function update() {
+      const anchor = anchorRef.current;
+      if (!anchor) return;
+      const bounds = anchor.getBoundingClientRect();
+      const width = Math.min(Math.max(bounds.width, 260), window.innerWidth - 24);
+      const below = window.innerHeight - bounds.bottom - 18;
+      const above = below < 180 && bounds.top > below;
+      setPosition({
+        position: 'fixed',
+        width,
+        left: Math.max(
+          12,
+          Math.min(
+            direction === 'rtl' ? bounds.right - width : bounds.left,
+            window.innerWidth - width - 12,
+          ),
+        ),
+        top: above ? undefined : bounds.bottom + 6,
+        bottom: above ? window.innerHeight - bounds.top + 6 : undefined,
+        maxHeight: Math.max(120, above ? bounds.top - 18 : below),
+        overflowY: 'auto',
+        zIndex: 100,
+      });
+    }
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [floating, anchorRef, direction]);
+  const menu = (
+    <div
+      ref={menuRef}
+      className={`entity-picker-menu${floating ? ' entity-picker-floating-menu' : ''}`}
+      dir={direction}
+      style={floating ? (position ?? { visibility: 'hidden', position: 'fixed' }) : undefined}
+    >
+      {children}
+    </div>
+  );
+  return floating ? createPortal(menu, document.body) : menu;
 }

@@ -107,14 +107,8 @@ export function useLocale() {
       errorText: (text: string) => {
         if (context.locale === 'en') return formatDigits(text, context.locale);
         if (ar[text]) return formatDigits(String(translate(text)), context.locale);
-        const required = text.match(/^Select the required modules for (.+)\.$/);
         return formatDigits(
-          String(
-            translate(
-              required ? 'Select the required modules for {{name}}.' : 'Something went wrong.',
-              { name: required?.[1] },
-            ),
-          ),
+          String(translate('Something went wrong.')),
           context.locale,
         );
       },

@@ -41,6 +41,39 @@ export interface CatalogProductInventoryConfiguration {
   updatedAt: string;
 }
 
+export interface CatalogProductCostPreviewRequest {
+  variantId: string | null;
+  selections: Array<{
+    modifierGroupId: string;
+    modifierOptionId: string;
+    quantity: number;
+  }>;
+}
+
+export interface CatalogProductCostLine {
+  stockItemId: string;
+  stockItemName: string;
+  baseUnit: string;
+  requiredQuantity: string;
+  baseUnitCost: string | null;
+  costRevision: number | null;
+  sourceType: 'opening' | 'purchase' | null;
+  extendedCost: string | null;
+}
+
+export interface CatalogProductCostPreview {
+  productId: string;
+  productName: string;
+  mode: ProductInventoryMode;
+  variantId: string | null;
+  sellingPrice: string;
+  lines: CatalogProductCostLine[];
+  totalKnownCost: string;
+  totalCost: string | null;
+  grossMargin: string | null;
+  isComplete: boolean;
+}
+
 export interface CatalogMediaAsset {
   id: string;
   storageKey: string;
@@ -97,6 +130,8 @@ export interface CatalogProductSummary {
   name: string;
   description: string | null;
   basePrice: string;
+  promotion?: CatalogProductPromotion | null;
+  promotionalPrice?: string | null;
   currency: 'EGP';
   sellingUnit: 'piece';
   availability: CatalogAvailability;
@@ -165,10 +200,25 @@ export interface CatalogProductVariant {
   sku: string | null;
   barcode: string | null;
   price: string;
+  promotionalPrice?: string | null;
   stockQuantity: number | null;
   availability: CatalogAvailability;
   position: number;
   attributes: CatalogProductVariantAttributeSelection[];
+}
+
+export interface CatalogProductPromotionFields {
+  enabled: boolean;
+  type: 'percentage' | 'amount' | null;
+  value: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+}
+
+export interface CatalogProductPromotion extends CatalogProductPromotionFields {
+  type: 'percentage' | 'amount';
+  value: string;
+  status: 'active' | 'scheduled' | 'ended' | 'paused';
 }
 
 export interface CatalogProductVariantAttributeSelection {
@@ -255,7 +305,10 @@ export interface CatalogProductQuoteResponse {
   variantAttributes: CatalogProductVariantAttributeSelection[];
   currency: 'EGP';
   basePrice: string;
+  discountedBasePrice?: string;
+  promotion?: { type: 'percentage' | 'amount'; value: string; discountAmount: string } | null;
   modifierTotal: string;
+  originalTotalPrice?: string;
   totalPrice: string;
   selections: Array<{
     groupId: string;
@@ -277,6 +330,8 @@ export interface PublicStorefrontProduct {
   name: string;
   description: string | null;
   basePrice: string;
+  promotion?: CatalogProductPromotion | null;
+  promotionalPrice?: string | null;
   currency: 'EGP';
   sellingUnit: 'piece';
   images: Array<Pick<CatalogProductImage, 'publicUrl' | 'isPrimary' | 'position'>>;
@@ -286,19 +341,26 @@ export interface PublicStorefrontProduct {
     id: string;
     name: string;
     price: string;
+    promotionalPrice?: string | null;
     availability: CatalogAvailability;
     position: number;
     attributes: CatalogProductVariantAttributeSelection[];
   }>;
 }
 
-export interface PublicStorefrontCatalog {
+export interface PublicStorefrontCatalog extends Partial<import('./merchant-storefront.js').StorefrontHeroSettings> {
   slug: string;
   merchantName: string;
   activity: string;
+  restaurantDescription: string | null;
+  primaryColor: string;
   accentColor: string;
+  backgroundColor: string;
+  surfaceColor: string;
+  logoScale: 'small' | 'medium' | 'large';
   logoData: string | null;
-  template: { name: string; layout: 'menu' | 'hero' } | null;
+  coverImageUrl: string | null;
+  layout: 'menu' | 'hero';
   categories: PublicStorefrontCategory[];
   products: PublicStorefrontProduct[];
   nextCategoryCursor: string | null;
@@ -316,6 +378,8 @@ export interface CreateStorefrontOrderRequest {
   reviewedTotal?: string | undefined;
   discountCode?: string | undefined;
   deliveryAreaId?: string | undefined;
+  pickupBranchId?: string | undefined;
+  fulfillmentQuoteKey?: string | undefined;
   restaurantSettingsRevision?: number | undefined;
   customerName: string;
   customerPhone: string;
@@ -361,6 +425,7 @@ export interface DispatchPosKitchenOrderRequest {
 export type PosKitchenDispatchMode = 'automatic' | 'manual' | 'legacy';
 
 export interface StorefrontOrderReceipt {
+  branchName?: string | undefined;
   subtotal?: string;
   deliveryFee?: string;
   discount?: import('./discounts.js').OrderDiscountSnapshot;
@@ -372,9 +437,11 @@ export interface StorefrontOrderReceipt {
 }
 
 export interface StorefrontOrderSummary {
+  source?: 'waffarly' | 'storefront' | 'pos';
   subtotal?: string;
   deliveryFee?: string;
   orderReference?: string | null;
+  branchOrderNumber?: number | null;
   readyAt?: string | null;
   completedAt?: string | null;
   handoverEligible?: boolean;
@@ -389,6 +456,7 @@ export interface StorefrontOrderSummary {
   cancellationReason?: string | null;
   tableCode?: string | null;
   requiresRecipeAcceptance?: boolean;
+  requiresInventoryAcceptance?: boolean;
   inventoryLifecycle?: {
     branchId: string | null;
     warehouseId: string | null;
@@ -416,6 +484,9 @@ export interface StorefrontOrderSummary {
     variantAttributes: CatalogProductVariantAttributeSnapshot[];
     basePrice: string | null;
     modifierTotal: string | null;
+    promotionType?: 'percentage' | 'amount' | null;
+    promotionValue?: string | null;
+    promotionDiscount?: string;
     quantity: number;
     unitPrice: string;
     lineTotal: string;
@@ -430,6 +501,51 @@ export interface StorefrontOrderSummary {
       priceAdjustment: string;
     }>;
   }>;
+}
+
+export type StorefrontOrderListItem = Omit<StorefrontOrderSummary, 'lines' | 'source'> & {
+  source: string;
+  itemCount: number;
+  previewItemName: string | null;
+};
+
+export interface StorefrontOrderListStats {
+  totalOrders: number;
+  uniqueCustomers: number;
+  totalOrderValue: string;
+  averageOrderValue: string;
+  statusCounts: Record<StorefrontOrderStatus, number>;
+  report?: {
+    activeOrderCount: number;
+    activeOrderValue: string;
+    activeUniqueCustomers: number;
+    sources: Record<StorefrontOrderSource, { orderCount: number; orderValue: string }>;
+    dailyTrend: Array<{ date: string; orderCount: number; orderValue: string }>;
+    fulfillmentCounts: Record<StorefrontFulfillmentType, number>;
+    topProducts: Array<{ name: string; quantity: number; value: string }>;
+  };
+}
+
+export type StorefrontOrderSource = 'waffarly' | 'storefront' | 'pos';
+export type StorefrontFulfillmentType = 'pickup' | 'delivery' | 'dine_in' | 'takeaway';
+
+export interface StorefrontOrderListPage {
+  items: StorefrontOrderListItem[];
+  nextCursor: string | null;
+  stats?: StorefrontOrderListStats;
+}
+
+export interface StorefrontOrderListQuery {
+  cursor?: string;
+  limit: number;
+  status?: StorefrontOrderStatus;
+  source?: StorefrontOrderSource;
+  fulfillment?: 'pickup' | 'delivery' | 'dine_in' | 'takeaway';
+  from?: string;
+  to?: string;
+  search?: string;
+  includeStats?: boolean;
+  report?: boolean;
 }
 
 export interface ProductConfigurationReport {
@@ -499,6 +615,7 @@ export interface CatalogProductFields {
   name: string;
   description?: string | undefined;
   basePrice: string;
+  promotion?: CatalogProductPromotionFields | null | undefined;
   availability: CatalogAvailability;
   imageAssetIds: string[];
   primaryImageAssetId?: string | undefined;
@@ -552,10 +669,23 @@ export interface CatalogRevisionRequest {
   revision: number;
 }
 
-export type StorefrontCheckoutQuoteRequest = Pick<CreateStorefrontOrderRequest, 'items' | 'fulfillmentType' | 'deliveryAreaId' | 'discountCode'>;
+export type StorefrontCheckoutQuoteRequest = Pick<
+  CreateStorefrontOrderRequest,
+  'items' | 'fulfillmentType' | 'deliveryAreaId' | 'pickupBranchId' | 'discountCode'
+>;
 export interface StorefrontCheckoutQuote {
+  branch?: { id: string; name: string; address: string | null } | undefined;
+  deliveryAreaName?: string | undefined;
+  fulfillmentQuoteKey?: string | undefined;
   unitPrices: string[];
-  subtotal: string; deliveryFee: string; total: string; currency: 'EGP';
+  originalUnitPrices?: string[];
+  promotions?: Array<{ type: 'percentage' | 'amount'; value: string; discountAmount: string } | null>;
+  subtotal: string;
+  deliveryFee: string;
+  total: string;
+  currency: 'EGP';
   discount?: import('./discounts.js').OrderDiscountSnapshot;
-  restaurantSettingsRevision?: number | undefined; demo: boolean;
+  restaurantSettingsRevision?: number | undefined;
+  /** @deprecated API checkout submits real orders; reference metadata is provenance only. */
+  demo: boolean;
 }

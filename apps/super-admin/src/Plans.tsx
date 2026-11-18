@@ -130,7 +130,7 @@ export function Plans() {
 
   return (
     <section aria-labelledby="plans-heading">
-      <div className="library-heading">
+      <div className="plans-page-heading">
         <div>
           <span className="eyebrow">{t('Plans & subscriptions')}</span>
           <h2 id="plans-heading">{t('Monthly plans')}</h2>
@@ -201,7 +201,7 @@ export function Plans() {
                   onChange={(event) => change('description', event.target.value)}
                 />
               </label>
-              <div className="template-form-actions">
+              <div className="plan-form-actions">
                 <Button type="submit" disabled={conflict}>
                   {saving ? t('Saving…') : editing ? t('Save changes') : t('Create plan')}
                 </Button>
@@ -234,7 +234,7 @@ export function Plans() {
           {loading ? (
             <p role="status">{t('Loading plans…')}</p>
           ) : !loadError && plans.length === 0 ? (
-            <div className="library-empty">
+            <div className="plan-empty-state">
               <h3>{t('Your first monthly plan')}</h3>
               <p>{t('Enter a name and monthly price to get started.')}</p>
             </div>
@@ -244,14 +244,17 @@ export function Plans() {
                 <article className="plan-card" key={plan.id}>
                   <div className="plan-card-heading">
                     <h3>{plan.name}</h3>
-                    <span className="template-status status-available">{t('Monthly')}</span>
+                    <span className="plan-billing-badge">{t('Monthly')}</span>
                   </div>
                   <p className="plan-price">
                     <strong>
-                      {new Intl.NumberFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB-u-nu-latn', {
-                        style: 'currency',
-                        currency: plan.currency,
-                      }).format(Number(plan.monthlyPrice))}
+                      {new Intl.NumberFormat(
+                        locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB-u-nu-latn',
+                        {
+                          style: 'currency',
+                          currency: plan.currency,
+                        },
+                      ).format(Number(plan.monthlyPrice))}
                     </strong>
                     <span> {t('/ month')}</span>
                   </p>

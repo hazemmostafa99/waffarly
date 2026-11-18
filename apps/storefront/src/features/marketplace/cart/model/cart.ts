@@ -1,6 +1,9 @@
 import type { MarketplaceProduct } from '@/features/marketplace/catalog/model/catalog';
 import { findProduct } from '@/features/marketplace/catalog/model/catalog';
-import { mealConfiguration, type MealSelection } from '@/features/marketplace/restaurants/model/meal-options';
+import {
+  mealConfiguration,
+  type MealSelection,
+} from '@/features/marketplace/restaurants/model/meal-options';
 
 export interface MarketplaceCartLine {
   productId: string;
@@ -10,8 +13,11 @@ export interface MarketplaceCartLine {
   quotedUnitPrice?: number;
 }
 export function cartLineId(line: Pick<MarketplaceCartLine, 'productId' | 'selection'>) {
-  const options = Object.entries(line.selection ?? {}).filter(([, ids]) => ids.length)
-    .sort(([a], [b]) => a.localeCompare(b)).map(([id, ids]) => `${id}:${[...ids].sort().join(',')}`).join('|');
+  const options = Object.entries(line.selection ?? {})
+    .filter(([, ids]) => ids.length)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([id, ids]) => `${id}:${[...ids].sort().join(',')}`)
+    .join('|');
   return options ? `${line.productId}::${options}` : line.productId;
 }
 export const MAX_CART_QUANTITY = 99; // Local UI limit, not verified stock.
@@ -22,9 +28,18 @@ export function cartProducts(lines: MarketplaceCartLine[]) {
   return lines.flatMap((line) => {
     const product = line.snapshot ?? findProduct(line.productId);
     const configuration = mealConfiguration(line.selection ?? {}, product);
-    return product ? [{ ...product, price: line.quotedUnitPrice ?? product.price + configuration.extraPrice,
-      quantity: line.quantity, ...(line.selection !== undefined ? { selection: line.selection } : {}), lineId: cartLineId(line),
-      optionsLabel: configuration.label }] : [];
+    return product
+      ? [
+          {
+            ...product,
+            price: line.quotedUnitPrice ?? product.price + configuration.extraPrice,
+            quantity: line.quantity,
+            ...(line.selection !== undefined ? { selection: line.selection } : {}),
+            lineId: cartLineId(line),
+            optionsLabel: configuration.label,
+          },
+        ]
+      : [];
   });
 }
 export function cartTotal(lines: MarketplaceCartLine[]) {

@@ -1,0 +1,23 @@
+ALTER TABLE "staff_advance_repayments"
+  RENAME CONSTRAINT "staff_advance_repayments_advanceId_staffMemberId_merchantId_fke"
+  TO "staff_advance_repayments_advanceId_staffMemberId_merchantI_fkey";
+
+ALTER TABLE "staff_advance_repayments"
+  RENAME CONSTRAINT "staff_advance_repayments_payrollLineId_staffMemberId_merchantId"
+  TO "staff_advance_repayments_payrollLineId_staffMemberId_merch_fkey";
+
+ALTER INDEX "staff_advances_merchantId_staffMemberId_firstInstallmentMonth_c"
+  RENAME TO "staff_advances_merchantId_staffMemberId_firstInstallmentMon_idx";
+
+ALTER INDEX "staff_attendance_merchantId_attendancePeriodId_attendanceDate_i"
+  RENAME TO "staff_attendance_merchantId_attendancePeriodId_attendanceDa_idx";
+
+ALTER INDEX "staff_attendance_changes_merchantId_staffMemberId_attendanceDat"
+  RENAME TO "staff_attendance_changes_merchantId_staffMemberId_attendanc_idx";
+
+ALTER INDEX "staff_payroll_adjustments_merchantId_payrollRunId_staffMemberId"
+  RENAME TO "staff_payroll_adjustments_merchantId_payrollRunId_staffMemb_idx";
+
+ALTER TABLE "staff_payroll_payments"
+  RENAME CONSTRAINT "staff_payroll_payments_payrollLineId_staffMemberId_merchantId_f"
+  TO "staff_payroll_payments_payrollLineId_staffMemberId_merchan_fkey";

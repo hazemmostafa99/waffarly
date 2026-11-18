@@ -213,11 +213,20 @@ export function StorefrontProductCustomizer({
                     className="size-[18px] shrink-0 accent-store-primary"
                   />
                   <span className="min-w-0 flex-1 font-bold text-store-ink">{label}</span>
-                  <span className="shrink-0 text-sm font-extrabold text-store-accent">
+                  <span className="flex shrink-0 flex-col items-end text-sm font-extrabold text-store-accent">
                     {unavailable ? (
                       t.unavailable
                     ) : (
-                      <bdi dir="auto">{formatStorefrontPrice(variant.price, locale)}</bdi>
+                      <>
+                        <bdi dir="auto">
+                          {formatStorefrontPrice(variant.promotionalPrice ?? variant.price, locale)}
+                        </bdi>
+                        {variant.promotionalPrice && (
+                          <del className="text-xs font-medium text-store-muted">
+                            <bdi dir="auto">{formatStorefrontPrice(variant.price, locale)}</bdi>
+                          </del>
+                        )}
+                      </>
                     )}
                   </span>
                 </label>
@@ -387,14 +396,30 @@ export function StorefrontProductCustomizer({
         </p>
       )}
       {quoteMutation.data && (
-        <div
-          className="flex items-center justify-between rounded-2xl bg-store-primary/10 px-4 py-3 text-sm text-store-primary"
-          role="status"
-        >
-          <span className="font-bold">{t.currentPrice}</span>
-          <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
-            <bdi dir="auto">{formatStorefrontPrice(quoteMutation.data.totalPrice, locale)}</bdi>
-          </strong>
+        <div className="grid gap-2 rounded-2xl bg-store-primary/10 px-4 py-3 text-sm text-store-primary" role="status">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-bold">{t.currentPrice}</span>
+            <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
+              <bdi dir="auto">{formatStorefrontPrice(quoteMutation.data.totalPrice, locale)}</bdi>
+            </strong>
+          </div>
+          {quoteMutation.data.promotion && quoteMutation.data.originalTotalPrice && (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-store-primary/15 pt-2 text-xs">
+              <span>{t.productDiscount}</span>
+              <span className="flex items-center gap-2">
+                <del className="text-store-muted">
+                  <bdi dir="auto">
+                    {formatStorefrontPrice(quoteMutation.data.originalTotalPrice, locale)}
+                  </bdi>
+                </del>
+                <strong>
+                  −<bdi dir="auto">
+                    {formatStorefrontPrice(quoteMutation.data.promotion.discountAmount, locale)}
+                  </bdi>
+                </strong>
+              </span>
+            </div>
+          )}
         </div>
       )}
       {wasAdded && (

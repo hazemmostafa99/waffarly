@@ -381,11 +381,11 @@ export function ApplicationsPage() {
                             />
                           </label>
                           <label>
-                            {t('Owner password')} <small>{t('(12–128 characters)')}</small>
+                            {t('Owner password')} <small>{t('(6–128 characters)')}</small>
                             <PasswordInput
                               aria-label={t('Owner password')}
                               autoComplete="new-password"
-                              minLength={12}
+                              minLength={6}
                               maxLength={128}
                               required
                               value={credentials.password}

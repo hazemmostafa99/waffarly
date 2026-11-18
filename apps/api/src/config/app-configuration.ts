@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { parseEnvironment } from './environment.js';
 
 @Injectable()
@@ -21,8 +21,27 @@ export class AppConfiguration {
     return resolve(process.cwd(), this.environment.MEDIA_STORAGE_DIRECTORY);
   }
 
+  get privateMediaStorageDirectory(): string {
+    return resolve(dirname(this.mediaStorageDirectory), 'private-media');
+  }
+
   get databaseUrl(): string {
     return this.environment.DATABASE_URL;
+  }
+
+  get databasePoolOptions() {
+    return {
+      max: this.environment.DATABASE_POOL_MAX,
+      connectionTimeoutMillis: this.environment.DATABASE_CONNECTION_TIMEOUT_MS,
+      idleTimeoutMillis: this.environment.DATABASE_IDLE_TIMEOUT_MS,
+    };
+  }
+
+  get databaseStartupOptions() {
+    return {
+      attempts: this.environment.DATABASE_STARTUP_ATTEMPTS,
+      retryDelayMs: this.environment.DATABASE_STARTUP_RETRY_DELAY_MS,
+    };
   }
 
   get corsOrigins(): string[] {

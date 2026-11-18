@@ -10,6 +10,18 @@ export function ProductInformationTab({
   basePrice,
   onBasePriceChange,
   productMode,
+  promotionEnabled,
+  onPromotionEnabledChange,
+  promotionType,
+  onPromotionTypeChange,
+  promotionValue,
+  onPromotionValueChange,
+  promotionStartsAt,
+  onPromotionStartsAtChange,
+  promotionEndsAt,
+  onPromotionEndsAtChange,
+  previewPrices,
+  formatNumber,
   categories,
   categoryIds,
   onCategoryIdsChange,
@@ -29,6 +41,18 @@ export function ProductInformationTab({
   basePrice: string;
   onBasePriceChange: (value: string) => void;
   productMode: 'simple' | 'variants';
+  promotionEnabled: boolean;
+  onPromotionEnabledChange: (value: boolean) => void;
+  promotionType: 'percentage' | 'amount';
+  onPromotionTypeChange: (value: 'percentage' | 'amount') => void;
+  promotionValue: string;
+  onPromotionValueChange: (value: string) => void;
+  promotionStartsAt: string;
+  onPromotionStartsAtChange: (value: string) => void;
+  promotionEndsAt: string;
+  onPromotionEndsAtChange: (value: string) => void;
+  previewPrices: string[];
+  formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
   categories: CatalogCategorySummary[];
   categoryIds: string[];
   onCategoryIdsChange: (ids: string[]) => void;
@@ -63,6 +87,18 @@ export function ProductInformationTab({
         basePrice={basePrice}
         onBasePriceChange={onBasePriceChange}
         productMode={productMode}
+        promotionEnabled={promotionEnabled}
+        onPromotionEnabledChange={onPromotionEnabledChange}
+        promotionType={promotionType}
+        onPromotionTypeChange={onPromotionTypeChange}
+        promotionValue={promotionValue}
+        onPromotionValueChange={onPromotionValueChange}
+        promotionStartsAt={promotionStartsAt}
+        onPromotionStartsAtChange={onPromotionStartsAtChange}
+        promotionEndsAt={promotionEndsAt}
+        onPromotionEndsAtChange={onPromotionEndsAtChange}
+        previewPrices={previewPrices}
+        formatNumber={formatNumber}
         text={text}
       />
       <ProductDetailsTab

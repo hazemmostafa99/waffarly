@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import Link from '../../components/storefront/storefront-link';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, CheckCircle2, LoaderCircle, ShoppingBag } from 'lucide-react';
@@ -13,11 +13,14 @@ import type {
 } from '@waffarly/contracts';
 import { Button, Card, Input, Textarea } from '@waffarly/ui';
 import { useLocale } from '@waffarly/ui';
-import { apiPost } from '../../lib/api-client';
+import { ApiError, apiPost } from '../../lib/api-client';
+import { RestaurantRouteFields, useRestaurantFulfillment } from '../delivery/restaurant-route-fields';
+import { useDeliveryArea } from '../delivery/delivery-area-picker';
 import { formatStorefrontPrice } from '../../lib/storefront-format';
 import { storefrontCopy } from '../../lib/storefront-copy';
 import { useStorefrontStore } from '../../providers/storefront-providers';
 import { storefrontQueryKeys } from '../catalog/storefront-query-keys';
+import { saveStorefrontOrderReceipt } from '../orders/storefront-order-receipt-session';
 
 type CheckoutFields = {
   customerName: string;
@@ -42,18 +45,55 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
   });
   const [quote, setQuote] = useState<StorefrontCheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState('');
+  const restaurant = catalog.activity === 'restaurant';
+  const options = useRestaurantFulfillment(restaurant ? catalog.slug : undefined);
+  const locationId = useDeliveryArea();
+  const [legacyArea, setLegacyArea] = useState('');
+  const [pickup, setPickup] = useState('');
+  const [reviewed, setReviewed] = useState<{ key: string; quote: StorefrontCheckoutQuote } | null>(null);
+  const attempt = useRef<CreateStorefrontOrderRequest | null>(null);
+  const [uncertain, setUncertain] = useState(false);
+  const branchRouting = options.data?.onlineBranches !== undefined;
+  const deliveryAreaId = branchRouting ? locationId : legacyArea;
+  const routeInput = fields.fulfillmentType === 'delivery' && deliveryAreaId ? { deliveryAreaId }
+    : fields.fulfillmentType === 'pickup' && branchRouting && pickup ? { pickupBranchId: pickup }
+      : {};
+  const reviewKey = JSON.stringify({ cart, fields, routeInput });
+  const reviewedQuote = reviewed?.key === reviewKey ? reviewed.quote : null;
 
   function quoteRequest() {
-    return apiPost<StorefrontCheckoutQuote>(`/catalog/stores/${encodeURIComponent(catalog.slug)}/orders/quote`, {
-      fulfillmentType: fields.fulfillmentType,
-      items: cart.map((line) => ({ productId: line.productId, ...(line.variantId ? { variantId: line.variantId } : {}), selections: line.selections, quantity: line.quantity })),
-      ...(fields.discountCode.trim() ? { discountCode: fields.discountCode.trim().toUpperCase() } : {}),
-    });
+    return apiPost<StorefrontCheckoutQuote>(
+      `/catalog/stores/${encodeURIComponent(catalog.slug)}/orders/quote`,
+      {
+        fulfillmentType: fields.fulfillmentType,
+        ...routeInput,
+        items: cart.map((line) => ({
+          productId: line.productId,
+          ...(line.variantId ? { variantId: line.variantId } : {}),
+          selections: line.selections,
+          quantity: line.quantity,
+        })),
+        ...(fields.discountCode.trim()
+          ? { discountCode: fields.discountCode.trim().toUpperCase() }
+          : {}),
+      },
+    );
   }
 
+  const reviewMutation = useMutation({
+    mutationFn: async () => ({ key: reviewKey, quote: await quoteRequest() }),
+    onSuccess: (result) => {
+      setReviewed(result);
+      setQuote(result.quote);
+    },
+  });
   const orderMutation = useMutation({
     mutationKey: storefrontQueryKeys.order(catalog.slug),
     mutationFn: async (checkout: CheckoutFields) => {
+      const post = (body: CreateStorefrontOrderRequest) => apiPost<StorefrontOrderReceipt>(
+        `/catalog/stores/${encodeURIComponent(catalog.slug)}/orders`, body, { credentials: 'include' },
+      );
+      if (attempt.current) return post(attempt.current);
       if (cart.length === 0) throw new Error(t.basketEmpty);
 
       await Promise.all(
@@ -72,7 +112,10 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
         customerName: checkout.customerName.trim(),
         customerPhone: checkout.customerPhone.trim(),
         fulfillmentType: checkout.fulfillmentType,
-        ...(checkout.discountCode.trim() ? { discountCode: checkout.discountCode.trim().toUpperCase() } : {}),
+        ...routeInput,
+        ...(checkout.discountCode.trim()
+          ? { discountCode: checkout.discountCode.trim().toUpperCase() }
+          : {}),
         ...(checkout.fulfillmentType === 'delivery'
           ? { deliveryAddress: checkout.deliveryAddress.trim() }
           : {}),
@@ -83,40 +126,77 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
           quantity: line.quantity,
         })),
       };
-      const reviewedQuote = await quoteRequest();
-      request.reviewedTotal = reviewedQuote.total;
-      if (reviewedQuote.restaurantSettingsRevision) request.restaurantSettingsRevision = reviewedQuote.restaurantSettingsRevision;
-
-      return apiPost<StorefrontOrderReceipt>(
-        `/catalog/stores/${encodeURIComponent(catalog.slug)}/orders`,
-        request,
-      );
+      const finalQuote = reviewedQuote ?? await quoteRequest();
+      if (finalQuote.fulfillmentQuoteKey && !reviewedQuote)
+        throw new Error('راجع الفرع والسعر قبل تأكيد الطلب.');
+      request.reviewedTotal = finalQuote.total;
+      if (finalQuote.restaurantSettingsRevision)
+        request.restaurantSettingsRevision = finalQuote.restaurantSettingsRevision;
+      if (finalQuote.fulfillmentQuoteKey) {
+        request.fulfillmentQuoteKey = finalQuote.fulfillmentQuoteKey;
+        request.requestId = crypto.randomUUID();
+        attempt.current = request;
+      }
+      return post(request);
     },
-    onSuccess: () => clearCart(),
+    onSuccess: (receipt) => {
+      saveStorefrontOrderReceipt(receipt);
+      attempt.current = null;
+      setUncertain(false);
+      clearCart();
+    },
+    onError: (error) => {
+      if (attempt.current && !(error instanceof ApiError && [400, 401, 403, 404, 409, 422].includes(error.statusCode))) {
+        setUncertain(true);
+      } else {
+        attempt.current = null;
+        setUncertain(false);
+        setReviewed(null);
+        if (restaurant) void options.refetch();
+      }
+    },
   });
 
   function update<K extends keyof CheckoutFields>(key: K, value: CheckoutFields[K]) {
     setFields((current) => ({ ...current, [key]: value }));
-    if (key === 'discountCode' || key === 'fulfillmentType') { setQuote(null); setQuoteError(''); }
+    if (key === 'discountCode' || key === 'fulfillmentType') {
+      setQuote(null);
+      setQuoteError('');
+    }
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!orderMutation.isPending) orderMutation.mutate(fields);
+    if (orderMutation.isPending || reviewMutation.isPending) return;
+    if (!attempt.current && branchRouting && !reviewedQuote) {
+      orderMutation.reset();
+      reviewMutation.mutate();
+    } else {
+      orderMutation.mutate(fields);
+    }
   }
 
   if (!hasHydrated) {
-    return <main id="main-content" className="mx-auto min-h-[60vh] max-w-[1100px] px-4 py-10 sm:px-8"><div className="h-80 animate-pulse rounded-3xl bg-white" /></main>;
+    return (
+      <main id="main-content" className="mx-auto min-h-[60vh] max-w-[1100px] px-4 py-10 sm:px-8">
+        <div className="h-80 animate-pulse rounded-3xl bg-white" />
+      </main>
+    );
   }
 
   if (orderMutation.data) {
     const Arrow = locale === 'ar' ? ArrowLeft : ArrowRight;
     return (
-      <main id="main-content" className="mx-auto grid min-h-[70vh] max-w-[760px] content-center justify-items-center px-5 py-12 text-center">
+      <main
+        id="main-content"
+        className="mx-auto grid min-h-[70vh] max-w-[760px] content-center justify-items-center px-5 py-12 text-center"
+      >
         <span className="grid size-16 place-items-center rounded-3xl bg-store-primary/10 text-store-primary">
           <CheckCircle2 className="size-8" aria-hidden="true" />
         </span>
-        <h1 className="mt-4 font-heading text-storefront-page font-black text-store-primary-deep">{t.orderReceived}</h1>
+        <h1 className="mt-4 font-heading text-storefront-page font-black text-store-primary-deep">
+          {t.orderReceived}
+        </h1>
         <p className="mt-2 max-w-xl text-storefront-body text-store-muted">{t.orderPending}</p>
         <Card className="mt-5 grid w-full gap-3 rounded-3xl border-store-border bg-white p-4 text-start sm:p-5">
           <div className="flex items-center justify-between gap-4">
@@ -125,10 +205,20 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
               {orderMutation.data.id.slice(0, 8).toLocaleUpperCase()}
             </strong>
           </div>
-          {orderMutation.data.discount && <div className="flex items-center justify-between gap-4 border-t border-store-border pt-4 text-store-primary">
-            <span className="text-sm font-bold">{t.discountApplied} ({orderMutation.data.discount.code})</span>
-            <strong>−<bdi dir="auto">{formatStorefrontPrice(orderMutation.data.discount.amount, locale)}</bdi></strong>
-          </div>}
+          {orderMutation.data.discount && (
+            <div className="flex items-center justify-between gap-4 border-t border-store-border pt-4 text-store-primary">
+              <span className="text-sm font-bold">
+                {t.discountApplied} ({orderMutation.data.discount.code})
+              </span>
+              <strong>
+                −
+                <bdi dir="auto">
+                  {formatStorefrontPrice(orderMutation.data.discount.amount, locale)}
+                </bdi>
+              </strong>
+            </div>
+          )}
+          {orderMutation.data.branchName && <p className="text-sm">الفرع: {orderMutation.data.branchName}</p>}
           <div className="flex items-center justify-between gap-4 border-t border-store-border pt-4">
             <span className="text-sm font-bold text-store-muted">{t.orderTotal}</span>
             <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
@@ -137,38 +227,68 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
           </div>
         </Card>
         <p className="mt-4 text-sm text-store-muted">{t.noPayment}</p>
-        <Button asChild className="mt-5 h-11 rounded-xl bg-store-accent px-5 font-bold hover:bg-store-primary-dark">
-          <Link href={`/s/${catalog.slug}`}>
-            {t.home}<Arrow className="size-4" aria-hidden="true" />
-          </Link>
-        </Button>
+        <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
+          <Button asChild className="h-11 rounded-xl bg-store-accent px-5 font-bold hover:bg-store-primary-dark">
+            <Link href={`/s/${catalog.slug}/order/${orderMutation.data.id}`}>
+              {t.trackOrder}
+              <Arrow className="size-4" aria-hidden="true" />
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="h-11 rounded-xl px-5 font-bold">
+            <Link href={`/s/${catalog.slug}`}>
+              {t.home}
+              <Arrow className="size-4" aria-hidden="true" />
+            </Link>
+          </Button>
+        </div>
       </main>
     );
   }
 
   if (cart.length === 0) {
     return (
-      <main id="main-content" className="mx-auto grid min-h-[65vh] max-w-[760px] content-center justify-items-center px-5 py-12 text-center">
-        <span className="grid size-16 place-items-center rounded-3xl bg-store-cream text-store-accent"><ShoppingBag className="size-8" aria-hidden="true" /></span>
-        <h1 className="mt-4 font-heading text-storefront-page font-black text-store-ink">{t.basketEmpty}</h1>
-        <Button asChild className="mt-5 rounded-xl bg-store-accent px-5 font-bold hover:bg-store-primary-dark"><Link href={`/s/${catalog.slug}/menu`}>{t.startShopping}</Link></Button>
+      <main
+        id="main-content"
+        className="mx-auto grid min-h-[65vh] max-w-[760px] content-center justify-items-center px-5 py-12 text-center"
+      >
+        <span className="grid size-16 place-items-center rounded-3xl bg-store-cream text-store-accent">
+          <ShoppingBag className="size-8" aria-hidden="true" />
+        </span>
+        <h1 className="mt-4 font-heading text-storefront-page font-black text-store-ink">
+          {t.basketEmpty}
+        </h1>
+        <Button
+          asChild
+          className="mt-5 rounded-xl bg-store-accent px-5 font-bold hover:bg-store-primary-dark"
+        >
+          <Link href={`/s/${catalog.slug}/menu`}>{t.startShopping}</Link>
+        </Button>
       </main>
     );
   }
 
   const Arrow = locale === 'ar' ? ArrowLeft : ArrowRight;
   return (
-    <main id="main-content" className="mx-auto min-h-[70vh] max-w-[1100px] px-4 pb-10 pt-6 sm:px-8 sm:pt-8">
+    <main
+      id="main-content"
+      className="mx-auto min-h-[70vh] max-w-[1100px] px-4 pb-10 pt-6 sm:px-8 sm:pt-8"
+    >
       <header className="mb-5">
-        <p className="text-storefront-support font-extrabold text-store-accent">{catalog.merchantName}</p>
-        <h1 className="mt-1 font-heading text-storefront-page font-black text-store-ink">{t.checkoutTitle}</h1>
+        <p className="text-storefront-support font-extrabold text-store-accent">
+          {catalog.merchantName}
+        </p>
+        <h1 className="mt-1 font-heading text-storefront-page font-black text-store-ink">
+          {t.checkoutTitle}
+        </h1>
         <p className="mt-1 text-storefront-body text-store-muted">{t.checkoutIntro}</p>
       </header>
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
         <form onSubmit={submit} className="grid gap-4">
           <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
-            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">{locale === 'ar' ? 'بيانات العميل' : 'Your details'}</h2>
+            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
+              {locale === 'ar' ? 'بيانات العميل' : 'Your details'}
+            </h2>
             <label className="grid gap-2 text-sm font-bold text-store-ink">
               {t.customerName}
               <Input
@@ -202,23 +322,68 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
           </Card>
 
           <Card className="grid gap-3 rounded-3xl border-store-border bg-white p-4 sm:p-5">
-            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">{t.discountCode}</h2>
+            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
+              {t.discountCode}
+            </h2>
             <div className="flex flex-wrap gap-2">
-              <Input aria-label={t.discountCode} dir="ltr" autoCapitalize="characters" maxLength={32} value={fields.discountCode} onChange={(event) => update('discountCode', event.currentTarget.value.toUpperCase())} placeholder={t.discountCodePlaceholder} className="h-12 min-w-0 flex-1 rounded-xl border-store-border bg-white text-base" />
-              <Button type="button" variant="outline" disabled={orderMutation.isPending || !fields.discountCode.trim()} onClick={() => { setQuoteError(''); void quoteRequest().then(setQuote).catch(() => { setQuote(null); setQuoteError(t.discountUnavailable); }); }} className="h-12 rounded-xl border-store-border font-bold text-store-primary">{t.applyDiscount}</Button>
+              <Input
+                aria-label={t.discountCode}
+                dir="ltr"
+                autoCapitalize="characters"
+                maxLength={32}
+                value={fields.discountCode}
+                onChange={(event) =>
+                  update('discountCode', event.currentTarget.value.toUpperCase())
+                }
+                placeholder={t.discountCodePlaceholder}
+                className="h-12 min-w-0 flex-1 rounded-xl border-store-border bg-white text-base"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled={orderMutation.isPending || !fields.discountCode.trim()}
+                onClick={() => {
+                  setQuoteError('');
+                  void quoteRequest()
+                    .then(setQuote)
+                    .catch(() => {
+                      setQuote(null);
+                      setQuoteError(t.discountUnavailable);
+                    });
+                }}
+                className="h-12 rounded-xl border-store-border font-bold text-store-primary"
+              >
+                {t.applyDiscount}
+              </Button>
             </div>
-            {quoteError && <p className="m-0 text-sm font-bold text-store-error" role="alert">{quoteError}</p>}
-            {quote?.discount && <p className="m-0 text-sm font-bold text-store-primary" role="status">{quote.discount.code} · {t.discountApplied} · −<bdi dir="auto">{formatStorefrontPrice(quote.discount.amount, locale)}</bdi></p>}
+            {quoteError && (
+              <p className="m-0 text-sm font-bold text-store-error" role="alert">
+                {quoteError}
+              </p>
+            )}
+            {quote?.discount && (
+              <p className="m-0 text-sm font-bold text-store-primary" role="status">
+                {quote.discount.code} · {t.discountApplied} · −
+                <bdi dir="auto">{formatStorefrontPrice(quote.discount.amount, locale)}</bdi>
+              </p>
+            )}
           </Card>
 
           <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
             <fieldset className="grid gap-3">
-              <legend className="mb-2 font-heading text-storefront-subsection font-extrabold text-store-ink">{t.fulfillment}</legend>
-              {([
-                { value: 'pickup', label: t.pickup },
-                { value: 'delivery', label: t.delivery },
-              ] as const).map((option) => (
-                <label key={option.value} className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border px-4 transition ${fields.fulfillmentType === option.value ? 'border-store-primary bg-store-primary/5' : 'border-store-border bg-white hover:bg-store-page'}`}>
+              <legend className="mb-2 font-heading text-storefront-subsection font-extrabold text-store-ink">
+                {t.fulfillment}
+              </legend>
+              {(
+                [
+                  { value: 'pickup', label: t.pickup },
+                  { value: 'delivery', label: t.delivery },
+                ] as const
+              ).map((option) => (
+                <label
+                  key={option.value}
+                  className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border px-4 transition ${fields.fulfillmentType === option.value ? 'border-store-primary bg-store-primary/5' : 'border-store-border bg-white hover:bg-store-page'}`}
+                >
                   <input
                     type="radio"
                     name="fulfillment"
@@ -231,6 +396,14 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                 </label>
               ))}
             </fieldset>
+            {options.data && (
+              <fieldset disabled={uncertain || orderMutation.isPending || reviewMutation.isPending}>
+                <RestaurantRouteFields settings={options.data} fulfillment={fields.fulfillmentType}
+                  area={legacyArea} pickup={pickup}
+                  onArea={(id) => { setLegacyArea(id); setQuote(null); }}
+                  onPickup={(id) => { setPickup(id); setQuote(null); }} />
+              </fieldset>
+            )}
             {fields.fulfillmentType === 'delivery' && (
               <label className="grid gap-2 text-sm font-bold text-store-ink">
                 {t.address}
@@ -249,14 +422,36 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
           </Card>
 
           {orderMutation.isError && (
-            <p className="rounded-2xl border border-store-error/20 bg-store-error/5 px-4 py-3 text-sm font-bold leading-6 text-store-error" role="alert">
+            <p
+              className="rounded-2xl border border-store-error/20 bg-store-error/5 px-4 py-3 text-sm font-bold leading-6 text-store-error"
+              role="alert"
+            >
               {orderMutation.error.message || t.orderError}
             </p>
           )}
 
-          <Button type="submit" disabled={orderMutation.isPending} className="h-11 rounded-xl bg-store-accent font-heading text-sm font-extrabold hover:bg-store-primary-dark">
-            {orderMutation.isPending && <LoaderCircle className="size-5 animate-spin" aria-hidden="true" />}
-            {orderMutation.isPending ? t.submittingOrder : t.submitOrder}
+          {options.isError && restaurant && <p role="alert">تعذر تحميل خيارات الاستلام.{' '}
+            <button type="button" onClick={() => void options.refetch()}>حاول تاني</button>
+          </p>}
+          {reviewMutation.isError && <p role="alert">{reviewMutation.error.message}</p>}
+          {reviewedQuote?.branch && !uncertain && <div className="rounded-xl border p-3 text-sm" role="status">
+            <p>الفرع: {reviewedQuote.branch.name}</p>
+            {fields.fulfillmentType === 'pickup' && reviewedQuote.branch.address && <p>{reviewedQuote.branch.address}</p>}
+            {reviewedQuote.deliveryAreaName && <p>{reviewedQuote.deliveryAreaName}</p>}
+            <p>الإجمالي: {formatStorefrontPrice(reviewedQuote.total, locale)}</p>
+          </div>}
+          <Button
+            type="submit"
+            formNoValidate={uncertain}
+            disabled={orderMutation.isPending || reviewMutation.isPending || (restaurant && !options.data && !uncertain)}
+            className="h-11 rounded-xl bg-store-accent font-heading text-sm font-extrabold hover:bg-store-primary-dark"
+          >
+            {orderMutation.isPending && (
+              <LoaderCircle className="size-5 animate-spin" aria-hidden="true" />
+            )}
+            {uncertain ? 'أعد نفس محاولة التأكيد' : orderMutation.isPending ? t.submittingOrder
+              : reviewMutation.isPending ? 'جارٍ مراجعة الطلب…'
+                : branchRouting && !reviewedQuote ? 'راجع الفرع والسعر' : t.submitOrder}
             {!orderMutation.isPending && <Arrow className="size-4" aria-hidden="true" />}
           </Button>
           <p className="text-center text-xs leading-5 text-store-muted">{t.noPayment}</p>
@@ -265,32 +460,97 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
         <aside className="lg:sticky lg:top-28">
           <Card className="rounded-3xl border-store-border bg-white p-4 shadow-[0_12px_36px_rgba(23,35,48,0.06)] sm:p-5">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">{locale === 'ar' ? 'ملخص السلة' : 'Basket summary'}</h2>
+              <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
+                {locale === 'ar' ? 'ملخص السلة' : 'Basket summary'}
+              </h2>
               <span className="rounded-full bg-store-cream px-3 py-1 text-xs font-extrabold text-store-primary">
                 {cart.reduce((count, line) => count + line.quantity, 0)}
               </span>
             </div>
             <ul className="mt-4 grid gap-3">
-              {cart.map((line) => {
+              {cart.map((line, index) => {
                 const product = catalog.products.find((item) => item.id === line.productId);
+                const promotion = quote?.promotions?.[index];
+                const unitPrice = quote?.unitPrices[index] ?? line.unitPriceSnapshot;
+                const originalUnitPrice = quote?.originalUnitPrices?.[index];
                 return (
-                  <li key={line.key} className="flex items-start justify-between gap-3 border-b border-store-border pb-3 text-sm">
-                    <span className="min-w-0 font-medium text-store-muted">{line.quantity} × {product?.name ?? t.unavailable}</span>
-                    <strong className="shrink-0 font-bold text-store-ink"><bdi dir="auto">{formatStorefrontPrice(line.unitPriceSnapshot, locale)}</bdi></strong>
+                  <li
+                    key={line.key}
+                    className="flex items-start justify-between gap-3 border-b border-store-border pb-3 text-sm"
+                  >
+                    <span className="min-w-0 font-medium text-store-muted">
+                      {line.quantity} × {product?.name ?? t.unavailable}
+                    </span>
+                    <span className="shrink-0 text-end">
+                      {promotion && originalUnitPrice && (
+                        <del className="block text-xs text-store-muted">
+                          <bdi dir="auto">
+                            {formatStorefrontPrice(originalUnitPrice, locale)}
+                          </bdi>
+                        </del>
+                      )}
+                      <strong className="font-bold text-store-ink">
+                        <bdi dir="auto">{formatStorefrontPrice(unitPrice, locale)}</bdi>
+                      </strong>
+                      {promotion && (
+                        <small className="block font-bold text-store-primary">
+                          {t.productDiscount} −
+                          <bdi dir="auto">
+                            {formatStorefrontPrice(promotion.discountAmount, locale)}
+                          </bdi>
+                        </small>
+                      )}
+                    </span>
                   </li>
                 );
               })}
             </ul>
-            <p className="mt-4 rounded-xl bg-store-cream px-3 py-3 text-xs leading-5 text-store-muted">{t.priceNote}</p>
-            {quote && <div className="mt-4 grid gap-2 border-t border-store-border pt-4 text-sm">
-              <div className="flex justify-between gap-3"><span className="text-store-muted">{t.orderTotal}</span><strong><bdi dir="auto">{formatStorefrontPrice(quote.subtotal, locale)}</bdi></strong></div>
-              {quote.discount && <div className="flex justify-between gap-3 text-store-primary"><span>{t.discountApplied} ({quote.discount.code})</span><strong>−<bdi dir="auto">{formatStorefrontPrice(quote.discount.amount, locale)}</bdi></strong></div>}
-              {Number(quote.deliveryFee) > 0 && <div className="flex justify-between gap-3"><span className="text-store-muted">{t.delivery}</span><strong><bdi dir="auto">{formatStorefrontPrice(quote.deliveryFee, locale)}</bdi></strong></div>}
-              <div className="flex justify-between gap-3 border-t border-store-border pt-2 font-extrabold"><span>{t.finalTotal}</span><strong><bdi dir="auto">{formatStorefrontPrice(quote.total, locale)}</bdi></strong></div>
-            </div>}
+            <p className="mt-4 rounded-xl bg-store-cream px-3 py-3 text-xs leading-5 text-store-muted">
+              {t.priceNote}
+            </p>
+            {quote && (
+              <div className="mt-4 grid gap-2 border-t border-store-border pt-4 text-sm">
+                <div className="flex justify-between gap-3">
+                  <span className="text-store-muted">{t.orderTotal}</span>
+                  <strong>
+                    <bdi dir="auto">{formatStorefrontPrice(quote.subtotal, locale)}</bdi>
+                  </strong>
+                </div>
+                {quote.discount && (
+                  <div className="flex justify-between gap-3 text-store-primary">
+                    <span>
+                      {t.discountApplied} ({quote.discount.code})
+                    </span>
+                    <strong>
+                      −<bdi dir="auto">{formatStorefrontPrice(quote.discount.amount, locale)}</bdi>
+                    </strong>
+                  </div>
+                )}
+                {Number(quote.deliveryFee) > 0 && (
+                  <div className="flex justify-between gap-3">
+                    <span className="text-store-muted">{t.delivery}</span>
+                    <strong>
+                      <bdi dir="auto">{formatStorefrontPrice(quote.deliveryFee, locale)}</bdi>
+                    </strong>
+                  </div>
+                )}
+                <div className="flex justify-between gap-3 border-t border-store-border pt-2 font-extrabold">
+                  <span>{t.finalTotal}</span>
+                  <strong>
+                    <bdi dir="auto">{formatStorefrontPrice(quote.total, locale)}</bdi>
+                  </strong>
+                </div>
+              </div>
+            )}
             {quote?.demo && <p className="mt-2 text-xs text-store-muted">{t.demoDiscountQuote}</p>}
-            <Button asChild variant="outline" className="mt-3 h-11 w-full rounded-xl border-store-border font-bold text-store-primary hover:bg-store-cream">
-              <Link href={`/s/${catalog.slug}/cart`}>{locale === 'ar' ? 'العودة إلى السلة' : 'Back to basket'}</Link>
+            <Button
+              asChild
+              variant="outline"
+              className="mt-3 h-11 w-full rounded-xl border-store-border font-bold text-store-primary hover:bg-store-cream"
+            >
+              <Link href={`/s/${catalog.slug}/cart`}>
+                {locale === 'ar' ? 'العودة إلى السلة' : 'Back to basket'}
+              </Link>
             </Button>
           </Card>
         </aside>

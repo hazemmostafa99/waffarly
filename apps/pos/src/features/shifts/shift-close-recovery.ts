@@ -10,7 +10,7 @@ export function isCorrectableShiftCloseRejection(error: unknown): boolean {
       (error.statusCode === 409 &&
         [
           'Enter a reason for the cash variance.',
-          'There are no pending deliveries to hand over. Refresh the shift.',
+          'Confirm closing this shift while deliveries remain pending.',
         ].includes(error.message)))
   );
 }

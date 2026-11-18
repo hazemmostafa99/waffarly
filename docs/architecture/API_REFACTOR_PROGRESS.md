@@ -1,5 +1,125 @@
 # API organization progress
 
+## Developer entry point and isolated database testing — 2026-11-14
+
+Added CONTRIBUTING.md as the daily entry point, current operation traces and an
+API test map. Linked them from the root README, setup guide, API instructions and
+module guide; corrected older setup statements about POS authentication,
+subscription activation and database startup behavior.
+
+`pnpm check:api` now runs formatting, typecheck, lint, HTTP/unit tests and build in
+order. `pnpm test:db:prepare` and `pnpm test:db` use the guarded common database
+runner; existing named API database commands delegate to the same suite map.
+All 29 database test files use TEST_DATABASE_URL and the shared client helper.
+Missing/unsafe configuration fails before connecting instead of silently skipping
+or using the application database. The helper registers after-test disconnection
+even when explicit fixture cleanup fails.
+
+Shared merchant fixtures cover field defaults, explicit legacy access and
+zero-cash branch shifts. Subscription cleanup is restricted to supplied test
+merchant UUIDs. Older ledger, purchasing, delivery and recipe fixtures were
+updated for automatic subscription records and current shift prerequisites.
+The application rules were not weakened to accommodate those fixtures.
+
+Added tests for database-target separation, secret-free configuration failures,
+suite selection, tenant-scoped cleanup and circular static module dependencies.
+The existing ESLint module boundaries remain in effect. A separate local Docker
+PostgreSQL service and example test environment are provided; the manually
+triggered CI inventory job now provisions and migrates its separate test target.
+No automatic CI triggers were enabled and no application schema/HTTP contracts changed.
+
+Verification: the new API check runner passed all steps with 273 HTTP/unit tests.
+The new all-database runner passed 38 tests across all 29 files, with zero failures
+or skips, against a separately provisioned PostgreSQL 17 test instance. Existing
+migrations applied successfully there through the guarded preparation command.
+No forced test-runner exit or database reset was used. Browser/operator checks and
+execution of the edited GitHub Actions workflow were not performed.
+
+## Remaining large-module cleanup — 2026-11-14
+
+- Shifts: extracted opening/closing, session reads, reconciliation, close reports,
+  branch/approval checks, manual cash activity and order cash helpers. Cash custody
+  now separates safe, drawer and transfer operations; owner/POS controllers have
+  separate files. Existing service APIs and reconciliation exports remain.
+- Subscriptions: separated access, onboarding assignment, pricing quotes,
+  administrative commands, queries/history and record mapping. Overloads and
+  transaction-client forwarding remain compatible.
+- Inventory: separated stock item operations, branch/warehouse management,
+  inventory policy, health reads and reorder thresholds. Owner policy, ledger and
+  health routes now have dedicated controllers under the existing URL prefix.
+- Merchants: separated onboarding, applications, public addresses and directory
+  reads; Catalog: separated product create/update, modifier links, availability
+  changes and reads, reusing existing persistence helpers and rules.
+- Employees: moved owner staff configuration from Auth to EmployeesModule,
+  registered in AppModule with Employees → Auth allowed in ESLint. Auth keeps
+  sign-in/session/permission enforcement and exposes its username validator through
+  its public entry point. Updated source/test callers and employee ownership docs.
+- Added plain-English purpose comments, operation-step comments and module guides.
+  See [API_MODULE_GUIDE.md](API_MODULE_GUIDE.md) for the complete navigation map.
+
+No route, request/response contract or schema changes are intended. Existing
+transaction bodies, locks, revision checks and replay semantics were preserved.
+Database regression runs exposed stale fixture cleanup in four cash/shift suites:
+merchant subscriptions now have to be removed before their test merchant. Cleanup
+was corrected using the exact test tenant IDs, with no database reset or migration.
+
+Final verification on Node 24.11.1:
+
+- API typecheck, ESLint and TypeScript build passed.
+- Default API HTTP/unit suite: 264 passed, zero failed or skipped.
+- Selected PostgreSQL suite: 12 passed, zero failed or skipped, across Catalog,
+  product inventory, Inventory, stock visibility, Subscriptions, Shifts,
+  reconciliation, cash custody, POS dining and Employees test files.
+- Formatting completed on changed source, tests and documentation.
+
+The installed local CLI entry points were used directly (the package manager
+shim attempts a network download in this environment). The selected database
+command used `--test-force-exit --test-isolation=none --test-concurrency=1` and
+the configured local PostgreSQL database. These are backend regression results;
+they do not establish browser, physical printer, cash-count or operator acceptance.
+No schema migrations, shared contracts or frontend workflows changed.
+
+## Orders internal cleanup and reading guide — 2026-11-14
+
+Continued the Orders refactor with explicit lifecycle action helpers, shared
+transition data and authorization checks inside the existing transaction. Split
+checkout item persistence, discount/receiving-branch rules and the legacy website
+status command. Separated customer session/identity, scoped queries and customer
+response mapping; separated delivery queries/access rules and return queries/
+mapping; extracted dining table management and moved owner table controllers to
+the owner HTTP folder. Existing application service methods and constructors
+remain compatible with their callers.
+
+Added a short plain-English purpose comment to every Orders TypeScript file and
+comments for meaningful steps in longer writes. The module README and scoped
+AGENTS.md document the layout and naming/comment conventions.
+
+No HTTP contract, schema or external module dependency changes are intended.
+Transaction ownership, statement order within extracted actions and replay/tenant/
+branch/permission checks were retained. Formatting and source review only; no
+automated checks, build, lint, typecheck, tests, browser or database operations ran.
+The manual acceptance scenarios in the Orders guide remain pending.
+
+## Orders responsibility split — 2026-11-14
+
+Grouped Orders HTTP controllers by storefront, Marketplace customer access, POS
+and owner entry points, and moved business files into named responsibility
+folders. Split the mixed storefront controller and separated its request schemas.
+Extracted cashier sale creation, kitchen amendments, pickup collection, payments,
+refunds, receipt issuance/history and sale queries from PosOrdersService, which
+now delegates through its existing application API. Dining check allocation lives
+in billing; order queue reads live in fulfillment. Updated existing source/test
+imports and added explanatory comments at transaction boundaries.
+
+No schema, route, shared contract or external module dependency changes are
+intended. Existing transaction bodies, replay checks and authorization predicates
+were retained. Source formatting ran with the locally installed Prettier; no
+automated checks, tests, typecheck, lint, build, database or browser verification
+ran under the manual-QA instruction. Runtime acceptance is pending. See the
+[Orders guide](../../apps/api/src/modules/orders/README.md) for ownership,
+remaining cleanup and manual scenarios. Historical verification below describes
+earlier work, not this refactor.
+
 ## Implemented
 
 - Added `apps/api/AGENTS.md` and a root instruction linking it for API, database,
@@ -51,3 +171,104 @@ design. Reporting needs representative data/query profiling before replacing
 in-memory aggregation. Multiple API hosts need shared/object media storage and
 matching delivery configuration. These behavior/deployment changes are not
 silently introduced by reorganizing the code.
+
+## Cashier forwarding facade removed
+
+The former PosOrdersService is deleted. Cashier routes now call PosSaleService,
+KitchenOrderAmendmentService, CheckPaymentService, CheckRefundService,
+PickupCollectionService, PosOrderQueryService and PosReceiptQueryService directly.
+The operation bodies retain their original authorization, tenant/branch scope,
+transaction isolation, lock order and replay behavior. Receipt issuance still
+receives the payment transaction; physical item returns remain separate.
+
+All affected fixture construction and HTTP provider stubs were updated. Changed
+files were formatted with installed Prettier. No tests, typecheck, lint, build or
+browser checks were run for this migration, following the current manual-QA
+preference. Earlier verification results in this document predate this migration.
+This completes replacement of this facade, not architectural alignment of every
+API feature.
+
+## Follow-up validation and operation ownership — 2026-11-14
+
+The user explicitly authorized automated checks again. This supersedes the
+manual-only verification status above for the current changes.
+
+- Check splitting now runs directly in CheckSplitService; exact allocation math
+  lives in check-split.rules.ts and remains independently tested.
+- Legacy website accept/reject now runs directly in StorefrontOrderStatusService,
+  rather than through the checkout-submission service.
+- SubscriptionService.command owns its administrative transaction directly. The
+  standalone forwarding command file was removed; read and pricing helpers remain.
+- API formatting, typecheck, lint, all 273 HTTP/unit tests and build passed.
+- All 38 PostgreSQL tests across 29 files passed, with no failures or skips,
+  against the guarded isolated test database. The existing test container was
+  started; no database reset or application-database change was performed.
+- Initial restricted-loopback test failures were resolved by running with local
+  network access. A missing rule import, an unused checkout import and the moved
+  status operation's HTTP mock were corrected before the final successful run.
+
+The Shifts, Inventory, Merchants and Catalog modules still contain legacy
+function-based operation coordination. This delivery does not claim full API
+alignment or browser/operator acceptance. No commit was created.
+
+## Primary write services aligned — 2026-11-14
+
+Moved 37 operation bodies into the existing Nest application services across
+Shifts, Inventory, Merchants and Catalog. Their constructors and public method
+contracts were preserved; no new forwarding services or module dependencies were
+introduced. The services own transaction orchestration, including existing lock,
+revision, retry, tenant and attribution checks. Nested transaction callbacks and
+isolation choices are preserved. Cash custody retains its shared transaction and
+conflict helper, with the business callback coordinated by the service.
+
+Removed 11 standalone command implementation files and renamed eight residual
+read/rule files to describe their remaining work. Product commands no longer have
+a redundant forwarding `commands` directory. Updated module navigation guides
+and purpose comments; calculations and active-transaction persistence remain
+functions.
+
+Validation after these changes:
+
+- `node --import tsx test/support/check-api.ts` from apps/api passed formatting,
+  typecheck, lint, all 273 HTTP/unit tests, and build.
+- `node --import tsx test/support/database-runner.ts` from apps/api passed all 38
+  PostgreSQL tests across 29 files, with zero failures or skips, against the
+  guarded isolated test database.
+- Local loopback access was enabled for the tests. No application-database reset,
+  migration, HTTP-contract change, new test facade or commit was introduced.
+- Browser and operator acceptance were not performed. These results cover the
+  reviewed services; they do not certify every API feature's architecture.
+
+## Inventory policy ownership — 2026-11-14
+
+Inventory policy reads and updates now belong to `InventoryPolicyService`, under
+the existing policy folder and controller. `InventoryLocationsService` now owns
+only branches, warehouses and consumption defaults. The policy's tenant scope,
+revision conflict handling, attribution and response are preserved. This split
+separates two existing API capabilities without adding a forwarding service or
+changing routes or contracts.
+
+## Register ownership — 2026-11-14
+
+Register setup and register reads now belong to `PosRegistersService`; shift
+opening, closing, reconciliation and drawer movement stay in `ShiftsService`.
+Owner and cashier controllers call the register service directly. Employee
+register lookup now sits with register queries instead of shift-session queries.
+Existing transactions, row locks, revision checks, tenant scope and HTTP
+contracts are preserved.
+
+After this split, API formatting, typecheck, lint, all 273 HTTP/unit tests and the
+build passed. All 38 database tests across 29 files also passed with no failures
+or skips against the guarded isolated test database. No reset was performed.
+
+## Cashier order controller ownership — 2026-11-14
+
+The existing `/pos/orders` routes are now grouped among controllers for core
+order work, kitchen tasks, billing and physical returns. Each controller calls
+the operation or query service that owns its work. Route paths, status codes,
+permission checks and refund/return supervisor approval behavior are preserved.
+
+After the controller split, Prettier, typecheck, lint, all 273 HTTP/unit tests and
+the API build passed. The database suite was not rerun because this change only
+rearranged HTTP entry points; no query, transaction or persistence code changed.
+Operator acceptance remains separate.

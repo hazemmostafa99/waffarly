@@ -1,6 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
-import type { StockBaseUnit, StockItemUnitFields } from '@waffarly/contracts';
-import { STOCK_QUANTITY_PATTERN } from '@waffarly/contracts';
+import {
+  type StockBaseUnit,
+  type StockItemUnitFields,
+  STOCK_QUANTITY_PATTERN,
+} from '@waffarly/contracts';
 
 const SCALE = 1_000_000n;
 export const MAX_STOCK_QUANTITY_SCALED = 999_999_999_999_999_999n;

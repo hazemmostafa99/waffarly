@@ -9,6 +9,7 @@ import {
   type PendingPosRefund,
 } from '../../app/pos-workspace-store.js';
 import { PosButton } from '../../components/pos-button.js';
+import { getPosOrderNumber } from '../orders/pos-order-number.js';
 import { ApiError } from '../../lib/api-client.js';
 import { formatMoneyCents, parseMoneyCents } from './payment-form-model.js';
 import {
@@ -51,7 +52,10 @@ export function PosRefundDialog({
   const [reason, setReason] = useState(storedRefund?.request.reason ?? '');
   const [amounts, setAmounts] = useState<Record<string, string>>(() =>
     Object.fromEntries(
-      storedRefund?.request.allocations.map((allocation) => [allocation.paymentId, allocation.amount]) ?? [],
+      storedRefund?.request.allocations.map((allocation) => [
+        allocation.paymentId,
+        allocation.amount,
+      ]) ?? [],
     ),
   );
   const [terminalReferences, setTerminalReferences] = useState<Record<string, string>>(() =>
@@ -61,6 +65,14 @@ export function PosRefundDialog({
         allocation.terminalReference ?? '',
       ]) ?? [],
     ),
+  );
+  const [lineQuantities, setLineQuantities] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      storedRefund?.request.lineAllocations?.map((line) => [line.orderLineId, String(line.quantity)]) ?? [],
+    ),
+  );
+  const [attributeToItems, setAttributeToItems] = useState(
+    Boolean(storedRefund?.request.lineAllocations?.length),
   );
   const [approvalUsername, setApprovalUsername] = useState('');
   const [approvalPassword, setApprovalPassword] = useState('');
@@ -72,8 +84,28 @@ export function PosRefundDialog({
     if (!storedRefund || pendingCommand) return;
     setPendingCommand(storedRefund);
     setReason(storedRefund.request.reason);
-    setAmounts(Object.fromEntries(storedRefund.request.allocations.map((allocation) => [allocation.paymentId, allocation.amount])));
-    setTerminalReferences(Object.fromEntries(storedRefund.request.allocations.map((allocation) => [allocation.paymentId, allocation.terminalReference ?? ''])));
+    setAmounts(
+      Object.fromEntries(
+        storedRefund.request.allocations.map((allocation) => [
+          allocation.paymentId,
+          allocation.amount,
+        ]),
+      ),
+    );
+    setTerminalReferences(
+      Object.fromEntries(
+        storedRefund.request.allocations.map((allocation) => [
+          allocation.paymentId,
+          allocation.terminalReference ?? '',
+        ]),
+      ),
+    );
+    setLineQuantities(
+      Object.fromEntries(
+        storedRefund.request.lineAllocations?.map((line) => [line.orderLineId, String(line.quantity)]) ?? [],
+      ),
+    );
+    setAttributeToItems(Boolean(storedRefund.request.lineAllocations?.length));
   }, [pendingCommand, storedRefund]);
 
   const paymentQuery = useQuery({
@@ -85,21 +117,73 @@ export function PosRefundDialog({
   const paymentState = paymentQuery.data;
   const check = paymentState?.checks.find((candidate) => candidate.id === checkId);
   useEffect(() => {
-    if (receipt || !pendingCommand || !check?.refunds?.some((refund) => refund.requestId === pendingCommand.request.requestId)) return;
+    if (
+      receipt ||
+      !pendingCommand ||
+      !check?.refunds?.some((refund) => refund.requestId === pendingCommand.request.requestId)
+    )
+      return;
     removePendingRefund(merchantId, employeeId, orderId, checkId, pendingCommand.request.requestId);
     setPendingCommand(null);
     setReceipt(null);
-  }, [check?.refunds, checkId, employeeId, merchantId, orderId, pendingCommand, receipt, removePendingRefund]);
+  }, [
+    check?.refunds,
+    checkId,
+    employeeId,
+    merchantId,
+    orderId,
+    pendingCommand,
+    receipt,
+    removePendingRefund,
+  ]);
   const refundablePayments = useMemo(
-    () => check?.payments.filter((payment) => (parseMoneyCents(payment.refundableAmount ?? payment.amount) ?? 0n) > 0n) ?? [],
+    () =>
+      check?.payments.filter(
+        (payment) => (parseMoneyCents(payment.refundableAmount ?? payment.amount) ?? 0n) > 0n,
+      ) ?? [],
     [check?.payments],
   );
   const totalCents = refundablePayments.reduce(
     (sum, payment) => sum + (parseMoneyCents(amounts[payment.id] ?? '') ?? 0n),
     0n,
   );
+  const refundLines = paymentState?.orderLines ?? [];
+  const alreadyRefundedOnCheck = new Map<string, number>();
+  for (const refund of check?.refunds ?? []) {
+    for (const line of refund.lineAllocations ?? []) {
+      alreadyRefundedOnCheck.set(
+        line.orderLineId,
+        (alreadyRefundedOnCheck.get(line.orderLineId) ?? 0) + line.quantity,
+      );
+    }
+  }
+  const maxRefundableOnCheck = (line: (typeof refundLines)[number]) => {
+    if (check?.splitMethod !== 'items') return line.refundableQuantity;
+    const checkQuantity = check.allocations?.find((allocation) => allocation.orderLineId === line.orderLineId)?.quantity ?? 0;
+    const refundedHere = alreadyRefundedOnCheck.get(line.orderLineId) ?? 0;
+    return Math.max(0, Math.min(line.refundableQuantity, checkQuantity - refundedHere));
+  };
+  const selectedLineAllocations = refundLines.flatMap((line) => {
+    const quantity = Number(lineQuantities[line.orderLineId] ?? 0);
+    return Number.isSafeInteger(quantity) && quantity > 0 && quantity <= maxRefundableOnCheck(line)
+      ? [{ orderLineId: line.orderLineId, quantity }]
+      : [];
+  });
+  const lineRefundCents = selectedLineAllocations.reduce((sum, allocation) => {
+    const line = refundLines.find((candidate) => candidate.orderLineId === allocation.orderLineId);
+    if (!line) return sum;
+    const total = parseMoneyCents(line.lineTotal);
+    if (total === null) return sum;
+    return sum + allocateUnitCents(total, line.quantity, line.refundedQuantity, allocation.quantity);
+  }, 0n);
   const mutation = useMutation({
-    mutationFn: ({ command, approval }: { command: PendingPosRefund; approval?: { username: string; password: string } }) =>
+    mutationFn: ({
+      command,
+      approval,
+    }: {
+      command: PendingPosRefund;
+      approval?: { username: string; password: string };
+    }) =>
       recordPosCheckRefund(orderId, checkId, {
         ...command.request,
         ...(approval ? { approval } : {}),
@@ -145,6 +229,8 @@ export function PosRefundDialog({
       });
     }
     if (!allocations.length) return null;
+    const lineAllocations = attributeToItems ? selectedLineAllocations : undefined;
+    if (attributeToItems && (!lineAllocations?.length || lineRefundCents !== totalCents)) return null;
     return {
       branchId,
       request: {
@@ -154,6 +240,7 @@ export function PosRefundDialog({
         refundShiftId,
         reason: reason.trim(),
         allocations,
+        ...(lineAllocations ? { lineAllocations } : {}),
       },
     };
   }
@@ -174,7 +261,9 @@ export function PosRefundDialog({
           : {}),
       });
     } catch (error) {
-      setSaveError(error instanceof Error ? error.message : t('Could not save this refund safely.'));
+      setSaveError(
+        error instanceof Error ? error.message : t('Could not save this refund safely.'),
+      );
     }
   }
 
@@ -200,14 +289,23 @@ export function PosRefundDialog({
 
   const formValid = Boolean(
     pendingCommand ||
-      (reason.trim() && totalCents > 0n && refundablePayments.every((payment) => {
+    (reason.trim() &&
+      totalCents > 0n &&
+      refundablePayments.every((payment) => {
         const raw = amounts[payment.id]?.trim() ?? '';
         if (!raw) return true;
         const cents = parseMoneyCents(raw);
         const remaining = parseMoneyCents(payment.refundableAmount ?? payment.amount) ?? 0n;
-        return cents !== null && cents > 0n && cents <= remaining &&
-          (payment.method !== 'terminal' || Boolean(terminalReferences[payment.id]?.trim()));
-      }) && (refundablePayments.some((payment) => Boolean(amounts[payment.id]?.trim())))),
+        return (
+          cents !== null &&
+          cents > 0n &&
+          cents <= remaining &&
+          (payment.method !== 'terminal' || Boolean(terminalReferences[payment.id]?.trim()))
+        );
+      }) &&
+      refundablePayments.some((payment) => Boolean(amounts[payment.id]?.trim())) &&
+      (!attributeToItems ||
+        (selectedLineAllocations.length > 0 && lineRefundCents === totalCents))),
   );
 
   return (
@@ -246,113 +344,376 @@ export function PosRefundDialog({
             </header>
             <dl className="m-0 grid gap-2 border-b border-dashed border-neutral-300 py-3 text-xs">
               <ReceiptRow label={t('Receipt number')} value={receipt.receiptNumber} />
-              <ReceiptRow label={t('Order')} value={paymentState?.context?.order.orderReference ?? `ORD-${receipt.orderId.slice(0, 8).toUpperCase()}`} />
+              <ReceiptRow
+                label={t('Order')}
+                value={`#${getPosOrderNumber(
+                  paymentState?.context?.order ?? {
+                    id: receipt.orderId,
+                    orderReference: null,
+                    branchOrderNumber: null,
+                  },
+                )}`}
+              />
               <ReceiptRow label={t('Issued')} value={formatDate(receipt.issuedAt, true)} />
               <ReceiptRow label={t('Cashier')} value={receipt.issuedBy} />
-              {receipt.approvedBy && <ReceiptRow label={t('Approved by')} value={receipt.approvedBy} />}
+              {receipt.approvedBy && (
+                <ReceiptRow label={t('Approved by')} value={receipt.approvedBy} />
+              )}
             </dl>
             <div className="grid gap-2 border-b border-dashed border-neutral-300 py-3">
               {receipt.tenders.map((tender) => (
                 <div key={tender.originalPaymentId} className="grid gap-1 text-xs">
                   <div className="flex justify-between gap-3">
-                    <span>{t(tender.method === 'cash' ? 'Cash refund' : 'External terminal refund')}</span>
-                    <bdi dir="ltr">{formatNumber(Number(tender.amount), { style: 'currency', currency: receipt.currency })}</bdi>
+                    <span>
+                      {t(tender.method === 'cash' ? 'Cash refund' : 'External terminal refund')}
+                    </span>
+                    <bdi dir="ltr">
+                      {formatNumber(Number(tender.amount), {
+                        style: 'currency',
+                        currency: receipt.currency,
+                      })}
+                    </bdi>
                   </div>
-                  {tender.terminalReference && <div className="text-muted-foreground">{t('Terminal reference')}: <bdi dir="ltr">{tender.terminalReference}</bdi></div>}
+                  {tender.terminalReference && (
+                    <div className="text-muted-foreground">
+                      {t('Terminal reference')}: <bdi dir="ltr">{tender.terminalReference}</bdi>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
             <div className="flex justify-between gap-3 border-b border-dashed border-neutral-300 py-3 font-bold">
               <span>{t('Refund total')}</span>
-              <bdi dir="ltr">{formatNumber(Number(receipt.amount), { style: 'currency', currency: receipt.currency })}</bdi>
+              <bdi dir="ltr">
+                {formatNumber(Number(receipt.amount), {
+                  style: 'currency',
+                  currency: receipt.currency,
+                })}
+              </bdi>
             </div>
-            <p className="mb-0 mt-3 break-words text-xs">{t('Reason')}: {receipt.reason}</p>
-            <p className="mb-0 mt-5 text-center text-[0.65rem] text-neutral-600">{t('This is a refund receipt for the recorded amount.')}</p>
+            {receipt.lineAllocations?.length ? (
+              <div className="grid gap-1 border-b border-dashed border-neutral-300 py-3 text-xs">
+                {receipt.lineAllocations.map((line) => (
+                  <div key={line.orderLineId} className="flex justify-between gap-3">
+                    <span>{line.productName}{line.variantName ? ` · ${line.variantName}` : ''} × {line.quantity}</span>
+                    <bdi dir="ltr">{formatNumber(Number(line.revenueReversalAmount), { style: 'currency', currency: receipt.currency })}</bdi>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <p className="mb-0 mt-3 break-words text-xs">
+              {t('Reason')}: {receipt.reason}
+            </p>
+            <p className="mb-0 mt-5 text-center text-[0.65rem] text-neutral-600">
+              {t('This is a refund receipt for the recorded amount.')}
+            </p>
           </article>
-          {printError && <p className="m-0 text-sm text-destructive" role="alert">{t('Your refund receipt is saved. Retry printing or save it as a PDF.')}</p>}
+          {printError && (
+            <p className="m-0 text-sm text-destructive" role="alert">
+              {t('Your refund receipt is saved. Retry printing or save it as a PDF.')}
+            </p>
+          )}
           <div className="pos-receipt-screen-actions flex flex-wrap justify-end gap-2">
-            <PosButton type="button" variant="outline" onClick={onClose}>{t('Done')}</PosButton>
-            <PosButton type="button" variant="solid" onClick={printReceipt}><Printer size={16} aria-hidden="true" />{t('Print / Save PDF')}</PosButton>
+            <PosButton type="button" variant="outline" onClick={onClose}>
+              {t('Done')}
+            </PosButton>
+            <PosButton type="button" variant="solid" onClick={printReceipt}>
+              <Printer size={16} aria-hidden="true" />
+              {t('Print / Save PDF')}
+            </PosButton>
           </div>
         </div>
       ) : (
         <form className="grid min-h-0 gap-4 overflow-y-auto p-5" onSubmit={submit}>
           <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-foreground">
-            <p className="m-0 flex items-start gap-2"><AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />{t('This records money returned. It does not restore stock or change the original sale receipt.')}</p>
-            <p className="mb-0 mt-2">{t('External terminal refunds must be completed on the terminal first. Enter its refund reference here.')}</p>
+            <p className="m-0 flex items-start gap-2">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0" aria-hidden="true" />
+              {t(
+                'This records money returned. It does not restore stock or change the original sale receipt.',
+              )}
+            </p>
+            <p className="mb-0 mt-2">
+              {t(
+                'External terminal refunds must be completed on the terminal first. Enter its refund reference here.',
+              )}
+            </p>
           </div>
           {!refundShiftId && !pendingCommand && (
-            <p className="m-0 rounded-lg border border-border p-3 text-sm" role="status">{t('Open a register shift at this branch before recording a refund.')}</p>
+            <p className="m-0 rounded-lg border border-border p-3 text-sm" role="status">
+              {t('Open a register shift at this branch before recording a refund.')}
+            </p>
           )}
           {pendingCommand && (
-            <p className="m-0 rounded-lg border border-info/40 bg-info/10 p-3 text-sm" role="status">
-              {t('A refund request is saved. Retry the exact request; do not repeat an external terminal refund.')}
+            <p
+              className="m-0 rounded-lg border border-info/40 bg-info/10 p-3 text-sm"
+              role="status"
+            >
+              {t(
+                'A refund request is saved. Retry the exact request; do not repeat an external terminal refund.',
+              )}
             </p>
           )}
           {paymentQuery.isLoading ? (
-            <p className="m-0 text-sm text-muted-foreground" role="status">{t('Loading current payment state...')}</p>
+            <p className="m-0 text-sm text-muted-foreground" role="status">
+              {t('Loading current payment state...')}
+            </p>
           ) : paymentQuery.isError || !check ? (
             <div className="grid gap-2" role="alert">
-              <p className="m-0 text-sm text-destructive">{errorText(paymentQuery.error instanceof Error ? paymentQuery.error.message : t('Payment status is unavailable.'))}</p>
-              <PosButton type="button" variant="outline" disabled={paymentQuery.isFetching} onClick={() => void paymentQuery.refetch()}>{t('Refresh payment state')}</PosButton>
+              <p className="m-0 text-sm text-destructive">
+                {errorText(
+                  paymentQuery.error instanceof Error
+                    ? paymentQuery.error.message
+                    : t('Payment status is unavailable.'),
+                )}
+              </p>
+              <PosButton
+                type="button"
+                variant="outline"
+                disabled={paymentQuery.isFetching}
+                onClick={() => void paymentQuery.refetch()}
+              >
+                {t('Refresh payment state')}
+              </PosButton>
             </div>
           ) : refundablePayments.length === 0 ? (
             <>
               {check.refunds?.map((refund) => (
-                <PosButton key={refund.id} type="button" variant="outline" className="w-full justify-start" onClick={() => showSavedReceipt(refund)}>
+                <PosButton
+                  key={refund.id}
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => showSavedReceipt(refund)}
+                >
                   <ReceiptText size={16} aria-hidden="true" />
-                  <span className="min-w-0 flex-1 truncate">{t('View refund receipt')} · {refund.receiptNumber}</span>
-                  <bdi dir="ltr">{formatNumber(Number(refund.amount), { style: 'currency', currency: refund.currency })}</bdi>
+                  <span className="min-w-0 flex-1 truncate">
+                    {t('View refund receipt')} · {refund.receiptNumber}
+                  </span>
+                  <bdi dir="ltr">
+                    {formatNumber(Number(refund.amount), {
+                      style: 'currency',
+                      currency: refund.currency,
+                    })}
+                  </bdi>
                 </PosButton>
               ))}
-              <p className="m-0 rounded-lg border border-border p-3 text-sm" role="status">{t('This check has no refundable balance.')}</p>
+              <p className="m-0 rounded-lg border border-border p-3 text-sm" role="status">
+                {t('This check has no refundable balance.')}
+              </p>
             </>
           ) : (
             <>
               {check.refunds?.map((refund) => (
-                <PosButton key={refund.id} type="button" variant="outline" className="w-full justify-start" onClick={() => showSavedReceipt(refund)}>
+                <PosButton
+                  key={refund.id}
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => showSavedReceipt(refund)}
+                >
                   <ReceiptText size={16} aria-hidden="true" />
-                  <span className="min-w-0 flex-1 truncate">{t('View refund receipt')} · {refund.receiptNumber}</span>
-                  <bdi dir="ltr">{formatNumber(Number(refund.amount), { style: 'currency', currency: refund.currency })}</bdi>
+                  <span className="min-w-0 flex-1 truncate">
+                    {t('View refund receipt')} · {refund.receiptNumber}
+                  </span>
+                  <bdi dir="ltr">
+                    {formatNumber(Number(refund.amount), {
+                      style: 'currency',
+                      currency: refund.currency,
+                    })}
+                  </bdi>
                 </PosButton>
               ))}
               <div className="grid gap-2">
                 <div className="grid grid-cols-[minmax(0,1fr)_7rem_6.5rem] gap-2 text-[11px] font-semibold text-muted-foreground">
-                  <span>{t('Original payment')}</span><span className="text-end">{t('Remaining')}</span><span className="text-end">{t('Refund')}</span>
+                  <span>{t('Original payment')}</span>
+                  <span className="text-end">{t('Remaining')}</span>
+                  <span className="text-end">{t('Refund')}</span>
                 </div>
                 {refundablePayments.map((payment) => (
                   <div key={payment.id} className="grid gap-2 rounded-lg border border-border p-3">
                     <div className="grid grid-cols-[minmax(0,1fr)_7rem_6.5rem] items-center gap-2 text-xs">
-                      <span className="min-w-0 truncate font-medium">{t(payment.method === 'cash' ? 'Cash' : 'External terminal')}</span>
-                      <bdi className="text-end" dir="ltr">{formatNumber(Number(payment.refundableAmount ?? payment.amount), { style: 'currency', currency: paymentState?.currency ?? 'EGP' })}</bdi>
-                      <Input aria-label={`${t('Refund')} ${t(payment.method)}`} inputMode="decimal" placeholder="0.00" value={amounts[payment.id] ?? ''} disabled={Boolean(pendingCommand) || mutation.isPending} onChange={(event) => setAmounts((current) => ({ ...current, [payment.id]: event.target.value }))} />
+                      <span className="min-w-0 truncate font-medium">
+                        {t(payment.method === 'cash' ? 'Cash' : 'External terminal')}
+                      </span>
+                      <bdi className="text-end" dir="ltr">
+                        {formatNumber(Number(payment.refundableAmount ?? payment.amount), {
+                          style: 'currency',
+                          currency: paymentState?.currency ?? 'EGP',
+                        })}
+                      </bdi>
+                      <Input
+                        aria-label={`${t('Refund')} ${t(payment.method)}`}
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        value={amounts[payment.id] ?? ''}
+                        disabled={Boolean(pendingCommand) || mutation.isPending}
+                        onChange={(event) =>
+                          setAmounts((current) => ({
+                            ...current,
+                            [payment.id]: event.target.value,
+                          }))
+                        }
+                      />
                     </div>
                     {payment.method === 'terminal' && amounts[payment.id]?.trim() && (
-                      <label className="grid gap-1 text-xs text-muted-foreground">{t('Terminal refund reference')}
-                        <Input required value={terminalReferences[payment.id] ?? ''} disabled={Boolean(pendingCommand) || mutation.isPending} onChange={(event) => setTerminalReferences((current) => ({ ...current, [payment.id]: event.target.value }))} />
+                      <label className="grid gap-1 text-xs text-muted-foreground">
+                        {t('Terminal refund reference')}
+                        <Input
+                          required
+                          value={terminalReferences[payment.id] ?? ''}
+                          disabled={Boolean(pendingCommand) || mutation.isPending}
+                          onChange={(event) =>
+                            setTerminalReferences((current) => ({
+                              ...current,
+                              [payment.id]: event.target.value,
+                            }))
+                          }
+                        />
                       </label>
                     )}
-                    <p className="m-0 text-[11px] text-muted-foreground">{t('Previously refunded')}: <bdi dir="ltr">{formatNumber(Number(payment.refundedAmount ?? '0.00'), { style: 'currency', currency: paymentState?.currency ?? 'EGP' })}</bdi></p>
+                    <p className="m-0 text-[11px] text-muted-foreground">
+                      {t('Previously refunded')}:{' '}
+                      <bdi dir="ltr">
+                        {formatNumber(Number(payment.refundedAmount ?? '0.00'), {
+                          style: 'currency',
+                          currency: paymentState?.currency ?? 'EGP',
+                        })}
+                      </bdi>
+                    </p>
                   </div>
                 ))}
               </div>
-              <label className="grid gap-1.5 text-sm font-medium">{t('Refund reason')}
-                <Input required maxLength={500} value={reason} disabled={Boolean(pendingCommand) || mutation.isPending} onChange={(event) => setReason(event.target.value)} />
+              {refundLines.length > 0 && (
+                <section className="grid gap-2 rounded-lg border border-border p-3">
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      checked={attributeToItems}
+                      disabled={Boolean(pendingCommand) || mutation.isPending}
+                      onChange={(event) => setAttributeToItems(event.target.checked)}
+                    />
+                    {t('Attribute this refund to products')}
+                  </label>
+                  {attributeToItems && (
+                    <>
+                      <p className="m-0 text-xs text-muted-foreground">
+                        {t('Selected item refund value must match the cash and terminal refund total. Stock is handled separately.')}
+                      </p>
+                      {refundLines.map((line) => {
+                        const maxQuantity = maxRefundableOnCheck(line);
+                        if (maxQuantity === 0) return null;
+                        return (
+                          <div key={line.orderLineId} className="grid grid-cols-[minmax(0,1fr)_6rem] items-center gap-2 border-t border-border pt-2">
+                            <span className="min-w-0 text-xs">
+                              {line.productName}{line.variantName ? ` · ${line.variantName}` : ''}
+                              <span className="block text-muted-foreground">{t('Remaining')}: {maxQuantity} · {formatNumber(Number(line.lineTotal), { style: 'currency', currency: paymentState?.currency ?? 'EGP' })}</span>
+                            </span>
+                            <Input
+                              aria-label={`${t('Refund quantity')} ${line.productName}`}
+                              inputMode="numeric"
+                              type="number"
+                              min="0"
+                              max={maxQuantity}
+                              step="1"
+                              value={lineQuantities[line.orderLineId] ?? ''}
+                              disabled={Boolean(pendingCommand) || mutation.isPending}
+                              onChange={(event) => setLineQuantities((current) => ({ ...current, [line.orderLineId]: event.target.value }))}
+                            />
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between border-t border-border pt-2 text-xs">
+                        <span>{t('Selected item value')}</span>
+                        <strong><bdi dir="ltr">{formatNumber(Number(formatMoneyCents(lineRefundCents)), { style: 'currency', currency: paymentState?.currency ?? 'EGP' })}</bdi></strong>
+                      </div>
+                    </>
+                  )}
+                </section>
+              )}
+              <label className="grid gap-1.5 text-sm font-medium">
+                {t('Refund reason')}
+                <Input
+                  required
+                  maxLength={500}
+                  value={reason}
+                  disabled={Boolean(pendingCommand) || mutation.isPending}
+                  onChange={(event) => setReason(event.target.value)}
+                />
               </label>
-              <div className="flex justify-between border-t border-border pt-3 text-sm"><span>{t('Refund total')}</span><strong>{formatNumber(Number(formatMoneyCents(totalCents)), { style: 'currency', currency: paymentState?.currency ?? 'EGP' })}</strong></div>
+              <div className="flex justify-between border-t border-border pt-3 text-sm">
+                <span>{t('Refund total')}</span>
+                <strong>
+                  {formatNumber(Number(formatMoneyCents(totalCents)), {
+                    style: 'currency',
+                    currency: paymentState?.currency ?? 'EGP',
+                  })}
+                </strong>
+              </div>
               {requiresApproval && (
                 <fieldset className="grid gap-3 rounded-lg border border-border p-3">
                   <legend className="px-1 text-sm font-semibold">{t('Supervisor approval')}</legend>
-                  <label className="grid gap-1.5 text-sm">{t('Supervisor username')}<Input autoComplete="username" required value={approvalUsername} disabled={mutation.isPending} onChange={(event) => setApprovalUsername(event.target.value)} /></label>
-                  <label className="grid gap-1.5 text-sm">{t('Supervisor password')}<Input type="password" autoComplete="current-password" required value={approvalPassword} disabled={mutation.isPending} onChange={(event) => setApprovalPassword(event.target.value)} /></label>
+                  <label className="grid gap-1.5 text-sm">
+                    {t('Supervisor username')}
+                    <Input
+                      autoComplete="username"
+                      required
+                      value={approvalUsername}
+                      disabled={mutation.isPending}
+                      onChange={(event) => setApprovalUsername(event.target.value)}
+                    />
+                  </label>
+                  <label className="grid gap-1.5 text-sm">
+                    {t('Supervisor password')}
+                    <Input
+                      type="password"
+                      autoComplete="current-password"
+                      required
+                      value={approvalPassword}
+                      disabled={mutation.isPending}
+                      onChange={(event) => setApprovalPassword(event.target.value)}
+                    />
+                  </label>
                 </fieldset>
               )}
-              {saveError && <p className="m-0 text-sm text-destructive" role="alert">{t(saveError)}</p>}
-              {mutation.isError && <p className="m-0 text-sm text-destructive" role="alert">{errorText(mutation.error instanceof Error ? mutation.error.message : t('The refund could not be recorded.'))}</p>}
+              {saveError && (
+                <p className="m-0 text-sm text-destructive" role="alert">
+                  {t(saveError)}
+                </p>
+              )}
+              {mutation.isError && (
+                <p className="m-0 text-sm text-destructive" role="alert">
+                  {errorText(
+                    mutation.error instanceof Error
+                      ? mutation.error.message
+                      : t('The refund could not be recorded.'),
+                  )}
+                </p>
+              )}
               <div className="flex flex-wrap justify-end gap-2">
-                <PosButton type="button" variant="outline" disabled={mutation.isPending} onClick={onClose}>{t('Close')}</PosButton>
-                <PosButton type="submit" variant="solid" disabled={mutation.isPending || paymentQuery.isFetching || (!refundShiftId && !pendingCommand) || !formValid || (requiresApproval && (!approvalUsername.trim() || !approvalPassword))}>
-                  {mutation.isPending ? t('Recording refund...') : pendingCommand ? t('Retry saved refund') : t('Record refund')}
+                <PosButton
+                  type="button"
+                  variant="outline"
+                  disabled={mutation.isPending}
+                  onClick={onClose}
+                >
+                  {t('Close')}
+                </PosButton>
+                <PosButton
+                  type="submit"
+                  variant="solid"
+                  disabled={
+                    mutation.isPending ||
+                    paymentQuery.isFetching ||
+                    (!refundShiftId && !pendingCommand) ||
+                    !formValid ||
+                    (requiresApproval && (!approvalUsername.trim() || !approvalPassword))
+                  }
+                >
+                  {mutation.isPending
+                    ? t('Recording refund...')
+                    : pendingCommand
+                      ? t('Retry saved refund')
+                      : t('Record refund')}
                 </PosButton>
               </div>
             </>
@@ -370,4 +731,25 @@ function ReceiptRow({ label, value }: { label: string; value: string }) {
       <dd className="m-0 break-all text-end">{value}</dd>
     </div>
   );
+}
+
+function allocateUnitCents(
+  totalCents: bigint,
+  totalUnits: number,
+  firstUnit: number,
+  quantity: number,
+): bigint {
+  if (
+    totalUnits <= 0 ||
+    firstUnit < 0 ||
+    quantity <= 0 ||
+    firstUnit + quantity > totalUnits
+  )
+    return 0n;
+  const units = BigInt(totalUnits);
+  const base = totalCents / units;
+  const extraCents = totalCents % units;
+  const prefix = (count: number) =>
+    base * BigInt(count) + BigInt(Math.min(count, Number(extraCents)));
+  return prefix(firstUnit + quantity) - prefix(firstUnit);
 }

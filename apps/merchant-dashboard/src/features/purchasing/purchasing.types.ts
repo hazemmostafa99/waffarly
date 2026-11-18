@@ -5,6 +5,7 @@ export type InvoiceLineDraft = {
   condition: StockCondition;
   quantity: string;
   unitCode: string;
+  unitCost: string;
 };
 export type SupplierFields = Pick<
   CreatePurchaseSupplierRequest,

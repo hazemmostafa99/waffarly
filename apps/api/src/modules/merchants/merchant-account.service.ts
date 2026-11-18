@@ -11,6 +11,11 @@ import { SubscriptionService } from '../subscriptions/index.js';
 import { updateMerchantAccountSchema } from './merchant-account.schemas.js';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 
+function imageSource(value: unknown): string | null {
+  if (typeof value !== 'object' || value === null || !('src' in value)) return null;
+  return typeof value.src === 'string' ? value.src : null;
+}
+
 @Injectable()
 export class MerchantAccountService {
   constructor(
@@ -48,6 +53,7 @@ export class MerchantAccountService {
         profileUpdatedAt: true,
         owner: { select: { username: true } },
         storefront: { select: { logoData: true } },
+        restaurantProfile: { select: { logoImage: true } },
       },
     });
     if (!merchant) throw new NotFoundException('Merchant was not found.');
@@ -61,7 +67,8 @@ export class MerchantAccountService {
       ownerMobile: merchant.ownerMobile,
       storefrontSlug: merchant.storefrontSlug,
       storefrontHandle: merchant.storefrontHandle ?? null,
-      logoData: merchant.storefront?.logoData ?? null,
+      logoData:
+        imageSource(merchant.restaurantProfile?.logoImage) ?? merchant.storefront?.logoData ?? null,
       createdAt: merchant.createdAt.toISOString(),
       revision: merchant.profileRevision,
       updatedAt: merchant.profileUpdatedAt?.toISOString() ?? null,

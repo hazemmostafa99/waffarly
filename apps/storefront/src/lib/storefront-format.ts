@@ -16,11 +16,21 @@ export function toMinorUnits(value: string): number {
 
 export function fromMinorUnits(value: number): string {
   const whole = Math.trunc(value / 100);
-  const fraction = Math.abs(value % 100).toString().padStart(2, '0');
+  const fraction = Math.abs(value % 100)
+    .toString()
+    .padStart(2, '0');
   return `${whole}.${fraction}`;
 }
 
 export function getProductStartingPrice(product: PublicStorefrontProduct): string {
+  const availablePrices = product.variants
+    .filter((variant) => variant.availability === 'available')
+    .map((variant) => Number(variant.promotionalPrice ?? variant.price));
+  if (availablePrices.length === 0) return product.promotionalPrice ?? product.basePrice;
+  return String(Math.min(...availablePrices));
+}
+
+export function getProductOriginalStartingPrice(product: PublicStorefrontProduct): string {
   const availablePrices = product.variants
     .filter((variant) => variant.availability === 'available')
     .map((variant) => Number(variant.price));

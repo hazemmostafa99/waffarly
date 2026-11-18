@@ -7,5 +7,5 @@ coverage
 packages/database/generated
 apps/storefront/next-env.d.ts
 pnpm-lock.yaml
-PROJECT_OVERVIEW.md
-MVP_SCOPE.md
+docs/product/PROJECT_OVERVIEW.md
+docs/product/MVP_SCOPE.md

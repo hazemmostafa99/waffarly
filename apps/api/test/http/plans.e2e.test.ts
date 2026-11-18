@@ -207,7 +207,11 @@ describe('monthly plan administration', () => {
     const plans = app.get(PlanService);
     for (const currency of ['USD', 'EUR']) {
       // Simulate an untyped caller bypassing the shared contract.
-      const input = { ...payload(), billingInterval: 'monthly' as const, currency: currency as 'EGP' };
+      const input = {
+        ...payload(),
+        billingInterval: 'monthly' as const,
+        currency: currency as 'EGP',
+      };
       await assert.rejects(plans.create(input, 'test-admin'), /Plan currency must be EGP/);
       await assert.rejects(
         plans.update(randomUUID(), { ...input, revision: 1 }, 'test-admin'),

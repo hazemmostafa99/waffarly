@@ -1,23 +1,22 @@
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { ConflictException } from '@nestjs/common';
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
+
 import type { PosEmployeeSession } from '@waffarly/contracts';
-import { config } from 'dotenv';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
-import { PosReturnsService } from '../../src/modules/orders/pos-returns.service.js';
+import { PosReturnsService } from '../../src/modules/orders/returns/pos-returns.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'records completed-sale item returns once, caps quantities, and keeps money and stock unchanged',
   { skip: !databaseUrl },
-  async () => {
-    assert.ok(databaseUrl, 'Configure DATABASE_URL and apply POS migrations first.');
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+  async (testContext) => {
+    assert.ok(databaseUrl, 'Configure TEST_DATABASE_URL and apply POS migrations first.');
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback POS item-return database fixtures');
     try {
       await assert.rejects(
@@ -44,6 +43,7 @@ it(
           const cashierRow = await transaction.posEmployee.create({
             data: {
               merchantId: merchant.id,
+              branchId: branch.id,
               username: `return-cashier-${token}`,
               displayName: 'Return cashier',
               passwordHash: 'database-test-only',
@@ -56,6 +56,7 @@ it(
           const supervisorRow = await transaction.posEmployee.create({
             data: {
               merchantId: merchant.id,
+              branchId: branch.id,
               username: `return-supervisor-${token}`,
               displayName: 'Return supervisor',
               passwordHash: 'database-test-only',
@@ -64,14 +65,6 @@ it(
               createdBy: 'pos-item-return-test',
               updatedBy: 'pos-item-return-test',
             },
-          });
-          await transaction.posEmployeeBranch.createMany({
-            data: [cashierRow, supervisorRow].map((employee) => ({
-              merchantId: merchant.id,
-              employeeId: employee.id,
-              branchId: branch.id,
-              createdBy: 'pos-item-return-test',
-            })),
           });
           const order = await transaction.storefrontOrder.create({
             data: {
@@ -103,7 +96,7 @@ it(
             displayName: cashierRow.displayName,
             role: 'cashier',
             permissions: ['sell'],
-            branches: [{ id: branch.id, name: branch.name, archivedAt: null }],
+            branch: { id: branch.id, name: branch.name, archivedAt: null },
           };
           const transactionClient = new Proxy(transaction, {
             get(target, property) {

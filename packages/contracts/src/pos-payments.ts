@@ -57,6 +57,15 @@ export interface PosOrderPaymentStateResponse {
   total: string;
   currency: 'EGP';
   status: string;
+  orderLines?: Array<{
+    orderLineId: string;
+    productName: string;
+    variantName: string | null;
+    quantity: number;
+    lineTotal: string;
+    refundableQuantity: number;
+    refundedQuantity: number;
+  }>;
   checks: Array<{
     splitMethod?: PosOrderCheckSummary['splitMethod'];
     allocations?: PosOrderCheckSummary['allocations'];
@@ -81,6 +90,11 @@ export interface PosRefundAllocationRequest {
   terminalReference?: string | undefined;
 }
 
+export interface PosRefundLineAllocationRequest {
+  orderLineId: string;
+  quantity: number;
+}
+
 export interface RecordPosCheckRefundRequest {
   requestId: string;
   revision: number;
@@ -88,6 +102,8 @@ export interface RecordPosCheckRefundRequest {
   refundShiftId: string;
   reason: string;
   allocations: PosRefundAllocationRequest[];
+  /** Optional product attribution. If present, total item value must equal tender refunds. */
+  lineAllocations?: PosRefundLineAllocationRequest[] | undefined;
   approval?: { username: string; password: string } | undefined;
 }
 
@@ -112,6 +128,13 @@ export interface PosRefundSummary {
   issuedBy?: string;
   approvedBy?: string | null;
   tenders: PosRefundTenderSummary[];
+  lineAllocations?: Array<{
+    orderLineId: string;
+    productName: string;
+    variantName: string | null;
+    quantity: number;
+    revenueReversalAmount: string;
+  }>;
 }
 
 export interface PosRefundReceipt extends PosRefundSummary {

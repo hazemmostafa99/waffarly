@@ -69,7 +69,7 @@ async function openSavedReceipt(
         displayName: 'Test cashier',
         role: 'cashier',
         permissions: ['sell'],
-        branches: [{ id: branchId, name: 'Main branch', archivedAt: null }],
+        branch: { id: branchId, name: 'Main branch', archivedAt: null },
       },
     }),
   );

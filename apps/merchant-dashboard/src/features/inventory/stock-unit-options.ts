@@ -34,3 +34,9 @@ export function stockUnitLabel(code: string, locale: string, fallback = code): s
   };
   return labels[code]?.[locale === 'ar' ? 1 : 0] ?? fallback;
 }
+
+/** Remove insignificant decimal zeros without converting precise API quantities to Number. */
+export function stockDecimalLabel(value: string): string {
+  if (!value.includes('.')) return value;
+  return value.replace(/0+$/, '').replace(/\.$/, '');
+}

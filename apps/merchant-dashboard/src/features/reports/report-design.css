@@ -1,0 +1,320 @@
+/* Shared, compact presentation for business, profitability and POS reports. */
+:is(.business-reports, .pos-report-page, .pos-operations-page) {
+  font-family: var(--merchant-dashboard-font);
+  color: #25332e;
+  font-size: 13px;
+  line-height: 1.65;
+}
+:is(.business-reports, .pos-report-page, .pos-operations-page)
+  :is(button, input, select, bdi, strong, table, svg text) {
+  font-family: var(--merchant-dashboard-font);
+}
+:is(.business-reports, .pos-report-page, .pos-operations-page) h1 {
+  font-size: 21px !important;
+  font-weight: 600 !important;
+  line-height: 1.5;
+  letter-spacing: 0;
+  margin: 0;
+}
+:is(.business-reports, .pos-report-page, .pos-operations-page) h2 {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0;
+}
+.business-reports.business-reports {
+  gap: 16px;
+}
+.business-reports .report-page-heading {
+  padding: 0;
+  gap: 12px;
+}
+.business-reports .report-page-actions button {
+  min-height: 34px;
+  height: 34px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  box-shadow: none;
+}
+.business-reports .report-toolbar {
+  padding: 12px 16px;
+  border-radius: 8px;
+  gap: 12px;
+}
+.business-reports .report-filter-fields {
+  gap: 12px;
+}
+.business-reports .report-filter-fields label {
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.business-reports .report-filter-fields :is(input, select) {
+  height: 34px;
+  min-width: 165px;
+  background: #fff;
+  font-size: 12px;
+  border-radius: 6px;
+}
+.business-reports .report-view-nav {
+  background: transparent;
+  border-radius: 0;
+  border-bottom: 1px solid #dfe5e1;
+  padding: 0;
+  width: 100%;
+  gap: 24px;
+}
+.business-reports .report-view-nav button {
+  border-radius: 0;
+  padding: 10px 0;
+  font-weight: 500;
+  font-size: 13px;
+  border-bottom: 2px solid transparent;
+}
+.business-reports .report-view-nav button[aria-current] {
+  box-shadow: none;
+  background: transparent;
+  border-bottom-color: #21654f;
+}
+.business-reports .report-metrics {
+  gap: 12px;
+}
+.business-reports .report-metric {
+  border-radius: 8px;
+  padding: 16px;
+}
+.business-reports .report-metric::before {
+  display: none;
+}
+.business-reports .report-metric-label {
+  color: #58665f;
+  font-size: 12px;
+  font-weight: 500;
+}
+.business-reports .report-metric-value {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 0;
+  margin-block: 8px;
+}
+.business-reports .report-metric-context:empty {
+  display: none;
+}
+.business-reports .report-metric-context {
+  font-size: 11px;
+  color: #85652d;
+}
+.business-reports .report-metric-link {
+  padding-block-start: 8px;
+  font-size: 11px;
+}
+.business-reports .report-change {
+  font-size: 11px;
+  margin-block-start: 4px;
+}
+.business-reports .report-panel {
+  border-radius: 8px;
+  padding: 18px;
+}
+.business-reports .report-panel-heading {
+  margin-block-end: 16px;
+  align-items: center;
+}
+.business-reports .report-panel-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.business-reports .report-inline-help {
+  position: relative;
+  color: #64736b;
+  font-size: 12px;
+}
+.business-reports .report-inline-help summary {
+  cursor: pointer;
+  list-style: none;
+}
+.business-reports .report-inline-help[open] p {
+  position: absolute;
+  z-index: 5;
+  width: min(280px, 70vw);
+  inset-inline-end: 0;
+  top: 20px;
+  background: #fff;
+  border: 1px solid #dfe5e1;
+  padding: 12px;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px #15291b14;
+}
+.business-reports .report-two-columns {
+  gap: 16px;
+}
+.business-reports .report-result-layout {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.business-reports .report-explainer {
+  padding: 12px 16px;
+  border: 1px solid #e2e7e3;
+  border-radius: 6px;
+  background: #fff;
+}
+.business-reports .report-explainer summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+.business-reports .report-explainer p {
+  margin-block: 10px;
+  font-size: 12px;
+}
+.business-reports .report-result-steps li {
+  padding: 11px 8px;
+  font-size: 13px;
+}
+.business-reports .report-result-steps .report-step-number {
+  display: none;
+}
+.business-reports .report-result-steps li {
+  grid-template-columns: 1fr auto;
+}
+.business-reports .report-bars {
+  gap: 14px;
+}
+.business-reports .report-bar-track {
+  height: 6px;
+}
+.business-reports .report-bar-label {
+  font-size: 12px;
+  margin-block-end: 6px;
+}
+.business-reports .report-bars-list {
+  gap: 0;
+}
+.business-reports .report-bars-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid #edf0ed;
+}
+.business-reports .report-bars-list li:last-child {
+  border-bottom: 0;
+}
+.business-reports .report-bars-list .report-bar-label {
+  margin: 0;
+}
+.business-reports .report-trend svg {
+  display: block;
+  max-height: 240px;
+}
+.business-reports .report-chart-legend {
+  margin-block: 8px;
+  font-size: 11px;
+}
+.business-reports .report-chart-data {
+  margin-block-start: 12px;
+  padding-block-start: 10px;
+}
+.business-reports .report-empty {
+  min-height: 80px;
+  font-size: 12px;
+}
+.business-reports .report-quality-summary {
+  border-inline-start: 3px solid #c69a49;
+  background: #fffbf2;
+  padding: 10px 14px;
+  border-radius: 5px;
+  color: #795d26;
+  font-size: 12px;
+}
+.business-reports .report-quality-summary summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+.business-reports .report-quality-summary ul {
+  margin-block: 8px 0;
+  padding-inline-start: 18px;
+}
+.business-reports .report-notice {
+  padding: 10px 14px;
+  border-radius: 6px;
+}
+.business-reports .report-basis {
+  padding: 10px 14px;
+  border: 1px solid #e2e7e3;
+  border-radius: 6px;
+  background: transparent;
+}
+.business-reports .report-basis summary {
+  cursor: pointer;
+  font-size: 12px;
+}
+.business-reports .report-section-intro p {
+  font-size: 12px;
+}
+.business-reports .report-section-intro h2 {
+  font-size: 14px;
+}
+.business-reports .report-live-dot {
+  display: none;
+}
+.business-reports .report-footnote {
+  margin-block-start: 0 !important;
+}
+:is(.pos-report-page, .pos-operations-page) .pos-report-field {
+  font-size: 12px;
+  font-weight: 500;
+}
+:is(.pos-report-page, .pos-operations-page) .pos-report-field :is(input, select) {
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+:is(.pos-report-page, .pos-operations-page) .wf-card-heading {
+  margin-bottom: 14px;
+}
+:is(.pos-report-page, .pos-operations-page) .pos-report-filters {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+:is(.pos-report-page, .pos-operations-page) .wf-data-table :is(th, td) {
+  font-size: 12px;
+  padding-block: 10px;
+}
+@media (max-width: 760px) {
+  .business-reports .report-page-heading {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .business-reports .report-toolbar {
+    align-items: stretch;
+  }
+  .business-reports .report-filter-fields :is(input, select) {
+    min-width: 0;
+  }
+  .business-reports .report-metric-value {
+    font-size: 20px;
+  }
+  .business-reports .report-result-steps strong {
+    grid-column: auto;
+  }
+  .business-reports .report-view-nav {
+    gap: 14px;
+  }
+}
+
+.pos-report-filter-panel {
+  background: #fff;
+  border: 1px solid #e1e7e3;
+  border-radius: 8px;
+  padding: 16px;
+}
+:is(.business-reports, .pos-report-page, .pos-operations-page) :is(h1, h2, h3) {
+  font-family: var(--merchant-dashboard-font);
+}
+.business-reports .report-toolbar {
+  flex-wrap: wrap;
+}
+.business-reports .report-period-status {
+  margin-inline-start: auto;
+  font-size: 11px;
+}

@@ -795,6 +795,25 @@
   }
 }
 
-.cash-filters { justify-content:space-between; gap:12px; padding:10px; border:1px solid var(--border); border-radius:12px; background:var(--card); }
-.cash-filters > .cash-create-action { width:auto; min-width:max-content; min-height:42px; margin-inline-start:auto; }
-@media(max-width:600px){.cash-filters{align-items:stretch;}.cash-filters>.cash-create-action{width:100%;}}
+.cash-filters {
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+.cash-filters > .cash-create-action {
+  width: auto;
+  min-width: max-content;
+  min-height: 42px;
+  margin-inline-start: auto;
+}
+@media (max-width: 600px) {
+  .cash-filters {
+    align-items: stretch;
+  }
+  .cash-filters > .cash-create-action {
+    width: 100%;
+  }
+}

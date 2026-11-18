@@ -11,8 +11,8 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import type { MerchantSummary } from '@waffarly/contracts';
-import { BUSINESS_ACTIVITY_KEYS } from '@waffarly/contracts';
+import { type MerchantSummary, BUSINESS_ACTIVITY_KEYS } from '@waffarly/contracts';
+
 import { z } from 'zod';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { parseCursorPageQuery } from '../../common/http/pagination.js';
@@ -43,7 +43,7 @@ const creationSchema = z.object({
     .min(3)
     .max(80)
     .regex(/^[a-zA-Z0-9._-]+$/),
-  password: z.string().min(12).max(128),
+  password: z.string().min(6).max(128),
 });
 
 @UseGuards(AdminGuard)

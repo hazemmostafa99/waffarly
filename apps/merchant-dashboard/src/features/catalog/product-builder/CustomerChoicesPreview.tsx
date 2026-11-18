@@ -3,11 +3,15 @@ import { useLocale } from '@waffarly/ui';
 import type { GroupDraft, VariantDraft } from './product-builder.types.js';
 import type { StockItem } from '@waffarly/contracts';
 import { StockEffectsSummary } from './ChoiceConfigurationOverview.js';
+import { productPreviewPrice } from './product-promotion-preview.js';
 
 export function CustomerChoicesPreview({
   groups,
   variants = [],
   basePrice,
+  promotionEnabled = false,
+  promotionType = 'percentage',
+  promotionValue = '',
   text,
   showStockSummary = false,
   stockItems = {},
@@ -16,6 +20,9 @@ export function CustomerChoicesPreview({
   groups: GroupDraft[];
   variants?: VariantDraft[];
   basePrice: string;
+  promotionEnabled?: boolean;
+  promotionType?: 'percentage' | 'amount';
+  promotionValue?: string;
   text: (english: string, arabic: string) => string;
   showStockSummary?: boolean;
   stockItems?: Record<string, StockItem>;
@@ -30,6 +37,8 @@ export function CustomerChoicesPreview({
     Math.min(Math.max(1, quantities[`${key}:${option.id}`] ?? 1), option.maxQuantity ?? 1);
   const money = (amount: number) =>
     formatNumber(amount, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const effectivePrice = (price: string) =>
+    productPreviewPrice(price, promotionEnabled, promotionType, promotionValue) ?? Number(price || 0);
   const variant =
     variants.find((item) => item.id === variantId && item.availability === 'available') ??
     [...variants]
@@ -69,7 +78,7 @@ export function CustomerChoicesPreview({
       return { ...group, options, key, chosen };
     });
   const total =
-    (Number(variant?.price ?? basePrice) || 0) +
+    effectivePrice(variant?.price ?? basePrice) +
     visibleGroups.reduce(
       (sum, group) =>
         sum +
@@ -112,10 +121,20 @@ export function CustomerChoicesPreview({
                 onChange={() => setVariantId(item.id)}
               />
               <span>{item.name || text('New size or type', 'حجم أو نوع جديد')}</span>
-              <b>
-                {item.availability === 'available'
-                  ? `${money(Number(item.price) || 0)} ${text('EGP', 'ج.م')}`
-                  : text('Unavailable', 'غير متاح')}
+              <b className="customer-preview-prices">
+                {item.availability === 'available' ? (
+                  <>
+                    {money(effectivePrice(item.price))} {text('EGP', 'ج.م')}
+                    {productPreviewPrice(
+                      item.price,
+                      promotionEnabled,
+                      promotionType,
+                      promotionValue,
+                    ) !== null && <del>{money(Number(item.price))}</del>}
+                  </>
+                ) : (
+                  text('Unavailable', 'غير متاح')
+                )}
               </b>
             </label>
           ))}

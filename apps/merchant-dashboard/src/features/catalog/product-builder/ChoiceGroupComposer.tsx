@@ -15,7 +15,7 @@ import type {
   VariantDraft,
 } from './product-builder.types.js';
 
-export type ChoiceTemplate = 'extras' | 'preparation' | 'custom';
+export type ChoiceTemplate = 'extras' | 'custom';
 type ChoiceRow = OptionDraft;
 
 export function ChoiceGroupComposer({
@@ -56,14 +56,10 @@ export function ChoiceGroupComposer({
           name:
             template === 'extras'
               ? text('Extras', 'الإضافات')
-              : template === 'preparation'
-                ? text('Preparation', 'طريقة التحضير')
-                : '',
+              : '',
           options: (template === 'extras'
             ? [text('Extra cheese', 'جبنة إضافية'), text('Extra sauce', 'صوص إضافي')]
-            : template === 'preparation'
-              ? [text('Regular', 'عادي'), text('No salt', 'بدون ملح')]
-              : ['']
+            : ['']
           ).map((option) => ({
             id: crypto.randomUUID(),
             name: option,
@@ -355,9 +351,7 @@ export function ChoiceGroupComposer({
           ? text('Edit customer choices', 'تعديل خيارات العميل')
           : template === 'extras'
             ? text('Add extras', 'إضافة اختيارات إضافية')
-            : template === 'preparation'
-              ? text('Preparation preferences', 'تفضيلات التحضير')
-              : text('Add customer choices', 'إضافة خيارات للعميل')
+            : text('Add customer choices', 'إضافة خيارات للعميل')
       }
       description={text(
         'Name the choices, set any extra charges, and choose how customers select them.',

@@ -278,65 +278,65 @@ export function MediaPage() {
     <div className="media-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <h1 className="sr-only">{copy('Media Library')}</h1>
       <div className="media-toolbar">
-      <div className="media-filters">
-        <label className="products-search">
-          <Icon name="search" />
-          <input
-            aria-label={copy('Search media')}
-            placeholder={copy('Search by file name…')}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </label>
-        <select
-          aria-label={copy('File type')}
-          value={type}
-          onChange={(event) => setType(event.target.value)}
-        >
-          <option value="">{copy('All types')}</option>
-          {kinds.map((kind) => (
-            <option key={kind.id} value={kind.id}>
-              {copy(kind.label)}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label={copy('Usage')}
-          value={usage}
-          onChange={(event) => setUsage(event.target.value)}
-        >
-          <option value="">{copy('All usages')}</option>
-          <option value="product">{copy('Product images')}</option>
-          <option value="category">{copy('Category images')}</option>
-          <option value="library">{copy('Library images')}</option>
-        </select>
-        <select
-          aria-label={copy('Format')}
-          value={format}
-          onChange={(event) => setFormat(event.target.value)}
-        >
-          <option value="">{copy('All formats')}</option>
-          {[...new Set(media.map(fileFormat))].sort().map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-        </select>
-      </div>
+        <div className="media-filters">
+          <label className="products-search">
+            <Icon name="search" />
+            <input
+              aria-label={copy('Search media')}
+              placeholder={copy('Search by file name…')}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+          <select
+            aria-label={copy('File type')}
+            value={type}
+            onChange={(event) => setType(event.target.value)}
+          >
+            <option value="">{copy('All types')}</option>
+            {kinds.map((kind) => (
+              <option key={kind.id} value={kind.id}>
+                {copy(kind.label)}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label={copy('Usage')}
+            value={usage}
+            onChange={(event) => setUsage(event.target.value)}
+          >
+            <option value="">{copy('All usages')}</option>
+            <option value="product">{copy('Product images')}</option>
+            <option value="category">{copy('Category images')}</option>
+            <option value="library">{copy('Library images')}</option>
+          </select>
+          <select
+            aria-label={copy('Format')}
+            value={format}
+            onChange={(event) => setFormat(event.target.value)}
+          >
+            <option value="">{copy('All formats')}</option>
+            {[...new Set(media.map(fileFormat))].sort().map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="media-toolbar-actions">
-        <button
-          type="button"
-          className="products-button primary"
-          onClick={() => {
-            setDialog('add');
-            setAddMode('upload');
-            setSelectedFile(null);
-            setFormError('');
-          }}
-        >
-          <Icon name="upload" />
-          {copy('Add media')}
-        </button>
+          <button
+            type="button"
+            className="products-button primary"
+            onClick={() => {
+              setDialog('add');
+              setAddMode('upload');
+              setSelectedFile(null);
+              setFormError('');
+            }}
+          >
+            <Icon name="upload" />
+            {copy('Add media')}
+          </button>
         </div>
       </div>
       {notice && (

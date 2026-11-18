@@ -21,6 +21,7 @@ import { ModifierGroupController } from '../../src/modules/catalog/modifiers/mod
 import { ModifierGroupService } from '../../src/modules/catalog/modifiers/modifier-group.service.js';
 import { ProductPricingService } from '../../src/modules/catalog/pricing/product-pricing.service.js';
 import { ProductQuoteController } from '../../src/modules/catalog/pricing/product-quote.controller.js';
+import { ProductCostPreviewService } from '../../src/modules/catalog/products/product-cost-preview.service.js';
 import { ProductController } from '../../src/modules/catalog/products/product.controller.js';
 import { ProductService } from '../../src/modules/catalog/products/product.service.js';
 import { MediaController } from '../../src/modules/media/media.controller.js';
@@ -45,13 +46,11 @@ const posEmployee: PosEmployeeSession = {
   displayName: 'Cashier',
   role: null,
   permissions: ['accept_recipe_orders', 'start_preparation'],
-  branches: [
-    {
-      id: '33333333-3333-4333-8333-333333333333',
-      name: 'Central',
-      archivedAt: null,
-    },
-  ],
+  branch: {
+    id: '33333333-3333-4333-8333-333333333333',
+    name: 'Central',
+    archivedAt: null,
+  },
 };
 
 describe('catalog owner endpoints', () => {
@@ -148,6 +147,10 @@ describe('catalog owner endpoints', () => {
               return { id: 'modifier-group', ...(input as Record<string, unknown>) };
             },
           },
+        },
+        {
+          provide: ProductCostPreviewService,
+          useValue: { get: async () => ({}) },
         },
         {
           provide: ProductService,

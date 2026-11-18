@@ -15,6 +15,9 @@ export function StockItemPicker({
   allowCreate = false,
   createBaseUnit = 'piece',
   onRequestCreate,
+  emptyLabel,
+  showBaseUnit = true,
+  floatingMenu = false,
 }: {
   value: string;
   label: string;
@@ -22,6 +25,9 @@ export function StockItemPicker({
   onResolve?: (item: StockItem) => void;
   disabled?: boolean;
   allowCreate?: boolean;
+  emptyLabel?: string;
+  showBaseUnit?: boolean;
+  floatingMenu?: boolean;
   createBaseUnit?: StockBaseUnit;
   onRequestCreate?: ((search: string) => void) | undefined;
 }) {
@@ -34,7 +40,8 @@ export function StockItemPicker({
         value={value}
         label={label}
         searchMode="combobox"
-        emptyLabel={locale === 'ar' ? 'اختر صنف المخزون' : 'Choose a stock item'}
+        floatingMenu={floatingMenu}
+        emptyLabel={emptyLabel ?? (locale === 'ar' ? 'اختر صنف المخزون' : 'Choose a stock item')}
         emptyState={
           <span>
             {locale === 'ar' ? 'لا توجد أصناف مخزون نشطة.' : 'No active stock items yet.'}{' '}
@@ -48,7 +55,9 @@ export function StockItemPicker({
         onSelect={onSelect}
         onResolve={onResolve}
         disabled={disabled}
-        optionLabel={(item) => `${item.name} (${stockUnitLabel(item.baseUnit, locale)})`}
+        optionLabel={(item) =>
+          showBaseUnit ? `${item.name} (${stockUnitLabel(item.baseUnit, locale)})` : item.name
+        }
         onCreate={allowCreate ? (onRequestCreate ?? setCreatingName) : undefined}
         createLabel={locale === 'ar' ? 'إنشاء صنف مخزون جديد' : 'Create a new stock item'}
       />

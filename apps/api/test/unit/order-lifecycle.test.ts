@@ -2,7 +2,7 @@ import { ConflictException } from '@nestjs/common';
 import type { PosEmployeeSession } from '@waffarly/contracts';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { OrderLifecycleService } from '../../src/modules/orders/order-lifecycle.service.js';
+import { OrderLifecycleService } from '../../src/modules/orders/fulfillment/order-lifecycle.service.js';
 
 const merchantId = '11111111-1111-4111-8111-111111111111';
 const employeeId = '22222222-2222-4222-8222-222222222222';
@@ -18,7 +18,7 @@ const employee: PosEmployeeSession = {
   displayName: 'Kitchen operator',
   role: 'cashier',
   permissions: ['start_preparation'],
-  branches: [{ id: branchId, name: 'Main', archivedAt: null }],
+  branch: { id: branchId, name: 'Main', archivedAt: null },
 };
 
 function createReadyService(
@@ -27,6 +27,7 @@ function createReadyService(
     { id: '88888888-8888-4888-8888-888888888888', settledAt: new Date() },
   ],
   ticketed = true,
+  openShift = true,
 ) {
   const amount = { toString: () => '10.00' };
   const order = {
@@ -100,9 +101,15 @@ function createReadyService(
   const lineUpdates: unknown[] = [];
   const transaction = {
     posDelivery: { findFirst: async () => null },
-    $queryRaw: async () => [{ id: orderId }],
+    $queryRaw: async (query: TemplateStringsArray) =>
+      query.join('').includes('"pos_shifts"')
+        ? openShift
+          ? [{ id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb' }]
+          : []
+        : [{ id: orderId }],
+    branch: { findFirst: async () => ({ id: branchId }) },
     storefrontOrder: {
-      findFirst: async (_input: unknown) => ({ id: orderId }),
+      findFirst: async (_input: unknown) => ({ id: orderId, source: order.source, branchId }),
       findFirstOrThrow: async (_input: unknown) => order,
       update: async ({ data }: { data: Record<string, unknown> }) => {
         updates.push(data);
@@ -295,7 +302,7 @@ function createCancellationService(options?: {
 }
 
 describe('POS kitchen readiness', () => {
-  it('marks a preparing ticket ready once and replays the exact command', async () => {
+  it('marks a preparing web order ready with an open shift and replays the exact command', async () => {
     const { service, updates } = createReadyService('preparing', undefined, false);
     const input = { requestId };
     const marked = await service.markReadyFromPos(
@@ -303,19 +310,28 @@ describe('POS kitchen readiness', () => {
       `pos:${employee.id}`,
       orderId,
       input,
-      [branchId],
+      branchId,
     );
 
     assert.equal(marked.status, 'ready');
     assert.ok(marked.readyAt);
     assert.deepEqual(updates[0], { status: 'ready', readyAt: new Date(marked.readyAt!) });
     assert.deepEqual(
-      await service.markReadyFromPos(employee.merchantId, `pos:${employee.id}`, orderId, input, [
-        branchId,
-      ]),
+      await service.markReadyFromPos(employee.merchantId, `pos:${employee.id}`, orderId, input, branchId),
       marked,
     );
     assert.equal(updates.length, 1);
+  });
+
+  it('requires an open receiving-branch shift before marking a web order ready', async () => {
+    const { service, updates } = createReadyService('preparing', undefined, false, false);
+    await assert.rejects(
+      service.markReadyFromPos(merchantId, `pos:${employeeId}`, orderId, { requestId }, branchId),
+      (error: unknown) =>
+        error instanceof ConflictException &&
+        (error.getResponse() as { code?: string }).code === 'ORDER_SHIFT_REQUIRED',
+    );
+    assert.equal(updates.length, 0);
   });
 
   it('marks ticket items ready separately and readies the ticket only after every line is ready', async () => {
@@ -329,7 +345,7 @@ describe('POS kitchen readiness', () => {
       orderId,
       firstLineId,
       firstRequest,
-      [branchId],
+      branchId,
     );
 
     assert.equal(first.status, 'preparing');
@@ -344,7 +360,7 @@ describe('POS kitchen readiness', () => {
       orderId,
       secondLineId,
       { requestId: '55555555-5555-4555-8555-666666666666' },
-      [branchId],
+      branchId,
     );
     assert.equal(second.status, 'ready');
     assert.ok(second.readyAt);
@@ -358,7 +374,7 @@ describe('POS kitchen readiness', () => {
         orderId,
         secondLineId,
         { requestId: '55555555-5555-4555-8555-666666666666' },
-        [branchId],
+        branchId,
       ),
       second,
     );
@@ -368,7 +384,7 @@ describe('POS kitchen readiness', () => {
   it('rejects the old whole-ticket ready command for a ticketed POS order', async () => {
     const { service, updates } = createReadyService('preparing');
     await assert.rejects(
-      service.markReadyFromPos(merchantId, `pos:${employeeId}`, orderId, { requestId }, [branchId]),
+      service.markReadyFromPos(merchantId, `pos:${employeeId}`, orderId, { requestId }, branchId),
       ConflictException,
     );
     assert.equal(updates.length, 0);
@@ -377,9 +393,7 @@ describe('POS kitchen readiness', () => {
   it('rejects marking an order ready before preparation starts', async () => {
     const { service, updates } = createReadyService('accepted');
     await assert.rejects(
-      service.markReadyFromPos(employee.merchantId, `pos:${employee.id}`, orderId, { requestId }, [
-        branchId,
-      ]),
+      service.markReadyFromPos(employee.merchantId, `pos:${employee.id}`, orderId, { requestId }, branchId),
       ConflictException,
     );
     assert.equal(updates.length, 0);
@@ -392,7 +406,7 @@ describe('POS kitchen readiness', () => {
     ]);
 
     await assert.rejects(
-      service.handoverFromPos(merchantId, `pos:${employeeId}`, orderId, { requestId }, [branchId]),
+      service.handoverFromPos(merchantId, `pos:${employeeId}`, orderId, { requestId }, branchId),
       ConflictException,
     );
     assert.equal(updates.length, 0);
@@ -406,7 +420,7 @@ describe('POS kitchen readiness', () => {
       `pos:${employeeId}`,
       orderId,
       input,
-      [branchId],
+      branchId,
     );
 
     assert.equal(handedOver.status, 'completed');
@@ -416,7 +430,7 @@ describe('POS kitchen readiness', () => {
       completedAt: new Date(handedOver.completedAt!),
     });
     assert.deepEqual(
-      await service.handoverFromPos(merchantId, `pos:${employeeId}`, orderId, input, [branchId]),
+      await service.handoverFromPos(merchantId, `pos:${employeeId}`, orderId, input, branchId),
       handedOver,
     );
     assert.equal(updates.length, 1);

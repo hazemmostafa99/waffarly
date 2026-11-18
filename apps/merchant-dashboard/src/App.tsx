@@ -1,4 +1,4 @@
-import { useLocale, Input, Button, Card, PasswordInput, LanguageSwitcher } from '@waffarly/ui';
+import { useLocale, Input, Button, Card, PasswordInput } from '@waffarly/ui';
 import { useEffect, useState, type FormEvent } from 'react';
 import {
   BUSINESS_ACTIVITY_LABELS,
@@ -55,7 +55,6 @@ export function App() {
   if (profile === null)
     return (
       <main id="main-content" tabIndex={-1} className="shell narrow">
-        <LanguageSwitcher />
         <div className="eyebrow">{t('Waffarly · Merchant')}</div>
         <h1>{t('Merchant Dashboard')}</h1>
         <p>

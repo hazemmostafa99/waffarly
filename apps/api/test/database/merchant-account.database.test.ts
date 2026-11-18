@@ -1,16 +1,16 @@
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { it } from 'node:test';
-import { config } from 'dotenv';
-import { createPostgresAdapter, PrismaClient, type Prisma } from '@waffarly/database';
+import { type Prisma } from '@waffarly/database';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { MerchantAccountService } from '../../src/modules/merchants/merchant-account.service.js';
 import { SubscriptionService } from '../../src/modules/subscriptions/subscription.service.js';
 import { AuthService } from '../../src/modules/auth/auth.service.js';
 import type { Request } from 'express';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 function scoped(tx: Prisma.TransactionClient): PrismaService {
   return new Proxy(tx, {
     get(target, key) {
@@ -24,8 +24,8 @@ function scoped(tx: Prisma.TransactionClient): PrismaService {
 it(
   'persists scoped profile changes and projects exact owner billing facts without internal notes',
   { skip: !databaseUrl },
-  async () => {
-    const prisma = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const prisma = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback merchant account fixtures');
     try {
       await assert.rejects(

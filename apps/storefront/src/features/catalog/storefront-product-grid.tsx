@@ -10,9 +10,10 @@ export function StorefrontProductGrid({
   slug: string;
   layout?: 'featured' | 'menu';
 }) {
-  const columns = layout === 'menu'
-    ? 'grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4'
-    : 'grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4';
+  const columns =
+    layout === 'menu'
+      ? 'grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4'
+      : 'grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4';
 
   return (
     <div className={`grid ${columns}`}>

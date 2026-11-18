@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { CustomerOrdersList } from './customer-orders';
 import { MarketplaceContainer } from '@/components/marketplace/marketplace-container';
 import { useOrdersStore } from '@/features/marketplace/orders/hooks/use-orders-store';
 import { OrdersEmptyState } from '@/features/marketplace/orders/components/orders-empty-state';
@@ -12,10 +13,19 @@ import {
 import { money } from '@/features/marketplace/shared/lib/format-money';
 
 export function OrdersPage() {
+  const hasLocalOrders = useOrdersStore((state) => state.orders.length > 0);
+  return (
+    <>
+      <CustomerOrdersList />
+      {hasLocalOrders && <LocalDemoOrders />}
+    </>
+  );
+}
+function LocalDemoOrders() {
   const orders = useOrdersStore((state) => state.orders);
 
   return (
-    <main id="marketplace-main" className="min-h-[60vh] pb-16 pt-6">
+    <section aria-label="طلبات التجربة المحلية" className="min-h-[60vh] pb-16 pt-6">
       <MarketplaceContainer>
         <nav
           aria-label="مسار التنقل"
@@ -52,16 +62,26 @@ export function OrdersPage() {
                       {formatDemoOrderDate(order.createdAt)} <span aria-hidden="true">·</span>{' '}
                       {order.fulfillment === 'delivery' ? 'توصيل تجريبي' : 'استلام تجريبي'}
                     </p>
-                    {order.restaurantName && <p className="mb-3 text-sm font-bold text-accent">{order.restaurantName}</p>}
+                    {order.restaurantName && (
+                      <p className="mb-3 text-sm font-bold text-accent">{order.restaurantName}</p>
+                    )}
                     <ul className="m-0 grid list-none gap-2 p-0">
                       {order.items.slice(0, 3).map((item) => (
-                        <li key={item.lineId ?? item.id} className="flex items-center gap-2.5 text-[12px]">
+                        <li
+                          key={item.lineId ?? item.id}
+                          className="flex items-center gap-2.5 text-[12px]"
+                        >
                           <img
                             className="size-10 rounded-lg object-cover"
                             src={item.cartImage}
                             alt=""
                           />
-                          <span className="min-w-0 flex-1">{item.cartName}{item.optionsLabel && <small className="mt-1 block text-accent">{item.optionsLabel}</small>}</span>
+                          <span className="min-w-0 flex-1">
+                            {item.cartName}
+                            {item.optionsLabel && (
+                              <small className="mt-1 block text-accent">{item.optionsLabel}</small>
+                            )}
+                          </span>
                           <span className="whitespace-nowrap text-muted-foreground">
                             {item.quantity} × {money(item.price)}
                           </span>
@@ -96,6 +116,6 @@ export function OrdersPage() {
           </ul>
         )}
       </MarketplaceContainer>
-    </main>
+    </section>
   );
 }

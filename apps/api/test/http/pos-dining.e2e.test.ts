@@ -1,3 +1,4 @@
+import { CheckSplitService } from '../../src/modules/orders/billing/check-split.service.js';
 import { UnauthorizedException, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { OwnerProfile, PosEmployeeSession } from '@waffarly/contracts';
@@ -8,11 +9,11 @@ import { AuthService } from '../../src/modules/auth/auth.service.js';
 import { OwnerGuard } from '../../src/modules/auth/owner.guard.js';
 import { PosEmployeeGuard } from '../../src/modules/auth/pos-employee.guard.js';
 import {
-  OwnerPosDiningTablesController,
   PosDiningController,
   PosDiningOrdersController,
-} from '../../src/modules/orders/pos-dining.controller.js';
-import { PosDiningService } from '../../src/modules/orders/pos-dining.service.js';
+} from '../../src/modules/orders/http/pos/pos-dining.controller.js';
+import { OwnerPosDiningTablesController } from '../../src/modules/orders/http/owner/owner-dining-tables.controller.js';
+import { PosDiningService } from '../../src/modules/orders/dining/pos-dining.service.js';
 
 const merchantId = '11111111-1111-4111-8111-111111111111';
 const employeeId = '22222222-2222-4222-8222-222222222222';
@@ -39,7 +40,7 @@ const employee: PosEmployeeSession = {
   displayName: 'Cashier',
   role: 'cashier',
   permissions: ['sell'],
-  branches: [{ id: branchId, name: 'Main', archivedAt: null }],
+  branch: { id: branchId, name: 'Main', archivedAt: null },
 };
 
 describe('POS dining endpoints', () => {
@@ -71,6 +72,15 @@ describe('POS dining endpoints', () => {
           },
         },
         {
+          provide: CheckSplitService,
+          useValue: {
+            splitOrder: async (...args: unknown[]) => {
+              calls.push({ method: 'splitOrder', args });
+              return { orderId };
+            },
+          },
+        },
+        {
           provide: PosDiningService,
           useValue: {
             listOwnerTables: async (...args: unknown[]) => {
@@ -96,10 +106,6 @@ describe('POS dining endpoints', () => {
             moveSession: async (...args: unknown[]) => {
               calls.push({ method: 'moveSession', args });
               return { id: sessionId };
-            },
-            splitOrder: async (...args: unknown[]) => {
-              calls.push({ method: 'splitOrder', args });
-              return { orderId };
             },
           },
         },

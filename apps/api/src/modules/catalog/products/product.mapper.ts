@@ -3,6 +3,7 @@ import type { Prisma } from '@waffarly/database';
 import { formatCents, toCents } from '../../../common/money/money.js';
 import { normalizeStockQuantity } from '../../inventory/index.js';
 import { defaultInventoryModeForActivity } from './product-inventory.rules.js';
+import { calculatePromotionalPrice, toProductPromotion } from './product-promotion.rules.js';
 export const sellableInclude = {
   images: {
     orderBy: { position: 'asc' as const },
@@ -84,6 +85,11 @@ export const productInclude = {
 export function toSellableResponse(
   product: Prisma.ProductGetPayload<{ include: typeof sellableInclude }>,
 ) {
+  const now = new Date();
+  const promotion = toProductPromotion(product, now);
+  const promotionalPrice = product.variants.length
+    ? null
+    : calculatePromotionalPrice(product.basePrice.toString(), product, now).promotionalPrice;
   return {
     id: product.id,
     displayOrder: product.displayOrder,
@@ -91,6 +97,8 @@ export function toSellableResponse(
     name: product.name,
     description: product.description,
     basePrice: formatCents(toCents(product.basePrice.toString())),
+    promotion,
+    promotionalPrice,
     currency: 'EGP',
     sellingUnit: 'piece',
     availability: product.availability,
@@ -141,6 +149,8 @@ export function toSellableResponse(
       sku: variant.sku,
       barcode: variant.barcode,
       price: formatCents(toCents(variant.price.toString())),
+      promotionalPrice: calculatePromotionalPrice(variant.price.toString(), product, now)
+        .promotionalPrice,
       stockQuantity: variant.stockQuantity,
       availability: variant.availability,
       position: variant.position,
@@ -160,9 +170,10 @@ export function toSellableResponse(
 export function toProductResponse(
   product: Prisma.ProductGetPayload<{ include: typeof productInclude }>,
 ) {
+  const sellable = toSellableResponse(product);
   return {
-    ...toSellableResponse(product),
-    modifierGroups: toSellableResponse(product).modifierGroups.map((group, index) => ({
+    ...sellable,
+    modifierGroups: sellable.modifierGroups.map((group, index) => ({
       ...group,
       options: group.options.map((option, optionIndex) => {
         const saved = product.modifierGroups[index]!.options[optionIndex]!;

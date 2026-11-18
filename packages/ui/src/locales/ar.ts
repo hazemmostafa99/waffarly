@@ -1,13 +1,16 @@
 export const ar: Record<string, string> = {
-  'Sign in to manage your business account and review your subscription.': 'سجّل الدخول لإدارة حساب نشاطك ومراجعة اشتراكك.',
+  'Sign in to manage your business account and review your subscription.':
+    'سجّل الدخول لإدارة حساب نشاطك ومراجعة اشتراكك.',
   'Could not load account.': 'تعذر تحميل بيانات الحساب.',
   'Could not save account.': 'تعذر حفظ بيانات الحساب.',
   'Could not copy. Select and copy the text manually.': 'تعذر النسخ. حدد النص وانسخه يدويًا.',
   'Could not load subscription history.': 'تعذر تحميل سجل الاشتراك.',
-  'Account details have changed. Refresh and try again.': 'بيانات الحساب اتغيرت. حدّث الصفحة وحاول مرة أخرى.',
+  'Account details have changed. Refresh and try again.':
+    'بيانات الحساب اتغيرت. حدّث الصفحة وحاول مرة أخرى.',
   Plan: 'الباقة',
   Action: 'الإجراء',
-  'Manage coverage, renewals, and collections in one place.': 'تابع مدد الاشتراكات والتجديدات والتحصيلات من مكان واحد.',
+  'Manage coverage, renewals, and collections in one place.':
+    'تابع مدد الاشتراكات والتجديدات والتحصيلات من مكان واحد.',
   'Currently covered businesses': 'عملاء لديهم اشتراك سارٍ',
   'Follow up before coverage ends': 'تابع التجديد قبل انتهاء الاشتراك',
   'Existing access is preserved': 'الوصول الحالي محفوظ',
@@ -19,58 +22,77 @@ export const ar: Record<string, string> = {
   '{{count}} businesses on this page': '{{count}} عميل في هذه الصفحة',
   'Back to subscriptions': 'العودة إلى الاشتراكات',
   'Current plan': 'الباقة الحالية',
-  'Review the agreed plan before starting a new paid period.': 'راجع الباقة المتفق عليها قبل بدء فترة مدفوعة جديدة.',
+  'Review the agreed plan before starting a new paid period.':
+    'راجع الباقة المتفق عليها قبل بدء فترة مدفوعة جديدة.',
   'Subscription details': 'تفاصيل الاشتراك',
   'Choose what changes for this business.': 'حدد الإجراء والباقة المناسبة للعميل.',
   'Total price for the selected period': 'السعر الإجمالي لكل مدة',
-  'Create an available plan before activating a subscription.': 'أنشئ باقة متاحة قبل تفعيل الاشتراك.',
-  'e.g. Bank transfer reference or receipt number': 'مثال: مرجع التحويل البنكي أو رقم إيصال التحصيل',
+  'Create an available plan before activating a subscription.':
+    'أنشئ باقة متاحة قبل تفعيل الاشتراك.',
+  'e.g. Bank transfer reference or receipt number':
+    'مثال: مرجع التحويل البنكي أو رقم إيصال التحصيل',
   'Briefly explain this change': 'اكتب سبب التغيير باختصار',
   'Review and confirm': 'المراجعة والتأكيد',
   'Check the amount before recording collection.': 'راجع المبلغ والتواريخ قبل تأكيد التحصيل.',
   'Review the effect of this change.': 'راجع تأثير الإجراء قبل تنفيذه.',
   'Your payment summary appears here': 'ملخص التحصيل هيظهر هنا',
-  'Select a plan and duration, then review the exact price and coverage dates.': 'اختر الباقة والمدة، ثم راجع السعر النهائي وتاريخ بداية الاشتراك وانتهائه.',
+  'Select a plan and duration, then review the exact price and coverage dates.':
+    'اختر الباقة والمدة، ثم راجع السعر النهائي وتاريخ بداية الاشتراك وانتهائه.',
   'Reviewing…': 'جارٍ المراجعة…',
   'Add a reason or collection reference to continue.': 'أضف السبب أو مرجع التحصيل للمتابعة.',
   'Confirm collection to activate the action.': 'أكد تحصيل المبلغ لإتمام الإجراء.',
   'Subscription history': 'سجل الاشتراك',
-  'Paid periods, collections, and account changes': 'الفترات المدفوعة والتحصيلات والإجراءات السابقة',
+  'Paid periods, collections, and account changes':
+    'الفترات المدفوعة والتحصيلات والإجراءات السابقة',
   'Select a plan without starting paid coverage.': 'عيّن باقة للعميل بدون بدء فترة مدفوعة.',
-  'Start paid coverage after confirming external collection.': 'ابدأ فترة الاشتراك بعد تأكيد التحصيل الخارجي.',
-  'Extend coverage or schedule a different plan for the next period.': 'مدد الاشتراك أو اختر باقة مختلفة للفترة التالية.',
-  'Apply a new plan now and credit the unused paid time.': 'غيّر الباقة الآن مع احتساب رصيد المدة المدفوعة المتبقية.',
-  'Restore access for the remaining paid coverage.': 'أعد تشغيل الاشتراك خلال المدة المدفوعة المتبقية.',
-  'Allow renewal again without changing the current paid period.': 'اسمح بالتجديد مجددًا مع الاحتفاظ بالفترة المدفوعة الحالية.',
+  'Start paid coverage after confirming external collection.':
+    'ابدأ فترة الاشتراك بعد تأكيد التحصيل الخارجي.',
+  'Extend coverage or schedule a different plan for the next period.':
+    'مدد الاشتراك أو اختر باقة مختلفة للفترة التالية.',
+  'Apply a new plan now and credit the unused paid time.':
+    'غيّر الباقة الآن مع احتساب رصيد المدة المدفوعة المتبقية.',
+  'Restore access for the remaining paid coverage.':
+    'أعد تشغيل الاشتراك خلال المدة المدفوعة المتبقية.',
+  'Allow renewal again without changing the current paid period.':
+    'اسمح بالتجديد مجددًا مع الاحتفاظ بالفترة المدفوعة الحالية.',
   'Subscription was not found.': 'الاشتراك غير موجود.',
   'Use renewal for an existing subscription.': 'استخدم التجديد للاشتراك الحالي.',
-  'Only an active subscription can be changed immediately.': 'تغيير الباقة فورًا متاح للاشتراك الساري فقط.',
+  'Only an active subscription can be changed immediately.':
+    'تغيير الباقة فورًا متاح للاشتراك الساري فقط.',
   'Choose a plan and duration.': 'اختر باقة ومدة الاشتراك.',
-  'Choose a plan, duration, and confirm external collection.': 'اختر الباقة والمدة وأكد التحصيل الخارجي.',
+  'Choose a plan, duration, and confirm external collection.':
+    'اختر الباقة والمدة وأكد التحصيل الخارجي.',
   'Review a quote before changing the plan.': 'راجع السعر والتواريخ قبل تغيير الباقة.',
   'This subscription cannot be suspended.': 'لا يمكن إيقاف الاشتراك في حالته الحالية.',
   'Only a suspended subscription can be resumed.': 'إعادة التشغيل متاحة للاشتراك الموقوف فقط.',
   'Subscription is already cancelled.': 'الاشتراك ملغي بالفعل.',
   'Only an active subscription supports this action.': 'هذا الإجراء متاح للاشتراك الساري فقط.',
-  'Use a plan change or renewal for this subscription.': 'استخدم تغيير الباقة أو التجديد لهذا الاشتراك.',
-  'This request was already used for a different action.': 'تم استخدام هذا الطلب لإجراء مختلف. حدّث البيانات وراجع الاشتراك.',
-  'Activate a priced subscription from subscription management.': 'فعّل اشتراكًا محدد الباقة والسعر من إدارة الاشتراكات.',
+  'Use a plan change or renewal for this subscription.':
+    'استخدم تغيير الباقة أو التجديد لهذا الاشتراك.',
+  'This request was already used for a different action.':
+    'تم استخدام هذا الطلب لإجراء مختلف. حدّث البيانات وراجع الاشتراك.',
+  'Activate a priced subscription from subscription management.':
+    'فعّل اشتراكًا محدد الباقة والسعر من إدارة الاشتراكات.',
   'Businesses with access': 'عملاء لديهم وصول',
   'Active subscriptions and preserved existing access': 'الاشتراكات السارية والوصول السابق المحفوظ',
   'Restricted businesses': 'عملاء بوصول مقيّد',
   'Businesses without active subscription access': 'عملاء بدون اشتراك يتيح التشغيل',
   'Filter by subscription access': 'تصفية حسب صلاحية الاشتراك',
-  'Review registered businesses and their current subscription status.': 'راجع العملاء المسجلين وحالة اشتراك كل عميل.',
+  'Review registered businesses and their current subscription status.':
+    'راجع العملاء المسجلين وحالة اشتراك كل عميل.',
   'Create a plan and set its duration prices.': 'أنشئ باقة وحدد أسعار مدد الاشتراك.',
   'Subscription management': 'إدارة الاشتراكات',
   'Subscription plans': 'باقات الاشتراك',
   'Subscription plan': 'باقة الاشتراك',
-  'Manage plans and independent prices for each prepaid duration.': 'إدارة الباقات وتحديد سعر مستقل لكل مدة اشتراك.',
+  'Manage plans and independent prices for each prepaid duration.':
+    'إدارة الباقات وتحديد سعر مستقل لكل مدة اشتراك.',
   'Prepaid duration prices': 'أسعار مدد الاشتراك',
-  'Enter a total price for each duration. Leave blank to disable that duration.': 'اكتب السعر الإجمالي لكل مدة. اترك الحقل فارغًا لو المدة غير متاحة.',
+  'Enter a total price for each duration. Leave blank to disable that duration.':
+    'اكتب السعر الإجمالي لكل مدة. اترك الحقل فارغًا لو المدة غير متاحة.',
   '{{months}} months': '{{months}} شهر',
   'Available for new subscriptions and renewals': 'متاحة للاشتراكات الجديدة والتجديد',
-  'Activate, renew, change, suspend, and cancel merchant subscriptions.': 'تفعيل اشتراكات العملاء وتجديدها وتغييرها وإيقافها وإلغاؤها.',
+  'Activate, renew, change, suspend, and cancel merchant subscriptions.':
+    'تفعيل اشتراكات العملاء وتجديدها وتغييرها وإيقافها وإلغاؤها.',
   'Active subscription': 'اشتراك سارٍ',
   'Suspended subscription': 'اشتراك موقوف',
   'Expired subscription': 'اشتراك منتهٍ',
@@ -97,20 +119,26 @@ export const ar: Record<string, string> = {
   'Loading subscriptions…': 'جارٍ تحميل الاشتراكات…',
   'No subscriptions match these filters.': 'لا توجد اشتراكات مطابقة للفلاتر.',
   'Days remaining': 'الأيام المتبقية',
-  'Existing access is preserved. Review the agreed plan and dates before activating timed coverage.': 'الوصول الحالي مستمر. راجع الباقة والتواريخ المتفق عليها قبل تفعيل اشتراك محدد المدة.',
+  'Existing access is preserved. Review the agreed plan and dates before activating timed coverage.':
+    'الوصول الحالي مستمر. راجع الباقة والتواريخ المتفق عليها قبل تفعيل اشتراك محدد المدة.',
   'Choose an action': 'اختر إجراءً',
   'Choose a plan': 'اختر باقة',
   Duration: 'المدة',
   'Reason / collection reference': 'السبب / مرجع التحصيل',
-  'Choose a different plan here to schedule the change after existing paid coverage. Collection is recorded now.': 'اختَر باقة مختلفة لتبدأ بعد نهاية المدة المدفوعة الحالية. يُسجَّل التحصيل الآن.',
-  'Suspension blocks new operations. Paid time continues and the end date does not move.': 'الإيقاف يمنع العمليات الجديدة. يستمر احتساب المدة المدفوعة ولا يتغير تاريخ الانتهاء.',
-  'Immediate cancellation ends all remaining coverage. No refund is recorded automatically.': 'الإلغاء الفوري ينهي كل المدة المتبقية. لا يُسجَّل استرداد مالي تلقائيًا.',
-  'Existing prepaid periods remain available until their final end date. Further renewal is blocked.': 'تظل الفترات المدفوعة متاحة حتى تاريخ انتهائها النهائي، ويُمنع أي تجديد إضافي.',
+  'Choose a different plan here to schedule the change after existing paid coverage. Collection is recorded now.':
+    'اختَر باقة مختلفة لتبدأ بعد نهاية المدة المدفوعة الحالية. يُسجَّل التحصيل الآن.',
+  'Suspension blocks new operations. Paid time continues and the end date does not move.':
+    'الإيقاف يمنع العمليات الجديدة. يستمر احتساب المدة المدفوعة ولا يتغير تاريخ الانتهاء.',
+  'Immediate cancellation ends all remaining coverage. No refund is recorded automatically.':
+    'الإلغاء الفوري ينهي كل المدة المتبقية. لا يُسجَّل استرداد مالي تلقائيًا.',
+  'Existing prepaid periods remain available until their final end date. Further renewal is blocked.':
+    'تظل الفترات المدفوعة متاحة حتى تاريخ انتهائها النهائي، ويُمنع أي تجديد إضافي.',
   'Review price and dates': 'مراجعة السعر والتواريخ',
   'Total price': 'السعر الإجمالي',
   'Unused coverage credit': 'رصيد المدة المتبقية',
   'Amount to collect': 'المبلغ المطلوب تحصيله',
-  'I confirm the displayed amount was collected outside Waffarly.': 'أؤكد تحصيل المبلغ المعروض خارج وفرلي.',
+  'I confirm the displayed amount was collected outside Waffarly.':
+    'أؤكد تحصيل المبلغ المعروض خارج وفرلي.',
   'Refresh subscription and review again': 'تحديث الاشتراك والمراجعة مجددًا',
   'Subscription updated.': 'تم تحديث الاشتراك.',
   'Confirm action': 'تأكيد الإجراء',
@@ -121,16 +149,23 @@ export const ar: Record<string, string> = {
   'Load older records': 'عرض السجلات الأقدم',
   'Assigned plan': 'الباقة المعينة',
   'Use assigned plan': 'استخدام الباقة المعينة',
-  'Review the current plan, coverage, collections, and subscription activity.': 'راجع الباقة الحالية والفترات المدفوعة والتحصيلات وسجل إجراءات الاشتراك.',
-  'Your subscription is inactive. You can review records and finish existing work. Contact Waffarly to renew or reactivate.': 'اشتراكك غير سارٍ. يمكنك مراجعة السجلات وإنهاء الأعمال المفتوحة. تواصل مع وفرلي للتجديد أو إعادة التفعيل.',
+  'Review the current plan, coverage, collections, and subscription activity.':
+    'راجع الباقة الحالية والفترات المدفوعة والتحصيلات وسجل إجراءات الاشتراك.',
+  'Your subscription is inactive. You can review records and finish existing work. Contact Waffarly to renew or reactivate.':
+    'اشتراكك غير سارٍ. يمكنك مراجعة السجلات وإنهاء الأعمال المفتوحة. تواصل مع وفرلي للتجديد أو إعادة التفعيل.',
   'Select an available plan.': 'اختر باقة متاحة.',
   'This duration is not available for this plan.': 'هذه المدة غير متاحة لهذه الباقة.',
-  'Subscription changed. Refresh before trying again.': 'تم تعديل الاشتراك. حدّث البيانات قبل المحاولة مجددًا.',
-  'The price changed. Review a new quote before collecting.': 'تغير السعر. راجع عرض سعر جديد قبل تأكيد التحصيل.',
+  'Subscription changed. Refresh before trying again.':
+    'تم تعديل الاشتراك. حدّث البيانات قبل المحاولة مجددًا.',
+  'The price changed. Review a new quote before collecting.':
+    'تغير السعر. راجع عرض سعر جديد قبل تأكيد التحصيل.',
   'The quote expired. Request a new quote.': 'انتهت صلاحية عرض السعر. اطلب عرضًا جديدًا.',
-  'Choose a change at renewal; this change requires a refund.': 'اختَر تغيير الباقة عند التجديد؛ التغيير الحالي يحتاج استرداد مبلغ.',
-  'A prepaid renewal already exists. Change the plan at the next renewal.': 'يوجد تجديد مدفوع مقدمًا. غيّر الباقة عند التجديد التالي.',
-  'A prepaid renewal already exists. Wait until it starts before renewing again.': 'يوجد تجديد مدفوع مقدمًا. انتظر حتى يبدأ قبل التجديد مرة أخرى.',
+  'Choose a change at renewal; this change requires a refund.':
+    'اختَر تغيير الباقة عند التجديد؛ التغيير الحالي يحتاج استرداد مبلغ.',
+  'A prepaid renewal already exists. Change the plan at the next renewal.':
+    'يوجد تجديد مدفوع مقدمًا. غيّر الباقة عند التجديد التالي.',
+  'A prepaid renewal already exists. Wait until it starts before renewing again.':
+    'يوجد تجديد مدفوع مقدمًا. انتظر حتى يبدأ قبل التجديد مرة أخرى.',
   'Resume or restore renewal before renewing.': 'أعِد تشغيل الاشتراك أو السماح بالتجديد أولًا.',
   'Assigned during merchant creation.': 'تم تعيين الباقة عند إنشاء العميل.',
   'Shift close was rejected. Review the recipient and count, then submit again.':
@@ -160,15 +195,15 @@ export const ar: Record<string, string> = {
     'استخدم توريد للخزنة من حركات النقدية للشيفت المفتوح.',
   'Count the cash physically present. Expected cash appears after closing.':
     'عدّ النقد الموجود فعلًا؛ المتوقع هيظهر بعد الإقفال.',
-  'Ordinary unpaid checks block closing; tracked deliveries require an approved handover.':
-    'الحسابات العادية غير المسددة بتمنع الإقفال، والدليفري المتابع محتاج تسليم معتمد.',
+  'Ordinary unpaid checks block closing. Pending deliveries require cashier confirmation.':
+    'الحسابات العادية غير المسددة بتمنع الإقفال. طلبات التوصيل المعلقة محتاجة تأكيد الكاشير قبل القفل.',
   'Delivery follow-up': 'متابعة الدليفري',
   'Close and approve delivery handover before moving follow-up to another drawer.':
     'اقفل الوردية وسلّم متابعة الدليفري باعتماد المشرف قبل نقلها لدرج تاني.',
   'Delivery handover requires a different supervisor.':
     'تسليم متابعة الدليفري محتاج موافقة مشرف مختلف.',
-  'Count the physical till. Ordinary unpaid checks block closing; tracked deliveries require an approved handover.':
-    'عدّ النقد الموجود فعلًا. الحسابات العادية غير المسددة بتمنع الإقفال، والدليفري المتابع محتاج تسليم معتمد.',
+  'Count the physical till. Ordinary unpaid checks block closing. Pending deliveries require cashier confirmation.':
+    'عدّ النقد الموجود فعلًا. الحسابات العادية غير المسددة بتمنع الإقفال. طلبات التوصيل المعلقة محتاجة تأكيد الكاشير قبل القفل.',
   'The delivery changed. Refresh and retry.': 'بيانات الدليفري اتغيرت. حدّث الصفحة وراجع العملية.',
   'Only the responsible employee or a supervisor can manage this delivery.':
     'مسؤول المتابعة أو المشرف بس يقدر ينفذ العملية دي.',
@@ -184,13 +219,15 @@ export const ar: Record<string, string> = {
   'Pending deliveries': 'طلبات دليفري معلقة',
   'Money outside the drawer': 'فلوس لسه برّه الدرج',
   'Review delivery follow-up': 'مراجعة متابعة الدليفري',
-  'These amounts are not drawer cash. A named recipient and a different supervisor must approve handover.':
-    'المبالغ دي مش نقد جوه الدرج. لازم مسؤول مستلم بالاسم وموافقة مشرف مختلف لتسليم المتابعة.',
+  'Customer balance and courier cash': 'باقي على العملاء والكاش مع الطيارين',
+  'These amounts are not drawer cash. You can close after confirming, and a later shift records cash when it is received.':
+    'المبالغ دي مش موجودة في الدرج. تقدر تقفل بعد التأكيد، والوردية اللي تستلم الفلوس بعدين هتسجلها.',
   'Receiving employee username': 'اسم مستخدم الموظف المستلم للمتابعة',
   'Enter the employee receiving pending deliveries.':
     'اكتب اسم مستخدم الموظف اللي هيستلم متابعة الدليفري المعلق.',
   'Courier cash received': 'كاش مستلم من الطيار',
   'Delivery handover': 'تسليم متابعة الدليفري',
+  'Pending deliveries at close': 'طلبات توصيل معلقة وقت القفل',
   'Customer due': 'باقي على العميل',
   'Cash with courier': 'كاش مع الطيار',
   'Delivery details': 'بيانات التوصيل',
@@ -377,6 +414,10 @@ export const ar: Record<string, string> = {
     'تغيّر المنتج. راجع السعر المحدّث قبل إضافته.',
   'A selected variant is no longer available.': 'الخيار المحدد لم يعد متاحًا.',
   'The product stock handling is not supported.': 'إعداد إدارة مخزون المنتج غير مدعوم.',
+  'Configure this product inventory and record current item costs before selling it.':
+    'اضبط مخزون هذا المنتج وسجّل التكلفة الحالية للأصناف المرتبطة به من لوحة التاجر قبل بيعه.',
+  'Record a current cost for every stock item before confirming this sale.':
+    'سجّل تكلفة حالية لكل صنف مخزون مستخدم في الطلب من لوحة التاجر قبل تأكيد البيع.',
   'A selected variant does not have enough stock.': 'مخزون الخيار المحدد غير كافٍ.',
   "The order's assigned stock warehouse is no longer available.":
     'مخزون الطلب المخصص لم يعد متاحًا.',
@@ -474,126 +515,34 @@ export const ar: Record<string, string> = {
   'Load more orders': 'تحميل طلبات أخرى',
   'Business profile and storefront branding for this activity.':
     'ملف المتجر وتصميم واجهته لهذا النشاط.',
-  'Merchant profile': 'ملف المتجر',
-  'Storefront design & branding': 'تصميم وواجهة المتجر',
-  'An activated owner can view the business and owner contact profile.':
-    'يمكن للمالك الذي تم تفعيل حسابه الاطلاع على ملف المتجر وبيانات تواصل المالك.',
-  'An activated owner can select a business design, add a logo, and set an accent color.':
-    'يمكن للمالك الذي تم تفعيل حسابه اختيار تصميم للمتجر وإضافة شعار وتحديد لون مميز.',
-  Modules: 'الموديولات',
-  'Modules matrix': 'مصفوفة الموديولات',
-  'Modules and platform capabilities': 'الموديولات وقدرات المنصة',
-  'Review code-supported activities and the catalog associations for each platform module.':
-    'استعرض الأنشطة التي تدعمها الشفرة وارتباطات الكتالوج لكل موديول في المنصة.',
-  'Compatibility is not access': 'التوافق لا يعني منح الوصول',
-  'The matrix separates platform support from saved catalog associations. Neither represents a plan entitlement, subscription state, merchant access, or user permission.':
-    'تفصل المصفوفة بين دعم المنصة وارتباطات الكتالوج المحفوظة. ولا يمثل أي منهما استحقاق باقة أو حالة اشتراك أو وصول المتجر أو صلاحية المستخدم.',
-  'Could not load the modules matrix.': 'تعذر تحميل مصفوفة الموديولات.',
-  'Modules matrix summary': 'ملخص موديولات المنصة',
-  'Modules currently defined in code': 'الموديولات المحددة حالياً في الشفرة',
-  'Activity columns returned by the catalog': 'أعمدة الأنشطة التي يعرضها الكتالوج',
-  'Code-supported pairs': 'أزواج يدعمها النظام',
-  'Module and activity pairs allowed by code': 'أزواج الموديولات والأنشطة المسموح بها في الشفرة',
-  'Catalog associations': 'ارتباطات الكتالوج',
-  'Activity-module links currently saved': 'روابط الأنشطة والموديولات المحفوظة حالياً',
-  'Module and activity compatibility matrix': 'مصفوفة توافق الموديولات والأنشطة',
-  'Matrix legend': 'دليل رموز المصفوفة',
-  'Code support is immutable here; catalog association is the activity’s saved module list.':
-    'دعم الشفرة ثابت هنا؛ أما ارتباط الكتالوج فهو قائمة الموديولات المحفوظة للنشاط.',
-  'Showing {{visible}} of {{total}} modules': 'عرض {{visible}} من أصل {{total}} وحدة',
-  'Associated in catalog': 'مرتبط في الكتالوج',
-  'Supported by code': 'مدعوم في الشفرة',
-  'Supported by code, not associated': 'مدعوم في الشفرة وغير مرتبط',
-  'Not supported': 'غير مدعوم',
-  'Catalog mismatch': 'تعارض في الكتالوج',
-  'Platform module': 'موديول المنصة',
-  Dependencies: 'الاعتماديات',
-  'Search by module name, key, description, or activity':
-    'ابحث باسم الوحدة أو معرّفها أو وصفها أو النشاط',
-  'Loading modules matrix…': 'جارٍ تحميل مصفوفة الموديولات…',
-  'Modules matrix data is unavailable.': 'بيانات مصفوفة الموديولات غير متاحة.',
-  'No module compatibility data': 'لا توجد بيانات لتوافق الموديولات',
-  'The catalog needs both modules and business activities to build this matrix.':
-    'يحتاج الكتالوج إلى وحدات وأنشطة أعمال لإنشاء هذه المصفوفة.',
-  'No modules match this search': 'لا توجد وحدات تطابق هذا البحث',
-  'Try another module name, key, description, or activity.':
-    'جرّب اسماً أو معرّفاً أو وصفاً أو نشاطاً آخر.',
-  'Clear module search': 'مسح البحث عن الموديولات',
-  'Filter modules': 'تصفية الموديولات',
-  'Filter by activity': 'تصفية حسب النشاط',
-  'Filter by relationship': 'تصفية حسب العلاقة',
-  'All relationships': 'كل العلاقات',
-  'Module boundaries': 'حدود الموديولات',
-  'What this catalog does—and does not—define.': 'ما الذي يحدده هذا الكتالوج وما لا يحدده.',
-  'Module support': 'دعم الوحدة',
-  'Each module lists the business activities supported by platform code.':
-    'تعرض كل وحدة أنشطة الأعمال التي تدعمها شفرة المنصة.',
-  'Catalog association': 'ارتباط الكتالوج',
-  'Each activity stores its own list of linked module keys.':
-    'يحتفظ كل نشاط بقائمته الخاصة من معرّفات الموديولات المرتبطة به.',
-  'Not access control': 'ليست صلاحيات وصول',
-  'Neither relationship grants a plan entitlement, subscription, merchant access, or user permission.':
-    'لا تمنح أي من العلاقتين استحقاقاً في باقة أو اشتراكاً أو وصولاً للمتجر أو صلاحية للمستخدم.',
-  'Platform modules are defined in code; a new module needs an approved code and database change.':
-    'تُعرّف موديولات المنصة في الشفرة؛ وإضافة موديول جديد تتطلب تغييراً معتمداً في الشفرة وقاعدة البيانات.',
-  'Review business activities': 'مراجعة أنشطة الأعمال',
-  'No modules match these filters': 'لا توجد وحدات تطابق عوامل التصفية',
-  'Try a different activity, relationship, or search phrase.':
-    'جرّب نشاطاً أو علاقة أو عبارة بحث مختلفة.',
   'Business activity catalog': 'كتالوج أنشطة الأعمال',
-  'Classify the business activity types supported by Waffarly and review their platform capabilities.':
-    'صنّف أنواع الأنشطة التجارية التي تدعمها وفرلي وراجع إمكانات المنصة المرتبطة بها.',
-  'Business activity types': 'أنواع الأنشطة التجارية',
-  'Review platform support separately from the modules saved in each activity.':
-    'راجع دعم المنصة بشكل منفصل عن الموديولات المحفوظة لكل نشاط.',
+  'Business categories supported by the platform.': 'فئات الأعمال التي تدعمها المنصة.',
+  'Customized descriptions': 'أوصاف مخصصة',
+  'Categories with administrator-edited display details.':
+    'فئات عدّل المسؤول بيانات عرضها.',
+  'Review and edit the business categories available during onboarding.':
+    'راجع وعدّل فئات الأعمال المتاحة أثناء التسجيل.',
+  'Search by activity name, key, or description': 'ابحث باسم النشاط أو معرّفه أو وصفه',
+  'Try another activity name, key, or description.':
+    'جرّب اسم نشاط أو معرّفًا أو وصفًا آخر.',
+  'About business activities': 'عن أنشطة الأعمال',
+  'Activities classify businesses in onboarding and storefront discovery.':
+    'تُصنّف الأنشطة المتاجر أثناء التسجيل وعند استكشاف واجهات المتاجر.',
+  'Subscription status controls account access independently of the selected business activity.':
+    'تتحكم حالة الاشتراك في الوصول للحساب بمعزل عن نشاط المتجر.',
+  'Update the display name and description for this business activity.':
+    'عدّل الاسم الظاهر ووصف نشاط العمل.',
   'Business activity catalog table': 'جدول كتالوج الأنشطة التجارية',
-  'Code-supported modules': 'الموديولات المدعومة برمجياً',
-  'Catalog status': 'حالة الكتالوج',
-  'No modules supported': 'لا توجد موديولات مدعومة',
-  'Valid associations': 'ارتباطات سليمة',
-  'Standard definition': 'التعريف المعياري',
-  'Keep business categories separate from platform features and access rules.':
-    'افصل بين فئات الأعمال وميزات المنصة وقواعد الوصول.',
-  'The business category selected for a merchant, such as restaurant or clothing.':
-    'فئة النشاط التي يحددها المتجر، مثل المطاعم أو الملابس.',
-  'An application capability that may support one or more business activities.':
-    'إمكانية في التطبيق قد تدعم نوعاً واحداً أو أكثر من الأنشطة التجارية.',
-  'Plan entitlement': 'استحقاق الباقة',
-  'A plan benefit is managed separately; activity compatibility does not assign it.':
-    'تُدار مزايا الباقة بشكل منفصل؛ فتوافق النشاط لا يخصصها.',
-  'User permission': 'صلاحية المستخدم',
-  'Permissions determine what a person may do and are not inferred from activity type.':
-    'تحدد الصلاحيات ما يمكن للشخص فعله، ولا تُستنتج من نوع النشاط.',
-  'Adding a category does not deploy application capabilities or create database tables by itself.':
-    'إضافة فئة لا تنشر إمكانات التطبيق ولا تنشئ جداول قاعدة البيانات تلقائياً.',
-  'Review platform modules': 'مراجعة موديولات المنصة',
-  'Update the display details and saved module associations for this activity.':
-    'حدّث بيانات العرض وارتباطات الموديولات المحفوظة لهذا النشاط.',
-  'Only supported module links can be saved. This does not change plan entitlements or merchant access.':
-    'يمكن حفظ الموديولات المدعومة فقط. هذا لا يغيّر مزايا الباقة أو صلاحيات المتجر.',
-  'Review the business activity types supported by the platform and their compatible modules.':
-    'استعرض أنواع أنشطة الأعمال التي تدعمها المنصة والوحدات المتوافقة معها.',
-  'Activity compatibility only': 'التوافق بين الأنشطة فقط',
-  'Activity-to-module links describe catalog compatibility. They do not grant subscriptions, merchant access, plan entitlements, or user permissions.':
-    'توضح روابط النشاط والوحدة التوافق في الكتالوج فقط، ولا تمنح اشتراكات أو وصولاً للمتاجر أو مزايا الباقات أو صلاحيات للمستخدمين.',
   'Could not load the activity catalog.': 'تعذر تحميل كتالوج الأنشطة.',
   'Activity catalog summary': 'ملخص كتالوج الأنشطة',
-  'Business activity types in the catalog': 'أنواع أنشطة الأعمال المسجلة في الكتالوج',
-  'Modules listed in the compatibility catalog': 'الوحدات المدرجة في كتالوج التوافق',
-  'Activity types currently returned by the platform catalog.':
-    'أنواع الأنشطة التي يعرضها كتالوج المنصة حالياً.',
   'Showing {{visible}} of {{total}}': 'عرض {{visible}} من أصل {{total}}',
-  compatible: 'متوافق',
   'Search activities': 'البحث في الأنشطة',
-  'Search by activity name, key, description, or compatible module':
-    'ابحث باسم النشاط أو معرّفه أو وصفه أو الوحدة المتوافقة معه',
   'Loading activity catalog…': 'جارٍ تحميل كتالوج الأنشطة…',
   'Activity catalog unavailable.': 'كتالوج الأنشطة غير متاح.',
   'No business activities configured': 'لا توجد أنشطة أعمال مُعدّة',
   'No business activities are configured in the catalog yet.':
     'لم تتم إضافة أنشطة أعمال إلى الكتالوج بعد.',
   'No activities match this search': 'لا توجد أنشطة تطابق هذا البحث',
-  'Try another name, key, description, or module.': 'جرّب اسماً أو معرّفاً أو وصفاً أو وحدة أخرى.',
   'Clear activity search': 'مسح البحث عن الأنشطة',
   'Subscription access': 'الوصول والاشتراكات',
   'The current API records first-month activation only; plan assignment, later payments, renewal, and expiry details are not available here.':
@@ -625,7 +574,7 @@ export const ar: Record<string, string> = {
     'أنشئ حساب دخول المالك. احتفظ بكلمة المرور بشكل خاص وشاركها بعد التحقق من هوية المالك فقط.',
   'Use 3–80 letters, numbers, dots, underscores, or hyphens.':
     'استخدم من 3 إلى 80 حرفًا من الحروف أو الأرقام أو النقاط أو الشرطات السفلية أو الوصلات.',
-  'Use a password with 12–128 characters.': 'استخدم كلمة مرور من 12 إلى 128 حرفًا.',
+  'Use a password with 6–128 characters.': 'استخدم كلمة مرور من 6 إلى 128 حرفًا.',
   'Approval and access': 'الموافقة والوصول',
   'Create the business and owner account': 'إنشاء المتجر وحساب المالك',
   'The merchant is approved when this form is submitted successfully.':
@@ -665,19 +614,13 @@ export const ar: Record<string, string> = {
   'Expand sidebar': 'توسيع الشريط الجانبي',
   'Collapse sidebar': 'طيّ الشريط الجانبي',
   PLATFORM: 'المنصة',
-  'Good food, brighter days': 'طعام شهي، وأيام أجمل',
-  'Manage the Waffarly platform from one place.': 'أدر منصة وفرلي من مكان واحد.',
   'Platform overview': 'نظرة عامة على المنصة',
-  'A clear view of businesses, applications, plans, and storefront designs.':
-    'نظرة واضحة على المتاجر والطلبات والباقات وتصاميم الواجهات.',
   'Manage businesses': 'إدارة المتاجر',
   'Some overview data could not be loaded.': 'تعذر تحميل بعض بيانات النظرة العامة.',
   'Businesses registered on Waffarly': 'المتاجر المسجلة على وفرلي',
   'Applications awaiting an admin decision': 'طلبات تنتظر قرار الإدارة',
   'First-month access': 'تفعيل الشهر الأول',
   'Businesses with first-month activation recorded': 'المتاجر التي سُجّل تفعيل الشهر الأول لها',
-  'Available storefronts': 'واجهات المتاجر المتاحة',
-  'Designs currently available to merchants': 'التصاميم المتاحة حاليًا لأصحاب المتاجر',
   'Recently added businesses': 'أحدث المتاجر المضافة',
   'The latest businesses created on the platform.': 'أحدث المتاجر التي أُنشئت على المنصة.',
   'View businesses': 'عرض المتاجر',
@@ -699,9 +642,6 @@ export const ar: Record<string, string> = {
   'Manage the information shown to merchants.': 'أدر المعلومات المعروضة لأصحاب المتاجر.',
   '{{count}} plans configured': 'تم إعداد {{count}} باقات',
   'Open plan catalog': 'فتح قائمة الباقات',
-  'Storefront designs': 'تصاميم واجهات المتاجر',
-  '{{count}} designs in library': '{{count}} تصميمًا في المكتبة',
-  'Open design library': 'فتح مكتبة التصاميم',
   'Loading platform overview…': 'جارٍ تحميل نظرة عامة على المنصة…',
   'Merchant management': 'إدارة المتاجر',
   'Review registered businesses and their recorded first-month access status.':
@@ -733,6 +673,9 @@ export const ar: Record<string, string> = {
   'Secure platform access': 'وصول آمن إلى المنصة',
   'Signing out…': 'جارٍ تسجيل الخروج…',
   Waffarly: 'وفّرلي',
+  Storefront: 'المتجر الإلكتروني',
+  POS: 'نقطة البيع',
+  'Order source': 'مصدر الطلب',
   'Signing in…': 'جارٍ تسجيل الدخول…',
   'Show password': 'إظهار كلمة المرور',
   'Hide password': 'إخفاء كلمة المرور',
@@ -747,19 +690,12 @@ export const ar: Record<string, string> = {
   'Super Admin credentials are not configured.': 'لم تتم تهيئة حساب إدارة المنصة.',
   'Username and password are required.': 'اسم المستخدم وكلمة المرور مطلوبان.',
   'Username is already in use.': 'اسم المستخدم مستخدم بالفعل.',
-  'Template key is already in use.': 'معرّف القالب مستخدم بالفعل.',
-  'Template was not found.': 'لم يتم العثور على القالب.',
-  'Template changed since you opened it. Reload the library before editing again.':
-    'تم تغيير القالب. حدّث المكتبة قبل التعديل مجددًا.',
   'Plan was not found.': 'لم يتم العثور على الباقة.',
   'Plan changed since you opened it. Reload plans before editing again.':
     'تم تغيير الباقة. حدّث الباقات قبل التعديل مجددًا.',
   'This creation request has already been used. Reload plans before creating another plan.':
     'تم استخدام طلب الإنشاء بالفعل. حدّث الباقات قبل إنشاء باقة أخرى.',
   'Business activity was not found.': 'لم يتم العثور على النشاط.',
-  'Platform module was not found.': 'لم يتم العثور على الوحدة.',
-  'Select each module only once.': 'اختر كل وحدة مرة واحدة فقط.',
-  'A selected module does not support this activity.': 'إحدى الوحدات المحددة لا تدعم هذا النشاط.',
   'Application was not found.': 'لم يتم العثور على الطلب.',
   'Application has already been processed.': 'تمت معالجة الطلب بالفعل.',
   'A rejection reason is required.': 'سبب الرفض مطلوب.',
@@ -768,7 +704,6 @@ export const ar: Record<string, string> = {
   'Confirm external collection before activation.': 'أكّد تحصيل المبلغ خارج المنصة قبل التفعيل.',
   'Logo files must be 48 KB or smaller.': 'يجب ألا يتجاوز حجم الشعار ٤٨ كيلوبايت.',
   'Upload a valid PNG, JPG, or WebP image.': 'ارفع صورة صالحة بصيغة PNG أو JPG أو WebP.',
-  'Choose a business design that is currently available.': 'اختر تصميمًا متاحًا للمتاجر.',
   'Storefront settings changed. Reload before saving again.':
     'تم تغيير إعدادات الواجهة. حدّث الصفحة قبل الحفظ مجددًا.',
   'Failed to fetch': 'تعذّر الاتصال بالخدمة. تحقق من اتصالك وحاول مجددًا.',
@@ -777,10 +712,14 @@ export const ar: Record<string, string> = {
   'Service unavailable. Try again later.': 'الخدمة غير متاحة. حاول مجددًا لاحقًا.',
   'Please check the entered details and try again.':
     'يرجى التحقق من البيانات المدخلة والمحاولة مجددًا.',
-  'Select the required modules for {{name}}.': 'اختر الوحدات المطلوبة لـ {{name}}.',
   'Change language': 'تغيير اللغة',
   'Skip to content': 'انتقل إلى المحتوى',
   'Something went wrong.': 'حدث خطأ غير متوقع.',
+  "Open a cashier shift at this order's branch before changing its status.":
+    'افتح وردية كاشير في فرع الطلب قبل تغيير حالته.',
+  'افتح وردية كاشير في فرع الطلب قبل تغيير حالته.':
+    'افتح وردية كاشير في فرع الطلب قبل تغيير حالته.',
+
   'Business created': 'تم إنشاء المتجر',
   'View business': 'عرض المتجر',
   Done: 'تم',
@@ -796,18 +735,13 @@ export const ar: Record<string, string> = {
   Username: 'اسم المستخدم',
   Password: 'كلمة المرور',
   'Sign in': 'تسجيل الدخول',
-  'Templates & Design Library': 'القوالب ومكتبة التصاميم',
   Businesses: 'المتاجر',
   'Signed in as': 'مسجّل الدخول باسم',
   'Sign out': 'تسجيل الخروج',
   'Platform administration': 'إدارة المنصة',
   Onboarding: 'إضافة المتاجر',
-  'Design library': 'مكتبة التصاميم',
-  Storefronts: 'واجهات المتاجر',
   Plans: 'الباقات',
   'Monthly offers': 'العروض الشهرية',
-  'Activities & modules': 'الأنشطة والوحدات',
-  Capabilities: 'الإمكانات',
   'Create a business': 'إضافة متجر',
   'Creation approves the business. Access starts after first-month activation.':
     'إضافة المتجر تعني الموافقة عليه. يبدأ الوصول بعد تفعيل الشهر الأول.',
@@ -817,7 +751,7 @@ export const ar: Record<string, string> = {
   'Owner mobile number': 'رقم هاتف المالك',
   'Owner username': 'اسم مستخدم المالك',
   'Owner password': 'كلمة مرور المالك',
-  '(at least 12 characters)': '(١٢ حرفًا على الأقل)',
+  '(at least 6 characters)': '(٦ حروف على الأقل)',
   'Create business': 'إضافة المتجر',
   'Business applications': 'طلبات انضمام المتاجر',
   'Review the contact details and complete your checks before approval. An owner account is created only when you approve an application.':
@@ -834,7 +768,7 @@ export const ar: Record<string, string> = {
   Required: 'مطلوب',
   'Business contact:': 'رقم المتجر:',
   Submitted: 'تاريخ التقديم',
-  '(12–128 characters)': '(من ١٢ إلى ١٢٨ حرفًا)',
+  '(6–128 characters)': '(من ٦ إلى ١٢٨ حرفًا)',
   'Approve and create owner account': 'الموافقة وإنشاء حساب المالك',
   'Send credentials manually': 'إرسال بيانات الدخول يدويًا',
   'Verify the owner by phone, then send these details privately to':
@@ -849,65 +783,21 @@ export const ar: Record<string, string> = {
   'Owner username:': 'اسم مستخدم المالك:',
   'Awaiting first-month activation': 'بانتظار تفعيل الشهر الأول',
   'Activate first month': 'تفعيل الشهر الأول',
-  'This template changed in another session. Reload the library before editing.':
-    'تم تعديل هذا القالب في جلسة أخرى. حدّث المكتبة قبل التعديل.',
-  'Could not save this template.': 'تعذّر حفظ القالب.',
   'Your business': 'متجرك',
-  'EDIT TEMPLATE': 'تعديل القالب',
-  'NEW DESIGN': 'تصميم جديد',
   'Close editor': 'إغلاق المحرر',
   'Display name': 'الاسم الظاهر',
   'Sunday Table': 'مائدة الأحد',
-  'Library key': 'معرّف القالب',
-  'Permanent identifier for this design': 'معرّف دائم لهذا التصميم',
   Description: 'الوصف',
   'Shown to administrators in the library': 'يظهر للمسؤولين في المكتبة',
-  'A clear layout that puts your catalog first.': 'تصميم بسيط يبرز كتالوج المنتجات.',
-  'Business layout': 'تخطيط واجهة المتجر',
-  'Catalog first · editorial grid': 'الكتالوج أولًا · تخطيط شبكي',
-  'Welcome first · featured catalog': 'الترحيب أولًا · كتالوج مميز',
-  'Accent color': 'اللون الرئيسي',
-  'Library status': 'حالة القالب',
-  'Draft · only admins can see it': 'مسودة · تظهر للمسؤولين فقط',
-  'Available · ready for future merchant selection': 'متاح · جاهز للاختيار من قِبل المتاجر',
-  'A business preview using sample content. Availability adds this design to the library; it does not publish a business storefront.':
-    'معاينة للمتجر بمحتوى تجريبي. إتاحة التصميم تضيفه إلى المكتبة ولا تنشر واجهة المتجر.',
   'Saving…': 'جارٍ الحفظ…',
   'Save changes': 'حفظ التغييرات',
-  'Create template': 'إنشاء القالب',
-  'Hide preview': 'إخفاء المعاينة',
-  'Preview design': 'معاينة التصميم',
-  'STOREFRONT · BUSINESSES': 'واجهات المتاجر · المتاجر',
-  'The design library': 'مكتبة التصاميم',
-  'Curate the business designs merchants can discover.':
-    'نظّم التصاميم التي يمكن لأصحاب المتاجر استكشافها.',
-  '＋ Add a template': '＋ إضافة قالب',
-  'Filter templates': 'تصفية القوالب',
   All: 'الكل',
   Available: 'متاح',
   Drafts: 'المسودات',
-  'Search templates': 'البحث في القوالب',
-  'Search the library': 'ابحث في المكتبة',
   'Loading…': 'جارٍ التحميل…',
   Refresh: 'تحديث',
-  'Loading your design library…': 'جارٍ تحميل مكتبة التصاميم…',
-  'No designs match that search': 'لا توجد تصاميم تطابق البحث',
-  'Your library starts here': 'ابدأ مكتبة التصاميم من هنا',
-  'Try another name or status.': 'جرّب اسمًا أو حالة أخرى.',
-  'Add a business design to start curating what merchants can discover.':
-    'أضف تصميمًا لبدء تنظيم الخيارات المتاحة لأصحاب المتاجر.',
-  'Create the first template': 'إنشاء أول قالب',
-  'View & edit design': 'عرض التصميم وتعديله',
   Draft: 'مسودة',
-  'Catalog first': 'الكتالوج أولًا',
-  'Welcome first': 'الترحيب أولًا',
-  'A business storefront design.': 'تصميم لواجهة متجر.',
   Edit: 'تعديل',
-  'in the library': 'في المكتبة',
-  'Business activity ·': 'نشاط المتاجر ·',
-  'available for discovery': 'متاح للاستكشاف',
-  design: 'تصميم',
-  designs: 'تصاميم',
   'Could not save the plan.': 'تعذّر حفظ الباقة.',
   'Plans & subscriptions': 'الباقات والاشتراكات',
   'Monthly plans': 'الباقات الشهرية',
@@ -972,37 +862,9 @@ export const ar: Record<string, string> = {
   Updated: 'آخر تحديث',
   'Edit plan': 'تعديل الباقة',
   'Could not update the catalog.': 'تعذّر تحديث القائمة.',
-  'Business activities & modules': 'أنشطة الأعمال والوحدات',
-  'Activities & capabilities': 'الأنشطة والإمكانات',
-  'Manage catalog information and the capabilities that apply to businesses.':
-    'أدر بيانات الأنشطة والإمكانات المتاحة للمتاجر.',
   'Refresh catalog': 'تحديث القائمة',
-  'Activity applicability describes compatibility. Saving it does not change a merchant’s subscription or access.':
-    'ارتباط النشاط بالوحدة يوضّح التوافق. حفظه لا يغيّر اشتراك المتجر أو صلاحياته.',
-  'Loading activities and modules…': 'جارٍ تحميل الأنشطة والوحدات…',
   'Business activities': 'الأنشطة التجارية',
-  supported: 'مدعوم',
-  'No supported activities are configured.': 'لم تتم تهيئة أي أنشطة مدعومة.',
-  'Initial activity': 'نشاط أساسي',
-  'Applicable modules': 'الوحدات المتوافقة',
-  'No modules associated': 'لا توجد وحدات مرتبطة',
-  modules: 'موديولات',
   'Edit activity': 'تعديل النشاط',
-  'Platform modules': 'الموديولات',
-  implemented: 'متاح',
-  'Search modules': 'البحث في الوحدات',
-  'Search by name, key, or description': 'ابحث بالاسم أو المعرّف أو الوصف',
-  'No modules match your search.': 'لا توجد وحدات تطابق البحث.',
-  'No supported modules are configured.': 'لم تتم تهيئة أي وحدات مدعومة.',
-  Implemented: 'متاح',
-  'Applies to:': 'متوافق مع:',
-  'No activities associated': 'لا توجد أنشطة مرتبطة',
-  'Dependencies:': 'المتطلبات:',
-  None: 'لا يوجد',
-  'Edit module': 'تعديل الوحدة',
-  'Activity details': 'تفاصيل النشاط',
-  'Module details': 'تفاصيل الوحدة',
-  'Identifier:': 'المعرّف:',
   'Your draft is preserved. Refresh the catalog, then reopen this entry to review the latest values.':
     'تم الاحتفاظ بتعديلاتك. حدّث القائمة ثم افتح هذا العنصر مجددًا لمراجعة أحدث بياناته.',
   'Using the platform defaults.': 'تُستخدم الإعدادات الافتراضية للمنصة.',
@@ -1045,7 +907,6 @@ export const ar: Record<string, string> = {
   'A short description customers will see on your storefront.':
     'نبذة قصيرة تظهر للعملاء في واجهة متجرك.',
   'These changes apply to this business only.': 'تُطبّق هذه التغييرات على هذا المتجر فقط.',
-  'Choose a business design before saving.': 'اختر تصميمًا للمتجر قبل الحفظ.',
   'Choose the notifications you want to receive.': 'اختر الإشعارات التي تريد استلامها.',
   'New order notifications': 'إشعارات الطلبات الجديدة',
   'Get notified when a new order arrives.': 'أرسل لي إشعارًا عند وصول طلب جديد.',
@@ -1146,6 +1007,8 @@ export const ar: Record<string, string> = {
     'إدارة ومتابعة جميع الطلبات من مختلف الفروع والقنوات.',
   Customers: 'العملاء',
   Discounts: 'الخصومات',
+  Discount: 'خصم',
+  'Product discount': 'خصم على المنتج',
   Branches: 'الفروع',
   'Main Branch': 'الفرع الرئيسي',
   Notifications: 'الإشعارات',
@@ -1258,22 +1121,13 @@ export const ar: Record<string, string> = {
   'Back to dashboard': 'العودة إلى لوحة المعلومات',
   'Business phone': 'هاتف المتجر',
   'Owner mobile': 'هاتف المالك',
-  'Could not load the design library.': 'تعذّر تحميل مكتبة التصاميم.',
+  'Could not load storefront appearance.': 'تعذّر تحميل مظهر المتجر.',
+  'Could not save the appearance.': 'تعذّر حفظ مظهر المتجر.',
   'Choose a PNG, JPG, or WebP image.': 'اختر صورة بصيغة PNG أو JPG أو WebP.',
   'The logo must be 48 KB or smaller.': 'يجب ألا يتجاوز حجم الشعار ٤٨ كيلوبايت.',
   'This image could not be read. Try another file.': 'تعذّرت قراءة الصورة. جرّب ملفًا آخر.',
-  'The design is saved for this business.': 'تم حفظ تصميم المتجر.',
-  'Could not save the design.': 'تعذّر حفظ التصميم.',
   'YOUR RESTAURANT': 'متجرك',
-  'Storefront design': 'هوية المتجر',
-  'Choose a complete design, add your logo, and make it yours with a signature color.':
-    'اختر تصميمًا متكاملًا وأضف شعارك ولونك المميز.',
-  'Loading business designs…': 'جارٍ تحميل تصاميم المتاجر…',
-  'Designs are on their way': 'التصاميم متاحة قريبًا',
-  'Available business designs will appear here.': 'ستظهر تصاميم المتاجر المتاحة هنا.',
-  'Choose your design': 'اختر تصميمك',
-  'Editorial · catalog first': 'تخطيط شبكي · الكتالوج أولًا',
-  'Storytelling · welcome first': 'تصميم قصصي · الترحيب أولًا',
+  'Storefront appearance': 'مظهر المتجر',
   'YOUR PERSONAL TOUCH': 'لمستك الخاصة',
   'Logo & colour': 'الشعار واللون',
   'Only changes this business': 'تغييرات خاصة بهذا المتجر فقط',
@@ -1480,70 +1334,6 @@ export const ar: Record<string, string> = {
   'New customer. Consider sending a welcome offer.': 'عميل جديد. فكر في إرسال عرض ترحيبي.',
   'Prefers delivery to the Zamalek area.': 'يفضل التوصيل إلى منطقة الزمالك.',
   'Top customer this month.': 'أفضل عميل هذا الشهر.',
-  'Storefront · businesses': 'واجهات المتاجر · الأعمال',
-  'Add a template': 'إضافة تصميم',
-  'Refresh library': 'تحديث المكتبة',
-  'Design library summary': 'ملخص مكتبة التصاميم',
-  'All designs': 'كل التصاميم',
-  'Storefront designs currently in the library.':
-    'تصاميم واجهات المتاجر الموجودة في المكتبة حاليًا.',
-  'Ready for future merchant selection.': 'جاهزة للاختيار من قِبل المتاجر لاحقًا.',
-  'Visible to platform administrators only.': 'ظاهرة لمسؤولي المنصة فقط.',
-  'Could not load templates.': 'تعذّر تحميل التصاميم.',
-  'Reload library': 'إعادة تحميل المكتبة',
-  'Edit template': 'تعديل التصميم',
-  'Set the storefront presentation and its library availability.':
-    'حدّد شكل واجهة المتجر وحالة إتاحتها في المكتبة.',
-  'Storefront preview': 'معاينة واجهة المتجر',
-  'Availability adds the design to the merchant library; it does not publish a storefront.':
-    'تضيف الإتاحة التصميم إلى مكتبة المتاجر، لكنها لا تنشر واجهة متجر.',
-  'Move {{name}} to drafts': 'نقل {{name}} إلى المسودات',
-  'Make {{name}} available': 'إتاحة {{name}}',
-  'Move to drafts': 'نقل إلى المسودات',
-  'Make available': 'إتاحة التصميم',
-  '{{name}} is now available in the library.': 'أصبح {{name}} متاحًا في المكتبة.',
-  '{{name}} moved to drafts.': 'تم نقل {{name}} إلى المسودات.',
-  'Storefront templates': 'تصاميم واجهات المتاجر',
-  'Search and filter the saved design library.': 'ابحث في مكتبة التصاميم المحفوظة وصفِّها.',
-  'Search by name, key, description, or activity': 'ابحث بالاسم أو المعرّف أو الوصف أو النشاط',
-  'General designs': 'تصاميم عامة',
-  'Template library unavailable.': 'مكتبة التصاميم غير متاحة.',
-  'Template details': 'تفاصيل التصميم',
-  'View details for {{name}}': 'عرض تفاصيل {{name}}',
-  'View template details': 'عرض تفاصيل التصميم',
-  'Design metadata': 'بيانات التصميم',
-  'Saved design settings and revision history.': 'إعدادات التصميم المحفوظة وسجل مراجعاته.',
-  Revision: 'المراجعة',
-  'Updated by': 'آخر تحديث بواسطة',
-  'Merchant eligibility': 'ملاءمة المتاجر',
-  'Activity scope and availability determine which merchants can newly select this design.':
-    'يحدد نطاق النشاط والإتاحة المتاجر التي يمكنها اختيار هذا التصميم.',
-  'Activity scope': 'نطاق النشاط',
-  'General designs match every business activity.':
-    'التصاميم العامة مناسبة لجميع الأنشطة التجارية.',
-  'This design is scoped to {{activity}} businesses.':
-    'هذا التصميم مخصص للمتاجر ذات نشاط {{activity}}.',
-  'Only available designs are offered for new merchant selections.':
-    'تظهر التصاميم المتاحة فقط عند اختيار تصميم جديد للمتجر.',
-  'An already-selected design may remain visible to that merchant if it is later moved to drafts.':
-    'قد يظل التصميم المختار سابقًا ظاهرًا للمتجر حتى بعد نقله إلى المسودات.',
-  'Review the saved preview, merchant scope, and availability settings.':
-    'راجع المعاينة المحفوظة ونطاق المتاجر وإعدادات الإتاحة.',
-  'Back to library': 'العودة إلى المكتبة',
-  'Edit design': 'تعديل التصميم',
-  'Could not update template availability.': 'تعذّر تحديث إتاحة التصميم.',
-  'Availability controls new storefront selections; it does not publish a storefront.':
-    'تتحكم الإتاحة في اختيار تصميم جديد لواجهة المتجر، ولا تنشر واجهة متجر.',
-  'Current status': 'الحالة الحالية',
-  'Changing availability updates the library only. A merchant storefront changes only when that merchant saves its own storefront settings.':
-    'يغيّر تحديث الإتاحة المكتبة فقط. ولا تتغير واجهة المتجر إلا عندما يحفظ صاحبه إعداداته.',
-  'Loading template details…': 'جارٍ تحميل تفاصيل التصميم…',
-  'Try again to load this template.': 'حاول مجددًا لتحميل هذا التصميم.',
-  'This template is no longer in the library.': 'لم يعد هذا التصميم موجودًا في المكتبة.',
-  'Return to the design library to review the current templates.':
-    'عد إلى مكتبة التصاميم لمراجعة التصاميم الحالية.',
-  'Template overview': 'نظرة عامة على التصميم',
-  'Template eligibility and availability': 'ملاءمة التصميم وإتاحته',
   'All items': 'كل الأصناف',
   Breakfast: 'فطار',
   Desserts: 'حلويات',
@@ -1615,6 +1405,8 @@ export const ar: Record<string, string> = {
     'تعذر تحديث حالة الدفع. ما زال آخر رصيد محفوظ ظاهرًا.',
   'Recorded payments': 'المدفوعات المسجلة',
   'POS receipt': 'إيصال نقاط البيع',
+  'Order number': 'رقم الطلب',
+  'Loading receipt…': 'جارٍ تحميل الإيصال…',
   'Cashier name unavailable': 'اسم الكاشير غير متاح',
   'Receipt number': 'رقم الإيصال',
   Issued: 'تاريخ الإصدار',
@@ -1638,9 +1430,6 @@ export const ar: Record<string, string> = {
   Receipts: 'الإيصالات',
   'POS documents': 'مستندات نقاط البيع',
   'Receipts shown': 'الإيصالات المعروضة',
-  'No POS branches assigned': 'لا توجد فروع نقاط بيع مخصصة لك',
-  'Ask an owner to assign a branch before viewing receipts.':
-    'اطلب من المالك تخصيص فرع لك قبل عرض الإيصالات.',
   'Find and reprint a completed check without collecting payment again.':
     'ابحث عن إيصال حساب مكتمل وأعد طباعته بدون تحصيل المبلغ مرة أخرى.',
   'Search receipt or order number': 'ابحث برقم الإيصال أو الطلب',
@@ -1653,6 +1442,26 @@ export const ar: Record<string, string> = {
   'Recent receipts': 'الإيصالات الأخيرة',
   'Load more receipts': 'تحميل إيصالات أقدم',
   'Back to receipts': 'العودة إلى الإيصالات',
+  'Back to orders': 'العودة إلى الطلبات',
+  'Orders shown': 'الطلبات المعروضة',
+  'Search order number, customer or table': 'ابحث برقم الطلب أو العميل أو الترابيزة',
+  'Order status': 'حالة الطلب',
+  'All order types': 'كل أنواع الطلبات',
+  Settlement: 'حالة الحساب',
+  'Any settlement': 'كل حالات الحساب',
+  'From date': 'من تاريخ',
+  'To date': 'إلى تاريخ',
+  'The end date must be on or after the start date.': 'يجب أن يكون تاريخ النهاية في نفس تاريخ البداية أو بعده.',
+  'No matching orders': 'لا توجد طلبات مطابقة',
+  'No orders yet': 'لا توجد طلبات حتى الآن',
+  'Try another order or adjust filters.': 'جرّب رقمًا آخر أو غيّر عوامل التصفية.',
+  'Orders will appear here after they are confirmed.': 'ستظهر الطلبات هنا بعد تأكيدها.',
+  'Show order details': 'تفاصيل الطلب',
+  'Hide order details': 'إخفاء تفاصيل الطلب',
+  'Loading order details…': 'جارٍ تحميل تفاصيل الطلب…',
+  'Could not load order details.': 'تعذر تحميل تفاصيل الطلب.',
+  'Receipt is available after settlement.': 'يتاح الإيصال بعد سداد الحساب.',
+  completed: 'مكتمل',
   'Payment methods': 'وسائل الدفع',
   'Add payment method': 'إضافة وسيلة دفع',
   Method: 'الوسيلة',
@@ -1739,6 +1548,19 @@ export const ar: Record<string, string> = {
   'Confirm split': 'تأكيد التقسيم',
   'Sample receipt': 'إيصال تجريبي',
   'Take payment': 'تحصيل مبلغ',
+  'Collect order payment': 'تحصيل الحساب',
+  'Confirm collection of the remaining order balance in cash.':
+    'أكد تحصيل المبلغ المتبقي على الطلب كاش.',
+  'Order balance': 'حساب الطلب',
+  'Amount due': 'المطلوب تحصيله',
+  'Cash payment': 'الدفع كاش',
+  'Previously collected': 'تم تحصيله قبل كده',
+  'Collect {{amount}} cash': 'تحصيل {{amount}} كاش',
+  'This order has multiple checks or a split balance. Review it before collecting payment.':
+    'الطلب ده متقسم على أكتر من حساب. راجعه قبل التحصيل.',
+  'This order has no bill to collect. Refresh order details before trying again.':
+    'مفيش حساب متاح للتحصيل في الطلب ده. حدّث تفاصيل الطلب وحاول تاني.',
+  'Order items': 'أصناف الطلب',
   'Design preview — no money is collected.': 'معاينة تصميم — لا يتم تحصيل مبالغ حقيقية.',
   'SAMPLE · NOT A FISCAL DOCUMENT': 'نموذج تجريبي · ليس مستندًا ضريبيًا',
   Collected: 'تم تحصيله',
@@ -1968,16 +1790,35 @@ export const ar: Record<string, string> = {
   Blue: 'أزرق',
   'Edit order details': 'تعديل تفاصيل الطلب',
   'Details locked after sending': 'التفاصيل مقفلة بعد الإرسال',
+  'POS device setup': 'إعداد جهاز نقطة البيع',
+  'Connect this browser to a register': 'اربط هذا المتصفح بجهاز كاشير',
+  'Choose the cashier station for this browser. It will stay fixed for this branch.':
+    'اختر جهاز الكاشير لهذا المتصفح. سيظل مرتبطًا به في هذا الفرع.',
+  'Assigned branch': 'الفرع المعيّن',
+  'Cashier register': 'جهاز الكاشير',
+  'Could not pair this browser.': 'تعذر ربط هذا المتصفح بجهاز الكاشير.',
+  'Loading available registers…': 'جارٍ تحميل أجهزة الكاشير المتاحة…',
+  'Choose a register': 'اختر جهاز كاشير',
+  'No available registers at this branch.': 'لا توجد أجهزة كاشير متاحة في هذا الفرع.',
+  'Ask the owner to add a register or unpair a browser after its shift is closed.':
+    'اطلب من المالك إضافة جهاز أو فك ربط متصفح بعد إغلاق ورديته.',
+  'Connecting…': 'جارٍ الربط…',
+  'Connect register': 'ربط جهاز الكاشير',
+  'Pair this browser with a POS register before continuing.':
+    'اربط هذا المتصفح بجهاز كاشير قبل المتابعة.',
+  'This browser can only use its paired POS register.':
+    'لا يمكن لهذا المتصفح استخدام إلا جهاز الكاشير المرتبط به.',
+  'This browser is no longer paired with the selected POS register.':
+    'لم يعد هذا المتصفح مرتبطًا بجهاز الكاشير المحدد.',
+  'Sign in again to register this browser.': 'سجّل الدخول مجددًا لربط هذا المتصفح بجهاز كاشير.',
   'Register shift': 'وردية الكاشير',
   'Register control': 'إدارة الوردية',
   'Open register shift': 'فتح وردية الكاشير',
-  'Review the selected register and opening cash, or start a new shift.':
-    'راجع جهاز الكاشير المحدد والعهدة الافتتاحية، أو ابدأ وردية جديدة.',
-  'No active branches assigned': 'لا توجد فروع نشطة مخصصة',
-  'No active branches are assigned to this account.':
-    'لا توجد فروع نقاط بيع نشطة مخصصة لهذا الحساب.',
-  'Ask the merchant owner to assign you to an active POS branch.':
-    'اطلب من مالك النشاط إضافتك إلى فرع نقاط بيع نشط.',
+  'Review this register and opening cash, or start a new shift.':
+    'راجع جهاز الكاشير والعهدة الافتتاحية، أو ابدأ وردية جديدة.',
+  'The assigned branch is inactive.': 'الفرع المعيّن لهذا الحساب متوقف.',
+  'Select an active branch that belongs to this business.':
+    'اختر فرعًا نشطًا تابعًا لهذا النشاط.',
   Register: 'جهاز الكاشير',
   Online: 'متصل',
   'Offline - shift opening unavailable': 'غير متصل - لا يمكن فتح الوردية',
@@ -2012,7 +1853,7 @@ export const ar: Record<string, string> = {
     'يُسجَّل مبلغ العهدة مرة واحدة، ويُعاد استخدام الطلب نفسه بأمان عند انقطاع الإنترنت.',
   'Enter a non-negative amount with up to two decimal places.':
     'أدخل مبلغًا موجبًا أو صفرًا وبحد أقصى منزلتين عشريتين.',
-  'Select a branch and register first.': 'اختر فرعًا وجهاز كاشير أولًا.',
+  'Select a register first.': 'اختر جهاز كاشير أولًا.',
   'Could not open this shift.': 'تعذر فتح الوردية.',
   'Could not save this branch.': 'تعذر حفظ هذا الفرع.',
   'Could not save this POS workspace. Check browser storage settings.':
@@ -2029,6 +1870,9 @@ export const ar: Record<string, string> = {
   'New sale': 'بيع جديد',
   'Kitchen orders': 'طلبات المطبخ',
   'Incoming orders': 'الطلبات الواردة',
+  'Order page navigation': 'التنقل بين صفحات الطلبات',
+  'Page {{page}}': 'الصفحة {{page}}',
+  'Could not load the next order page.': 'تعذر تحميل صفحة الطلبات التالية.',
   'Dine-in rounds appear after you send them. Recipe stock is deducted on acceptance; direct stock is recorded at sale.':
     'تظهر جولات الصالة بعد إرسالها. يُخصم مخزون الوصفات عند القبول، ويُسجل المخزون المباشر وقت البيع.',
   'Station: {{station}}': 'المحطة: {{station}}',
@@ -2049,6 +1893,8 @@ export const ar: Record<string, string> = {
   'Search products': 'ابحث عن المنتجات',
   'Search products...': 'ابحث عن منتج...',
   'No open shift': 'لا توجد وردية مفتوحة',
+  'Loading shift…': 'جارٍ تحميل الوردية…',
+  'Shift status unavailable': 'تعذر تحميل حالة الوردية',
   'Offline - drafts saved': 'غير متصل — المسودات محفوظة',
   'Prices are confirmed by the server. Orders are saved online and can be retried safely.':
     'يؤكد الخادم الأسعار. تُحفظ الطلبات عند الاتصال ويمكن إعادة محاولتها بأمان.',

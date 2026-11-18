@@ -1,22 +1,22 @@
-import { createPostgresAdapter, PrismaClient, type Prisma } from '@waffarly/database';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+import { type Prisma } from '@waffarly/database';
 import { POS_EMPLOYEE_ROLES } from '@waffarly/contracts';
-import { config } from 'dotenv';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { Request, Response } from 'express';
 import { AuthService } from '../../src/modules/auth/auth.service.js';
-import { PosEmployeeService } from '../../src/modules/auth/pos-employee.service.js';
+import { PosEmployeeService } from '../../src/modules/employees/pos-employee.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'persists employee presets, isolates tenants, reloads grants and revokes POS sessions',
   { skip: !databaseUrl },
-  async () => {
+  async (testContext) => {
     assert.ok(databaseUrl);
-    const prisma = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+    const prisma = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback employee role verification fixtures');
     try {
       await assert.rejects(
@@ -45,6 +45,14 @@ it(
                 updatedBy: 'test',
               },
             });
+            const replacementBranch = await tx.branch.create({
+              data: {
+                merchantId: merchant.id,
+                name: 'Replacement',
+                createdBy: 'test',
+                updatedBy: 'test',
+              },
+            });
             const otherBranch = await tx.branch.create({
               data: { merchantId: other.id, name: 'Foreign', createdBy: 'test', updatedBy: 'test' },
             });
@@ -61,7 +69,7 @@ it(
               username: 'staff',
               displayName: 'Role Test',
               password: 'long-test-password',
-              branchIds: [branch.id],
+              branchId: branch.id,
             };
             for (const role of POS_EMPLOYEE_ROLES) {
               const saved = await employees.create(merchant.id, 'owner', {
@@ -70,7 +78,7 @@ it(
                 role,
               });
               assert.equal(saved.role, role);
-              assert.deepEqual(saved.branchIds, [branch.id]);
+              assert.equal(saved.branch.id, branch.id);
               const filtered = await employees.list(merchant.id, {
                 role,
                 search: '',
@@ -89,10 +97,10 @@ it(
             await assert.rejects(
               employees.create(merchant.id, 'owner', {
                 ...input,
-                branchIds: [otherBranch.id],
+                branchId: otherBranch.id,
                 role: 'accountant',
               }),
-              /belong to this business/,
+              /belongs to this business/,
             );
             const cashier = await employees.create(merchant.id, 'owner', {
               ...input,
@@ -109,6 +117,7 @@ it(
                 tokenHash: createHash('sha256').update(sessionToken).digest('hex'),
                 subjectKind: 'POS',
                 subjectId: cashier.id,
+                deviceId: '88888888-8888-4888-8888-888888888888',
                 expiresAt: new Date(Date.now() + 60_000),
               },
             });
@@ -119,6 +128,7 @@ it(
                 tokenHash: logoutSessionHash,
                 subjectKind: 'POS',
                 subjectId: cashier.id,
+                deviceId: '99999999-9999-4999-8999-999999999999',
                 expiresAt: new Date(Date.now() + 60_000),
               },
             });
@@ -179,7 +189,7 @@ it(
               await tx.authSession.findUnique({ where: { tokenHash: logoutSessionHash } }),
               null,
             );
-            await assert.rejects(auth.requirePosEmployee(logoutRequest), /Session has expired/);
+            await assert.rejects(auth.requirePosEmployee(logoutRequest), /session has expired/i);
             assert.ok(
               await tx.authSession.findUnique({
                 where: { tokenHash: createHash('sha256').update(sessionToken).digest('hex') },
@@ -191,7 +201,7 @@ it(
               displayName: 'Role Test',
               active: true,
               role: 'accountant',
-              branchIds: [branch.id],
+              branchId: branch.id,
             });
             assert.deepEqual(accountant.permissions, ['view_receipts']);
             assert.deepEqual((await auth.requirePosEmployee(request)).permissions, [
@@ -202,7 +212,7 @@ it(
                 revision: accountant.revision,
                 displayName: 'Role Test',
                 active: false,
-                branchIds: [],
+                branchId: branch.id,
               }),
               /not found/,
             );
@@ -212,19 +222,19 @@ it(
                 displayName: 'Role Test',
                 active: true,
                 role: 'branch_manager',
-                branchIds: [branch.id],
+                branchId: branch.id,
               }),
               /changed since/,
             );
             await tx.branch.update({ where: { id: branch.id }, data: { archivedAt: new Date() } });
-            await assert.rejects(auth.requirePosEmployee(request), /No active branch/);
+            await assert.rejects(auth.requirePosEmployee(request), /assigned branch is inactive/);
             await employees.update(merchant.id, 'owner', cashier.id, {
               revision: accountant.revision,
               displayName: 'Role Test',
               active: false,
-              branchIds: [],
+              branchId: replacementBranch.id,
             });
-            await assert.rejects(auth.requirePosEmployee(request), /Session has expired/);
+            await assert.rejects(auth.requirePosEmployee(request), /session has expired/i);
             throw rollback;
           },
           { timeout: 30_000 },

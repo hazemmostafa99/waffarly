@@ -55,6 +55,11 @@ const InventoryOperationsPage = lazy(() =>
     default: module.InventoryOperationsPage,
   })),
 );
+const InventoryStockActionPage = lazy(() =>
+  import('./features/inventory/InventoryStockActionPage.js').then((module) => ({
+    default: module.InventoryStockActionPage,
+  })),
+);
 const PurchaseInvoicesPage = lazy(() =>
   import('./features/purchasing/PurchaseInvoicesPage.js').then((module) => ({
     default: module.PurchaseInvoicesPage,
@@ -62,6 +67,28 @@ const PurchaseInvoicesPage = lazy(() =>
 );
 const EmployeesPage = lazy(() =>
   import('./features/staff/EmployeesPage.js').then((module) => ({ default: module.EmployeesPage })),
+);
+const StaffPage = lazy(() =>
+  import('./features/hr/StaffPage.js').then((module) => ({ default: module.StaffPage })),
+);
+const AttendancePage = lazy(() =>
+  import('./features/hr/AttendancePage.js').then((module) => ({ default: module.AttendancePage })),
+);
+const PayrollPage = lazy(() =>
+  import('./features/hr/PayrollPage.js').then((module) => ({ default: module.PayrollPage })),
+);
+const StaffAdvancesPage = lazy(() =>
+  import('./features/hr/StaffAdvancesPage.js').then((module) => ({
+    default: module.StaffAdvancesPage,
+  })),
+);
+const ExpensesPage = lazy(() =>
+  import('./features/hr/ExpensesPage.js').then((module) => ({ default: module.ExpensesPage })),
+);
+const CouriersPage = lazy(() =>
+  import('./features/delivery/CouriersPage.js').then((module) => ({
+    default: module.CouriersPage,
+  })),
 );
 const RegistersPage = lazy(() =>
   import('./features/pos/RegistersPage.js').then((module) => ({ default: module.RegistersPage })),
@@ -74,21 +101,7 @@ const CashCustodyPage = lazy(() =>
 const TablesPage = lazy(() =>
   import('./features/pos/TablesPage.js').then((module) => ({ default: module.TablesPage })),
 );
-const ShiftReportsPage = lazy(() =>
-  import('./features/pos/ShiftReportsPage.js').then((module) => ({
-    default: module.ShiftReportsPage,
-  })),
-);
-const ItemReturnReportsPage = lazy(() =>
-  import('./features/pos/ItemReturnReportsPage.js').then((module) => ({
-    default: module.ItemReturnReportsPage,
-  })),
-);
-const PosOperationsReportPage = lazy(() =>
-  import('./features/pos/PosOperationsReportPage.js').then((module) => ({
-    default: module.PosOperationsReportPage,
-  })),
-);
+const ReferenceReportsPage = lazy(() => import('./features/reports/ReferenceReportsPage.js'));
 const InventoryHealthPage = lazy(() =>
   import('./features/inventory/InventoryVisibilityPages.js').then((module) => ({
     default: module.InventoryHealthPage,
@@ -127,6 +140,7 @@ export const router = createBrowserRouter([
     element: <MerchantLayout />,
     children: [
       { index: true, element: loadOnRoute(<Dashboard />) },
+      { path: 'reports', element: loadOnRoute(<ReferenceReportsPage />) },
       { path: 'dashboard', element: <Navigate to="/" replace /> },
       { path: 'products', element: loadOnRoute(<ProductsPage />) },
       { path: 'products/new', element: loadOnRoute(<ProductBuilderPage />) },
@@ -152,6 +166,14 @@ export const router = createBrowserRouter([
         element: loadOnRoute(<InventoryOperationsPage view="opening" />),
       },
       {
+        path: 'inventory/waste',
+        element: loadOnRoute(<InventoryStockActionPage action="waste" />),
+      },
+      {
+        path: 'inventory/transfers',
+        element: loadOnRoute(<InventoryStockActionPage action="transfer" />),
+      },
+      {
         path: 'inventory/settings',
         element: loadOnRoute(<InventoryOperationsPage view="settings" />),
       },
@@ -163,12 +185,19 @@ export const router = createBrowserRouter([
       { path: 'discounts', element: loadOnRoute(<DiscountsPage />) },
       { path: 'branches', element: loadOnRoute(<BranchesPage />) },
       { path: 'employees', element: loadOnRoute(<EmployeesPage />) },
+      { path: 'staff', element: loadOnRoute(<StaffPage />) },
+      { path: 'staff/attendance', element: loadOnRoute(<AttendancePage />) },
+      { path: 'staff/payroll', element: loadOnRoute(<PayrollPage />) },
+      { path: 'staff/advances', element: loadOnRoute(<StaffAdvancesPage />) },
+      { path: 'staff/expenses', element: loadOnRoute(<ExpensesPage />) },
+      { path: 'delivery-couriers', element: loadOnRoute(<CouriersPage />) },
       { path: 'pos-registers', element: loadOnRoute(<RegistersPage />) },
       { path: 'pos-cash', element: loadOnRoute(<CashCustodyPage />) },
       { path: 'pos-tables', element: loadOnRoute(<TablesPage />) },
-      { path: 'pos-shift-reports', element: loadOnRoute(<ShiftReportsPage />) },
-      { path: 'pos-item-returns', element: loadOnRoute(<ItemReturnReportsPage />) },
-      { path: 'pos-operations', element: loadOnRoute(<PosOperationsReportPage />) },
+      { path: 'pos-shift-reports', element: loadOnRoute(<ReferenceReportsPage />) },
+      { path: 'pos-item-returns', element: loadOnRoute(<ReferenceReportsPage />) },
+      { path: 'pos-operations', element: loadOnRoute(<ReferenceReportsPage />) },
+      { path: 'profitability', element: loadOnRoute(<ReferenceReportsPage />) },
       { path: 'settings', element: loadOnRoute(<SettingsRoute />) },
       { path: 'account', element: loadOnRoute(<AccountPage />) },
       { path: '*', element: <Navigate to="/" replace /> },

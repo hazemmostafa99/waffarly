@@ -13,6 +13,7 @@ import { ProductController } from './products/product.controller.js';
 import { PosCatalogController } from './pos-catalog.controller.js';
 import { ProductConsumptionService } from './products/product-consumption.service.js';
 import { ProductService } from './products/product.service.js';
+import { ProductCostPreviewService } from './products/product-cost-preview.service.js';
 @Module({
   imports: [AuthModule, InventoryModule],
   controllers: [
@@ -29,8 +30,14 @@ import { ProductService } from './products/product.service.js';
     ProductService,
     ProductPricingService,
     ProductConsumptionService,
+    ProductCostPreviewService,
     CatalogQueryService,
   ],
-  exports: [MenuSettingsService, ProductPricingService, ProductConsumptionService, CatalogQueryService],
+  exports: [
+    MenuSettingsService,
+    ProductPricingService,
+    ProductConsumptionService,
+    CatalogQueryService,
+  ],
 })
 export class CatalogModule {}

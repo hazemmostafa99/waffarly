@@ -3,14 +3,12 @@ import {
   BadgeCheck,
   ClipboardList,
   LayoutDashboard,
-  Network,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
   Store,
   Tags,
-  Utensils,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
@@ -24,8 +22,6 @@ const navigation = [
   { to: '/plans', label: 'Subscription plans', icon: Tags },
   { to: '/subscriptions', label: 'Subscription management', icon: BadgeCheck },
   { to: '/activities', label: 'Business activities', icon: Activity },
-  { to: '/modules', label: 'Modules', icon: Network },
-  { to: '/templates', label: 'Design library', icon: Utensils },
 ] as const;
 
 export function AdminSidebar() {
@@ -174,7 +170,10 @@ export function AdminSidebar() {
             {t('PLATFORM')}
           </p>
         )}
-        <nav className="grid min-w-0 shrink-0 grid-cols-[minmax(0,1fr)] gap-1" aria-label={t('Platform administration')}>
+        <nav
+          className="grid min-w-0 shrink-0 grid-cols-[minmax(0,1fr)] gap-1"
+          aria-label={t('Platform administration')}
+        >
           {navigation.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -182,8 +181,7 @@ export function AdminSidebar() {
               end={
                 to === '/dashboard' ||
                 to === '/subscriptions' ||
-                to === '/activities' ||
-                to === '/modules'
+                to === '/activities'
               }
               title={t(label)}
               className={({ isActive }) =>
@@ -199,29 +197,15 @@ export function AdminSidebar() {
                     strokeWidth={1.8}
                     aria-hidden="true"
                   />
-                  {!isCollapsedDesktop && <span className="min-w-0 flex-1 truncate">{t(label)}</span>}
+                  {!isCollapsedDesktop && (
+                    <span className="min-w-0 flex-1 truncate">{t(label)}</span>
+                  )}
                 </>
               )}
             </NavLink>
           ))}
         </nav>
 
-        {!isCollapsedDesktop && (
-          <div className="mt-auto flex shrink-0 items-start gap-2.5 rounded-2xl bg-waffarly-gold-light p-3 text-waffarly-ink">
-            <div
-              className="grid size-9 shrink-0 place-items-center rounded-xl bg-white text-waffarly-gold"
-              aria-hidden="true"
-            >
-              <Utensils size={17} />
-            </div>
-            <div className="min-w-0">
-              <strong className="block text-xs leading-5">{t('Good food, brighter days')}</strong>
-              <p className="mb-0 mt-1 text-[11px] leading-5 text-waffarly-muted">
-                {t('Manage the Waffarly platform from one place.')}
-              </p>
-            </div>
-          </div>
-        )}
       </aside>
     </>
   );

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { test } from 'node:test';
-import { posDeliveryCommandSchema } from '../../src/modules/orders/pos-delivery.schemas.js';
+import { posDeliveryCommandSchema } from '../../src/modules/orders/delivery/pos-delivery.schemas.js';
 import { parseRecordPosCheckPaymentRequest } from '../../src/modules/payments/payments.schemas.js';
 import {
   closePosShiftSchema,
@@ -58,15 +58,15 @@ test('courier custody is cash only and cannot claim a receiving drawer simultane
   );
 });
 
-test('shift handover retains its named recipient in recovery but never approval credentials', () => {
+test('delivery close confirmation is retained in recovery but never approval credentials', () => {
   const parsed = closePosShiftSchema.parse({
     requestId: randomUUID(),
     countedCash: '50.00',
-    deliveryHandover: { recipientUsername: 'mona' },
+    confirmPendingDeliveries: true,
     approval: { username: 'supervisor', password: 'secret' },
   });
   const saved = withoutShiftCloseApproval(parsed);
-  assert.deepEqual(saved.deliveryHandover, { recipientUsername: 'mona' });
+  assert.equal(saved.confirmPendingDeliveries, true);
   assert.equal(JSON.stringify(saved).includes('secret'), false);
   assert.equal(
     closePosShiftSchema.safeParse({

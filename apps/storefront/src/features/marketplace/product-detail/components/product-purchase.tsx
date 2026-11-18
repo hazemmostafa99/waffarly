@@ -13,7 +13,11 @@ import { money } from '@/features/marketplace/shared/lib/format-money';
 import { type MarketplaceProduct } from '@/features/marketplace/catalog/model/catalog';
 
 export function ProductPurchase({ product }: { product: MarketplaceProduct }) {
-  return product.merchantType === 'restaurant' ? <MealPurchase product={product} /> : <GenericProductPurchase product={product} />;
+  return product.merchantType === 'restaurant' ? (
+    <MealPurchase product={product} />
+  ) : (
+    <GenericProductPurchase product={product} />
+  );
 }
 
 function GenericProductPurchase({ product }: { product: MarketplaceProduct }) {
@@ -23,7 +27,6 @@ function GenericProductPurchase({ product }: { product: MarketplaceProduct }) {
     (state) => state.cart.find((line) => line.productId === product.id)?.quantity ?? 0,
   );
   const add = useCartStore((state) => state.addToCart);
-  const open = useCartStore((state) => state.setCartOpen);
   const remaining = MAX_CART_QUANTITY - existing;
   const allowed = quantity <= remaining;
   return (
@@ -52,7 +55,7 @@ function GenericProductPurchase({ product }: { product: MarketplaceProduct }) {
         )}
         disabled={!allowed}
         onClick={() => {
-          if (add(product.id, quantity)) open(true);
+          if (add(product.id, quantity)) setNotice('');
           else setNotice('السلة فيها طلب من مطعم. راجع السلة واحذف أصنافه قبل إضافة منتجات متجر.');
         }}
       >
@@ -61,7 +64,9 @@ function GenericProductPurchase({ product }: { product: MarketplaceProduct }) {
       <p className={'detail-note text-[12px] leading-[1.8] text-muted-foreground'}>
         تجربة محلية · الإجمالي لا يشمل رسومًا إضافية، وحد الكمية ليس تأكيدًا للمخزون.
       </p>
-      <p role="status" className="text-sm text-destructive empty:hidden">{notice}</p>
+      <p role="status" className="text-sm text-destructive empty:hidden">
+        {notice}
+      </p>
       {!allowed && (
         <p role="status" className={'detail-note text-[12px] leading-[1.8] text-muted-foreground'}>
           الكمية دي هتتجاوز حد التجربة ({MAX_CART_QUANTITY} قطعة لكل منتج). عدّل الكمية أو راجع

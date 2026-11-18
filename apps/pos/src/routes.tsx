@@ -7,9 +7,9 @@ import { POSCatalogScreen } from './features/catalog/pos-catalog-screen.js';
 import { PosShiftScreen } from './features/shifts/pos-shift-screen.js';
 import { PosDeliveryScreen } from './features/delivery/pos-delivery-screen.js';
 import { PosDiningScreen } from './features/dining/pos-dining-screen.js';
-import { PosReceiptsScreen } from './features/receipts/pos-receipts-screen.js';
 import { EmployeeAccess, EmployeeAccessNotice } from './features/auth/employee-access.js';
 import { EmployeeInventoryScreen } from './features/inventory/employee-inventory-screen.js';
+import { PosOrdersScreen } from './features/receipts/pos-receipts-screen.js';
 
 export const router = createBrowserRouter([
   ...(import.meta.env.DEV
@@ -39,12 +39,25 @@ export const router = createBrowserRouter([
       },
       {
         index: true,
+        element: <Navigate to="/kitchen" replace />,
+      },
+      {
+        path: 'kitchen',
         element: (
           <EmployeeAccess permission="view_orders">
             <POSScreen />
           </EmployeeAccess>
         ),
       },
+      {
+        path: 'orders',
+        element: (
+          <EmployeeAccess permission="view_receipts">
+            <PosOrdersScreen />
+          </EmployeeAccess>
+        ),
+      },
+      { path: 'receipts', element: <Navigate to="/orders" replace /> },
       {
         path: 'catalog',
         element: (
@@ -58,14 +71,6 @@ export const router = createBrowserRouter([
         element: (
           <EmployeeAccess permission="sell">
             <PosDiningScreen />
-          </EmployeeAccess>
-        ),
-      },
-      {
-        path: 'receipts',
-        element: (
-          <EmployeeAccess permission="view_receipts">
-            <PosReceiptsScreen />
           </EmployeeAccess>
         ),
       },

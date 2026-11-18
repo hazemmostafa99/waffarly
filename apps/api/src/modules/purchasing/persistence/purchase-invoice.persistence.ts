@@ -1,5 +1,10 @@
 import { NotFoundException } from '@nestjs/common';
-import type { CreatePurchaseInvoiceRequest } from '@waffarly/contracts';
+import {
+  calculatePurchaseInvoiceAmounts,
+  resolvePurchaseInvoiceDiscount,
+  normalizePurchaseUnitCost,
+  type CreatePurchaseInvoiceRequest,
+} from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { convertToBaseQuantity, normalizeStockQuantity } from '../../inventory/index.js';
 import type { InvoiceRecord } from '../purchase-invoice.mapper.js';
@@ -9,7 +14,16 @@ export async function resolveInvoiceReferences(
   merchantId: string,
   input: Pick<
     CreatePurchaseInvoiceRequest,
-    'supplierId' | 'supplierInvoiceNumber' | 'warehouseId' | 'lines'
+    | 'supplierId'
+    | 'supplierInvoiceNumber'
+    | 'warehouseId'
+    | 'lines'
+    | 'discountAmount'
+    | 'shippingAmount'
+    | 'invoiceDate'
+    | 'notes'
+    | 'discountType'
+    | 'discountValue'
   >,
 ) {
   await lockSupplier(transaction, merchantId, input.supplierId);
@@ -44,6 +58,15 @@ export async function resolveInvoiceReferences(
   if (items.length !== itemIds.length)
     throw new NotFoundException('Active stock item was not found.');
   const itemById = new Map(items.map((item) => [item.id, item]));
+  const amounts = calculatePurchaseInvoiceAmounts(
+    input.lines,
+    resolvePurchaseInvoiceDiscount(
+      input.lines,
+      input.discountType ?? 'amount',
+      input.discountValue ?? input.discountAmount ?? '0.00',
+    )!,
+    input.shippingAmount ?? '0.00',
+  )!;
   const lines = input.lines.map((line, position) => {
     const item = itemById.get(line.stockItemId)!;
     const quantity = normalizeStockQuantity(line.quantity);
@@ -58,6 +81,7 @@ export async function resolveInvoiceReferences(
       })),
     );
     const pack = item.units.find((unit) => unit.code === line.unitCode);
+    const pricing = amounts.lines[position]!;
     return {
       stockItemId: item.id,
       stockItemName: item.name,
@@ -66,6 +90,11 @@ export async function resolveInvoiceReferences(
       unitName: pack?.name ?? line.unitCode,
       condition: line.condition,
       quantity,
+      unitCost: normalizePurchaseUnitCost(line.unitCost)!,
+      lineSubtotal: pricing.lineSubtotal,
+      discountAllocation: pricing.discountAllocation,
+      shippingAllocation: pricing.shippingAllocation,
+      lineTotal: pricing.lineTotal,
       position,
     };
   });
@@ -73,10 +102,18 @@ export async function resolveInvoiceReferences(
   return {
     supplier,
     warehouse,
+    invoiceDate: input.invoiceDate ? new Date(`${input.invoiceDate}T00:00:00.000Z`) : null,
+    notes: input.notes?.trim() || null,
+    discountType: input.discountType ?? 'amount',
+    discountValue: input.discountValue ?? input.discountAmount ?? '0.00',
     supplierInvoiceNumber,
     supplierInvoiceNumberKey: supplierInvoiceNumber
       ? supplierInvoiceNumber.toLocaleLowerCase('en-US')
       : null,
+    subtotalAmount: amounts.subtotalAmount,
+    discountAmount: amounts.discountAmount,
+    shippingAmount: amounts.shippingAmount,
+    totalAmount: amounts.totalAmount,
     lines,
   };
 }

@@ -4,6 +4,7 @@ import type { PosReceipt } from '@waffarly/contracts';
 import { useLocale } from '@waffarly/ui';
 import { ArrowLeft, Printer, RotateCcw } from 'lucide-react';
 import { PosButton } from '../../components/pos-button.js';
+import { getPosOrderNumber } from '../orders/pos-order-number.js';
 import { isReadablePosLabel } from '../../lib/display-label.js';
 import { getPosCheckReceipt, posCheckReceiptKey } from './pos-receipts.api.js';
 import { PosItemReturnDialog } from './pos-item-return-dialog.js';
@@ -126,11 +127,13 @@ function ReceiptDocument({
     timeStyle: 'short',
   }).format(new Date(receipt.issuedAt));
   const fulfillmentLabel =
-    receipt.fulfillmentType === 'dine_in'
-      ? t('Dine in')
-      : receipt.fulfillmentType === 'delivery'
-        ? t('Delivery')
-        : t('Takeaway');
+    receipt.fulfillmentType === 'pickup'
+      ? t('Pickup')
+      : receipt.fulfillmentType === 'dine_in'
+        ? t('Dine in')
+        : receipt.fulfillmentType === 'delivery'
+          ? t('Delivery')
+          : t('Takeaway');
   const cashierName = isReadablePosLabel(receipt.cashierName)
     ? receipt.cashierName.trim()
     : t('Cashier name unavailable');
@@ -165,13 +168,39 @@ function ReceiptDocument({
           <strong className="mt-2 rounded-full bg-neutral-100 px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-wide">
             {t('POS receipt')}
           </strong>
+          <div className="mt-2 grid justify-items-center gap-0.5">
+            <span className="text-[0.62rem] text-neutral-600">{t('Order number')}</span>
+            <strong className="text-xl tabular-nums">
+              <bdi dir="ltr">
+                #
+                {getPosOrderNumber({
+                  id: receipt.orderId,
+                  branchOrderNumber: receipt.branchOrderNumber,
+                  orderReference: receipt.orderReference,
+                })}
+              </bdi>
+            </strong>
+          </div>
         </header>
 
         <dl className="m-0 grid gap-2 border-b border-dashed border-neutral-300 py-3 text-xs">
           <ReceiptMetaRow label={t('Receipt number')} value={receipt.receiptNumber} />
-          <ReceiptMetaRow label={t('Order')} value={receipt.orderReference} />
           <ReceiptMetaRow label={t('Issued')} value={issuedAt} />
           <ReceiptMetaRow label={t('Check')} value={formatCount(receipt.checkNumber)} />
+          {receipt.source && (
+            <ReceiptMetaRow
+              label={t('Order source')}
+              value={t(
+                receipt.source === 'waffarly'
+                  ? 'Waffarly'
+                  : receipt.source === 'storefront'
+                    ? 'Storefront'
+                      : receipt.source === 'pos'
+                        ? 'POS'
+                        : receipt.source,
+              )}
+            />
+          )}
           <ReceiptMetaRow label={t('Service type')} value={fulfillmentLabel} />
           {receipt.tableCode && <ReceiptMetaRow label={t('Table')} value={receipt.tableCode} />}
           <ReceiptMetaRow label={t('Cashier')} value={cashierName} />
@@ -194,6 +223,11 @@ function ReceiptDocument({
                     <strong className="break-words">{item.name}</strong>
                     {item.variantName && (
                       <small className="break-words text-neutral-600">{item.variantName}</small>
+                    )}
+                    {item.promotionDiscount && Number(item.promotionDiscount) > 0 && (
+                      <small className="break-words font-semibold text-emerald-700">
+                        {t('Product discount')}: −{formatMoney(item.promotionDiscount, receipt.currency)}
+                      </small>
                     )}
                     {item.selections.map((selection) => (
                       <small className="break-words text-neutral-600" key={selection}>

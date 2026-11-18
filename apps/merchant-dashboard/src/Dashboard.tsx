@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type {
   CatalogProductSummary,
-  StorefrontOrderSummary,
+  StorefrontOrderListItem,
+  StorefrontOrderListPage,
+  StorefrontOrderListStats,
   StorefrontOrderStatus,
 } from '@waffarly/contracts';
 import { useLocale } from '@waffarly/ui';
@@ -9,11 +11,28 @@ import type { OwnerProfile } from '@waffarly/contracts';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Icon } from './Icons.js';
 import { ProductThumb } from './MerchantDashboard.js';
-import { apiRequest } from './lib/api-client.js';
+import { apiRequest, apiRequestSingle } from './lib/api-client.js';
 import { dashboardCopy } from './dashboard-copy.js';
 
 type ReportPeriod = 'weekly' | 'monthly';
 type SalesPoint = { label: string; orderValue: number; orders: number };
+
+function cairoDateStamp(date: Date) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Cairo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
+function shiftCalendarDate(date: string, days: number) {
+  const shifted = new Date(`${date}T00:00:00.000Z`);
+  shifted.setUTCDate(shifted.getUTCDate() + days);
+  return shifted.toISOString().slice(0, 10);
+}
 
 function DashboardOrderChart({
   points,
@@ -127,31 +146,52 @@ function statusLabel(status: StorefrontOrderStatus, t: (message: string) => stri
   );
 }
 
+function sourceLabel(source: StorefrontOrderListItem['source']) {
+  if (source === 'waffarly') return 'Waffarly';
+  if (source === 'storefront') return 'Storefront';
+  if (source === 'pos') return 'POS';
+  return source;
+}
+
 export function Dashboard() {
   const { t, locale, formatNumber } = useLocale();
   const copy = (message: string) => dashboardCopy(message, locale, t);
   const navigate = useNavigate();
   const { profile, search } = useOutletContext<{ profile: OwnerProfile; search: string }>();
   const [period, setPeriod] = useState<ReportPeriod>('weekly');
-  const [orders, setOrders] = useState<StorefrontOrderSummary[]>([]);
+  const [orders, setOrders] = useState<StorefrontOrderListItem[]>([]);
+  const [orderStats, setOrderStats] = useState<StorefrontOrderListStats | null>(null);
   const [products, setProducts] = useState<CatalogProductSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const dateBounds = useMemo(() => {
+    const to = cairoDateStamp(new Date());
+    const days = period === 'weekly' ? 7 : 30;
+    return { from: shiftCalendarDate(to, -(days - 1)), to };
+  }, [period, refreshKey]);
 
   useEffect(() => {
     let current = true;
     setLoading(true);
     setLoadError(false);
     void Promise.allSettled([
-      apiRequest<StorefrontOrderSummary[]>('/owner/orders'),
+      apiRequestSingle<StorefrontOrderListPage>(
+        '/owner/orders/inbox?limit=50&includeStats=false',
+      ),
+      apiRequestSingle<StorefrontOrderListPage>(
+        `/owner/orders/inbox?limit=1&from=${dateBounds.from}&to=${dateBounds.to}&report=true`,
+      ),
       apiRequest<CatalogProductSummary[]>('/owner/catalog/products'),
     ])
-      .then(([orderResult, productResult]) => {
+      .then(([latestResult, reportResult, productResult]) => {
         if (!current) return;
-        if (orderResult.status === 'fulfilled') setOrders(orderResult.value);
-        else {
-          setOrders([]);
+        if (latestResult.status === 'fulfilled') setOrders(latestResult.value.items);
+        else setOrders([]);
+        if (reportResult.status === 'fulfilled')
+          setOrderStats(reportResult.value.stats ?? null);
+        else setOrderStats(null);
+        if (latestResult.status === 'rejected' || reportResult.status === 'rejected') {
           setLoadError(true);
         }
         setProducts(productResult.status === 'fulfilled' ? productResult.value : []);
@@ -162,7 +202,7 @@ export function Dashboard() {
     return () => {
       current = false;
     };
-  }, [refreshKey]);
+  }, [dateBounds.from, dateBounds.to, refreshKey]);
 
   const matchingOrders = useMemo(() => {
     const term = search.trim().toLocaleLowerCase();
@@ -172,47 +212,28 @@ export function Dashboard() {
             order.id,
             order.customerName,
             order.customerPhone,
-            ...order.lines.map((line) => line.productName),
+            order.previewItemName,
           ].some((value) => value?.toLocaleLowerCase().includes(term)),
         )
       : orders;
     return filtered.slice(0, 5);
   }, [orders, search]);
 
-  const periodOrders = useMemo(() => {
-    const days = period === 'weekly' ? 7 : 30;
-    const end = new Date();
-    const start = new Date(end);
-    start.setHours(0, 0, 0, 0);
-    start.setDate(start.getDate() - days + 1);
-    return orders.filter((order) => {
-      const createdAt = new Date(order.createdAt);
-      return createdAt >= start && createdAt <= end;
-    });
-  }, [orders, period]);
-
   const report = useMemo(() => {
-    const nonRejected = periodOrders.filter(
-      (order) => !['rejected', 'cancelled'].includes(order.status),
-    );
-    const orderValue = nonRejected.reduce((sum, order) => sum + Number(order.total), 0);
+    const aggregate = orderStats?.report;
+    const orderValue = Number(aggregate?.activeOrderValue ?? 0);
     return {
       orderValue,
-      orders: periodOrders.length,
-      customers: new Set(
-        nonRejected.map((order) => order.customerPhone).filter((phone): phone is string => Boolean(phone)),
-      ).size,
-      average: nonRejected.length ? orderValue / nonRejected.length : 0,
+      orders: orderStats?.totalOrders ?? 0,
+      customers: aggregate?.activeUniqueCustomers ?? 0,
+      average: aggregate?.activeOrderCount ? orderValue / aggregate.activeOrderCount : 0,
     };
-  }, [periodOrders]);
+  }, [orderStats]);
 
   const series = useMemo<SalesPoint[]>(() => {
     const pointCount = period === 'weekly' ? 7 : 4;
     const days = period === 'weekly' ? 7 : 30;
-    const end = new Date();
-    end.setHours(0, 0, 0, 0);
-    const start = new Date(end);
-    start.setDate(start.getDate() - days + 1);
+    const start = new Date(`${dateBounds.from}T00:00:00.000Z`);
     const points = Array.from({ length: pointCount }, (_, index) => {
       const pointDate = new Date(start);
       if (period === 'weekly') pointDate.setDate(pointDate.getDate() + index);
@@ -221,14 +242,15 @@ export function Dashboard() {
           period === 'weekly'
             ? new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG-u-nu-latn', {
                 weekday: 'short',
+                timeZone: 'UTC',
               }).format(pointDate)
             : `Week ${index + 1}`,
         orderValue: 0,
         orders: 0,
       };
     });
-    for (const order of periodOrders) {
-      const created = new Date(order.createdAt);
+    for (const day of orderStats?.report?.dailyTrend ?? []) {
+      const created = new Date(`${day.date}T00:00:00.000Z`);
       const offset = Math.floor((created.getTime() - start.getTime()) / 86_400_000);
       const bucket =
         period === 'weekly'
@@ -236,36 +258,26 @@ export function Dashboard() {
           : Math.min(pointCount - 1, Math.floor(offset / (days / pointCount)));
       const point = points[bucket];
       if (!point) continue;
-      point.orders += 1;
-      if (!['rejected', 'cancelled'].includes(order.status))
-        point.orderValue += Number(order.total);
+      point.orders += day.orderCount;
+      point.orderValue += Number(day.orderValue);
     }
     return points;
-  }, [locale, period, periodOrders]);
+  }, [dateBounds.from, locale, orderStats, period]);
 
   const productTotals = useMemo(() => {
-    const totals = new Map<string, { quantity: number; value: number }>();
-    for (const order of periodOrders) {
-      if (['rejected', 'cancelled'].includes(order.status)) continue;
-      for (const line of order.lines) {
-        const current = totals.get(line.productName) ?? { quantity: 0, value: 0 };
-        current.quantity += line.quantity;
-        current.value += Number(line.lineTotal);
-        totals.set(line.productName, current);
-      }
-    }
-    return [...totals.entries()]
-      .map(([name, totals]) => ({ name, ...totals }))
-      .sort((left, right) => right.quantity - left.quantity || right.value - left.value)
-      .slice(0, 5);
-  }, [periodOrders]);
+    return (orderStats?.report?.topProducts ?? []).map((product) => ({
+      name: product.name,
+      quantity: product.quantity,
+      value: Number(product.value),
+    }));
+  }, [orderStats]);
 
   const fulfillment = useMemo(
     () => ({
-      pickup: periodOrders.filter((order) => order.fulfillmentType === 'pickup').length,
-      delivery: periodOrders.filter((order) => order.fulfillmentType === 'delivery').length,
+      pickup: orderStats?.report?.fulfillmentCounts.pickup ?? 0,
+      delivery: orderStats?.report?.fulfillmentCounts.delivery ?? 0,
     }),
-    [periodOrders],
+    [orderStats],
   );
   const fulfillmentTotal = fulfillment.pickup + fulfillment.delivery;
   const pickupShare = fulfillmentTotal ? (fulfillment.pickup / fulfillmentTotal) * 100 : 0;
@@ -306,9 +318,9 @@ export function Dashboard() {
     ],
   ] as const;
   const actions = [
-    ['Add Product', 'box', '/products', 'mint'],
-    ['Create Discount', 'discounts', '/discounts', 'cream'],
-    ['Add Branch', 'store', '/branches', 'cream'],
+    ['Add Product', 'box', '/products/new', 'mint'],
+    ['Create Discount', 'discounts', '/discounts?action=create', 'cream'],
+    ['Add Branch', 'store', '/branches?action=create', 'cream'],
     ['Manage Customers', 'customers', '/customers', 'blue'],
   ] as const;
 
@@ -323,12 +335,15 @@ export function Dashboard() {
             )}{' '}
             <span aria-hidden="true">👋</span>
           </h1>
-          <p>{copy('Live storefront reporting from the latest 100 orders.')}</p>
+          <p>{copy('Track orders from Waffarly, Storefront and POS.')}</p>
         </div>
         <div className="dashboard-date-tools">
+          <button type="button" className="dashboard-refresh" onClick={() => navigate('/reports')}>
+            {locale === 'ar' ? 'مركز التقارير' : 'Business reports'}
+          </button>
           <span className="dashboard-comparison">
             <Icon name="globe" />
-            {copy('Storefront orders only')}
+            {copy('All order sources')}
           </span>
           <label className="dashboard-date-select">
             <select
@@ -365,7 +380,7 @@ export function Dashboard() {
               <div className="dashboard-stat-copy">
                 <span>{copy(label)}</span>
                 <strong dir="ltr">{value}</strong>
-                <small>{copy('Selected period · latest 100 orders')}</small>
+                <small>{copy('Selected period · all orders')}</small>
               </div>
               <span className="dashboard-stat-icon">
                 <Icon name={icon} />
@@ -380,7 +395,7 @@ export function Dashboard() {
           <div className="dashboard-card-heading">
             <div>
               <h2>{copy('Latest Orders')}</h2>
-              <p>{copy('Latest orders from your online storefront')}</p>
+              <p>{copy('Latest orders from all sources')}</p>
             </div>
             <button type="button" onClick={() => navigate('/orders')}>
               {t('View All')}
@@ -398,9 +413,9 @@ export function Dashboard() {
             </thead>
             <tbody>
               {matchingOrders.map((order) => {
-                const firstLine = order.lines[0];
+                const firstLine = order.previewItemName;
                 const product = firstLine
-                  ? productByName.get(firstLine.productName.toLocaleLowerCase())
+                  ? productByName.get(firstLine.toLocaleLowerCase())
                   : undefined;
                 return (
                   <tr key={order.id}>
@@ -408,11 +423,12 @@ export function Dashboard() {
                       <div className="dashboard-order-product">
                         <ProductThumb product={product} fallback="product" />
                         <span>
-                          <strong>{firstLine?.productName ?? copy('No products')}</strong>
+                          <strong>{firstLine ?? copy('No products')}</strong>
                           <small dir="ltr">
                             #{order.id.slice(0, 8).toLocaleUpperCase()} ·{' '}
                             {dateTime(order.createdAt)}
                           </small>
+                          <small>{copy(sourceLabel(order.source))}</small>
                         </span>
                       </div>
                     </td>
@@ -432,7 +448,7 @@ export function Dashboard() {
           </table>
           {!loading && !loadError && matchingOrders.length === 0 && (
             <p className="dashboard-no-results">
-              {copy(search ? 'No matching orders.' : 'No storefront orders yet.')}
+              {copy(search ? 'No matching orders.' : 'No orders yet.')}
             </p>
           )}
           {loading && (
@@ -445,7 +461,7 @@ export function Dashboard() {
         <section className="dashboard-card dashboard-sales">
           <div className="dashboard-card-heading">
             <div>
-              <h2>{copy('Online Order Overview')}</h2>
+              <h2>{copy('Orders from all sources')}</h2>
               <p>
                 {copy(
                   period === 'monthly'
@@ -462,7 +478,7 @@ export function Dashboard() {
                 <strong dir="ltr">
                   {loading || loadError ? '—' : money(report.orderValue, 2)}
                 </strong>
-                <small>{copy('Accepted and pending')}</small>
+                <small>{copy('Value excluding cancelled and rejected')}</small>
               </div>
             </div>
             <div>
@@ -473,7 +489,21 @@ export function Dashboard() {
               </div>
             </div>
           </div>
-          {periodOrders.length > 0 ? (
+          <div className="dashboard-source-summary">
+            {(['waffarly', 'storefront', 'pos'] as const).map((source) => {
+              const sourceStats = orderStats?.report?.sources[source];
+              return (
+                <div className="dashboard-source-stat" key={source}>
+                  <span>{copy(sourceLabel(source))}</span>
+                  <strong>{loading || loadError ? '—' : formatNumber(sourceStats?.orderCount ?? 0)}</strong>
+                  <small dir="ltr">
+                    {loading || loadError ? '—' : money(Number(sourceStats?.orderValue ?? 0), 2)}
+                  </small>
+                </div>
+              );
+            })}
+          </div>
+          {report.orders > 0 ? (
             <DashboardOrderChart points={series} t={copy} formatNumber={formatNumber} />
           ) : (
             <p className="dashboard-chart-empty">

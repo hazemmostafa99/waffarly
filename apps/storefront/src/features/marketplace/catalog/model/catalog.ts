@@ -14,17 +14,24 @@ type MerchantScenarioProduct = ProductRecord & {
   origin: 'local-mock';
 };
 
-export type MarketplaceProduct = ProductRecord & Partial<MerchantScenarioProduct> & {
-  restaurantSlug?: string;
-  restaurantSettings?: PublicRestaurantProfile;
-  apiVariants?: PublicStorefrontProduct['variants'];
-  apiModifierGroups?: PublicStorefrontProduct['modifierGroups'];
+export type MarketplaceProduct = ProductRecord &
+  Partial<Omit<MerchantScenarioProduct, 'origin'>> & {
+    origin?: 'local-mock' | 'api';
+    restaurantSlug?: string;
+    restaurantSettings?: PublicRestaurantProfile;
+    restaurantCartRoute?: { fulfillment: 'pickup' | 'delivery'; branchId: string; branchName: string; areaId?: string };
+    apiVariants?: PublicStorefrontProduct['variants'];
+    apiModifierGroups?: PublicStorefrontProduct['modifierGroups'];
+    menuSection?: string;
+    available?: boolean;
+    description?: string;
+  };
+
+export const merchantScenarioProducts: (MerchantScenarioProduct & {
   menuSection?: string;
   available?: boolean;
   description?: string;
-};
-
-export const merchantScenarioProducts: (MerchantScenarioProduct & { menuSection?: string; available?: boolean; description?: string })[] = [
+})[] = [
   ...merchantScenarios.storeProducts.map((product) => ({
     ...product,
     merchantType: 'store' as const,

@@ -4,12 +4,30 @@ import { useRestaurants } from '../hooks/use-restaurants';
 import { SectionHeading } from '@/components/marketplace/section-heading';
 import Link from 'next/link';
 import { restaurantHref } from '@/features/marketplace/restaurants/model/restaurants';
+import { deliveryBranches } from '@waffarly/contracts';
+import { useDeliveryArea } from '@/features/delivery/delivery-area-picker';
 
 export function MarketplaceRestaurants() {
   const remote = useRestaurants();
-  const data = { restaurants: remote.data ?? [] };
-  if (remote.isPending) return <p role="status" className="p-5 text-sm">جارٍ تحميل المطاعم…</p>;
-  if (remote.isError) return <div role="alert" className="p-5 text-sm"><p>تعذر تحميل المطاعم من الخادم.</p><button type="button" onClick={() => remote.refetch()}>إعادة المحاولة</button></div>;
+  const area = useDeliveryArea();
+  const restaurants = (remote.data ?? []).filter((restaurant) =>
+    !area || deliveryBranches(restaurant.settings?.onlineBranches ?? [], area).length > 0,
+  );
+  if (remote.isPending)
+    return (
+      <p role="status" className="p-5 text-sm">
+        جارٍ تحميل المطاعم…
+      </p>
+    );
+  if (remote.isError)
+    return (
+      <div role="alert" className="p-5 text-sm">
+        <p>تعذر تحميل المطاعم من الخادم.</p>
+        <button type="button" onClick={() => remote.refetch()}>
+          إعادة المحاولة
+        </button>
+      </div>
+    );
   return (
     <section
       className={
@@ -18,17 +36,18 @@ export function MarketplaceRestaurants() {
       id="restaurants"
     >
       <SectionHeading
-        title="مطاعم قريبة منك"
-        subtitle="مطاعم من بيانات العرض — تصفح المنيو وجرّب رحلة الطلب محليًا"
+        title={area ? 'مطاعم بتوصل لمنطقتك' : 'تصفح المطاعم'}
+        subtitle="تصفح المنيو واختار وجبتك واطلب من المطعم"
         more="عرض كل المطاعم"
         moreHref="/restaurants"
       />
+      {!restaurants.length && area && <p className="text-sm">مفيش مطاعم ظاهرة للمنطقة دي. غيّر المنطقة من أعلى الصفحة.</p>}
       <div
         className={
           'restaurants-grid grid grid-cols-6 gap-[13px] max-[1100px]:grid-cols-4 max-[700px]:flex max-[700px]:overflow-auto max-[700px]:[scroll-snap-type:x_mandatory] max-[700px]:pb-[7px]'
         }
       >
-        {data.restaurants.map((r) => (
+        {restaurants.map((r) => (
           <article
             className={cn(
               'restaurant border border-solid border-border rounded-[16px] overflow-hidden bg-white [transition:0.22s]',

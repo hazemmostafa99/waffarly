@@ -1,5 +1,10 @@
 # Inventory, Product Mapping & Recipes — Feature Contract
 
+> Follow-up workstream (2026-11-14): [Purchase cost and profitability](../purchase-cost-profitability/README.md)
+> specifies financial purchase invoices and latest-purchase-price sales costing.
+> Its user-confirmed policy replaces an averaging proposal; P01 invoice costs and P02 discount/shipping totals are implemented with migrations applied locally, pending full manual QA, while later costing phases remain planned.
+> M3 exclusions below remain the historical scope of the delivered quantity-receipt slice.
+
 ## Status and scope
 
 - Document status: Repository-audited feature contract; M1-M5 delivered; M6a adds the owner-managed recipe lifecycle; M6b adds branch-assigned employee access and the incoming recipe-order POS queue.
@@ -20,7 +25,7 @@ This pair adapts the supplied `WAFFARLY_COMMERCE_FEATURE_SPEC.md` and `WAFFARLY_
 
 Repository references:
 
-- [Project Overview](../../../PROJECT_OVERVIEW.md) and [MVP Scope](../../../MVP_SCOPE.md).
+- [Project Overview](../../product/PROJECT_OVERVIEW.md) and [MVP Scope](../../product/MVP_SCOPE.md).
 - [API implementation rules](../../../apps/api/AGENTS.md) and [API architecture](../../architecture/API_ARCHITECTURE.md).
 - [Product Builder contract](../catalog/product-builder/FEATURE.md) and [existing progress](../catalog/product-builder/PROGRESS.md).
 - [Catalog overview](../catalog/OVERVIEW.md), [Products](../catalog/PRODUCTS.md), and [technical decisions](../../architecture/TECHNICAL_DECISIONS.md).

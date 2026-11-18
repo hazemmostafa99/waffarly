@@ -5,6 +5,7 @@ export interface PosRegisterSummary {
   name: string;
   active: boolean;
   revision: number;
+  devicePaired?: boolean;
 }
 
 export interface PosRegisterOption {
@@ -105,6 +106,8 @@ export interface PosShiftLiveSummary {
 export interface PosShiftClosePreviewRequest {
   countedCash: string;
   reason?: string | undefined;
+  confirmPendingDeliveries?: boolean | undefined;
+  /** Legacy saved close commands may still include this field. */
   deliveryHandover?: { recipientUsername: string } | undefined;
 }
 
@@ -114,7 +117,7 @@ export interface PosShiftClosePreview {
   requiresReason: boolean;
   requiresSupervisorApproval: boolean;
   pendingDeliveryCount?: number;
-  requiresDeliveryHandover?: boolean;
+  requiresDeliveryConfirmation?: boolean;
 }
 
 export interface RecordPosShiftCashMovementRequest {
@@ -138,6 +141,8 @@ export interface ClosePosShiftRequest {
   countedCash: string;
   reason?: string | undefined;
   approval?: { username: string; password: string } | undefined;
+  confirmPendingDeliveries?: boolean | undefined;
+  /** Legacy saved close commands may still include this field. */
   deliveryHandover?: { recipientUsername: string } | undefined;
 }
 
@@ -192,3 +197,16 @@ export interface OwnerPosShiftCloseReportsQuery {
   limit?: number | undefined;
 }
 import type { PosDeliveryHandoverSnapshot } from './pos-delivery.js';
+
+/** Full-period aggregates, independent of the cursor page. */
+export interface OwnerShiftReportSummary {
+  closedCount: number;
+  matchedCount: number;
+  varianceCount: number;
+  netVariance: string;
+}
+export interface OwnerShiftReportPage {
+  items: PosShiftCloseReportRow[];
+  nextCursor: string | null;
+  summary: OwnerShiftReportSummary;
+}

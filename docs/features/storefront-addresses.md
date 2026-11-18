@@ -23,7 +23,7 @@ No new business-module dependency or authentication flow was introduced.
   The actor comes from CurrentAdmin, never the request body. Unknown merchant:404;
   invalid body/name:400; duplicate name or attempted replacement:409.
 - `GET /storefront-handles/:handle` is public and returns only `{ handle,
-  storefrontSlug }`. Unknown/reserved/invalid handles return 404, never owner PII.
+storefrontSlug }`. Unknown/reserved/invalid handles return 404, never owner PII.
 - Admin merchant summaries and owner account/storefront-settings projections
   expose optional nullable `storefrontHandle`, preserving existing clients.
 
@@ -38,9 +38,9 @@ semantics are deliberately unsupported in this initial slice.
 The technical `storefrontSlug` remains the public catalog identifier and POS
 business code. No existing code, account or historical order is renamed.
 
-## Local frontend behavior
+## Frontend behavior
 
-Next Proxy parses the local request host and rewrites without querying the API.
+Next Proxy parses the request host and rewrites without querying the API.
 The request-memoized server page loader resolves the handle without a persistent
 cache, then fetches the existing technical-slug catalog. Catalog tags, cart state
 and query identity continue to use the technical slug. Legacy URLs remain valid.
@@ -51,11 +51,15 @@ Merchant-application approval can be followed by assignment on merchant details.
 The preview is not an availability guarantee; the database decides on save.
 Owner account/settings links use the assigned handle where present.
 
-API bootstrap allows dynamic `.localhost` browser origins only in development,
-only for a saved handle mapped to the exact public catalog/checkout slug, and
-only when the origin scheme/port matches an explicitly trusted localhost origin.
-These requests do not receive credentialed CORS access. Admin/owner/POS routes,
-other tenants, unknown handles and production dynamic origins remain excluded.
+Local `.localhost` origins require development mode and a matching explicitly
+trusted localhost scheme/port. Production storefront routing and API origins are
+opt-in through `STOREFRONT_BASE_DOMAIN` in both applications. Only HTTPS origins
+under that domain, with a registered handle and a trusted root origin, qualify.
+Public catalog/quote/order access requires the handle's exact technical slug.
+Only existing customer-auth routes receive credentialed dynamic CORS; these
+customer accounts remain global. Admin/owner/POS routes, other tenants and unknown
+handles receive no dynamic authorization. Explicit trusted application origins
+retain their existing permissions.
 
 ## Migration, rollout and validation
 
@@ -70,6 +74,6 @@ unchanged technical codes. Merchant account database regression passed. API
 typecheck/lint/build evidence is recorded at task completion. Frontend browser
 acceptance remains manual and was not performed by this change.
 
-See [local setup](../local-storefront-subdomains.md). Production domain selection,
-Cloudflare records, VPS reverse proxy, origin certificates and trusted forwarded
-headers remain for deployment. No production routing was enabled here.
+See [local setup](../setup/local-storefront-subdomains.md) and
+[production configuration](../setup/STOREFRONT_SUBDOMAINS.md). This production
+routing change adds no database migration, shared API contract or module dependency.

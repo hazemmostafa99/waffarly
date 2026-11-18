@@ -9,7 +9,9 @@ import {
   posSessionKey,
   signOutPosEmployee,
 } from './features/auth/pos-session.api.js';
+import { PosDeliveryRecoveryNotice } from './features/delivery/pos-delivery-screen.js';
 import { PosPaymentRecoveryNotice } from './features/payments/pos-payment-recovery-notice.js';
+import { PosRegisterPairing } from './features/registers/pos-register-pairing.js';
 import { PosWorkspaceFrame } from './features/workspace/pos-workspace-frame.js';
 import { PosButton } from './components/pos-button.js';
 
@@ -27,7 +29,7 @@ export function POSLayout() {
   const signOutMutation = useMutation({ mutationFn: signOutPosEmployee });
   const employee = sessionQuery.data;
   const hydrateWorkspace = usePosWorkspaceStore((state) => state.hydrate);
-  const workspace = usePosWorkspaceStore((state) => state.workspace);
+  const selectWorkspaceBranch = usePosWorkspaceStore((state) => state.selectBranch);
 
   useEffect(() => {
     if (sessionQuery.error instanceof ApiError && sessionQuery.error.statusCode === 401) {
@@ -36,8 +38,16 @@ export function POSLayout() {
   }, [navigate, sessionQuery.error]);
 
   useEffect(() => {
-    if (employee) hydrateWorkspace(employee.merchantId, employee.id);
-  }, [employee?.id, employee?.merchantId, hydrateWorkspace]);
+    if (!employee) return;
+    hydrateWorkspace(employee.merchantId, employee.id);
+    selectWorkspaceBranch(employee.merchantId, employee.id, employee.branch.id);
+  }, [
+    employee?.branch.id,
+    employee?.id,
+    employee?.merchantId,
+    hydrateWorkspace,
+    selectWorkspaceBranch,
+  ]);
 
   async function signOut() {
     try {
@@ -51,6 +61,8 @@ export function POSLayout() {
 
   const sessionExpired =
     sessionQuery.error instanceof ApiError && sessionQuery.error.statusCode === 401;
+  const sessionBlocked =
+    sessionQuery.error instanceof ApiError && sessionQuery.error.statusCode === 403;
   if (sessionExpired) return null;
 
   if (sessionQuery.isLoading && !sessionQuery.data) {
@@ -65,7 +77,7 @@ export function POSLayout() {
     );
   }
 
-  if (sessionQuery.isError && !sessionQuery.data) {
+  if (sessionQuery.isError && (!sessionQuery.data || sessionBlocked)) {
     return (
       <main
         id="main-content"
@@ -85,20 +97,33 @@ export function POSLayout() {
         <PosButton type="button" variant="solid" onClick={() => void sessionQuery.refetch()}>
           {t('Retry')}
         </PosButton>
+        <PosButton
+          type="button"
+          variant="outline"
+          disabled={signOutMutation.isPending}
+          onClick={() => void signOut()}
+        >
+          {signOutMutation.isPending ? t('Signing out…') : t('Sign out')}
+        </PosButton>
       </main>
     );
   }
 
   if (!employee) return null;
 
-  const branch =
-    employee.branches.find((item) => item.id === workspace?.selectedBranchId) ??
-    employee.branches[0];
+  if (!employee.deviceRegister) {
+    return (
+      <PosRegisterPairing
+        employee={employee}
+        signingOut={signOutMutation.isPending}
+        onSignOut={() => void signOut()}
+      />
+    );
+  }
 
   return (
     <PosWorkspaceFrame
       employee={employee}
-      branchName={branch?.name ?? ''}
       signingOut={signOutMutation.isPending}
       onSignOut={() => void signOut()}
     >
@@ -120,4 +145,3 @@ export function POSLayout() {
     </PosWorkspaceFrame>
   );
 }
-import { PosDeliveryRecoveryNotice } from './features/delivery/pos-delivery-screen.js';

@@ -7,14 +7,14 @@ import type { CatalogProductFields } from '@waffarly/contracts';
 import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
 import { AppConfiguration } from '../config/app-configuration.js';
 import { hashPassword } from '../modules/auth/password.js';
-import { PosEmployeeService } from '../modules/auth/pos-employee.service.js';
+import { PosEmployeeService } from '../modules/employees/pos-employee.service.js';
 import { CategoryService } from '../modules/catalog/categories/category.service.js';
 import { ProductPricingService } from '../modules/catalog/pricing/product-pricing.service.js';
 import { ProductService } from '../modules/catalog/products/product.service.js';
 import { InventoryLedgerService } from '../modules/inventory/inventory-ledger.service.js';
 import { InventoryLocationsService } from '../modules/inventory/inventory-locations.service.js';
 import { InventoryService } from '../modules/inventory/inventory.service.js';
-import { StorefrontOrdersService } from '../modules/orders/storefront-orders.service.js';
+import { StorefrontOrdersService } from '../modules/orders/checkout/storefront-orders.service.js';
 import { PrismaService } from '../infrastructure/database/prisma.service.js';
 import { LocalMediaStorage } from '../infrastructure/storage/local-media-storage.js';
 
@@ -50,8 +50,8 @@ if (process.env.NODE_ENV === 'production') {
 if (!['localhost', '127.0.0.1', '::1'].includes(new URL(databaseUrl).hostname)) {
   throw new Error('This demo seed only runs against a localhost PostgreSQL database.');
 }
-if (DEMO.password.length < 12)
-  throw new Error('The demo password must contain at least 12 characters.');
+if (DEMO.password.length < 6)
+  throw new Error('The demo password must contain at least 6 characters.');
 
 const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
 const persistence = client as unknown as PrismaService;
@@ -556,7 +556,7 @@ async function ensurePosEmployee(merchantId: string, branchId: string) {
     username: DEMO.employeeUsername,
     displayName: 'كاشير التدريب',
     password: DEMO.password,
-    branchIds: [branchId],
+    branchId,
   });
 }
 

@@ -190,20 +190,20 @@ Typography is part of the visual implementation and must not be left to browser 
 
 Use this compact scale as the default target. The marketplace reference demonstrates tighter typography and vertical density than the prior storefront pass. Small adjustments are allowed only when screenshot comparison demonstrates that they are necessary, and the resulting value must be recorded as a named typography token rather than repeated as an arbitrary value.
 
-| Role | Mobile | Desktop | Weight | Family | Usage |
-| --- | --- | --- | --- | --- | --- |
-| Hero display | `32px / 38px` | `48px / 56px` | 800-900 | Cairo | Homepage hero only |
-| Page title | `26px / 34px` | `36px / 44px` | 800 | Cairo | One primary `h1` per page |
-| Section title | `20px / 28px` | `26px / 34px` | 800 | Cairo | Major homepage/menu sections |
-| Subsection title | `18px / 25px` | `20px / 28px` | 700-800 | Cairo | Cards, checkout sections, summaries |
-| Product title | `15px / 21px` | `16px / 23px` | 700 | Cairo | Product cards and cart lines |
-| Price emphasis | `18px / 25px` | `20px / 28px` | 800 | Cairo | Product and order prices |
-| Body large | `16px / 26px` | `17px / 28px` | 400-500 | Tajawal | Hero and section introductions |
-| Body | `14px / 22px` | `15px / 24px` | 400-500 | Tajawal | Default reading text and fields |
-| UI label | `14px / 20px` | `14px / 20px` | 700 | Tajawal | Buttons, tabs, navigation, labels |
-| Supporting text | `13px / 19px` | `13px / 19px` | 400-500 | Tajawal | Descriptions, helper text, metadata |
-| Caption | `12px / 17px` | `12px / 17px` | 600-700 | Tajawal | Badges and short secondary metadata only |
-| Category title | `12px / 17px` | `12px / 17px` | 700-800 | Cairo | Compact category tiles only |
+| Role              | Mobile        | Desktop       | Weight  | Family  | Usage                                                    |
+| ----------------- | ------------- | ------------- | ------- | ------- | -------------------------------------------------------- |
+| Hero display      | `32px / 38px` | `48px / 56px` | 800-900 | Cairo   | Homepage hero only                                       |
+| Page title        | `26px / 34px` | `36px / 44px` | 800     | Cairo   | One primary `h1` per page                                |
+| Section title     | `20px / 28px` | `26px / 34px` | 800     | Cairo   | Major homepage/menu sections                             |
+| Subsection title  | `18px / 25px` | `20px / 28px` | 700-800 | Cairo   | Cards, checkout sections, summaries                      |
+| Product title     | `15px / 21px` | `16px / 23px` | 700     | Cairo   | Product cards and cart lines                             |
+| Price emphasis    | `18px / 25px` | `20px / 28px` | 800     | Cairo   | Product and order prices                                 |
+| Body large        | `16px / 26px` | `17px / 28px` | 400-500 | Tajawal | Hero and section introductions                           |
+| Body              | `14px / 22px` | `15px / 24px` | 400-500 | Tajawal | Default reading text and fields                          |
+| UI label          | `14px / 20px` | `14px / 20px` | 700     | Tajawal | Buttons, tabs, navigation, labels                        |
+| Supporting text   | `13px / 19px` | `13px / 19px` | 400-500 | Tajawal | Descriptions, helper text, metadata                      |
+| Caption           | `12px / 17px` | `12px / 17px` | 600-700 | Tajawal | Badges and short secondary metadata only                 |
+| Category title    | `12px / 17px` | `12px / 17px` | 700-800 | Cairo   | Compact category tiles only                              |
 | Category metadata | `10px / 14px` | `10px / 14px` | 400-500 | Tajawal | Nonessential product count beneath a category title only |
 
 ### Typography rules
@@ -336,31 +336,31 @@ Do not extract a storefront component merely to reduce line count. Extract it wh
 
 ## Routes and Delivery Order
 
-| Order | Route | Screen | Data boundary |
-| --- | --- | --- | --- |
-| 1 | `/s/[slug]` | Restaurant homepage | Requires catalog plus merchant presentation content. |
-| 2 | `/s/[slug]/menu` | Menu/search/filter | Existing public catalog API. |
-| 3 | `/s/[slug]/products/[productId]` | Product details/customization | Catalog data plus server quote API. |
-| 4 | `/s/[slug]/cart` | Cart | Zustand persistence plus catalog reconciliation. |
-| 5 | `/s/[slug]/checkout` | Guest checkout | Existing create-order API, subject to branch gap. |
-| 6 | `/s/[slug]/order/[orderId]` | Order tracking design preview | UI-only preview; no lookup, polling, or real status claim until a safe public contract exists. |
-| 7 | `/s/[slug]/favorites` | Favorites | Local Zustand state until a customer API exists. |
-| 8 | `/s/[slug]/offers` | Offers design preview | UI-only sample cards/filters; no live campaigns or price changes. |
-| 9 | `/s/[slug]/branches` | Branches design preview | UI-only sample cards/selection; no actual addresses or checkout routing. |
-| 10 | `/s/[slug]/about` | About restaurant design preview | Neutral content placeholders; no invented merchant claims. |
-| 11 | `/s/[slug]/login`, `/account`, `/account/profile`, `/account/orders`, and `/account/addresses` | Customer account design preview | UI-only account navigation and forms; no authentication, customer storage, fabricated order data, or account records. |
+| Order | Route                                                                                          | Screen                          | Data boundary                                                                                                         |
+| ----- | ---------------------------------------------------------------------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| 1     | `/s/[slug]`                                                                                    | Restaurant homepage             | Requires catalog plus merchant presentation content.                                                                  |
+| 2     | `/s/[slug]/menu`                                                                               | Menu/search/filter              | Existing public catalog API.                                                                                          |
+| 3     | `/s/[slug]/products/[productId]`                                                               | Product details/customization   | Catalog data plus server quote API.                                                                                   |
+| 4     | `/s/[slug]/cart`                                                                               | Cart                            | Zustand persistence plus catalog reconciliation.                                                                      |
+| 5     | `/s/[slug]/checkout`                                                                           | Guest checkout                  | Existing create-order API, subject to branch gap.                                                                     |
+| 6     | `/s/[slug]/order/[orderId]`                                                                    | Order tracking design preview   | UI-only preview; no lookup, polling, or real status claim until a safe public contract exists.                        |
+| 7     | `/s/[slug]/favorites`                                                                          | Favorites                       | Local Zustand state until a customer API exists.                                                                      |
+| 8     | `/s/[slug]/offers`                                                                             | Offers design preview           | UI-only sample cards/filters; no live campaigns or price changes.                                                     |
+| 9     | `/s/[slug]/branches`                                                                           | Branches design preview         | UI-only sample cards/selection; no actual addresses or checkout routing.                                              |
+| 10    | `/s/[slug]/about`                                                                              | About restaurant design preview | Neutral content placeholders; no invented merchant claims.                                                            |
+| 11    | `/s/[slug]/login`, `/account`, `/account/profile`, `/account/orders`, and `/account/addresses` | Store customer account | Store-only login and registration, account session, and merchant-scoped order history; profile and addresses remain previews. |
 
 ### UI-only preview policy for routes with API gaps
 
 The user approved implementing the complete route UI before the supporting APIs are ready. This changes presentation scope only; it does not approve backend behavior or fabricated production data.
 
 - Implement the missing order-tracking, offers, branches, about, and account/login route surfaces now, using the same responsive storefront shell, Waffarly tokens, compact sizing, and Arabic/English support.
-- The account preview includes a profile form, a My Orders page with local filter controls and an honest empty state, an addresses page with an unsaved local form, account shortcuts, and a profile icon entry in desktop/mobile navigation. These screens stay isolated in account/order feature modules; every route keeps the preview disclosure.
+- The account area includes store-only sign-in/sign-up, a live account session, and live order history for orders placed at that merchant while signed in. Profile and addresses remain local previews with an unsaved form. Keep these screens in the account/order feature modules.
 - Keep any sample content in an isolated preview-only module under `features/preview/`. Never put preview records in catalog/order contracts, Zustand persistence, API responses, or production data modules.
-- Every preview-only route must show a visible, accessible disclosure near the top that explicitly says it is a design preview and is not connected to live restaurant data. Do not rely on a tooltip or filename for disclosure.
-- Branches may be selected for visual state only; they must not be saved as a branch preference or passed to checkout. Offers may be filtered/opened locally only; they must not affect prices or discounts. Order tracking must not look up, poll, or imply a real order status. Account forms must not authenticate, register, or persist customer details. Profile/address fields remain blank, are labeled as unsaved preview input, and are cleared when the local preview form is submitted or dismissed. My Orders must not show fabricated records, identifiers, timestamps, or operational statuses; use filterable empty states until an authorized customer order-history API exists. About-page copy must not invent merchant history, contact information, location, hours, or services.
+- Every remaining preview-only route must show a visible, accessible disclosure near the top that explicitly says it is a design preview and is not connected to live restaurant data. Do not rely on a tooltip or filename for disclosure.
+- Branches may be selected for visual state only; they must not be saved as a branch preference or passed to checkout. Offers may be filtered/opened locally only; they must not affect prices or discounts. Order tracking must not look up, poll, or imply a real order status. Store login/register and merchant-scoped order history are authorized API-backed exceptions; they must not authenticate a global Marketplace account or show orders from another merchant. Profile/address fields remain blank, are labeled as unsaved preview input, and are cleared when the local preview form is submitted or dismissed. About-page copy must not invent merchant history, contact information, location, hours, or services.
 - Use “Preview”/“Sample” content, neutral placeholders, and the supplied assets only as presentation. Do not show fabricated customer PII, order identifiers, operational timestamps, discount values, branch addresses, or claims.
-- Keep the real catalog, quotation, basket, checkout, and order-creation flows unchanged. Replace the preview module with typed API-backed data only after the related contract, authorization, validation, tests, and product rules are approved.
+- Keep the real catalog, quotation, basket, checkout, and order-creation flows unchanged. Tenant account authentication and order history are now API-backed as documented; keep unsupported profile/address/tracking flows in their preview state until their contracts and product rules are approved.
 - Local-only controls (such as preview filters, selected visual cards, tabs, and form field validation) are allowed when their effect is explicitly described as local preview behavior. Never display fake success for a real-world operation.
 
 This is a narrow, documented exception to rules 12–13; all other unsupported routes still require an honest unavailable state rather than fictional live data.
@@ -373,6 +373,8 @@ Already supported:
 - Categories, products, images, variants, and modifier groups.
 - Server-authoritative product quotation.
 - Guest order creation.
+- Merchant-scoped storefront customer registration/login and session reads.
+- Customer-directory creation and signed-in same-merchant order linkage/history.
 - Merchant order listing and acceptance/rejection.
 
 Not yet represented completely:
@@ -382,7 +384,9 @@ Not yet represented completely:
 - Homepage hero/editorial content and product badges.
 - Restaurant about content and contact/social fields.
 - Safe public order receipt/status lookup.
-- Customer authentication, profile, server favorites, and order history.
+- Storefront customer profile editing and saved addresses/favorites. Tenant login,
+  customer-directory creation, and merchant-scoped order history are implemented;
+  this does not implement global Marketplace profile or favorite behavior.
 - Final delivery rules, fees, service fees, payment, and expanded tracking statuses.
 - Per-item customer notes: quote/create-order contracts do not represent notes, so do not expose the prototype note field until an approved backend contract and persistence path exist.
 
@@ -444,4 +448,3 @@ The storefront redesign is complete only when:
 - RTL, LTR, responsiveness, accessibility, metadata, error handling, and performance have been verified.
 - Typecheck, lint, build, relevant API tests, and storefront Playwright tests pass.
 - `PROGRESS.md` accurately records the evidence, remaining limitations, decisions, and blockers.
-

@@ -19,7 +19,10 @@
     "db:generate": "pnpm --filter @waffarly/database db:generate",
     "db:validate": "pnpm --filter @waffarly/database db:validate",
     "db:migrate": "pnpm --filter @waffarly/database db:migrate",
-    "db:check": "pnpm --filter @waffarly/database db:check"
+    "db:check": "pnpm --filter @waffarly/database db:check",
+    "check:api": "pnpm --filter @waffarly/api check",
+    "test:db": "pnpm --filter @waffarly/api test:db",
+    "test:db:prepare": "pnpm --filter @waffarly/api test:db:prepare"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",

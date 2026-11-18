@@ -53,6 +53,14 @@ export type OwnerPosShiftCloseReportsInput = z.infer<typeof ownerPosShiftCloseRe
 export const posRegisterListSchema = z.object({ branchId: uuid }).strict();
 export type PosRegisterListQuery = z.infer<typeof posRegisterListSchema>;
 
+export const pairPosRegisterSchema = z.object({ registerId: uuid }).strict();
+export type PairPosRegisterRequest = z.infer<typeof pairPosRegisterSchema>;
+
+export const unpairPosRegisterSchema = z
+  .object({ revision: z.number().int().positive().max(2_147_483_646) })
+  .strict();
+export type UnpairPosRegisterRequest = z.infer<typeof unpairPosRegisterSchema>;
+
 export const posCurrentShiftSchema = z.object({ registerId: uuid }).strict();
 
 export const createPosRegisterSchema = z.object({ branchId: uuid, name: registerName }).strict();
@@ -124,6 +132,7 @@ export const closePosShiftSchema = z
     countedCash: nonNegativeAmount,
     reason: z.string().trim().min(1).max(500).optional(),
     approval: approvalSchema.optional(),
+    confirmPendingDeliveries: z.boolean().optional(),
     deliveryHandover: deliveryHandoverSchema.optional(),
   })
   .strict();
@@ -132,6 +141,7 @@ export const posShiftClosePreviewSchema = z
   .object({
     countedCash: nonNegativeAmount,
     reason: z.string().trim().min(1).max(500).optional(),
+    confirmPendingDeliveries: z.boolean().optional(),
     deliveryHandover: deliveryHandoverSchema.optional(),
   })
   .strict();
@@ -157,6 +167,9 @@ export function withoutShiftCloseApproval(
     requestId: input.requestId,
     countedCash: input.countedCash,
     ...(input.reason ? { reason: input.reason } : {}),
+    ...(input.confirmPendingDeliveries !== undefined
+      ? { confirmPendingDeliveries: input.confirmPendingDeliveries }
+      : {}),
     ...(input.deliveryHandover ? { deliveryHandover: input.deliveryHandover } : {}),
   };
 }

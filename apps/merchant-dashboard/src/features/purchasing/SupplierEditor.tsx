@@ -55,34 +55,45 @@ export function SupplierEditor({
           />
         </label>
         <label>
-          {text('Contact name')}
-          <Input
-            maxLength={160}
-            value={contactName}
-            onChange={(event) => setContactName(event.target.value)}
-          />
-        </label>
-        <label>
           {text('Phone')}
           <Input maxLength={32} value={phone} onChange={(event) => setPhone(event.target.value)} />
         </label>
-        <label>
-          {text('Email')}
-          <Input
-            type="email"
-            maxLength={254}
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-        </label>
-        <label>
-          {text('Address')}
-          <Input
-            maxLength={500}
-            value={address}
-            onChange={(event) => setAddress(event.target.value)}
-          />
-        </label>
+        <details
+          className="inventory-section-details"
+          open={Boolean(supplier?.contactName || supplier?.email || supplier?.address)}
+          onInvalidCapture={(event) => {
+            event.currentTarget.open = true;
+          }}
+        >
+          <summary>{text('Contact details (optional)')}</summary>
+          <div className="inventory-form-grid">
+            <label>
+              {text('Contact name')}
+              <Input
+                maxLength={160}
+                value={contactName}
+                onChange={(event) => setContactName(event.target.value)}
+              />
+            </label>
+            <label>
+              {text('Email')}
+              <Input
+                type="email"
+                maxLength={254}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </label>
+            <label>
+              {text('Address')}
+              <Input
+                maxLength={500}
+                value={address}
+                onChange={(event) => setAddress(event.target.value)}
+              />
+            </label>
+          </div>
+        </details>
         <footer className="products-dialog-footer">
           <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
             {text('Close')}

@@ -39,9 +39,20 @@ export function AppLayout() {
   if (profile.isPending) {
     return (
       <div className={adminThemeClass} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-        <main id="main-content" className="grid min-h-screen place-content-center justify-items-center gap-4 p-6" tabIndex={-1}>
-          <span className="grid size-12 place-items-center rounded-2xl bg-waffarly-primary text-lg font-bold text-white" aria-hidden="true">W</span>
-          <p className="text-sm text-waffarly-muted" role="status">{t('Loading Super Admin…')}</p>
+        <main
+          id="main-content"
+          className="grid min-h-screen place-content-center justify-items-center gap-4 p-6"
+          tabIndex={-1}
+        >
+          <span
+            className="grid size-12 place-items-center rounded-2xl bg-waffarly-primary text-lg font-bold text-white"
+            aria-hidden="true"
+          >
+            W
+          </span>
+          <p className="text-sm text-waffarly-muted" role="status">
+            {t('Loading Super Admin…')}
+          </p>
         </main>
       </div>
     );
@@ -60,7 +71,12 @@ export function AppLayout() {
   return (
     <PageTitleProvider key={location.pathname}>
       <div className={`${adminThemeClass} admin-workspace`} dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-        <a className="fixed -top-14 start-4 z-[100] rounded-lg border-2 border-waffarly-primary bg-white px-4 py-3 text-sm font-semibold text-waffarly-primary focus:top-3" href="#main-content">{t('Skip to content')}</a>
+        <a
+          className="fixed -top-14 start-4 z-[100] rounded-lg border-2 border-waffarly-primary bg-white px-4 py-3 text-sm font-semibold text-waffarly-primary focus:top-3"
+          href="#main-content"
+        >
+          {t('Skip to content')}
+        </a>
         <div className="flex min-h-screen">
           <AdminSidebar />
           <main id="main-content" className="min-w-0 flex-1" tabIndex={-1}>
@@ -73,7 +89,14 @@ export function AppLayout() {
               signingOut={signOut.isPending}
             />
             <div className="admin-content mx-auto space-y-3">
-              {signOutError && <p className="rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger" role="alert">{errorText(signOutError)}</p>}
+              {signOutError && (
+                <p
+                  className="rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger"
+                  role="alert"
+                >
+                  {errorText(signOutError)}
+                </p>
+              )}
               <Outlet />
             </div>
           </main>

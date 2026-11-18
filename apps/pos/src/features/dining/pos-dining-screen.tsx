@@ -1,23 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type {
-  PosDiningSessionSummary,
-  PosEmployeeSession,
-  SplitPosOrderChecksRequest,
-} from '@waffarly/contracts';
-import { Dialog, Input, useLocale } from '@waffarly/ui';
+import type { PosDiningSessionSummary, PosEmployeeSession } from '@waffarly/contracts';
+import { useLocale } from '@waffarly/ui';
 import { LayoutGrid, Plus, UsersRound } from 'lucide-react';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useOutletContext } from 'react-router-dom';
 import { usePosWorkspaceStore } from '../../app/pos-workspace-store.js';
 import { PosButton } from '../../components/pos-button.js';
 import { PosCheckoutDialog } from '../payments/pos-checkout-dialog.js';
+import { getPosOrderNumber } from '../orders/pos-order-number.js';
 import {
   getPosDiningSessions,
   getPosDiningTables,
   movePosDiningSession,
   posDiningSessionsKey,
   posDiningTablesKey,
-  splitPosOrderChecks,
 } from './pos-dining.api.js';
 
 type LayoutContext = { employee: PosEmployeeSession };
@@ -26,17 +22,8 @@ export function PosDiningScreen() {
   const { employee } = useOutletContext<LayoutContext>();
   const { t, errorText, formatNumber } = useLocale();
   const queryClient = useQueryClient();
-  const workspace = usePosWorkspaceStore((state) => state.workspace);
   const hydrate = usePosWorkspaceStore((state) => state.hydrate);
-  const selectBranch = usePosWorkspaceStore((state) => state.selectBranch);
-  const branches = employee.branches.filter((branch) => branch.archivedAt === null);
-  const selectedBranchId = branches.some((branch) => branch.id === workspace?.selectedBranchId)
-    ? (workspace?.selectedBranchId ?? branches[0]?.id ?? '')
-    : (branches[0]?.id ?? '');
-  const [selectedOrder, setSelectedOrder] = useState<{
-    order: PosDiningSessionSummary['orders'][number];
-    sessionTable: string;
-  } | null>(null);
+  const selectedBranchId = employee.branch.id;
   const [destinationBySession, setDestinationBySession] = useState<Record<string, string>>({});
   const [checkoutOrderId, setCheckoutOrderId] = useState('');
 
@@ -44,17 +31,6 @@ export function PosDiningScreen() {
     () => hydrate(employee.merchantId, employee.id),
     [employee.id, employee.merchantId, hydrate],
   );
-  useEffect(() => {
-    if (!selectedBranchId || workspace?.selectedBranchId === selectedBranchId) return;
-    selectBranch(employee.merchantId, employee.id, selectedBranchId);
-  }, [
-    employee.id,
-    employee.merchantId,
-    selectBranch,
-    selectedBranchId,
-    workspace?.selectedBranchId,
-  ]);
-
   const tablesQuery = useQuery({
     queryKey: posDiningTablesKey(employee.merchantId, selectedBranchId),
     queryFn: ({ signal }) => getPosDiningTables(selectedBranchId, signal),
@@ -91,51 +67,17 @@ export function PosDiningScreen() {
     },
   });
 
-  const activeBranch = branches.find((branch) => branch.id === selectedBranchId);
+  const activeBranch = employee.branch;
   const message = tablesQuery.error ?? sessionsQuery.error ?? moveMutation.error;
 
   return (
-    <section className="pos-dining-screen min-h-full space-y-6 p-4 md:p-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[0.68rem] font-semibold uppercase tracking-wide text-muted-foreground">
-            {t('Dining')}
-          </p>
-          <h2 className="text-xl font-bold sm:text-2xl">{t('Tables & open sessions')}</h2>
-          <p className="mt-1 max-w-2xl text-xs text-muted-foreground sm:text-sm">
-            {t('See table occupancy, add a new round, split checks, or move a session.')}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-end gap-2">
-          {branches.length > 1 && (
-            <label className="grid min-w-52 gap-1 text-xs text-muted-foreground">
-              {t('Branch')}
-              <select
-                className="min-h-10 rounded-lg border border-border bg-card px-3 text-sm text-foreground"
-                value={selectedBranchId}
-                onChange={(event) =>
-                  selectBranch(employee.merchantId, employee.id, event.target.value)
-                }
-              >
-                {branches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <PosButton
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => void Promise.all([tablesQuery.refetch(), sessionsQuery.refetch()])}
-            disabled={tablesQuery.isFetching || sessionsQuery.isFetching}
-          >
-            {t('Refresh')}
-          </PosButton>
-        </div>
-      </header>
+    <section
+      aria-labelledby="pos-dining-heading"
+      className="pos-dining-screen min-h-full space-y-4 p-3 md:p-4"
+    >
+      <h2 id="pos-dining-heading" className="sr-only">
+        {t('Tables & open sessions')}
+      </h2>
 
       {message && (
         <div
@@ -151,7 +93,7 @@ export function PosDiningScreen() {
       )}
 
       <section aria-labelledby="dining-table-map-title">
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 id="dining-table-map-title" className="text-base font-semibold">
               {t('Table map')}
@@ -177,18 +119,28 @@ export function PosDiningScreen() {
               </p>
             )}
           </div>
+          <PosButton
+            type="button"
+            size="sm"
+            variant="outline"
+            className="min-h-10"
+            onClick={() => void Promise.all([tablesQuery.refetch(), sessionsQuery.refetch()])}
+            disabled={tablesQuery.isFetching || sessionsQuery.isFetching}
+          >
+            {t('Refresh')}
+          </PosButton>
         </div>
 
         {tablesQuery.isLoading ? (
           <div
             aria-label={t('Loading tables...')}
-            className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
+            className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3"
             role="status"
           >
             {Array.from({ length: 3 }, (_, index) => (
               <div
                 key={index}
-                className="min-h-36 animate-pulse rounded-xl border border-border bg-card p-4"
+                className="min-h-32 animate-pulse rounded-lg border border-border bg-card p-3"
               >
                 <div className="h-4 w-20 rounded bg-muted" />
                 <div className="mt-8 h-3 w-28 rounded bg-muted" />
@@ -196,31 +148,31 @@ export function PosDiningScreen() {
             ))}
           </div>
         ) : tablesQuery.isError ? null : tables.length === 0 ? (
-          <div className="flex max-w-2xl items-start gap-3 rounded-xl border border-dashed border-border bg-card/60 p-4 sm:p-5">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
-              <LayoutGrid aria-hidden="true" className="size-5" />
+          <div className="flex w-full items-start gap-2 rounded-lg border border-dashed border-border bg-card/60 p-3">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-secondary text-muted-foreground">
+              <LayoutGrid aria-hidden="true" className="size-4" />
             </span>
             <div className="min-w-0 text-sm">
               <strong>{t('No active tables are configured.')}</strong>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                 {t('Ask the owner to add tables for this branch in POS settings.')}
               </p>
             </div>
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {tables.map((table) => {
               const isOccupied = table.occupancy === 'occupied';
 
               return (
                 <article
                   key={table.id}
-                  className={`min-h-36 rounded-xl border p-3.5 transition-colors ${isOccupied ? 'border-primary/45 bg-primary/[0.07]' : 'border-border bg-card hover:bg-muted/30'}`}
+                  className={`min-h-32 rounded-lg border p-3 transition-colors ${isOccupied ? 'border-primary/45 bg-primary/[0.07]' : 'border-border bg-card hover:bg-muted/30'}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-[0.68rem] text-muted-foreground">{t('Table')}</p>
-                      <h4 className="mt-0.5 text-lg font-bold leading-tight">{table.code}</h4>
+                      <p className="text-[0.65rem] text-muted-foreground">{t('Table')}</p>
+                      <h4 className="mt-0.5 text-sm font-bold leading-tight">{table.code}</h4>
                     </div>
                     <span
                       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[0.68rem] font-semibold ${isOccupied ? 'bg-primary/15 text-primary' : 'bg-secondary text-muted-foreground'}`}
@@ -234,7 +186,7 @@ export function PosDiningScreen() {
                     </span>
                   </div>
 
-                  <div className="mt-4 flex items-end justify-between gap-3 border-t border-border/70 pt-3">
+                  <div className="mt-3 flex items-end justify-between gap-2 border-t border-border/70 pt-2">
                     <div className="min-w-0">
                       <p className="text-xs text-muted-foreground">
                         {formatNumber(table.capacity)} {t('seats')}
@@ -269,8 +221,8 @@ export function PosDiningScreen() {
         )}
       </section>
 
-      <section aria-labelledby="dining-sessions-title" className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <section aria-labelledby="dining-sessions-title" className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <h3 id="dining-sessions-title" className="text-base font-semibold">
               {t('Open dining sessions')}
@@ -296,17 +248,17 @@ export function PosDiningScreen() {
             ))}
           </div>
         ) : sessionsQuery.isError ? null : sessions.length === 0 ? (
-          <p className="max-w-2xl rounded-xl border border-border bg-card/60 p-4 text-sm text-muted-foreground sm:p-5">
+          <p className="w-full rounded-lg border border-border bg-card/60 p-3 text-xs text-muted-foreground">
             {t('There are no open dining sessions at this branch.')}
           </p>
         ) : (
-          <div className="grid gap-3 xl:grid-cols-2">
+          <div className="grid gap-2 xl:grid-cols-2">
             {sessions.map((session) => (
               <article
                 key={session.id}
                 className="overflow-hidden rounded-xl border border-border bg-card"
               >
-                <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/20 p-3 sm:p-4">
+                <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/20 p-2.5 sm:p-3">
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-sm font-bold text-primary">
                       <UsersRound aria-hidden="true" className="size-4" />
@@ -360,7 +312,7 @@ export function PosDiningScreen() {
                     </PosButton>
                   </div>
                 </header>
-                <div className="grid gap-2 p-3 sm:p-4">
+                <div className="grid gap-1.5 p-2.5 sm:p-3">
                   {session.orders.map((order) => (
                     <div
                       key={order.id}
@@ -368,7 +320,7 @@ export function PosDiningScreen() {
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <strong className="text-sm">
-                          {t('Order')} {order.orderReference ?? `#${order.id.slice(0, 8)}`}
+                          {t('Order')} #{getPosOrderNumber(order)}
                         </strong>
                         <span className="text-sm font-semibold">
                           {formatNumber(Number(order.total), {
@@ -385,43 +337,16 @@ export function PosDiningScreen() {
                           </li>
                         ))}
                       </ul>
-                      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-                        <div className="flex flex-wrap gap-1.5">
-                          {order.checks.map((check) => (
-                            <span
-                              className="rounded-md bg-secondary px-2 py-1 text-[0.68rem]"
-                              key={check.id}
-                            >
-                              {t('Check')} {check.position + 1} ·{' '}
-                              {formatNumber(Number(check.amount), {
-                                style: 'currency',
-                                currency: order.currency,
-                              })}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-                          <PosButton
-                            className="flex-1 sm:flex-none"
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() =>
-                              setSelectedOrder({ order, sessionTable: session.tableCode })
-                            }
-                          >
-                            {t('Split check')}
-                          </PosButton>
-                          <PosButton
-                            className="flex-1 sm:flex-none"
-                            type="button"
-                            size="sm"
-                            variant="solid"
-                            onClick={() => setCheckoutOrderId(order.id)}
-                          >
-                            {t('Take payment')}
-                          </PosButton>
-                        </div>
+                      <div className="mt-3 border-t border-border pt-3">
+                        <PosButton
+                          className="w-full"
+                          type="button"
+                          size="sm"
+                          variant="solid"
+                          onClick={() => setCheckoutOrderId(order.id)}
+                        >
+                          {t('Take payment')}
+                        </PosButton>
                       </div>
                     </div>
                   ))}
@@ -432,19 +357,6 @@ export function PosDiningScreen() {
         )}
       </section>
 
-      {selectedOrder && (
-        <SplitOrderDialog
-          order={selectedOrder.order}
-          tableCode={selectedOrder.sessionTable}
-          onClose={() => setSelectedOrder(null)}
-          onSaved={async () => {
-            await queryClient.invalidateQueries({
-              queryKey: posDiningSessionsKey(employee.merchantId, selectedBranchId),
-            });
-            setSelectedOrder(null);
-          }}
-        />
-      )}
       {checkoutOrderId && (
         <PosCheckoutDialog
           merchantId={employee.merchantId}
@@ -456,210 +368,5 @@ export function PosDiningScreen() {
         />
       )}
     </section>
-  );
-}
-
-function SplitOrderDialog({
-  order,
-  tableCode,
-  onClose,
-  onSaved,
-}: {
-  order: PosDiningSessionSummary['orders'][number];
-  tableCode: string;
-  onClose: () => void;
-  onSaved: () => void | Promise<void>;
-}) {
-  const { t, errorText, formatNumber } = useLocale();
-  const queryClient = useQueryClient();
-  const [method, setMethod] = useState<'items' | 'equal' | 'custom'>('items');
-  const [checkCount, setCheckCount] = useState(2);
-  const [allocations, setAllocations] = useState<Record<string, number[]>>(() =>
-    Object.fromEntries(
-      order.lines.map((line) => [line.id, [line.quantity, ...Array.from({ length: 19 }, () => 0)]]),
-    ),
-  );
-  const [amounts, setAmounts] = useState<string[]>(['', '']);
-  const [requestError, setRequestError] = useState('');
-  const mutation = useMutation({
-    mutationFn: (input: SplitPosOrderChecksRequest) => splitPosOrderChecks(order.id, input),
-    onSuccess: async () => {
-      await onSaved();
-      await queryClient.invalidateQueries({ queryKey: ['pos', 'orders'] });
-    },
-    onError: (error) =>
-      setRequestError(
-        errorText(error instanceof Error ? error.message : t('Could not split this check.')),
-      ),
-  });
-
-  useEffect(() => {
-    setAmounts(Array.from({ length: checkCount }, () => ''));
-    setAllocations(
-      Object.fromEntries(
-        order.lines.map((line) => [
-          line.id,
-          [line.quantity, ...Array.from({ length: 19 }, () => 0)],
-        ]),
-      ),
-    );
-  }, [checkCount, order]);
-
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setRequestError('');
-    const envelope = { requestId: crypto.randomUUID(), revision: order.revision };
-    const input: SplitPosOrderChecksRequest =
-      method === 'equal'
-        ? { ...envelope, method, checkCount }
-        : method === 'custom'
-          ? { ...envelope, method, amounts }
-          : {
-              ...envelope,
-              method,
-              checks: Array.from({ length: checkCount }, (_, index) => ({
-                lines: order.lines.flatMap((line) => {
-                  const quantity = allocations[line.id]?.[index] ?? 0;
-                  return quantity ? [{ orderLineId: line.id, quantity }] : [];
-                }),
-              })),
-            };
-    mutation.mutate(input);
-  }
-
-  return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-      title={`${t('Split check')} · ${t('Table')} ${tableCode}`}
-      description={t(
-        'Choose how to allocate this order. The total and whole item quantities must be conserved.',
-      )}
-      closeLabel={t('Close')}
-      className="max-w-2xl"
-    >
-      <form className="space-y-4 p-4 sm:p-6" onSubmit={submit}>
-        <p className="text-sm font-semibold">
-          {t('Order total')}:{' '}
-          {formatNumber(Number(order.total), { style: 'currency', currency: order.currency })}
-        </p>
-        <div className="grid grid-cols-3 gap-2">
-          {(['items', 'equal', 'custom'] as const).map((value) => (
-            <PosButton
-              key={value}
-              type="button"
-              variant={method === value ? 'solid' : 'outline'}
-              aria-pressed={method === value}
-              onClick={() => setMethod(value)}
-            >
-              {t(value === 'items' ? 'By items' : value === 'equal' ? 'Equal' : 'Custom amounts')}
-            </PosButton>
-          ))}
-        </div>
-        <label className="grid max-w-48 gap-1 text-xs text-muted-foreground">
-          {t('Number of checks')}
-          <Input
-            type="number"
-            min="2"
-            max="20"
-            value={checkCount}
-            onChange={(event) =>
-              setCheckCount(Math.max(2, Math.min(20, Number(event.target.value) || 2)))
-            }
-          />
-        </label>
-        {method === 'items' && (
-          <div className="max-h-64 space-y-2 overflow-auto rounded-lg border border-border p-3">
-            {order.lines.map((line) => (
-              <div
-                className="grid min-w-max items-center gap-2 border-b border-border/70 pb-2 last:border-0"
-                style={{
-                  gridTemplateColumns: `minmax(160px, 1fr) repeat(${checkCount}, minmax(76px, 88px))`,
-                }}
-                key={line.id}
-              >
-                <span className="text-xs">
-                  {line.productName}
-                  {line.variantName ? ` · ${line.variantName}` : ''}{' '}
-                  <span className="text-muted-foreground">× {line.quantity}</span>
-                </span>
-                {Array.from({ length: checkCount }, (_, index) => (
-                  <label key={index} className="grid gap-1 text-[0.65rem] text-muted-foreground">
-                    {t('Check')} {index + 1}
-                    <Input
-                      aria-label={`${t('Check')} ${index + 1} · ${line.productName}`}
-                      type="number"
-                      min="0"
-                      max={line.quantity}
-                      step="1"
-                      value={allocations[line.id]?.[index] ?? 0}
-                      onChange={(event) => {
-                        const next = Array.from(
-                          { length: checkCount },
-                          (_, item) => allocations[line.id]?.[item] ?? 0,
-                        );
-                        const others = next.reduce(
-                          (sum, quantity, item) => (item === index ? sum : sum + quantity),
-                          0,
-                        );
-                        next[index] = Math.max(
-                          0,
-                          Math.min(line.quantity - others, Number(event.target.value) || 0),
-                        );
-                        setAllocations((current) => ({ ...current, [line.id]: next }));
-                      }}
-                    />
-                  </label>
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
-        {method === 'equal' && (
-          <p className="text-sm text-muted-foreground">
-            {t(
-              'The saved total will be split in exact cents; any remainder goes to the first checks.',
-            )}
-          </p>
-        )}
-        {method === 'custom' && (
-          <div className="grid gap-2 sm:grid-cols-2">
-            {amounts.map((amount, index) => (
-              <label key={index} className="grid gap-1 text-xs text-muted-foreground">
-                {t('Check')} {index + 1} {t('amount')}
-                <Input
-                  inputMode="decimal"
-                  value={amount}
-                  placeholder="0.00"
-                  onChange={(event) =>
-                    setAmounts((current) =>
-                      current.map((value, item) => (item === index ? event.target.value : value)),
-                    )
-                  }
-                />
-              </label>
-            ))}
-            <p className="text-xs text-muted-foreground sm:col-span-2">
-              {t('Custom amounts must add up to the full order total.')}
-            </p>
-          </div>
-        )}
-        {requestError && (
-          <p className="text-sm text-destructive" role="alert">
-            {requestError}
-          </p>
-        )}
-        <div className="flex justify-end gap-2 border-t border-border pt-3">
-          <PosButton type="button" variant="outline" onClick={onClose}>
-            {t('Cancel')}
-          </PosButton>
-          <PosButton type="submit" variant="solid" disabled={mutation.isPending}>
-            {mutation.isPending ? t('Saving...') : t('Save split')}
-          </PosButton>
-        </div>
-      </form>
-    </Dialog>
   );
 }

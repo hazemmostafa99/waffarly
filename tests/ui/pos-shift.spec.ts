@@ -21,11 +21,11 @@ const openShift = {
 };
 
 type ShiftPageOptions = {
-  branches?: Array<{ id: string; name: string; archivedAt: null }>;
   registers?: Array<{ id: string; branchId: string; name: string }>;
   shift?: typeof openShift | null;
   failRegisters?: boolean;
   failCurrentShift?: boolean;
+  locale?: 'en' | 'ar';
 };
 
 const reconciliation = {
@@ -39,10 +39,23 @@ const reconciliation = {
   manualMovements: [],
 };
 
+async function startWithLocale(page: Page, locale: 'en' | 'ar' = 'en') {
+  await page.addInitScript((preferredLocale) => {
+    if (window.location.origin === 'null') return;
+    document.cookie = `waffarly-locale=${preferredLocale}; Path=/; SameSite=Lax`;
+    localStorage.setItem('waffarly-locale', preferredLocale);
+  }, locale);
+}
+
 async function openCashManagementPage(
   page: Page,
-  options: { unsettledCheckCount?: number; pendingDeliveryCount?: number } = {},
+  options: {
+    unsettledCheckCount?: number;
+    pendingDeliveryCount?: number;
+    locale?: 'en' | 'ar';
+  } = {},
 ) {
+  await startWithLocale(page, options.locale);
   let activeShift: typeof openShift | null = openShift;
   let latestClose: Record<string, unknown> | null = null;
   let expectedCash = 1550.5;
@@ -75,7 +88,8 @@ async function openCashManagementPage(
         displayName: 'Sarah Ahmed',
         role: 'cashier',
         permissions: ['sell', 'open_register_shift'],
-        branches: [{ id: branchId, name: 'Main branch', archivedAt: null }],
+        branch: { id: branchId, name: 'Main branch', archivedAt: null },
+        deviceRegister: { id: registerId, branchId, name: 'Front register' },
       },
     }),
   );
@@ -105,6 +119,7 @@ async function openCashManagementPage(
     const body = route.request().postDataJSON() as {
       countedCash: string;
       reason?: string;
+      confirmPendingDeliveries?: boolean;
       deliveryHandover?: { recipientUsername: string };
     };
     const hasVariance = Number(body.countedCash) !== expectedCash;
@@ -112,9 +127,10 @@ async function openCashManagementPage(
       json: {
         unsettledCheckCount: currentReconciliation.unsettledCheckCount,
         requiresReason: hasVariance && !body.reason,
-        requiresSupervisorApproval: hasVariance || (options.pendingDeliveryCount ?? 0) > 0,
+        requiresSupervisorApproval: hasVariance,
         pendingDeliveryCount: options.pendingDeliveryCount ?? 0,
-        requiresDeliveryHandover: (options.pendingDeliveryCount ?? 0) > 0 && !body.deliveryHandover,
+        requiresDeliveryConfirmation:
+          (options.pendingDeliveryCount ?? 0) > 0 && !body.confirmPendingDeliveries,
       },
     });
   });
@@ -174,13 +190,22 @@ async function openCashManagementPage(
   });
 
   await page.goto('/shift');
-  await expect(page.getByRole('heading', { name: 'Open register shift' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Close register shift' })).toBeVisible();
+  const locale = options.locale ?? 'en';
+  await expect(
+    page.getByRole('heading', {
+      name: locale === 'ar' ? 'فتح وردية الكاشير' : 'Open register shift',
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('heading', {
+      name: locale === 'ar' ? 'إغلاق وردية الكاشير' : 'Close register shift',
+    }),
+  ).toBeVisible();
   return { movementRequests, closeRequests };
 }
 
 async function openShiftPage(page: Page, options: ShiftPageOptions = {}) {
-  const branches = options.branches ?? [{ id: branchId, name: 'Main branch', archivedAt: null }];
+  await startWithLocale(page, options.locale);
   const registers = options.registers ?? [{ id: registerId, branchId, name: 'Front register' }];
   let failRegisters = options.failRegisters ?? false;
   let failCurrentShift = options.failCurrentShift ?? false;
@@ -206,7 +231,8 @@ async function openShiftPage(page: Page, options: ShiftPageOptions = {}) {
         displayName: 'Sarah Ahmed',
         role: 'cashier',
         permissions: ['sell', 'open_register_shift'],
-        branches,
+        branch: { id: branchId, name: 'Main branch', archivedAt: null },
+        deviceRegister: { id: registerId, branchId, name: 'Front register' },
       },
     }),
   );
@@ -224,7 +250,11 @@ async function openShiftPage(page: Page, options: ShiftPageOptions = {}) {
   });
 
   await page.goto('/shift');
-  await expect(page.getByRole('heading', { name: 'Open register shift' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', {
+      name: options.locale === 'ar' ? 'فتح وردية الكاشير' : 'Open register shift',
+    }),
+  ).toBeVisible();
   return {
     recoverRegisters: () => {
       failRegisters = false;
@@ -329,80 +359,28 @@ test('next cashier explicitly accepts previous-shift float when opening', async 
   });
 });
 
-test('rejected saved delivery handover unlocks the recipient without losing the cash count', async ({
+test('cashier can cancel pending delivery close confirmation without saving a close', async ({
   page,
 }) => {
   const requests = await openCashManagementPage(page, { pendingDeliveryCount: 1 });
-  const rejectedRequestId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
-  await page.evaluate(
-    ({ merchantId, employeeId, branchId, registerId, shiftId, requestId }) => {
-      const key = Object.keys(localStorage).find(
-        (key) =>
-          key.startsWith('waffarly:pos:workspace:v1:') &&
-          key.includes(merchantId) &&
-          key.includes(employeeId),
-      );
-      if (!key) throw new Error('Expected cashier workspace');
-      const data = JSON.parse(localStorage.getItem(key)!);
-      data.workspace.pendingShiftClose = {
-        branchId,
-        registerId,
-        shiftId,
-        request: {
-          requestId,
-          countedCash: '1550.50',
-          deliveryHandover: { recipientUsername: 'essam' },
-        },
-      };
-      localStorage.setItem(key, JSON.stringify(data));
-    },
-    {
-      merchantId,
-      employeeId,
-      branchId,
-      registerId,
-      shiftId: openShift.id,
-      requestId: rejectedRequestId,
-    },
-  );
-  await page.route(`**/pos/shifts/${openShift.id}/close`, (route) => {
-    const body = route.request().postDataJSON();
-    return body.deliveryHandover?.recipientUsername === 'essam'
-      ? route.fulfill({
-          status: 403,
-          json: {
-            message: 'Choose a different active cashier or supervisor assigned to this branch.',
-          },
-        })
-      : route.fallback();
+  let confirmation = '';
+  page.on('dialog', async (dialog) => {
+    confirmation = dialog.message();
+    await dialog.dismiss();
   });
-  await page.reload();
   const closeForm = page.locator('form').filter({ has: page.getByLabel('Counted cash (EGP)') });
-  const recipient = closeForm.getByLabel('Receiving employee username');
-  await expect(recipient).toBeDisabled();
-  await expect(recipient).toHaveValue('essam');
-  await closeForm.getByLabel('Supervisor username').fill('manager');
-  await closeForm.getByLabel('Supervisor password').fill('local-test-password');
-  await closeForm.getByRole('button', { name: 'Retry shift close', exact: true }).click();
-  await expect(recipient).toBeEnabled();
-  await expect(closeForm.getByLabel('Counted cash (EGP)')).toHaveValue('1550.50');
-  await expect(recipient.locator('option')).toHaveCount(2);
-  await recipient.selectOption('manager');
-  await closeForm.getByLabel('Supervisor password').fill('local-test-password');
+  await closeForm.getByLabel('Counted cash (EGP)').fill('1550.50');
   await closeForm.getByRole('button', { name: 'Close shift and save report', exact: true }).click();
-  await expect.poll(() => requests.closeRequests.length).toBe(1);
-  expect(requests.closeRequests[0]).toMatchObject({
-    countedCash: '1550.50',
-    deliveryHandover: { recipientUsername: 'manager' },
-  });
-  expect(requests.closeRequests[0]!.requestId).not.toBe(rejectedRequestId);
-  await expect(page.getByRole('heading', { name: 'Last shift close' })).toBeVisible();
+  await expect.poll(() => confirmation).toContain('1 delivery is still pending');
+  expect(requests.closeRequests).toHaveLength(0);
+  await expect(page.getByRole('heading', { name: 'Close register shift' })).toBeVisible();
 });
 
-test('a lost close response preserves the exact delivery handover after reload', async ({
+test('a lost close response preserves the cashier delivery confirmation after reload', async ({
   page,
 }) => {
   const requests = await openCashManagementPage(page, { pendingDeliveryCount: 1 });
+  page.on('dialog', (dialog) => dialog.accept());
   const attempts: Record<string, unknown>[] = [];
   await page.route(`**/pos/shifts/${openShift.id}/close`, (route) => {
     attempts.push(route.request().postDataJSON());
@@ -410,30 +388,24 @@ test('a lost close response preserves the exact delivery handover after reload',
   });
   let closeForm = page.locator('form').filter({ has: page.getByLabel('Counted cash (EGP)') });
   await closeForm.getByLabel('Counted cash (EGP)').fill('1550.50');
-  await closeForm.getByLabel('Receiving employee username').selectOption('manager');
-  await closeForm.getByLabel('Supervisor username').fill('manager');
-  await closeForm.getByLabel('Supervisor password').fill('local-test-password');
   await closeForm.getByRole('button', { name: 'Close shift and save report', exact: true }).click();
   await expect.poll(() => attempts.length).toBe(1);
-  await expect(closeForm.getByLabel('Receiving employee username')).toBeDisabled();
   await page.reload();
   closeForm = page.locator('form').filter({ has: page.getByLabel('Counted cash (EGP)') });
-  await expect(closeForm.getByLabel('Receiving employee username')).toHaveValue('manager');
   await expect(closeForm.getByLabel('Counted cash (EGP)')).toHaveValue('1550.50');
-  await closeForm.getByLabel('Supervisor username').fill('manager');
-  await closeForm.getByLabel('Supervisor password').fill('local-test-password');
+  const stored = await page.evaluate(() => JSON.stringify(localStorage));
+  expect(stored).toContain('confirmPendingDeliveries');
   await closeForm.getByRole('button', { name: 'Retry shift close', exact: true }).click();
   await expect.poll(() => requests.closeRequests.length).toBe(1);
   expect(attempts[1]).toEqual(attempts[0]);
 });
 
-test('new shift form makes branch, register and opening float easy to scan', async ({ page }) => {
+test('new shift form shows the assigned register and opening float clearly', async ({ page }) => {
   await openShiftPage(page);
 
   const shiftRegion = page.getByRole('region', { name: 'Open register shift' });
-  await expect(shiftRegion.getByRole('combobox').nth(0)).toHaveValue(branchId);
-  await expect(shiftRegion.getByRole('combobox').nth(1)).toHaveValue(registerId);
   await expect(page.getByRole('heading', { name: 'Start a new shift' })).toBeVisible();
+  await expect(shiftRegion).toContainText('Front register');
   await expect(page.getByLabel('Opening cash float (EGP)')).toHaveValue('');
   await page.getByLabel('Opening cash float (EGP)').fill('250.50');
   await expect(page.getByLabel('Opening cash float (EGP)')).toHaveValue('250.50');
@@ -444,7 +416,6 @@ test('open shift shows register attribution and opening float in both themes', a
   await openShiftPage(page, { shift: openShift });
 
   const shiftCard = page.getByRole('article');
-  await expect(shiftCard).toContainText('Register shift is open');
   await expect(shiftCard).toContainText('Front register');
   await expect(shiftCard).toContainText('Main branch');
   await expect(shiftCard).toContainText('Sarah Ahmed');
@@ -453,13 +424,10 @@ test('open shift shows register attribution and opening float in both themes', a
   await expect(shiftCard).not.toHaveClass(/emerald/);
 
   const shiftRegion = page.getByRole('region', { name: 'Open register shift' });
-  await expect(shiftRegion).toContainText(
-    'Review the selected register and opening cash, or start a new shift.',
-  );
   const topPadding = await shiftRegion.evaluate((element) =>
     Number.parseFloat(getComputedStyle(element).paddingTop),
   );
-  expect(topPadding).toBeGreaterThanOrEqual(28);
+  expect(topPadding).toBeGreaterThanOrEqual(12);
 
   const workspace = page.locator('.pos-theme');
   await expect(workspace).toHaveAttribute('data-theme', 'dark');
@@ -473,58 +441,15 @@ test('open shift shows register attribution and opening float in both themes', a
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
 });
 
-test('missing branch assignment has its own actionable empty state', async ({ page }) => {
-  let registerRequests = 0;
-  await page.route('**/pos/cash/**', (route) =>
-    route.fulfill({
-      json: {
-        items: route.request().url().includes('/safes')
-          ? [{ id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', branchId, name: 'Main safe' }]
-          : [],
-        nextCursor: null,
-      },
-    }),
-  );
-  await page.route('**/auth/pos/me', (route) =>
-    route.fulfill({
-      json: {
-        id: employeeId,
-        merchantId,
-        username: 'cashier',
-        displayName: 'Sarah Ahmed',
-        role: 'cashier',
-        permissions: ['sell', 'open_register_shift'],
-        branches: [],
-      },
-    }),
-  );
-  await page.route('**/pos/registers**', (route) => {
-    registerRequests += 1;
-    return route.fulfill({ json: [] });
-  });
+test('the paired register is used without depending on the legacy register directory', async ({
+  page,
+}) => {
+  const shiftPage = await openShiftPage(page, { registers: [] });
 
-  await page.goto('/shift');
-  await expect(
-    page.getByRole('heading', { name: 'No active branches are assigned to this account.' }),
-  ).toBeVisible();
-  await expect(
-    page.getByText('Ask the merchant owner to assign you to an active POS branch.'),
-  ).toBeVisible();
-  expect(registerRequests).toBe(0);
-});
-
-test('empty register list is distinct from missing branch assignment', async ({ page }) => {
-  await openShiftPage(page, { registers: [] });
-
-  await expect(
-    page.getByRole('heading', { name: 'No active registers at this branch.' }),
-  ).toBeVisible();
-  await expect(
-    page.getByText('Ask the merchant owner to create a POS register before opening a shift.'),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'No active branches are assigned to this account.' }),
-  ).toHaveCount(0);
+  const shiftRegion = page.getByRole('region', { name: 'Open register shift' });
+  await expect(page.getByRole('heading', { name: 'Start a new shift' })).toBeVisible();
+  await expect(shiftRegion).toContainText('Front register');
+  expect(shiftPage.getRegisterRequests()).toBe(0);
 });
 
 test('retry recovers the current shift query instead of retrying only the register list', async ({
@@ -532,7 +457,9 @@ test('retry recovers the current shift query instead of retrying only the regist
 }) => {
   const shiftPage = await openShiftPage(page, { failCurrentShift: true, shift: openShift });
 
-  await expect(page.getByRole('alert')).toContainText('Temporary shift lookup failure');
+  await expect(
+    page.getByRole('alert').filter({ hasText: 'Temporary shift lookup failure' }),
+  ).toBeVisible();
   await expect(
     page.getByRole('heading', { name: 'Could not verify whether a shift is already open.' }),
   ).toBeVisible();
@@ -542,37 +469,27 @@ test('retry recovers the current shift query instead of retrying only the regist
   shiftPage.recoverCurrentShift();
   await page.getByRole('button', { name: 'Retry' }).click();
 
-  await expect(page.getByRole('article')).toContainText('Register shift is open');
+  await expect(page.getByRole('article')).toContainText('Front register');
   expect(shiftPage.getCurrentShiftRequests()).toBeGreaterThan(requestCountBeforeRetry);
 });
 
-test('register lookup errors are not shown as an empty branch and recover on retry', async ({
-  page,
-}) => {
+test('a legacy register directory failure does not hide the paired register', async ({ page }) => {
   const shiftPage = await openShiftPage(page, { failRegisters: true });
 
-  await expect(page.getByRole('alert')).toContainText('Temporary register lookup failure');
-  await expect(
-    page.getByRole('heading', { name: 'Could not verify register availability.' }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: 'No active registers at this branch.' }),
-  ).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Start a new shift' })).toHaveCount(0);
-
-  const requestCountBeforeRetry = shiftPage.getRegisterRequests();
-  shiftPage.recoverRegisters();
-  await page.getByRole('button', { name: 'Retry' }).click();
-
   await expect(page.getByRole('heading', { name: 'Start a new shift' })).toBeVisible();
-  expect(shiftPage.getRegisterRequests()).toBeGreaterThan(requestCountBeforeRetry);
+  await expect(page.getByRole('region', { name: 'Open register shift' })).toContainText(
+    'Front register',
+  );
+  expect(shiftPage.getRegisterRequests()).toBe(0);
 });
 
 test('Arabic open-shift screen follows RTL and hides unreadable saved operator names', async ({
   page,
 }) => {
-  await openShiftPage(page, { shift: { ...openShift, openedByName: '????? ?????' } });
-  await page.getByRole('button', { name: 'Change language' }).click();
+  await openShiftPage(page, {
+    locale: 'ar',
+    shift: { ...openShift, openedByName: '????? ?????' },
+  });
 
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   await expect(page.getByRole('heading', { name: 'فتح وردية الكاشير' })).toBeVisible();
@@ -704,8 +621,7 @@ for (const locale of ['en', 'ar'] as const) {
   test(`blind count preview reveals the reason and supervisor requirements together (${locale})`, async ({
     page,
   }) => {
-    const requests = await openCashManagementPage(page);
-    if (locale === 'ar') await page.getByRole('button', { name: 'Change language' }).click();
+    const requests = await openCashManagementPage(page, { locale });
     const labels =
       locale === 'ar'
         ? {

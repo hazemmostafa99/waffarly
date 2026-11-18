@@ -31,8 +31,7 @@ function employeeSummary(username: string, displayName: string, role: 'cashier' 
     ],
     active: true,
     revision: 1,
-    branchIds: [branchId],
-    branches: [{ id: branchId, name: 'Central', archivedAt: null }],
+    branch: { id: branchId, name: 'Central', archivedAt: null },
     createdAt: '2026-10-15T12:00:00.000Z',
     updatedAt: '2026-10-15T12:00:00.000Z',
   };
@@ -122,7 +121,7 @@ async function mockOwner(page: Page) {
     const body = route.request().postDataJSON() as {
       username: string;
       displayName: string;
-      branchIds: string[];
+      branchId: string;
       role?: 'cashier' | null;
     };
     employees = [employeeSummary(body.username, body.displayName, body.role ?? null)];
@@ -175,12 +174,12 @@ test('owner configures a cashier and register, then the cashier can open a shift
     .getByLabel('Password (12 characters minimum)', { exact: true })
     .fill('browser-test-password');
   const branchPicker = ownerPage.getByRole('combobox', {
-    name: 'Add an active branch',
+    name: 'Choose an active branch',
     exact: true,
   });
   await branchPicker.fill('Central');
   await ownerPage
-    .getByRole('listbox', { name: 'Add an active branch', exact: true })
+    .getByRole('listbox', { name: 'Choose an active branch', exact: true })
     .getByRole('option', { name: 'Central', exact: true })
     .click();
   await ownerPage.getByRole('combobox', { name: 'Role', exact: true }).selectOption('cashier');
@@ -234,7 +233,7 @@ test('owner configures a cashier and register, then the cashier can open a shift
       displayName: 'Amira Hassan',
       role: 'cashier',
       permissions: ['accept_recipe_orders', 'start_preparation', 'open_register_shift', 'sell'],
-      branches: [{ id: branchId, name: 'Central', archivedAt: null }],
+      branch: { id: branchId, name: 'Central', archivedAt: null },
     });
   });
   await posPage.route('**/auth/pos/login', async (route) => {

@@ -7,7 +7,7 @@ import {
 const merchantId = '11111111-1111-4111-8111-111111111111';
 const employeeId = '22222222-2222-4222-8222-222222222222';
 const branchId = '33333333-3333-4333-8333-333333333333';
-const branches = [{ id: branchId, name: 'Central', archivedAt: null }];
+const branch = { id: branchId, name: 'Central', archivedAt: null };
 
 async function mockApi(
   page: Page,
@@ -71,8 +71,7 @@ for (const locale of ['en', 'ar']) {
         savedPermissions: ['accept_recipe_orders', 'start_preparation'],
         revision: 1,
         active: true,
-        branches,
-        branchIds: [branchId],
+        branch,
       };
       if (path === `/owner/employees/${employeeId}` && method === 'PATCH') {
         savedBody = body as Record<string, unknown>;
@@ -118,7 +117,7 @@ for (const locale of ['en', 'ar']) {
       .click();
     await expect(dialog).not.toBeVisible();
     expect(savedBody?.role).toBe('accountant');
-    expect(savedBody?.branchIds).toEqual([branchId]);
+    expect(savedBody?.branchId).toBe(branchId);
     await expect(
       page.getByRole('cell', { name: locale === 'ar' ? 'محاسب' : 'Accountant', exact: true }),
     ).toBeVisible();

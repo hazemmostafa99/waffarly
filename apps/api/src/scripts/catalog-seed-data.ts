@@ -172,9 +172,27 @@ const products: SeedProduct[] = [
       },
     ],
     variants: [
-      { name: 'Regular bun', sku: 'WFK-CBB-REG', barcode: '6224000001001', price: '165.00', stockQuantity: 36 },
-      { name: 'Brioche bun', sku: 'WFK-CBB-BRI', barcode: '6224000001002', price: '175.00', stockQuantity: 14 },
-      { name: 'Lettuce wrap', sku: 'WFK-CBB-LTW', barcode: '6224000001003', price: '165.00', stockQuantity: 0 },
+      {
+        name: 'Regular bun',
+        sku: 'WFK-CBB-REG',
+        barcode: '6224000001001',
+        price: '165.00',
+        stockQuantity: 36,
+      },
+      {
+        name: 'Brioche bun',
+        sku: 'WFK-CBB-BRI',
+        barcode: '6224000001002',
+        price: '175.00',
+        stockQuantity: 14,
+      },
+      {
+        name: 'Lettuce wrap',
+        sku: 'WFK-CBB-LTW',
+        barcode: '6224000001003',
+        price: '165.00',
+        stockQuantity: 0,
+      },
     ],
   },
   {
@@ -207,9 +225,27 @@ const products: SeedProduct[] = [
       },
     ],
     variants: [
-      { name: 'Original', sku: 'WFK-CCB-ORG', barcode: '6224000001011', price: '145.00', stockQuantity: 18 },
-      { name: 'Spicy', sku: 'WFK-CCB-SPY', barcode: '6224000001012', price: '145.00', stockQuantity: 7 },
-      { name: 'Gluten-free bun', sku: 'WFK-CCB-GFB', barcode: '6224000001013', price: '165.00', stockQuantity: 2 },
+      {
+        name: 'Original',
+        sku: 'WFK-CCB-ORG',
+        barcode: '6224000001011',
+        price: '145.00',
+        stockQuantity: 18,
+      },
+      {
+        name: 'Spicy',
+        sku: 'WFK-CCB-SPY',
+        barcode: '6224000001012',
+        price: '145.00',
+        stockQuantity: 7,
+      },
+      {
+        name: 'Gluten-free bun',
+        sku: 'WFK-CCB-GFB',
+        barcode: '6224000001013',
+        price: '165.00',
+        stockQuantity: 2,
+      },
     ],
   },
   {
@@ -260,9 +296,27 @@ const products: SeedProduct[] = [
       },
     ],
     variants: [
-      { name: '3 pieces', sku: 'WFK-CT-3', barcode: '6224000001031', price: '110.00', stockQuantity: 20 },
-      { name: '5 pieces', sku: 'WFK-CT-5', barcode: '6224000001032', price: '155.00', stockQuantity: 3 },
-      { name: '8 pieces', sku: 'WFK-CT-8', barcode: '6224000001033', price: '235.00', stockQuantity: 0 },
+      {
+        name: '3 pieces',
+        sku: 'WFK-CT-3',
+        barcode: '6224000001031',
+        price: '110.00',
+        stockQuantity: 20,
+      },
+      {
+        name: '5 pieces',
+        sku: 'WFK-CT-5',
+        barcode: '6224000001032',
+        price: '155.00',
+        stockQuantity: 3,
+      },
+      {
+        name: '8 pieces',
+        sku: 'WFK-CT-8',
+        barcode: '6224000001033',
+        price: '235.00',
+        stockQuantity: 0,
+      },
     ],
   },
   {
@@ -299,8 +353,20 @@ const products: SeedProduct[] = [
     image: 'cola',
     categories: ['Drinks'],
     variants: [
-      { name: 'Can', sku: 'WFK-COLA-CAN', barcode: '6224000001041', price: '35.00', stockQuantity: 48 },
-      { name: 'Zero sugar can', sku: 'WFK-COLA-ZERO', barcode: '6224000001042', price: '35.00', stockQuantity: 0 },
+      {
+        name: 'Can',
+        sku: 'WFK-COLA-CAN',
+        barcode: '6224000001041',
+        price: '35.00',
+        stockQuantity: 48,
+      },
+      {
+        name: 'Zero sugar can',
+        sku: 'WFK-COLA-ZERO',
+        barcode: '6224000001042',
+        price: '35.00',
+        stockQuantity: 0,
+      },
       {
         name: '1 litre bottle',
         sku: 'WFK-COLA-1L',
@@ -325,7 +391,13 @@ const products: SeedProduct[] = [
     image: 'lava-cake',
     categories: ['Desserts'],
     variants: [
-      { name: 'Single serving', sku: 'WFK-LAVA-ONE', barcode: '6224000001051', price: '105.00', stockQuantity: 2 },
+      {
+        name: 'Single serving',
+        sku: 'WFK-LAVA-ONE',
+        barcode: '6224000001051',
+        price: '105.00',
+        stockQuantity: 2,
+      },
     ],
   },
   {
@@ -335,8 +407,20 @@ const products: SeedProduct[] = [
     image: 'kids-meal',
     categories: ['Kids Meals'],
     variants: [
-      { name: 'Beef slider', sku: 'WFK-KID-BEF', barcode: '6224000001061', price: '120.00', stockQuantity: 9 },
-      { name: 'Chicken slider', sku: 'WFK-KID-CHK', barcode: '6224000001062', price: '120.00', stockQuantity: 0 },
+      {
+        name: 'Beef slider',
+        sku: 'WFK-KID-BEF',
+        barcode: '6224000001061',
+        price: '120.00',
+        stockQuantity: 9,
+      },
+      {
+        name: 'Chicken slider',
+        sku: 'WFK-KID-CHK',
+        barcode: '6224000001062',
+        price: '120.00',
+        stockQuantity: 0,
+      },
     ],
   },
   {
@@ -347,7 +431,13 @@ const products: SeedProduct[] = [
     categories: ['Breakfast Specials'],
     availability: 'unavailable',
     variants: [
-      { name: 'Standard', sku: 'WFK-BRK-STD', barcode: '6224000001071', price: '195.00', stockQuantity: 6 },
+      {
+        name: 'Standard',
+        sku: 'WFK-BRK-STD',
+        barcode: '6224000001071',
+        price: '195.00',
+        stockQuantity: 6,
+      },
     ],
   },
 ];
@@ -482,7 +572,10 @@ export async function seedRestaurantCatalog(
 
   for (const image of catalogSeedImages) {
     const storageKey = catalogSeedStorageKey(image.key);
-    let media = await prisma.mediaAsset.findFirst({ where: { merchantId, storageKey }, select: { id: true } });
+    let media = await prisma.mediaAsset.findFirst({
+      where: { merchantId, storageKey },
+      select: { id: true },
+    });
     if (!media) {
       media = await prisma.mediaAsset.create({
         data: {
@@ -512,7 +605,8 @@ export async function seedRestaurantCatalog(
     });
     if (!record) {
       const parent = category.parent ? categoryByName.get(inArabic(category.parent)) : undefined;
-      if (category.parent && !parent) throw new Error(`Missing parent category "${category.parent}".`);
+      if (category.parent && !parent)
+        throw new Error(`Missing parent category "${category.parent}".`);
       record = await prisma.category.create({
         data: {
           merchantId,
@@ -612,7 +706,9 @@ export async function seedRestaurantCatalog(
             },
           });
           for (const option of group.options) {
-            const persistedOption = persistedGroup.options.find((item) => item.name === option.name);
+            const persistedOption = persistedGroup.options.find(
+              (item) => item.name === option.name,
+            );
             if (persistedOption) {
               await prisma.modifierOption.update({
                 where: { id: persistedOption.id },
@@ -674,17 +770,19 @@ export async function seedRestaurantCatalog(
           })),
         },
         ...(product.variants
-          ? { variants: {
-              create: product.variants.map((variant, position) => ({
-                name: inArabic(variant.name),
-                sku: variant.sku,
-                barcode: variant.barcode,
-                price: variant.price,
-                stockQuantity: variant.stockQuantity,
-                availability: variant.availability ?? 'available',
-                position,
-              })),
-            } }
+          ? {
+              variants: {
+                create: product.variants.map((variant, position) => ({
+                  name: inArabic(variant.name),
+                  sku: variant.sku,
+                  barcode: variant.barcode,
+                  price: variant.price,
+                  stockQuantity: variant.stockQuantity,
+                  availability: variant.availability ?? 'available',
+                  position,
+                })),
+              },
+            }
           : {}),
       },
       select: { id: true },

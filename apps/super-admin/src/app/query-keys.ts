@@ -3,6 +3,5 @@ export const adminQueryKeys = {
   merchants: ['admin', 'merchants'] as const,
   applications: ['admin', 'merchant-applications'] as const,
   plans: ['admin', 'plans'] as const,
-  templates: ['admin', 'templates'] as const,
-  activitiesModules: ['admin', 'activities-modules'] as const,
+  activities: ['admin', 'activities'] as const,
 };

@@ -1,24 +1,25 @@
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
-import { config } from 'dotenv';
+import { InventoryLedgerService } from '../../src/modules/inventory/index.js';
+import { StorefrontOrderStatusService } from '../../src/modules/orders/fulfillment/storefront-order-status.service.js';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { ProductPricingService } from '../../src/modules/catalog/pricing/product-pricing.service.js';
 import { ProductService } from '../../src/modules/catalog/products/product.service.js';
-import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
+import { StorefrontOrdersService } from '../../src/modules/orders/checkout/storefront-orders.service.js';
 import { ProductConfigurationReportService } from '../../src/modules/reports/product-configuration-report.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'snapshots configured products, reserves tracked stock, and restores it when a pending order is rejected',
   { skip: !databaseUrl },
-  async () => {
-    assert.ok(databaseUrl, 'Configure DATABASE_URL and apply migrations first.');
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+  async (testContext) => {
+    assert.ok(databaseUrl, 'Configure TEST_DATABASE_URL and apply migrations first.');
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback storefront order verification fixtures');
 
     try {
@@ -131,6 +132,10 @@ it(
             ],
           });
           const orders = new StorefrontOrdersService(transactionClient, productsPricing);
+          const orderStatus = new StorefrontOrderStatusService(
+            transactionClient,
+            new InventoryLedgerService(transactionClient),
+          );
           const first = await orders.create(merchant.storefrontSlug, {
             customerName: 'Mona Ali',
             customerPhone: '01000000000',
@@ -206,7 +211,7 @@ it(
             },
           ]);
 
-          const rejected = await orders.updateStatus(merchant.id, first.id, 'rejected');
+          const rejected = await orderStatus.updateStatus(merchant.id, first.id, 'rejected');
           assert.equal(rejected.status, 'rejected');
           const restoredVariant = await transaction.productVariant.findUniqueOrThrow({
             where: { id: product.variants[0]!.id },
@@ -226,7 +231,7 @@ it(
               },
             ],
           });
-          await orders.updateStatus(merchant.id, second.id, 'accepted');
+          await orderStatus.updateStatus(merchant.id, second.id, 'accepted');
           const orderPageOne = await orders.listForOwner(merchant.id, { limit: 1 });
           assert.equal(orderPageOne.items.length, 1);
           assert.ok(orderPageOne.nextCursor);

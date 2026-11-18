@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, ReceiptText } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { posWorkspaceScope, usePosWorkspaceStore } from '../../app/pos-workspace-store.js';
 import { PosButton } from '../../components/pos-button.js';
+import { getPosOrderNumber } from './pos-order-number.js';
 import { formatMoneyCents, parseMoneyCents } from '../payments/payment-form-model.js';
 import { getPosOrderPaymentState, posPaymentStateKey } from '../payments/pos-payments.api.js';
 import { PosReceiptView } from '../receipts/pos-receipt-view.js';
@@ -51,6 +52,7 @@ export function PosConfirmedOrderPanel({
   const workspace = usePosWorkspaceStore((state) =>
     state.activeScope === scope ? state.workspace : null,
   );
+  const savedOrderReference = workspace?.confirmedOrders[orderId];
   const savePendingCancellation = usePosWorkspaceStore((state) => state.savePendingCancellation);
   const removePendingCancellation = usePosWorkspaceStore(
     (state) => state.removePendingCancellation,
@@ -229,7 +231,14 @@ export function PosConfirmedOrderPanel({
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs font-medium text-muted-foreground">{t('Current order')}</span>
           <bdi className="text-xs font-semibold tabular-nums">
-            {order?.orderReference ?? `ORD-${orderId.slice(0, 8).toUpperCase()}`}
+            #
+            {getPosOrderNumber(
+              order ?? {
+                id: orderId,
+                orderReference: savedOrderReference?.orderReference ?? null,
+                branchOrderNumber: savedOrderReference?.branchOrderNumber ?? null,
+              },
+            )}
           </bdi>
         </div>
         <div className="flex items-center gap-2 text-sm font-semibold">
@@ -348,6 +357,13 @@ export function PosConfirmedOrderPanel({
                     ))}
                     {line.note && (
                       <p className="mt-1 break-words text-xs text-muted-foreground">{line.note}</p>
+                    )}
+                    {line.promotionDiscount && Number(line.promotionDiscount) > 0 && (
+                      <p className="mt-1 text-xs font-medium text-emerald-700">
+                        {t('Product discount')}: −{money(
+                          (Number(line.promotionDiscount) * line.quantity).toFixed(2),
+                        )}
+                      </p>
                     )}
                   </div>
                   <bdi className="shrink-0 text-xs tabular-nums">

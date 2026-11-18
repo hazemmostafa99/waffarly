@@ -35,7 +35,11 @@ export function MarketplaceDialog({
     <div
       id={id}
       onClickCapture={(event) => {
-        if (event.target instanceof HTMLDialogElement && event.target.parentElement === event.currentTarget) onClose();
+        if (
+          event.target instanceof HTMLDialogElement &&
+          event.target.parentElement === event.currentTarget
+        )
+          onClose();
       }}
     >
       <Dialog
@@ -52,7 +56,9 @@ export function MarketplaceDialog({
           className,
         )}
       >
-        <div className={cn('p-4.5 [&_p]:mt-0 [&_p]:leading-[1.8]', contentClassName)}>{children}</div>
+        <div className={cn('p-4.5 [&_p]:mt-0 [&_p]:leading-[1.8]', contentClassName)}>
+          {children}
+        </div>
       </Dialog>
     </div>
   );

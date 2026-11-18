@@ -1,6 +1,73 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@waffarly/database';
-import { toCents, formatCents } from '../../common/money/money.js';
+import { toCents, toSignedCents, formatCents } from '../../common/money/money.js';
+
+/** Records an attributable safe movement using the caller's transaction. */
+export async function recordSafeMovementInTransaction(
+  tx: Prisma.TransactionClient,
+  input: {
+    merchantId: string;
+    safeId: string;
+    branchId?: string;
+    requestId: string;
+    actor: string;
+    amount: string;
+    kind: 'deposit' | 'withdrawal';
+    purpose: 'hr_advance' | 'hr_payroll' | 'hr_expense' | null;
+    reason: string;
+  },
+): Promise<{ id: string }> {
+  await tx.$queryRaw`SELECT "id" FROM "pos_cash_safes" WHERE "id"=${input.safeId}::uuid AND "merchantId"=${input.merchantId}::uuid FOR UPDATE`;
+  const safe = await tx.posCashSafe.findFirst({
+    where: {
+      id: input.safeId,
+      merchantId: input.merchantId,
+      ...(input.branchId ? { branchId: input.branchId } : {}),
+    },
+  });
+  if (!safe) throw new NotFoundException('Cash safe was not found for this branch.');
+
+  const signedAmount = formatCents(toCents(input.amount) * (input.kind === 'withdrawal' ? -1n : 1n));
+  const prior = await tx.posCashSafeMovement.findFirst({
+    where: { merchantId: input.merchantId, requestId: input.requestId },
+  });
+  if (prior) {
+    if (
+      prior.safeId !== safe.id ||
+      prior.branchId !== safe.branchId ||
+      prior.kind !== input.kind ||
+      prior.purpose !== input.purpose ||
+      prior.amount.toFixed(2) !== signedAmount ||
+      prior.reason !== input.reason ||
+      prior.createdBy !== input.actor
+    ) {
+      throw new ConflictException('The request was already used with different cash details.');
+    }
+    return { id: prior.id };
+  }
+
+  const balance = await tx.posCashSafeMovement.aggregate({
+    where: { merchantId: input.merchantId, safeId: safe.id },
+    _sum: { amount: true },
+  });
+  const nextBalance = toSignedCents(balance._sum.amount?.toFixed(2) ?? '0.00') + toSignedCents(signedAmount);
+  if (nextBalance < 0n) throw new ConflictException('The safe does not have enough cash.');
+
+  const movement = await tx.posCashSafeMovement.create({
+    data: {
+      merchantId: input.merchantId,
+      branchId: safe.branchId,
+      safeId: safe.id,
+      requestId: input.requestId,
+      kind: input.kind,
+      purpose: input.purpose,
+      amount: signedAmount,
+      reason: input.reason,
+      createdBy: input.actor,
+    },
+  });
+  return { id: movement.id };
+}
 
 export async function remainingClosedCash(
   tx: Prisma.TransactionClient,

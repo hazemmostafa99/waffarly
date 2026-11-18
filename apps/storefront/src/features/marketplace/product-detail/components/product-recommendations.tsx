@@ -4,12 +4,10 @@ import { cn } from '@waffarly/ui';
 
 import { type MarketplaceProduct } from '@/features/marketplace/catalog/model/catalog';
 import { productRecommendations } from '@/features/marketplace/product-detail/model/product-recommendations';
-import { useCartStore } from '@/features/marketplace/cart/hooks/use-cart-store';
 import { ProductCard } from '@/features/marketplace/catalog/components/product-card';
 
 export function ProductRecommendations({ product }: { product: MarketplaceProduct }) {
   const products = productRecommendations(product);
-  const openCart = useCartStore((state) => state.setCartOpen);
   if (!products.length) return null;
   const hasRelated = products.some((item) => item.category === product.category);
   return (
@@ -55,7 +53,7 @@ export function ProductRecommendations({ product }: { product: MarketplaceProduc
             >
               {item.category === product.category ? 'من نفس القسم' : 'من قسم آخر'}
             </span>
-            <ProductCard product={item} onAdded={() => openCart(true)} />
+            <ProductCard product={item} />
           </div>
         ))}
       </div>

@@ -53,6 +53,18 @@ async function signInAsEmployee(page: Page, username: string, password: string) 
   expect((await loginResponse).ok()).toBe(true);
 }
 
+async function readAssignedBranch(page: Page, apiOrigin: string, expectedName: string) {
+  const response = await page.request.get(new URL('/auth/pos/me', apiOrigin).toString());
+  expect(response.ok()).toBe(true);
+  const employee = (await response.json()) as { branch: { id: string; name: string } };
+  expect(employee.branch.name).toBe(expectedName);
+  return employee.branch;
+}
+
+async function expectNoBranchSelector(page: Page) {
+  await expect(page.getByLabel('Branch', { exact: true })).toHaveCount(0);
+}
+
 async function signOutEmployee(page: Page) {
   await page.getByRole('button', { name: 'Sign out', exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);
@@ -85,7 +97,9 @@ test('live POS sales cover splits, refunds, Kitchen and payment-gated handover a
     (response) => new URL(response.url()).pathname === '/auth/pos/login',
   );
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-  expect((await loginResponse).ok()).toBe(true);
+  const cashierLoginResponse = await loginResponse;
+  expect(cashierLoginResponse.ok()).toBe(true);
+  const posApiOrigin = new URL(cashierLoginResponse.url()).origin;
   const appearanceRead = await appearanceReadPromise;
   expect(appearanceRead.status()).toBe(200);
   expect(await appearanceRead.json()).toMatchObject({ accent: 'orange', revision: 1 });
@@ -94,7 +108,8 @@ test('live POS sales cover splits, refunds, Kitchen and payment-gated handover a
 
   await page.goto('/shift');
   await expect(page.getByRole('heading', { name: 'Open register shift' })).toBeVisible();
-  await page.getByLabel('Branch', { exact: true }).selectOption({ label: 'Live E2E branch' });
+  const cashierBranch = await readAssignedBranch(page, posApiOrigin, 'Live E2E branch');
+  await expectNoBranchSelector(page);
   await page.getByLabel('Register', { exact: true }).selectOption({ label: 'Live E2E register' });
   await page.getByLabel('Opening cash float (EGP)', { exact: true }).fill('100');
   const openedShiftResponse = page.waitForResponse(
@@ -1175,12 +1190,10 @@ test('live POS sales cover splits, refunds, Kitchen and payment-gated handover a
   await signInAsEmployee(page, 'manager', 'pos-live-e2e-only-manager-password');
   await page.goto('/orders');
   await expect(page.getByRole('heading', { name: 'Incoming orders', exact: true })).toBeVisible();
-  const originalBranchSelect = page.getByLabel('Branch', { exact: true });
-  const originalBranchId = await originalBranchSelect
-    .locator('option')
-    .filter({ hasText: 'Live E2E branch' })
-    .getAttribute('value');
-  expect(originalBranchId).toBeTruthy();
+  const managerBranch = await readAssignedBranch(page, posApiOrigin, 'Live E2E branch');
+  expect(managerBranch.id).toBe(cashierBranch.id);
+  await expectNoBranchSelector(page);
+  const originalBranchId = managerBranch.id;
   const contentionOrderCard = page
     .locator('article')
     .filter({ hasText: '#' + contentionOrder.id.slice(0, 6).toUpperCase() });
@@ -1234,16 +1247,13 @@ test('live POS sales cover splits, refunds, Kitchen and payment-gated handover a
   await signInAsEmployee(page, 'isolated-cashier', 'pos-live-e2e-isolated-password');
   await page.goto('/orders');
   await expect(page.getByRole('heading', { name: 'Incoming orders', exact: true })).toBeVisible();
-  const isolatedBranchSelect = page.getByLabel('Branch', { exact: true });
-  await expect(isolatedBranchSelect.locator('option')).toHaveCount(1);
-  await expect(isolatedBranchSelect.locator('option').first()).toHaveText(
+  const isolatedBranch = await readAssignedBranch(
+    page,
+    posApiOrigin,
     'Live E2E isolated branch',
   );
-  const isolatedBranchId = await isolatedBranchSelect
-    .locator('option')
-    .first()
-    .getAttribute('value');
-  expect(isolatedBranchId).toBeTruthy();
+  await expectNoBranchSelector(page);
+  const isolatedBranchId = isolatedBranch.id;
   await expect(page.getByRole('status')).toContainText(
     'No incoming kitchen orders for this branch.',
   );
@@ -1347,10 +1357,9 @@ test('live POS sales cover splits, refunds, Kitchen and payment-gated handover a
   await expect(
     page.getByRole('button', { name: 'Add item: Live POS E2E Item', exact: true }),
   ).toBeVisible();
-  const sellingBranchSelect = page.getByLabel('Branch', { exact: true });
-  await sellingBranchSelect.selectOption({ label: 'Live E2E branch' });
-  const selectedOriginalBranchId = await sellingBranchSelect.inputValue();
-  expect(selectedOriginalBranchId).toBe(originalBranchId);
+  const sellingBranch = await readAssignedBranch(page, posApiOrigin, 'Live E2E branch');
+  expect(sellingBranch.id).toBe(originalBranchId);
+  await expectNoBranchSelector(page);
   await page.getByRole('button', { name: 'New order', exact: true }).first().click();
   await page.getByRole('button', { name: 'Add item: Live POS E2E Item', exact: true }).click();
   const branchScopedDraftLine = page.locator('.pos-live-cart-line').first();
@@ -1360,18 +1369,8 @@ test('live POS sales cover splits, refunds, Kitchen and payment-gated handover a
     .getByRole('textbox', { name: 'Item note for Live POS E2E Item' })
     .fill('Branch A only');
 
-  await sellingBranchSelect.selectOption({ label: 'Live E2E isolated branch' });
-  expect(await sellingBranchSelect.inputValue()).toBe(isolatedBranchId);
-  await expect(page.locator('.pos-live-cart-line')).toHaveCount(0);
-  await sellingBranchSelect.selectOption({ label: 'Live E2E branch' });
-  expect(await sellingBranchSelect.inputValue()).toBe(originalBranchId);
-  const restoredBranchScopedDraftLine = page.locator('.pos-live-cart-line').first();
-  await expect(restoredBranchScopedDraftLine).toContainText('Live POS E2E Item');
-  await expect(page.locator('.pos-item-note-editor summary').first()).toContainText(
-    'Branch A only',
-  );
   await page.reload();
-  await expect(page.getByLabel('Branch', { exact: true })).toHaveValue(originalBranchId!);
+  await expectNoBranchSelector(page);
   await expect(page.locator('.pos-live-cart-line')).toHaveCount(1);
   await expect(page.locator('.pos-item-note-editor summary').first()).toContainText(
     'Branch A only',
@@ -1380,7 +1379,13 @@ test('live POS sales cover splits, refunds, Kitchen and payment-gated handover a
   await signOutEmployee(page);
   await signInAsEmployee(page, 'isolated-cashier', 'pos-live-e2e-isolated-password');
   await page.goto('/catalog');
-  await expect(page.getByLabel('Branch', { exact: true })).toHaveValue(isolatedBranchId!);
+  const isolatedSellingBranch = await readAssignedBranch(
+    page,
+    posApiOrigin,
+    'Live E2E isolated branch',
+  );
+  expect(isolatedSellingBranch.id).toBe(isolatedBranchId);
+  await expectNoBranchSelector(page);
   await expect(page.locator('.pos-live-cart-line')).toHaveCount(0);
   const employeeReportResponse = await page.request.get(
     'http://127.0.0.1:4005/owner/pos/reports/operations',
@@ -1390,8 +1395,9 @@ test('live POS sales cover splits, refunds, Kitchen and payment-gated handover a
   await signOutEmployee(page);
   await signInAsEmployee(page, 'cashier', 'pos-live-e2e-only-password');
   await page.goto('/catalog');
-  const terminalBranchSelect = page.getByLabel('Branch', { exact: true });
-  await terminalBranchSelect.selectOption(originalBranchId!);
+  const terminalBranch = await readAssignedBranch(page, posApiOrigin, 'Live E2E branch');
+  expect(terminalBranch.id).toBe(originalBranchId);
+  await expectNoBranchSelector(page);
   await page.getByRole('button', { name: /All orders/ }).click();
   await page.getByRole('button', { name: /^Confirmed orders/ }).click();
   const terminalOrderReference = `ORD-${customSplitOrder.id.slice(0, 8).toUpperCase()}`;

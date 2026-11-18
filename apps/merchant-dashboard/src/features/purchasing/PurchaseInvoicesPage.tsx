@@ -14,11 +14,18 @@ import type {
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { ApiError, apiRequest, apiRequestPage } from '../../lib/api-client.js';
 import { inventoryCopy } from '../inventory/inventory-copy.js';
-import { useLocation, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useOutletContext,
+  useSearchParams,
+} from 'react-router-dom';
 import { InventoryHeader } from '../inventory/InventoryHeader.js';
 import type { SupplierFields } from './purchasing.types.js';
 import { SupplierEditor } from './SupplierEditor.js';
 import { PurchaseInvoiceEditor } from './PurchaseInvoiceEditor.js';
+import { PurchaseInvoiceReviewDialog } from './PurchaseInvoiceReviewDialog.js';
 
 type SupplierEditorState = { supplier: PurchaseSupplier | null; key: string };
 
@@ -235,6 +242,23 @@ export function PurchaseInvoicesPage() {
       id: 'lines',
       header: text('Lines'),
       cell: (invoice) => formatDigits(String(invoice.lines.length)),
+    },
+    {
+      id: 'amount',
+      header: text('Total (EGP)'),
+      cell: (invoice) =>
+        invoice.totalAmount === null ? (
+          text('Cost not recorded')
+        ) : (
+          <div className="inventory-table-name">
+            <strong>{formatDigits(invoice.totalAmount)}</strong>
+            {invoice.status === 'confirmed' && (
+              <small>
+                {text('Due')}: {formatDigits(invoice.balanceDue ?? invoice.totalAmount)}
+              </small>
+            )}
+          </div>
+        ),
     },
     {
       id: 'status',
@@ -496,27 +520,15 @@ export function PurchaseInvoicesPage() {
 
   if (isInvoiceEditor) {
     return (
-      <div className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
-        <InventoryHeader
-          title={
-            editorInvoiceId
-              ? editorInvoice?.status === 'confirmed'
-                ? 'Confirmed invoice'
-                : 'Edit draft'
-              : 'New purchase invoice'
-          }
-          description="Save a draft, review received quantities, then add them to your warehouse."
-          actions={
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy}
-              onClick={() => navigate('/inventory/purchases')}
-            >
-              {text('Back to purchases')}
-            </Button>
-          }
-        />
+      <div
+        className="inventory-page inventory-workspace inventory-purchase-workspace"
+        dir={locale === 'ar' ? 'rtl' : 'ltr'}
+      >
+        <nav className="purchase-entry-breadcrumb" aria-label={text('Purchases')}>
+          <Link to="/inventory/purchases">{text('Purchases')}</Link>
+          <span aria-hidden="true">/</span>
+          <span>{text(editorInvoiceId ? 'Edit draft' : 'New purchase invoice')}</span>
+        </nav>
         {editorInvoiceId && !editorInvoice && (editorInvoiceLoading || !editorInvoiceError) && (
           <InventoryCard title={text('Loading draft')}>
             <p role="status">{text('Loading purchase invoice…')}</p>
@@ -563,7 +575,7 @@ export function PurchaseInvoicesPage() {
   }
 
   return (
-    <div className="inventory-page" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="inventory-page inventory-workspace" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <InventoryHeader
         title="Purchases"
         description="Save a draft, review received quantities, then add them to your warehouse."
@@ -877,95 +889,28 @@ export function PurchaseInvoicesPage() {
         />
       )}
       {invoiceReview && (
-        <DashboardDialog
-          title={text('Review supplier invoice')}
-          closeLabel={text('Close')}
+        <PurchaseInvoiceReviewDialog
+          key={invoiceReview.id}
+          invoice={invoiceReview}
+          busy={busy}
+          error={loadError}
+          copy={text}
           onClose={() => {
             if (busy) return;
             if (sourceInvoiceId) navigate('/inventory/purchases', { replace: true });
             else setInvoiceReview(null);
           }}
-          busy={busy}
-          wide
-        >
-          <div className="products-dialog-body inventory-review">
-            {loadError && (
-              <p className="inventory-error" role="alert">
-                {loadError}
-              </p>
-            )}
-            {invoiceReview.status === 'draft' && (
-              <ol className="inventory-flow" aria-label={text('Purchase progress')}>
-                <li>{text('Supplier and warehouse')}</li>
-                <li>{text('Items and quantities')}</li>
-                <li aria-current="step">{text('Review and receive')}</li>
-              </ol>
-            )}
-            {invoiceReview.status === 'draft' && (
-              <p className="inventory-note">
-                {text('Receiving this purchase adds the quantities below to:')}{' '}
-                <strong>{formatDigits(invoiceReview.warehouseName)}</strong>
-              </p>
-            )}
-            <p>
-              <strong>{text('Supplier')}:</strong> {formatDigits(invoiceReview.supplierName)}
-            </p>
-            <p>
-              <strong>{text('Supplier invoice number')}:</strong>{' '}
-              {formatDigits(invoiceReview.supplierInvoiceNumber || '—')}
-            </p>
-            <p>
-              <strong>{text('Warehouse')}:</strong>{' '}
-              {formatDigits(`${invoiceReview.branchName} · ${invoiceReview.warehouseName}`)}
-            </p>
-            <p>
-              {text(
-                invoiceReview.status === 'draft'
-                  ? 'This invoice is a draft. Saving it does not affect stock.'
-                  : 'A confirmed purchase invoice cannot be edited. Correct stock with a separate reviewed movement.',
-              )}
-            </p>
-            <ul>
-              {invoiceReview.lines.map((line) => (
-                <li key={line.id}>
-                  <strong>{formatDigits(line.stockItemName)}</strong>
-                  <span dir="ltr">{formatDigits(`${line.quantity} ${line.unitCode}`)}</span>
-                  <small>
-                    {text(line.condition === 'available' ? 'Available' : 'Non-Sellable')} ·{' '}
-                    {formatDigits(`${line.baseUnit} (${line.unitName})`)}
-                  </small>
-                </li>
-              ))}
-            </ul>
-          </div>
-          {invoiceReview.status === 'draft' && (
-            <footer className="products-dialog-footer">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={() => setInvoiceReview(null)}
-              >
-                {text('Close')}
-              </Button>
-              <Button type="button" disabled={busy} onClick={() => void confirmInvoice()}>
-                {text(busy ? 'Posting…' : 'Confirm receipt')}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={() => {
-                  setLoadError('');
-                  setInvoiceReview(null);
-                  navigate(`/inventory/purchases/${invoiceReview.id}/edit`);
-                }}
-              >
-                {text('Edit draft')}
-              </Button>
-            </footer>
-          )}
-        </DashboardDialog>
+          onConfirm={() => void confirmInvoice()}
+          onEdit={() => {
+            setLoadError('');
+            setInvoiceReview(null);
+            navigate(`/inventory/purchases/${invoiceReview.id}/edit`);
+          }}
+          onInvoiceChange={(updated) => {
+            setInvoiceReview(updated);
+            setRefreshKey((key) => key + 1);
+          }}
+        />
       )}
       {supplierArchive && (
         <DashboardDialog

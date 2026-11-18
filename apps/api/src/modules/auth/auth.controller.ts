@@ -4,7 +4,7 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { AuthService } from './auth.service.js';
-import { posLoginSchema } from './pos-employee.schemas.js';
+import { posLoginSchema } from './pos-login.schemas.js';
 
 const loginSchema = z.object({
   username: z.string().trim().min(1).max(80),
@@ -78,9 +78,10 @@ export class AuthController {
   @HttpCode(200)
   async posLogin(
     @Body() body: unknown,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<{ authenticated: true }> {
-    await this.auth.loginPos(parseRequest(posLoginSchema, body), response);
+    await this.auth.loginPos(parseRequest(posLoginSchema, body), request, response);
     return { authenticated: true };
   }
 

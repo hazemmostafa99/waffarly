@@ -23,7 +23,9 @@ export function DashboardCard({
       <header className="wf-card-heading">
         <div>
           <h2 id={headingId}>{typeof title === 'string' ? formatDigits(title) : title}</h2>
-          {description && <p>{typeof description === 'string' ? formatDigits(description) : description}</p>}
+          {description && (
+            <p>{typeof description === 'string' ? formatDigits(description) : description}</p>
+          )}
         </div>
         {action}
       </header>
@@ -55,7 +57,13 @@ export function SummaryCard({
       <div className={`wf-summary-inner wf-tone-${tone}`}>
         <div className="wf-summary-copy">
           <span>{label}</span>
-          <strong>{typeof value === 'number' ? formatNumber(value) : typeof value === 'string' ? formatDigits(value) : value}</strong>
+          <strong>
+            {typeof value === 'number'
+              ? formatNumber(value)
+              : typeof value === 'string'
+                ? formatDigits(value)
+                : value}
+          </strong>
           {detail && <small>{typeof detail === 'string' ? formatDigits(detail) : detail}</small>}
         </div>
         {icon && (

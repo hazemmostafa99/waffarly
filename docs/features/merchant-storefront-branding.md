@@ -1,0 +1,37 @@
+# Merchant Storefront Branding
+
+Restaurant identity and independent storefront styling have separate owners.
+
+- Merchant name and RestaurantProfile description, logoImage, and coverImage
+  define the restaurant identity. The same logo is projected into account and
+  storefront responses. The public tenant storefront uses the restaurant cover
+  in its hero; Waffarly restaurant listings continue to use the same profile
+  image fields.
+- MerchantStorefront owns the independent storefront colors, logo display size,
+  cover headline, highlight line, image shade, and revision. The storefront has
+  one homepage layout. Empty cover lines use the existing localized copy, and
+  the shade defaults to medium. The live preview uses the same homepage and
+  applies these values from the merchant's draft.
+- Media uploads use the existing owner-scoped catalog media endpoint, which
+  accepts JPEG, PNG, and WebP images up to 10 MB. New non-restaurant storefront
+  logos are saved as uploaded media URLs. Existing inline logo data remains
+  readable; for restaurants, it is only a fallback when no identity logo exists.
+- The storefront contract exposes the identity logo and cover alongside the
+  tenant-specific palette. Public colors are validated as six-digit HEX values;
+  logo display size is restricted to small, medium, or large. Published catalog
+  changes refresh on the storefront within 60 seconds.
+
+The 20261118150000_storefront_brand_controls migration renames each saved
+storefront accent value to the primary color, preserving existing merchant
+choices. It adds the other palette fields and logo size with defaults and
+database checks. The 20261118170000_remove_design_library_modules migration
+copies each merchant's existing layout into its storefront settings before
+removing shared template references and tables. It also removes the unused
+platform-module catalog while retaining business activity definitions.
+The 20261118180000_storefront_hero_settings migration adds the optional cover
+lines and the shade setting. Existing storefronts keep their default copy.
+
+Manual acceptance should cover logo and cover upload at the 10 MB limit, shared
+identity in Waffarly and the independent storefront, palette and logo-size save
+after reload, mobile and desktop previews, and the settings navigation warning
+for unsaved edits.

@@ -1,69 +1,36 @@
+/** Maintains stock branches, warehouses and consumption defaults. */
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   CreateInventoryBranchRequest,
   CreateInventoryWarehouseRequest,
   InventoryBranch,
-  InventoryPolicy,
-  InventoryWarehouse,
-  NegativeStockPolicy,
   SetDefaultConsumptionWarehouseRequest,
   UpdateInventoryBranchRequest,
-  UpdateInventoryPolicyRequest,
   UpdateInventoryWarehouseRequest,
 } from '@waffarly/contracts';
-import type { Prisma } from '@waffarly/database';
-import { assertScopedCursor } from '../../common/http/pagination.js';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { isUniqueConstraintError } from '../../infrastructure/database/prisma-errors.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import {
   createInventoryBranchSchema,
   createInventoryWarehouseSchema,
-  inventoryPolicyUpdateSchema,
-  listInventoryBranchesSchema,
   setDefaultConsumptionWarehouseSchema,
   stockItemRevisionSchema,
   updateInventoryBranchSchema,
   updateInventoryWarehouseSchema,
   type InventoryBranchListQuery,
 } from './inventory.schemas.js';
-
+import { branchInclude, MAX_WAREHOUSES_PER_BRANCH, toBranch } from './locations/branch.mapper.js';
+import { getBranch, listBranches } from './locations/branch.query.js';
+import { assertMutableBranch, assertMutableWarehouse } from './locations/location-access.js';
 import { getWarehouse, listWarehouses } from './locations/warehouse.queries.js';
-const branchInclude = {
-  warehouses: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] },
-} satisfies Prisma.BranchInclude;
-const MAX_WAREHOUSES_PER_BRANCH = 100;
-type BranchRecord = Prisma.BranchGetPayload<{ include: typeof branchInclude }>;
 
 @Injectable()
 export class InventoryLocationsService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async listBranches(merchantId: string, input: InventoryBranchListQuery) {
-    const query = parseRequest(listInventoryBranchesSchema, input);
-    const where: Prisma.BranchWhereInput = {
-      merchantId,
-      ...(query.status === 'all'
-        ? {}
-        : { archivedAt: query.status === 'active' ? null : { not: null } }),
-      ...(query.search ? { name: { contains: query.search, mode: 'insensitive' } } : {}),
-    };
-    if (query.cursor) {
-      const anchor = await this.prisma.branch.findFirst({
-        where: { ...where, id: query.cursor },
-        select: { id: true },
-      });
-      assertScopedCursor(query.cursor, anchor !== null);
-    }
-    const rows = await this.prisma.branch.findMany({
-      where,
-      include: branchInclude,
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: query.limit + 1,
-      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
-    });
-    const items = rows.slice(0, query.limit).map(toBranch);
-    return { items, nextCursor: rows.length > query.limit ? items.at(-1)!.id : null };
+    return listBranches(this.prisma, merchantId, input);
   }
 
   listWarehouses(merchantId: string, input: InventoryBranchListQuery) {
@@ -75,12 +42,7 @@ export class InventoryLocationsService {
   }
 
   async getBranch(merchantId: string, id: string): Promise<InventoryBranch> {
-    const branch = await this.prisma.branch.findFirst({
-      where: { merchantId, id },
-      include: branchInclude,
-    });
-    if (!branch) throw new NotFoundException('Branch was not found.');
-    return toBranch(branch);
+    return getBranch(this.prisma, merchantId, id);
   }
 
   async createBranch(
@@ -143,7 +105,7 @@ export class InventoryLocationsService {
         },
       });
       if (changed.count !== 1) await assertMutableBranch(this.prisma, merchantId, id);
-      return await this.getBranch(merchantId, id);
+      return await getBranch(this.prisma, merchantId, id);
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         throw new ConflictException('A branch with this name already exists.');
@@ -440,96 +402,4 @@ export class InventoryLocationsService {
       );
     });
   }
-
-  async getPolicy(merchantId: string): Promise<InventoryPolicy> {
-    const merchant = await this.prisma.merchant.findUnique({
-      where: { id: merchantId },
-      select: {
-        negativeStockPolicy: true,
-        inventoryPolicyRevision: true,
-        inventoryPolicyUpdatedAt: true,
-      },
-    });
-    if (!merchant) throw new NotFoundException('Merchant was not found.');
-    return {
-      negativeStockPolicy: merchant.negativeStockPolicy as NegativeStockPolicy,
-      revision: merchant.inventoryPolicyRevision,
-      updatedAt: merchant.inventoryPolicyUpdatedAt?.toISOString() ?? null,
-    };
-  }
-
-  async updatePolicy(
-    merchantId: string,
-    actor: string,
-    input: UpdateInventoryPolicyRequest,
-  ): Promise<InventoryPolicy> {
-    const parsed = parseRequest(inventoryPolicyUpdateSchema, input);
-    const changed = await this.prisma.merchant.updateMany({
-      where: { id: merchantId, inventoryPolicyRevision: parsed.revision },
-      data: {
-        negativeStockPolicy: parsed.negativeStockPolicy,
-        inventoryPolicyRevision: { increment: 1 },
-        inventoryPolicyUpdatedBy: actor,
-        inventoryPolicyUpdatedAt: new Date(),
-      },
-    });
-    if (changed.count !== 1) {
-      const merchant = await this.prisma.merchant.findUnique({ where: { id: merchantId } });
-      if (!merchant) throw new NotFoundException('Merchant was not found.');
-      throw new ConflictException('Inventory policy changed. Reload it before trying again.');
-    }
-    return this.getPolicy(merchantId);
-  }
-}
-
-async function assertMutableBranch(
-  client: PrismaService | Prisma.TransactionClient,
-  merchantId: string,
-  id: string,
-): Promise<never> {
-  const branch = await client.branch.findFirst({
-    where: { id, merchantId },
-    select: { id: true },
-  });
-  if (!branch) throw new NotFoundException('Branch was not found.');
-  throw new ConflictException('Branch changed or is archived. Reload it before trying again.');
-}
-
-async function assertMutableWarehouse(
-  client: PrismaService | Prisma.TransactionClient,
-  merchantId: string,
-  branchId: string,
-  id: string,
-): Promise<never> {
-  const warehouse = await client.warehouse.findFirst({
-    where: { id, merchantId, branchId },
-    select: { id: true },
-  });
-  if (!warehouse) throw new NotFoundException('Warehouse was not found.');
-  throw new ConflictException('Warehouse changed or is archived. Reload it before trying again.');
-}
-
-function toBranch(record: BranchRecord): InventoryBranch {
-  const warehouses: InventoryWarehouse[] = record.warehouses.map((warehouse) => ({
-    id: warehouse.id,
-    branchId: warehouse.branchId,
-    name: warehouse.name,
-    isDefaultConsumption: warehouse.isDefaultConsumption && !warehouse.archivedAt,
-    archivedAt: warehouse.archivedAt?.toISOString() ?? null,
-    revision: warehouse.revision,
-    createdAt: warehouse.createdAt.toISOString(),
-    updatedAt: warehouse.updatedAt.toISOString(),
-  }));
-  return {
-    id: record.id,
-    name: record.name,
-    address: record.address,
-    archivedAt: record.archivedAt?.toISOString() ?? null,
-    revision: record.revision,
-    defaultConsumptionWarehouseId:
-      warehouses.find((warehouse) => warehouse.isDefaultConsumption)?.id ?? null,
-    warehouses,
-    createdAt: record.createdAt.toISOString(),
-    updatedAt: record.updatedAt.toISOString(),
-  };
 }

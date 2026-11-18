@@ -1,3 +1,4 @@
+import { StorefrontOrderStatusService } from '../../src/modules/orders/fulfillment/storefront-order-status.service.js';
 import { UnauthorizedException, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { OwnerProfile } from '@waffarly/contracts';
@@ -6,12 +7,12 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import request from 'supertest';
 import { AuthService } from '../../src/modules/auth/auth.service.js';
 import { OwnerGuard } from '../../src/modules/auth/owner.guard.js';
-import {
-  OwnerStorefrontOrdersController,
-  PublicStorefrontOrdersController,
-} from '../../src/modules/orders/storefront-orders.controller.js';
-import { OrderLifecycleService } from '../../src/modules/orders/order-lifecycle.service.js';
-import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
+import { PublicStorefrontOrdersController } from '../../src/modules/orders/http/storefront/storefront-orders.controller.js';
+import { OwnerStorefrontOrdersController } from '../../src/modules/orders/http/owner/owner-orders.controller.js';
+import { OrderLifecycleService } from '../../src/modules/orders/fulfillment/order-lifecycle.service.js';
+import { StorefrontOrdersService } from '../../src/modules/orders/checkout/storefront-orders.service.js';
+import { CustomerOrderAccessService } from '../../src/modules/orders/customers/customer-order-access.service.js';
+import { StorefrontCustomerAuthService } from '../../src/modules/customers/index.js';
 
 const owner: OwnerProfile = {
   username: 'store-owner',
@@ -43,6 +44,17 @@ describe('storefront order endpoints', () => {
     const module = await Test.createTestingModule({
       controllers: [PublicStorefrontOrdersController, OwnerStorefrontOrdersController],
       providers: [
+        {
+          provide: StorefrontOrderStatusService,
+          useValue: {
+            updateStatus: async (merchantId: string, id: string, status: string) => {
+              statusUpdate = { merchantId, id, status };
+              return { id, status, lines: [] };
+            },
+          },
+        },
+        { provide: CustomerOrderAccessService, useValue: {} },
+        { provide: StorefrontCustomerAuthService, useValue: { current: async () => null } },
         OwnerGuard,
         {
           provide: OrderLifecycleService,
@@ -82,10 +94,6 @@ describe('storefront order endpoints', () => {
               listedMerchantId = merchantId;
               listedPage = page;
               return { items: [], nextCursor: null };
-            },
-            updateStatus: async (merchantId: string, id: string, status: string) => {
-              statusUpdate = { merchantId, id, status };
-              return { id, status, lines: [] };
             },
           },
         },

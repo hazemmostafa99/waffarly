@@ -1,23 +1,22 @@
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
+
 import type { Prisma } from '@waffarly/database';
-import { config } from 'dotenv';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
-import { PosReturnsService } from '../../src/modules/orders/pos-returns.service.js';
+import { PosReturnsService } from '../../src/modules/orders/returns/pos-returns.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'lists immutable waste returns by tenant, branch and date with stable bounded pagination',
   { skip: !databaseUrl },
-  async () => {
-    assert.ok(databaseUrl, 'Configure DATABASE_URL and apply POS migrations first.');
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+  async (testContext) => {
+    assert.ok(databaseUrl, 'Configure TEST_DATABASE_URL and apply POS migrations first.');
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback POS item-return report fixtures');
     try {
       await assert.rejects(
@@ -52,6 +51,7 @@ it(
           const employee = await transaction.posEmployee.create({
             data: {
               merchantId: merchant.id,
+              branchId: branchA.id,
               username: `return-report-${token}`,
               displayName: 'Return report cashier',
               passwordHash: 'database-test-only',
@@ -191,6 +191,7 @@ it(
           const foreignEmployee = await transaction.posEmployee.create({
             data: {
               merchantId: foreignMerchant.id,
+              branchId: foreignBranch.id,
               username: `foreign-return-report-${token}`,
               displayName: 'Foreign Return report cashier',
               passwordHash: 'database-test-only',

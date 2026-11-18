@@ -7,9 +7,21 @@ import { RestaurantsIndexPage } from '@/features/marketplace/restaurants/compone
 export const metadata = { title: 'المطاعم | وفّرلي' };
 
 export default function RestaurantsPage() {
-  return <>
-    <Suspense fallback={<MarketplaceHeaderSkeleton />}><MarketplaceSiteHeader /></Suspense>
-    <Suspense fallback={<p className="p-8" role="status">جارٍ عرض المطاعم…</p>}><RestaurantsIndexPage /></Suspense>
-    <MarketplaceFooter />
-  </>;
+  return (
+    <>
+      <Suspense fallback={<MarketplaceHeaderSkeleton />}>
+        <MarketplaceSiteHeader />
+      </Suspense>
+      <Suspense
+        fallback={
+          <p className="p-8" role="status">
+            جارٍ عرض المطاعم…
+          </p>
+        }
+      >
+        <RestaurantsIndexPage />
+      </Suspense>
+      <MarketplaceFooter />
+    </>
+  );
 }

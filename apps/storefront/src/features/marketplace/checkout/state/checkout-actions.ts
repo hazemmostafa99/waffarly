@@ -1,5 +1,9 @@
 import type { StateCreator } from 'zustand/vanilla';
-import { cartProducts, validQuantity, type MarketplaceCartLine } from '@/features/marketplace/cart/model/cart';
+import {
+  cartProducts,
+  validQuantity,
+  type MarketplaceCartLine,
+} from '@/features/marketplace/cart/model/cart';
 import { restaurantCheckout } from '@/features/marketplace/checkout/model/restaurant-checkout';
 import type { Fulfillment } from '@/features/marketplace/checkout/model/checkout';
 import type { DemoOrder } from '@/features/marketplace/orders/model/demo-order';
@@ -23,7 +27,12 @@ export const createCheckoutActions: StateCreator<MarketplaceState, [], [], Check
     if (snapshot.some((line) => !validQuantity(line.quantity))) return null;
     const items = cartProducts(snapshot);
     if (pricing) {
-      if (pricing.unitPrices.length !== items.length || !Number.isFinite(Number(pricing.deliveryFee)) || Number(pricing.deliveryFee) < 0) return null;
+      if (
+        pricing.unitPrices.length !== items.length ||
+        !Number.isFinite(Number(pricing.deliveryFee)) ||
+        Number(pricing.deliveryFee) < 0
+      )
+        return null;
       for (const [index, item] of items.entries()) {
         const price = Number(pricing.unitPrices[index]);
         if (!Number.isFinite(price) || price < 0) return null;

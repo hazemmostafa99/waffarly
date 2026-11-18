@@ -673,9 +673,58 @@
   }
 }
 
-.media-toolbar { display:flex; align-items:stretch; gap:10px; margin:0 0 14px; padding:10px; border:1px solid var(--dashboard-border); border-radius:12px; background:#fff; }
-.media-toolbar .media-filters { flex:1 1 640px; min-width:0; margin:0; padding:0; border:0; background:transparent; grid-template-columns:minmax(155px,2fr) repeat(3,minmax(95px,1fr)); }
-.media-toolbar-actions { display:flex; align-items:center; flex:0 0 auto; }
-.media-toolbar-actions .products-button { min-height:42px; }
-@media(max-width:950px){.media-toolbar{flex-wrap:wrap;}.media-toolbar .media-filters{flex:1 1 100%;}.media-toolbar-actions{margin-inline-start:auto;}}
-@media(max-width:600px){.media-toolbar{flex-direction:column;}.media-toolbar .media-filters{grid-template-columns:repeat(2,minmax(0,1fr));}.media-toolbar .media-filters>label{grid-column:1/-1;}.media-toolbar-actions{margin-inline-start:0;}.media-toolbar-actions .products-button{width:100%;}}
+.media-toolbar {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 10px;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 12px;
+  background: #fff;
+}
+.media-toolbar .media-filters {
+  flex: 1 1 640px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  grid-template-columns: minmax(155px, 2fr) repeat(3, minmax(95px, 1fr));
+}
+.media-toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.media-toolbar-actions .products-button {
+  min-height: 42px;
+}
+@media (max-width: 950px) {
+  .media-toolbar {
+    flex-wrap: wrap;
+  }
+  .media-toolbar .media-filters {
+    flex: 1 1 100%;
+  }
+  .media-toolbar-actions {
+    margin-inline-start: auto;
+  }
+}
+@media (max-width: 600px) {
+  .media-toolbar {
+    flex-direction: column;
+  }
+  .media-toolbar .media-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .media-toolbar .media-filters > label {
+    grid-column: 1/-1;
+  }
+  .media-toolbar-actions {
+    margin-inline-start: 0;
+  }
+  .media-toolbar-actions .products-button {
+    width: 100%;
+  }
+}

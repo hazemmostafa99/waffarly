@@ -7,13 +7,11 @@ const session = {
   displayName: 'Cashier Example',
   role: 'cashier',
   permissions: ['sell'],
-  branches: [
-    {
-      id: '33333333-3333-4333-8333-333333333333',
-      name: 'Main branch',
-      archivedAt: null,
-    },
-  ],
+  branch: {
+    id: '33333333-3333-4333-8333-333333333333',
+    name: 'Main branch',
+    archivedAt: null,
+  },
 };
 
 async function prepareLogin(page: Page) {

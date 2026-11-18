@@ -6,10 +6,7 @@ import {
 } from '@/features/marketplace/search/model/search-state';
 
 export type ProductSort =
-  | 'recommended'
-  | 'price-ascending'
-  | 'price-descending'
-  | 'discount-descending';
+  'recommended' | 'price-ascending' | 'price-descending' | 'discount-descending';
 
 export interface ProductListingState {
   category: CategoryId;
@@ -25,7 +22,9 @@ const validSorts: ProductSort[] = [
   'discount-descending',
 ];
 
-export function parseProductListingState(params: Pick<URLSearchParams, 'get'>): ProductListingState {
+export function parseProductListingState(
+  params: Pick<URLSearchParams, 'get'>,
+): ProductListingState {
   const requestedSort = params.get('sort') as ProductSort | null;
   const requestedPage = Number.parseInt(params.get('page') ?? '', 10);
 

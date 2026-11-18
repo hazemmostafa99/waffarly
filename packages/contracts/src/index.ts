@@ -1,6 +1,8 @@
-export { BUSINESS_ACTIVITY_KEYS, BUSINESS_ACTIVITY_LABELS } from './activities-modules.js';
 export { RESERVED_STOREFRONT_HANDLES, isStorefrontHandle } from './storefront-address.js';
-export type { AssignStorefrontHandleRequest, PublicStorefrontAddress } from './storefront-address.js';
+export type {
+  AssignStorefrontHandleRequest,
+  PublicStorefrontAddress,
+} from './storefront-address.js';
 export { POS_APPEARANCE_ACCENTS } from './pos-appearance.js';
 export type {
   CashSafeSummary,
@@ -33,6 +35,8 @@ export type {
   PosShiftCloseReport,
   PosShiftCloseReportRow,
   OwnerPosShiftCloseReportsQuery,
+  OwnerShiftReportSummary,
+  OwnerShiftReportPage,
 } from './shifts.js';
 export {
   STOCK_BASE_UNITS,
@@ -50,6 +54,11 @@ export type {
   StockItemRevisionRequest,
   StockItemConversionRequest,
   StockItemConversion,
+  StockItemCostSource,
+  StockItemCostEvent,
+  StockItemCostSnapshot,
+  StockItemCostSummary,
+  SetStockItemOpeningCostRequest,
   StockCondition,
   NegativeStockPolicy,
   InventoryWarehouse,
@@ -65,6 +74,9 @@ export type {
   StockBalance,
   StockOpeningLineRequest,
   CreateStockOpeningRequest,
+  RecordStockWasteRequest,
+  StockTransferLineRequest,
+  TransferStockRequest,
   StockMovement,
   StockMovementBatchResult,
   InventoryReorderThreshold,
@@ -76,8 +88,19 @@ export type {
   InventoryHealthPage,
 } from './inventory.js';
 export { STOCK_CONDITIONS } from './inventory.js';
-export { PURCHASE_INVOICE_STATUSES } from './purchasing.js';
+export {
+  PURCHASE_INVOICE_STATUSES,
+  resolvePurchaseInvoiceDiscount,
+  calculatePurchaseInvoiceAmounts,
+  calculatePurchaseInvoiceLineTotal,
+  calculatePurchaseInvoiceTotal,
+  isNonNegativePurchaseAmount,
+  isPositivePurchaseUnitCost,
+  normalizePurchaseAmount,
+  normalizePurchaseUnitCost,
+} from './purchasing.js';
 export type {
+  PurchaseInvoiceAmounts,
   PurchaseInvoiceStatus,
   PurchaseSupplierFields,
   PurchaseSupplier,
@@ -94,11 +117,21 @@ export type {
   ConfirmPurchaseInvoiceResult,
   PurchaseSupplierPage,
   PurchaseInvoicePage,
+  CreatePurchaseSupplierPaymentRequest,
+  PurchaseCashMovementSource,
+  PurchaseCashMovementOption,
+  PurchaseSupplierPaymentSummary,
+  CreatePurchaseSupplierCreditNoteRequest,
+  PurchaseSupplierCreditNoteSummary,
+  CreatePurchaseInvoiceCorrectionRequest,
+  PurchaseInvoiceCorrectionSummary,
 } from './purchasing.js';
 export type {
   ActivateFirstMonthRequest,
   ApproveMerchantApplicationRequest,
   CreateMerchantRequest,
+  ResetMerchantOwnerPasswordRequest,
+  ResetMerchantOwnerPasswordResponse,
   LoginRequest,
   MerchantApplicationSummary,
   RejectedMerchantApplicationSummary,
@@ -107,25 +140,19 @@ export type {
   OwnerProfile,
   SubmitMerchantApplicationRequest,
 } from './super-admin.js';
+export {
+  BUSINESS_ACTIVITY_KEYS,
+  BUSINESS_ACTIVITY_LABELS,
+  type BusinessActivityKey,
+  type BusinessActivitySummary,
+  type UpdateBusinessActivityRequest,
+} from './activities.js';
 export type {
-  CreateStorefrontTemplateRequest,
   MerchantStorefrontSettings,
   SaveMerchantStorefrontRequest,
-  StorefrontTemplateSummary,
-  TemplateLayout,
-  TemplateStatus,
-  UpdateStorefrontTemplateRequest,
-} from './templates.js';
-export type {
-  ActivitiesModulesCatalog,
-  BusinessActivityKey,
-  BusinessActivitySummary,
-  PlatformModuleDefinition,
-  PlatformModuleKey,
-  PlatformModuleSummary,
-  UpdateBusinessActivityRequest,
-  UpdatePlatformModuleRequest,
-} from './activities-modules.js';
+  StorefrontHeroSettings,
+  StorefrontLayout,
+} from './merchant-storefront.js';
 export type {
   CreateMonthlyPlanRequest,
   MonthlyPlanSettings,
@@ -157,6 +184,9 @@ export type {
   CatalogProductInventoryConfigurationFields,
   CatalogProductInventoryTarget,
   CatalogProductInventoryTargetFields,
+  CatalogProductCostPreviewRequest,
+  CatalogProductCostLine,
+  CatalogProductCostPreview,
   ProductInventoryMode,
   CatalogProductImage,
   CatalogProductModifierGroup,
@@ -181,6 +211,12 @@ export type {
   StorefrontOrderStatus,
   StorefrontOrderReceipt,
   StorefrontOrderSummary,
+  StorefrontOrderListItem,
+  StorefrontOrderListStats,
+  StorefrontOrderSource,
+  StorefrontFulfillmentType,
+  StorefrontOrderListPage,
+  StorefrontOrderListQuery,
   DispatchPosKitchenOrderRequest,
   MarkKitchenItemReadyRequest,
   PosKitchenDispatchMode,
@@ -239,6 +275,11 @@ export type {
 } from './pos-returns.js';
 export type { OwnerPosOperationsReport } from './pos-reports.js';
 export type {
+  OwnerProductProfitabilityReport,
+  OwnerProductProfitabilityRow,
+  OwnerProfitabilityDimensionRow,
+} from './profitability.js';
+export type {
   PosReceipt,
   PosReceiptLine,
   PosReceiptPayment,
@@ -264,6 +305,7 @@ export type {
   PosEmployeeRole,
   PosEmployeePermission,
   PosEmployeeBranch,
+  PosEmployeeRegister,
   PosEmployeeSummary,
   PosEmployeeSession,
   PosLoginRequest,
@@ -275,6 +317,15 @@ export type {
   PosDeliveryCommand,
   PosDeliveryHandoverSnapshot,
 } from './pos-delivery.js';
+export type {
+  DeliveryCourierBranch,
+  DeliveryCourierSummary,
+  DeliveryCourierOption,
+  DeliveryCourierPerformance,
+  DeliveryCourierPerformanceReport,
+  CreateDeliveryCourierRequest,
+  UpdateDeliveryCourierRequest,
+} from './delivery-couriers.js';
 export type { SubscriptionMonths, PlanTerm } from './plans.js';
 export type {
   MerchantAccountProfile,
@@ -294,14 +345,89 @@ export type {
   SubscriptionDashboard,
 } from './subscriptions.js';
 
-export type { RestaurantImage, RestaurantPeriod, RestaurantDay, RestaurantException, RestaurantArea, RestaurantSettingsInput, RestaurantOperatingState } from './restaurant.js';
+export type {
+  RestaurantImage,
+  RestaurantPeriod,
+  RestaurantDay,
+  RestaurantException,
+  RestaurantArea,
+  RestaurantSettingsInput,
+  RestaurantOperatingState,
+} from './restaurant.js';
 
-export type { PublicRestaurantProfile, MarketplaceMenuProduct, MarketplaceMenuPage } from './restaurant.js';
+export type {
+  PublicRestaurantProfile,
+  MarketplaceMenuProduct,
+  MarketplaceMenuPage,
+} from './restaurant.js';
 
 export type { StorefrontCheckoutQuoteRequest, StorefrontCheckoutQuote } from './catalog.js';
 
 export type { OwnerRestaurantSettings } from './restaurant.js';
+export * from './restaurant-fulfillment.js';
 export { CUSTOMER_CHANNELS } from './customers.js';
-export type { CustomerProfile, CustomerSignUpRequest, CustomerSignInRequest } from './customer-auth.js';
-export type { CustomerChannel, MerchantCustomer, CreateMerchantCustomerRequest, UpdateMerchantCustomerRequest, LinkOrderCustomerRequest, OrderCustomerLink, OrderCustomerContext, CustomerOrderSummary } from './customers.js';
-export type { MerchantDiscount, MerchantDiscountInput, MerchantDiscountState, MerchantDiscountStatus, MerchantDiscountType, MerchantDiscountStats, OrderDiscountSnapshot } from './discounts.js';
+export type {
+  CustomerProfile,
+  CustomerSignUpRequest,
+  CustomerSignInRequest,
+} from './customer-auth.js';
+export type {
+  CustomerChannel,
+  MerchantCustomer,
+  StorefrontCustomerProfile,
+  CreateMerchantCustomerRequest,
+  UpdateMerchantCustomerRequest,
+  LinkOrderCustomerRequest,
+  OrderCustomerLink,
+  OrderCustomerContext,
+  CustomerOrderSummary,
+} from './customers.js';
+export type {
+  MerchantDiscount,
+  MerchantDiscountInput,
+  MerchantDiscountState,
+  MerchantDiscountStatus,
+  MerchantDiscountType,
+  MerchantDiscountStats,
+  OrderDiscountSnapshot,
+} from './discounts.js';
+
+export type { CustomerOrderView, CustomerOrdersPage } from './customer-orders.js';
+
+export type {
+  StaffPayBasis,
+  StaffAttendanceStatus,
+  PayrollRunStatus,
+  PayrollAdjustmentKind,
+  StaffPayRateSummary,
+  StaffMemberSummary,
+  StaffAttendanceEntry,
+  AttendanceMonthSummary,
+  PayrollAdjustmentSummary,
+  AdvanceRepaymentPreview,
+  PayrollEmployeePreview,
+  PayrollLineSummary,
+  PayrollRunSummary,
+  StaffAdvanceSummary,
+  MerchantExpenseSummary,
+  ExpenseMonthSummary,
+  CreateStaffMemberRequest,
+  UpdateStaffMemberRequest,
+  CreateStaffPayRateRequest,
+  SetStaffAttendanceRequest,
+  CreatePayrollAdjustmentRequest,
+  CreateStaffAdvanceRequest,
+  UpdateStaffAdvanceRequest,
+  CancelStaffAdvanceRequest,
+  RecordPayrollPaymentRequest,
+  CreateMerchantExpenseRequest,
+  UpdateMerchantExpenseRequest,
+  RecordExpensePaymentRequest,
+} from './hr.js';
+export type {
+  OwnerBusinessReport,
+  BusinessReportPeriod,
+  BusinessReportDay,
+  BusinessReportAmountRow,
+  BusinessReportBalances,
+} from './business-reports.js';

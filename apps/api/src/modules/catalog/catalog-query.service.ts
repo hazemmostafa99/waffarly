@@ -6,6 +6,17 @@ import { sellableInclude, toSellableResponse } from './products/product.mapper.j
 type PublicStorefrontCategory = PublicStorefrontCatalog['categories'][number];
 type PublicStorefrontProduct = PublicStorefrontCatalog['products'][number];
 
+function imageSource(value: unknown): string | null {
+  if (typeof value !== 'object' || value === null || !('src' in value)) return null;
+  return typeof value.src === 'string' ? value.src : null;
+}
+
+function storefrontLogoScale(
+  value: string | undefined,
+): PublicStorefrontCatalog['logoScale'] {
+  return value === 'small' || value === 'large' ? value : 'medium';
+}
+
 @Injectable()
 export class CatalogQueryService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
@@ -21,14 +32,22 @@ export class CatalogQueryService {
       slug: merchant.storefrontSlug,
       merchantName: merchant.name,
       activity: merchant.activity,
-      accentColor: merchant.storefront?.accentColor ?? '#315b43',
-      logoData: merchant.storefront?.logoData ?? null,
-      template: merchant.storefront?.template
-        ? {
-            name: merchant.storefront.template.name,
-            layout: merchant.storefront.template.layout as 'menu' | 'hero',
-          }
-        : null,
+      restaurantDescription: merchant.restaurantProfile?.description ?? null,
+      primaryColor: merchant.storefront?.primaryColor ?? '#0f705a',
+      accentColor: merchant.storefront?.accentColor ?? '#f5b544',
+      backgroundColor: merchant.storefront?.backgroundColor ?? '#faf8f4',
+      surfaceColor: merchant.storefront?.surfaceColor ?? '#ffffff',
+      logoScale: storefrontLogoScale(merchant.storefront?.logoScale),
+      heroTitle: merchant.storefront?.heroTitle ?? null,
+      heroEyebrow: merchant.storefront?.heroEyebrow ?? null,
+      heroEmphasis: merchant.storefront?.heroEmphasis ?? null,
+      heroShade: merchant.storefront?.heroShade === 'light' || merchant.storefront?.heroShade === 'strong'
+        ? merchant.storefront.heroShade
+        : 'medium',
+      logoData:
+        imageSource(merchant.restaurantProfile?.logoImage) ?? merchant.storefront?.logoData ?? null,
+      coverImageUrl: imageSource(merchant.restaurantProfile?.coverImage),
+      layout: merchant.storefront?.layout === 'menu' ? 'menu' : 'hero',
       categories: categoryPage.items,
       nextCategoryCursor: categoryPage.nextCursor,
       products: productPage.items,
@@ -66,23 +85,74 @@ export class CatalogQueryService {
 
   async getMarketplaceMenu(slug: string, cursor?: string, productId?: string) {
     const merchantId = await this.findPublicMerchantId(slug);
-    if (cursor && !await this.prisma.product.findFirst({ where: { id: cursor, merchantId, archivedAt: null }, select: { id: true } })) throw new BadRequestException('Invalid product cursor.');
+    if (
+      cursor &&
+      !(await this.prisma.product.findFirst({
+        where: { id: cursor, merchantId, archivedAt: null },
+        select: { id: true },
+      }))
+    )
+      throw new BadRequestException('Invalid product cursor.');
     const records = await this.prisma.product.findMany({
-      where: { merchantId, ...(productId ? { id: productId } : {}), archivedAt: null, OR: [{ menuSection: { availability: 'available', archivedAt: null } }, { menuSectionId: null, categoryLinks: { some: { merchantId, category: { availability: 'available', archivedAt: null } } } }] },
-      include: sellableInclude, orderBy: [{ menuSection: { displayOrder: 'asc' } }, { displayOrder: 'asc' }, { id: 'asc' }], take: 41,
+      where: {
+        merchantId,
+        ...(productId ? { id: productId } : {}),
+        archivedAt: null,
+        OR: [
+          { menuSection: { availability: 'available', archivedAt: null } },
+          {
+            menuSectionId: null,
+            categoryLinks: {
+              some: { merchantId, category: { availability: 'available', archivedAt: null } },
+            },
+          },
+        ],
+      },
+      include: sellableInclude,
+      orderBy: [{ menuSection: { displayOrder: 'asc' } }, { displayOrder: 'asc' }, { id: 'asc' }],
+      take: 41,
       ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
-    return { items: records.slice(0,40).map((record) => {
-      const product = toSellableResponse(record);
-      return { id: product.id, referenceKey: record.referenceKey, name: product.name, description: product.description,
-        basePrice: product.basePrice, currency: 'EGP' as const, availability: product.availability,
-        displayOrder: record.displayOrder, menuSectionId: record.menuSectionId,
-        images: product.images.map(({ publicUrl, isPrimary, position }) => ({ publicUrl, isPrimary, position })),
-        categories: product.categories.filter((category) => category.availability === 'available'),
-        modifierGroups: product.modifierGroups,
-        variants: product.variants.map(({ id, name, price, availability, position, attributes, stockQuantity }) => ({ id, name, price, availability: availability === 'available' && stockQuantity !== 0 ? 'available' : 'unavailable', position, attributes })),
-      };
-    }), nextCursor: records.length > 40 ? records[39]!.id : null };
+    return {
+      items: records.slice(0, 40).map((record) => {
+        const product = toSellableResponse(record);
+        return {
+          id: product.id,
+          referenceKey: record.referenceKey,
+          name: product.name,
+          description: product.description,
+          basePrice: product.basePrice,
+          promotion: product.promotion,
+          promotionalPrice: product.promotionalPrice,
+          currency: 'EGP' as const,
+          availability: product.availability,
+          displayOrder: record.displayOrder,
+          menuSectionId: record.menuSectionId,
+          images: product.images.map(({ publicUrl, isPrimary, position }) => ({
+            publicUrl,
+            isPrimary,
+            position,
+          })),
+          categories: product.categories.filter(
+            (category) => category.availability === 'available',
+          ),
+          modifierGroups: product.modifierGroups,
+          variants: product.variants.map(
+            ({ id, name, price, promotionalPrice, availability, position, attributes, stockQuantity }) => ({
+              id,
+              name,
+              price,
+              promotionalPrice,
+              availability:
+                availability === 'available' && stockQuantity !== 0 ? 'available' : 'unavailable',
+              position,
+              attributes,
+            }),
+          ),
+        };
+      }),
+      nextCursor: records.length > 40 ? records[39]!.id : null,
+    };
   }
 
   private async findPublicMerchant(slug: string) {
@@ -93,11 +163,22 @@ export class CatalogQueryService {
         name: true,
         activity: true,
         storefrontSlug: true,
+        restaurantProfile: {
+          select: { description: true, logoImage: true, coverImage: true },
+        },
         storefront: {
           select: {
+            primaryColor: true,
             accentColor: true,
+            backgroundColor: true,
+            surfaceColor: true,
+            logoScale: true,
+            heroTitle: true,
+            heroEyebrow: true,
+            heroEmphasis: true,
+            heroShade: true,
             logoData: true,
-            template: { select: { name: true, layout: true } },
+            layout: true,
           },
         },
       },
@@ -219,6 +300,8 @@ export class CatalogQueryService {
         name: publicProduct.name,
         description: publicProduct.description,
         basePrice: publicProduct.basePrice,
+        promotion: publicProduct.promotion,
+        promotionalPrice: publicProduct.promotionalPrice,
         currency: 'EGP' as const,
         sellingUnit: 'piece' as const,
         images: publicProduct.images.map(({ publicUrl, isPrimary, position }) => ({
@@ -241,10 +324,11 @@ export class CatalogQueryService {
           selectionMode: group.selectionMode as 'single' | 'multiple',
         })),
         variants: publicProduct.variants.map(
-          ({ id, name, price, availability, position, stockQuantity, attributes }) => ({
+          ({ id, name, price, promotionalPrice, availability, position, stockQuantity, attributes }) => ({
             id,
             name,
             price,
+            promotionalPrice,
             availability:
               availability === 'available' && stockQuantity !== 0
                 ? ('available' as const)

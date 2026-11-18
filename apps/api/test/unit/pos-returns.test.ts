@@ -5,7 +5,7 @@ import {
   ownerPosItemReturnReportsSchema,
   parseRecordPosItemReturnRequest,
   withoutPosItemReturnApproval,
-} from '../../src/modules/orders/pos-returns.schemas.js';
+} from '../../src/modules/orders/returns/pos-returns.schemas.js';
 
 describe('POS item returns', () => {
   const valid = {

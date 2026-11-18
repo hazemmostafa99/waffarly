@@ -1,11 +1,19 @@
 # CAT-F02 — Products
 
-**Status:** Product core, Product Builder, sellable variants/attributes, reusable modifier assignments, authoritative configuration quote, and order-history deletion protection implemented
+**Status:** Product core, Product Builder, sellable variants/attributes, reusable modifier assignments, direct product promotions, authoritative configuration quote, and order-history deletion protection implemented
 
-**Last updated:** 2026-10-14
+**Last updated:** 2026-11-18
 **Parent:** [Catalog & Dynamic Product Builder Overview](OVERVIEW.md)  
 **Parent feature mapping:** Existing `CAT-01 — Categories and products`  
 **Identifier note:** `CAT-F02` is temporary because `CAT-01` through `CAT-03` already identify broader Catalog feature groups.
+
+## Current behavior update — 2026-11-18
+
+Catalog supports one direct price promotion per product. Owners can enable or pause a percentage or fixed EGP discount, with optional start and end timestamps entered in Cairo time. The promotion applies to the product or selected variant base price; paid modifier choices are added after the discount. Fixed discounts and rounded percentage discounts must leave every affected variant above EGP 0.00.
+
+Catalog pricing determines whether a promotion is active when it quotes an item. Product lists and the tenant storefront show the original and promotional prices; POS uses the same quote. Checkout stores the discount type, value and per-unit savings on each order line, so later product edits do not change order history. A checkout coupon cannot be combined with an active product promotion.
+
+This update supersedes older statements in this document and the Product Builder notes that product discounts are unapproved or out of scope. The coupon module remains a separate order-level feature.
 
 ## 1. Purpose
 
@@ -77,6 +85,7 @@ The product owner confirmed the following on 2026-10-13:
 - `POST /catalog/stores/:slug/orders` accepts customer name/phone, pickup or delivery (with a required address), and configured product lines. Prices are never accepted from the browser: the API re-quotes every line and checks the product revision again in the transaction.
 - Order creation snapshots product/variant/attribute/modifier IDs and names, assignment-level price adjustments, and fixed-precision EGP prices. A serializable transaction creates the order and atomically decrements tracked variant stock; untracked variants remain unreserved.
 - `GET /owner/orders` returns the signed-in owner's latest 100 orders. `PATCH /owner/orders/:id/status` allows a pending order to be accepted or rejected; rejection restores any still-existing tracked variant reservation, while acceptance keeps it consumed.
+- The Merchant order inbox uses `GET /owner/orders/inbox` for all saved order sources (currently storefront and POS), with server-side source, status, fulfillment, Cairo-local date, and text filters and bounded cursor pages. Its response includes database aggregates for the filtered set. `GET /owner/orders/:id` loads full line details when a row is opened. The existing storefront-only `/owner/orders` response remains available to other dashboard consumers.
 - Products with order lines cannot be permanently deleted. The owner may archive them while the order snapshots remain readable even if catalog definitions later change.
 - This is not a general Inventory ledger or fulfillment system. There is no online payment, delivery-fee calculation, tax/discount support, notification, POS order, branch routing, kitchen flow, or later fulfillment-state transition.
 
@@ -145,12 +154,12 @@ The required product base price remains the fallback for products without varian
 
 The concepts below describe behavior and do not prescribe an enum or database fields.
 
-| Concept         | Meaning                                                                                                                   | Confirmed or open behavior                                                                              |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Concept         | Meaning                                                                                                                   | Confirmed or open behavior                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | **Available**   | Product is operationally allowed to be selected in applicable channels, subject to all other approved checks.             | CONFIRMED state; public storefront lists it and quote/checkout revalidate state. POS and broader stock behavior remain outside the MVP. |
 | **Unavailable** | Product remains managed but is not currently allowed to be selected under the initial manual availability rule.           | CONFIRMED state; hidden from public storefront and rejected by quote/checkout; saved carts are revalidated on submission.               |
-| **Archived**    | Product is retired from ordinary active management and cannot be used for new selection under the eventual channel rules. | It may be restored; restoration always returns it as `Unavailable`. Edit/query visibility remains OPEN. |
-| **Deleted**     | Product identity is permanently removed.                                                                                  | Allowed only when the product has never appeared in an order; otherwise prohibited.                     |
+| **Archived**    | Product is retired from ordinary active management and cannot be used for new selection under the eventual channel rules. | It may be restored; restoration always returns it as `Unavailable`. Edit/query visibility remains OPEN.                                 |
+| **Deleted**     | Product identity is permanently removed.                                                                                  | Allowed only when the product has never appeared in an order; otherwise prohibited.                                                     |
 
 Availability and archival are separate:
 
@@ -318,17 +327,17 @@ The customer Storefront and checkout MVP are implemented separately; POS UI and 
 
 ## 11. Dependencies
 
-| Dependency             | Need                                                                   | Current status                                                                                                                                                        |
-| ---------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Merchant/Tenancy       | Authenticated merchant ownership and isolation.                        | Merchant tenant and activated Owner session implemented; broader tenancy/access model incomplete.                                                                     |
-| Categories (CAT-F01)   | One or more valid categories are mandatory at product creation/update. | Implemented with tenant-safe references, a two-level hierarchy, lifecycle actions, and multiple equal Product links.                                                  |
-| Media                  | A valid image is mandatory.                                            | Reusable tenant-owned Media and owner image upload to configurable server disk are implemented; processing, cleanup, and external-provider lifecycle remain deferred. |
-| Pricing (CAT-F06)      | Positive EGP base-price validation and a configuration quote.          | Basic product/modifier quote and fixed-precision response are implemented; discounts, taxes, context pricing, and a separate Pricing domain remain deferred.          |
+| Dependency             | Need                                                                   | Current status                                                                                                                                                           |
+| ---------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Merchant/Tenancy       | Authenticated merchant ownership and isolation.                        | Merchant tenant and activated Owner session implemented; broader tenancy/access model incomplete.                                                                        |
+| Categories (CAT-F01)   | One or more valid categories are mandatory at product creation/update. | Implemented with tenant-safe references, a two-level hierarchy, lifecycle actions, and multiple equal Product links.                                                     |
+| Media                  | A valid image is mandatory.                                            | Reusable tenant-owned Media and owner image upload to configurable server disk are implemented; processing, cleanup, and external-provider lifecycle remain deferred.    |
+| Pricing (CAT-F06)      | Positive EGP base-price validation and a configuration quote.          | Basic product/modifier quote and fixed-precision response are implemented; discounts, taxes, context pricing, and a separate Pricing domain remain deferred.             |
 | Availability (CAT-F07) | Channel/public meaning of Available/Unavailable and Archived.          | Public catalog filters unavailable/archived products; quote and checkout validate current availability. Broader channel rules remain open.                               |
 | Orders                 | Deletion prohibition after order use and historical snapshot.          | Pickup/delivery checkout, immutable lines, tracked-variant reservation, owner accept/reject, and deletion protection are implemented; full fulfillment remains deferred. |
-| Activities & Modules   | Catalog compatibility metadata when capability is implemented.         | Registry exists; Catalog capability absent. Compatibility does not grant access.                                                                                      |
-| Plans/Entitlements     | Commercial access if Catalog becomes plan-gated.                       | Plan definitions exist; assignment/entitlements absent and rules OPEN.                                                                                                |
-| Audit                  | Attribution/history for sensitive changes if required.                 | No general audit domain exists; scope OPEN.                                                                                                                           |
+| Activities & Modules   | Catalog compatibility metadata when capability is implemented.         | Registry exists; Catalog capability absent. Compatibility does not grant access.                                                                                         |
+| Plans/Entitlements     | Commercial access if Catalog becomes plan-gated.                       | Plan definitions exist; assignment/entitlements absent and rules OPEN.                                                                                                   |
+| Audit                  | Attribution/history for sensitive changes if required.                 | No general audit domain exists; scope OPEN.                                                                                                                              |
 
 The mandatory category and image decisions are implemented through the minimal Categories and reusable Media boundaries. The dashboard supports product descriptions, explicit primary-image selection, archived views, restoration, and JPEG/PNG/WebP upload to configurable server disk. Image processing, durable deployment storage configuration, Storefront rendering, and channel behavior remain future work.
 

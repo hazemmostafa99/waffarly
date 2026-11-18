@@ -7,7 +7,7 @@ type PageProps = {
 };
 
 function firstString(value: string | string[] | undefined): string {
-  return Array.isArray(value) ? value[0] ?? '' : value ?? '';
+  return Array.isArray(value) ? (value[0] ?? '') : (value ?? '');
 }
 
 export default async function MenuPage({ params, searchParams }: PageProps) {

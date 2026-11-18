@@ -1,23 +1,27 @@
+import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
+
 import type { PosEmployeeSession } from '@waffarly/contracts';
-import { config } from 'dotenv';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
+import { PosRegistersService } from '../../src/modules/shifts/registers/pos-registers.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'reconciles cash and terminal tenders, requires supervisor approvals, blocks unsettled checks, and closes idempotently',
   { skip: !databaseUrl },
-  async () => {
-    assert.ok(databaseUrl, 'Configure DATABASE_URL and apply the POS shift reconciliation migration.');
-    const prisma = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+  async (testContext) => {
+    assert.ok(
+      databaseUrl,
+      'Configure TEST_DATABASE_URL and apply the POS shift reconciliation migration.',
+    );
+    const prisma = createTestDatabaseClient(testContext);
     const merchantIds: string[] = [];
     const orderIds: string[] = [];
 
@@ -45,6 +49,7 @@ it(
       const cashierRecord = await prisma.posEmployee.create({
         data: {
           merchantId: merchant.id,
+          branchId: branch.id,
           username: `reconcile-cashier-${token}`,
           displayName: 'Reconciliation cashier',
           passwordHash: 'database-test-only',
@@ -57,6 +62,7 @@ it(
       const supervisorRecord = await prisma.posEmployee.create({
         data: {
           merchantId: merchant.id,
+          branchId: branch.id,
           username: `reconcile-supervisor-${token}`,
           displayName: 'Reconciliation supervisor',
           passwordHash: 'database-test-only',
@@ -66,14 +72,6 @@ it(
           updatedBy: 'pos-shift-reconciliation-test',
         },
       });
-      await prisma.posEmployeeBranch.createMany({
-        data: [cashierRecord, supervisorRecord].map((employee) => ({
-          merchantId: merchant.id,
-          employeeId: employee.id,
-          branchId: branch.id,
-          createdBy: 'pos-shift-reconciliation-test',
-        })),
-      });
       const cashier: PosEmployeeSession = {
         id: cashierRecord.id,
         merchantId: merchant.id,
@@ -81,7 +79,7 @@ it(
         displayName: cashierRecord.displayName,
         role: 'cashier',
         permissions: ['open_register_shift', 'sell'],
-        branches: [{ id: branch.id, name: branch.name, archivedAt: null }],
+        branch: { id: branch.id, name: branch.name, archivedAt: null },
       };
       const supervisor: PosEmployeeSession = {
         id: supervisorRecord.id,
@@ -89,14 +87,24 @@ it(
         username: supervisorRecord.username,
         displayName: supervisorRecord.displayName,
         role: 'supervisor',
-        permissions: ['open_register_shift', 'sell', 'approve_shift_close', 'manage_cash_movements'],
-        branches: [{ id: branch.id, name: branch.name, archivedAt: null }],
+        permissions: [
+          'open_register_shift',
+          'sell',
+          'approve_shift_close',
+          'manage_cash_movements',
+        ],
+        branch: { id: branch.id, name: branch.name, archivedAt: null },
       };
       const service = new ShiftsService(prisma as unknown as PrismaService);
-      const register = await service.createRegister(merchant.id, 'pos-shift-reconciliation-test', {
-        branchId: branch.id,
-        name: 'Reconciliation register',
-      });
+      const registers = new PosRegistersService(prisma as unknown as PrismaService);
+      const register = await registers.createRegister(
+        merchant.id,
+        'pos-shift-reconciliation-test',
+        {
+          branchId: branch.id,
+          name: 'Reconciliation register',
+        },
+      );
       const shift = await service.openShift(cashier, {
         registerId: register.id,
         requestId: randomUUID(),
@@ -252,10 +260,15 @@ it(
         1,
       );
       await assert.rejects(
-        service.recordManualCashMovement(cashier, shift.id, {
-          ...cashInRequest,
-          amount: '11.00',
-        }, supervisor.id),
+        service.recordManualCashMovement(
+          cashier,
+          shift.id,
+          {
+            ...cashInRequest,
+            amount: '11.00',
+          },
+          supervisor.id,
+        ),
         (error: unknown) => error instanceof ConflictException,
       );
       const cashOut = await service.recordManualCashMovement(
@@ -296,18 +309,21 @@ it(
       assert.equal(cashDrop.movement.kind, 'cash_drop');
       assert.equal(cashDrop.movement.dropReference, 'SAFE-BAG-1042');
       assert.equal(cashDrop.movement.approvedByName, supervisor.displayName);
-      assert.equal(await prisma.posShiftManualCashMovement.count({ where: { merchantId: merchant.id } }), 3);
       assert.equal(
-        'expectedCash' in await service.getReconciliation(cashier, shift.id),
-        false,
+        await prisma.posShiftManualCashMovement.count({ where: { merchantId: merchant.id } }),
+        3,
       );
-      assert.deepEqual(await service.previewCloseShift(cashier, shift.id, {
-        countedCash: '130.00',
-      }), {
-        unsettledCheckCount: 1,
-        requiresReason: false,
-        requiresSupervisorApproval: false,
-      });
+      assert.equal('expectedCash' in (await service.getReconciliation(cashier, shift.id)), false);
+      assert.deepEqual(
+        await service.previewCloseShift(cashier, shift.id, {
+          countedCash: '130.00',
+        }),
+        {
+          unsettledCheckCount: 1,
+          requiresReason: false,
+          requiresSupervisorApproval: false,
+        },
+      );
       await assert.rejects(
         service.closeShift(cashier, shift.id, {
           requestId: randomUUID(),
@@ -325,21 +341,27 @@ it(
         countedCash: '131.00',
         reason: 'One pound cash count variance',
       };
-      assert.deepEqual(await service.previewCloseShift(cashier, shift.id, {
-        countedCash: closeRequest.countedCash,
-      }), {
-        unsettledCheckCount: 0,
-        requiresReason: true,
-        requiresSupervisorApproval: true,
-      });
-      assert.deepEqual(await service.previewCloseShift(cashier, shift.id, {
-        countedCash: closeRequest.countedCash,
-        reason: closeRequest.reason,
-      }), {
-        unsettledCheckCount: 0,
-        requiresReason: false,
-        requiresSupervisorApproval: true,
-      });
+      assert.deepEqual(
+        await service.previewCloseShift(cashier, shift.id, {
+          countedCash: closeRequest.countedCash,
+        }),
+        {
+          unsettledCheckCount: 0,
+          requiresReason: true,
+          requiresSupervisorApproval: true,
+        },
+      );
+      assert.deepEqual(
+        await service.previewCloseShift(cashier, shift.id, {
+          countedCash: closeRequest.countedCash,
+          reason: closeRequest.reason,
+        }),
+        {
+          unsettledCheckCount: 0,
+          requiresReason: false,
+          requiresSupervisorApproval: true,
+        },
+      );
       await assert.rejects(
         service.closeShift(cashier, shift.id, closeRequest),
         (error: unknown) => error instanceof ForbiddenException,
@@ -361,10 +383,14 @@ it(
       assert.equal((await service.getLatestCloseReport(cashier, register.id))?.id, report.id);
       assert.equal((await service.getCloseReport(cashier, shift.id)).variance, '1.00');
 
-      const secondRegister = await service.createRegister(merchant.id, 'pos-shift-reconciliation-test', {
-        branchId: branch.id,
-        name: 'Second reconciliation register',
-      });
+      const secondRegister = await registers.createRegister(
+        merchant.id,
+        'pos-shift-reconciliation-test',
+        {
+          branchId: branch.id,
+          name: 'Second reconciliation register',
+        },
+      );
       const secondShift = await service.openShift(cashier, {
         registerId: secondRegister.id,
         requestId: randomUUID(),
@@ -397,6 +423,7 @@ it(
       const otherEmployeeRecord = await prisma.posEmployee.create({
         data: {
           merchantId: otherMerchant.id,
+          branchId: otherBranch.id,
           username: `foreign-report-cashier-${token}`,
           displayName: 'Foreign report cashier',
           passwordHash: 'database-test-only',
@@ -406,14 +433,6 @@ it(
           updatedBy: 'pos-shift-reconciliation-test',
         },
       });
-      await prisma.posEmployeeBranch.create({
-        data: {
-          merchantId: otherMerchant.id,
-          employeeId: otherEmployeeRecord.id,
-          branchId: otherBranch.id,
-          createdBy: 'pos-shift-reconciliation-test',
-        },
-      });
       const otherEmployee: PosEmployeeSession = {
         id: otherEmployeeRecord.id,
         merchantId: otherMerchant.id,
@@ -421,9 +440,9 @@ it(
         displayName: otherEmployeeRecord.displayName,
         role: 'cashier',
         permissions: ['open_register_shift', 'sell'],
-        branches: [{ id: otherBranch.id, name: otherBranch.name, archivedAt: null }],
+        branch: { id: otherBranch.id, name: otherBranch.name, archivedAt: null },
       };
-      const otherRegister = await service.createRegister(
+      const otherRegister = await registers.createRegister(
         otherMerchant.id,
         'pos-shift-reconciliation-test',
         { branchId: otherBranch.id, name: 'Foreign reports register' },
@@ -467,7 +486,10 @@ it(
         limit: 10,
       });
       assert.equal(allBranchReports.items.length, 2);
-      assert.equal(allBranchReports.items.every((item) => item.branchId === branch.id), true);
+      assert.equal(
+        allBranchReports.items.every((item) => item.branchId === branch.id),
+        true,
+      );
       const outsideRange = await service.listOwnerCloseReports(merchant.id, {
         from: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
         to: new Date(Date.now() + 366 * 24 * 60 * 60 * 1000).toISOString(),
@@ -497,9 +519,10 @@ it(
             await tx.storefrontOrder.deleteMany({ where: { merchantId } });
             await tx.posShift.deleteMany({ where: { merchantId } });
             await tx.posRegister.deleteMany({ where: { merchantId } });
-            await tx.posEmployeeBranch.deleteMany({ where: { merchantId } });
             await tx.posEmployee.deleteMany({ where: { merchantId } });
             await tx.branch.deleteMany({ where: { merchantId } });
+            // Remove the subscription created with this test merchant before its parent row.
+            await deleteTestMerchantSubscriptions(tx, [merchantId]);
             await tx.merchant.deleteMany({ where: { id: merchantId } });
           });
         }

@@ -1,50 +1,51 @@
+import { merchantFixture, deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
+
 import type { PosEmployeeSession } from '@waffarly/contracts';
-import { config } from 'dotenv';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
+import { PosRegistersService } from '../../src/modules/shifts/registers/pos-registers.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'serializes register shift openings, replays the same request, and enforces tenant and branch scope',
   { skip: !databaseUrl },
-  async () => {
+  async (testContext) => {
     assert.ok(
       databaseUrl,
-      'Configure DATABASE_URL and apply the POS register/shift migration first.',
+      'Configure TEST_DATABASE_URL and apply the POS register/shift migration first.',
     );
-    const prisma = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+    const prisma = createTestDatabaseClient(testContext);
     const token = randomUUID().replaceAll('-', '');
     const merchantIds: string[] = [];
 
     try {
       const merchant = await prisma.merchant.create({
-        data: {
+        data: merchantFixture({
           name: `POS shift verification ${token}`,
           storefrontSlug: `pos-shift-${token}`,
           activity: 'restaurant',
           contactPhone: '01000000000',
           ownerName: 'POS shift verification',
           ownerMobile: '01100000000',
-        },
+        }),
       });
       merchantIds.push(merchant.id);
       const otherMerchantRecord = await prisma.merchant.create({
-        data: {
+        data: merchantFixture({
           name: `POS shift other verification ${token}`,
           storefrontSlug: `pos-shift-other-${token}`,
           activity: 'restaurant',
           contactPhone: '01000000001',
           ownerName: 'POS shift other verification',
           ownerMobile: '01100000001',
-        },
+        }),
       });
       merchantIds.push(otherMerchantRecord.id);
       const branch = await prisma.branch.create({
@@ -66,6 +67,7 @@ it(
       const employeeRecord = await prisma.posEmployee.create({
         data: {
           merchantId: merchant.id,
+          branchId: branch.id,
           username: `shift-${token}`,
           displayName: 'POS shift cashier',
           passwordHash: 'database-test-only',
@@ -75,17 +77,10 @@ it(
           updatedBy: 'pos-shift-database-test',
         },
       });
-      await prisma.posEmployeeBranch.create({
-        data: {
-          merchantId: merchant.id,
-          employeeId: employeeRecord.id,
-          branchId: branch.id,
-          createdBy: 'pos-shift-database-test',
-        },
-      });
       const otherEmployeeRecord = await prisma.posEmployee.create({
         data: {
           merchantId: otherMerchantRecord.id,
+          branchId: otherBranch.id,
           username: `other-shift-${token}`,
           displayName: 'Other POS shift cashier',
           passwordHash: 'database-test-only',
@@ -95,21 +90,14 @@ it(
           updatedBy: 'pos-shift-database-test',
         },
       });
-      await prisma.posEmployeeBranch.create({
-        data: {
-          merchantId: otherMerchantRecord.id,
-          employeeId: otherEmployeeRecord.id,
-          branchId: otherBranch.id,
-          createdBy: 'pos-shift-database-test',
-        },
-      });
 
       const service = new ShiftsService(prisma as unknown as PrismaService);
-      const register = await service.createRegister(merchant.id, 'pos-shift-database-test', {
+      const registers = new PosRegistersService(prisma as unknown as PrismaService);
+      const register = await registers.createRegister(merchant.id, 'pos-shift-database-test', {
         branchId: branch.id,
         name: 'Shared cashier register',
       });
-      const competingRegister = await service.createRegister(
+      const competingRegister = await registers.createRegister(
         merchant.id,
         'pos-shift-database-test',
         { branchId: branch.id, name: 'Concurrent cashier register' },
@@ -121,7 +109,7 @@ it(
         displayName: employeeRecord.displayName,
         role: 'cashier',
         permissions: ['open_register_shift', 'sell'],
-        branches: [{ id: branch.id, name: branch.name, archivedAt: null }],
+        branch: { id: branch.id, name: branch.name, archivedAt: null },
       };
 
       const retry = {
@@ -164,7 +152,7 @@ it(
 
       await assert.rejects(
         service.openShift(
-          { ...employee, branches: [] },
+          { ...employee, branch: { ...employee.branch, id: 'another-branch' } },
           {
             registerId: register.id,
             requestId: randomUUID(),
@@ -180,7 +168,7 @@ it(
         displayName: otherEmployeeRecord.displayName,
         role: 'cashier',
         permissions: ['open_register_shift', 'sell'],
-        branches: [{ id: otherBranch.id, name: otherBranch.name, archivedAt: null }],
+        branch: { id: otherBranch.id, name: otherBranch.name, archivedAt: null },
       };
       await assert.rejects(
         service.openShift(otherMerchant, {
@@ -196,9 +184,10 @@ it(
           await prisma.$transaction(async (tx) => {
             await tx.posShift.deleteMany({ where: { merchantId } });
             await tx.posRegister.deleteMany({ where: { merchantId } });
-            await tx.posEmployeeBranch.deleteMany({ where: { merchantId } });
             await tx.posEmployee.deleteMany({ where: { merchantId } });
             await tx.branch.deleteMany({ where: { merchantId } });
+            // Remove the subscription created with this test merchant before its parent row.
+            await deleteTestMerchantSubscriptions(tx, [merchantId]);
             await tx.merchant.deleteMany({ where: { id: merchantId } });
           });
         }

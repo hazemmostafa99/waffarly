@@ -8,14 +8,15 @@ import type { PosEmployeeSession } from '@waffarly/contracts';
 import { AuthService, PosEmployeeGuard } from '../../src/modules/auth/index.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
-import { PosDeliveryService } from '../../src/modules/orders/pos-delivery.service.js';
-import { PosDeliveryController } from '../../src/modules/orders/pos-delivery.controller.js';
+import { PosDeliveryService } from '../../src/modules/orders/delivery/pos-delivery.service.js';
+import { PosDeliveryController } from '../../src/modules/orders/http/pos/pos-delivery.controller.js';
 
 describe('delivery employee endpoints', () => {
   const merchantId = randomUUID();
   const branchId = randomUUID();
   const orderId = randomUUID();
   const employeeId = randomUUID();
+  const registerId = randomUUID();
   let app: INestApplication;
   let authorized = true;
   let employee: PosEmployeeSession;
@@ -34,7 +35,8 @@ describe('delivery employee endpoints', () => {
       displayName: 'Cashier',
       role: 'cashier',
       permissions: ['sell', 'open_register_shift'],
-      branches: [{ id: branchId, name: 'Main', archivedAt: null }],
+      branch: { id: branchId, name: 'Main', archivedAt: null },
+      deviceRegister: { id: registerId, branchId, name: 'Front' },
     };
     const module = await Test.createTestingModule({
       controllers: [PosDeliveryController],
@@ -82,7 +84,7 @@ describe('delivery employee endpoints', () => {
     authorized = true;
     employee = { ...employee, permissions: [] };
     await request(app.getHttpServer()).get(`/pos/deliveries?branchId=${branchId}`).expect(403);
-    employee = { ...employee, permissions: ['sell'], branches: [] };
+    employee = { ...employee, permissions: ['sell'], branch: { ...employee.branch, id: 'another-branch' } };
     await request(app.getHttpServer())
       .get(`/pos/deliveries/ready?branchId=${branchId}`)
       .expect(403);
@@ -111,6 +113,19 @@ describe('delivery employee endpoints', () => {
         amount: '0',
       })
       .expect(400);
+    const dispatch = { action: 'dispatch', requestId: randomUUID(), revision: 1 };
+    await request(app.getHttpServer())
+      .post(`/pos/deliveries/${orderId}/actions`)
+      .send(dispatch)
+      .expect(400);
+    await request(app.getHttpServer())
+      .post(`/pos/deliveries/${orderId}/actions`)
+      .send({ ...dispatch, courierId: randomUUID() })
+      .expect(404);
+    await request(app.getHttpServer())
+      .post(`/pos/deliveries/${orderId}/actions`)
+      .send({ ...dispatch, courierName: 'Legacy courier' })
+      .expect(404);
     await request(app.getHttpServer())
       .post('/pos/deliveries/not-a-uuid/actions')
       .send({})

@@ -355,18 +355,18 @@ POS integration becomes executable after those surfaces and rules exist. This is
 
 ## Open Decisions and Safe Boundaries
 
-| Decision | Current boundary |
-| --- | --- |
-| Shared-group edit publishing/propagation | V1 rejects definition edits while any product is assigned. Owners may detach assignments, edit an unused definition, then attach it again. Do not implement propagation, copying, or review workflows until approved. |
+| Decision                                          | Current boundary                                                                                                                                                                                                                                                |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shared-group edit publishing/propagation          | V1 rejects definition edits while any product is assigned. Owners may detach assignments, edit an unused definition, then attach it again. Do not implement propagation, copying, or review workflows until approved.                                           |
 | Shared option price versus product-specific price | V1 stores the fixed adjustment and default-selection flag on each product assignment. This preserves product-local legacy values while allowing one shared option definition to have different product pricing. Variant-specific overrides remain out of scope. |
-| Variant-specific modifier prices | Deferred; no schema or executable rule is required now. |
-| Branch/channel price overrides | Deferred. Keep pricing service boundaries extensible. |
-| Conditional modifiers and dependencies | Deferred. |
-| Option quantities | Deferred. Each option is selected at most once in the current model. |
-| Modifier/option permanent deletion | Unlinking is supported. Permanent deletion and historical-reference policy require a final rule; do not cascade through orders. |
-| Branch-scoped orders | Blocked by the absence of a persisted Branch domain and branch selection rules. Preserve existing owner acceptance behavior. |
-| POS configuration UI | Blocked by the absence of a POS catalog/sale flow. Reuse contracts when that flow is approved. |
-| Advanced multidimensional builder UI | Deferred. The relational model supports it; the restaurant UI may start with one dimension. |
+| Variant-specific modifier prices                  | Deferred; no schema or executable rule is required now.                                                                                                                                                                                                         |
+| Branch/channel price overrides                    | Deferred. Keep pricing service boundaries extensible.                                                                                                                                                                                                           |
+| Conditional modifiers and dependencies            | Deferred.                                                                                                                                                                                                                                                       |
+| Option quantities                                 | Deferred. Each option is selected at most once in the current model.                                                                                                                                                                                            |
+| Modifier/option permanent deletion                | Unlinking is supported. Permanent deletion and historical-reference policy require a final rule; do not cascade through orders.                                                                                                                                 |
+| Branch-scoped orders                              | Blocked by the absence of a persisted Branch domain and branch selection rules. Preserve existing owner acceptance behavior.                                                                                                                                    |
+| POS configuration UI                              | Blocked by the absence of a POS catalog/sale flow. Reuse contracts when that flow is approved.                                                                                                                                                                  |
+| Advanced multidimensional builder UI              | Deferred. The relational model supports it; the restaurant UI may start with one dimension.                                                                                                                                                                     |
 
 The V1 assignment-pricing behavior is an implementation choice made to preserve existing product-specific prices while making definitions reusable. It is surfaced here rather than treated as an approved pricing policy for future pricing modes.
 
@@ -450,4 +450,3 @@ If implementation reveals a conflict with this contract:
 2. Record the conflict and evidence in `PROGRESS.md`.
 3. Update this contract only when the resolution follows an approved product decision.
 4. Resume implementation from the first affected checkpoint.
-

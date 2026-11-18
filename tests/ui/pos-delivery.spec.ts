@@ -9,6 +9,7 @@ const shiftId = '55555555-5555-4555-8555-555555555555';
 const orderId = '66666666-6666-4666-8666-666666666666';
 const paymentId = '77777777-7777-4777-8777-777777777777';
 const checkId = '88888888-8888-4888-8888-888888888888';
+const courierId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const shift = {
   id: shiftId,
   branchId,
@@ -23,7 +24,16 @@ const shift = {
   status: 'open',
 };
 
-async function session(page: Page) {
+async function startWithLocale(page: Page, locale: 'en' | 'ar' = 'en') {
+  await page.addInitScript((preferredLocale) => {
+    if (window.location.origin === 'null') return;
+    document.cookie = `waffarly-locale=${preferredLocale}; Path=/; SameSite=Lax`;
+    localStorage.setItem('waffarly-locale', preferredLocale);
+  }, locale);
+}
+
+async function session(page: Page, locale: 'en' | 'ar' = 'en') {
+  await startWithLocale(page, locale);
   await page.route('**/auth/pos/me', (route) =>
     route.fulfill({
       json: {
@@ -33,7 +43,8 @@ async function session(page: Page) {
         displayName: 'Mona',
         role: 'cashier',
         permissions: ['sell', 'open_register_shift'],
-        branches: [{ id: branchId, name: 'Main', archivedAt: null }],
+        branch: { id: branchId, name: 'Main', archivedAt: null },
+        deviceRegister: { id: registerId, branchId, name: 'Front drawer' },
       },
     }),
   );
@@ -44,6 +55,9 @@ async function session(page: Page) {
     route.fulfill({ json: [{ id: registerId, branchId, name: 'Front drawer' }] }),
   );
   await page.route('**/pos/shifts/current**', (route) => route.fulfill({ json: shift }));
+  await page.route('**/pos/delivery-couriers?**', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
 }
 
 function row(): PosDeliverySummary {
@@ -55,6 +69,7 @@ function row(): PosDeliverySummary {
     revision: 1,
     orderRevision: 1,
     orderStatus: 'completed',
+    courierId,
     courierName: 'Courier Ali',
     status: 'delivered',
     dispatchedAt: '2026-10-26T08:00:00Z',
@@ -71,10 +86,119 @@ function row(): PosDeliverySummary {
 }
 
 for (const locale of ['en', 'ar'] as const) {
+  test(`dispatch selects a registered courier by ID (${locale})`, async ({ page }) => {
+    await session(page, locale);
+    await page.route('**/pos/delivery-couriers?**', (route) =>
+      route.fulfill({
+        json: { items: [{ id: courierId, name: 'Courier Ali' }], nextCursor: null },
+      }),
+    );
+    await page.route('**/pos/deliveries/ready?**', (route) =>
+      route.fulfill({
+        json: {
+          items: [
+            {
+              id: orderId,
+              orderReference: 'D-100',
+              revision: 1,
+              total: '300.00',
+              customerName: 'Test customer',
+            },
+          ],
+          nextCursor: null,
+        },
+      }),
+    );
+    await page.route('**/pos/deliveries?**', (route) =>
+      route.fulfill({ json: { items: [], nextCursor: null } }),
+    );
+    await page.route(`**/pos/deliveries/${orderId}/actions`, (route) =>
+      route.fulfill({ json: row() }),
+    );
+
+    await page.goto('/deliveries');
+    const request = page.waitForRequest(
+      (candidate) =>
+        candidate.method() === 'POST' &&
+        candidate.url().includes(`/pos/deliveries/${orderId}/actions`),
+    );
+    await page
+      .getByLabel(locale === 'ar' ? 'اختار الطيار' : 'Choose a courier', { exact: true })
+      .selectOption(courierId);
+    await page
+      .getByRole('button', { name: locale === 'ar' ? 'تسليم للطيار' : 'Dispatch order' })
+      .click();
+    expect((await request).postDataJSON()).toMatchObject({ action: 'dispatch', courierId });
+  });
+}
+
+test('failed delivery redispatch sends the selected courier ID', async ({ page }) => {
+  await session(page);
+  const failedDelivery: PosDeliverySummary = {
+    ...row(),
+    revision: 2,
+    status: 'failed',
+    deliveredAt: null,
+    customerDue: '0.00',
+    courierCashHeld: '0.00',
+  };
+  await page.route('**/pos/delivery-couriers?**', (route) =>
+    route.fulfill({
+      json: { items: [{ id: courierId, name: 'Courier Ali' }], nextCursor: null },
+    }),
+  );
+  await page.route('**/pos/deliveries/ready?**', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.route('**/pos/deliveries?**', (route) =>
+    route.fulfill({ json: { items: [failedDelivery], nextCursor: null } }),
+  );
+  await page.route(`**/pos/deliveries/${orderId}/actions`, (route) =>
+    route.fulfill({ json: { ...failedDelivery, status: 'out_for_delivery', revision: 3 } }),
+  );
+
+  await page.goto('/deliveries');
+  await page.getByRole('tab', { name: 'Delivery follow-up' }).click();
+  const request = page.waitForRequest(
+    (candidate) =>
+      candidate.method() === 'POST' &&
+      candidate.url().includes(`/pos/deliveries/${orderId}/actions`),
+  );
+  await page.getByRole('button', { name: 'Send again', exact: true }).click();
+  expect((await request).postDataJSON()).toMatchObject({ action: 'dispatch', courierId });
+});
+
+test('cash custody groups use courier identity when names match', async ({ page }) => {
+  await session(page);
+  const sameNameCourierId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+  const secondOrderId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+  const deliveries: PosDeliverySummary[] = [
+    { ...row(), orderReference: 'D-101' },
+    {
+      ...row(),
+      orderId: secondOrderId,
+      orderReference: 'D-102',
+      courierId: sameNameCourierId,
+      courierCashHeld: '250.00',
+    },
+  ];
+  await page.route('**/pos/deliveries/ready?**', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.route('**/pos/deliveries?**', (route) =>
+    route.fulfill({ json: { items: deliveries, nextCursor: null } }),
+  );
+
+  await page.goto('/deliveries');
+  await page.getByRole('tab', { name: 'Courier cash' }).click();
+  await expect(page.getByRole('heading', { name: 'Courier Ali', exact: true })).toHaveCount(2);
+});
+
+for (const locale of ['en', 'ar'] as const) {
   test(`delivery distinguishes customer balance and courier custody (${locale})`, async ({
     page,
   }) => {
-    await session(page);
+    await session(page, locale);
     await page.route('**/pos/deliveries/ready?**', (route) =>
       route.fulfill({ json: { items: [], nextCursor: null } }),
     );
@@ -82,7 +206,11 @@ for (const locale of ['en', 'ar'] as const) {
       route.fulfill({ json: { items: [row()], nextCursor: null } }),
     );
     await page.goto('/deliveries');
-    if (locale === 'ar') await page.getByRole('button', { name: 'Change language' }).click();
+    await page
+      .getByRole('tab', {
+        name: locale === 'ar' ? 'متابعة التوصيل' : 'Delivery follow-up',
+      })
+      .click();
     await expect(
       page.getByRole('heading', {
         name: locale === 'ar' ? 'متابعة الدليفري' : 'Delivery follow-up',
@@ -90,25 +218,44 @@ for (const locale of ['en', 'ar'] as const) {
       }),
     ).toBeVisible();
     await expect(
-      page.getByText(locale === 'ar' ? 'لسه مطلوب من العميل' : 'Customer still owes', {
-        exact: false,
-      }),
+      page
+        .getByText(locale === 'ar' ? 'المتبقي على العميل' : 'Customer balance due', {
+          exact: true,
+        })
+        .locator('..'),
     ).toContainText('100.00');
     await expect(
-      page.getByText(locale === 'ar' ? 'كاش لسه مع الطيار' : 'Cash still with courier', {
-        exact: false,
-      }),
+      page
+        .getByText(locale === 'ar' ? 'كاش مطلوب من الطيار' : 'Courier cash to receive', {
+          exact: true,
+        })
+        .locator('..'),
     ).toContainText('200.00');
     await expect(
       page.getByRole('button', {
         name: locale === 'ar' ? 'تأكيد الكاش اللي استلمته فعلًا' : 'Confirm cash actually received',
       }),
-    ).toBeDisabled();
+    ).toBeEnabled();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
   });
 }
+
+test('courier cash receipt stays disabled without an open drawer shift', async ({ page }) => {
+  await session(page);
+  await page.route('**/pos/shifts/current**', (route) => route.fulfill({ json: null }));
+  await page.route('**/pos/deliveries/ready?**', (route) =>
+    route.fulfill({ json: { items: [], nextCursor: null } }),
+  );
+  await page.route('**/pos/deliveries?**', (route) =>
+    route.fulfill({ json: { items: [row()], nextCursor: null } }),
+  );
+
+  await page.goto('/deliveries');
+  await page.getByRole('tab', { name: 'Delivery follow-up' }).click();
+  await expect(page.getByRole('button', { name: 'Confirm cash actually received' })).toBeDisabled();
+});
 
 test('partial courier receipt survives lost response and reload with the identical command', async ({
   page,
@@ -138,7 +285,8 @@ test('partial courier receipt survives lost response and reload with the identic
     } else await route.fulfill({ json: delivery });
   });
   await page.goto('/deliveries');
-  await page.getByLabel('Amount (EGP)', { exact: true }).fill('75.00');
+  await page.getByRole('tab', { name: 'Delivery follow-up' }).click();
+  await page.getByLabel('Amount received from courier', { exact: true }).fill('75.00');
   await page.getByRole('button', { name: 'Confirm cash actually received', exact: true }).click();
   await expect(
     page.getByRole('button', { name: 'Retry the exact saved action', exact: true }),
@@ -158,10 +306,11 @@ test('partial courier receipt survives lost response and reload with the identic
   });
 });
 
-test('shift hands pending deliveries to a named recipient without counting them as drawer cash', async ({
+test('shift close asks for cashier confirmation and keeps pending deliveries outside drawer cash', async ({
   page,
 }) => {
   await session(page);
+  page.on('dialog', (dialog) => dialog.accept());
   let active: typeof shift | null = shift;
   let report: Record<string, unknown> | null = null;
   const commands: Array<Record<string, unknown>> = [];
@@ -189,9 +338,9 @@ test('shift hands pending deliveries to a named recipient without counting them 
       json: {
         unsettledCheckCount: 0,
         requiresReason: false,
-        requiresSupervisorApproval: true,
+        requiresSupervisorApproval: false,
         pendingDeliveryCount: 1,
-        requiresDeliveryHandover: !body.deliveryHandover,
+        requiresDeliveryConfirmation: !body.confirmPendingDeliveries,
       },
     });
   });
@@ -210,9 +359,9 @@ test('shift hands pending deliveries to a named recipient without counting them 
       cashDrop: '0.00',
       deliveryCashReceived: '0.00',
       deliveryHandover: {
-        recipientEmployeeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-        recipientName: 'Ahmed',
-        approvedByName: 'Supervisor',
+        recipientEmployeeId: null,
+        recipientName: null,
+        approvedByName: null,
         deliveries: [
           {
             orderId,
@@ -229,19 +378,13 @@ test('shift hands pending deliveries to a named recipient without counting them 
   await page.goto('/shift');
   const form = page.locator('form').filter({ has: page.getByLabel('Counted cash (EGP)') });
   await form.getByLabel('Counted cash (EGP)').fill('50.00');
-  await form.getByLabel('Receiving employee username').fill('ahmed');
-  await form.getByLabel('Supervisor username').fill('supervisor');
-  await form.getByLabel('Supervisor password').fill('test-supervisor-secret');
   await form.getByRole('button', { name: 'Close shift and save report' }).click();
   await expect(page.getByRole('heading', { name: 'Last shift close' })).toBeVisible();
   expect(commands[0]).toMatchObject({
     countedCash: '50.00',
-    deliveryHandover: { recipientUsername: 'ahmed' },
-    approval: { username: 'supervisor', password: 'test-supervisor-secret' },
+    confirmPendingDeliveries: true,
   });
-  const storage = await page.evaluate(() => JSON.stringify(localStorage));
-  expect(storage).not.toContain('test-supervisor-secret');
-  await expect(page.getByText('Delivery handover: Ahmed', { exact: true })).toBeVisible();
+  await expect(page.getByText('Pending deliveries at close', { exact: true })).toBeVisible();
 });
 
 test('a rejected courier receipt is dismissed through the server before its recovery is cleared', async ({
@@ -271,7 +414,8 @@ test('a rejected courier receipt is dismissed through the server before its reco
     return route.fulfill({ json: { committed: false, discarded: true } });
   });
   await page.goto('/deliveries');
-  await page.getByLabel('Amount (EGP)', { exact: true }).fill('75.00');
+  await page.getByRole('tab', { name: 'Delivery follow-up' }).click();
+  await page.getByLabel('Amount received from courier', { exact: true }).fill('75.00');
   await page.getByRole('button', { name: 'Confirm cash actually received', exact: true }).click();
   await page
     .getByRole('button', {

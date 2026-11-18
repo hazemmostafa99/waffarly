@@ -59,7 +59,7 @@ type Command =
 const emptyDrafts: DraftLine[] = [];
 
 export function Component() {
-  const { t, locale, setLocale } = useLocale();
+  const { t } = useLocale();
   const money = useMoney();
   const client = useQueryClient();
   const [params, setParams] = useSearchParams();
@@ -422,14 +422,6 @@ export function Component() {
                   </div>
                 </div>
               </Popover>
-              <button
-                type="button"
-                onClick={() => setLocale(locale === 'en' ? 'ar' : 'en')}
-                className="min-h-10 rounded-lg border border-border px-3 text-xs font-medium"
-                aria-label={t('Switch language')}
-              >
-                {locale === 'en' ? 'العربية' : 'English'}
-              </button>
             </div>
           </header>
           <div className="flex min-h-0 flex-1 flex-col lg:flex-row">

@@ -8,7 +8,12 @@ export function MarketplaceStoreCard({ store }: { store: MarketplaceStore }) {
       <Link href={storeHref(store)} className="block text-inherit no-underline">
         <div className="flex items-center gap-4 p-4 sm:p-5">
           <div className="size-[76px] shrink-0 overflow-hidden rounded-2xl bg-secondary">
-            <img src={store.image.src} alt={store.image.alt} className="size-full object-cover" loading="lazy" />
+            <img
+              src={store.image.src}
+              alt={store.image.alt}
+              className="size-full object-cover"
+              loading="lazy"
+            />
           </div>
           <div className="min-w-0">
             <h2 className="m-0 text-lg font-extrabold text-primary">{store.name}</h2>

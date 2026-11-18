@@ -1,3 +1,10 @@
+import { PosOrderQueryService } from '../../src/modules/orders/pos-sales/pos-order-query.service.js';
+import { PosReceiptQueryService } from '../../src/modules/orders/receipts/pos-receipt-query.service.js';
+import { PickupCollectionService } from '../../src/modules/orders/billing/pickup-collection.service.js';
+import { CheckRefundService } from '../../src/modules/orders/billing/check-refund.service.js';
+import { CheckPaymentService } from '../../src/modules/orders/billing/check-payment.service.js';
+import { KitchenOrderAmendmentService } from '../../src/modules/orders/kitchen/kitchen-order-amendment.service.js';
+import { PosSaleService } from '../../src/modules/orders/pos-sales/pos-sale.service.js';
 import { UnauthorizedException, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import type { OwnerProfile, PosEmployeeSession } from '@waffarly/contracts';
@@ -7,15 +14,17 @@ import request from 'supertest';
 import { AuthController } from '../../src/modules/auth/auth.controller.js';
 import { AuthService } from '../../src/modules/auth/auth.service.js';
 import { OwnerGuard } from '../../src/modules/auth/owner.guard.js';
-import { PosEmployeeService } from '../../src/modules/auth/pos-employee.service.js';
+import { PosEmployeeService } from '../../src/modules/employees/pos-employee.service.js';
 import { PosEmployeeGuard } from '../../src/modules/auth/pos-employee.guard.js';
-import { PosEmployeesController } from '../../src/modules/auth/pos-employees.controller.js';
-import { OrderLifecycleService } from '../../src/modules/orders/order-lifecycle.service.js';
-import { PosStorefrontOrdersController } from '../../src/modules/orders/storefront-orders.controller.js';
-import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
-import { PosOrdersService } from '../../src/modules/orders/pos-orders.service.js';
-import { PosKitchenService } from '../../src/modules/orders/pos-kitchen.service.js';
-import { PosReturnsService } from '../../src/modules/orders/pos-returns.service.js';
+import { PosEmployeesController } from '../../src/modules/employees/pos-employees.controller.js';
+import { OrderLifecycleService } from '../../src/modules/orders/fulfillment/order-lifecycle.service.js';
+import { PosOrdersController } from '../../src/modules/orders/http/pos/pos-orders.controller.js';
+import { PosOrderBillingController } from '../../src/modules/orders/http/pos/pos-order-billing.controller.js';
+import { PosOrderKitchenController } from '../../src/modules/orders/http/pos/pos-order-kitchen.controller.js';
+import { PosOrderReturnsController } from '../../src/modules/orders/http/pos/pos-order-returns.controller.js';
+import { StorefrontOrdersService } from '../../src/modules/orders/checkout/storefront-orders.service.js';
+import { PosKitchenService } from '../../src/modules/orders/kitchen/pos-kitchen.service.js';
+import { PosReturnsService } from '../../src/modules/orders/returns/pos-returns.service.js';
 
 const merchantId = '11111111-1111-4111-8111-111111111111';
 const employeeId = '22222222-2222-4222-8222-222222222222';
@@ -42,7 +51,7 @@ const employee: PosEmployeeSession = {
   displayName: 'Cashier One',
   role: null,
   permissions: ['accept_recipe_orders', 'start_preparation', 'sell'],
-  branches: [{ id: branchId, name: 'Main', archivedAt: null }],
+  branch: { id: branchId, name: 'Main', archivedAt: null },
 };
 
 describe('POS employee endpoints', () => {
@@ -56,7 +65,14 @@ describe('POS employee endpoints', () => {
     employeeAuthorized = true;
     calls.length = 0;
     const module = await Test.createTestingModule({
-      controllers: [AuthController, PosEmployeesController, PosStorefrontOrdersController],
+      controllers: [
+        AuthController,
+        PosEmployeesController,
+        PosOrdersController,
+        PosOrderKitchenController,
+        PosOrderBillingController,
+        PosOrderReturnsController,
+      ],
       providers: [
         OwnerGuard,
         PosEmployeeGuard,
@@ -108,7 +124,7 @@ describe('POS employee endpoints', () => {
           },
         },
         {
-          provide: PosOrdersService,
+          provide: PosSaleService,
           useValue: {
             quote: async (...args: unknown[]) => {
               calls.push({ service: 'posSales', method: 'quote', args });
@@ -118,16 +134,30 @@ describe('POS employee endpoints', () => {
               calls.push({ service: 'posSales', method: 'create', args });
               return { id: orderId };
             },
+          },
+        },
+        {
+          provide: KitchenOrderAmendmentService,
+          useValue: {
             addKitchenItems: async (...args: unknown[]) => {
               calls.push({ service: 'posSales', method: 'addKitchenItems', args });
               return { id: orderId };
             },
+          },
+        },
+        { provide: CheckPaymentService, useValue: {} },
+        {
+          provide: CheckRefundService,
+          useValue: {
             recordCheckRefund: async (...args: unknown[]) => {
               calls.push({ service: 'posSales', method: 'recordCheckRefund', args });
               return { orderId, checkId: requestId, refund: { id: requestId } };
             },
           },
         },
+        { provide: PosOrderQueryService, useValue: {} },
+        { provide: PosReceiptQueryService, useValue: {} },
+        { provide: PickupCollectionService, useValue: {} },
         {
           provide: PosReturnsService,
           useValue: {
@@ -200,7 +230,7 @@ describe('POS employee endpoints', () => {
       username: 'cashier1',
       displayName: 'Cashier One',
       password: 'long-enough-password',
-      branchIds: [branchId],
+      branchId,
     };
     await request(app.getHttpServer()).post('/owner/employees').send(create).expect(201);
     assert.deepEqual(calls.at(-1), {
@@ -305,7 +335,7 @@ describe('POS employee endpoints', () => {
     assert.deepEqual(calls.at(-1), {
       service: 'lifecycle',
       method: 'acceptFromPos',
-      args: [merchantId, `pos:${employeeId}`, orderId, { requestId, branchId }, [branchId]],
+      args: [merchantId, `pos:${employeeId}`, orderId, { requestId, branchId }, branchId],
     });
 
     await request(app.getHttpServer())
@@ -315,7 +345,7 @@ describe('POS employee endpoints', () => {
     assert.deepEqual(calls.at(-1), {
       service: 'lifecycle',
       method: 'startPreparationFromPos',
-      args: [merchantId, `pos:${employeeId}`, orderId, { requestId }, [branchId]],
+      args: [merchantId, `pos:${employeeId}`, orderId, { requestId }, branchId],
     });
 
     employeeAuthorized = false;
@@ -331,7 +361,7 @@ describe('POS employee endpoints', () => {
     assert.deepEqual(calls.at(-1), {
       service: 'lifecycle',
       method: 'markKitchenItemReadyFromPos',
-      args: [merchantId, `pos:${employeeId}`, orderId, lineId, { requestId }, [branchId]],
+      args: [merchantId, `pos:${employeeId}`, orderId, lineId, { requestId }, branchId],
     });
 
     await request(app.getHttpServer())

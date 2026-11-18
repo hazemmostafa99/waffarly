@@ -101,7 +101,7 @@
   --color-store-subtle: var(--storefront-muted);
   --color-store-border: var(--storefront-border);
   --color-store-error: var(--storefront-error);
-  --color-store-accent: var(--storefront-primary);
+  --color-store-accent: var(--storefront-accent);
   --font-heading: var(--font-cairo), 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
   --font-body: var(--font-tajawal), 'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
 }
@@ -110,6 +110,16 @@
   --storefront-primary: #0f705a;
   --storefront-primary-dark: #0a5645;
   --storefront-primary-deep: #063d31;
+  --storefront-primary-foreground: #ffffff;
+  --storefront-primary-dark-foreground: #ffffff;
+  --storefront-primary-deep-foreground: #ffffff;
+  --storefront-primary-text: #0f705a;
+  --storefront-primary-dark-text: #0a5645;
+  --storefront-primary-deep-text: #063d31;
+  --storefront-accent: #f5b544;
+  --storefront-accent-foreground: #172330;
+  --storefront-accent-text: #936517;
+  --storefront-accent-on-primary-deep: #f5b544;
   --storefront-gold: #f5b544;
   --storefront-gold-muted: #dba13d;
   --storefront-gold-soft: #f9d88e;
@@ -253,7 +263,7 @@
 }
 .shell .notice,
 .join-success,
-.merchant-design-notice {
+.merchant-appearance-notice {
   background: #edf7ef;
   border: 1px solid #c9e6cf;
   border-radius: 10px;
@@ -283,9 +293,6 @@
   gap: 12px;
   margin-bottom: 24px;
 }
-.workspace-tools .language-switcher {
-  margin: 0;
-}
 .skip-link {
   position: fixed;
   top: -100px;
@@ -300,8 +307,7 @@
   top: 12px;
 }
 [dir='rtl'] h1,
-[dir='rtl'] .eyebrow,
-[dir='rtl'] .storefront-design {
+[dir='rtl'] .eyebrow {
   letter-spacing: normal;
 }
 input[type='tel'],
@@ -312,26 +318,13 @@ code {
   direction: ltr;
   unicode-bidi: isolate;
 }
-[dir='rtl'] .design-header-action > span {
-  padding-left: 0;
-  padding-inline-start: 7px;
-}
-[dir='rtl'] .design-food-art {
-  right: auto;
-  inset-inline-end: 5%;
-}
-[dir='rtl'] .design-hero .design-food-art {
-  right: auto;
-  inset-inline-end: 8%;
-}
 @media (max-width: 760px) {
   .shell .topbar {
     flex-wrap: wrap;
     gap: 12px;
   }
   .shell .columns,
-  .shell .plan-columns,
-  .shell .capability-columns.with-editor {
+  .shell .plan-columns {
     grid-template-columns: minmax(0, 1fr);
   }
   .shell .admin-nav {
@@ -343,12 +336,6 @@ code {
   }
   .shell .panel {
     padding: 20px;
-  }
-  .shell .library-toolbar {
-    flex-wrap: wrap;
-  }
-  .shell .template-search {
-    width: 100%;
   }
 }
 @media (prefers-reduced-motion: reduce) {

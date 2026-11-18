@@ -1,11 +1,15 @@
 import { CustomerChoicesPreview } from './CustomerChoicesPreview.js';
 import { Icon } from '../../../Icons.js';
 import type { GroupDraft, VariantDraft } from './product-builder.types.js';
+import { productPreviewPrice } from './product-promotion-preview.js';
 
 export function ProductPreview({
   name,
   description,
   basePrice,
+  promotionEnabled,
+  promotionType,
+  promotionValue,
   image,
   categoryName,
   groups,
@@ -16,6 +20,9 @@ export function ProductPreview({
   name: string;
   description: string;
   basePrice: string;
+  promotionEnabled: boolean;
+  promotionType: 'percentage' | 'amount';
+  promotionValue: string;
   image?: string | undefined;
   categoryName?: string | undefined;
   groups: GroupDraft[];
@@ -26,10 +33,29 @@ export function ProductPreview({
   const availableVariants = variants.filter((variant) => variant.availability === 'available');
   const pricedVariants = availableVariants.length ? availableVariants : variants;
   const variantPrices = pricedVariants
-    .map((variant) => Number(variant.price))
+    .map((variant) =>
+      productPreviewPrice(variant.price, promotionEnabled, promotionType, promotionValue) ??
+      Number(variant.price),
+    )
     .filter((price) => Number.isFinite(price) && price > 0);
   const validBasePrice =
     /^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(basePrice) && Number(basePrice) > 0;
+  const discountedBasePrice = productPreviewPrice(
+    basePrice,
+    promotionEnabled,
+    promotionType,
+    promotionValue,
+  );
+  const originalStartingPrice = variants.length
+    ? (pricedVariants.map((variant) => Number(variant.price)).sort((a, b) => a - b)[0] ?? 0)
+    : Number(basePrice);
+  const hasDiscountedPrice = variants.length
+    ? pricedVariants.some(
+        (variant) =>
+          productPreviewPrice(variant.price, promotionEnabled, promotionType, promotionValue) !==
+          null,
+      )
+    : discountedBasePrice !== null;
   return (
     <aside className="product-preview-card" aria-label={text('Product preview', 'معاينة المنتج')}>
       <div className="preview-card-heading">
@@ -71,7 +97,7 @@ export function ProductPreview({
           ) : validBasePrice ? (
             <>
               EGP{' '}
-              {formatNumber(Number(basePrice), {
+              {formatNumber(discountedBasePrice ?? Number(basePrice), {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
@@ -80,11 +106,25 @@ export function ProductPreview({
             <span className="preview-price-empty">{text('Enter a price', 'أدخل السعر')}</span>
           )}
         </strong>
+        {hasDiscountedPrice &&
+          originalStartingPrice > 0 &&
+          (variants.length ? variantPrices.length > 0 : validBasePrice) && (
+            <del className="preview-original-price">
+              EGP{' '}
+              {formatNumber(originalStartingPrice, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </del>
+          )}
       </div>
       <CustomerChoicesPreview
         groups={groups}
         variants={variants}
         basePrice={basePrice}
+        promotionEnabled={promotionEnabled}
+        promotionType={promotionType}
+        promotionValue={promotionValue}
         text={text}
       />
       <p className="preview-note">

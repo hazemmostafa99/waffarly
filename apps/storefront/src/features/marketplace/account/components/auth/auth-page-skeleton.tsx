@@ -13,16 +13,16 @@ export function AuthPageSkeleton() {
       <span className="sr-only">جارٍ تجهيز صفحة الحساب…</span>
       <MarketplaceHeaderSkeleton announce={false} />
       <main className="pb-14 pt-6">
-        <MarketplaceContainer>
+        <MarketplaceContainer className="max-w-[1000px]">
           <MarketplaceSkeleton className="mb-3 h-3.5 w-36" />
-          <section className="grid overflow-hidden rounded-3xl border border-border bg-white shadow-[var(--shadow)] lg:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)]">
-            <div className="order-2 bg-primary p-5 sm:p-7 lg:order-2 lg:p-8">
+          <section className="grid overflow-hidden rounded-3xl border border-border bg-white shadow-[var(--shadow)] md:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="order-2 hidden bg-primary p-6 md:block">
               <MarketplaceSkeleton className="h-5 w-24 bg-white/20" />
               <MarketplaceSkeleton className="mt-5 h-6 w-64 max-w-full bg-white/20" />
               <MarketplaceSkeleton className="mt-2 h-3 w-full bg-white/15" />
               <MarketplaceSkeleton className="mt-2 h-3 w-4/5 bg-white/15" />
             </div>
-            <div className="order-1 grid content-start gap-4 p-5 sm:p-7 lg:order-1 lg:p-9">
+            <div className="order-1 grid content-start gap-3 p-5 md:p-7">
               <MarketplaceSkeleton className="h-3 w-24" />
               <MarketplaceSkeleton className="h-8 w-56 max-w-full" />
               <MarketplaceSkeleton className="h-3 w-72 max-w-full" />

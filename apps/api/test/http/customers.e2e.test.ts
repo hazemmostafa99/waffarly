@@ -9,7 +9,7 @@ import { AppConfiguration } from '../../src/config/app-configuration.js';
 import { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { AuthService } from '../../src/modules/auth/index.js';
 import { CustomersService } from '../../src/modules/customers/index.js';
-import { OrderCustomerService } from '../../src/modules/orders/order-customer.service.js';
+import { OrderCustomerService } from '../../src/modules/orders/customers/order-customer.service.js';
 
 const tenant = '11111111-1111-4111-8111-111111111111';
 const id = '22222222-2222-4222-8222-222222222222';

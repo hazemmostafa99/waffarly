@@ -1,27 +1,31 @@
+import { createPosOrderServices } from '../support/pos-order-services.js';
+import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
-import { config } from 'dotenv';
 import { ConflictException, ForbiddenException } from '@nestjs/common';
-import { PrismaClient, createPostgresAdapter } from '@waffarly/database';
+
 import { resolvePosEmployeePermissions, type PosEmployeeSession } from '@waffarly/contracts';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
-import { PosDeliveryService } from '../../src/modules/orders/pos-delivery.service.js';
-import { PosOrdersService } from '../../src/modules/orders/pos-orders.service.js';
-import { PosDiningService } from '../../src/modules/orders/pos-dining.service.js';
+import { PosDeliveryService } from '../../src/modules/orders/delivery/pos-delivery.service.js';
+import { DeliveryCourierService } from '../../src/modules/orders/delivery/delivery-courier.service.js';
+
+import { PosDiningService } from '../../src/modules/orders/dining/pos-dining.service.js';
 import { PaymentsService } from '../../src/modules/payments/payments.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
+import { PosRegistersService } from '../../src/modules/shifts/registers/pos-registers.service.js';
 import { PosOperationsReportService } from '../../src/modules/reports/pos-operations-report.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'carries COD across closed shifts, separates courier collection from drawer receipt, and preserves audit and exact replay',
   { skip: !databaseUrl },
-  async () => {
+  async (testContext) => {
     assert.ok(databaseUrl);
-    const db = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+    const db = createTestDatabaseClient(testContext);
     const token = randomUUID();
     const merchant = await db.merchant.create({
       data: {
@@ -38,6 +42,21 @@ it(
       const branch = await db.branch.create({
         data: { merchantId, name: `Branch ${token}`, createdBy: 'test', updatedBy: 'test' },
       });
+      const createCourier = async (name: string, assignedBranchId = branch.id, active = true) => {
+        const courier = await db.deliveryCourier.create({
+          data: { merchantId, name, active, createdBy: 'test', updatedBy: 'test' },
+        });
+        await db.deliveryCourierBranch.create({
+          data: { merchantId, courierId: courier.id, branchId: assignedBranchId },
+        });
+        return courier;
+      };
+      const courier = await createCourier('Courier Ali');
+      const inactiveCourier = await createCourier('Inactive courier', branch.id, false);
+      const otherBranch = await db.branch.create({
+        data: { merchantId, name: `Other branch ${token}`, createdBy: 'test', updatedBy: 'test' },
+      });
+      const otherBranchCourier = await createCourier('Other branch courier', otherBranch.id);
       const employee = async (
         name: string,
         role: 'cashier' | 'supervisor' | 'accountant',
@@ -45,6 +64,7 @@ it(
         const row = await db.posEmployee.create({
           data: {
             merchantId,
+            branchId: branch.id,
             username: `${name}-${token}`,
             displayName: name,
             passwordHash: 'test-only',
@@ -52,12 +72,6 @@ it(
             permissions: [],
             createdBy: 'test',
             updatedBy: 'test',
-            branches: {
-              create: {
-                createdBy: 'test',
-                branch: { connect: { id_merchantId: { id: branch.id, merchantId } } },
-              },
-            },
           },
         });
         return {
@@ -67,13 +81,14 @@ it(
           displayName: row.displayName,
           role,
           permissions: resolvePosEmployeePermissions(role, []),
-          branches: [{ id: branch.id, name: branch.name, archivedAt: null }],
+          branch: { id: branch.id, name: branch.name, archivedAt: null },
         };
       };
       const ahmed = await employee('Ahmed', 'cashier');
       const mona = await employee('Mona', 'cashier');
       const supervisor = await employee('Supervisor', 'supervisor');
       const shifts = new ShiftsService(db as unknown as PrismaService);
+      const registers = new PosRegistersService(db as unknown as PrismaService);
       await employee('Accountant', 'accountant');
       const inactive = await employee('Inactive', 'cashier');
       await db.posEmployee.update({ where: { id: inactive.id }, data: { active: false } });
@@ -101,10 +116,13 @@ it(
         ),
       );
       await assert.rejects(
-        shifts.listDeliveryHandoverRecipients({ ...ahmed, branches: [] }, { branchId: branch.id }),
+        shifts.listDeliveryHandoverRecipients(
+          { ...ahmed, branch: { ...ahmed.branch, id: 'another-branch' } },
+          { branchId: branch.id },
+        ),
       );
       const delivery = new PosDeliveryService(db as unknown as PrismaService, shifts);
-      const orders = new PosOrdersService(
+      const { checkRefunds, checkPayments } = createPosOrderServices(
         db as unknown as PrismaService,
         {} as never,
         {} as never,
@@ -113,7 +131,7 @@ it(
         new PosDiningService(db as unknown as PrismaService),
         new PaymentsService(shifts),
       );
-      const register = await shifts.createRegister(merchantId, 'test', {
+      const register = await registers.createRegister(merchantId, 'test', {
         branchId: branch.id,
         name: 'Delivery drawer',
       });
@@ -167,12 +185,37 @@ it(
       };
       const order = await createOrder();
       const normal = await createOrder('takeaway');
+      for (const courierId of [inactiveCourier.id, otherBranchCourier.id, randomUUID()]) {
+        await assert.rejects(
+          delivery.command(ahmed, order.id, {
+            action: 'dispatch',
+            revision: order.revision,
+            requestId: randomUUID(),
+            courierId,
+          }),
+          ConflictException,
+        );
+      }
+      const duplicateNameCourier = await createCourier('Courier Ali');
+      await assert.rejects(
+        delivery.command(ahmed, order.id, {
+          action: 'dispatch',
+          revision: order.revision,
+          requestId: randomUUID(),
+          courierName: 'Courier Ali',
+        }),
+        ConflictException,
+      );
+      await db.deliveryCourier.update({
+        where: { id_merchantId: { id: duplicateNameCourier.id, merchantId } },
+        data: { active: false },
+      });
       await assert.rejects(
         delivery.command(ahmed, normal.id, {
           action: 'dispatch',
           revision: normal.revision,
           requestId: randomUUID(),
-          courierName: 'Courier',
+          courierId: courier.id,
         }),
       );
       const dispatch = {
@@ -183,49 +226,19 @@ it(
       };
       let current = await delivery.command(ahmed, order.id, dispatch);
       assert.deepEqual(await delivery.command(ahmed, order.id, dispatch), current);
-      const sideRegister = await shifts.createRegister(merchantId, 'test', {
-        branchId: branch.id,
-        name: 'Other drawer',
+      assert.equal(current.courierId, courier.id);
+      assert.equal(current.courierName, courier.name);
+      const initialAttempts = await db.deliveryCourierAttempt.findMany({
+        where: { merchantId, orderId: order.id },
       });
-      const sideShift = await shifts.openShift(ahmed, {
-        registerId: sideRegister.id,
-        requestId: randomUUID(),
-        openingFloat: '0.00',
-      });
+      assert.equal(initialAttempts.length, 1);
+      assert.equal(initialAttempts[0]?.courierId, courier.id);
+      assert.equal(initialAttempts[0]?.status, 'out_for_delivery');
       await assert.rejects(
-        delivery.command(ahmed, order.id, {
-          action: 'claim',
+        shifts.closeShift(ahmed, first.id, {
           requestId: randomUUID(),
-          revision: current.revision,
-          receivingShiftId: sideShift.id,
+          countedCash: '50.00',
         }),
-        ConflictException,
-      );
-      await assert.rejects(
-        orders.recordCheckPayment(ahmed, order.id, order.checks[0]!.id, {
-          requestId: randomUUID(),
-          revision: current.orderRevision,
-          receivingShiftId: sideShift.id,
-          tenders: [{ method: 'cash', amount: '1.00', receivedAmount: '1.00' }],
-        }),
-        ConflictException,
-      );
-      assert.equal((await delivery.summary(ahmed, order.id)).customerDue, '300.00');
-      await shifts.closeShift(ahmed, sideShift.id, {
-        requestId: randomUUID(),
-        countedCash: '0.00',
-      });
-      await assert.rejects(
-        shifts.closeShift(
-          ahmed,
-          first.id,
-          {
-            requestId: randomUUID(),
-            countedCash: '50.00',
-            deliveryHandover: { recipientUsername: mona.username },
-          },
-          supervisor.id,
-        ),
         ConflictException,
       );
       await db.posOrderCheck.update({
@@ -242,56 +255,25 @@ it(
       assert.equal('expectedCash' in live, false);
       await assert.rejects(
         shifts.closeShift(ahmed, first.id, { requestId: randomUUID(), countedCash: '50.00' }),
-        ForbiddenException,
-      );
-      await assert.rejects(
-        shifts.closeShift(
-          ahmed,
-          first.id,
-          {
-            requestId: randomUUID(),
-            countedCash: '50.00',
-            deliveryHandover: { recipientUsername: ahmed.username },
-          },
-          supervisor.id,
-        ),
-        ForbiddenException,
+        ConflictException,
       );
       const close = {
         requestId: randomUUID(),
         countedCash: '50.00',
-        deliveryHandover: { recipientUsername: mona.username },
+        confirmPendingDeliveries: true,
       };
-      const firstReport = await shifts.closeShift(ahmed, first.id, close, supervisor.id);
+      const firstReport = await shifts.closeShift(ahmed, first.id, close);
       assert.equal(firstReport.expectedCash, '50.00');
       assert.equal(firstReport.variance, '0.00');
       assert.equal(firstReport.deliveryHandover?.deliveries[0]?.customerDue, '300.00');
-      assert.equal(firstReport.deliveryHandover?.recipientName, 'Mona');
-      assert.equal(
-        (await shifts.closeShift(ahmed, first.id, close, supervisor.id)).id,
-        firstReport.id,
-      );
+      assert.equal(firstReport.deliveryHandover?.recipientName, null);
+      assert.equal((await shifts.closeShift(ahmed, first.id, close)).id, firstReport.id);
       const second = await shifts.openShift(mona, {
         registerId: register.id,
         requestId: randomUUID(),
         openingFloat: '20.00',
       });
       current = await delivery.summary(mona, order.id);
-      await assert.rejects(
-        delivery.command(ahmed, order.id, {
-          action: 'claim',
-          revision: current.revision,
-          requestId: randomUUID(),
-          receivingShiftId: second.id,
-        }),
-        ForbiddenException,
-      );
-      current = await delivery.command(mona, order.id, {
-        action: 'claim',
-        revision: current.revision,
-        requestId: randomUUID(),
-        receivingShiftId: second.id,
-      });
       // Delivery can complete before money returns. No stock movement or fake payment.
       current = await delivery.command(mona, order.id, {
         action: 'delivered',
@@ -306,14 +288,19 @@ it(
         cashCustody: 'courier' as const,
         tenders: [{ method: 'cash' as const, amount: '200.00', receivedAmount: '200.00' }],
       };
-      const paid = await orders.recordCheckPayment(
+      const paid = await checkPayments.recordCheckPayment(
         mona,
         order.id,
         order.checks[0]!.id,
         customerPayment,
       );
       assert.deepEqual(
-        await orders.recordCheckPayment(mona, order.id, order.checks[0]!.id, customerPayment),
+        await checkPayments.recordCheckPayment(
+          mona,
+          order.id,
+          order.checks[0]!.id,
+          customerPayment,
+        ),
         paid,
       );
       assert.equal(await db.posShiftCashMovement.count({ where: { merchantId } }), 0);
@@ -376,7 +363,7 @@ it(
       });
       current = await delivery.summary(mona, order.id);
       // Remaining customer payment is physically received in the NEW drawer.
-      await orders.recordCheckPayment(mona, order.id, order.checks[0]!.id, {
+      await checkPayments.recordCheckPayment(mona, order.id, order.checks[0]!.id, {
         requestId: randomUUID(),
         revision: current.orderRevision,
         receivingShiftId: second.id,
@@ -426,16 +413,16 @@ it(
         action: 'dispatch',
         requestId: randomUUID(),
         revision: failedOrder.revision,
-        courierName: 'First courier',
+        courierId: courier.id,
       });
-      await orders.recordCheckPayment(mona, failedOrder.id, failedOrder.checks[0]!.id, {
+      await checkPayments.recordCheckPayment(mona, failedOrder.id, failedOrder.checks[0]!.id, {
         requestId: randomUUID(),
         revision: failed.orderRevision,
         receivingShiftId: third.id,
         tenders: [{ method: 'cash', amount: '100.00', receivedAmount: '100.00' }],
       });
       failed = await delivery.summary(mona, failedOrder.id);
-      const heldPayment = await orders.recordCheckPayment(
+      const heldPayment = await checkPayments.recordCheckPayment(
         mona,
         failedOrder.id,
         failedOrder.checks[0]!.id,
@@ -453,6 +440,11 @@ it(
         revision: failed.revision,
         reason: 'Customer requested another delivery time',
       });
+      const failedAttempt = await db.deliveryCourierAttempt.findFirstOrThrow({
+        where: { merchantId, orderId: failedOrder.id },
+      });
+      assert.equal(failedAttempt.courierId, courier.id);
+      assert.equal(failedAttempt.status, 'failed');
       assert.equal(failed.customerDue, '0.00');
       assert.equal(failed.courierCashHeld, '200.00');
       await assert.rejects(
@@ -460,12 +452,12 @@ it(
           action: 'dispatch',
           requestId: randomUUID(),
           revision: failed.revision,
-          courierName: 'Replacement',
+          courierId: courier.id,
         }),
         ConflictException,
       );
       await assert.rejects(
-        orders.recordCheckRefund(supervisor, failedOrder.id, failedOrder.checks[0]!.id, {
+        checkRefunds.recordCheckRefund(supervisor, failedOrder.id, failedOrder.checks[0]!.id, {
           requestId: randomUUID(),
           revision: failed.orderRevision,
           branchId: branch.id,
@@ -520,17 +512,33 @@ it(
       );
       assert.equal((await delivery.summary(mona, failedOrder.id)).courierCashHeld, '200.00');
       failed = await delivery.command(mona, failedOrder.id, failedRemit);
+      const replacementCourier = await createCourier('Replacement');
       failed = await delivery.command(mona, failedOrder.id, {
         action: 'dispatch',
         requestId: randomUUID(),
         revision: failed.revision,
-        courierName: 'Replacement',
+        courierId: replacementCourier.id,
       });
+      assert.equal(failed.courierId, replacementCourier.id);
+      assert.equal(failed.courierName, replacementCourier.name);
+      const attemptsAfterRedispatch = await db.deliveryCourierAttempt.findMany({
+        where: { merchantId, orderId: failedOrder.id },
+        orderBy: { dispatchedAt: 'asc' },
+      });
+      assert.equal(attemptsAfterRedispatch.length, 2);
+      assert.equal(attemptsAfterRedispatch[0]?.status, 'failed');
+      assert.equal(attemptsAfterRedispatch[1]?.courierId, replacementCourier.id);
+      assert.equal(attemptsAfterRedispatch[1]?.status, 'out_for_delivery');
       await delivery.command(mona, failedOrder.id, {
         action: 'delivered',
         requestId: randomUUID(),
         revision: failed.revision,
       });
+      const completedAttempt = await db.deliveryCourierAttempt.findFirstOrThrow({
+        where: { merchantId, orderId: failedOrder.id, courierId: replacementCourier.id },
+      });
+      assert.equal(completedAttempt.status, 'delivered');
+      assert.ok(completedAttempt.completedAt);
       assert.equal(
         (
           await shifts.closeShift(mona, third.id, {
@@ -552,9 +560,9 @@ it(
         action: 'dispatch',
         requestId: randomUUID(),
         revision: raceOrder.revision,
-        courierName: 'Race courier',
+        courierId: courier.id,
       });
-      const racePayment = await orders.recordCheckPayment(
+      const racePayment = await checkPayments.recordCheckPayment(
         mona,
         raceOrder.id,
         raceOrder.checks[0]!.id,
@@ -572,17 +580,12 @@ it(
         revision: racing.revision,
       });
       const race = await Promise.allSettled([
-        shifts.closeShift(
-          ahmed,
-          fourth.id,
-          {
-            requestId: randomUUID(),
-            countedCash: '0.00',
-            reason: 'Close/remit race',
-            deliveryHandover: { recipientUsername: mona.username },
-          },
-          supervisor.id,
-        ),
+        shifts.closeShift(ahmed, fourth.id, {
+          requestId: randomUUID(),
+          countedCash: '0.00',
+          reason: 'Close/remit race',
+          confirmPendingDeliveries: true,
+        }),
         delivery.command(mona, raceOrder.id, {
           action: 'remit',
           requestId: randomUUID(),
@@ -595,7 +598,12 @@ it(
       assert.equal(race.filter((result) => result.status === 'fulfilled').length, 1);
       if (race[0]!.status === 'fulfilled') {
         assert.equal(race[0]!.value.expectedCash, '0.00');
-        assert.equal(race[0]!.value.deliveryHandover?.deliveries[0]?.courierCashHeld, '300.00');
+        assert.equal(
+          race[0]!.value.deliveryHandover?.deliveries.find(
+            (entry) => entry.orderId === raceOrder.id,
+          )?.courierCashHeld,
+          '300.00',
+        );
       } else {
         assert.equal(
           (
@@ -611,13 +619,26 @@ it(
         await db.posOrderPayment.count({ where: { merchantId, orderId: raceOrder.id } }),
         1,
       );
+      const performance = await new DeliveryCourierService(
+        db as unknown as PrismaService,
+      ).performanceForOwner(merchantId);
+      const aliPerformance = performance.items.find((item) => item.courierId === courier.id);
+      assert.ok(aliPerformance);
+      assert.equal(aliPerformance.attemptCount, 3);
+      assert.equal(aliPerformance.deliveredCount, 2);
+      assert.equal(aliPerformance.failedCount, 1);
+      assert.equal(aliPerformance.successRate, 66.7);
+      assert.notEqual(aliPerformance.averageDeliveryMinutes, null);
       await assert.rejects(delivery.summary({ ...mona, merchantId: randomUUID() }, order.id));
       await assert.rejects(
-        delivery.list({ ...mona, merchantId: randomUUID(), branches: [] }, { branchId: branch.id }),
+        delivery.list(
+          { ...mona, merchantId: randomUUID(), branch: { ...mona.branch, id: 'another-branch' } },
+          { branchId: branch.id },
+        ),
         ForbiddenException,
       );
       await assert.rejects(
-        delivery.summary({ ...mona, branches: [] }, order.id),
+        delivery.summary({ ...mona, branch: { ...mona.branch, id: 'another-branch' } }, order.id),
         ForbiddenException,
       );
       assert.equal(await db.stockMovementBatch.count({ where: { merchantId } }), 0);
@@ -625,6 +646,7 @@ it(
       await db.$transaction(async (tx) => {
         await tx.posShiftCloseReport.deleteMany({ where: { merchantId } });
         await tx.posDeliveryRemittance.deleteMany({ where: { merchantId } });
+        await tx.deliveryCourierAttempt.deleteMany({ where: { merchantId } });
         await tx.posDelivery.deleteMany({ where: { merchantId } });
         await tx.posShiftCashMovement.deleteMany({ where: { merchantId } });
         await tx.posCheckReceipt.deleteMany({ where: { merchantId } });
@@ -632,11 +654,13 @@ it(
         await tx.posOrderCheck.deleteMany({ where: { merchantId } });
         await tx.storefrontOrderAction.deleteMany({ where: { merchantId } });
         await tx.storefrontOrder.deleteMany({ where: { merchantId } });
+        await tx.deliveryCourierBranch.deleteMany({ where: { merchantId } });
+        await tx.deliveryCourier.deleteMany({ where: { merchantId } });
         await tx.posShift.deleteMany({ where: { merchantId } });
         await tx.posRegister.deleteMany({ where: { merchantId } });
-        await tx.posEmployeeBranch.deleteMany({ where: { merchantId } });
         await tx.posEmployee.deleteMany({ where: { merchantId } });
         await tx.branch.deleteMany({ where: { merchantId } });
+        await deleteTestMerchantSubscriptions(tx, [merchantId]);
         await tx.merchant.delete({ where: { id: merchantId } });
       });
       await db.$disconnect();

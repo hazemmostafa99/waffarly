@@ -14,10 +14,12 @@ export function ProductBreadcrumbs({
   const category = marketplaceCategories.find((item) => item.id === product.category);
   const restaurant = product.merchantType === 'restaurant';
   const menuHref = `/restaurants/${encodeURIComponent(product.restaurantSlug ?? product.merchantName ?? product.seller)}`;
-  const categoryHref = restaurant ? '/restaurants' : marketplaceSearchHref('/', '', {
-    category: category?.id ?? 'all',
-    term: '',
-  });
+  const categoryHref = restaurant
+    ? '/restaurants'
+    : marketplaceSearchHref('/', '', {
+        category: category?.id ?? 'all',
+        term: '',
+      });
   return (
     <nav
       className={cn(
@@ -35,14 +37,17 @@ export function ProductBreadcrumbs({
         </li>
         <li>
           <span aria-hidden="true">/</span>
-          <Link href={categoryHref}>{restaurant ? 'المطاعم' : category?.name ?? 'المنتجات'}</Link>
+          <Link href={categoryHref}>{restaurant ? 'المطاعم' : (category?.name ?? 'المنتجات')}</Link>
         </li>
         <li aria-current="page">
           <span aria-hidden="true">/</span>
           <span>{product.cartName}</span>
         </li>
       </ol>
-      <Link href={restaurant ? menuHref : backHref} className={'detail-return whitespace-nowrap max-[700px]:hidden'}>
+      <Link
+        href={restaurant ? menuHref : backHref}
+        className={'detail-return whitespace-nowrap max-[700px]:hidden'}
+      >
         {restaurant ? 'العودة إلى قائمة المطعم ←' : 'العودة للنتائج ←'}
       </Link>
     </nav>

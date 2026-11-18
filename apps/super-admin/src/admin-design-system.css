@@ -62,6 +62,11 @@
 
 .admin-workspace .admin-dialog {
   border-radius: var(--admin-radius);
+  font-family: var(--font-admin);
+}
+/* Explicit RTL declarations must not replace the workspace's font inside a modal. */
+.admin-workspace .admin-dialog [dir] {
+  font-family: inherit;
 }
 .admin-workspace .admin-dialog [data-slot='dialog-header'] {
   align-items: center;
@@ -79,6 +84,100 @@
   height: var(--admin-control-height);
   padding: 0;
   border-radius: var(--admin-radius-control);
+  border: 1px solid var(--border);
+  background: #f7f9fb;
+  color: #14203e;
+  font-family: inherit;
+  font-size: 22px;
+  line-height: 1;
+  transition: background-color 150ms, border-color 150ms, color 150ms;
+}
+.admin-workspace .admin-dialog [data-slot='dialog-header'] > button:hover {
+  background: #e3f8ec;
+  border-color: #a8d7c0;
+  color: #00583f;
+}
+.admin-workspace .admin-dialog [data-slot='dialog-header'] > button:focus-visible {
+  background: #e3f8ec;
+  color: #00583f;
+  outline: 2px solid #00583f;
+  outline-offset: 2px;
+}
+
+.admin-workspace .admin-password-reset {
+  width: min(520px, calc(100% - 32px));
+}
+.admin-workspace .admin-password-reset [data-slot='dialog-header'] {
+  padding: 16px 20px;
+}
+.admin-workspace .admin-password-reset .password-reset-content {
+  padding: 20px;
+  gap: 16px;
+}
+.admin-workspace .admin-password-reset .password-reset-identity {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--admin-radius-control);
+  background: #f7f9fb;
+}
+.admin-workspace .admin-password-reset .password-reset-form {
+  gap: 16px;
+}
+.admin-workspace .admin-password-reset .password-reset-field {
+  display: grid;
+  gap: 6px;
+}
+.admin-workspace .admin-password-reset .password-reset-field label {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.admin-workspace .admin-password-reset .password-reset-note {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: #607286;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.8;
+}
+.admin-workspace .admin-password-reset .password-reset-hint {
+  color: #607286;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.admin-workspace .admin-password-reset .password-reset-field [data-slot='input'] {
+  height: 44px;
+  min-height: 44px;
+  background: #fff;
+  text-align: left;
+  padding-left: 12px;
+  padding-right: 96px;
+}
+/* The input stays LTR for password order; reserve the button's physical side. */
+.admin-workspace .admin-password-reset [dir='rtl'] .password-reset-field [data-slot='input'] {
+  text-align: right;
+  padding-left: 96px;
+  padding-right: 12px;
+}
+.admin-workspace .admin-password-reset .password-reset-field .relative > button {
+  top: 4px;
+  bottom: 4px;
+  left: auto;
+  right: 4px;
+  width: 80px;
+  height: 36px;
+  min-height: 36px;
+  background: transparent;
+  color: #00583f;
+}
+.admin-workspace .admin-password-reset [dir='rtl'] .password-reset-field .relative > button {
+  left: 4px;
+  right: auto;
+}
+.admin-workspace .admin-password-reset .password-reset-field .relative > button:hover {
+  background: #e3f8ec;
+  color: #00583f;
 }
 
 .admin-workspace [data-slot='button'] {

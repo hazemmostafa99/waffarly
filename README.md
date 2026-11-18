@@ -1,6 +1,12 @@
 # Waffarly (وفّرلي)
 
-Waffarly is a multi-merchant commerce and operations platform for different business activities, including restaurants, clothing stores, supermarkets, and other businesses. Registration records the business activity; shared profile and branding modules serve all activities, while storefront templates can target one activity or all activities. Product direction and scope are recorded in [`PROJECT_OVERVIEW.md`](./PROJECT_OVERVIEW.md) and [`MVP_SCOPE.md`](./MVP_SCOPE.md). Restaurant operations are activity-specific, rather than requirements for every merchant.
+Waffarly is a multi-merchant commerce and operations platform for different business activities, including restaurants, clothing stores, supermarkets, and other businesses. Registration records the business activity; shared profile and branding modules serve all activities, while storefront templates can target one activity or all activities. Product direction and scope are recorded in [`PROJECT_OVERVIEW.md`](docs/product/PROJECT_OVERVIEW.md) and [`MVP_SCOPE.md`](docs/product/MVP_SCOPE.md). Restaurant operations are activity-specific, rather than requirements for every merchant.
+
+## Developer entry point
+
+Start with [CONTRIBUTING.md](CONTRIBUTING.md) for daily commands, code navigation,
+complete operation traces, troubleshooting and the isolated database-test workflow.
+The [API module guide](docs/architecture/API_MODULE_GUIDE.md) maps business ownership.
 
 ## Requirements
 
@@ -8,7 +14,8 @@ Waffarly is a multi-merchant commerce and operations platform for different busi
 - pnpm 10.34.5
 - Docker Desktop with the Docker Compose plugin
 
-Node 24 LTS is selected because it is supported by the current framework and Prisma toolchain. Node 20.19.0 is installed in the inspected environment and meets several package minimums, but Node 20 reached end of life in 2026; use Node 24 for the project. See [technical decisions](docs/architecture/TECHNICAL_DECISIONS.md) for pinned dependency versions and compatibility notes.
+Use the versions pinned in `.node-version` and `package.json`. See
+[technical decisions](docs/architecture/TECHNICAL_DECISIONS.md) for dependency choices.
 
 ## Quick start
 
@@ -36,15 +43,11 @@ Applications run at:
 - API liveness: http://localhost:4000/health
 - API database check: http://localhost:4000/health/db
 
-The dashboards use React Router with URL navigation:
-
-- Super Admin: `/` (businesses), `/templates`, `/plans`, `/activities`, and `/login`.
-- Merchant: `/`, `/products`, `/categories`, `/media`, `/settings`, and `/login`. `/orders`, `/customers`, `/discounts`, and `/branches` currently show preparation screens.
-- POS: `/` is the preparation screen; POS authentication endpoints are not implemented yet.
-
-Protected dashboard links return to the requested page after login. Production hosting must serve the app's `index.html` for frontend paths so direct links and refreshes work. Run the desktop/mobile dashboard checks with `pnpm exec playwright test --config playwright.routes.config.ts` after building the three React apps.
-
-The database health endpoint returns HTTP 503 when PostgreSQL cannot be reached. The API itself starts without eagerly connecting to PostgreSQL so liveness can still be checked while the database is unavailable.
+Current application behavior is documented under `docs/features/`; early delivery
+notes may describe older UI states. The API checks database connectivity during
+startup with bounded retries. Once it is listening, `/health` reports liveness and
+`/health/db` reports database readiness. See
+[database connections](docs/setup/DATABASE_CONNECTIONS.md).
 
 ## Common commands
 
@@ -56,6 +59,9 @@ pnpm format
 pnpm format:check
 pnpm typecheck
 pnpm test
+pnpm check:api
+pnpm test:db:prepare
+pnpm test:db
 pnpm db:generate
 pnpm db:validate
 pnpm db:migrate
@@ -66,7 +72,10 @@ For detailed local setup and package responsibilities, see [`docs/setup/LOCAL_DE
 
 All four frontends share shadcn/ui components, Tailwind CSS v4, and English/Arabic localization through i18next. Use the language switcher for Arabic and RTL layouts. See [UI and localization](docs/architecture/UI_AND_LOCALIZATION.md) for the shared components and `pnpm test:ui` browser checks.
 
-## Implemented first slice
+## Earlier delivery notes
+
+The following records earlier slices. Use the developer guide and current feature
+documents for the present behavior.
 
 - Super Admin **Activities & modules** provides the restaurant catalog, code-managed merchant profile and storefront design capabilities, editable catalog descriptions, and restaurant applicability. Apply the additive activities/modules migration. Applicability is catalog metadata; existing merchant access rules continue to apply. See the [Business Activities & Modules overview](docs/features/super-admin/activities-modules/OVERVIEW.md).
 - Super Admin **Plans** supports independent EGP prices for 1/3/6/12/24-month terms and offer availability. **Subscriptions** manages assignment, external collection, activation, renewal, immediate/scheduled plan changes, suspension/resume, cancellation and expiry. See [Merchant subscriptions](docs/features/super-admin/plans-subscriptions/SUBSCRIPTIONS.md).

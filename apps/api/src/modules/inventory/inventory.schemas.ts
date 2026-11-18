@@ -68,6 +68,32 @@ export const listStockItemsSchema = z
   .strict();
 export type StockItemListQuery = z.infer<typeof listStockItemsSchema>;
 
+const costUnitPrice = z
+  .string()
+  .regex(/^(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/)
+  .refine((value) => {
+    const match = /^(0|[1-9]\d{0,15})(?:\.(\d{1,2}))?$/.exec(value);
+    if (!match) return false;
+    return BigInt(match[1]!) * 100n + BigInt((match[2] ?? '').padEnd(2, '0')) > 0n;
+  }, 'Unit cost must be greater than zero.');
+
+export const setStockItemOpeningCostSchema = z
+  .object({
+    requestId: z.string().uuid(),
+    unitCode: code,
+    unitCost: costUnitPrice,
+    reason: z.string().trim().min(3).max(500),
+  })
+  .strict();
+
+export const listStockItemCostEventsSchema = z
+  .object({
+    cursor: z.string().uuid().optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(25),
+  })
+  .strict();
+export type StockItemCostEventsQuery = z.infer<typeof listStockItemCostEventsSchema>;
+
 const uuid = z.string().uuid();
 const positiveRevision = z.number().int().positive().max(2_147_483_646);
 const optionalAddress = z.string().trim().max(500).optional();
@@ -184,3 +210,58 @@ export const createStockOpeningSchema = z
   })
   .strict();
 export type StockOpeningRequest = z.infer<typeof createStockOpeningSchema>;
+
+export const recordStockWasteSchema = z
+  .object({
+    requestId: z.string().uuid(),
+    reason: z.string().trim().min(3).max(500),
+    lines: z
+      .array(
+        z.object({
+          warehouseId: z.string().uuid(),
+          stockItemId: z.string().uuid(),
+          condition: z.enum(STOCK_CONDITIONS),
+          quantity,
+          unitCode: code,
+        }).strict(),
+      )
+      .min(1)
+      .max(100)
+      .refine(
+        (lines) =>
+          new Set(lines.map((line) => `${line.warehouseId}:${line.stockItemId}:${line.condition}`))
+            .size === lines.length,
+        'Waste lines cannot repeat an item, warehouse, and condition.',
+      ),
+  })
+  .strict();
+export type RecordStockWasteInput = z.infer<typeof recordStockWasteSchema>;
+
+export const transferStockSchema = z
+  .object({
+    requestId: z.string().uuid(),
+    reason: z.string().trim().min(3).max(500),
+    sourceWarehouseId: z.string().uuid(),
+    destinationWarehouseId: z.string().uuid(),
+    lines: z
+      .array(
+        z.object({
+          stockItemId: z.string().uuid(),
+          condition: z.enum(STOCK_CONDITIONS),
+          quantity,
+          unitCode: code,
+        }).strict(),
+      )
+      .min(1)
+      .max(50)
+      .refine(
+        (lines) => new Set(lines.map((line) => `${line.stockItemId}:${line.condition}`)).size === lines.length,
+        'Transfer lines cannot repeat an item and condition.',
+      ),
+  })
+  .strict()
+  .refine((input) => input.sourceWarehouseId !== input.destinationWarehouseId, {
+    path: ['destinationWarehouseId'],
+    message: 'Choose a different destination warehouse.',
+  });
+export type TransferStockInput = z.infer<typeof transferStockSchema>;

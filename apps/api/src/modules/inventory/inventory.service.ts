@@ -1,3 +1,4 @@
+/** Creates and maintains stock identities and units without adding stock balances. */
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   CreateStockItemRequest,
@@ -8,63 +9,34 @@ import type {
   StockItemRevisionRequest,
   UpdateStockItemRequest,
 } from '@waffarly/contracts';
-import type { Prisma } from '@waffarly/database';
 import { createHash } from 'node:crypto';
-import { assertScopedCursor } from '../../common/http/pagination.js';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { isUniqueConstraintError } from '../../infrastructure/database/prisma-errors.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import {
-  convertStockItemSchema,
   createStockItemSchema,
-  listStockItemsSchema,
   stockItemRevisionSchema,
   updateStockItemSchema,
   type StockItemListQuery,
 } from './inventory.schemas.js';
-import { convertToBaseQuantity, normalizeStockQuantity } from './stock-quantity.js';
-
-const includeUnits = { units: { orderBy: { code: 'asc' as const } } };
-type ItemRecord = Prisma.StockItemGetPayload<{ include: { units: true } }>;
+import { assertMutableItem } from './items/stock-item-access.js';
+import { includeUnits, replayCreation, toItem } from './items/stock-item.mapper.js';
+import {
+  convertStockItemQuantity,
+  getStockItem,
+  listStockItems,
+} from './items/stock-item.queries.js';
 
 @Injectable()
 export class InventoryService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async list(merchantId: string, input: StockItemListQuery): Promise<CursorPage<StockItem>> {
-    const query = parseRequest(listStockItemsSchema, input);
-    const where: Prisma.StockItemWhereInput = {
-      merchantId,
-      ...(query.status === 'all'
-        ? {}
-        : { archivedAt: query.status === 'active' ? null : { not: null } }),
-      ...(query.search ? { name: { contains: query.search, mode: 'insensitive' } } : {}),
-    };
-    if (query.cursor) {
-      const anchor = await this.prisma.stockItem.findFirst({
-        where: { ...where, id: query.cursor },
-        select: { id: true },
-      });
-      assertScopedCursor(query.cursor, anchor !== null);
-    }
-    const rows = await this.prisma.stockItem.findMany({
-      where,
-      include: includeUnits,
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: query.limit + 1,
-      ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
-    });
-    const items = rows.slice(0, query.limit).map(toItem);
-    return { items, nextCursor: rows.length > query.limit ? items.at(-1)!.id : null };
+    return listStockItems(this.prisma, merchantId, input);
   }
 
   async get(merchantId: string, id: string): Promise<StockItem> {
-    const item = await this.prisma.stockItem.findFirst({
-      where: { id, merchantId },
-      include: includeUnits,
-    });
-    if (!item) throw new NotFoundException('Stock item was not found.');
-    return toItem(item);
+    return getStockItem(this.prisma, merchantId, id);
   }
 
   async create(
@@ -195,7 +167,9 @@ export class InventoryService {
           select: { id: true },
         });
         if (pendingSnapshot)
-          throw new ConflictException('A stock item required by a pending recipe order cannot be archived.');
+          throw new ConflictException(
+            'A stock item required by a pending recipe order cannot be archived.',
+          );
         const cancellable = await transaction.stockMovement.findFirst({
           where: {
             merchantId,
@@ -252,64 +226,6 @@ export class InventoryService {
     id: string,
     input: StockItemConversionRequest,
   ): Promise<StockItemConversion> {
-    const parsed = parseRequest(convertStockItemSchema, input);
-    const item = await this.get(merchantId, id);
-    if (item.archivedAt)
-      throw new ConflictException('Archived stock items cannot be used for conversion.');
-    return {
-      itemId: item.id,
-      unitCode: parsed.unitCode,
-      quantity: normalizeStockQuantity(parsed.quantity),
-      baseUnit: item.baseUnit,
-      baseQuantity: convertToBaseQuantity(
-        parsed.quantity,
-        parsed.unitCode,
-        item.baseUnit,
-        item.units,
-      ),
-    };
+    return convertStockItemQuantity(this.prisma, merchantId, id, input);
   }
-}
-
-async function assertMutableItem(
-  transaction: Prisma.TransactionClient,
-  merchantId: string,
-  id: string,
-): Promise<never> {
-  const item = await transaction.stockItem.findFirst({
-    where: { id, merchantId },
-    select: { id: true },
-  });
-  if (!item) throw new NotFoundException('Stock item was not found.');
-  throw new ConflictException(
-    'Stock item changed or has an incompatible status. Reload it before trying again.',
-  );
-}
-
-function replayCreation(record: ItemRecord, fingerprint: string): StockItem {
-  if (record.creationFingerprint !== fingerprint) {
-    throw new ConflictException(
-      'This creation request was already used with different item details.',
-    );
-  }
-  return toItem(record);
-}
-
-function toItem(record: ItemRecord): StockItem {
-  return {
-    id: record.id,
-    name: record.name,
-    description: record.description,
-    baseUnit: record.baseUnit as StockItem['baseUnit'],
-    revision: record.revision,
-    archivedAt: record.archivedAt?.toISOString() ?? null,
-    createdAt: record.createdAt.toISOString(),
-    updatedAt: record.updatedAt.toISOString(),
-    units: record.units.map((unit) => ({
-      id: unit.id,
-      code: unit.code,
-      name: unit.name,
-      baseQuantity: normalizeStockQuantity(unit.baseQuantity.toFixed(6)),
-    })),
-  };
 }

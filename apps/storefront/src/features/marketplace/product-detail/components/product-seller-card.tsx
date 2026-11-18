@@ -33,7 +33,14 @@ export function ProductSellerCard({ product }: { product: MarketplaceProduct }) 
           }
         >
           <strong>{seller}</strong>
-          {product.merchantType === 'restaurant' && product.merchantName && <Link className="text-xs text-accent" href={`/restaurants/${encodeURIComponent(product.merchantName)}`}>منيو المطعم</Link>}
+          {product.merchantType === 'restaurant' && product.merchantName && (
+            <Link
+              className="text-xs text-accent"
+              href={`/restaurants/${encodeURIComponent(product.merchantName)}`}
+            >
+              منيو المطعم
+            </Link>
+          )}
           {!product.origin && (
             <span
               className={

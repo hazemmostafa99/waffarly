@@ -6,12 +6,14 @@ import { Button, Card, useLocale } from '@waffarly/ui';
 import { PageHeader } from '../../components/PageHeader.js';
 import { useMerchantsQuery } from './merchant-queries.js';
 import { StorefrontAddressPanel } from './StorefrontAddressPanel.js';
+import { ResetMerchantPasswordDialog } from './ResetMerchantPasswordDialog.js';
 
 export function MerchantDetailsPage() {
   const { merchantId } = useParams();
   const { t, errorText, locale } = useLocale();
   const isArabic = locale === 'ar';
   const merchants = useMerchantsQuery();
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [businessCodeCopyState, setBusinessCodeCopyState] = useState<'copied' | 'failed' | null>(
     null,
   );
@@ -40,9 +42,7 @@ export function MerchantDetailsPage() {
   if (merchants.isError && !merchants.data) {
     return (
       <div className="admin-page">
-        <PageHeader
-          title={t('Merchant record is unavailable.')}
-        />
+        <PageHeader title={t('Merchant record is unavailable.')} />
         <div
           className="flex flex-wrap items-center justify-between admin-stack rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger"
           role="alert"
@@ -69,10 +69,7 @@ export function MerchantDetailsPage() {
   if (!merchant) {
     return (
       <div className="admin-page">
-        <PageHeader
-          title={t('Merchant not found')}
-          actions={<BackToMerchants />}
-        />
+        <PageHeader title={t('Merchant not found')} actions={<BackToMerchants />} />
         {merchants.isError && (
           <p
             className="m-0 rounded-xl border border-waffarly-danger/20 bg-waffarly-danger-bg px-4 py-3 text-sm text-waffarly-danger"
@@ -98,6 +95,13 @@ export function MerchantDetailsPage() {
           </>
         }
       />
+      {resetPasswordOpen && (
+        <ResetMerchantPasswordDialog
+          key={merchant.id}
+          merchant={merchant}
+          onClose={() => setResetPasswordOpen(false)}
+        />
+      )}
 
       {merchants.isError && (
         <p
@@ -199,6 +203,14 @@ export function MerchantDetailsPage() {
             />
             <DetailField label={t('Owner username')} value={merchant.username} direction="ltr" />
           </dl>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!merchant.username}
+            onClick={() => setResetPasswordOpen(true)}
+          >
+            {isArabic ? 'إعادة تعيين كلمة المرور' : 'Reset password'}
+          </Button>
         </Card>
 
         <StorefrontAddressPanel key={merchant.id} merchant={merchant} />

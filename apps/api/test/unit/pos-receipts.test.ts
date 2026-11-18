@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { buildPosReceiptSnapshot } from '../../src/modules/orders/pos-receipt.mapper.js';
+import { buildPosReceiptSnapshot } from '../../src/modules/orders/receipts/pos-receipt.mapper.js';
 
 describe('POS receipt snapshots', () => {
   it('freezes check lines and exact split-tender totals for printing and reprints', () => {

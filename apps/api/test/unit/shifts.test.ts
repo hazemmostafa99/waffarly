@@ -103,7 +103,10 @@ test('blind close preview accepts only a physical count and optional reason', ()
   assert.deepEqual(posShiftClosePreviewSchema.parse({ countedCash: '125.50' }), {
     countedCash: '125.50',
   });
-  assert.equal(posShiftClosePreviewSchema.safeParse({ countedCash: '125.50', approval: {} }).success, false);
+  assert.equal(
+    posShiftClosePreviewSchema.safeParse({ countedCash: '125.50', approval: {} }).success,
+    false,
+  );
   assert.equal(posShiftClosePreviewSchema.safeParse({ countedCash: '-1.00' }).success, false);
 });
 
@@ -131,5 +134,8 @@ test('owner close-report filters require a bounded, increasing timestamp range a
     }).success,
     false,
   );
-  assert.equal(ownerPosShiftCloseReportsSchema.safeParse({ ...valid, limit: '101' }).success, false);
+  assert.equal(
+    ownerPosShiftCloseReportsSchema.safeParse({ ...valid, limit: '101' }).success,
+    false,
+  );
 });

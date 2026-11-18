@@ -15,6 +15,7 @@ import {
 
 const ownerMerchantId = '11111111-1111-4111-8111-111111111111';
 const employeeMerchantId = '22222222-2222-4222-8222-222222222222';
+const branchId = '44444444-4444-4444-8444-444444444444';
 const owner: OwnerProfile = {
   username: 'owner-one',
   merchantId: ownerMerchantId,
@@ -32,7 +33,7 @@ const employee: PosEmployeeSession = {
   displayName: 'Cashier One',
   role: 'cashier',
   permissions: ['sell'],
-  branches: [],
+  branch: { id: branchId, name: 'Main', archivedAt: null },
 };
 
 describe('POS appearance endpoints', () => {

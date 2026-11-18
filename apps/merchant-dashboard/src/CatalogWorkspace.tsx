@@ -176,7 +176,9 @@ export function CatalogWorkspace({
       aria-labelledby="catalog-heading"
     >
       <div className="section-heading catalog-actions-only">
-        <h2 id="catalog-heading" className="sr-only">{t('Products and categories')}</h2>
+        <h2 id="catalog-heading" className="sr-only">
+          {t('Products and categories')}
+        </h2>
         <Button
           type="button"
           variant="outline"
@@ -496,28 +498,44 @@ export function CatalogWorkspace({
                   .filter((product) =>
                     product.name.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
                   )
-                  .map((product) => (
-                    <div className="catalog-row" key={product.id}>
-                      <span>
-                        <strong>{product.name}</strong>
-                        <small>
-                          {product.basePrice} EGP · {product.availability}
-                          {product.archivedAt ? ' · archived' : ''}
-                        </small>
-                      </span>
-                      {!product.archivedAt && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={busy}
-                          onClick={() => void archiveProduct(product)}
-                        >
-                          {t('Archive')}
-                        </Button>
-                      )}
-                    </div>
-                  ))
+                  .map((product) => {
+                    const prices = product.variants.map((variant) =>
+                      Number(variant.promotionalPrice ?? variant.price),
+                    );
+                    const originalPrices = product.variants.map((variant) => Number(variant.price));
+                    const price = prices.length
+                      ? Math.min(...prices)
+                      : Number(product.promotionalPrice ?? product.basePrice);
+                    const originalPrice = originalPrices.length
+                      ? Math.min(...originalPrices)
+                      : Number(product.basePrice);
+                    return (
+                      <div className="catalog-row" key={product.id}>
+                        <span>
+                          <strong>{product.name}</strong>
+                          <small>
+                            {price.toFixed(2)} EGP
+                            {product.promotion?.status === 'active' && (
+                              <> · <del>{originalPrice.toFixed(2)} EGP</del></>
+                            )}
+                            {' · '}{product.availability}
+                            {product.archivedAt ? ' · archived' : ''}
+                          </small>
+                        </span>
+                        {!product.archivedAt && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() => void archiveProduct(product)}
+                          >
+                            {t('Archive')}
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })
               )}
             </div>
           </div>

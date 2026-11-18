@@ -11,7 +11,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import type { OwnerProfile } from '@waffarly/contracts';
+import type { CatalogProductCostPreviewRequest, OwnerProfile } from '@waffarly/contracts';
 import { parseRequest } from '../../../common/http/zod-validation.pipe.js';
 import { parseCursorPageQuery } from '../../../common/http/pagination.js';
 import { CurrentOwner, OwnerGuard } from '../../auth/index.js';
@@ -20,12 +20,17 @@ import {
   createSchema,
   revisionSchema,
   updateSchema,
+  productCostPreviewSchema,
 } from './product.schemas.js';
 import { ProductService } from './product.service.js';
+import { ProductCostPreviewService } from './product-cost-preview.service.js';
 @UseGuards(OwnerGuard)
 @Controller('owner/catalog/products')
 export class ProductController {
-  constructor(@Inject(ProductService) private readonly products: ProductService) {}
+  constructor(
+    @Inject(ProductService) private readonly products: ProductService,
+    @Inject(ProductCostPreviewService) private readonly costPreview: ProductCostPreviewService,
+  ) {}
 
   @Get()
   async list(@CurrentOwner() owner: OwnerProfile, @Query() query: unknown) {
@@ -35,6 +40,16 @@ export class ProductController {
   @Get(':id')
   async get(@CurrentOwner() owner: OwnerProfile, @Param('id', new ParseUUIDPipe()) id: string) {
     return this.products.get(owner.merchantId, id);
+  }
+
+  @Post(':id/cost-preview')
+  async cost(
+    @CurrentOwner() owner: OwnerProfile,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: unknown,
+  ) {
+    const parsed = parseRequest(productCostPreviewSchema, body) as CatalogProductCostPreviewRequest;
+    return this.costPreview.get(owner.merchantId, id, parsed);
   }
 
   @Post()

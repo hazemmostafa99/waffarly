@@ -1,5 +1,13 @@
-import { createPostgresAdapter, PrismaClient, type Prisma } from '@waffarly/database';
-import { config } from 'dotenv';
+import { StorefrontOrderStatusService } from '../../src/modules/orders/fulfillment/storefront-order-status.service.js';
+import { createPosOrderServices } from '../support/pos-order-services.js';
+import {
+  enableTestLegacyAccess,
+  openTestBranchShift,
+  deleteTestMerchantSubscriptions,
+} from '../support/merchant-fixtures.js';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+import { type Prisma } from '@waffarly/database';
 import { ConflictException } from '@nestjs/common';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -11,17 +19,16 @@ import { ModifierGroupService } from '../../src/modules/catalog/modifiers/modifi
 import { InventoryLedgerService } from '../../src/modules/inventory/inventory-ledger.service.js';
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
 import { InventoryLocationsService } from '../../src/modules/inventory/inventory-locations.service.js';
-import { StorefrontOrdersService } from '../../src/modules/orders/storefront-orders.service.js';
-import { OrderLifecycleService } from '../../src/modules/orders/order-lifecycle.service.js';
+import { StorefrontOrdersService } from '../../src/modules/orders/checkout/storefront-orders.service.js';
+import { OrderLifecycleService } from '../../src/modules/orders/fulfillment/order-lifecycle.service.js';
 import { ProductConfigurationReportService } from '../../src/modules/reports/product-configuration-report.service.js';
-import { PosEmployeeService } from '../../src/modules/auth/pos-employee.service.js';
+import { PosEmployeeService } from '../../src/modules/employees/pos-employee.service.js';
 import type { PosEmployeeSession } from '@waffarly/contracts';
-import { PosOrdersService } from '../../src/modules/orders/pos-orders.service.js';
-import { PosDiningService } from '../../src/modules/orders/pos-dining.service.js';
+
+import { PosDiningService } from '../../src/modules/orders/dining/pos-dining.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 const actor = 'recipe-owner-test';
 
 function transactionServices(tx: Prisma.TransactionClient) {
@@ -59,6 +66,7 @@ async function fixture(tx: Prisma.TransactionClient, scoped: never) {
     },
   });
   const merchantId = merchant.id;
+  await enableTestLegacyAccess(tx, merchantId);
   const media = await tx.mediaAsset.create({
     data: {
       merchantId,
@@ -98,20 +106,17 @@ async function fixture(tx: Prisma.TransactionClient, scoped: never) {
       merchantId,
       username: 'recipe-cashier',
       displayName: 'Recipe Cashier',
+      branchId: branch.id,
       passwordHash: 'test-hash',
       createdBy: actor,
       updatedBy: actor,
-      branches: {
-        create: {
-          createdBy: actor,
-          branch: { connect: { id_merchantId: { id: branch.id, merchantId } } },
-        },
-      },
     },
   });
   const missingDefault = await tx.branch.create({
     data: { merchantId, name: 'No default', createdBy: actor, updatedBy: actor },
   });
+  await openTestBranchShift(tx, merchantId, branch.id, employee.id);
+  await openTestBranchShift(tx, merchantId, missingDefault.id, employee.id);
   const warehouse = await tx.warehouse.create({
     data: {
       merchantId,
@@ -261,6 +266,7 @@ async function fixture(tx: Prisma.TransactionClient, scoped: never) {
     configuration,
     products,
     orders,
+    orderStatus: new StorefrontOrderStatusService(scoped, ledger),
     lifecycle,
     createOrder,
     balance,
@@ -270,8 +276,8 @@ async function fixture(tx: Prisma.TransactionClient, scoped: never) {
 it(
   'atomically accepts recipes, freezes pending configuration, restores recorded stock, and gates preparation',
   { skip: !databaseUrl },
-  async () => {
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback recipe lifecycle fixtures');
     try {
       await assert.rejects(
@@ -303,7 +309,11 @@ it(
                 },
               },
             });
-            const legacyAccepted = await f.orders.updateStatus(f.merchantId, legacy.id, 'accepted');
+            const legacyAccepted = await f.orderStatus.updateStatus(
+              f.merchantId,
+              legacy.id,
+              'accepted',
+            );
             assert.equal(legacyAccepted.requiresRecipeAcceptance, undefined);
             assert.equal(await f.balance(), '100');
             assert.equal(
@@ -316,7 +326,7 @@ it(
               f.lifecycle.startPreparation(f.merchantId, actor, legacy.id, {
                 requestId: randomUUID(),
               }),
-              /only available for new recipe orders/,
+              /Open a cashier shift/,
             );
             const order = await f.createOrder(2, true);
             const queue = await f.orders.listForPos(f.merchantId, f.branch.id);
@@ -340,7 +350,7 @@ it(
             );
             assert.equal(await f.balance(), '100');
             await assert.rejects(
-              f.orders.updateStatus(f.merchantId, order.id, 'accepted'),
+              f.orderStatus.updateStatus(f.merchantId, order.id, 'accepted'),
               /branch-based/,
             );
             const changed = structuredClone(f.configuration);
@@ -370,7 +380,9 @@ it(
                 requestId: randomUUID(),
                 branchId: randomUUID(),
               }),
-              /active branch/,
+              (error: unknown) =>
+                error instanceof ConflictException &&
+                (error.getResponse() as { code?: string }).code === 'ORDER_SHIFT_REQUIRED',
             );
             await assert.rejects(
               f.lifecycle.accept(f.merchantId, actor, order.id, {
@@ -391,7 +403,7 @@ it(
                 posActor,
                 order.id,
                 { requestId: randomUUID(), branchId: f.missingDefault.id },
-                [f.branch.id],
+                f.branch.id,
               ),
             );
             const accepted = await f.lifecycle.acceptFromPos(
@@ -399,7 +411,7 @@ it(
               posActor,
               order.id,
               accept,
-              [f.branch.id],
+              f.branch.id,
             );
             assert.equal(accepted.status, 'accepted');
             assert.equal(await f.balance(), '74');
@@ -453,7 +465,7 @@ it(
               posActor,
               next.id,
               { requestId: randomUUID(), branchId: f.branch.id },
-              [f.branch.id],
+              f.branch.id,
             );
             assert.equal(await f.balance(), '-2');
             const prepare = { requestId: randomUUID() };
@@ -463,7 +475,7 @@ it(
                 posActor,
                 next.id,
                 { requestId: randomUUID() },
-                [f.missingDefault.id],
+                f.missingDefault.id,
               ),
             );
             const preparing = await f.lifecycle.startPreparationFromPos(
@@ -471,13 +483,17 @@ it(
               posActor,
               next.id,
               prepare,
-              [f.branch.id],
+              f.branch.id,
             );
             assert.equal(preparing.status, 'preparing');
             assert.deepEqual(
-              await f.lifecycle.startPreparationFromPos(f.merchantId, posActor, next.id, prepare, [
+              await f.lifecycle.startPreparationFromPos(
+                f.merchantId,
+                posActor,
+                next.id,
+                prepare,
                 f.branch.id,
-              ]),
+              ),
               preparing,
             );
             const balanceBeforeReady = await f.balance();
@@ -487,14 +503,18 @@ it(
               posActor,
               next.id,
               readyRequest,
-              [f.branch.id],
+              f.branch.id,
             );
             assert.equal(ready.status, 'ready');
             assert.ok(ready.readyAt);
             assert.deepEqual(
-              await f.lifecycle.markReadyFromPos(f.merchantId, posActor, next.id, readyRequest, [
+              await f.lifecycle.markReadyFromPos(
+                f.merchantId,
+                posActor,
+                next.id,
+                readyRequest,
                 f.branch.id,
-              ]),
+              ),
               ready,
             );
             assert.equal(await f.balance(), balanceBeforeReady);
@@ -549,8 +569,8 @@ it(
 it(
   'confirms POS sales once, consumes direct stock immediately, and accepts frozen recipes later',
   { skip: !databaseUrl },
-  async () => {
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback POS sale fixtures');
     try {
       await assert.rejects(
@@ -575,10 +595,15 @@ it(
                 updatedBy: actor,
               },
             });
+            const orderSession = await tx.posBranchOrderSession.create({
+              data: { merchantId: f.merchantId, branchId: f.branch.id },
+              select: { id: true },
+            });
             const shift = await tx.posShift.create({
               data: {
                 merchantId: f.merchantId,
                 branchId: f.branch.id,
+                branchOrderSessionId: orderSession.id,
                 registerId: register.id,
                 openRequestId: randomUUID(),
                 openedByEmployeeId: f.employee.id,
@@ -633,30 +658,27 @@ it(
               displayName: f.employee.displayName,
               role: 'cashier',
               permissions: ['sell'],
-              branches: [{ id: f.branch.id, name: f.branch.name, archivedAt: null }],
+              branch: { id: f.branch.id, name: f.branch.name, archivedAt: null },
             };
             const supervisor = await tx.posEmployee.create({
               data: {
                 merchantId: f.merchantId,
                 username: `pos-cancel-supervisor-${randomUUID()}`,
                 displayName: 'POS Cancellation Supervisor',
+                branchId: f.branch.id,
                 passwordHash: 'database-test-only',
                 role: 'supervisor',
                 permissions: [],
                 createdBy: actor,
                 updatedBy: actor,
-                branches: {
-                  create: {
-                    createdBy: actor,
-                    branch: {
-                      connect: { id_merchantId: { id: f.branch.id, merchantId: f.merchantId } },
-                    },
-                  },
-                },
               },
             });
             const pricing = new ProductPricingService(scoped);
-            const posOrders = new PosOrdersService(
+            const {
+              orderQueries,
+              sales: posOrdersSales,
+              kitchenAmendments,
+            } = createPosOrderServices(
               scoped,
               pricing,
               new ProductConsumptionService(),
@@ -699,7 +721,7 @@ it(
                 quantity: 1,
               },
             ];
-            const quote = await posOrders.quote(cashier, { items });
+            const quote = await posOrdersSales.quote(cashier, { items });
             const quoteByLine = new Map(quote.items.map((item) => [item.lineId, item.quote]));
             const payload = {
               requestId: randomUUID(),
@@ -719,7 +741,7 @@ it(
               { name: 'Direct item updated after quote' },
             );
             await assert.rejects(
-              posOrders.create(cashier, payload),
+              posOrdersSales.create(cashier, payload),
               (error: unknown) =>
                 error instanceof ConflictException &&
                 /product changed/i.test(JSON.stringify(error.getResponse())),
@@ -732,10 +754,10 @@ it(
               selections: [],
               quantity: 2,
             };
-            const shortageQuote = await posOrders.quote(cashier, { items: [shortageLine] });
+            const shortageQuote = await posOrdersSales.quote(cashier, { items: [shortageLine] });
             const shortageQuotedLine = shortageQuote.items[0]!.quote;
             await assert.rejects(
-              posOrders.create(cashier, {
+              posOrdersSales.create(cashier, {
                 requestId: randomUUID(),
                 registerId: register.id,
                 fulfillmentType: 'takeaway',
@@ -771,7 +793,7 @@ it(
                 .stockQuantity,
               10,
             );
-            const refreshedQuote = await posOrders.quote(cashier, { items });
+            const refreshedQuote = await posOrdersSales.quote(cashier, { items });
             const refreshedQuoteByLine = new Map(
               refreshedQuote.items.map((item) => [item.lineId, item.quote]),
             );
@@ -783,8 +805,8 @@ it(
                 expectedProductRevision: refreshedQuoteByLine.get(item.lineId)!.productRevision,
               })),
             };
-            const created = await posOrders.create(cashier, refreshedPayload);
-            const replayed = await posOrders.create(cashier, refreshedPayload);
+            const created = await posOrdersSales.create(cashier, refreshedPayload);
+            const replayed = await posOrdersSales.create(cashier, refreshedPayload);
             assert.equal(replayed.id, created.id);
             const unassignedBranch = await tx.branch.create({
               data: {
@@ -903,7 +925,7 @@ it(
               `pos:${cashier.id}`,
               created.id,
               { requestId: randomUUID(), branchId: f.branch.id },
-              [f.branch.id],
+              f.branch.id,
             );
             assert.equal(accepted.status, 'accepted');
             assert.equal(await f.balance(), '0');
@@ -993,11 +1015,11 @@ it(
               ],
               quantity: 1,
             };
-            const amendmentQuote = await posOrders.quote(cashier, {
+            const amendmentQuote = await posOrdersSales.quote(cashier, {
               items: [amendmentLine],
             });
             const amendmentQuotedLine = amendmentQuote.items[0]!;
-            const amendmentOrder = await posOrders.create(cashier, {
+            const amendmentOrder = await posOrdersSales.create(cashier, {
               requestId: randomUUID(),
               registerId: register.id,
               fulfillmentType: 'takeaway',
@@ -1010,7 +1032,7 @@ it(
             });
             assert.equal(amendmentOrder.status, 'pending');
             assert.ok(amendmentOrder.kitchenTicket);
-            const amendmentState = await posOrders.paymentState(cashier, amendmentOrder.id);
+            const amendmentState = await orderQueries.paymentState(cashier, amendmentOrder.id);
             const addition = {
               requestId: randomUUID(),
               revision: amendmentState.revision,
@@ -1031,8 +1053,12 @@ it(
                 },
               })
             ).quantity.toString();
-            const amended = await posOrders.addKitchenItems(cashier, amendmentOrder.id, addition);
-            const replayedAmendment = await posOrders.addKitchenItems(
+            const amended = await kitchenAmendments.addKitchenItems(
+              cashier,
+              amendmentOrder.id,
+              addition,
+            );
+            const replayedAmendment = await kitchenAmendments.addKitchenItems(
               cashier,
               amendmentOrder.id,
               addition,
@@ -1081,7 +1107,7 @@ it(
               `pos:${cashier.id}`,
               amendmentOrder.id,
               { requestId: randomUUID(), branchId: f.branch.id },
-              [f.branch.id],
+              f.branch.id,
             );
             assert.equal(acceptedAmendment.status, 'accepted');
             assert.equal(
@@ -1096,9 +1122,12 @@ it(
               ).quantity.toString(),
               '74',
             );
-            const acceptedAmendmentState = await posOrders.paymentState(cashier, amendmentOrder.id);
+            const acceptedAmendmentState = await orderQueries.paymentState(
+              cashier,
+              amendmentOrder.id,
+            );
             await assert.rejects(
-              posOrders.addKitchenItems(cashier, amendmentOrder.id, {
+              kitchenAmendments.addKitchenItems(cashier, amendmentOrder.id, {
                 requestId: randomUUID(),
                 revision: acceptedAmendmentState.revision,
                 items: [
@@ -1125,8 +1154,8 @@ it(
 it(
   'serializes independent acceptance requests and shared-ingredient shortages without double deduction',
   { skip: !databaseUrl },
-  async () => {
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const client = createTestDatabaseClient(testContext);
     let merchantId: string | undefined;
     try {
       const f = await client.$transaction(
@@ -1238,11 +1267,13 @@ it(
         await client.stockMovementBatch.deleteMany({ where });
         await client.stockBalance.deleteMany({ where });
         await client.warehouse.deleteMany({ where });
-        await client.posEmployeeBranch.deleteMany({ where });
+        await client.posShift.deleteMany({ where });
+        await client.posRegister.deleteMany({ where });
         await client.posEmployee.deleteMany({ where });
         await client.branch.deleteMany({ where });
         await client.stockItemUnit.deleteMany({ where });
         await client.stockItem.deleteMany({ where });
+        await deleteTestMerchantSubscriptions(client, [merchantId]);
         await client.merchant.delete({ where: { id: merchantId } });
       }
       await client.$disconnect();
@@ -1253,8 +1284,8 @@ it(
 it(
   'creates a POS employee with tenant-scoped branch assignments',
   { skip: !databaseUrl },
-  async () => {
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback POS employee creation fixture');
     try {
       await assert.rejects(
@@ -1283,17 +1314,10 @@ it(
             username: 'cashier-create-test',
             displayName: 'Cashier Create Test',
             password: 'new-password-long-enough',
-            branchIds: [branch.id],
+            branchId: branch.id,
           });
 
-          assert.equal(created.branches.length, 1);
-          assert.equal(created.branches[0]?.id, branch.id);
-          assert.equal(
-            await tx.posEmployeeBranch.count({
-              where: { merchantId: merchant.id, branchId: branch.id },
-            }),
-            1,
-          );
+          assert.equal(created.branch.id, branch.id);
           throw rollback;
         }),
         rollback,
@@ -1307,8 +1331,8 @@ it(
 it(
   'revokes only the employee POS sessions after password reset or deactivation',
   { skip: !databaseUrl },
-  async () => {
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback POS employee session fixtures');
     try {
       await assert.rejects(
@@ -1338,17 +1362,10 @@ it(
               merchantId: merchant.id,
               username: 'cashier1',
               displayName: 'Cashier One',
+              branchId: branch.id,
               passwordHash: 'initial-test-hash',
               createdBy: actor,
               updatedBy: actor,
-              branches: {
-                create: {
-                  createdBy: actor,
-                  branch: {
-                    connect: { id_merchantId: { id: branch.id, merchantId: merchant.id } },
-                  },
-                },
-              },
             },
           });
           const employees = new PosEmployeeService(scoped);
@@ -1368,7 +1385,7 @@ it(
             revision: 1,
             displayName: employee.displayName,
             active: true,
-            branchIds: [branch.id],
+            branchId: branch.id,
             password: 'new-password-long-enough',
           });
           assert.equal(afterPasswordReset.revision, 2);
@@ -1388,7 +1405,7 @@ it(
             revision: 2,
             displayName: employee.displayName,
             active: false,
-            branchIds: [branch.id],
+            branchId: branch.id,
           });
           assert.equal(afterDeactivation.active, false);
           assert.equal(

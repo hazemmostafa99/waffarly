@@ -8,9 +8,10 @@ import { ApiError, apiRequest } from './lib/api-client.js';
 import { getPosSession, posSessionKey } from './features/auth/pos-session.api.js';
 import { usePosAppearanceStore } from './app/pos-appearance-store.js';
 import '@waffarly/ui/pos-theme.css';
+import './login.css';
 
 export function Login() {
-  const { t, errorText, locale, setLocale } = useLocale();
+  const { t, errorText } = useLocale();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const theme = usePosAppearanceStore((state) => state.theme);
@@ -65,7 +66,7 @@ export function Login() {
 
   return (
     <div
-      className="pos-theme flex min-h-dvh flex-col bg-background font-sans text-sm text-foreground"
+      className="pos-login pos-theme flex min-h-dvh flex-col bg-background font-sans text-sm text-foreground"
       data-theme={selectedTheme}
       data-accent={accent}
     >
@@ -88,15 +89,6 @@ export function Login() {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            <PosButton
-              type="button"
-              variant="outline"
-              aria-label={t('Change language')}
-              className="min-h-10 px-3 text-xs"
-              onClick={() => setLocale(locale === 'en' ? 'ar' : 'en')}
-            >
-              {locale === 'en' ? 'العربية' : 'English'}
-            </PosButton>
             <label className="flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-2.5 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background">
               {selectedTheme === 'dark' ? (
                 <Moon aria-hidden="true" size={15} />

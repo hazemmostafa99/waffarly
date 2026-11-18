@@ -1,19 +1,19 @@
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
-import { config } from 'dotenv';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import { CustomersService } from '../../src/modules/customers/index.js';
-import { OrderCustomerService } from '../../src/modules/orders/order-customer.service.js';
+import { OrderCustomerService } from '../../src/modules/orders/customers/order-customer.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const url = process.env.DATABASE_URL;
+const url = getTestDatabaseUrl();
 
 it(
   'customer persistence: isolation, retry, revisions, privacy and immutable order contact',
   { skip: !url },
-  async () => {
-    const prisma = new PrismaClient({ adapter: createPostgresAdapter(url!) });
+  async (testContext) => {
+    const prisma = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback customer fixtures');
     try {
       await assert.rejects(
@@ -182,46 +182,50 @@ it(
   },
 );
 
-it('database rejects an order referencing another tenant customer', { skip: !url }, async () => {
-  const prisma = new PrismaClient({ adapter: createPostgresAdapter(url!) });
-  try {
-    await assert.rejects(
-      prisma.$transaction(async (tx) => {
-        const data = {
-          name: 'Constraint fixture',
-          contactPhone: '01000000000',
-          ownerName: 'Owner',
-          ownerMobile: '01100000000',
-        };
-        const a = await tx.merchant.create({
-          data: { ...data, storefrontSlug: `customer-fk-a-${randomUUID()}` },
-        });
-        const b = await tx.merchant.create({
-          data: { ...data, storefrontSlug: `customer-fk-b-${randomUUID()}` },
-        });
-        const customer = await tx.merchantCustomer.create({
-          data: {
-            merchantId: a.id,
-            name: 'A',
-            creationRequest: randomUUID(),
-            creationFingerprint: 'a'.repeat(64),
-            createdBy: 'test',
-            updatedBy: 'test',
-          },
-        });
-        await tx.storefrontOrder.create({
-          data: {
-            merchantId: b.id,
-            merchantCustomerId: customer.id,
-            fulfillmentType: 'pickup',
-            total: '1',
-          },
-        });
-      }),
-      (error: unknown) =>
-        typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2003',
-    );
-  } finally {
-    await prisma.$disconnect();
-  }
-});
+it(
+  'database rejects an order referencing another tenant customer',
+  { skip: !url },
+  async (testContext) => {
+    const prisma = createTestDatabaseClient(testContext);
+    try {
+      await assert.rejects(
+        prisma.$transaction(async (tx) => {
+          const data = {
+            name: 'Constraint fixture',
+            contactPhone: '01000000000',
+            ownerName: 'Owner',
+            ownerMobile: '01100000000',
+          };
+          const a = await tx.merchant.create({
+            data: { ...data, storefrontSlug: `customer-fk-a-${randomUUID()}` },
+          });
+          const b = await tx.merchant.create({
+            data: { ...data, storefrontSlug: `customer-fk-b-${randomUUID()}` },
+          });
+          const customer = await tx.merchantCustomer.create({
+            data: {
+              merchantId: a.id,
+              name: 'A',
+              creationRequest: randomUUID(),
+              creationFingerprint: 'a'.repeat(64),
+              createdBy: 'test',
+              updatedBy: 'test',
+            },
+          });
+          await tx.storefrontOrder.create({
+            data: {
+              merchantId: b.id,
+              merchantCustomerId: customer.id,
+              fulfillmentType: 'pickup',
+              total: '1',
+            },
+          });
+        }),
+        (error: unknown) =>
+          typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2003',
+      );
+    } finally {
+      await prisma.$disconnect();
+    }
+  },
+);

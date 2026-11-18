@@ -1,5 +1,9 @@
 import { ConflictException } from '@nestjs/common';
-import type { CreatePurchaseInvoiceRequest } from '@waffarly/contracts';
+import {
+  normalizePurchaseAmount,
+  normalizePurchaseUnitCost,
+  type CreatePurchaseInvoiceRequest,
+} from '@waffarly/contracts';
 import { createHash } from 'node:crypto';
 import { normalizeStockQuantity } from '../inventory/index.js';
 
@@ -22,12 +26,25 @@ export function invoiceFingerprint(input: CreatePurchaseInvoiceRequest): string 
       JSON.stringify({
         supplierId: input.supplierId,
         supplierInvoiceNumber: invoiceNumber,
+        ...(input.invoiceDate ? { invoiceDate: input.invoiceDate } : {}),
+        ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
+        ...(input.discountType !== undefined || input.discountValue !== undefined
+          ? {
+              discountType: input.discountType ?? 'amount',
+              discountValue: normalizePurchaseAmount(
+                input.discountValue ?? input.discountAmount ?? '0.00',
+              ),
+            }
+          : {}),
         warehouseId: input.warehouseId,
+        discountAmount: normalizePurchaseAmount(input.discountAmount ?? '0.00')!,
+        shippingAmount: normalizePurchaseAmount(input.shippingAmount ?? '0.00')!,
         lines: input.lines.map((line) => ({
           stockItemId: line.stockItemId,
           condition: line.condition,
           quantity: normalizeStockQuantity(line.quantity),
           unitCode: line.unitCode,
+          unitCost: normalizePurchaseUnitCost(line.unitCost)!,
         })),
       }),
     )

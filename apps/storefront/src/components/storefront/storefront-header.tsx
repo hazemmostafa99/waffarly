@@ -5,12 +5,17 @@ import Link, { useStorefrontBasePath } from './storefront-link';
 import { usePathname } from 'next/navigation';
 import { Gift, Heart, House, Menu, ShoppingBag, Sparkles, UserRound } from 'lucide-react';
 import type { PublicStorefrontCatalog } from '@waffarly/contracts';
-import { Button, LanguageSwitcher } from '@waffarly/ui';
+import { Button } from '@waffarly/ui';
 import { useLocale } from '@waffarly/ui';
 import { storefrontCopy } from '../../lib/storefront-copy';
 import { useStorefrontStore } from '../../providers/storefront-providers';
 
 function Brand({ catalog }: { catalog: PublicStorefrontCatalog }) {
+  const logoSize = {
+    small: 'size-9',
+    medium: 'size-11',
+    large: 'size-14',
+  }[catalog.logoScale];
   return (
     <span className="flex min-w-0 items-center gap-3">
       {catalog.logoData ? (
@@ -18,13 +23,19 @@ function Brand({ catalog }: { catalog: PublicStorefrontCatalog }) {
           src={catalog.logoData}
           alt=""
           aria-hidden="true"
-          width={46}
-          height={46}
+          width={56}
+          height={56}
           unoptimized
-          className="size-11 rounded-2xl border border-store-border bg-white object-contain p-1"
+          className={logoSize + ' rounded-2xl border border-store-border bg-white object-contain p-1'}
         />
       ) : (
-        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-store-gold text-store-primary-deep shadow-sm">
+        <span
+          className={
+            'grid ' +
+            logoSize +
+            ' shrink-0 place-items-center rounded-2xl bg-store-gold text-store-primary-deep shadow-sm'
+          }
+        >
           <Sparkles className="size-5" aria-hidden="true" />
         </span>
       )}
@@ -40,11 +51,7 @@ function Brand({ catalog }: { catalog: PublicStorefrontCatalog }) {
   );
 }
 
-export function StorefrontHeader({
-  catalog,
-}: {
-  catalog: PublicStorefrontCatalog;
-}) {
+export function StorefrontHeader({ catalog }: { catalog: PublicStorefrontCatalog }) {
   const pathname = usePathname();
   const { locale } = useLocale();
   const t = storefrontCopy(locale);
@@ -130,7 +137,6 @@ export function StorefrontHeader({
             >
               <UserRound className="size-5" aria-hidden="true" />
             </Link>
-            <LanguageSwitcher className="hidden px-2 text-xs sm:flex sm:px-3" />
             <Button
               asChild
               className="relative size-11 rounded-full bg-transparent p-0 text-store-ink hover:bg-store-page hover:text-store-primary-deep"
@@ -155,7 +161,12 @@ export function StorefrontHeader({
           { href: homeHref || '/', title: t.home, icon: House, active: isHome },
           { href: menuHref, title: t.menu, icon: Menu, active: isMenu },
           { href: cartHref, title: t.cart, icon: ShoppingBag, active: pathname === cartHref },
-          { href: favoritesHref, title: t.favorites, icon: Heart, active: pathname === favoritesHref },
+          {
+            href: favoritesHref,
+            title: t.favorites,
+            icon: Heart,
+            active: pathname === favoritesHref,
+          },
           { href: accountHref, title: t.account, icon: UserRound, active: isAccount },
         ].map(({ href, title, icon: Icon, active }) => (
           <Link

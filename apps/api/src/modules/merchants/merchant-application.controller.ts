@@ -8,14 +8,15 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import type {
-  ApproveMerchantApplicationRequest,
-  MerchantApplicationSummary,
-  MerchantSummary,
-  RejectMerchantApplicationRequest,
-  SubmitMerchantApplicationRequest,
+import {
+  type ApproveMerchantApplicationRequest,
+  type MerchantApplicationSummary,
+  type MerchantSummary,
+  type RejectMerchantApplicationRequest,
+  type SubmitMerchantApplicationRequest,
+  BUSINESS_ACTIVITY_KEYS,
 } from '@waffarly/contracts';
-import { BUSINESS_ACTIVITY_KEYS } from '@waffarly/contracts';
+
 import { z } from 'zod';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { AdminGuard, CurrentAdmin } from '../auth/index.js';
@@ -39,7 +40,7 @@ const approvalSchema = z
       .min(3)
       .max(80)
       .regex(/^[a-zA-Z0-9._-]+$/),
-    password: z.string().min(12).max(128),
+    password: z.string().min(6).max(128),
   })
   .strict();
 

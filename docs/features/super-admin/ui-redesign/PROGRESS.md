@@ -1,5 +1,10 @@
 # Super Admin UI Redesign Progress
 
+**Scope update — 2026-11-18:** The `/modules`, `/templates`, and
+`/templates/:templateId` pages described below were removed. The activity page
+now edits business activity display details only. Historical implementation
+notes remain for reference.
+
 ## How to Use This File
 
 Update this document after every implementation slice. A checkbox is complete only when the code exists and its listed verification has passed. Record commands and meaningful limitations in the implementation log.
@@ -13,12 +18,12 @@ Progress states:
 
 ## Current Status
 
-- Overall: Foundation, Arabic support, Tailwind dashboard, merchant pages, plans, first-month access, Business Activities, Modules Matrix, Templates Library, and Template Details implemented; visual/browser review remains in progress.
+- Overall: Foundation, Arabic support, Tailwind dashboard, merchant pages, plans, first-month access, and business activity display metadata remain implemented. The module and template pages are retired.
 - Current milestone: Page-by-page migration; Governance and Audit is next but remains blocked by unapproved requirements and missing API support.
-- Current page: Template Details at `/templates/:templateId` (reuses the templates list contract; desktop/mobile route and interaction tests pass, visual comparison remains).
+- Current page: No active module or template detail page; earlier `/templates/:templateId` work is historical.
 - State libraries: TanStack React Query and Zustand are installed in the Super Admin app.
 - Visual reference: Supplied Super Admin UI kit.
-- Last updated: 2026-10-14.
+- Last updated: 2026-11-18.
 
 ## Foundation
 
@@ -54,7 +59,7 @@ Progress states:
 
 ### 1. Platform Overview - `/dashboard`
 
-- [x] Confirm available aggregate data from merchant, application, plan, and template APIs.
+- [x] Confirm available aggregate data from merchant, application, and plan APIs.
 - [x] Implement page header and contextual actions.
 - [x] Implement reusable stat cards.
 - [x] Implement supported overview panels.
@@ -116,42 +121,17 @@ Progress states:
 
 ### 8. Business Activities - `/activities`
 
-- [x] Confirmed hybrid catalog governance, fixed code-defined keys, and the existing revision-aware edit API.
-- [x] Move activity fetching into a shared React Query hook.
-- [x] Implement searchable activity cards and show the API's compatible-module links.
-- [x] Localize the platform's default activity and module names/descriptions; unknown administrator-entered catalog text remains as authored.
-- [x] Align the page with the supplied reference: compact four-card summary, activity overview tiles, and a two-column catalog table/definition panel.
-- [x] Migrate the supported name, description, and activity-association editor into the redesigned page with revision-aware saves; keep code-defined activity keys, module support, and dependencies immutable.
-- [~] Verify loading, empty, error, search, Arabic/RTL, and responsive behavior in the browser.
+- [x] Keep the activity catalog focused on editable display names and descriptions.
+- [x] Retain stable activity keys and code-defined business categories.
+- [x] Remove module associations and compatibility controls.
 
-### 9. Modules Matrix - `/modules`
+### Retired Pages
 
-- [x] Confirmed hybrid catalog governance and the code-supported versus saved-association fields.
-- [x] Keep compatibility, plan entitlement, and user permissions visually distinct.
-- [x] Implement the matrix using real catalog data, including mismatch detection.
-- [x] Avoid deriving runtime entitlement behavior from the reference image.
-- [x] Match the reference composition with compact colored KPI cards, URL-backed activity/relationship filters, a matrix panel, and a module-boundaries side panel.
-- [ ] Test matrix accessibility and responsive overflow.
+The former Modules Matrix, Templates Library, and Template Details pages were
+removed on 2026-11-18. Their dated implementation notes below are historical
+records; those routes, APIs, and feature folders are no longer active.
 
-### 10. Templates Library - `/templates`
-
-- [x] Confirmed the existing list/create/update contracts and revision requirement; no delete endpoint is exposed.
-- [x] Move template fetching and create/update operations into React Query hooks with targeted cache invalidation.
-- [x] Implement URL-backed search, activity, and status filters with responsive preview cards.
-- [x] Use restaurant hero/menu images for the corresponding layouts and offers artwork only for offer-related templates; include an image fallback.
-- [x] Implement draft/available status changes through the revision-aware update API; availability adds a design to the merchant selection library and does not publish a storefront.
-- [~] Verify image fallback, loading, empty, error, Arabic/RTL, and responsive states in the browser.
-
-### 11. Template Details - `/templates/:templateId`
-
-- [x] Confirmed the API has no detail endpoint; resolve deep links from the shared `/admin/templates` React Query list and handle missing IDs.
-- [x] Implement preview and saved metadata sections using only the existing template summary fields.
-- [x] Explain merchant eligibility accurately: activity scope must match, and `available` designs are offered for new selections; already-selected designs may remain visible after moving to drafts.
-- [x] Reuse the revision-aware update API for editing and availability changes, with targeted invalidation of the templates query.
-- [x] Implement loading, error, missing, success, and Arabic states.
-- [x] Test deep links, revisioned edits, availability changes, unknown IDs, Arabic/RTL, and horizontal fit in desktop and mobile Playwright projects.
-
-### 12. Governance and Audit - `/governance`
+### 9. Governance and Audit - `/governance`
 
 - [!] Await approved governance requirements and API support.
 - [ ] Define authorized viewers and actions.
@@ -166,10 +146,13 @@ Progress states:
 - [ ] Audit all pages for RTL and LTR.
 - [ ] Audit all pages at desktop, tablet, and mobile sizes.
 - [ ] Audit focus order, keyboard operation, and accessible names.
-- [ ] Remove superseded legacy CSS only after its consumers are migrated.
+- [x] Remove the retired design-library preview and module-matrix styles.
 - [ ] Verify no server response data is duplicated in Zustand.
 
-## Verification Checklist
+## Historical Verification Records
+
+The results below predate the 2026-11-18 scope update. They document the former
+implementation and are not verification of the current code.
 
 - [x] `pnpm --filter @waffarly/super-admin typecheck`
 - [x] `pnpm --filter @waffarly/super-admin lint`
@@ -197,7 +180,7 @@ Progress states:
 
 - Added mocked Playwright coverage for the `/templates/:templateId` deep link, revision-aware editing, availability changes, and unknown template IDs.
 - Added Arabic direction and responsive overflow assertions to the loaded details route; both desktop and mobile projects pass.
-- `pnpm exec playwright test --config=playwright.routes.config.ts --grep "admin template details"` passed (4 tests across desktop and mobile). The initial run exposed missing timestamps in the mock fixture; adding valid ISO timestamps resolved the fixture error without changing page behavior.
+- `pnpm exec playwright test --config=tests/playwright/routes.config.ts --grep "admin template details"` passed (4 tests across desktop and mobile). The initial run exposed missing timestamps in the mock fixture; adding valid ISO timestamps resolved the fixture error without changing page behavior.
 
 ### 2026-10-14 - Templates Library
 
@@ -357,11 +340,10 @@ Progress states:
 
 ## Decisions and Blockers
 
-| Date | Area | Decision or blocker | Status |
-| --- | --- | --- | --- |
-| 2026-10-14 | Visual reference | Use the supplied kit for presentation, not for business rules. | Decided |
-| 2026-10-14 | Server state | TanStack React Query owns API data and mutations. | Decided |
-| 2026-10-14 | Client state | Zustand owns only small client-side UI state. | Decided |
-| 2026-10-14 | Shareable state | Routes and query parameters own shareable navigation, filters, sorting, and pagination. | Decided |
-| 2026-10-14 | Governance | Requirements, viewer policy, event policy, retention, and API remain unresolved. | Blocked |
-
+| Date       | Area             | Decision or blocker                                                                     | Status  |
+| ---------- | ---------------- | --------------------------------------------------------------------------------------- | ------- |
+| 2026-10-14 | Visual reference | Use the supplied kit for presentation, not for business rules.                          | Decided |
+| 2026-10-14 | Server state     | TanStack React Query owns API data and mutations.                                       | Decided |
+| 2026-10-14 | Client state     | Zustand owns only small client-side UI state.                                           | Decided |
+| 2026-10-14 | Shareable state  | Routes and query parameters own shareable navigation, filters, sorting, and pagination. | Decided |
+| 2026-10-14 | Governance       | Requirements, viewer policy, event policy, retention, and API remain unresolved.        | Blocked |

@@ -49,7 +49,10 @@ export function useLocalCheckout(
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length || !lines.length) return;
     const summary = restaurantCheckout(cartProducts(lines), draft.fulfillment);
-    if (summary.issue) { setNotice(summary.issue); return; }
+    if (summary.issue) {
+      setNotice(summary.issue);
+      return;
+    }
     setStep('review');
     setNotice('');
   }
@@ -57,7 +60,10 @@ export function useLocalCheckout(
   function confirm() {
     if (busy.current || !lines.length) return;
     const summary = restaurantCheckout(cartProducts(lines), draft.fulfillment);
-    if (summary.issue) { setNotice(summary.issue); return; }
+    if (summary.issue) {
+      setNotice(summary.issue);
+      return;
+    }
     const nextErrors = validateCheckout(draft);
     if (Object.keys(nextErrors).length) {
       setErrors(nextErrors);

@@ -1,3 +1,4 @@
+/** Creates and maintains products, choices and variants while protecting existing order history. */
 import {
   BadRequestException,
   ConflictException,
@@ -5,14 +6,19 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { CatalogProductModifierGroupAssignmentFields } from '@waffarly/contracts';
-import type { CursorPage } from '@waffarly/contracts';
-import { assertScopedCursor, type CursorPageQuery } from '../../../common/http/pagination.js';
+import type { CatalogProductModifierGroupAssignmentFields, CursorPage } from '@waffarly/contracts';
+import { type CursorPageQuery } from '../../../common/http/pagination.js';
 import {
   isSerializationConflict,
   isUniqueConstraintError,
 } from '../../../infrastructure/database/prisma-errors.js';
 import { PrismaService } from '../../../infrastructure/database/prisma.service.js';
+import {
+  assertSavedModifierDetails,
+  replaceModifierDetails,
+} from './persistence/modifier-details.persistence.js';
+import { assertPendingRecipeUnchanged } from './persistence/pending-recipe.rules.js';
+import { replaceProductInventoryConfiguration } from './persistence/product-inventory.persistence.js';
 import {
   createLegacyModifierGroups,
   createModifierAssignments,
@@ -27,23 +33,23 @@ import {
   createVariantsWithAttributes,
   replaceVariantsWithAttributes,
 } from './persistence/product-variants.persistence.js';
-import { replaceProductInventoryConfiguration } from './persistence/product-inventory.persistence.js';
-import {
-  replaceModifierDetails,
-  assertSavedModifierDetails,
-} from './persistence/modifier-details.persistence.js';
-import { productInclude, toProductResponse } from './product.mapper.js';
 import {
   assertInventoryConfigurationShape,
   inventoryConfigurationMatches,
 } from './product-inventory.rules.js';
 import {
+  assertProductPromotionPrices,
+  productPromotionData,
+} from './product-promotion.rules.js';
+import { productInclude, toProductResponse } from './product.mapper.js';
+import {
   assertBasePrice,
   assertModifierConfigurationModes,
   assertVariants,
 } from './product.rules.js';
-import { assertPendingRecipeUnchanged } from './persistence/pending-recipe.rules.js';
 import type { ProductInput, ProductPatch } from './product.types.js';
+import { getProduct, listProducts } from './queries/product-queries.js';
+
 @Injectable()
 export class ProductService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
@@ -51,28 +57,17 @@ export class ProductService {
     merchantId: string,
     page: CursorPageQuery = { limit: 50 },
   ): Promise<CursorPage<ReturnType<typeof toProductResponse>>> {
-    if (page.cursor) {
-      const anchor = await this.prisma.product.findFirst({
-        where: { id: page.cursor, merchantId },
-        select: { id: true },
-      });
-      assertScopedCursor(page.cursor, anchor !== null);
-    }
-    const products = await this.prisma.product.findMany({
-      where: { merchantId },
-      include: productInclude,
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: page.limit + 1,
-      ...(page.cursor ? { cursor: { id: page.cursor }, skip: 1 } : {}),
-    });
-    const hasMore = products.length > page.limit;
-    const items = products.slice(0, page.limit).map(toProductResponse);
-    return { items, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null };
+    return listProducts(this.prisma, merchantId, page);
   }
 
   async create(merchantId: string, actor: string, input: ProductInput) {
     assertBasePrice(input.basePrice);
     assertVariants(input.variants);
+    assertProductPromotionPrices(
+      input.promotion,
+      input.basePrice,
+      input.variants?.map((variant) => variant.price) ?? [],
+    );
     assertModifierConfigurationModes(input.modifierGroups, input.modifierGroupAssignments);
     if (input.availability === 'available' && !input.inventoryConfiguration) {
       throw new BadRequestException('Configure inventory before making a new product available.');
@@ -100,6 +95,7 @@ export class ProductService {
               name: input.name.trim(),
               description: input.description?.trim() || null,
               basePrice: input.basePrice,
+              ...productPromotionData(input.promotion),
               availability: input.availability,
               createdBy: actor,
               updatedBy: actor,
@@ -185,10 +181,12 @@ export class ProductService {
     revision: number,
     input: ProductPatch,
   ) {
+    // 1. Read the version the owner reviewed before replacing product details.
     const current = await this.prisma.product.findFirst({
       where: { id, merchantId, revision },
       include: {
         images: true,
+        variants: { select: { price: true } },
         inventoryConfiguration: {
           include: {
             targets: {
@@ -210,6 +208,22 @@ export class ProductService {
     if (!primaryImageAssetId) throw new BadRequestException('At least one image is required.');
     if (input.basePrice !== undefined) assertBasePrice(input.basePrice);
     assertVariants(input.variants);
+    const promotionForValidation =
+      input.promotion === undefined
+        ? {
+            enabled: current.promotionEnabled,
+            type: current.promotionType as 'percentage' | 'amount' | null,
+            value: current.promotionValue?.toString() ?? null,
+            startsAt: current.promotionStartsAt?.toISOString() ?? null,
+            endsAt: current.promotionEndsAt?.toISOString() ?? null,
+          }
+        : input.promotion;
+    assertProductPromotionPrices(
+      promotionForValidation,
+      input.basePrice ?? current.basePrice.toString(),
+      input.variants?.map((variant) => variant.price) ??
+        current.variants.map((variant) => variant.price.toString()),
+    );
     assertModifierConfigurationModes(input.modifierGroups, input.modifierGroupAssignments);
     if (input.inventoryConfiguration) {
       assertInventoryConfigurationShape(input.inventoryConfiguration);
@@ -293,6 +307,7 @@ export class ProductService {
                 ? {}
                 : { description: input.description.trim() || null }),
               ...(input.basePrice === undefined ? {} : { basePrice: input.basePrice }),
+              ...(input.promotion === undefined ? {} : productPromotionData(input.promotion)),
               ...(input.availability === undefined ? {} : { availability: input.availability }),
               updatedBy: actor,
               revision: { increment: 1 },
@@ -503,7 +518,7 @@ export class ProductService {
       data: { archivedAt: new Date(), updatedBy: actor, revision: { increment: 1 } },
     });
     if (changed.count !== 1) throw new ConflictException('Product is missing or stale.');
-    return this.get(merchantId, id);
+    return getProduct(this.prisma, merchantId, id);
   }
 
   async restore(merchantId: string, actor: string, id: string, revision: number) {
@@ -517,7 +532,7 @@ export class ProductService {
       },
     });
     if (changed.count !== 1) throw new ConflictException('Product is missing or stale.');
-    return this.get(merchantId, id);
+    return getProduct(this.prisma, merchantId, id);
   }
 
   async remove(merchantId: string, id: string) {
@@ -551,11 +566,6 @@ export class ProductService {
   }
 
   async get(merchantId: string, id: string) {
-    const product = await this.prisma.product.findFirst({
-      where: { id, merchantId },
-      include: productInclude,
-    });
-    if (!product) throw new NotFoundException('Product was not found.');
-    return toProductResponse(product);
+    return getProduct(this.prisma, merchantId, id);
   }
 }

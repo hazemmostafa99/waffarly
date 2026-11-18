@@ -101,6 +101,7 @@ export interface PosConfirmedOrderReference {
   branchId: string;
   createdAt: string;
   orderReference?: string | null | undefined;
+  branchOrderNumber?: number | null | undefined;
   lastOpenedAt?: string;
 }
 
@@ -150,7 +151,12 @@ interface WorkspaceState {
     employeeId: string,
     draftId: string,
     requestId: string,
-    order: { id: string; createdAt: string; orderReference?: string | null },
+    order: {
+      id: string;
+      createdAt: string;
+      orderReference?: string | null;
+      branchOrderNumber?: number | null;
+    },
   ) => void;
   openServerOrder: (
     merchantId: string,
@@ -422,6 +428,8 @@ function isPendingShiftClose(value: unknown): value is PendingPosShiftClose {
     typeof request.requestId === 'string' &&
     Boolean(request.requestId) &&
     isPersistedMoney(request.countedCash) &&
+    (request.confirmPendingDeliveries === undefined ||
+      typeof request.confirmPendingDeliveries === 'boolean') &&
     (request.deliveryHandover === undefined ||
       (request.deliveryHandover !== null &&
         typeof request.deliveryHandover === 'object' &&
@@ -601,7 +609,23 @@ function isPendingPosRefund(value: unknown): value is PendingPosRefund {
       (allocation.terminalReference === undefined ||
         typeof allocation.terminalReference === 'string')
     );
-  });
+  }) && (
+    request.lineAllocations === undefined ||
+    (Array.isArray(request.lineAllocations) &&
+      request.lineAllocations.length > 0 &&
+      request.lineAllocations.length <= 30 &&
+      request.lineAllocations.every((value) => {
+        if (!value || typeof value !== 'object') return false;
+        const line = value as Record<string, unknown>;
+        return (
+          typeof line.orderLineId === 'string' &&
+          Boolean(line.orderLineId) &&
+          Number.isSafeInteger(line.quantity) &&
+          Number(line.quantity) > 0 &&
+          Number(line.quantity) <= 99
+        );
+      }))
+  );
 }
 
 function isPendingPosItemReturn(value: unknown): value is PendingPosItemReturn {
@@ -708,6 +732,9 @@ function parseWorkspace(
                 ? { terminalReference: allocation.terminalReference }
                 : {}),
             })),
+            ...(command.lineAllocations
+              ? { lineAllocations: command.lineAllocations.map((line) => ({ ...line })) }
+              : {}),
           },
         };
       }
@@ -797,6 +824,9 @@ function parseWorkspace(
               countedCash: value.pendingShiftClose.request.countedCash,
               ...(typeof value.pendingShiftClose.request.reason === 'string'
                 ? { reason: value.pendingShiftClose.request.reason }
+                : {}),
+              ...(value.pendingShiftClose.request.confirmPendingDeliveries === true
+                ? { confirmPendingDeliveries: true }
                 : {}),
               ...(value.pendingShiftClose.request.deliveryHandover
                 ? {
@@ -1097,6 +1127,7 @@ export const usePosWorkspaceStore = create<WorkspaceState>((set, get) => ({
             branchId: draft.branchId,
             createdAt: order.createdAt,
             orderReference: order.orderReference,
+            branchOrderNumber: order.branchOrderNumber,
           },
         },
         selectedConfirmedOrderId: draft.branchId === current.selectedBranchId ? order.id : null,
@@ -1667,6 +1698,9 @@ export const usePosWorkspaceStore = create<WorkspaceState>((set, get) => ({
             ? { terminalReference: allocation.terminalReference }
             : {}),
         })),
+        ...(refund.request.lineAllocations
+          ? { lineAllocations: refund.request.lineAllocations.map((line) => ({ ...line })) }
+          : {}),
       },
     };
     const existing = current.pendingRefunds[key];

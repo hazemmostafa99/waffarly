@@ -10,7 +10,7 @@ import { describe, it } from 'node:test';
 import {
   createPosEmployeeSchema,
   updatePosEmployeeSchema,
-} from '../../src/modules/auth/pos-employee.schemas.js';
+} from '../../src/modules/employees/pos-employee.schemas.js';
 
 describe('POS employee role permissions', () => {
   it('preserves the legacy order grants without adding sales or shift access', () => {
@@ -83,9 +83,9 @@ describe('POS employee role permissions', () => {
     };
     assert.equal(hasPosEmployeePermission(legacy, 'view_orders'), true);
     assert.equal(hasPosEmployeePermission(legacy, 'view_receipts'), false);
-    assert.equal(posEmployeeHome(legacy), '/');
+    assert.equal(posEmployeeHome(legacy), '/kitchen');
     assert.equal(posEmployeeHome({ permissions: ['view_inventory'] }), '/inventory');
-    assert.equal(posEmployeeHome({ permissions: ['view_receipts'] }), '/receipts');
+    assert.equal(posEmployeeHome({ permissions: ['view_receipts'] }), '/orders');
     assert.equal(posEmployeeHome({ permissions: [] }), '/access');
     assert.equal(hasPosEmployeePermission({ permissions: ['sell'] }, 'view_receipts'), true);
   });
@@ -95,7 +95,7 @@ describe('POS employee role permissions', () => {
       username: 'employee1',
       displayName: 'Employee One',
       password: 'a-long-password',
-      branchIds: ['33333333-3333-4333-8333-333333333333'],
+      branchId: '33333333-3333-4333-8333-333333333333',
     };
     for (const role of POS_EMPLOYEE_ROLES) {
       assert.equal(createPosEmployeeSchema.safeParse({ ...input, role }).success, true);
@@ -104,7 +104,7 @@ describe('POS employee role permissions', () => {
           displayName: input.displayName,
           active: true,
           revision: 1,
-          branchIds: input.branchIds,
+          branchId: input.branchId,
           role,
         }).success,
         true,
@@ -117,7 +117,7 @@ describe('POS employee role permissions', () => {
           displayName: input.displayName,
           active: true,
           revision: 1,
-          branchIds: input.branchIds,
+          branchId: input.branchId,
           role,
         }).success,
         false,

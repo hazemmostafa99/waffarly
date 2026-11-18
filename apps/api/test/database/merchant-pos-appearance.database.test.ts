@@ -1,19 +1,19 @@
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
-import { config } from 'dotenv';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import { MerchantPosAppearanceService } from '../../src/modules/merchants/merchant-pos-appearance.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'persists merchant POS accent with revision checks and tenant isolation',
   { skip: !databaseUrl },
-  async () => {
+  async (testContext) => {
     assert.ok(databaseUrl);
-    const prisma = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+    const prisma = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback POS appearance fixtures');
     try {
       await assert.rejects(

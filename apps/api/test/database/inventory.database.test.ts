@@ -1,23 +1,23 @@
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
-import { config } from 'dotenv';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
+
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'persists tenant-scoped stock identities and immutable units without adding stock',
   { skip: !databaseUrl },
-  async () => {
+  async (testContext) => {
     assert.ok(
       databaseUrl,
-      'Configure DATABASE_URL and apply the inventory registry migration first.',
+      'Configure TEST_DATABASE_URL and apply the inventory registry migration first.',
     );
-    const client = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl) });
+    const client = createTestDatabaseClient(testContext);
     const rollback = new Error('Rollback inventory verification fixtures');
     try {
       await assert.rejects(

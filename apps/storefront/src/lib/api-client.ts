@@ -32,9 +32,14 @@ export async function apiGet<T>(
   return (await response.json()) as T;
 }
 
-export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+export async function apiPost<T>(
+  path: string,
+  body: unknown,
+  options: { credentials?: RequestCredentials } = {},
+): Promise<T> {
   const response = await fetch(new URL(path.replace(/^\//, ''), `${apiBaseUrl()}/`), {
     method: 'POST',
+    credentials: options.credentials ?? 'same-origin',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });

@@ -62,6 +62,11 @@ export async function postPreparedMovementBatch(
     throw new NotFoundException('Active warehouse was not found.');
   const itemById = new Map(items.map((item) => [item.id, item]));
   const warehouseById = new Map(warehouses.map((warehouse) => [warehouse.id, warehouse]));
+  const costs = await transaction.stockItemCostCurrent.findMany({
+    where: { merchantId, stockItemId: { in: itemIds } },
+    select: { stockItemId: true, baseUnitCost: true, revision: true },
+  });
+  const costByItem = new Map(costs.map((cost) => [cost.stockItemId, cost]));
 
   for (const line of command.movements) {
     const item = itemById.get(line.stockItemId)!;
@@ -126,6 +131,8 @@ export async function postPreparedMovementBatch(
       unitCode: line.unitCode,
       enteredQuantity: line.enteredQuantity,
       baseDelta: normalizeSignedDecimal(line.baseDelta),
+      costRevision: costByItem.get(line.stockItemId)?.revision ?? null,
+      baseUnitCost: costByItem.get(line.stockItemId)?.baseUnitCost ?? null,
       position,
       createdBy: actor,
     })),

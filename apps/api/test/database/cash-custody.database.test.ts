@@ -1,23 +1,26 @@
+import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { createTestDatabaseClient } from '../support/test-database.js';
+import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { createPostgresAdapter, PrismaClient } from '@waffarly/database';
+
 import type { PosEmployeeSession } from '@waffarly/contracts';
-import { config } from 'dotenv';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
+import { PosRegistersService } from '../../src/modules/shifts/registers/pos-registers.service.js';
 import { ShiftsService } from '../../src/modules/shifts/shifts.service.js';
 import { CashCustodyService } from '../../src/modules/shifts/cash-custody.service.js';
 
-config({ path: new URL('../../../../.env', import.meta.url), quiet: true });
-const databaseUrl = process.env.DATABASE_URL;
+const databaseUrl = getTestDatabaseUrl();
 
 it(
   'tracks physical custody, independently confirms receipts, protects close snapshots and allocates carryover only once',
   { skip: !databaseUrl },
-  async () => {
-    const prisma = new PrismaClient({ adapter: createPostgresAdapter(databaseUrl!) });
+  async (testContext) => {
+    const prisma = createTestDatabaseClient(testContext);
     const shifts = new ShiftsService(prisma as unknown as PrismaService);
+    const registers = new PosRegistersService(prisma as unknown as PrismaService);
     const cash = new CashCustodyService(prisma as unknown as PrismaService);
     const tenants: string[] = [];
     const token = randomUUID();
@@ -62,6 +65,7 @@ it(
         const row = await prisma.posEmployee.create({
           data: {
             merchantId: merchant.id,
+            branchId: branch.id,
             username: `${name}-${token}`,
             displayName: name,
             passwordHash: 'test-only',
@@ -69,14 +73,6 @@ it(
             permissions: [],
             createdBy: 'test',
             updatedBy: 'test',
-          },
-        });
-        await prisma.posEmployeeBranch.create({
-          data: {
-            merchantId: merchant.id,
-            employeeId: row.id,
-            branchId: branch.id,
-            createdBy: 'test',
           },
         });
         return {
@@ -91,12 +87,12 @@ it(
             'approve_shift_close',
             'manage_cash_movements',
           ],
-          branches: [{ id: branch.id, name: branch.name, archivedAt: null }],
+          branch: { id: branch.id, name: branch.name, archivedAt: null },
         };
       };
       const cashier = await makeEmployee('Cashier');
       const receiver = await makeEmployee('Receiver');
-      const register = await shifts.createRegister(merchant.id, 'test', {
+      const register = await registers.createRegister(merchant.id, 'test', {
         branchId: branch.id,
         name: 'Drawer',
       });
@@ -399,9 +395,10 @@ it(
       });
       await prisma.posShift.deleteMany({ where: { merchantId: { in: tenants } } });
       await prisma.posRegister.deleteMany({ where: { merchantId: { in: tenants } } });
-      await prisma.posEmployeeBranch.deleteMany({ where: { merchantId: { in: tenants } } });
       await prisma.posEmployee.deleteMany({ where: { merchantId: { in: tenants } } });
       await prisma.branch.deleteMany({ where: { merchantId: { in: tenants } } });
+      // Merchant creation also creates a subscription; remove only these test tenants' records.
+      await deleteTestMerchantSubscriptions(prisma, tenants);
       await prisma.merchant.deleteMany({ where: { id: { in: tenants } } });
       await prisma.$disconnect();
     }

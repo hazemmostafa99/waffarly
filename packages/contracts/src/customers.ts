@@ -17,6 +17,14 @@ export interface MerchantCustomer {
   updatedAt: string;
 }
 
+/** Customer identity authenticated only within one merchant storefront. */
+export interface StorefrontCustomerProfile {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+}
+
 export interface CreateMerchantCustomerRequest {
   /** Client-generated UUID; retries with the same content replay safely. */
   requestId: string;

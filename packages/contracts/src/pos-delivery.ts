@@ -1,12 +1,14 @@
 export interface PosDeliverySummary {
   orderId: string;
   orderReference?: string | null;
+  branchOrderNumber?: number | null;
   branchId: string;
   sourceShiftId: string;
   followupShiftId: string | null;
   revision: number;
   orderRevision: number;
   orderStatus: string;
+  courierId: string | null;
   courierName: string;
   status: 'out_for_delivery' | 'delivered' | 'failed';
   dispatchedAt: string;
@@ -30,6 +32,8 @@ export type PosDeliveryCommand = {
   requestId: string;
   revision: number;
 } & (
+  | { action: 'dispatch'; courierId: string }
+  // Allows exact recovery of a dispatch saved by an older POS client.
   | { action: 'dispatch'; courierName: string }
   | { action: 'delivered' }
   | { action: 'failed'; reason: string }
@@ -38,9 +42,9 @@ export type PosDeliveryCommand = {
 );
 
 export interface PosDeliveryHandoverSnapshot {
-  recipientEmployeeId: string;
-  recipientName: string;
-  approvedByName: string;
+  recipientEmployeeId?: string | null;
+  recipientName?: string | null;
+  approvedByName?: string | null;
   deliveries: Array<{
     orderId: string;
     courierName: string;

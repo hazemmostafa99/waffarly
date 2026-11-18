@@ -9,6 +9,7 @@ export const balanceInclude = {
 export const movementInclude = {
   batch: true,
   warehouse: { select: { branchId: true } },
+  costEvent: { select: { sourceType: true, sourceInvoiceId: true } },
 } as const;
 type BalanceRecord = Prisma.StockBalanceGetPayload<{ include: typeof balanceInclude }>;
 type MovementRecord = Prisma.StockMovementGetPayload<{ include: typeof movementInclude }>;
@@ -61,7 +62,21 @@ export function toMovement(record: MovementRecord): StockMovement {
     unitCode: record.unitCode,
     enteredQuantity: decimalText(record.enteredQuantity.toFixed(6)),
     baseDelta: decimalText(record.baseDelta.toFixed(6)),
+    costRevision: record.costRevision,
+    baseUnitCost: record.baseUnitCost?.toFixed(12) ?? null,
+    estimatedCostAmount: record.baseUnitCost
+      ? formatEstimatedCostAmount(record.baseDelta.toFixed(6), record.baseUnitCost.toFixed(12))
+      : null,
+    costSourceType: (record.costEvent?.sourceType as StockMovement['costSourceType']) ?? null,
+    costSourceInvoiceId: record.costEvent?.sourceInvoiceId ?? null,
     actor: record.createdBy,
     createdAt: record.createdAt.toISOString(),
   };
+}
+
+function formatEstimatedCostAmount(quantity: string, unitCost: string): string {
+  const quantityScaled = BigInt(quantity.replace(/^-/, '').replace('.', ''));
+  const costScaled = BigInt(unitCost.replace('.', ''));
+  const cents = (quantityScaled * costScaled + 5_000_000_000_000_000n) / 10_000_000_000_000_000n;
+  return `${cents / 100n}.${(cents % 100n).toString().padStart(2, '0')}`;
 }

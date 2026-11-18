@@ -15,6 +15,8 @@ export function productHref(
   const searchParams = new URLSearchParams(search);
   const state = parseMarketplaceSearch(searchParams);
   const params = new URLSearchParams();
+  const restaurant = searchParams.get('restaurant');
+  if (restaurant) params.set('restaurant', restaurant);
   if (state.category !== 'all') params.set('category', state.category);
   if (state.term) params.set('q', state.term);
 
@@ -47,8 +49,7 @@ export function productHref(
     }
   }
 
-  return '/products/' + encodeURIComponent(id) +
-    (params.size ? '?' + params.toString() : '');
+  return '/products/' + encodeURIComponent(id) + (params.size ? '?' + params.toString() : '');
 }
 
 export function productBackHref(search: string) {
@@ -56,11 +57,7 @@ export function productBackHref(search: string) {
   const returnTo = params.get('returnTo');
   if (returnTo === 'home-products' || returnTo === 'home-deals') {
     const section = returnTo === 'home-products' ? 'products' : 'deals';
-    return marketplaceSearchHref('/',
-      '',
-      parseMarketplaceSearch(params),
-      section,
-    );
+    return marketplaceSearchHref('/', '', parseMarketplaceSearch(params), section);
   }
 
   if (returnTo === 'offers' || returnTo === 'products') {
@@ -74,8 +71,5 @@ export function productBackHref(search: string) {
     return pathname + (query ? '?' + query : '');
   }
 
-  return marketplaceSearchHref('/',
-    '',
-    parseMarketplaceSearch(new URLSearchParams(search)),
-  );
+  return marketplaceSearchHref('/', '', parseMarketplaceSearch(new URLSearchParams(search)));
 }

@@ -43,15 +43,16 @@
     margin: 0;
     background: var(--bg);
     color: var(--ink);
-    font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
-    font-size: 16px;
-    line-height: normal;
+    font-family: var(--font-tajawal, 'Segoe UI'), Tahoma, sans-serif;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.65;
   }
   .marketplace-theme :where(h1, h2, h3, h4, p) {
     all: revert;
   }
-  .marketplace-theme :where(button, input, select) {
-    line-height: normal;
+  .marketplace-theme :where(button, input, select, textarea) {
+    line-height: 1.5;
     letter-spacing: normal;
   }
   .marketplace-theme img {
@@ -64,7 +65,8 @@
   }
   .marketplace-theme button,
   .marketplace-theme input,
-  .marketplace-theme select {
+  .marketplace-theme select,
+  .marketplace-theme textarea {
     font: inherit;
   }
   .marketplace-theme button {

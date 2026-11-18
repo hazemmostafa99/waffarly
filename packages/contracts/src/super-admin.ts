@@ -1,4 +1,4 @@
-import type { BusinessActivityKey } from './activities-modules.js';
+import type { BusinessActivityKey } from './activities.js';
 
 export interface MerchantSummary {
   storefrontHandle?: string | null;
@@ -25,6 +25,18 @@ export interface CreateMerchantRequest {
   ownerMobile: string;
   username: string;
   password: string;
+}
+
+/** The merchant is selected by the admin route; password confirmation stays in the UI. */
+export interface ResetMerchantOwnerPasswordRequest {
+  password: string;
+}
+
+/** A successful reset acknowledgement never returns the password or its hash. */
+export interface ResetMerchantOwnerPasswordResponse {
+  merchantId: string;
+  username: string;
+  passwordResetAt: string;
 }
 
 export interface SubmitMerchantApplicationRequest {

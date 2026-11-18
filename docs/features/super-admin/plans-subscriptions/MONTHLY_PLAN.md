@@ -33,7 +33,7 @@ These are reversible implementation choices for the authorized slice, separate f
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Name             | Required trimmed text, 1–160 characters. Duplicate display names are permitted; identifiers distinguish records.                                                                        |
 | Monthly price    | Required decimal string from `0` to `99999999.99`, with at most two fractional digits; stored as `DECIMAL(10,2)` and returned with two digits. Floating-point JSON prices are rejected. |
-| Currency         | Always EGP. Both plan editors submit EGP automatically; the API, service, shared contracts, and database reject other currencies.             |
+| Currency         | Always EGP. Both plan editors submit EGP automatically; the API, service, shared contracts, and database reject other currencies.                                                       |
 | Billing interval | Always `monthly`; other intervals are rejected. This does not define merchant coverage dates.                                                                                           |
 | Description      | Optional trimmed text up to 1,000 characters; omitted API values become an empty string.                                                                                                |
 | Record facts     | UUID identifier, revision, timestamps, and creation/update administrator identifiers.                                                                                                   |
@@ -86,8 +86,8 @@ The [Prisma schema](../../../../packages/database/prisma/schema.prisma) defines 
 
 - [Plans view](../../../../apps/super-admin/src/Plans.tsx) and [styles](../../../../apps/super-admin/src/plans.css): responsive create/edit form and catalog, with no preset price and EGP fixed automatically.
 - [Super Admin app](../../../../apps/super-admin/src/App.tsx): Plans navigation alongside Restaurants and Design library.
-- [Controller](../../../../apps/api/src/modules/super-admin/plan.controller.ts): authenticated routes, strict input validation, and normalization.
-- [Service](../../../../apps/api/src/modules/super-admin/plan.service.ts): list/create/edit, replay handling, and revision checks.
+- [Controller](../../../../apps/api/src/modules/plans/plan.controller.ts): authenticated routes, strict input validation, and normalization.
+- [Service](../../../../apps/api/src/modules/plans/plan.service.ts): list/create/edit, replay handling, and revision checks.
 
 ## 8. Acceptance and Validation
 
@@ -98,7 +98,7 @@ The [Prisma schema](../../../../packages/database/prisma/schema.prisma) defines 
 - Plan writes do not mutate merchant approval, owner provisioning, activation, collection, or coverage.
 - No payment-provider call is part of administration.
 
-[API tests](../../../../apps/api/test/plans.e2e.test.ts) cover authorization, price normalization/bounds, validation, optional descriptions, retries, missing targets, and stale revisions with a test database provider. All nine API/health tests passed. A live PostgreSQL check also verified exact price persistence, revision conflicts, and rollback of its temporary data. Builds, type checks, lint, schema validation, and migration checks supplement them. Interactive browser verification is limited by the unavailable browser session connector in this environment and is not claimed as passed.
+[API tests](../../../../apps/api/test/http/plans.e2e.test.ts) cover authorization, price normalization/bounds, validation, optional descriptions, retries, missing targets, and stale revisions with a test database provider. All nine API/health tests passed. A live PostgreSQL check also verified exact price persistence, revision conflicts, and rollback of its temporary data. Builds, type checks, lint, schema validation, and migration checks supplement them. Interactive browser verification is limited by the unavailable browser session connector in this environment and is not claimed as passed.
 
 ## 9. Running the Feature
 

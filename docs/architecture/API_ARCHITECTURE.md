@@ -1,9 +1,124 @@
 # API architecture
 
+Business reporting center (2026-11-18): Reports owns the owner-only monthly
+`/owner/reports/business` read. It composes saved product profitability, recorded
+expenses, approved staff cost, independent inventory waste and current custody/
+obligations in one RepeatableRead transaction. Existing business modules retain
+all write ownership; there is no new module dependency or schema migration.
+The management report excludes cancelled revenue by current status, preserves
+consumption when stock was not restored, and labels incomplete costs/payroll.
+Source implementation is delivered; authenticated browser and SQL/manual
+acceptance remain pending. See [business reports](../features/business-reports/FEATURE.md).
+
+Current application ownership (2026-11-14): the reviewed Orders operations and
+primary write operations in Shifts, Inventory, Merchants, Catalog and Subscriptions
+execute in Nest application services. Rules, calculations, reads, mapping and
+active-transaction helpers remain ordinary functions. No extra forwarding service
+layer is required. See [the exact standard and reviewed scope](API_APPLICATION_STANDARD.md).
+
+Tenant storefront branding (2026-11-18): restaurant name, description, logo and
+cover remain owned by the restaurant profile and are projected into the owner
+account and independent storefront. Merchant storefront settings own a simple
+homepage layout, four palette colors and logo display size. Shared templates and
+platform-module metadata were removed; a data-preserving migration retains each
+merchant's current layout. Existing inline logos remain a fallback; new media
+uploads use the owner-scoped 10 MB media endpoint. See the
+[branding behavior](../features/merchant-storefront-branding.md).
+
+Purchase cost P03 (2026-11-14): Inventory owns one current base-unit cost and
+revision-ordered source history per merchant stock item, including opening cost.
+Purchasing records purchase-sourced cost through InventoryCostService inside the
+existing receipt transaction; the stock movement, invoice confirmation, and cost
+event commit or roll back together. See the
+[purchase cost feature](../features/purchase-cost-profitability/README.md).
+
+Developer workflow (2026-11-14): [CONTRIBUTING.md](../../CONTRIBUTING.md) is the
+daily entry point, with [operation traces](API_WORKFLOWS.md) and an
+[API test map](../testing/API_TESTING.md). Database suites use guarded
+TEST_DATABASE_URL configuration and a shared client/cleanup setup. The default
+unit suite now detects circular static runtime imports between business modules.
+See the verification ledger for the 273 HTTP/unit and 38 isolated PostgreSQL test
+results. These checks do not imply browser or operator acceptance.
+
+API module cleanup (2026-11-14): Shifts, Subscriptions, Inventory, Merchants and
+Catalog now separate their independent operations and queries while retaining
+existing application-service APIs. Employees owns staff configuration in its own
+module and imports Auth; Auth retains identity/session/permission enforcement.
+Owner/cashier shift controllers and inventory policy/ledger/health controllers
+have separate homes. HTTP URLs, shared contracts and schema remain unchanged.
+See the [module navigation guide](API_MODULE_GUIDE.md) and
+[verification ledger](API_REFACTOR_PROGRESS.md).
+
+HR MVP (2026-11-18): Employees owns independent staff profiles and effective-dated
+pay rates; Attendance owns reasoned daily edits and month-end approval; Payroll
+freezes monthly calculations, advance repayments and safe-linked salary payments;
+Expenses owns categorized records, private receipt storage and safe-linked
+payments. All endpoints are owner-scoped. HR cash actions use the existing safe
+ledger within the same transaction as their business record. See the
+[HR feature rules](../features/hr/FEATURE.md).
+
+Orders organization (2026-11-14): HTTP entry points are grouped by application;
+order operations are grouped by business responsibility. Cashier routes share
+the `/pos/orders` prefix and are grouped into controllers for core order work,
+kitchen, billing and returns. Each calls the existing operation service directly.
+No route, schema or external module dependency changed. See the
+[Orders guide](../../apps/api/src/modules/orders/README.md) and
+[verification ledger](API_REFACTOR_PROGRESS.md).
+
+Merchant order inbox (2026-11-18): `/owner/orders/inbox` includes Waffarly,
+storefront and POS order origins and accepts server-side source, status,
+fulfillment, Cairo date-range and text filters. It returns a bounded cursor page
+with filtered database aggregates; bounded report requests include per-origin,
+daily, fulfillment and product aggregates. Full line details load through
+`/owner/orders/:id`. Dashboard consumers use bounded inbox reads; the older
+`/owner/orders` contract remains available for compatibility.
+
+Orders internal cleanup (2026-11-14): lifecycle actions use named helpers inside
+the existing transaction, with authorization/replay ordering preserved. Checkout
+item saving and policy decisions, customer session/queries/mapping, delivery
+queries/access, return queries/mapping and dining table setup have explicit homes.
+Owner dining table controllers now live in the owner HTTP folder. Each Orders
+source file has a plain-English purpose comment. No schema, route or external
+module dependency change is intended; manual acceptance remains pending.
+
+Customer orders update (2026-11-13): Marketplace restaurant orders now have
+account/guest ownership, backend history/detail/tracking reads and explicit guest
+claim. Historical statements below are superseded for this slice. See
+[current customer order delivery](../features/marketplace/marketplace-customer-orders.md). Manual acceptance is pending.
+
+Web restaurant status operations (2026-11-13) require an open receiving-branch
+cash shift. Orders uses Shifts public lockBranchOperationShift; the existing
+dependency graph is unchanged. Order arrival remains available without a shift.
+See [current ordering delivery](../features/marketplace/marketplace-live-restaurant-ordering.md).
+
+Pickup collection (2026-11-13): Orders attaches ready web pickup orders to an
+explicit open register shift and one check, reuses existing Payments/Shifts
+services, and permits paid pickup handover without changing order source.
+No module dependency change. An additive action-kind constraint migration records
+pickup collection preparation. See [delivery notes](../features/marketplace/marketplace-live-restaurant-ordering.md).
+
+Restaurant ordering update (2026-11-13): persisted reference restaurants now use
+real order submission. The local database has active subscriptions and owner
+accounts for all twelve. Earlier demo-only statements below are historical.
+See [current ordering delivery](../features/marketplace/marketplace-live-restaurant-ordering.md).
+
+Database connectivity (2026-11-12): Infrastructure owns one configured PostgreSQL
+pool per API process and a bounded startup `SELECT 1` retry policy before HTTP
+listen. Health retains separate liveness and database readiness endpoints;
+the HTTP exception filter maps recognized database connectivity/capacity errors
+to 503 without replaying business operations. No schema or module dependency
+changes are required. See [database connections](../setup/DATABASE_CONNECTIONS.md).
+
 Discounts (2026-11-11): Discounts owns merchant-scoped coupon definitions,
 revisioned updates, branch scope, and redemption reporting. Owner APIs derive
 tenant identity from Auth. Monetary fields cross the API as decimal strings;
 Cairo calendar dates determine schedule state. See [Merchant discounts](../features/discounts.md).
+
+Product promotions (2026-11-18): Catalog owns one optional, scheduled direct price
+promotion per product. Catalog pricing applies it to the selected base price before
+modifier additions and returns the same authoritative quote to storefront and POS.
+Order lines snapshot the promotion and savings. Product promotions cannot combine
+with checkout coupon codes. See [product rules](../features/catalog/PRODUCTS.md).
 
 Customer authentication (2026-11-11): Auth owns Marketplace `CustomerAccount`
 credentials, email/mobile sign-in, hashed database-backed attempt limits and
@@ -12,7 +127,7 @@ customer sessions. Registration allows 5 attempts per IP per hour; login allows
 verify contact ownership. Customers continues to own tenant-local contact records; account linking and historical-order
 claims require a later explicit verified-ownership flow. Orders retains existing
 association ownership. No new module dependency was added. See
-[customer authentication](../marketplace-customer-authentication.md).
+[customer authentication](../features/marketplace/marketplace-customer-authentication.md).
 
 Customers foundation (2026-11-11): Customers owns tenant-scoped guest/contact
 profiles, owner directory APIs and private notes. CustomerAccount provides a
@@ -22,26 +137,35 @@ same-tenant customer associations and bounded customer history. Customers import
 Auth; Orders additionally imports Customers. Existing checkout/POS submission and
 order snapshots remain unchanged. See [Customers](../features/customers.md).
 
+Tenant storefront accounts (2026-11-14): Customers owns merchant-scoped
+storefront credentials and sessions, using Auth's password/session primitives
+and Merchants' public slug resolution. Storefront signup creates a local customer
+directory record; Orders links signed-in storefront checkout to that record and
+serves merchant-scoped order history. Global Marketplace `CustomerAccount`
+endpoints remain separate. Dependency graph: Customers -> Auth, Merchants;
+Orders -> Customers. No historical guest orders are claimed or backfilled. See
+[storefront customer accounts](../features/customers.md#storefront-customer-accounts-2026-11-14).
+
 Restaurant owner settings (2026-11-11): Storefront owner settings now support an
 attributable merchant-name edit alongside profile settings. Catalog exports a
 bounded, revisioned MenuSettingsService for transactional section/product order,
 primary section and availability updates; Storefront exposes it to the current
 restaurant owner. The dependency graph is unchanged. Marketplace reads respect
-menu ordering. See [owner settings delivery](../marketplace-restaurant-owner-settings.md).
+menu ordering. See [owner settings delivery](../features/marketplace/marketplace-restaurant-owner-settings.md).
 
 Storefront checkout retries (2026-11-11): Orders adds a public basket quote,
 tenant/request unique order IDs with payload fingerprints, reviewed-total checks
 and matching replay receipts. Existing clients may omit the additive request
 fields; Marketplace supplies them for non-demo confirmation. Reference tenants
 remain local-confirmation demos. No additional module dependency was introduced.
-See [checkout integration](../marketplace-checkout-integration.md).
+See [checkout integration](../features/marketplace/marketplace-checkout-integration.md).
 
 Restaurant order eligibility (2026-11-11): Orders now imports Storefront's public
 RestaurantOrderPolicyService to assess restaurant operating/fulfillment rules on
 its active transaction and freeze delivery fee/policy snapshots. Storefront still
 depends on Auth/Catalog, with no reverse Orders dependency. Existing tenants
 without RestaurantProfile keep their previous storefront behavior. See
-[order policy delivery](../marketplace-restaurant-order-policy.md). Marketplace
+[order policy delivery](../features/marketplace/marketplace-restaurant-order-policy.md). Marketplace
 order submission remains a demonstration; idempotency is still pending.
 
 Restaurant reference preparation (2026-11-11): Storefront owns the additive
@@ -50,7 +174,14 @@ and public restaurant projections. Catalog adds ordered Marketplace menu reads
 including unavailable items, preserving existing public/POS listing behavior.
 The dependency graph is unchanged. Dedicated reference tenants were seeded locally;
 existing order creation does not yet enforce the new operating/delivery settings.
-See [delivery notes](../marketplace-restaurant-backend-delivery.md).
+See [delivery notes](../features/marketplace/marketplace-restaurant-backend-delivery.md).
+
+Production storefront origins (2026-11-12): HTTP bootstrap uses Merchants' public
+handle resolver to authorize registered HTTPS storefront origins under an explicit
+base domain. Catalog/checkout access requires the matching technical slug; only
+customer-auth routes receive credentialed dynamic CORS. Existing trusted
+application origins and module dependencies remain unchanged. See
+[production configuration](../setup/STOREFRONT_SUBDOMAINS.md).
 
 Production storefront origins (2026-11-12): HTTP bootstrap uses Merchants' public
 handle resolver to authorize only registered HTTPS storefront origins beneath the
@@ -95,11 +226,11 @@ Orders also exposes authenticated `GET /pos/orders/:id` for the selling workspac
 
 ## Ownership
 
-Shifts provides a bounded employee-scoped delivery-handover recipient list of
-active same-branch employees eligible to sell/open shifts, excluding the actor.
-POS releases only explicit pre-commit close rejections for editing; ambiguous
-outcomes keep the exact durable command. Existing transactional recipient and
-supervisor checks remain authoritative.
+Shifts keeps the recipient-list route only for older POS clients. Current shift
+close previews return the branch's pending delivery count; a close request must
+carry the cashier's explicit confirmation. The close transaction freezes the
+pending balances without assigning an employee. Ordinary cash-variance approvals
+remain separate, and ambiguous outcomes keep the exact durable command.
 
 Cash custody (2026-10-27) remains in Shifts: branch safes, pending handoffs,
 independent receipt, receipt differences, statements and post-close custody are
@@ -109,14 +240,18 @@ remains blind. No new cross-module dependency was introduced. See
 [Drawer custody and safe receipts](../features/pos/CASH_CUSTODY.md).
 
 Tracked POS delivery (2026-10-26) stays in Orders: dispatch, customer delivery/failure,
-responsibility, bounded cross-device queue and partial courier remittance.
+branch-scoped queue and partial courier remittance. Follow-up is available to any
+authorized cashier at the active branch; no employee is assigned at shift close.
+Orders also owns the merchant-scoped courier directory and branch-filtered POS
+options. Courier records are operational identities without login or compensation
+data; dispatch history and courier-level performance remain separate follow-up work.
 Payments adds explicit cash custody. Order-origin shift remains immutable; tracked
 delivery can post a drawer payment into an explicit open same-branch receiving
 shift. A courier-held customer payment retains source-shift attribution but has no
 drawer journal effect; `PosDeliveryRemittance` records its actual receiving shift
 and employee. Shifts adds remittances to expected drawer cash separately from cash
-sales and permits only explicit named/supervisor-approved delivery handover at
-close. The frozen handover snapshot is a dedicated safe owner-report field.
+sales and requires cashier confirmation to close with pending deliveries. The
+frozen pending-delivery snapshot is a dedicated owner-report field.
 Shifts exports `readDeliveryBalances` deliberately for Orders' bounded queue and
 its own reconciliation; no reverse module dependency is added. Compound tenant/
 branch foreign keys and a payment same-branch trigger preserve scope after
@@ -134,13 +269,14 @@ The Orders-owned payment-state response includes optional checkout `context` (th
 
 | Module        | Responsibility                                                                                                                                         | Application dependencies                                  |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
-| auth          | Owner/Admin/POS employee credentials, sessions, guards, employee records, and branch assignments                                                       | Configuration, database, subscriptions                    |
-| customers     | Merchant-private customer directory, guest contacts and global customer identity persistence foundation; customer authentication remains deferred      | Auth                                                      |
+| auth          | Owner/Admin/POS identity, credentials, sessions, guards and current permission enforcement                                                             | Configuration, database, subscriptions                    |
+| employees     | Owner staff account configuration, role assignment and branch assignment                                                                               | Auth                                                      |
+| customers     | Merchant-private customer directory and merchant-scoped storefront credentials; separate global Marketplace account persistence foundation             | Auth, merchants                                           |
 | merchants     | Merchant profiles, applications, onboarding plan assignment, and revisioned tenant-level POS accent configuration                                      | Auth, subscriptions                                       |
 | plans         | Plan definitions, duration prices and subscription administration controllers                                                                          | Auth, subscriptions                                       |
 | subscriptions | Merchant paid coverage, manual collections, lifecycle, quotes, history and eligibility                                                                 | Database                                                  |
-| activities    | Business activity and capability definitions/metadata                                                                                                  | Auth                                                      |
-| storefront    | Owner design settings, templates, public storefront composition                                                                                        | Auth, catalog                                             |
+| activities    | Business activity definitions and display metadata                                                                                                     | Auth                                                      |
+| storefront    | Owner appearance settings and public storefront composition                                                                                           | Auth, catalog                                             |
 | catalog       | Products, categories, reusable modifiers, authoritative pricing, and product inventory configurations                                                  | Auth, inventory                                           |
 | inventory     | Merchant-owned Stock Items/units, branches/warehouses, policy, balances, and transactional movement ledger                                             | Auth                                                      |
 | purchasing    | Merchant-owned supplier directory and draft/confirmed purchase invoices                                                                                | Auth, inventory                                           |
@@ -219,8 +355,9 @@ Cancellation before preparation reverses the actual linked batches, rather than
 recalculating recipes or consulting a new default warehouse. Accepted orders also
 protect their consumed items and locations from archival until preparation or
 cancellation resolves their restoration eligibility. Reports include accepted,
-preparing, ready and completed orders, and exclude cancellation. `AuthModule` owns merchant-scoped POS employee credentials,
-current active branch assignments, and the owner employee directory. Employee login
+preparing, ready and completed orders, and exclude cancellation. `AuthModule` owns merchant-scoped POS login credentials and current session/permission checks.
+`EmployeesModule` owns the owner employee directory, role configuration and active
+branch assignments. Employee login
 uses the merchant storefront slug with the employee username; Super Admin shows this
 slug as the Business Code. Sessions use the same hashed opaque-token store with a
 POS-specific cookie and subject kind. Disabling an
@@ -301,6 +438,10 @@ does not create stock ledger entries.
 
 ## Compatibility and verification
 
+### POS browser/register pairing
+
+POS browser/register pairing spans Auth and Shifts. POS login reuses or creates a server-issued UUID in an HttpOnly browser cookie and stores it with the POS session. Auth returns the employee's single assigned branch and the register paired to that browser. Until pairing, `PosEmployeeGuard` permits only the register-list and bind routes; Shifts lists active, unpaired registers at that branch and binds one under a row lock. Once paired, the POS has no register selector, and route plus transaction checks reject a different register. Owners can unpair a browser through the revision-checked register endpoint only when the register has no open or closing shift. The UUID identifies a browser profile by cookie; it is not hardware attestation. Existing POS sessions without a device UUID require a fresh login after the additive migration is deployed.
+
 Structural changes preserve existing routes (including `/auth/owner/storefront`),
 cookie/session behavior, validation error formats, decimal-string money values,
 revision conflicts, and order snapshots. Routes do not need to mirror disk paths.
@@ -313,7 +454,7 @@ tenant references, and transaction behavior against a migrated database.
 CI starts PostgreSQL 17, applies migrations to its disposable database, and runs
 the dedicated Catalog, Inventory, Purchasing, Orders, and Activities database
 suites. Merchant inventory browser regressions run with
-`pnpm exec playwright test --config playwright.merchant.config.ts tests/ui/merchant-inventory.spec.ts`
+`pnpm exec playwright test --config tests/playwright/merchant.config.ts tests/ui/merchant-inventory.spec.ts`
 after building UI/contracts and Merchant Dashboard.
 
 ## Growth work separate from structural refactoring
