@@ -172,7 +172,7 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
           return (
             <StorefrontCategoryCard
               key={category.id}
-              className={index === 2 ? 'hidden sm:flex' : index === 3 ? 'hidden lg:flex' : index > 3 ? 'hidden' : undefined}
+              className={index === 2 ? 'hidden sm:flex' : index === 3 ? 'hidden lg:flex' : index > 3 ? 'hidden' : ''}
               href={`/s/${catalog.slug}/menu?category=${encodeURIComponent(category.id)}`}
               imageUrl={categoryImage?.publicUrl}
               productCount={
