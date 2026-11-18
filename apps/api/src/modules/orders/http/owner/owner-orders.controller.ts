@@ -49,9 +49,21 @@ export class OwnerStorefrontOrdersController {
 
   @Get('inbox')
   async listInbox(@CurrentOwner() owner: OwnerProfile, @Query() query: unknown) {
+    const filters = parseRequest(ownerOrderListQuerySchema, query);
     return this.orders.listInboxForOwner(
       owner.merchantId,
-      parseRequest(ownerOrderListQuerySchema, query),
+      {
+        limit: filters.limit,
+        includeStats: filters.includeStats,
+        ...(filters.cursor !== undefined ? { cursor: filters.cursor } : {}),
+        ...(filters.status !== undefined ? { status: filters.status } : {}),
+        ...(filters.source !== undefined ? { source: filters.source } : {}),
+        ...(filters.fulfillment !== undefined ? { fulfillment: filters.fulfillment } : {}),
+        ...(filters.from !== undefined ? { from: filters.from } : {}),
+        ...(filters.to !== undefined ? { to: filters.to } : {}),
+        ...(filters.search !== undefined ? { search: filters.search } : {}),
+        ...(filters.report !== undefined ? { report: filters.report } : {}),
+      },
     );
   }
 

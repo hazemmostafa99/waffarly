@@ -27,7 +27,12 @@ const branchSettings = z.object({
     minimum: money,
     etaMinutes: z.number().int().min(1).max(1440),
     priority: z.number().int().min(1).max(1000),
-  }).strict()).max(100),
+  }).strict().transform(({ governorate, locality, area, ...fields }) => ({
+    ...fields,
+    ...(governorate !== undefined ? { governorate } : {}),
+    ...(locality !== undefined ? { locality } : {}),
+    ...(area !== undefined ? { area } : {}),
+  }))).max(100),
 }).strict().refine((branch) => {
   return (!branch.delivery || branch.areas.length > 0)
     && new Set(branch.areas.map((area) => area.locationId)).size === branch.areas.length

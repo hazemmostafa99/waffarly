@@ -11,7 +11,7 @@ const second = '22222222-2222-4222-8222-222222222222';
 const area = 'cairo-nasr-first';
 const merchantId = '33333333-3333-4333-8333-333333333333';
 
-function settings() {
+function settings(): RestaurantSettingsInput & { revision: number; branchFulfillment: NonNullable<RestaurantSettingsInput['branchFulfillment']> } {
   return {
     description: '', cuisines: [], logoImage: null, coverImage: null,
     published: true, displayOrder: 0, timezone: 'Africa/Cairo', alwaysOpen: true,
