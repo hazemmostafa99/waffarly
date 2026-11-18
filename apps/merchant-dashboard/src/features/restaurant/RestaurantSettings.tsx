@@ -312,7 +312,7 @@ export function RestaurantSettings({
       </div>
       {activeSection === 'identity' && (
         <div className="rs-identity-design-note">
-          <p>ألوان وقالب المتجر المستقل بتتظبط من تبويب مظهر المتجر.</p>
+          <p>ألوان المتجر المستقل وترتيب صفحته بيتظبطوا من تبويب مظهر المتجر.</p>
           <Link to="/settings?section=design">افتح مظهر المتجر</Link>
         </div>
       )}
@@ -668,10 +668,12 @@ export function RestaurantSettings({
               إضافة منطقة
             </Button>
           </section>
-          <RestaurantBranchFulfillment
-            value={draft.branchFulfillment ?? []}
-            onChange={(branches) => change('branchFulfillment', branches)}
-          />
+          <div hidden={activeSection !== 'delivery'}>
+            <RestaurantBranchFulfillment
+              value={draft.branchFulfillment ?? []}
+              onChange={(branches) => change('branchFulfillment', branches)}
+            />
+          </div>
           <footer className="rs-savebar">
             <span role="status">
               <i className={dirty ? 'is-dirty' : ''} />

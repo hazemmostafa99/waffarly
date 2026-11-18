@@ -1,4 +1,4 @@
-.settings-design-fields {
+.settings-appearance-fields {
   display: grid;
   gap: 18px;
   min-width: 0;
@@ -7,15 +7,8 @@
   padding: 0;
 }
 
-.settings-template-details > h3 {
-  margin: 0 0 12px;
-  color: #173b2e;
-  font-size: 0.95rem;
-  font-weight: 750;
-}
-
 .settings-shared-identity,
-.settings-storefront-design-controls,
+.settings-storefront-appearance-controls,
 .settings-live-preview-section {
   display: grid;
   gap: 18px;
@@ -29,7 +22,7 @@
   align-items: center;
 }
 .settings-shared-identity-copy > strong,
-.settings-design-section-heading h3 {
+.settings-appearance-section-heading h3 {
   display: block;
   margin: 0;
   color: #173b2e;
@@ -37,7 +30,7 @@
   font-weight: 750;
 }
 .settings-shared-identity-copy p,
-.settings-design-section-heading p {
+.settings-appearance-section-heading p {
   margin: 6px 0 0;
   color: #697a71;
   font-size: 0.76rem;
@@ -97,7 +90,7 @@
   height: 100%;
   object-fit: contain;
 }
-.settings-design-section-heading {
+.settings-appearance-section-heading {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -194,7 +187,7 @@
   outline: 2px solid #b9dfcd;
   outline-offset: 1px;
 }
-.settings-logo-size {
+.settings-radio-group {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -203,21 +196,21 @@
   border: 0;
   padding: 0;
 }
-.settings-logo-size legend {
+.settings-radio-group legend {
   width: 100%;
   margin-bottom: 2px;
   color: #44564c;
   font-size: 0.72rem;
   font-weight: 700;
 }
-.settings-logo-size label {
+.settings-radio-group label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   color: #485b50;
   font-size: 0.74rem;
 }
-.settings-logo-size input {
+.settings-radio-group input {
   accent-color: #0f7659;
 }
 .settings-preview-toggle {
@@ -421,11 +414,11 @@
 }
 @media (max-width: 520px) {
   .settings-shared-identity,
-  .settings-storefront-design-controls,
+  .settings-storefront-appearance-controls,
   .settings-live-preview-section {
     padding: 14px;
   }
-  .settings-design-section-heading {
+  .settings-appearance-section-heading {
     align-items: flex-start;
     flex-direction: column;
   }

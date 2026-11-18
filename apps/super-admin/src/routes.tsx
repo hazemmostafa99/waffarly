@@ -43,23 +43,10 @@ const SubscriptionsPage = lazy(() =>
     default: page,
   })),
 );
-const TemplatesPage = lazy(() =>
-  import('./features/templates/TemplatesPage.js').then(({ TemplatesPage: page }) => ({
-    default: page,
-  })),
-);
-const TemplateDetailsPage = lazy(() =>
-  import('./features/templates/TemplateDetailsPage.js').then(({ TemplateDetailsPage: page }) => ({
-    default: page,
-  })),
-);
 const ActivitiesPage = lazy(() =>
   import('./features/activities/ActivitiesPage.js').then(({ ActivitiesPage: page }) => ({
     default: page,
   })),
-);
-const ModulesPage = lazy(() =>
-  import('./features/modules/ModulesPage.js').then(({ ModulesPage: page }) => ({ default: page })),
 );
 
 function routeElement(Page: ComponentType) {
@@ -112,16 +99,6 @@ export const router = createBrowserRouter([
       },
       { path: 'businesses', element: <Navigate to="/merchants" replace /> },
       {
-        path: 'templates/:templateId',
-        element: routeElement(TemplateDetailsPage),
-        handle: { title: 'Template details' },
-      },
-      {
-        path: 'templates',
-        element: routeElement(TemplatesPage),
-        handle: { title: 'The design library' },
-      },
-      {
         path: 'plans/new',
         element: routeElement(PlanEditorPage),
         handle: { title: 'Create plan' },
@@ -141,11 +118,6 @@ export const router = createBrowserRouter([
         path: 'activities',
         element: routeElement(ActivitiesPage),
         handle: { title: 'Business activities' },
-      },
-      {
-        path: 'modules',
-        element: routeElement(ModulesPage),
-        handle: { title: 'Modules and platform capabilities' },
       },
       { path: '*', element: <Navigate to="/dashboard" replace /> },
     ],

@@ -6,12 +6,12 @@ import type {
   OwnerRestaurantSettings,
   SaveMerchantStorefrontRequest,
 } from '@waffarly/contracts';
-import { StorefrontDesignPreview, useLocale, Button, Input, Card } from '@waffarly/ui';
+import { useLocale, Button, Input, Card } from '@waffarly/ui';
 import { apiRequest, apiUpload } from './lib/api-client.js';
 import { Icon } from './Icons.js';
 import { storefrontUrl } from './lib/storefront-url.js';
 import { Link } from 'react-router-dom';
-import './storefront-design-controls.css';
+import './storefront-appearance-controls.css';
 
 const maxLogoBytes = 10 * 1024 * 1024;
 
@@ -79,12 +79,9 @@ function colorValues(
 
 const isHexColor = (value: string) => /^#[0-9a-fA-F]{6}$/.test(value);
 
-function savedDesign(settings: MerchantStorefrontSettings): SaveMerchantStorefrontRequest {
-  const defaultTemplate = settings.templates.find(
-    ({ status, layout }) => status === 'available' && layout === 'hero',
-  ) ?? settings.templates.find(({ status }) => status === 'available');
+function savedAppearance(settings: MerchantStorefrontSettings): SaveMerchantStorefrontRequest {
   return {
-    templateId: settings.templateId ?? defaultTemplate?.id ?? '',
+    layout: settings.layout,
     ...colorValues(settings),
     logoScale: settings.logoScale,
     logoData: settings.logoData,
@@ -185,17 +182,20 @@ export function StorefrontSettings({
   );
   const [previewViewport, setPreviewViewport] = useState<'desktop' | 'mobile'>('desktop');
 
-  const baseline = settings ? savedDesign(settings) : null;
+  const baseline = settings ? savedAppearance(settings) : null;
   const dirty = !!draft && !!baseline &&
-    (draft.templateId !== baseline.templateId ||
+    (draft.layout !== baseline.layout ||
       draft.logoScale !== baseline.logoScale ||
       draft.logoData !== baseline.logoData ||
       colorFields.some(({ key }) => colorInputs[key].toLowerCase() !== baseline[key].toLowerCase()));
   const invalidColors = colorFields.some(({ key }) => !isHexColor(colorInputs[key]));
-  const template = settings?.templates.find(({ id }) => id === draft?.templateId);
   const logo = identity ? identity.logoImage?.src : draft?.logoData;
   const cover = identity ? identity.coverImage?.src : settings?.coverImageUrl;
   const ar = locale === 'ar';
+  const layoutLabels = {
+    hero: ar ? 'مقدمة المتجر أولًا' : 'Welcome section first',
+    menu: ar ? 'القائمة أولًا' : 'Product menu first',
+  };
 
   useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
   useEffect(() => onBusyChange?.(busy), [busy, onBusyChange]);
@@ -217,12 +217,12 @@ export function StorefrontSettings({
       .then((data) => {
         if (!current) return;
         setSettings(data);
-        setDraft(savedDesign(data));
+        setDraft(savedAppearance(data));
         setColorInputs(colorValues(data));
       })
       .catch((cause: unknown) => {
         if (current)
-          setError(cause instanceof Error ? cause.message : 'Could not load the design library.');
+          setError(cause instanceof Error ? cause.message : 'Could not load storefront appearance.');
       })
       .finally(() => {
         if (current) setLoading(false);
@@ -304,10 +304,6 @@ export function StorefrontSettings({
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!draft || busy || !dirty) return;
-    if (template?.status !== 'available') {
-      setError('Choose a business design before saving.');
-      return;
-    }
     if (invalidColors) {
       setError(locale === 'ar' ? 'أدخل كل لون بصيغة HEX مثل #315B43.' : 'Enter each color as HEX, such as #315B43.');
       return;
@@ -321,11 +317,11 @@ export function StorefrontSettings({
         body: JSON.stringify({ ...draft, logoData: profile.activity === 'restaurant' ? null : draft.logoData }),
       });
       setSettings(updated);
-      setDraft(savedDesign(updated));
+      setDraft(savedAppearance(updated));
       setColorInputs(colorValues(updated));
       setNotice(ar ? 'تم حفظ المظهر. افتح المتجر وحدّث الصفحة لمراجعته.' : 'Appearance saved. Open and refresh your store to see it.');
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not save the design.');
+      setError(cause instanceof Error ? cause.message : 'Could not save the appearance.');
     } finally {
       setOperation(null);
     }
@@ -334,8 +330,8 @@ export function StorefrontSettings({
   return (
     <Card
       id="settings-identity"
-      className="panel merchant-design settings-card settings-identity-card"
-      aria-labelledby="merchant-design-heading"
+      className="panel merchant-appearance settings-card settings-identity-card"
+      aria-labelledby="merchant-appearance-heading"
     >
       <div className="settings-card-heading">
         <div className="settings-heading-copy">
@@ -343,21 +339,21 @@ export function StorefrontSettings({
             <Icon name="store" />
           </span>
           <div>
-            <h2 id="merchant-design-heading">
+            <h2 id="merchant-appearance-heading">
               {profile.activity === 'restaurant'
                 ? locale === 'ar'
                   ? 'مظهر متجرك المستقل'
                   : 'Your independent storefront'
-                : t('Storefront design')}
+                : t('Storefront appearance')}
             </h2>
             <p>
               {profile.activity === 'restaurant'
                 ? locale === 'ar'
-                  ? 'غيّر القالب والألوان هنا. شعار المطعم وغلافه يتعدلان من هوية المطعم.'
-                  : 'Choose a template and colors here. Edit the shared logo and cover in Restaurant identity.'
+                  ? 'غيّر ترتيب الصفحة والألوان هنا. شعار المطعم وغلافه يتعدلان من هوية المطعم.'
+                  : 'Choose a homepage layout and colors here. Edit the shared logo and cover in Restaurant identity.'
                 : locale === 'ar'
-                  ? 'تحكم في الشعار والقالب والألوان التي يراها العملاء على رابطك الخاص.'
-                  : 'Control the logo, template, and colors customers see on your storefront.'}
+                  ? 'تحكم في الشعار وترتيب الصفحة والألوان التي يراها العملاء على رابطك الخاص.'
+                  : 'Control the logo, homepage layout, and colors customers see on your storefront.'}
             </p>
           </div>
         </div>
@@ -369,13 +365,13 @@ export function StorefrontSettings({
         </p>
       )}
       {notice && (
-        <p className="merchant-design-notice" role="status">
+        <p className="merchant-appearance-notice" role="status">
           {t(notice)}
         </p>
       )}
 
       {loading ? (
-        <p>{t('Loading business designs…')}</p>
+        <p>{locale === 'ar' ? 'جارٍ تحميل مظهر المتجر…' : 'Loading storefront appearance…'}</p>
       ) : !settings || !draft ? null : (
         <form className="settings-identity-form" onSubmit={(event) => void save(event)}>
           <div className="settings-public-storefront">
@@ -406,7 +402,7 @@ export function StorefrontSettings({
               </a>
             </div>
           </div>
-          <fieldset className="settings-design-fields" disabled={busy}>
+          <fieldset className="settings-appearance-fields" disabled={busy}>
             {profile.activity === 'restaurant' ? (
               <section
                 className="settings-shared-identity"
@@ -458,7 +454,7 @@ export function StorefrontSettings({
                     ) : (
                       <div className="settings-logo-wordmark">
                         <span aria-hidden="true">♨</span>
-                    <strong>{profile.merchantName}</strong>
+                        <strong>{profile.merchantName}</strong>
                       </div>
                     )}
                   </div>
@@ -508,10 +504,10 @@ export function StorefrontSettings({
             )}
 
             <section
-              className="settings-storefront-design-controls"
-              aria-label={locale === 'ar' ? 'ألوان المتجر' : 'Store colors'}
+              className="settings-storefront-appearance-controls"
+              aria-label={locale === 'ar' ? 'إعدادات مظهر المتجر' : 'Storefront appearance settings'}
             >
-              <div className="settings-design-section-heading">
+              <div className="settings-appearance-section-heading">
                 <div>
                   <h3>{locale === 'ar' ? 'ألوان متجرك المستقل' : 'Independent storefront colors'}</h3>
                   <p>
@@ -586,7 +582,7 @@ export function StorefrontSettings({
                 ))}
               </div>
 
-              <fieldset className="settings-logo-size">
+              <fieldset className="settings-radio-group">
                 <legend>{locale === 'ar' ? 'حجم الشعار على المتجر' : 'Storefront logo size'}</legend>
                 {logoScales.map(({ value, ar, en }) => (
                   <label key={value}>
@@ -603,51 +599,31 @@ export function StorefrontSettings({
                   </label>
                 ))}
               </fieldset>
-            </section>
 
-            {settings.templates.some(({ status }) => status === 'available') && (
-              <section className="settings-template-details" aria-labelledby="storefront-template-heading">
-                <h3 id="storefront-template-heading">{ar ? 'ترتيب الصفحة الرئيسية' : 'Homepage layout'}</h3>
-                <div className="merchant-design-grid">
-                  {settings.templates.filter(({ status }) => status === 'available').map((template) => (
-                    <Button
-                      key={template.id}
-                      type="button"
-                      variant="outline"
-                      className={`merchant-design-choice ${draft.templateId === template.id ? 'merchant-design-choice-active' : ''}`}
-                      aria-pressed={draft.templateId === template.id}
-                      onClick={() => {
-                        setDraft((current) => current ? { ...current, templateId: template.id } : current);
-                        setError('');
-                        setNotice('');
-                      }}
-                    >
-                      <StorefrontDesignPreview
-                        layout={template.layout}
-                        name={profile.merchantName}
-                        description={template.description}
-                        accentColor={
-                          draft.templateId === template.id ? draft.primaryColor : template.accentColor
-                        }
-                        logoData={logo ?? null}
-                      />
-                      <span className="merchant-design-choice-copy">
-                        <strong>{template.name}</strong>
-                        <span className="merchant-design-radio" aria-hidden="true">
-                          {draft.templateId === template.id ? '✓' : ''}
-                        </span>
-                      </span>
-                    </Button>
-                  ))}
-                </div>
-              </section>
-            )}
+              <fieldset className="settings-radio-group">
+                <legend>{locale === 'ar' ? 'ترتيب الصفحة الرئيسية' : 'Homepage layout'}</legend>
+                {(['hero', 'menu'] as const).map((layout) => (
+                  <label key={layout}>
+                    <input
+                      type="radio"
+                      name="storefront-layout"
+                      value={layout}
+                      checked={draft.layout === layout}
+                      onChange={() =>
+                        setDraft((current) => (current ? { ...current, layout } : current))
+                      }
+                    />
+                    {layoutLabels[layout]}
+                  </label>
+                ))}
+              </fieldset>
+            </section>
 
             <section
               className="settings-live-preview-section"
               aria-label={locale === 'ar' ? 'معاينة المتجر' : 'Storefront preview'}
             >
-              <div className="settings-design-section-heading">
+              <div className="settings-appearance-section-heading">
                 <div>
                   <h3>{locale === 'ar' ? 'معاينة مباشرة' : 'Live preview'}</h3>
                   <p>
@@ -680,7 +656,7 @@ export function StorefrontSettings({
                 </div>
               </div>
               <div
-                className={'settings-live-preview ' + previewViewport + (template?.layout === 'menu' ? ' is-menu-first' : '')}
+                className={'settings-live-preview ' + previewViewport + (draft.layout === 'menu' ? ' is-menu-first' : '')}
                 style={storefrontPreviewStyle(draft)}
               >
                 <div className="settings-preview-header">
@@ -691,7 +667,7 @@ export function StorefrontSettings({
                       profile.merchantName.slice(0, 1)
                     )}
                   </span>
-                  <strong>{profile.merchantName}</strong>
+                        <strong>{profile.merchantName}</strong>
                   <span className="settings-preview-links">
                     {locale === 'ar' ? 'الرئيسية　 المنيو　 مفضلاتي' : 'Home　 Menu　 Favorites'}
                   </span>
@@ -730,14 +706,7 @@ export function StorefrontSettings({
               {ar ? 'اكتب اللون بصيغة زي #315B43.' : 'Use a color code such as #315B43.'}
             </p>
           )}
-          {template?.status !== 'available' && (
-            <p className="error" role="status">
-              {settings.templates.some(({ status }) => status === 'available')
-                ? ar ? 'اختار قالب متاح عشان تحفظ المظهر.' : 'Choose an available layout to save.'
-                : ar ? 'مفيش قالب متاح حاليًا للحفظ.' : 'No template is currently available to save.'}
-            </p>
-          )}
-          <footer className="rs-savebar settings-design-savebar">
+          <footer className="rs-savebar settings-appearance-savebar">
             <span role="status">
               <i className={dirty ? 'is-dirty' : ''} />
               {operation === 'uploading'
@@ -754,7 +723,7 @@ export function StorefrontSettings({
                 variant="outline"
                 disabled={busy || !dirty}
                 onClick={() => {
-                  setDraft(savedDesign(settings));
+                  setDraft(savedAppearance(settings));
                   setColorInputs(colorValues(settings));
                   setError('');
                   setNotice('');
@@ -762,8 +731,8 @@ export function StorefrontSettings({
               >
                 {ar ? 'تراجع عن التغييرات' : 'Discard changes'}
               </Button>
-              <Button type="submit" disabled={busy || !dirty || invalidColors || template?.status !== 'available'}>
-                {t('Save design')}
+              <Button type="submit" disabled={busy || !dirty || invalidColors}>
+                {ar ? 'حفظ المظهر' : 'Save appearance'}
               </Button>
             </div>
           </footer>

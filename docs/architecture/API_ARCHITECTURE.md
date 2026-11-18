@@ -8,10 +8,12 @@ layer is required. See [the exact standard and reviewed scope](API_APPLICATION_S
 
 Tenant storefront branding (2026-11-18): restaurant name, description, logo and
 cover remain owned by the restaurant profile and are projected into the owner
-account and independent storefront. Merchant storefront settings now own the
-independent template, four palette colors and logo display size. Existing inline
-logos remain a fallback; new media uploads use the owner-scoped 10 MB media
-endpoint. See the [branding behavior](../features/merchant-storefront-branding.md).
+account and independent storefront. Merchant storefront settings own a simple
+homepage layout, four palette colors and logo display size. Shared templates and
+platform-module metadata were removed; a data-preserving migration retains each
+merchant's current layout. Existing inline logos remain a fallback; new media
+uploads use the owner-scoped 10 MB media endpoint. See the
+[branding behavior](../features/merchant-storefront-branding.md).
 
 Purchase cost P03 (2026-11-14): Inventory owns one current base-unit cost and
 revision-ordered source history per merchant stock item, including opening cost.
@@ -257,8 +259,8 @@ The Orders-owned payment-state response includes optional checkout `context` (th
 | merchants     | Merchant profiles, applications, onboarding plan assignment, and revisioned tenant-level POS accent configuration                                      | Auth, subscriptions                                       |
 | plans         | Plan definitions, duration prices and subscription administration controllers                                                                          | Auth, subscriptions                                       |
 | subscriptions | Merchant paid coverage, manual collections, lifecycle, quotes, history and eligibility                                                                 | Database                                                  |
-| activities    | Business activity and capability definitions/metadata                                                                                                  | Auth                                                      |
-| storefront    | Owner design settings, templates, public storefront composition                                                                                        | Auth, catalog                                             |
+| activities    | Business activity definitions and display metadata                                                                                                     | Auth                                                      |
+| storefront    | Owner appearance settings and public storefront composition                                                                                           | Auth, catalog                                             |
 | catalog       | Products, categories, reusable modifiers, authoritative pricing, and product inventory configurations                                                  | Auth, inventory                                           |
 | inventory     | Merchant-owned Stock Items/units, branches/warehouses, policy, balances, and transactional movement ledger                                             | Auth                                                      |
 | purchasing    | Merchant-owned supplier directory and draft/confirmed purchase invoices                                                                                | Auth, inventory                                           |

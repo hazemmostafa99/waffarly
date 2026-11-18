@@ -34,7 +34,7 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
     },
   ];
 
-  const menuFirst = catalog.template?.layout === 'menu';
+  const menuFirst = catalog.layout === 'menu';
   const HeroHeading = menuFirst ? 'h2' : 'h1';
 
   const hero = (

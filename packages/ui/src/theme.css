@@ -263,7 +263,7 @@
 }
 .shell .notice,
 .join-success,
-.merchant-design-notice {
+.merchant-appearance-notice {
   background: #edf7ef;
   border: 1px solid #c9e6cf;
   border-radius: 10px;
@@ -307,8 +307,7 @@
   top: 12px;
 }
 [dir='rtl'] h1,
-[dir='rtl'] .eyebrow,
-[dir='rtl'] .storefront-design {
+[dir='rtl'] .eyebrow {
   letter-spacing: normal;
 }
 input[type='tel'],
@@ -319,26 +318,13 @@ code {
   direction: ltr;
   unicode-bidi: isolate;
 }
-[dir='rtl'] .design-header-action > span {
-  padding-left: 0;
-  padding-inline-start: 7px;
-}
-[dir='rtl'] .design-food-art {
-  right: auto;
-  inset-inline-end: 5%;
-}
-[dir='rtl'] .design-hero .design-food-art {
-  right: auto;
-  inset-inline-end: 8%;
-}
 @media (max-width: 760px) {
   .shell .topbar {
     flex-wrap: wrap;
     gap: 12px;
   }
   .shell .columns,
-  .shell .plan-columns,
-  .shell .capability-columns.with-editor {
+  .shell .plan-columns {
     grid-template-columns: minmax(0, 1fr);
   }
   .shell .admin-nav {
@@ -350,12 +336,6 @@ code {
   }
   .shell .panel {
     padding: 20px;
-  }
-  .shell .library-toolbar {
-    flex-wrap: wrap;
-  }
-  .shell .template-search {
-    width: 100%;
   }
 }
 @media (prefers-reduced-motion: reduce) {

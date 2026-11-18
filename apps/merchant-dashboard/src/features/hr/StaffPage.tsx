@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import type { InventoryBranch, StaffMemberSummary, StaffPayBasis } from '@waffarly/contracts';
 import { Button, useLocale } from '@waffarly/ui';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
@@ -288,6 +289,13 @@ export function StaffPage() {
           {notice}
         </p>
       )}
+      <p className="hr-message hr-message--info hr-context-note">
+        {text(
+          'This page holds employee records and pay rates. Cashier accounts handle POS sign-in and permissions separately.',
+          'هنا بيانات الموظفين والمرتبات. حسابات الكاشير منفصلة لتسجيل الدخول وصلاحيات نقطة البيع.',
+        )}{' '}
+        <Link to="/employees">{text('Manage cashier accounts', 'إدارة حسابات الكاشير')}</Link>
+      </p>
       <section className="hr-card">
         <div className="hr-toolbar">
           <div className="hr-inline-form">

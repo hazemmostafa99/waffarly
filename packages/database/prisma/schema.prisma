@@ -966,30 +966,10 @@ model AuthSession {
   @@map("auth_sessions")
 }
 
-// Platform-owned presentation definitions. Tenant choices are persisted separately; publication is distinct.
-model StorefrontTemplate {
-  id          String               @id @default(uuid()) @db.Uuid
-  key         String               @unique @db.VarChar(80)
-  name        String               @db.VarChar(160)
-  description String               @db.VarChar(1000)
-  activity    String               @db.VarChar(32)
-  layout      String               @db.VarChar(32)
-  accentColor String               @db.VarChar(7)
-  status      String               @default("draft") @db.VarChar(16)
-  revision    Int                  @default(1)
-  updatedBy   String               @db.VarChar(80)
-  createdAt   DateTime             @default(now()) @db.Timestamptz(6)
-  updatedAt   DateTime             @updatedAt @db.Timestamptz(6)
-  merchants   MerchantStorefront[]
-
-  @@index([activity, status])
-  @@map("storefront_templates")
-}
-
-// Merchant-specific choices are separate from the shared presentation definition.
+// Merchant-owned storefront appearance, including its simple homepage layout.
 model MerchantStorefront {
   merchantId      String             @id @db.Uuid
-  templateId      String             @db.Uuid
+  layout          String             @default("hero") @db.VarChar(16)
   primaryColor    String             @db.VarChar(7)
   accentColor     String             @db.VarChar(7)
   backgroundColor String            @db.VarChar(7)
@@ -999,9 +979,7 @@ model MerchantStorefront {
   revision        Int                @default(1)
   updatedAt       DateTime           @updatedAt @db.Timestamptz(6)
   merchant        Merchant           @relation(fields: [merchantId], references: [id], onDelete: Restrict)
-  template        StorefrontTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
 
-  @@index([templateId])
   @@map("merchant_storefronts")
 }
 
@@ -1090,23 +1068,11 @@ model BusinessActivity {
   key         String   @id @db.VarChar(80)
   name        String   @db.VarChar(160)
   description String   @db.VarChar(1000)
-  moduleKeys  String[] @default([])
   revision    Int      @default(1)
   updatedBy   String   @db.VarChar(80)
   updatedAt   DateTime @updatedAt @db.Timestamptz(6)
 
   @@map("business_activities")
-}
-
-model PlatformModule {
-  key         String   @id @db.VarChar(80)
-  name        String   @db.VarChar(160)
-  description String   @db.VarChar(1000)
-  revision    Int      @default(1)
-  updatedBy   String   @db.VarChar(80)
-  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
-
-  @@map("platform_modules")
 }
 
 // Reusable tenant-owned media metadata. Binary storage is an infrastructure concern.

@@ -692,3 +692,9 @@
 .hr-page .hr-inline-button {
   text-decoration: none;
 }
+.hr-context-note a {
+  color: #087858;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

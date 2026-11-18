@@ -41,12 +41,7 @@ export class CatalogQueryService {
       logoData:
         imageSource(merchant.restaurantProfile?.logoImage) ?? merchant.storefront?.logoData ?? null,
       coverImageUrl: imageSource(merchant.restaurantProfile?.coverImage),
-      template: merchant.storefront?.template
-        ? {
-            name: merchant.storefront.template.name,
-            layout: merchant.storefront.template.layout as 'menu' | 'hero',
-          }
-        : null,
+      layout: merchant.storefront?.layout === 'menu' ? 'menu' : 'hero',
       categories: categoryPage.items,
       nextCategoryCursor: categoryPage.nextCursor,
       products: productPage.items,
@@ -173,7 +168,7 @@ export class CatalogQueryService {
             surfaceColor: true,
             logoScale: true,
             logoData: true,
-            template: { select: { name: true, layout: true } },
+            layout: true,
           },
         },
       },

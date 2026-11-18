@@ -1,4 +1,4 @@
-import type { BusinessActivityKey } from './activities-modules.js';
+import type { BusinessActivityKey } from './activities.js';
 
 export interface MerchantSummary {
   storefrontHandle?: string | null;

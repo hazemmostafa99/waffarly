@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useLocale } from '@waffarly/ui';
 import { Icon } from './Icons.js';
@@ -15,6 +15,15 @@ export function MerchantNavigation({ onNavigate }: { onNavigate: () => void }) {
   const { locale, t } = useLocale();
   const { pathname } = useLocation();
   const current = findMerchantNavigationLink(pathname);
+  const activeGroup = merchantNavigationGroups.find((group) =>
+    current ? group.links.includes(current) : false,
+  );
+  const [openState, setOpenState] = useState({
+    pathname,
+    groupId: activeGroup?.id ?? null,
+  });
+  const openGroupId =
+    openState.pathname === pathname ? openState.groupId : (activeGroup?.id ?? null);
 
   function renderLink(link: MerchantNavigationLink) {
     const active = current === link;
@@ -40,7 +49,13 @@ export function MerchantNavigation({ onNavigate }: { onNavigate: () => void }) {
           key={group.id}
           group={group}
           active={current !== undefined && group.links.includes(current)}
-          pathname={pathname}
+          open={openGroupId === group.id}
+          onToggle={() =>
+            setOpenState({
+              pathname,
+              groupId: openGroupId === group.id ? null : group.id,
+            })
+          }
         >
           {group.links.map(renderLink)}
         </NavigationGroup>
@@ -53,20 +68,17 @@ export function MerchantNavigation({ onNavigate }: { onNavigate: () => void }) {
 function NavigationGroup({
   group,
   active,
-  pathname,
+  open,
+  onToggle,
   children,
 }: {
   group: MerchantNavigationGroup;
   active: boolean;
-  pathname: string;
+  open: boolean;
+  onToggle: () => void;
   children: ReactNode;
 }) {
   const { locale } = useLocale();
-  const [open, setOpen] = useState(active);
-
-  useEffect(() => {
-    if (active) setOpen(true);
-  }, [active, pathname]);
 
   return (
     <div className="merchant-nav-group">
@@ -75,7 +87,7 @@ function NavigationGroup({
         className={`merchant-nav-item merchant-nav-group-toggle ${active ? 'has-active-page' : ''}`}
         aria-expanded={open}
         aria-controls={`merchant-nav-${group.id}`}
-        onClick={() => setOpen((value) => !value)}
+        onClick={onToggle}
       >
         <Icon name={group.icon} />
         <span>{locale === 'ar' ? group.ar : group.en}</span>

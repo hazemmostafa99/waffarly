@@ -34,7 +34,7 @@ const tabs: { id: Tab; icon: string; ar: string; en: string; description: string
     icon: 'settings',
     ar: 'مظهر المتجر المستقل',
     en: 'Storefront design',
-    description: 'القالب والألوان وحجم الشعار',
+    description: 'ترتيب الصفحة والألوان وحجم الشعار',
   },
   {
     id: 'account',
@@ -65,7 +65,8 @@ export function RestaurantSettingsWorkspace({
   const [designDirty, setDesignDirty] = useState(false);
   const [profileBusy, setProfileBusy] = useState(false);
   const [designBusy, setDesignBusy] = useState(false);
-  const [identity, setIdentity] = useState<Pick<OwnerRestaurantSettings, 'logoImage' | 'coverImage'>>();
+  const [identity, setIdentity] =
+    useState<Pick<OwnerRestaurantSettings, 'logoImage' | 'coverImage'>>();
   const dirty = profileDirty || designDirty;
   const busy = profileBusy || designBusy;
   const blocker = useBlocker(
@@ -83,6 +84,7 @@ export function RestaurantSettingsWorkspace({
   }, [dirty, busy]);
   return (
     <div className="rs-workspace">
+      <h1 className="sr-only">{locale === 'ar' ? 'إعدادات المتجر' : 'Store settings'}</h1>
       <aside className="rs-navigation">
         <nav aria-label={locale === 'ar' ? 'أقسام الإعدادات' : 'Settings sections'}>
           {tabs.map((entry) => (

@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
-  ActivitiesModulesCatalog,
   BusinessActivityKey,
   BusinessActivitySummary,
   UpdateBusinessActivityRequest,
@@ -8,10 +7,10 @@ import type {
 import { adminQueryKeys } from '../../app/query-keys.js';
 import { apiRequest } from '../../lib/api-client.js';
 
-export function useActivitiesModulesCatalogQuery() {
+export function useBusinessActivitiesQuery() {
   return useQuery({
-    queryKey: adminQueryKeys.activitiesModules,
-    queryFn: () => apiRequest<ActivitiesModulesCatalog>('/admin/activities-modules'),
+    queryKey: adminQueryKeys.activities,
+    queryFn: () => apiRequest<BusinessActivitySummary[]>('/admin/activities'),
     staleTime: 0,
   });
 }
@@ -27,12 +26,12 @@ export function useUpdateBusinessActivityMutation() {
       key: BusinessActivityKey;
       body: UpdateBusinessActivityRequest;
     }) =>
-      apiRequest<BusinessActivitySummary>(`/admin/activities-modules/activities/${key}`, {
+      apiRequest<BusinessActivitySummary>(`/admin/activities/${key}`, {
         method: 'PATCH',
         body: JSON.stringify(body),
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.activitiesModules });
+      await queryClient.invalidateQueries({ queryKey: adminQueryKeys.activities });
     },
   });
 }

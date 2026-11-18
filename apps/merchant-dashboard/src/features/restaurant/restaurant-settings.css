@@ -11,7 +11,7 @@
   --ring: #126447;
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
-  gap: 28px;
+  gap: 18px 24px;
   width: 100%;
   align-items: start;
   color: var(--foreground);
@@ -26,6 +26,7 @@
 .rs-navigation {
   position: sticky;
   top: 20px;
+  min-width: 0;
 }
 .rs-nav-title {
   padding: 0 12px 14px;
@@ -53,6 +54,10 @@
     background 0.15s,
     color 0.15s;
 }
+.rs-navigation nav button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
 .rs-navigation nav button:hover {
   background: #edf2f5;
 }
@@ -69,9 +74,9 @@
 .rs-navigation nav small {
   display: block;
   margin-top: 4px;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.5;
-  color: #8492a6;
+  color: #526174;
 }
 .rs-navigation nav .is-active small {
   color: #51836c;
@@ -448,7 +453,7 @@
   color: #37634e;
 }
 .rs-workspace .rs-savebar,
-.settings-design-savebar {
+.settings-appearance-savebar {
   position: sticky;
   bottom: 12px;
   z-index: 5;
@@ -653,8 +658,8 @@
     padding-bottom: 4px;
   }
   .rs-navigation nav button {
-    min-width: 145px;
     width: auto;
+    white-space: nowrap;
     min-height: 45px;
     flex-shrink: 0;
     padding: 9px 11px;
@@ -665,9 +670,6 @@
   .rs-nav-icon {
     width: 24px;
     height: 24px;
-  }
-  .rs-navigation nav strong {
-    font-size: 11px;
   }
   .rs-page-heading {
     margin-bottom: 16px;
@@ -830,16 +832,6 @@
   text-align: center;
   padding: 0 5px;
 }
-.rs-design .settings-template-details {
-  margin: 0;
-  border: 1px solid #e5ebf1;
-  border-radius: 12px;
-  padding: 14px;
-}
-.rs-design .settings-template-details summary {
-  font-size: 12px;
-  cursor: pointer;
-}
 .rs-design .settings-card-footer {
   margin: 0;
   padding-top: 16px;
@@ -888,4 +880,69 @@
 .rs-identity-design-note a:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.rs-online-branches {
+  display: grid;
+  gap: 12px;
+  padding-block-start: 16px;
+  border-block-start: 1px solid var(--border);
+}
+.rs-online-branches p {
+  margin: 4px 0 0;
+  color: #526174;
+  font-size: 13px;
+}
+.rs-online-branch-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+}
+.rs-online-branch-add > label {
+  display: grid;
+  flex: 1 1 150px;
+  min-width: 0;
+  max-width: 260px;
+  gap: 4px;
+}
+.rs-online-branch-add > button {
+  white-space: nowrap;
+}
+.rs-online-branch {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.rs-online-branch-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: inherit;
+  background: #f6f8fa;
+  color: var(--foreground);
+  font-size: 13px;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.rs-online-branch-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+.rs-online-branch-toggle[aria-expanded='true'] > .merchant-icon {
+  transform: rotate(180deg);
+}
+.rs-online-branch-fields {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+.rs-online-branch-fields > button {
+  justify-self: start;
 }

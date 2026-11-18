@@ -1,5 +1,10 @@
 # Super Admin UI Redesign
 
+**Scope update — 2026-11-18:** The storefront design library and platform-module
+catalog were removed. Merchants keep direct appearance settings, and
+`/activities` edits business activity display details only. Sections below that
+describe retired pages are historical and do not define current routes or APIs.
+
 ## Status
 
 - Document status: Active implementation guide
@@ -24,7 +29,7 @@ When sources disagree, use this priority:
 4. The supplied UI kit for layout and visual styling.
 5. Mock content only when clearly marked and isolated from production behavior.
 
-Do not infer new subscription, pricing, suspension, entitlement, audit, or template rules from the screenshots.
+Do not infer new subscription, pricing, suspension, entitlement, or audit rules from the screenshots.
 
 ## Technical Direction
 
@@ -45,8 +50,7 @@ TanStack React Query owns remote data:
 - Authenticated administrator profile.
 - Merchants and merchant applications.
 - Plans and subscriptions.
-- Activities and modules.
-- Templates and template details.
+- Business activity display details.
 - Loading, error, mutation, cache, retry, and invalidation behavior.
 
 Zustand owns client-only UI state:
@@ -75,7 +79,7 @@ export const adminQueryKeys = {
   merchants: (filters: MerchantFilters) => ['admin', 'merchants', filters] as const,
   merchant: (merchantId: string) => ['admin', 'merchants', merchantId] as const,
   plans: ['admin', 'plans'] as const,
-  templates: ['admin', 'templates'] as const,
+  activities: ['admin', 'activities'] as const,
 };
 ```
 
@@ -106,8 +110,6 @@ apps/super-admin/src/
 |   |-- plans/
 |   |-- subscriptions/
 |   |-- activities/
-|   |-- modules/
-|   |-- templates/
 |   `-- governance/
 |-- hooks/
 |-- lib/
@@ -143,7 +145,7 @@ Generic primitives belong in `packages/ui`. Components composed specifically for
 - The 1500 by 1035 reference is the desktop comparison target, not a fixed application size.
 - Responsive behavior must be intentionally designed for desktop, tablet, and mobile.
 
-The restaurant hero, menu, and offers images are template preview assets. They are not dashboard backgrounds or operational content.
+The UI kit is a visual reference; its sample data and screens do not define product behavior.
 
 ## Shared Component Inventory
 
@@ -192,11 +194,8 @@ Avoid creating a shared component until it is used by at least two pages or repr
 | 5     | `/plans`                            | Plans Catalog          | Existing plans API; no invented prices or rules.                                                                                                                           |
 | 6     | `/plans/new`, `/plans/:planId/edit` | Plan Editor            | Subject to supported API operations.                                                                                                                                       |
 | 7     | `/subscriptions`                    | Merchant Subscriptions | Implement only approved subscription behavior.                                                                                                                             |
-| 8     | `/activities`                       | Business Activities    | Existing catalog API fields and revision-aware editing; compatibility does not grant access or entitlements.                                                               |
-| 9     | `/modules`                          | Modules Matrix         | Compare code-supported activity types with saved catalog associations; keep both distinct from entitlements and permissions.                                               |
-| 10    | `/templates`                        | Templates Library      | Existing template API and preview assets; availability adds a design to the merchant selection library but does not publish a storefront.                                  |
-| 11    | `/templates/:templateId`            | Template Details       | Derive metadata from the existing templates list (there is no detail endpoint); merchant selection eligibility follows the template activity scope and `available` status. |
-| 12    | `/governance`                       | Governance and Audit   | Deferred until its requirements and API are approved.                                                                                                                      |
+| 8     | `/activities`                       | Business Activities    | Edit business activity display names and descriptions; keys remain code-defined.                                                                                            |
+| 9     | `/governance`                       | Governance and Audit   | Deferred until its requirements and API are approved.                                                                                                                      |
 
 Additional routes:
 

@@ -4,24 +4,19 @@ import {
   ChevronRight,
   CircleCheck,
   Clock3,
-  LayoutTemplate,
   Plus,
   Store,
   Tags,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   BUSINESS_ACTIVITY_LABELS,
   type BusinessActivityKey,
-  type StorefrontTemplateSummary,
 } from '@waffarly/contracts';
 import { Button, Card, useLocale } from '@waffarly/ui';
-import { adminQueryKeys } from '../../app/query-keys.js';
 import { PageHeader } from '../../components/PageHeader.js';
 import { CompactStatCard } from '../../components/CompactStatCard.js';
 import { StatusBadge } from '../../components/StatusBadge.js';
-import { apiRequest } from '../../lib/api-client.js';
 import {
   isPendingMerchantApplication,
   useMerchantApplicationsQuery,
@@ -46,18 +41,13 @@ export function DashboardPage() {
   const merchants = useMerchantsQuery();
   const applications = useMerchantApplicationsQuery();
   const plans = useMonthlyPlansQuery();
-  const templates = useQuery({
-    queryKey: adminQueryKeys.templates,
-    queryFn: () => apiRequest<StorefrontTemplateSummary[]>('/admin/templates'),
-    staleTime: 0,
-  });
 
   const pendingApplications = (applications.data ?? []).filter(isPendingMerchantApplication);
   const recentMerchants = [...(merchants.data ?? [])]
     .sort((first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt))
     .slice(0, 5);
-  const failures = [merchants, applications, plans, templates].filter((query) => query.isError);
-  const dashboardLoading = [merchants, applications, plans, templates].some(
+  const failures = [merchants, applications, plans].filter((query) => query.isError);
+  const dashboardLoading = [merchants, applications, plans].some(
     (query) => query.isPending,
   );
 
@@ -105,7 +95,7 @@ export function DashboardPage() {
       )}
 
       <section
-        className="admin-stats-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+        className="admin-stats-grid grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
         aria-label={t('Platform summary')}
       >
         <CompactStatCard
@@ -131,16 +121,6 @@ export function DashboardPage() {
           icon={CircleCheck}
           tone="blue"
           loading={merchants.isPending}
-        />
-        <CompactStatCard
-          label={t('Available storefronts')}
-          value={
-            templates.data?.filter((template) => template.status === 'available').length ?? '—'
-          }
-          helper={t('Designs currently available to merchants')}
-          icon={LayoutTemplate}
-          tone="purple"
-          loading={templates.isPending}
         />
       </section>
 
@@ -328,23 +308,6 @@ export function DashboardPage() {
                   {plans.data
                     ? t('{{count}} plans configured', { count: plans.data.length })
                     : t('Open plan catalog')}
-                </small>
-              </span>
-              <ArrowUpRight className="text-waffarly-muted" size={15} />
-            </Link>
-            <Link
-              to="/templates"
-              className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-waffarly-input"
-            >
-              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-waffarly-kpi-mint text-waffarly-primary">
-                <LayoutTemplate size={17} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <strong className="block text-xs font-semibold">{t('Storefront designs')}</strong>
-                <small className="mt-1 block truncate text-[10px] text-waffarly-muted">
-                  {templates.data
-                    ? t('{{count}} designs in library', { count: templates.data.length })
-                    : t('Open design library')}
                 </small>
               </span>
               <ArrowUpRight className="text-waffarly-muted" size={15} />

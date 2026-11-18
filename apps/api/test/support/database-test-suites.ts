@@ -14,7 +14,6 @@ export const databaseTestSuites = {
   'delivery-couriers': ['delivery-couriers'],
   'pos-appearance': ['merchant-pos-appearance'],
   'pos-returns': ['pos-returns', 'pos-returns-report'],
-  activities: ['activities-modules'],
   subscriptions: ['subscriptions'],
 } as const;
 

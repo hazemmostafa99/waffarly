@@ -27,7 +27,6 @@
     "test:employees-db": "tsx test/support/database-runner.ts employees",
     "test:pos-appearance-db": "tsx test/support/database-runner.ts pos-appearance",
     "test:pos-returns-db": "tsx test/support/database-runner.ts pos-returns",
-    "test:activities-db": "tsx test/support/database-runner.ts activities",
     "check": "tsx test/support/check-api.ts",
     "test:db": "tsx test/support/database-runner.ts",
     "test:db:prepare": "tsx test/support/database-runner.ts --prepare",

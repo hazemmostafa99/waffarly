@@ -6,6 +6,7 @@ import { apiRequest } from './lib/api-client.js';
 import { Icon } from './Icons.js';
 import { dashboardCopy } from './dashboard-copy.js';
 import { MerchantNavigation } from './MerchantNavigation.js';
+import { getMerchantBreadcrumbs } from './merchant-navigation.js';
 import { SubscriptionStatusBadge } from './features/account/SubscriptionStatusBadge.js';
 
 export function MerchantLayout() {
@@ -13,6 +14,7 @@ export function MerchantLayout() {
   const copy = (message: string) => dashboardCopy(message, locale, t);
   const navigate = useNavigate();
   const location = useLocation();
+  const breadcrumbs = getMerchantBreadcrumbs(location.pathname, location.search);
   const [profile, setProfile] = useState<OwnerProfile | null | undefined>(undefined);
   const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -182,6 +184,25 @@ export function MerchantLayout() {
           tabIndex={-1}
           className={`merchant-content ${location.pathname === '/' ? 'merchant-content-dashboard' : location.pathname === '/settings' ? 'merchant-content-settings' : ''}`}
         >
+          {breadcrumbs.length > 0 && (
+            <nav
+              className="merchant-breadcrumbs"
+              aria-label={locale === 'ar' ? 'مسار الصفحة' : 'Breadcrumbs'}
+            >
+              {breadcrumbs.map((item, index) => (
+                <span key={`${item.en}-${index}`}>
+                  {index > 0 && <Icon name="chevron" />}
+                  {item.to && index < breadcrumbs.length - 1 ? (
+                    <NavLink to={item.to}>{locale === 'ar' ? item.ar : item.en}</NavLink>
+                  ) : (
+                    <span aria-current={index === breadcrumbs.length - 1 ? 'page' : undefined}>
+                      {locale === 'ar' ? item.ar : item.en}
+                    </span>
+                  )}
+                </span>
+              ))}
+            </nav>
+          )}
           {error && (
             <p className="error" role="alert">
               {errorText(error)}

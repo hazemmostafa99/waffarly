@@ -17,7 +17,6 @@ import './orders.css';
 import './branches.css';
 import './features/staff/employees.css';
 import './features/delivery/couriers.css';
-import '@waffarly/ui/storefront-design.css';
 
 const rootElement = document.getElementById('root');
 

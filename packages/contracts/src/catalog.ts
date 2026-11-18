@@ -360,7 +360,7 @@ export interface PublicStorefrontCatalog {
   logoScale: 'small' | 'medium' | 'large';
   logoData: string | null;
   coverImageUrl: string | null;
-  template: { name: string; layout: 'menu' | 'hero' } | null;
+  layout: 'menu' | 'hero';
   categories: PublicStorefrontCategory[];
   products: PublicStorefrontProduct[];
   nextCategoryCursor: string | null;

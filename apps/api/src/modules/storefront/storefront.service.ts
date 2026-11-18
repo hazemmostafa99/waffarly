@@ -2,7 +2,6 @@ import { BadRequestException, ConflictException, Inject, Injectable } from '@nes
 import type {
   MerchantStorefrontSettings,
   SaveMerchantStorefrontRequest,
-  StorefrontTemplateSummary,
 } from '@waffarly/contracts';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 
@@ -20,30 +19,6 @@ function logoScale(value: string | undefined): MerchantStorefrontSettings['logoS
   return value === 'small' || value === 'large' ? value : 'medium';
 }
 
-function templateSummary(record: {
-  id: string;
-  key: string;
-  name: string;
-  description: string;
-  activity: string;
-  layout: string;
-  accentColor: string;
-  status: string;
-  revision: number;
-  createdAt: Date;
-  updatedAt: Date;
-  updatedBy: string;
-}): StorefrontTemplateSummary {
-  return {
-    ...record,
-    activity: record.activity as StorefrontTemplateSummary['activity'],
-    layout: record.layout as StorefrontTemplateSummary['layout'],
-    status: record.status as StorefrontTemplateSummary['status'],
-    createdAt: record.createdAt.toISOString(),
-    updatedAt: record.updatedAt.toISOString(),
-  };
-}
-
 @Injectable()
 export class StorefrontService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
@@ -52,27 +27,17 @@ export class StorefrontService {
     const merchant = await this.prisma.merchant.findUniqueOrThrow({
       where: { id: merchantId },
       select: {
-        activity: true,
         storefrontSlug: true,
         storefrontHandle: true,
         restaurantProfile: { select: { logoImage: true, coverImage: true } },
       },
     });
-    const [selected, available] = await Promise.all([
-      this.prisma.merchantStorefront.findUnique({ where: { merchantId } }),
-      this.prisma.storefrontTemplate.findMany({
-        where: {
-          activity: { in: ['general', merchant.activity] },
-          OR: [{ status: 'available' }, { merchants: { some: { merchantId } } }],
-        },
-        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-      }),
-    ]);
+    const selected = await this.prisma.merchantStorefront.findUnique({ where: { merchantId } });
     return {
       merchantId,
       storefrontSlug: merchant.storefrontSlug,
       storefrontHandle: merchant.storefrontHandle ?? null,
-      templateId: selected?.templateId ?? null,
+      layout: selected?.layout === 'menu' ? 'menu' : 'hero',
       primaryColor: selected?.primaryColor ?? defaultPrimary,
       accentColor: selected?.accentColor ?? defaultAccent,
       backgroundColor: selected?.backgroundColor ?? defaultBackground,
@@ -81,7 +46,6 @@ export class StorefrontService {
       logoData: imageSource(merchant.restaurantProfile?.logoImage) ?? selected?.logoData ?? null,
       coverImageUrl: imageSource(merchant.restaurantProfile?.coverImage),
       revision: selected?.revision ?? 0,
-      templates: available.map(templateSummary),
     };
   }
 
@@ -117,18 +81,6 @@ export class StorefrontService {
 
     await this.prisma.$transaction(async (transaction) => {
       const merchant = await transaction.merchant.findUniqueOrThrow({ where: { id: merchantId } });
-      const template = await transaction.storefrontTemplate.findFirst({
-        where: {
-          id: input.templateId,
-          status: 'available',
-          activity: { in: ['general', merchant.activity] },
-        },
-        select: { id: true },
-      });
-      if (!template) {
-        throw new BadRequestException('Choose an available design for your business activity.');
-      }
-
       const current = await transaction.merchantStorefront.findUnique({ where: { merchantId } });
       if (
         merchant.activity !== 'restaurant' &&
@@ -151,7 +103,7 @@ export class StorefrontService {
         await transaction.merchantStorefront.create({
           data: {
             merchantId,
-            templateId: template.id,
+            layout: input.layout,
             primaryColor: input.primaryColor,
             accentColor: input.accentColor,
             backgroundColor: input.backgroundColor,
@@ -166,7 +118,7 @@ export class StorefrontService {
       const updated = await transaction.merchantStorefront.updateMany({
         where: { merchantId, revision: input.revision },
         data: {
-          templateId: template.id,
+          layout: input.layout,
           primaryColor: input.primaryColor,
           accentColor: input.accentColor,
           backgroundColor: input.backgroundColor,

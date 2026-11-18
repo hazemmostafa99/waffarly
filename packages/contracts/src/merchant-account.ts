@@ -1,4 +1,4 @@
-import type { BusinessActivityKey } from './activities-modules.js';
+import type { BusinessActivityKey } from './activities.js';
 import type { CursorPage } from './pagination.js';
 import type { SubscriptionMonths } from './plans.js';
 import type { SubscriptionPeriodSummary, SubscriptionStatus } from './subscriptions.js';

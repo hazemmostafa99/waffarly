@@ -329,6 +329,12 @@ export function PayrollPage() {
               {text('Approve payroll', 'اعتماد المرتبات')}
             </Button>
           )}
+          <Link className="hr-inline-button" to="/staff/attendance">
+            {text('Attendance', 'الحضور والانصراف')}
+          </Link>
+          <Link className="hr-inline-button" to="/staff/advances">
+            {text('Staff advances', 'سلف الموظفين')}
+          </Link>
         </div>
       }
     >
@@ -345,7 +351,6 @@ export function PayrollPage() {
           {error}
         </p>
       )}
-      <Link to="/staff/advances">{text('Manage staff advances', 'إدارة سلف الموظفين')}</Link>
       {notice && (
         <p className="hr-message hr-message--success" role="status">
           {notice}

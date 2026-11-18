@@ -10,15 +10,12 @@ import { CatalogModule } from '../catalog/index.js';
 import { PublicStorefrontController } from './public-storefront.controller.js';
 import { StorefrontController } from './storefront.controller.js';
 import { StorefrontService } from './storefront.service.js';
-import { TemplateController } from './template.controller.js';
-import { TemplateService } from './template.service.js';
 @Module({
   imports: [AuthModule, CatalogModule],
   controllers: [
     OwnerRestaurantProfileController,
     PublicRestaurantProfileController,
     StorefrontController,
-    TemplateController,
     PublicStorefrontController,
   ],
   exports: [RestaurantOrderPolicyService],
@@ -26,7 +23,6 @@ import { TemplateService } from './template.service.js';
     RestaurantOrderPolicyService,
     RestaurantProfileService,
     StorefrontService,
-    TemplateService,
   ],
 })
 export class StorefrontModule {}

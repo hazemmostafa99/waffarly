@@ -27,7 +27,7 @@ const logoData = z
 
 export const saveSchema = z
   .object({
-    templateId: z.string().uuid(),
+    layout: z.enum(['menu', 'hero']),
     primaryColor: color,
     accentColor: color,
     backgroundColor: color,

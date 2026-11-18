@@ -1,42 +1,28 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import type {
-  BusinessActivitySummary,
-  PlatformModuleKey,
-  PlatformModuleSummary,
-} from '@waffarly/contracts';
-import { AlertTriangle, Pencil, ShieldCheck } from 'lucide-react';
+import type { BusinessActivitySummary } from '@waffarly/contracts';
+import { AlertTriangle, Pencil } from 'lucide-react';
 import { Button, Card, Input, Textarea, useLocale } from '@waffarly/ui';
 import { ApiError } from '../../lib/api-client.js';
-import { useUpdateBusinessActivityMutation } from '../activity-modules/activity-modules-queries.js';
+import { useUpdateBusinessActivityMutation } from './activity-queries.js';
 
 interface ActivityEditorPanelProps {
   activity: BusinessActivitySummary;
-  modules: PlatformModuleSummary[];
   onClose: () => void;
   onSaved: (name: string) => void;
 }
 
-export function ActivityEditorPanel({
-  activity,
-  modules,
-  onClose,
-  onSaved,
-}: ActivityEditorPanelProps) {
+export function ActivityEditorPanel({ activity, onClose, onSaved }: ActivityEditorPanelProps) {
   const { t, errorText, formatDate } = useLocale();
   const mutation = useUpdateBusinessActivityMutation();
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [name, setName] = useState(activity.name);
   const [description, setDescription] = useState(activity.description);
-  const [moduleKeys, setModuleKeys] = useState<PlatformModuleKey[]>([...activity.moduleKeys]);
   const [conflict, setConflict] = useState(false);
 
   useEffect(() => {
     headingRef.current?.focus();
   }, [activity.key]);
 
-  const supportedModules = modules.filter((module) =>
-    module.supportedActivities.includes(activity.key),
-  );
   const isSaving = mutation.isPending;
   const error = mutation.error;
   const isConflict = conflict || (error instanceof ApiError && error.statusCode === 409);
@@ -51,7 +37,6 @@ export function ActivityEditorPanel({
         body: {
           name: name.trim(),
           description: description.trim(),
-          moduleKeys,
           revision: activity.revision,
         },
       });
@@ -59,14 +44,6 @@ export function ActivityEditorPanel({
     } catch (cause) {
       if (cause instanceof ApiError && cause.statusCode === 409) setConflict(true);
     }
-  }
-
-  function toggleModule(key: PlatformModuleKey, checked: boolean) {
-    mutation.reset();
-    setConflict(false);
-    setModuleKeys((current) =>
-      checked ? [...current, key] : current.filter((selected) => selected !== key),
-    );
   }
 
   return (
@@ -91,7 +68,7 @@ export function ActivityEditorPanel({
           {t('Edit activity')}
         </h2>
         <p className="mb-0 mt-1 text-xs leading-5 text-waffarly-muted">
-          {t('Update the display details and saved module associations for this activity.')}
+          {t('Update the display name and description for this business activity.')}
         </p>
         <code
           className="mt-2 inline-block rounded bg-waffarly-input px-2 py-1 text-[10px] text-waffarly-muted"
@@ -158,38 +135,6 @@ export function ActivityEditorPanel({
               className="min-h-24 rounded-xl border-waffarly-border bg-white text-sm leading-5"
             />
           </label>
-
-          <fieldset className="m-0 grid gap-2 rounded-xl border border-waffarly-border p-3">
-            <legend className="px-1 text-xs font-bold text-waffarly-ink">
-              {t('Applicable modules')}
-            </legend>
-            {supportedModules.map((module) => (
-              <label
-                key={module.key}
-                className="flex cursor-pointer items-start gap-2.5 rounded-lg p-2 transition hover:bg-waffarly-input/70"
-              >
-                <Input
-                  type="checkbox"
-                  checked={moduleKeys.includes(module.key)}
-                  onChange={(event) => toggleModule(module.key, event.target.checked)}
-                  className="mt-0.5 size-4 shrink-0 accent-waffarly-primary"
-                />
-                <span className="min-w-0">
-                  <span className="block text-xs font-semibold text-waffarly-ink">
-                    {t(module.name)}
-                  </span>
-                  <span className="mt-0.5 block text-[10px] leading-4 text-waffarly-muted">
-                    {t(module.description)}
-                  </span>
-                </span>
-              </label>
-            ))}
-            {supportedModules.length === 0 && (
-              <p className="m-0 text-xs text-waffarly-muted">
-                {t('No supported modules are configured.')}
-              </p>
-            )}
-          </fieldset>
         </fieldset>
 
         <div className="flex flex-wrap gap-2">
@@ -201,21 +146,6 @@ export function ActivityEditorPanel({
           </Button>
         </div>
       </form>
-
-      <div className="rounded-xl border border-waffarly-success/15 bg-waffarly-kpi-mint/50 p-3">
-        <div className="flex items-start gap-2">
-          <ShieldCheck
-            size={15}
-            className="mt-0.5 shrink-0 text-waffarly-success"
-            aria-hidden="true"
-          />
-          <p className="m-0 text-[10px] leading-5 text-waffarly-muted">
-            {t(
-              'Only supported module links can be saved. This does not change plan entitlements or merchant access.',
-            )}
-          </p>
-        </div>
-      </div>
 
       <p className="m-0 text-[10px] leading-4 text-waffarly-muted">
         {activity.updatedAt

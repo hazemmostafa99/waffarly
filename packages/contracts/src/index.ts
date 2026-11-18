@@ -1,4 +1,3 @@
-export { BUSINESS_ACTIVITY_KEYS, BUSINESS_ACTIVITY_LABELS } from './activities-modules.js';
 export { RESERVED_STOREFRONT_HANDLES, isStorefrontHandle } from './storefront-address.js';
 export type {
   AssignStorefrontHandleRequest,
@@ -139,25 +138,18 @@ export type {
   OwnerProfile,
   SubmitMerchantApplicationRequest,
 } from './super-admin.js';
+export {
+  BUSINESS_ACTIVITY_KEYS,
+  BUSINESS_ACTIVITY_LABELS,
+  type BusinessActivityKey,
+  type BusinessActivitySummary,
+  type UpdateBusinessActivityRequest,
+} from './activities.js';
 export type {
-  CreateStorefrontTemplateRequest,
   MerchantStorefrontSettings,
   SaveMerchantStorefrontRequest,
-  StorefrontTemplateSummary,
-  TemplateLayout,
-  TemplateStatus,
-  UpdateStorefrontTemplateRequest,
-} from './templates.js';
-export type {
-  ActivitiesModulesCatalog,
-  BusinessActivityKey,
-  BusinessActivitySummary,
-  PlatformModuleDefinition,
-  PlatformModuleKey,
-  PlatformModuleSummary,
-  UpdateBusinessActivityRequest,
-  UpdatePlatformModuleRequest,
-} from './activities-modules.js';
+  StorefrontLayout,
+} from './merchant-storefront.js';
 export type {
   CreateMonthlyPlanRequest,
   MonthlyPlanSettings,

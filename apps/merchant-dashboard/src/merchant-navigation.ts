@@ -15,6 +15,12 @@ export type MerchantNavigationGroup = {
   links: MerchantNavigationLink[];
 };
 
+export type MerchantBreadcrumb = {
+  en: string;
+  ar: string;
+  to?: string;
+};
+
 export const dashboardLink: MerchantNavigationLink = {
   path: '/',
   en: 'Dashboard',
@@ -181,4 +187,42 @@ export function findMerchantNavigationLink(pathname: string): MerchantNavigation
     .flatMap((link) => [link.path, ...(link.aliases ?? [])].map((path) => ({ link, path })))
     .filter(({ path }) => pathname === path || (path !== '/' && pathname.startsWith(path + '/')))
     .sort((a, b) => b.path.length - a.path.length)[0]?.link;
+}
+
+export function getMerchantBreadcrumbs(pathname: string, search: string): MerchantBreadcrumb[] {
+  if (pathname === '/settings') {
+    const settings = new URLSearchParams(search).get('section') ?? 'identity';
+    const section = {
+      identity: { en: 'Store identity', ar: 'هوية المتجر' },
+      hours: { en: 'Opening hours', ar: 'مواعيد العمل' },
+      delivery: { en: 'Delivery & pickup', ar: 'التوصيل والاستلام' },
+      design: { en: 'Storefront design', ar: 'مظهر المتجر المستقل' },
+      account: { en: 'Account & subscription', ar: 'الحساب والاشتراك' },
+    }[settings];
+    return [
+      { en: 'Settings', ar: 'الإعدادات', to: '/settings?section=identity' },
+      section ?? { en: 'Store identity', ar: 'هوية المتجر' },
+    ];
+  }
+
+  const current = findMerchantNavigationLink(pathname);
+  if (pathname === '/') return [];
+  if (pathname === '/account') {
+    return [
+      { en: 'Dashboard', ar: 'لوحة التحكم', to: '/' },
+      { en: 'Account', ar: 'الحساب' },
+    ];
+  }
+
+  const group = merchantNavigationGroups.find((item) =>
+    current ? item.links.includes(current) : false,
+  );
+  if (group && current) {
+    return [
+      { en: group.en, ar: group.ar },
+      { en: current.en, ar: current.ar },
+    ];
+  }
+  if (current === settingsLink) return [{ en: 'Settings', ar: 'الإعدادات' }];
+  return current ? [{ en: current.en, ar: current.ar }] : [];
 }

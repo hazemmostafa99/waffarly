@@ -22,8 +22,12 @@ const owner: OwnerProfile = {
   firstMonthActivatedAt: '2026-10-01T00:00:00.000Z',
 };
 const input: SaveMerchantStorefrontRequest = {
-  templateId: '22222222-2222-4222-8222-222222222222',
+  layout: 'hero',
+  primaryColor: '#0F705A',
   accentColor: '#ABCDEF',
+  backgroundColor: '#FAF8F4',
+  surfaceColor: '#FFFFFF',
+  logoScale: 'medium',
   logoData: null,
   revision: 0,
 };
@@ -62,11 +66,11 @@ describe('feature modules and authenticated request actors', () => {
       .useValue({
         getSettings: async (merchantId: string) => {
           calls.push({ merchantId });
-          return { merchantId, templateId: null, revision: 0, templates: [] };
+          return { merchantId, layout: 'hero', revision: 0 };
         },
         saveSettings: async (merchantId: string, settings: SaveMerchantStorefrontRequest) => {
           calls.push({ merchantId, input: settings });
-          return { merchantId, ...settings, revision: 1, templates: [] };
+          return { merchantId, ...settings, revision: 1 };
         },
       })
       .overrideProvider(PlanService)

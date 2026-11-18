@@ -7,7 +7,6 @@ import { LocaleProvider } from '@waffarly/ui';
 import { queryClient } from './app/query-client.js';
 import { router } from './routes.js';
 import './style.css';
-import '@waffarly/ui/storefront-design.css';
 import './admin-design-system.css';
 
 const rootElement = document.getElementById('root');

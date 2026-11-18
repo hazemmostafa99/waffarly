@@ -2,20 +2,22 @@
 
 > **2026-11-17:** The user approved administrative merchant-owner password resets. The API and merchant list/details UI are implemented in source; manual acceptance remains pending. See [owner password reset](merchants/OWNER_PASSWORD_RESET.md). Self-service recovery and invitations remain separate open work.
 
+> **Scope update — 2026-11-18:** The shared storefront design library and platform-module catalog were removed. Merchants keep direct storefront appearance settings, and Super Admin keeps business activity display metadata. Earlier library/module implementation notes below are historical.
+
 > **2026-10-28:** Multi-duration prices and merchant subscription lifecycle are implemented. See [Merchant subscriptions](plans-subscriptions/SUBSCRIPTIONS.md). Its activation, renewal, expiry, access and legacy-review rules supersede the earlier monthly-only and first-month-only discovery statements below.
 
-> **Scope correction — 2026-10-13:** Waffarly serves multiple business activities. Earlier restaurant-only restrictions in this draft are superseded. Merchant onboarding, subscriptions, and shared modules apply across activities; templates may be general or scoped to a business activity.
+> **Historical scope correction — 2026-10-13:** Waffarly serves multiple business activities. Earlier restaurant-only restrictions in this draft were superseded at that time. The shared module catalog and activity-scoped templates described here were later retired on 2026-11-18; business activity classification remains.
 
 **Document status:** Initial discovery draft; not an approved complete MVP scope or technical design.  
 **Last updated:** 2026-10-13  
-**Current phase:** Phase F — initial template library, monthly-plan administration, and hybrid activity/module catalog; remaining merchant/subscription discovery stays open. Documentation and implementation evidence are tracked separately.  
+**Current phase:** Merchant, plan, subscription, and business activity administration; the design library and module catalog are retired. Documentation and implementation evidence are tracked separately.  
 **Entry point:** The four functional domains below organize discovery; they do not prescribe navigation, backend services, or database structure.
 
 ## 1. Purpose
 
 Super Admin is Waffarly's central platform administration system. It manages merchant relationships and platform configuration while merchant-facing applications operate each merchant's business within an isolated tenant/workspace.
 
-This document provides a navigable feature inventory, conceptual boundaries, dependencies, scope distinctions, and a discovery roadmap. The owner has authorized the initial Templates & Design Library, monthly-plan administration, and hybrid Business Activities & Modules catalog slices; unrelated features and unresolved merchant-side decisions still need feature analysis and approval.
+This document provides a navigable feature inventory, conceptual boundaries, dependencies, scope distinctions, and a discovery roadmap. Earlier slices included monthly-plan administration, the storefront design library, and the hybrid activity/module catalog. The library and module catalog have since been removed; business activity labels remain editable.
 
 ### 1.1 Sources and decision labels
 
@@ -103,9 +105,14 @@ The activation timestamp is currently an access gate; it does not calculate a mo
 - **Dependencies:** Merchant identity/tenant boundary, capability definitions if plans gate modules, authorization, and audit policy. Template entitlements are conditional on a later decision.
 - **Unresolved questions:** What offers and limits are necessary? Is a configurable plan catalog required at launch? What proves collection, when does a month start/end, and what happens at renewal/expiry or a plan change?
 
-### 3.2 Templates & Design Library
+### 3.2 Templates & Design Library — Retired 2026-11-18
 
-**Domain discovery and implementation:** [Templates & Design Library overview](templates/OVERVIEW.md). After selecting feature discovery documentation (TDL-D01), the owner authorized the first working slice. Super Admin manages two initial restaurant designs; a merchant owner can select one, add a logo, and set a color. Public storefront rendering and publication remain OPEN.
+**Current status — 2026-11-18:** This feature is retired. The Super Admin
+library and merchant template selection were removed. Merchant storefront
+appearance remains available through direct layout and branding settings; the
+details below record the earlier implementation and product decisions.
+
+**Historical domain discovery and implementation:** [Retirement note](templates/OVERVIEW.md). Earlier decisions authorized the first working slice, which is now removed. The details below preserve the prior discovery record only.
 
 - **Purpose:** Maintain activity-appropriate storefront designs available to merchants.
 - **Responsibilities / high-level capabilities:** Template library and metadata, activity compatibility, merchant availability/selection, and approved branding/customization controls. Merchant customization belongs in merchant-facing flows; platform availability belongs in Super Admin.
@@ -114,14 +121,18 @@ The activation timestamp is currently an access gate; it does not calculate a mo
 - **Dependencies:** Definition of a template, supported activities, storefront rendering/publishing behavior, tenant branding, and optionally entitlements.
 - **Unresolved questions:** Multiple activities per design? Shared design versioning and rollout? Public storefront availability and publication? Accessibility, language, and responsive requirements? Plan inclusion remains undecided.
 
-### 3.3 Business Activities & Modules
+### 3.3 Business Activities — Module Catalog Retired 2026-11-18
+
+**Current status — 2026-11-18:** Business activity classification and editable
+display details remain. The module catalog, compatibility view, and activity to
+module associations were removed; see the [current activity notes](activities-modules/OVERVIEW.md).
 
 - **Purpose:** Describe supported business types and their applicable platform capabilities.
 - **Responsibilities / high-level capabilities:** Activity definitions, module definitions, activity/module associations, compatibility/dependencies, and capability availability. Commercial entitlement and person-level permission remain separate decisions.
 - **MVP considerations:** Restaurants only. Catalog, orders, POS, inventory, employees, branch management, and restaurant extensions are conceptual examples, not approved module definitions. The Dynamic Product Builder is CONFIRMED cross-activity platform capability; exact restaurant MVP rules remain OPEN.
 - **Future capabilities:** Clothing, supermarket, electronics, and other approved activities using shared core concepts plus specialized rules. No arbitrary runtime backend installation or dynamic database schema creation is assumed.
 - **Dependencies:** Stable capability meaning, shared commerce boundaries, actual implemented functionality, and later plan entitlement mapping. Activity/module definitions describe available software; metadata alone cannot create functionality.
-- **Initial implementation:** [Business Activities & Modules](activities-modules/OVERVIEW.md) records confirmed hybrid governance: code defines supported activities/capabilities; admins edit catalog descriptions and restaurant applicability. The initial registry represents merchant profile and storefront design/branding. Applicability is metadata and does not change merchant access.
+- **Historical implementation:** The earlier hybrid catalog allowed editing activity descriptions and module associations. The associations and module registry are retired; business activity display details remain editable.
 - **Unresolved questions:** Broader operational module granularity, future dependency rules, merchant activity changes/multiple activities, and runtime availability/entitlement consumption.
 
 **Practical trade-off:** A shared Product Core can support a burger's modifiers and a shirt's sizes while specialized rules handle kitchen dispatch or exchanges. Separate activity backends would duplicate shared commerce behavior; a universal model containing every future industry rule would add premature complexity. Preserve clean extension boundaries and specify only restaurant behavior now.
@@ -293,7 +304,7 @@ These are a discovery queue, not a request to answer every question now. Existin
 2. Specify approved platform authentication/permissions, tenant isolation, audit, validation, and consistency requirements alongside the selected feature.
 3. Design and then, only when authorized, adapt or extend the existing merchant/owner slice to the approved requirements.
 4. Design approved monthly plan/subscription administration and entitlement enforcement using only the necessary capability definitions; define renewal/expiry before claiming recurring subscription support.
-5. Add activity/module and template administration only to the extent their separately approved MVP needs require. Broader catalogs and future activities follow separate approval.
+5. Treat broader activity, module, and template catalogs as deferred product work requiring a new explicit decision.
 6. Validate approved flows, operational effects, access boundaries, and production requirements against feature acceptance criteria.
 
 Feature-based modular boundaries, backend-owned behavior, high cohesion/low coupling, and shared core models guide later design. A modular backend is a proposed direction; no microservices split, runtime plugin engine, or speculative future-industry implementation is introduced. Domain selection starts discovery and does not authorize implementation.
