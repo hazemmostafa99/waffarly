@@ -86,3 +86,38 @@ it('rejects malformed scopes and a caller-supplied merchant identity', () => {
     false,
   );
 });
+
+it('exposes actual recorded subtotals without asserting complete cost/payroll coverage', () => {
+  const result = buildBusinessPeriod(
+    reportMonth('2026-11'),
+    {
+      ...profit,
+      cost: null,
+      grossProfit: null,
+      recordedCost: '125.00',
+      recordedGrossProfit: '775.00',
+      unknownCostLines: 4,
+    },
+    { ...costs, payrollComplete: false, unknownWasteMovements: 1 },
+  );
+  assert.deepEqual(result.recorded, {
+    consumedCost: '125.00',
+    grossProfit: '775.00',
+    payrollCost: '200.00',
+    wasteCost: '20.00',
+    operatingResult: '455.00',
+  });
+  assert.equal(result.consumedCost, null);
+  assert.equal(result.operatingResult, null);
+  assert.equal(result.payrollComplete, false);
+  assert.equal(result.unknownCostLines, 4);
+});
+
+it('does not invent recorded totals when an older profit response has no known-cost subtotal', () => {
+  const result = buildBusinessPeriod(
+    reportMonth('2026-11'),
+    { ...profit, cost: null, grossProfit: null, unknownCostLines: 4 },
+    costs,
+  );
+  assert.equal(result.recorded, undefined);
+});

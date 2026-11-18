@@ -20,6 +20,7 @@ import { formatStorefrontPrice } from '../../lib/storefront-format';
 import { storefrontCopy } from '../../lib/storefront-copy';
 import { useStorefrontStore } from '../../providers/storefront-providers';
 import { storefrontQueryKeys } from '../catalog/storefront-query-keys';
+import { saveStorefrontOrderReceipt } from '../orders/storefront-order-receipt-session';
 
 type CheckoutFields = {
   customerName: string;
@@ -138,7 +139,8 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
       }
       return post(request);
     },
-    onSuccess: () => {
+    onSuccess: (receipt) => {
+      saveStorefrontOrderReceipt(receipt);
       attempt.current = null;
       setUncertain(false);
       clearCart();
@@ -225,15 +227,20 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
           </div>
         </Card>
         <p className="mt-4 text-sm text-store-muted">{t.noPayment}</p>
-        <Button
-          asChild
-          className="mt-5 h-11 rounded-xl bg-store-accent px-5 font-bold hover:bg-store-primary-dark"
-        >
-          <Link href={`/s/${catalog.slug}`}>
-            {t.home}
-            <Arrow className="size-4" aria-hidden="true" />
-          </Link>
-        </Button>
+        <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
+          <Button asChild className="h-11 rounded-xl bg-store-accent px-5 font-bold hover:bg-store-primary-dark">
+            <Link href={`/s/${catalog.slug}/order/${orderMutation.data.id}`}>
+              {t.trackOrder}
+              <Arrow className="size-4" aria-hidden="true" />
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="h-11 rounded-xl px-5 font-bold">
+            <Link href={`/s/${catalog.slug}`}>
+              {t.home}
+              <Arrow className="size-4" aria-hidden="true" />
+            </Link>
+          </Button>
+        </div>
       </main>
     );
   }

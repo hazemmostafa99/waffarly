@@ -1,5 +1,5 @@
-import { StorefrontOrderTrackingPreviewPage } from '../../../../../features/preview/storefront-preview-pages';
+import { StorefrontOrderTrackingPage } from '../../../../../features/storefront-pages';
 
 export default function OrderTrackingPage() {
-  return <StorefrontOrderTrackingPreviewPage />;
+  return <StorefrontOrderTrackingPage />;
 }

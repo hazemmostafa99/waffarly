@@ -114,23 +114,23 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
   const highlights = (
     <section
       aria-label={locale === 'ar' ? 'مميزات التصفح' : 'Browsing highlights'}
-      className="relative z-10 mx-auto -mt-2.5 grid w-[calc(100%-1rem)] max-w-[1060px] grid-cols-3 rounded-[1.35rem] border border-store-border bg-white px-2 py-3 shadow-[0_14px_40px_rgba(23,35,48,0.08)] sm:-mt-9 sm:px-4 sm:py-4"
+      className="relative z-10 mx-auto -mt-2.5 grid w-[calc(100%-1rem)] max-w-[1060px] grid-cols-1 rounded-[1.35rem] border border-store-border bg-white px-2 py-3 shadow-[0_14px_40px_rgba(23,35,48,0.08)] sm:-mt-9 sm:grid-cols-3 sm:px-4 sm:py-4"
     >
       {features.map(({ icon: Icon, title, detail }, index) => (
         <div
           key={title}
-          className={`flex min-w-0 flex-col items-center justify-center gap-1 px-1 sm:flex-row sm:gap-3 sm:px-4 ${index > 0 ? 'border-s border-store-border' : ''}`}
+          className={`flex min-w-0 items-center justify-center gap-2 px-2 sm:flex-row sm:gap-3 sm:px-4 ${index > 0 ? 'sm:border-s sm:border-store-border' : ''} ${index < 2 ? 'hidden sm:flex' : 'sm:flex'}`}
         >
           <span
             className={`grid size-9 shrink-0 place-items-center rounded-xl sm:size-11 ${index === 1 ? 'bg-store-gold/20 text-store-gold-muted' : 'bg-store-primary/10 text-store-primary'}`}
           >
             <Icon className="size-5" aria-hidden="true" />
           </span>
-          <span className="grid min-w-0 justify-items-center text-center sm:justify-items-start sm:text-start">
-            <strong className="max-w-24 truncate font-heading text-xs font-extrabold leading-4 text-store-ink sm:max-w-none">
+          <span className="grid min-w-0 justify-items-start text-start">
+            <strong className="font-heading text-xs font-extrabold leading-4 text-store-ink">
               {title}
             </strong>
-            <span className="mt-0.5 max-w-28 truncate text-storefront-caption text-store-muted sm:mt-1">
+            <span className="mt-0.5 text-storefront-caption leading-4 text-store-muted sm:mt-1">
               {detail}
             </span>
           </span>
@@ -161,8 +161,8 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
           <Arrow className="size-4" aria-hidden="true" />
         </Link>
       </div>
-      <div className="mt-4 flex gap-3 overflow-x-auto overscroll-x-contain pb-3 [scrollbar-width:thin] sm:mt-6">
-        {catalog.categories.map((category) => {
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:mt-6 sm:grid-cols-3 lg:grid-cols-4">
+        {catalog.categories.map((category, index) => {
           const categoryProduct = catalog.products.find((product) =>
             product.categories.some((item) => item.id === category.id),
           );
@@ -172,6 +172,7 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
           return (
             <StorefrontCategoryCard
               key={category.id}
+              className={index === 2 ? 'hidden sm:flex' : index === 3 ? 'hidden lg:flex' : index > 3 ? 'hidden' : undefined}
               href={`/s/${catalog.slug}/menu?category=${encodeURIComponent(category.id)}`}
               imageUrl={categoryImage?.publicUrl}
               productCount={

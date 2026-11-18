@@ -1168,6 +1168,69 @@
   border-block-start: 1px solid #e8edf1;
   padding-block-start: 8px;
 }
+.rs-branch-destinations,
+.rs-branch-destinations .rs-branch-area {
+  display: grid;
+  gap: 12px;
+}
+.rs-branch-destinations .rs-branch-area {
+  padding: 14px;
+}
+.rs-branch-destinations :is(h5, p) {
+  margin: 0;
+}
+.rs-branch-destinations :is(h5, summary) {
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 700;
+}
+.rs-branch-destinations summary {
+  cursor: pointer;
+}
+.rs-branch-destinations summary ~ * {
+  margin-block-start: 10px;
+}
+.rs-branch-destinations [data-slot='button'] {
+  justify-self: start;
+}
+.rs-branch-place-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 10px;
+}
+.rs-branch-place-fields > label,
+.rs-branch-search {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+.rs-branch-area-choices {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.rs-branch-area-choices button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--foreground);
+  background: var(--card);
+  cursor: pointer;
+}
+.rs-branch-area-choices button[aria-pressed='true'] {
+  border-color: #83bda5;
+  color: #116149;
+  background: #e9f6ef;
+}
+.rs-branch-area-choices button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
 @media (max-width: 640px) {
   .rs-online-branches-heading,
   .rs-branch-title-group {

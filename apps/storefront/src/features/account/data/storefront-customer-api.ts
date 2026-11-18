@@ -50,6 +50,14 @@ export async function loadStorefrontCustomer(
   }
 }
 
+export function isStorefrontCustomerServiceUnavailable(error: unknown): boolean {
+  return error instanceof ApiError && (error.statusCode === 404 || error.statusCode >= 500);
+}
+
+export function isStorefrontCustomerNetworkError(error: unknown): boolean {
+  return error instanceof TypeError;
+}
+
 export const signInStorefrontCustomer = (slug: string, data: CustomerSignInRequest) =>
   request<StorefrontCustomerProfile>(slug, 'login', data);
 export const signUpStorefrontCustomer = (slug: string, data: CustomerSignUpRequest) =>

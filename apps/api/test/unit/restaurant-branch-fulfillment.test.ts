@@ -65,8 +65,24 @@ test('delivery rejects uncovered regions and pickup requires its selected branch
   assert.equal((await policy.assess(db(input), merchantId, 'pickup', 12000n, undefined, undefined, second))?.receivingBranch?.id, second);
 });
 
-test('owner settings reject coverage outside the configured branch governorate', () => {
+test('owner settings accept configured cities outside the branch governorate and reject unknown destinations', () => {
   const input = settings();
-  input.branchFulfillment[0]!.areas[0]!.locationId = 'dakahlia-mansoura-toreil';
+  const [destination] = input.branchFulfillment[0]!.areas;
+  destination!.locationId = 'city-dakahlia-mansoura';
+  assert.equal(restaurantSettingsSchema.safeParse(input).success, true);
+  destination!.locationId = 'unknown-destination';
   assert.equal(restaurantSettingsSchema.safeParse(input).success, false);
+});
+
+test('city coverage supplies a default rate and an exact area uses its own rate', async () => {
+  const policy = new RestaurantOrderPolicyService();
+  const input = settings();
+  input.branchFulfillment[0]!.areas.push({
+    locationId: 'city-cairo-nasr', fee: '30.00', minimum: '100.00', etaMinutes: 40, priority: 1,
+  });
+  const exact = await policy.assess(db(input, [first]), merchantId, 'delivery', 12000n, area);
+  const fallback = await policy.assess(db(input, [first]), merchantId, 'delivery', 12000n, 'cairo-nasr-seventh');
+  assert.equal(exact?.fee, 2000n);
+  assert.equal(fallback?.fee, 3000n);
+  assert.equal(fallback?.snapshot.areaId, 'cairo-nasr-seventh');
 });

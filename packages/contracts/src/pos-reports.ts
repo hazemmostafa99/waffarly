@@ -25,6 +25,7 @@ export type OwnerPosOperationsReport = {
     employeeId: string | null;
     employeeName: string | null;
     ordersOpened: number;
+    completedOrders?: number;
     cancelledOrders: number;
     orderValue: string;
     paymentCount: number;

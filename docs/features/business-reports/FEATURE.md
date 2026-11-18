@@ -146,3 +146,95 @@ Business calculations and API contracts are unchanged.
 Source review and formatting completed. No automated tests, typecheck or build
 were run, following the existing preference. Authenticated visual acceptance
 remains pending; this entry does not claim the rendered result was verified.
+
+## Reference report alignment — 2026-11-18
+
+The report overview now places daily chart/table and the operating calculation
+side by side, followed by channel/expense distributions and four current-balance
+groups. The calculation and balances have explanation drawers; product and return
+rows open their recorded details in drawers. Existing result/cash deep links remain.
+All five reports share navigation and an explicitly labelled scenario preview.
+Preview fixtures never replace server responses or create business transactions.
+The seven preview scenarios cover complete, missing cost, unapproved payroll,
+empty, negative, loading and error states. Preview CSV is labelled separately.
+POS adds an overview showing all existing detail sections and completed orders
+per cashier. Shift and return exports explicitly cover the current cursor page.
+
+Shifts owns additive full-period summary metadata on its existing owner report
+response: closed/matched/differing counts and net variance. List and aggregate
+reads share a RepeatableRead transaction and tenant/branch/date predicates;
+summary totals are independent of pagination. Reports owns the additive cashier
+completed-order count using the same cancellation predicate as overall completion.
+No schema migration, financial writes or new dependencies were introduced.
+
+Verification: source formatting completed using locally installed Prettier.
+The package-manager wrapper could not fetch its pinned version, so formatting
+used the installed library directly. No tests, lint, typecheck or build executed,
+following the existing preference. The existing POS unit fixture/expectations
+include the additive completed-order field. Added shift summary scope/snapshot and
+foreign-branch rejection unit cases. These tests were not run. Native browser
+inspection was denied with "Computer Use was not approved to use Google Chrome".
+Visual, runtime, SQL and numeric reconciliation acceptance remain PENDING.
+
+## Replacement in the existing dashboard — 2026-11-18
+
+This section supersedes the earlier presentation notes. The five original
+sidebar destinations now render `ReferenceReportsPage` through the ordinary
+`MerchantLayout` Outlet. The existing dashboard sidebar, topbar, breadcrumbs,
+authentication, subscription notice and account controls remain the enclosing UI.
+There is no report-only shell, extra sidebar, separate app or production preview
+route. The old report view tabs are replaced by the supplied reference's content.
+
+Sidebar mapping:
+- `/reports`: monthly report center, calculation, daily chart and current balances.
+- `/pos-shift-reports`: closed shifts, full-period KPIs and review drawer.
+- `/pos-item-returns`: physical returns and their recorded details.
+- `/pos-operations`: POS orders, collections, preparation and cashier activity.
+- `/profitability`: product/category/branch profitability.
+
+`ReferenceReportsWorkspace` selects the screen from the existing pathname.
+`useReferenceReport` performs the existing owner API reads and aborts stale
+requests. Reference CSS is scoped under `.reports-v2`; embedded mode delegates
+outer page padding/navigation to the dashboard. The supplied HTML's content
+layout, card dimensions, tables, controls and drawers were ported to React.
+Demo scenarios are entered explicitly; normal routes start with real API data,
+and navigating to another report leaves demo mode.
+
+Manual UI review observed all five screens in an isolated, explicitly labelled
+fictional-data preview. Chart/table switching and calculation/product/shift/return
+drawers were observed, including Escape dismissal and missing-cost presentation.
+The supplied original HTML was opened alongside the React preview for comparison.
+This establishes preview-level behavior only. The in-app browser has no owner
+session and redirects the actual `/reports` route to `/login`; authenticated
+API totals/reconciliation and the final embedded layout remain pending.
+The viewport override did not change observed width, so mobile acceptance is
+not claimed. No automated tests, lint, typecheck or application build were run.
+Temporary public preview assets were removed after the review.
+
+## Compact real-data reporting — 2026-11-18
+
+User-approved update superseding the scenario-preview and completeness-notice UI:
+removed the repeated title/eyebrow/description, scenario picker and fixtures,
+period/timezone helper copy, missing-cost/payroll notices and overview intro/footer.
+Month/branch controls and Refresh/CSV actions now share one responsive toolbar.
+The dashboard's existing breadcrumb remains the page identifier.
+
+Reports now exposes additive recorded-cost/gross-profit/margin subtotals from the
+existing database aggregates, across all rows. Canonical complete-only amounts
+and completeness metadata remain unchanged. Business periods add `recorded`
+with known consumed cost, current gross profit, recorded approved payroll cost,
+known independent waste and the corresponding current operating result. Daily
+points also expose their known consumed-cost subtotal. No migrations or financial
+writes are performed, and unknown amounts are never filled with an invented zero.
+
+Presentation and CSV select those recorded subtotals when complete-only amounts
+are null. Cards say Recorded cost / Current profit / Current operating result.
+Updating source records and refreshing recomputes the amounts. Export retains
+scope and coverage metadata so recorded subtotals are not represented as a final
+accounting close. Missing data from older server versions remains a dash.
+
+Added rule coverage for partial recorded costs/payroll/waste, preserved canonical
+nulls and old responses without recorded subtotals. Expanded profitability
+assertions for totals/products/dimensions. Tests were not executed; no automated
+checks, typecheck or application build run per the existing preference.
+Final authenticated visual/data acceptance remains pending.

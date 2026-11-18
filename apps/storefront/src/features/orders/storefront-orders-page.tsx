@@ -1,14 +1,16 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import Link from '../../components/storefront/storefront-link';
+import Link, { useStorefrontSlug } from '../../components/storefront/storefront-link';
 import { useParams } from 'next/navigation';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { ArrowDown, ClipboardList } from 'lucide-react';
 import { Button, useLocale } from '@waffarly/ui';
 import { accountCopy } from '../account/account-copy';
-import { AccountPreviewShell } from '../account/account-preview-shell';
+import { AccountShell } from '../account/account-shell';
 import {
+  isStorefrontCustomerNetworkError,
+  isStorefrontCustomerServiceUnavailable,
   loadStorefrontCustomer,
   loadStorefrontCustomerOrders,
   storefrontCustomerOrdersKey,
@@ -43,16 +45,17 @@ function orderStatusLabel(status: string, locale: 'ar' | 'en') {
 export function StorefrontOrdersPage() {
   const { locale } = useLocale();
   const params = useParams<{ slug: string }>();
+  const storefrontSlug = useStorefrontSlug();
   const t = accountCopy(locale);
   const [filter, setFilter] = useState<OrderFilter>('all');
   const session = useQuery({
-    queryKey: storefrontCustomerSessionKey(params.slug),
-    queryFn: () => loadStorefrontCustomer(params.slug),
+    queryKey: storefrontCustomerSessionKey(storefrontSlug),
+    queryFn: () => loadStorefrontCustomer(storefrontSlug),
     retry: false,
   });
   const orders = useInfiniteQuery({
-    queryKey: storefrontCustomerOrdersKey(params.slug, session.data?.id),
-    queryFn: ({ pageParam }) => loadStorefrontCustomerOrders(params.slug, pageParam),
+    queryKey: storefrontCustomerOrdersKey(storefrontSlug, session.data?.id),
+    queryFn: ({ pageParam }) => loadStorefrontCustomerOrders(storefrontSlug, pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     enabled: Boolean(session.data),
@@ -74,9 +77,8 @@ export function StorefrontOrdersPage() {
   ];
 
   return (
-    <AccountPreviewShell
+    <AccountShell
       active="orders"
-      isPreview={false}
       title={t.orders}
       description={t.ordersIntro}
     >
@@ -85,7 +87,8 @@ export function StorefrontOrdersPage() {
           <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
             {t.orders}
           </h2>
-          <div aria-label={t.filterLabel} className="flex flex-wrap gap-2" role="group">
+          {!session.isError && !orders.isError && (
+            <div aria-label={t.filterLabel} className="flex flex-wrap gap-2" role="group">
             {filters.map(({ key, label }) => (
               <Button
                 aria-pressed={filter === key}
@@ -98,15 +101,18 @@ export function StorefrontOrdersPage() {
                 {label}
               </Button>
             ))}
-          </div>
+            </div>
+          )}
         </div>
 
-        <p
-          className="rounded-xl border border-store-gold/40 bg-store-cream px-4 py-3 text-storefront-support leading-5 text-store-secondary"
-          role="note"
-        >
-          {t.filterNotice}
-        </p>
+        {!session.isError && !orders.isError && (
+          <p
+            className="rounded-xl border border-store-gold/40 bg-store-cream px-4 py-3 text-storefront-support leading-5 text-store-secondary"
+            role="note"
+          >
+            {t.filterNotice}
+          </p>
+        )}
 
         {session.isPending ? (
           <p
@@ -116,12 +122,25 @@ export function StorefrontOrdersPage() {
             {t.loadingAccount}
           </p>
         ) : session.isError || orders.isError ? (
-          <p
-            role="alert"
-            className="rounded-xl bg-red-50 p-4 text-storefront-support font-bold text-red-700"
-          >
-            {t.sessionError}
-          </p>
+          <div className="grid gap-3 rounded-xl bg-red-50 p-4 text-storefront-support font-bold text-red-700">
+            <p role="alert">
+              {session.isError
+                ? isStorefrontCustomerServiceUnavailable(session.error)
+                  ? t.sessionServiceUnavailable
+                  : isStorefrontCustomerNetworkError(session.error)
+                    ? t.sessionConnectionError
+                    : t.sessionError
+                : t.ordersError}
+            </p>
+            <Button
+              className="w-fit"
+              type="button"
+              variant="outline"
+              onClick={() => void (session.isError ? session.refetch() : orders.refetch())}
+            >
+              {t.retry}
+            </Button>
+          </div>
         ) : !session.data ? (
           <div className="grid justify-items-center gap-3 rounded-2xl border border-dashed border-store-border bg-store-page px-5 py-9 text-center">
             <span className="grid size-14 place-items-center rounded-2xl bg-white text-store-primary shadow-sm">
@@ -224,6 +243,6 @@ export function StorefrontOrdersPage() {
           </div>
         )}
       </section>
-    </AccountPreviewShell>
+    </AccountShell>
   );
 }

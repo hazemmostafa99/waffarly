@@ -12,7 +12,6 @@ import type {
   PosEmployeeSession,
   PosShiftClosePreview,
   PosShiftCloseReport as PosShiftCloseReportContract,
-  PosShiftCloseReportRow,
   PosShiftLiveSummary,
   PosShiftSummary,
   RecordPosShiftCashMovementResponse,
@@ -111,7 +110,7 @@ export class ShiftsService {
   async listOwnerCloseReports(
     merchantId: string,
     input: OwnerPosShiftCloseReportsInput,
-  ): Promise<CursorPage<PosShiftCloseReportRow>> {
+  ): ReturnType<typeof listOwnerCloseReports> {
     return listOwnerCloseReports(this.prisma, merchantId, input);
   }
 

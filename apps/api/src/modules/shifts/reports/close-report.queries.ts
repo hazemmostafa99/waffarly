@@ -3,10 +3,9 @@ import { toCloseReport, toOwnerCloseReportRow } from '../shift.mapper.js';
 import { NotFoundException } from '@nestjs/common';
 
 import type {
-  CursorPage,
+  OwnerShiftReportPage,
   PosEmployeeSession,
   PosShiftCloseReport as PosShiftCloseReportContract,
-  PosShiftCloseReportRow,
 } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { assertScopedCursor } from '../../../common/http/pagination.js';
@@ -27,7 +26,7 @@ export async function listOwnerCloseReports(
   prisma: PrismaService,
   merchantId: string,
   input: OwnerPosShiftCloseReportsInput,
-): Promise<CursorPage<PosShiftCloseReportRow>> {
+): Promise<OwnerShiftReportPage> {
   const query = parseRequest(ownerPosShiftCloseReportsSchema, input);
   const branch = query.branchId
     ? await prisma.branch.findFirst({
@@ -52,16 +51,33 @@ export async function listOwnerCloseReports(
     assertScopedCursor(query.cursor, anchor !== null);
   }
 
-  const records = await prisma.posShiftCloseReport.findMany({
-    where,
-    select: ownerCloseReportSelect,
-    orderBy: [{ closedAt: 'desc' }, { id: 'desc' }],
-    take: query.limit + 1,
-    ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
-  });
+  const [records, totals, matchedCount] = await prisma.$transaction(
+    [
+      prisma.posShiftCloseReport.findMany({
+        where,
+        select: ownerCloseReportSelect,
+        orderBy: [{ closedAt: 'desc' }, { id: 'desc' }],
+        take: query.limit + 1,
+        ...(query.cursor ? { cursor: { id: query.cursor }, skip: 1 } : {}),
+      }),
+      prisma.posShiftCloseReport.aggregate({
+        where,
+        _count: { _all: true },
+        _sum: { variance: true },
+      }),
+      prisma.posShiftCloseReport.count({ where: { ...where, variance: 0 } }),
+    ],
+    { isolationLevel: 'RepeatableRead' },
+  );
+  const summary = {
+    closedCount: totals._count._all,
+    matchedCount,
+    varianceCount: totals._count._all - matchedCount,
+    netVariance: totals._sum.variance?.toFixed(2) ?? '0.00',
+  };
   const hasMore = records.length > query.limit;
   const items = records.slice(0, query.limit).map(toOwnerCloseReportRow);
-  return { items, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null };
+  return { items, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null, summary };
 }
 
 export async function getLatestCloseReport(

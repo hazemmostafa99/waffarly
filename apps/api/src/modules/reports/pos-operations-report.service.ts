@@ -33,6 +33,7 @@ type CashierActivityRow = {
   employeeId: string | null;
   employeeName: string | null;
   ordersOpened: bigint;
+  completedOrders: bigint;
   cancelledOrders: bigint;
   orderValueCents: string;
   paymentCount: bigint;
@@ -163,6 +164,7 @@ export class PosOperationsReportService {
         WITH order_activity AS (
           SELECT o."createdByPosEmployeeId" AS "employeeId",
             COUNT(*)::bigint AS "ordersOpened",
+            COUNT(*) FILTER (WHERE o."completedAt" IS NOT NULL AND o."cancelledAt" IS NULL AND o."status" <> 'cancelled')::bigint AS "completedOrders",
             COUNT(*) FILTER (WHERE o."cancelledAt" IS NOT NULL OR o."status" = 'cancelled')::bigint AS "cancelledOrders",
             COALESCE(TRUNC(SUM(o."total") FILTER (
               WHERE o."cancelledAt" IS NULL AND o."status" <> 'cancelled'
@@ -218,6 +220,7 @@ export class PosOperationsReportService {
         SELECT a."employeeId", e."displayName" AS "employeeName",
           COALESCE(d."receivedCents", '0') AS "deliveryCashReceivedCents",
           COALESCE(s."ordersOpened", 0)::bigint AS "ordersOpened",
+          COALESCE(s."completedOrders", 0)::bigint AS "completedOrders",
           COALESCE(s."cancelledOrders", 0)::bigint AS "cancelledOrders",
           COALESCE(s."orderValueCents", '0') AS "orderValueCents",
           COALESCE(c."paymentCount", 0)::bigint AS "paymentCount",
@@ -302,6 +305,7 @@ export class PosOperationsReportService {
             ? { deliveryCashReceived: formatCents(BigInt(row.deliveryCashReceivedCents)) }
             : {}),
           ordersOpened: Number(row.ordersOpened),
+          completedOrders: Number(row.completedOrders ?? 0),
           cancelledOrders: Number(row.cancelledOrders),
           orderValue: formatCents(BigInt(row.orderValueCents)),
           paymentCount: Number(row.paymentCount),

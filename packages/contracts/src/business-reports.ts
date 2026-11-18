@@ -11,6 +11,14 @@ export interface BusinessReportPeriod {
   payrollCost: string | null;
   wasteCost: string | null;
   operatingResult: string | null;
+  /** Current arithmetic using recorded costs, without asserting complete coverage. */
+  recorded?: {
+    consumedCost: string;
+    grossProfit: string;
+    payrollCost: string;
+    wasteCost: string;
+    operatingResult: string;
+  };
   unknownCostLines: number;
   unknownWasteMovements: number;
   payrollComplete: boolean;
@@ -21,6 +29,7 @@ export interface BusinessReportDay {
   date: string;
   netSales: string;
   consumedCost: string | null;
+  recordedConsumedCost?: string;
   expenses: string;
 }
 
@@ -58,6 +67,12 @@ export interface OwnerBusinessReport {
   expenseCategories: BusinessReportAmountRow[];
   sources: BusinessReportAmountRow[];
   balances: BusinessReportBalances;
-  products: Array<{ id: string; name: string; netSales: string; grossProfit: string | null }>;
+  products: Array<{
+    id: string;
+    name: string;
+    netSales: string;
+    grossProfit: string | null;
+    recordedGrossProfit?: string;
+  }>;
   productsTruncated: boolean;
 }

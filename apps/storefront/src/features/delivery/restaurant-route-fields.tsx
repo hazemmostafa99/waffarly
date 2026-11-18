@@ -1,11 +1,33 @@
 'use client';
 
-import { deliveryBranches, type PublicRestaurantProfile } from '@waffarly/contracts';
+import {
+  deliveryBranches,
+  deliveryDestination,
+  deliveryLocations,
+  type PublicRestaurantBranch,
+  type PublicRestaurantProfile,
+} from '@waffarly/contracts';
 import { DeliveryAreaPicker, useDeliveryArea } from './delivery-area-picker';
 import { useQuery } from '@tanstack/react-query';
 import { apiGetBrowser } from '@/lib/api-client';
 
 export type RestaurantFulfillmentOptions = Pick<PublicRestaurantProfile, 'onlineBranches' | 'deliveryAreas'>;
+
+export function restaurantDeliveryLocations(branches: readonly PublicRestaurantBranch[]) {
+  const enabled = branches.filter((branch) => branch.delivery);
+  const locations = new Map(
+    deliveryLocations.filter((location) => deliveryBranches(enabled, location.id).length > 0)
+      .map((location) => [location.id, location]),
+  );
+  for (const branch of enabled) {
+    for (const area of branch.areas) {
+      const location = deliveryDestination(area);
+      if (location) locations.set(location.id, location);
+    }
+  }
+  return [...locations.values()];
+}
+
 export function useRestaurantFulfillment(slug: string | undefined) {
   return useQuery({
     queryKey: ['restaurant-fulfillment', slug],
@@ -42,7 +64,8 @@ export function RestaurantRouteFields({ settings, fulfillment, area, pickup, onA
     const covered = deliveryBranches(settings.onlineBranches, locationId);
     const route = covered.find(({ branch }) => branch.acceptingOrders);
     return <div className="space-y-2">
-      <DeliveryAreaPicker onChange={() => onArea('')} />
+      <DeliveryAreaPicker locations={restaurantDeliveryLocations(settings.onlineBranches)}
+        onChange={() => onArea('')} />
       {locationId && <p role="status" className="text-sm">
         {route ? `التوصيل من ${route.branch.name} · ${route.area.fee} جنيه · الحد الأدنى ${route.area.minimum} جنيه · حوالي ${route.area.etaMinutes} دقيقة`
           : covered.length ? 'الفروع اللي بتوصل للمنطقة دي مقفولة دلوقتي.'

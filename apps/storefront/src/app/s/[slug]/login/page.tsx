@@ -1,4 +1,4 @@
-import { StorefrontCustomerLoginPage } from '../../../../features/preview/storefront-preview-pages';
+import { StorefrontCustomerLoginPage } from '../../../../features/storefront-pages';
 
 export default function LoginPage() {
   return <StorefrontCustomerLoginPage />;

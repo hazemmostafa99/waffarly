@@ -5,6 +5,10 @@ export interface OwnerProductProfitabilityRow {
   quantityRefunded: number;
   revenue: string;
   refundRevenue: string;
+  /** Known recorded costs only; unknown-cost lines are excluded from this subtotal. */
+  recordedCost?: string;
+  recordedGrossProfit?: string;
+  recordedMarginPercent?: number | null;
   cost: string | null;
   grossProfit: string | null;
   marginPercent: number | null;
@@ -23,6 +27,10 @@ export interface OwnerProductProfitabilityReport {
     quantityRefunded: number;
     revenue: string;
     refundRevenue: string;
+    /** Known recorded costs across the entire scope, independent of row limits. */
+    recordedCost?: string;
+    recordedGrossProfit?: string;
+    recordedMarginPercent?: number | null;
     cost: string | null;
     grossProfit: string | null;
     marginPercent: number | null;
@@ -37,7 +45,10 @@ export interface OwnerProductProfitabilityReport {
   truncated: boolean;
 }
 
-export interface OwnerProfitabilityDimensionRow extends Omit<OwnerProductProfitabilityRow, 'productId' | 'productName'> {
+export interface OwnerProfitabilityDimensionRow extends Omit<
+  OwnerProductProfitabilityRow,
+  'productId' | 'productName'
+> {
   dimensionId: string;
   dimensionName: string;
 }

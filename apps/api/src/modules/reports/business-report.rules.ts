@@ -36,6 +36,32 @@ export function buildBusinessPeriod(
             toSignedCents(payrollCost) -
             toSignedCents(wasteCost),
         );
+  const knownCost = profit.recordedCost ?? profit.cost;
+  const recordedGrossProfit =
+    knownCost === null || knownCost === undefined
+      ? null
+      : (profit.grossProfit ??
+        profit.recordedGrossProfit ??
+        formatCents(
+          toSignedCents(profit.revenue) -
+            toSignedCents(profit.refundRevenue) -
+            toSignedCents(knownCost),
+        ));
+  const recorded =
+    recordedGrossProfit === null
+      ? undefined
+      : {
+          consumedCost: knownCost!,
+          grossProfit: recordedGrossProfit,
+          payrollCost: costs.payrollCost,
+          wasteCost: costs.wasteCost,
+          operatingResult: formatCents(
+            toSignedCents(recordedGrossProfit) -
+              toSignedCents(costs.expenses) -
+              toSignedCents(costs.payrollCost) -
+              toSignedCents(costs.wasteCost),
+          ),
+        };
   return {
     month: period.month,
     from: period.from,
@@ -48,6 +74,7 @@ export function buildBusinessPeriod(
     payrollCost,
     wasteCost,
     operatingResult,
+    ...(recorded ? { recorded } : {}),
     unknownCostLines: profit.unknownCostLines,
     unknownWasteMovements: costs.unknownWasteMovements,
     payrollComplete: costs.payrollComplete,

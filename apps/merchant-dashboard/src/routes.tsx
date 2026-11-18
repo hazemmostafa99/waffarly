@@ -101,31 +101,7 @@ const CashCustodyPage = lazy(() =>
 const TablesPage = lazy(() =>
   import('./features/pos/TablesPage.js').then((module) => ({ default: module.TablesPage })),
 );
-const ShiftReportsPage = lazy(() =>
-  import('./features/pos/ShiftReportsPage.js').then((module) => ({
-    default: module.ShiftReportsPage,
-  })),
-);
-const ItemReturnReportsPage = lazy(() =>
-  import('./features/pos/ItemReturnReportsPage.js').then((module) => ({
-    default: module.ItemReturnReportsPage,
-  })),
-);
-const PosOperationsReportPage = lazy(() =>
-  import('./features/pos/PosOperationsReportPage.js').then((module) => ({
-    default: module.PosOperationsReportPage,
-  })),
-);
-const ProductProfitabilityPage = lazy(() =>
-  import('./features/reports/ProductProfitabilityPage.js').then((module) => ({
-    default: module.ProductProfitabilityPage,
-  })),
-);
-const BusinessReportsPage = lazy(() =>
-  import('./features/reports/BusinessReportsPage.js').then((module) => ({
-    default: module.BusinessReportsPage,
-  })),
-);
+const ReferenceReportsPage = lazy(() => import('./features/reports/ReferenceReportsPage.js'));
 const InventoryHealthPage = lazy(() =>
   import('./features/inventory/InventoryVisibilityPages.js').then((module) => ({
     default: module.InventoryHealthPage,
@@ -164,7 +140,7 @@ export const router = createBrowserRouter([
     element: <MerchantLayout />,
     children: [
       { index: true, element: loadOnRoute(<Dashboard />) },
-      { path: 'reports', element: loadOnRoute(<BusinessReportsPage />) },
+      { path: 'reports', element: loadOnRoute(<ReferenceReportsPage />) },
       { path: 'dashboard', element: <Navigate to="/" replace /> },
       { path: 'products', element: loadOnRoute(<ProductsPage />) },
       { path: 'products/new', element: loadOnRoute(<ProductBuilderPage />) },
@@ -218,10 +194,10 @@ export const router = createBrowserRouter([
       { path: 'pos-registers', element: loadOnRoute(<RegistersPage />) },
       { path: 'pos-cash', element: loadOnRoute(<CashCustodyPage />) },
       { path: 'pos-tables', element: loadOnRoute(<TablesPage />) },
-      { path: 'pos-shift-reports', element: loadOnRoute(<ShiftReportsPage />) },
-      { path: 'pos-item-returns', element: loadOnRoute(<ItemReturnReportsPage />) },
-      { path: 'pos-operations', element: loadOnRoute(<PosOperationsReportPage />) },
-      { path: 'profitability', element: loadOnRoute(<ProductProfitabilityPage />) },
+      { path: 'pos-shift-reports', element: loadOnRoute(<ReferenceReportsPage />) },
+      { path: 'pos-item-returns', element: loadOnRoute(<ReferenceReportsPage />) },
+      { path: 'pos-operations', element: loadOnRoute(<ReferenceReportsPage />) },
+      { path: 'profitability', element: loadOnRoute(<ReferenceReportsPage />) },
       { path: 'settings', element: loadOnRoute(<SettingsRoute />) },
       { path: 'account', element: loadOnRoute(<AccountPage />) },
       { path: '*', element: <Navigate to="/" replace /> },

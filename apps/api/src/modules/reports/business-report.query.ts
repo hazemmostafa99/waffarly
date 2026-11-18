@@ -88,6 +88,7 @@ export async function readBusinessCharts(
       SELECT generate_series(${period.from}::date,${period.to}::date,'1 day')::date AS day
     ) SELECT d.day::text AS date, COALESCE(SUM(e.sales),0)::numeric(30,2)::text AS "netSales",
       CASE WHEN COALESCE(SUM(e.missing),0)>0 THEN NULL ELSE COALESCE(SUM(e.cost),0)::numeric(30,2)::text END AS "consumedCost",
+      COALESCE(SUM(e.cost),0)::numeric(30,2)::text AS "recordedConsumedCost",
       COALESCE(SUM(e.expense),0)::numeric(30,2)::text AS expenses
       FROM days d LEFT JOIN events e USING(day) GROUP BY d.day ORDER BY d.day`;
 

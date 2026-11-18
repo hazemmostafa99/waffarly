@@ -197,3 +197,16 @@ export interface OwnerPosShiftCloseReportsQuery {
   limit?: number | undefined;
 }
 import type { PosDeliveryHandoverSnapshot } from './pos-delivery.js';
+
+/** Full-period aggregates, independent of the cursor page. */
+export interface OwnerShiftReportSummary {
+  closedCount: number;
+  matchedCount: number;
+  varianceCount: number;
+  netVariance: string;
+}
+export interface OwnerShiftReportPage {
+  items: PosShiftCloseReportRow[];
+  nextCursor: string | null;
+  summary: OwnerShiftReportSummary;
+}

@@ -44,6 +44,12 @@ it('marks cost and profit metrics incomplete when any included line lacks a cost
     limit: 100,
   });
 
+  assert.equal(report.totals.recordedCost, '0.00');
+  assert.equal(report.totals.recordedGrossProfit, '100.00');
+  assert.equal(report.products[0]?.recordedCost, '0.00');
+  assert.equal(report.products[0]?.recordedGrossProfit, '100.00');
+  assert.equal(report.menuSections[0]?.recordedCost, '0.00');
+  assert.equal(report.menuSections[0]?.recordedGrossProfit, '100.00');
   assert.equal(report.totals.cost, null);
   assert.equal(report.totals.grossProfit, null);
   assert.equal(report.totals.marginPercent, null);

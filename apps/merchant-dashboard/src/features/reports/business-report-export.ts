@@ -1,3 +1,4 @@
+import { recordedBusinessPeriod } from './recorded-report-values.js';
 /** Exports exactly the report response, scope and completeness markers displayed on screen. */
 import type { BusinessReportBalances, OwnerBusinessReport } from '@waffarly/contracts';
 import { downloadReportCsv } from './report-helpers.js';
@@ -5,6 +6,8 @@ import { reportSourceLabel } from './business-report-presenter.js';
 
 export function exportBusinessReport(report: OwnerBusinessReport, locale: string) {
   const text = (en: string, ar: string) => (locale === 'ar' ? ar : en);
+  const current = recordedBusinessPeriod(report.current);
+  const previous = recordedBusinessPeriod(report.previous);
   const month = report.current.month;
   const branchId = report.branchId ?? '';
   const selectedBranch = report.branches.find((branch) => branch.id === branchId);
@@ -46,17 +49,17 @@ export function exportBusinessReport(report: OwnerBusinessReport, locale: string
       [
         ['netSales', text('Net product sales', 'صافي مبيعات المنتجات')],
         ['refunds', text('Refund revenue', 'الإيراد المسترد')],
-        ['consumedCost', text('Consumed stock cost', 'تكلفة الخامات المستهلكة')],
-        ['grossProfit', text('Product gross profit', 'مجمل ربح المنتجات')],
+        ['consumedCost', text('Recorded consumed cost', 'التكلفة المسجلة')],
+        ['grossProfit', text('Current gross profit', 'الربح الحالي')],
         ['expenses', text('Operating expenses', 'مصروفات التشغيل')],
         [
           'payrollCost',
           text('Staff cost before advance repayments', 'تكلفة الموظفين قبل أقساط السلف'),
         ],
         ['wasteCost', text('Separate stock waste', 'هالك المخزون المستقل')],
-        ['operatingResult', text('Recorded operating result', 'نتيجة التشغيل المسجلة')],
+        ['operatingResult', text('Current operating result', 'نتيجة التشغيل الحالية')],
       ] as const
-    ).map(([key, label]) => [label, report.current[key], report.previous[key]]),
+    ).map(([key, label]) => [label, current[key], previous[key]]),
     [
       text('Lines with missing cost', 'بنود بدون تكلفة معروفة'),
       report.current.unknownCostLines,
@@ -99,7 +102,12 @@ export function exportBusinessReport(report: OwnerBusinessReport, locale: string
       text('Consumed cost', 'التكلفة المستهلكة'),
       text('Expenses', 'المصروفات'),
     ],
-    ...report.daily.map((day) => [day.date, day.netSales, day.consumedCost, day.expenses]),
+    ...report.daily.map((day) => [
+      day.date,
+      day.netSales,
+      day.consumedCost ?? day.recordedConsumedCost ?? null,
+      day.expenses,
+    ]),
     [],
     [text('Expense category', 'تصنيف المصروف'), text('Amount', 'القيمة')],
     ...report.expenseCategories.map((row) => [
@@ -117,7 +125,11 @@ export function exportBusinessReport(report: OwnerBusinessReport, locale: string
       text('Net sales', 'صافي المبيعات'),
       text('Gross profit', 'مجمل الربح'),
     ],
-    ...report.products.map((row) => [row.name, row.netSales, row.grossProfit]),
+    ...report.products.map((row) => [
+      row.name,
+      row.netSales,
+      row.grossProfit ?? row.recordedGrossProfit ?? null,
+    ]),
     [
       text('Product row limit reached', 'تم الوصول لحد صفوف المنتجات'),
       report.productsTruncated ? text('Yes', 'نعم') : text('No', 'لا'),

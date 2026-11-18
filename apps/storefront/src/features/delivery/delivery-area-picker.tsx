@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useSyncExternalStore } from 'react';
-import { deliveryLocations } from '@waffarly/contracts';
+import { deliveryLocations, type DeliveryLocation } from '@waffarly/contracts';
 
 const storageKey = 'waffarly-delivery-area';
 const changeEvent = 'waffarly-delivery-area-changed';
@@ -36,22 +36,29 @@ export function useDeliveryArea() {
   return useSyncExternalStore(subscribe, getArea, () => '');
 }
 
-export function DeliveryAreaPicker({ onChange }: { onChange?: () => void }) {
+export function DeliveryAreaPicker({ onChange, locations = deliveryLocations }: {
+  onChange?: () => void;
+  locations?: readonly DeliveryLocation[];
+}) {
   const selected = useDeliveryArea();
-  const location = deliveryLocations.find((entry) => entry.id === selected);
-  return <AreaFields key={selected} selected={selected} initialGovernorate={location?.governorate ?? ''}
+  const location = locations.find((entry) => entry.id === selected);
+  if (!locations.length && !selected) return <p>مفيش وجهات توصيل متاحة للمطعم.</p>;
+  return <AreaFields key={location?.id ?? selected} selected={selected} locations={locations}
+    initialGovernorate={location?.governorate ?? ''}
     initialLocality={location?.locality ?? ''} onChange={onChange} />;
 }
 
-function AreaFields({ selected, initialGovernorate, initialLocality, onChange }: {
+function AreaFields({ selected, locations, initialGovernorate, initialLocality, onChange }: {
   selected: string;
+  locations: readonly DeliveryLocation[];
   initialGovernorate: string;
   initialLocality: string;
   onChange?: (() => void) | undefined;
 }) {
   const [governorate, setGovernorate] = useState(initialGovernorate);
   const [locality, setLocality] = useState(initialLocality);
-  const localities = deliveryLocations.filter((entry) => entry.governorate === governorate);
+  const localities = locations.filter((entry) => entry.governorate === governorate);
+  const destinations = localities.filter((entry) => entry.locality === locality);
   const selectClass = 'w-full rounded-lg border border-current/20 bg-white p-2 text-sm';
   function changeArea(id: string) {
     selectArea(id);
@@ -59,13 +66,13 @@ function AreaFields({ selected, initialGovernorate, initialLocality, onChange }:
   }
   return (
     <div className="grid gap-2 sm:grid-cols-3">
-      <label className="grid gap-1">محافظة الاستلام
+      <label className="grid gap-1">محافظة التوصيل
         <select className={selectClass} value={governorate} onChange={(event) => {
           setGovernorate(event.target.value);
           setLocality('');
         }}>
           <option value="">اختار المحافظة</option>
-          {[...new Set(deliveryLocations.map((entry) => entry.governorate))].map((name) =>
+          {[...new Set(locations.map((entry) => entry.governorate))].map((name) =>
             <option key={name}>{name}</option>)}
         </select>
       </label>
@@ -80,8 +87,10 @@ function AreaFields({ selected, initialGovernorate, initialLocality, onChange }:
         <select className={selectClass} value={governorate === initialGovernorate && locality === initialLocality ? selected : ''}
           disabled={!locality} onChange={(event) => changeArea(event.target.value)}>
           <option value="">اختار المنطقة</option>
-          {localities.filter((entry) => entry.locality === locality).map((entry) =>
-            <option key={entry.id} value={entry.id}>{entry.area}</option>)}
+          {destinations.map((entry) =>
+            <option key={entry.id} value={entry.id}>
+              {entry.area || (destinations.some((option) => option.area) ? 'منطقة تانية داخل المدينة' : entry.locality)}
+            </option>)}
         </select>
       </label>
       {selected && <button className="justify-self-start text-sm underline" type="button" onClick={() => changeArea('')}>امسح اختيار المنطقة</button>}

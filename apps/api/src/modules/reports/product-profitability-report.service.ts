@@ -1,6 +1,9 @@
 /** Reports saved product revenue and consumption, respecting cancellation and stock restoration. */
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import type { OwnerProductProfitabilityReport, OwnerProfitabilityDimensionRow } from '@waffarly/contracts';
+import type {
+  OwnerProductProfitabilityReport,
+  OwnerProfitabilityDimensionRow,
+} from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { formatCents } from '../../common/money/money.js';
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
@@ -47,7 +50,8 @@ export class ProductProfitabilityReportService {
   constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async get(
-    merchantId: string, query: ProductProfitabilityQuery,
+    merchantId: string,
+    query: ProductProfitabilityQuery,
     db: Prisma.TransactionClient = this.prisma,
   ): Promise<OwnerProductProfitabilityReport> {
     if (query.branchId) {
@@ -293,11 +297,17 @@ export class ProductProfitabilityReportService {
         quantityRefunded: Number(summary.quantityRefunded),
         revenue: formatCents(revenueCents),
         refundRevenue: formatCents(totalRefundCents),
+        recordedCost: formatCents(costCents),
+        recordedGrossProfit: formatCents(grossProfitCents),
+        recordedMarginPercent:
+          netRevenueCents > 0n
+            ? Number((grossProfitCents * 10_000n) / netRevenueCents) / 100
+            : null,
         cost: hasUnknownCosts ? null : formatCents(costCents),
         grossProfit: hasUnknownCosts ? null : formatCents(grossProfitCents),
         marginPercent:
           !hasUnknownCosts && netRevenueCents > 0n
-            ? Number((grossProfitCents * 10_000n / netRevenueCents)) / 100
+            ? Number((grossProfitCents * 10_000n) / netRevenueCents) / 100
             : null,
         salesLines: Number(summary.salesLines),
         unknownCostLines: Number(summary.unknownCostLines),
@@ -318,11 +328,15 @@ export class ProductProfitabilityReportService {
           quantityRefunded: Number(row.quantityRefunded),
           revenue: formatCents(revenue),
           refundRevenue: formatCents(refund),
+          recordedCost: formatCents(cost),
+          recordedGrossProfit: formatCents(grossProfit),
+          recordedMarginPercent:
+            netRevenue > 0n ? Number((grossProfit * 10_000n) / netRevenue) / 100 : null,
           cost: rowHasUnknownCosts ? null : formatCents(cost),
           grossProfit: rowHasUnknownCosts ? null : formatCents(grossProfit),
           marginPercent:
             !rowHasUnknownCosts && netRevenue > 0n
-              ? Number(grossProfit * 10_000n / netRevenue) / 100
+              ? Number((grossProfit * 10_000n) / netRevenue) / 100
               : null,
           salesLines: Number(row.salesLines),
           unknownCostLines: Number(row.unknownCostLines),
@@ -349,11 +363,15 @@ function toDimensionRow(row: DimensionMetricRow): OwnerProfitabilityDimensionRow
     quantityRefunded: Number(row.quantityRefunded),
     revenue: formatCents(revenue),
     refundRevenue: formatCents(refunds),
+    recordedCost: formatCents(cost),
+    recordedGrossProfit: formatCents(grossProfit),
+    recordedMarginPercent:
+      netRevenue > 0n ? Number((grossProfit * 10_000n) / netRevenue) / 100 : null,
     cost: rowHasUnknownCosts ? null : formatCents(cost),
     grossProfit: rowHasUnknownCosts ? null : formatCents(grossProfit),
     marginPercent:
       !rowHasUnknownCosts && netRevenue > 0n
-        ? Number(grossProfit * 10_000n / netRevenue) / 100
+        ? Number((grossProfit * 10_000n) / netRevenue) / 100
         : null,
     salesLines: Number(row.salesLines),
     unknownCostLines: Number(row.unknownCostLines),

@@ -35,6 +35,8 @@ export type {
   PosShiftCloseReport,
   PosShiftCloseReportRow,
   OwnerPosShiftCloseReportsQuery,
+  OwnerShiftReportSummary,
+  OwnerShiftReportPage,
 } from './shifts.js';
 export {
   STOCK_BASE_UNITS,

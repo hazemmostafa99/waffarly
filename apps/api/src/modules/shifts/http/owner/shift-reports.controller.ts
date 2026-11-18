@@ -1,6 +1,6 @@
 /** Receives owner requests to read saved shift close reports. */
 import { Controller, Get, Inject, Query, UseGuards } from '@nestjs/common';
-import type { CursorPage, OwnerProfile, PosShiftCloseReportRow } from '@waffarly/contracts';
+import type { OwnerProfile } from '@waffarly/contracts';
 import { parseRequest } from '../../../../common/http/zod-validation.pipe.js';
 import { CurrentOwner, OwnerGuard } from '../../../auth/index.js';
 import { ownerPosShiftCloseReportsSchema } from '../../shifts.schemas.js';
@@ -14,7 +14,7 @@ export class OwnerPosShiftReportsController {
   listCloseReports(
     @CurrentOwner() owner: OwnerProfile,
     @Query() query: unknown,
-  ): Promise<CursorPage<PosShiftCloseReportRow>> {
+  ): ReturnType<ShiftsService['listOwnerCloseReports']> {
     return this.shifts.listOwnerCloseReports(
       owner.merchantId,
       parseRequest(ownerPosShiftCloseReportsSchema, query),

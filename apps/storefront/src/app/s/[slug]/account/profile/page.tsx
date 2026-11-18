@@ -1,5 +1,5 @@
-import { StorefrontProfilePreviewPage } from '../../../../../features/account/storefront-account-pages';
+import { StorefrontProfilePage } from '../../../../../features/account/storefront-account-pages';
 
 export default function AccountProfilePage() {
-  return <StorefrontProfilePreviewPage />;
+  return <StorefrontProfilePage />;
 }

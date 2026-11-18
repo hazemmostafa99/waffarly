@@ -19,20 +19,24 @@ const branchSettings = z.object({
   delivery: z.boolean(),
   dailyHours: period.nullable(),
   areas: z.array(z.object({
-    locationId,
+    locationId: z.string().min(1).max(80),
+    governorate: z.string().trim().min(1).max(100).optional(),
+    locality: z.string().trim().min(1).max(100).optional(),
+    area: z.string().trim().min(1).max(100).optional(),
     fee: money,
     minimum: money,
     etaMinutes: z.number().int().min(1).max(1440),
     priority: z.number().int().min(1).max(1000),
   }).strict()).max(100),
 }).strict().refine((branch) => {
-  const governorate = deliveryLocations.find((location) => location.id === branch.locationId)?.governorate;
   return (!branch.delivery || branch.areas.length > 0)
     && new Set(branch.areas.map((area) => area.locationId)).size === branch.areas.length
-    && branch.areas.every((area) => deliveryLocations.some(
-      (location) => location.id === area.locationId && location.governorate === governorate,
-    ));
-}, 'Choose distinct delivery areas in the branch governorate.');
+    && branch.areas.every((area) => {
+      const hasCustomLocation = area.governorate && area.locality && area.area;
+      const hasCatalogLocation = deliveryLocations.some((location) => location.id === area.locationId);
+      return Boolean(hasCustomLocation || hasCatalogLocation);
+    });
+}, 'Choose distinct delivery destinations from the catalog or provide a complete custom destination.');
 export const restaurantSettingsSchema = z
   .object({
     name: z.string().trim().min(1).max(160).optional(),

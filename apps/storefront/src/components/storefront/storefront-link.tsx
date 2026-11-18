@@ -31,6 +31,12 @@ export function useStorefrontBasePath(slug: string): string {
     : `/s/${encodeURIComponent(slug)}`;
 }
 
+export function useStorefrontSlug(): string {
+  const { slug } = useContext(AddressContext);
+  if (!slug) throw new Error('StorefrontAddressProvider is required.');
+  return slug;
+}
+
 /** Preserve legacy URLs while rendering clean paths on a merchant hostname. */
 export default function StorefrontLink({ href, ...props }: ComponentProps<typeof Link>) {
   const { slug, routeSlug, hostBased } = useContext(AddressContext);

@@ -3,7 +3,7 @@ import type { Prisma } from '@waffarly/database';
 import { toRestaurantSettings } from './restaurant-settings.mapper.js';
 import { restaurantOperatingState } from './restaurant-hours.js';
 import { formatCents, toCents } from '../../common/money/money.js';
-import { deliveryBranches, deliveryLocationLabel, deliveryLocations } from '@waffarly/contracts';
+import { deliveryBranches, deliveryDestination, deliveryLocationLabel, deliveryLocations } from '@waffarly/contracts';
 import { restaurantOnlineBranches } from './restaurant-branch-fulfillment.js';
 import { createHash } from 'node:crypto';
 
@@ -40,12 +40,12 @@ export class RestaurantOrderPolicyService {
       throw new BadRequestException('Delivery branches are selected by service area.');
     if (settings.branchFulfillment?.length) {
       const branches = await restaurantOnlineBranches(db, merchantId, settings);
-      const location = deliveryLocations.find((entry) => entry.id === areaId);
+      const coverage = fulfillment === 'delivery' && areaId ? deliveryBranches(branches, areaId) : [];
+      const route = coverage.find(({ branch }) => branch.acceptingOrders);
+      const location = deliveryLocations.find((entry) => entry.id === areaId)
+        ?? (coverage[0] && deliveryDestination(coverage[0].area));
       if (fulfillment === 'delivery' && !location)
-        throw new BadRequestException('اختار منطقة توصيل من القائمة.');
-      const route = fulfillment === 'delivery'
-        ? deliveryBranches(branches, areaId!).find(({ branch }) => branch.acceptingOrders)
-        : undefined;
+        throw new BadRequestException('اختار وجهة توصيل من القائمة.');
       const branch = fulfillment === 'delivery' ? route?.branch
         : branches.find((entry) => entry.branchId === pickupBranchId && entry.pickup && entry.acceptingOrders);
       if (!branch)

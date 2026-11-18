@@ -1,5 +1,8 @@
-import { StorefrontOffersPreviewPage } from '../../../../features/preview/storefront-preview-pages';
+import { StorefrontOffersPage } from '../../../../features/storefront-pages';
+import { requireStorefrontCatalog } from '../../../../features/catalog/storefront-data';
 
-export default function OffersPage() {
-  return <StorefrontOffersPreviewPage />;
+export default async function OffersPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const catalog = await requireStorefrontCatalog(slug);
+  return <StorefrontOffersPage catalog={catalog} />;
 }

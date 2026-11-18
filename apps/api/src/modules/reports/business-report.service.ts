@@ -69,6 +69,9 @@ export class BusinessReportService {
               toSignedCents(product.revenue) - toSignedCents(product.refundRevenue),
             ),
             grossProfit: product.grossProfit,
+            ...(product.recordedGrossProfit !== undefined
+              ? { recordedGrossProfit: product.recordedGrossProfit }
+              : {}),
           })),
           productsTruncated: currentProfit.truncated,
         };
