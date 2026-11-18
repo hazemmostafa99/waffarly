@@ -178,6 +178,8 @@ export type {
   CatalogModifierGroupOption,
   CatalogModifierGroupSummary,
   CatalogProductFields,
+  CatalogProductPromotion,
+  CatalogProductPromotionFields,
   CatalogProductInventoryComponent,
   CatalogProductInventoryComponentFields,
   CatalogProductInventoryConfiguration,

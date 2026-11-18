@@ -80,10 +80,11 @@ export class RestaurantProfileService {
         throw new BadRequestException('أوقف استقبال الطلبات من آخر فرع بدل حذف إعداداته.');
       if (!current) {
         if (revision !== 0) throw new ConflictException('Reload restaurant settings.');
-        const { logoImage, coverImage, ...rest } = settings;
+        const { logoImage, coverImage, branchFulfillment, ...rest } = settings;
         await db.restaurantProfile.create({
           data: {
             ...rest,
+            ...(branchFulfillment !== undefined ? { branchFulfillment } : {}),
             ...(logoImage ? { logoImage } : {}),
             ...(coverImage ? { coverImage } : {}),
             merchantId,
@@ -91,11 +92,12 @@ export class RestaurantProfileService {
           },
         });
       } else {
-        const { logoImage, coverImage, ...rest } = settings;
+        const { logoImage, coverImage, branchFulfillment, ...rest } = settings;
         const result = await db.restaurantProfile.updateMany({
           where: { merchantId, revision },
           data: {
             ...rest,
+            ...(branchFulfillment !== undefined ? { branchFulfillment } : {}),
             logoImage: logoImage ?? Prisma.DbNull,
             coverImage: coverImage ?? Prisma.DbNull,
             updatedBy: actor,

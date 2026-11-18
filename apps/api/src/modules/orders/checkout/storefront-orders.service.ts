@@ -93,8 +93,8 @@ export class StorefrontOrdersService {
             db,
           );
           unitPrices.push(quote.totalPrice);
-          originalUnitPrices.push(quote.originalTotalPrice);
-          promotions.push(quote.promotion);
+          originalUnitPrices.push(quote.originalTotalPrice ?? quote.totalPrice);
+          promotions.push(quote.promotion ?? null);
           subtotal += toCents(quote.totalPrice) * BigInt(item.quantity);
         }
         if (promotions.some(Boolean) && input.discountCode?.trim())
