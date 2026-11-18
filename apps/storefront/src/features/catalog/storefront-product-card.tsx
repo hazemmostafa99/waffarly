@@ -35,7 +35,8 @@ export function StorefrontProductCard({
   );
   const displayPrice = getProductStartingPrice(product);
   const originalPrice = getProductOriginalStartingPrice(product);
-  const hasPromotion = product.promotion?.status === 'active';
+  const promotion = product.promotion;
+  const hasPromotion = promotion?.status === 'active';
   const hasUnavailableVariants = product.variants.length > 0 && availableVariants.length === 0;
 
   return (
@@ -73,8 +74,8 @@ export function StorefrontProductCard({
           </button>
           {hasPromotion && (
             <span className="absolute bottom-2 start-2 rounded-full bg-store-error px-2.5 py-1 text-xs font-extrabold text-white shadow-sm">
-              {product.promotion.type === 'percentage'
-                ? `-${Number(product.promotion.value)}%`
+              {promotion.type === 'percentage'
+                ? `-${Number(promotion.value)}%`
                 : t.productDiscount}
             </span>
           )}
