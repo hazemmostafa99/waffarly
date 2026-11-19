@@ -14,6 +14,9 @@ export interface StorefrontCartLine {
 interface StorefrontPersistedState {
   cart: StorefrontCartLine[];
   favorites: string[];
+  fulfillmentType: 'pickup' | 'delivery';
+  pickupBranchId: string;
+  deliveryAreaId: string;
 }
 
 export interface StorefrontState extends StorefrontPersistedState {
@@ -24,6 +27,9 @@ export interface StorefrontState extends StorefrontPersistedState {
   removeCartLine: (key: string) => void;
   clearCart: () => void;
   toggleFavorite: (productId: string) => void;
+  setFulfillmentType: (value: 'pickup' | 'delivery') => void;
+  setPickupBranchId: (value: string) => void;
+  setDeliveryAreaId: (value: string) => void;
 }
 
 export function getCartLineKey(
@@ -48,6 +54,12 @@ export function createStorefrontStore(slug: string) {
       (set) => ({
         cart: [],
         favorites: [],
+        fulfillmentType: 'pickup',
+        pickupBranchId: '',
+        deliveryAreaId: '',
+        setFulfillmentType: (fulfillmentType) => set({ fulfillmentType }),
+        setPickupBranchId: (pickupBranchId) => set({ pickupBranchId }),
+        setDeliveryAreaId: (deliveryAreaId) => set({ deliveryAreaId }),
         hasHydrated: false,
         setHasHydrated: (value) => set({ hasHydrated: value }),
         addCartLine: (line) =>
@@ -90,18 +102,30 @@ export function createStorefrontStore(slug: string) {
       }),
       {
         name: `waffarly:storefront:${slug}:v1`,
-        version: 2,
+        version: 3,
         storage: createJSONStorage<StorefrontPersistedState>(() =>
           typeof window === 'undefined'
             ? { getItem: () => null, setItem: () => undefined, removeItem: () => undefined }
             : window.localStorage,
         ),
-        partialize: ({ cart, favorites }) => ({ cart, favorites }),
+        partialize: ({ cart, favorites, fulfillmentType, pickupBranchId, deliveryAreaId }) => ({
+          cart,
+          favorites,
+          fulfillmentType,
+          pickupBranchId,
+          deliveryAreaId,
+        }),
         migrate: (persisted, version) => {
-          if (version !== 1) return { cart: [], favorites: [] };
+          const defaults = {
+            fulfillmentType: 'pickup' as const,
+            pickupBranchId: '',
+            deliveryAreaId: '',
+          };
+          if (version !== 1 && version !== 2) return { cart: [], favorites: [], ...defaults };
           const state = persisted as StorefrontPersistedState;
           return {
             ...state,
+            ...defaults,
             cart: state.cart.map((line) => ({
               ...line,
               key: getCartLineKey(line.productId, line.variantId, line.selections),

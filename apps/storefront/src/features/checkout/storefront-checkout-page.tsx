@@ -14,8 +14,13 @@ import type {
 import { Button, Card, Input, Textarea } from '@waffarly/ui';
 import { useLocale } from '@waffarly/ui';
 import { ApiError, apiPost } from '../../lib/api-client';
-import { RestaurantRouteFields, useRestaurantFulfillment } from '../delivery/restaurant-route-fields';
-import { useDeliveryArea } from '../delivery/delivery-area-picker';
+import {
+  RestaurantRouteFields,
+  useRestaurantFulfillment,
+} from '../delivery/restaurant-route-fields';
+import { useStorefrontCustomer } from '../account/hooks/use-storefront-customer';
+import { loadStorefrontCustomer } from '../account/data/storefront-customer-api';
+import { StorefrontSignInLink } from '../account/storefront-sign-in-link';
 import { formatStorefrontPrice } from '../../lib/storefront-format';
 import { storefrontCopy } from '../../lib/storefront-copy';
 import { useStorefrontStore } from '../../providers/storefront-providers';
@@ -36,28 +41,45 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
   const cart = useStorefrontStore((state) => state.cart);
   const hasHydrated = useStorefrontStore((state) => state.hasHydrated);
   const clearCart = useStorefrontStore((state) => state.clearCart);
-  const [fields, setFields] = useState<CheckoutFields>({
-    customerName: '',
-    customerPhone: '',
-    fulfillmentType: 'pickup',
+  const session = useStorefrontCustomer();
+  const fulfillmentType = useStorefrontStore((state) => state.fulfillmentType);
+  const setFulfillmentType = useStorefrontStore((state) => state.setFulfillmentType);
+  const deliveryAreaId = useStorefrontStore((state) => state.deliveryAreaId);
+  const setDeliveryAreaId = useStorefrontStore((state) => state.setDeliveryAreaId);
+  const pickup = useStorefrontStore((state) => state.pickupBranchId);
+  const setPickup = useStorefrontStore((state) => state.setPickupBranchId);
+  const [draft, setDraft] = useState<{
+    customerName?: string;
+    customerPhone?: string;
+    deliveryAddress: string;
+    discountCode: string;
+  }>({
     deliveryAddress: '',
     discountCode: '',
   });
+  // Undefined means untouched: a late session response can fill defaults without overwriting edits.
+  const fields: CheckoutFields = {
+    ...draft,
+    customerName: draft.customerName ?? session.data?.name ?? '',
+    customerPhone: draft.customerPhone ?? session.data?.phone ?? '',
+    fulfillmentType,
+  };
   const [quote, setQuote] = useState<StorefrontCheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState('');
   const restaurant = catalog.activity === 'restaurant';
   const options = useRestaurantFulfillment(restaurant ? catalog.slug : undefined);
-  const locationId = useDeliveryArea();
-  const [legacyArea, setLegacyArea] = useState('');
-  const [pickup, setPickup] = useState('');
-  const [reviewed, setReviewed] = useState<{ key: string; quote: StorefrontCheckoutQuote } | null>(null);
+  const [reviewed, setReviewed] = useState<{ key: string; quote: StorefrontCheckoutQuote } | null>(
+    null,
+  );
   const attempt = useRef<CreateStorefrontOrderRequest | null>(null);
   const [uncertain, setUncertain] = useState(false);
   const branchRouting = options.data?.onlineBranches !== undefined;
-  const deliveryAreaId = branchRouting ? locationId : legacyArea;
-  const routeInput = fields.fulfillmentType === 'delivery' && deliveryAreaId ? { deliveryAreaId }
-    : fields.fulfillmentType === 'pickup' && branchRouting && pickup ? { pickupBranchId: pickup }
-      : {};
+  const routeInput =
+    fields.fulfillmentType === 'delivery' && deliveryAreaId
+      ? { deliveryAreaId }
+      : fields.fulfillmentType === 'pickup' && branchRouting && pickup
+        ? { pickupBranchId: pickup }
+        : {};
   const reviewKey = JSON.stringify({ cart, fields, routeInput });
   const reviewedQuote = reviewed?.key === reviewKey ? reviewed.quote : null;
 
@@ -90,9 +112,22 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
   const orderMutation = useMutation({
     mutationKey: storefrontQueryKeys.order(catalog.slug),
     mutationFn: async (checkout: CheckoutFields) => {
-      const post = (body: CreateStorefrontOrderRequest) => apiPost<StorefrontOrderReceipt>(
-        `/catalog/stores/${encodeURIComponent(catalog.slug)}/orders`, body, { credentials: 'include' },
-      );
+      if (session.data) {
+        const current = await loadStorefrontCustomer(catalog.slug);
+        if (!current || current.id !== session.data.id) {
+          throw new Error(
+            locale === 'ar'
+              ? 'انتهت جلسة حسابك. سجّل الدخول تاني قبل تأكيد الطلب.'
+              : 'Your session changed. Sign in again before confirming.',
+          );
+        }
+      }
+      const post = (body: CreateStorefrontOrderRequest) =>
+        apiPost<StorefrontOrderReceipt>(
+          `/catalog/stores/${encodeURIComponent(catalog.slug)}/orders`,
+          body,
+          { credentials: 'include', storefrontSession: true },
+        );
       if (attempt.current) return post(attempt.current);
       if (cart.length === 0) throw new Error(t.basketEmpty);
 
@@ -126,7 +161,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
           quantity: line.quantity,
         })),
       };
-      const finalQuote = reviewedQuote ?? await quoteRequest();
+      const finalQuote = reviewedQuote ?? (await quoteRequest());
       if (finalQuote.fulfillmentQuoteKey && !reviewedQuote)
         throw new Error('راجع الفرع والسعر قبل تأكيد الطلب.');
       request.reviewedTotal = finalQuote.total;
@@ -146,7 +181,10 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
       clearCart();
     },
     onError: (error) => {
-      if (attempt.current && !(error instanceof ApiError && [400, 401, 403, 404, 409, 422].includes(error.statusCode))) {
+      if (
+        attempt.current &&
+        !(error instanceof ApiError && [400, 401, 403, 404, 409, 422].includes(error.statusCode))
+      ) {
         setUncertain(true);
       } else {
         attempt.current = null;
@@ -157,9 +195,12 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
     },
   });
 
-  function update<K extends keyof CheckoutFields>(key: K, value: CheckoutFields[K]) {
-    setFields((current) => ({ ...current, [key]: value }));
-    if (key === 'discountCode' || key === 'fulfillmentType') {
+  function update<K extends Exclude<keyof CheckoutFields, 'fulfillmentType'>>(
+    key: K,
+    value: CheckoutFields[K],
+  ) {
+    setDraft((current) => ({ ...current, [key]: value }));
+    if (key === 'discountCode') {
       setQuote(null);
       setQuoteError('');
     }
@@ -167,7 +208,8 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (orderMutation.isPending || reviewMutation.isPending) return;
+    if (orderMutation.isPending || reviewMutation.isPending || session.isPending || session.isError)
+      return;
     if (!attempt.current && branchRouting && !reviewedQuote) {
       orderMutation.reset();
       reviewMutation.mutate();
@@ -218,7 +260,9 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
               </strong>
             </div>
           )}
-          {orderMutation.data.branchName && <p className="text-sm">الفرع: {orderMutation.data.branchName}</p>}
+          {orderMutation.data.branchName && (
+            <p className="text-sm">الفرع: {orderMutation.data.branchName}</p>
+          )}
           <div className="flex items-center justify-between gap-4 border-t border-store-border pt-4">
             <span className="text-sm font-bold text-store-muted">{t.orderTotal}</span>
             <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
@@ -228,7 +272,10 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
         </Card>
         <p className="mt-4 text-sm text-store-muted">{t.noPayment}</p>
         <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
-          <Button asChild className="h-11 rounded-xl bg-store-accent px-5 font-bold hover:bg-store-primary-dark">
+          <Button
+            asChild
+            className="h-11 rounded-xl bg-store-accent px-5 font-bold hover:bg-store-primary-dark"
+          >
             <Link href={`/s/${catalog.slug}/order/${orderMutation.data.id}`}>
               {t.trackOrder}
               <Arrow className="size-4" aria-hidden="true" />
@@ -285,173 +332,254 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
         <form onSubmit={submit} className="grid gap-4">
-          <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
-            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
-              {locale === 'ar' ? 'بيانات العميل' : 'Your details'}
-            </h2>
-            <label className="grid gap-2 text-sm font-bold text-store-ink">
-              {t.customerName}
-              <Input
-                autoComplete="name"
-                value={fields.customerName}
-                onChange={(event) => update('customerName', event.currentTarget.value)}
-                placeholder={t.namePlaceholder}
-                minLength={2}
-                maxLength={120}
-                required
-                className="h-12 rounded-xl border-store-border bg-white text-base"
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-store-ink">
-              {t.customerPhone}
-              <Input
-                autoComplete="tel"
-                type="tel"
-                inputMode="tel"
-                value={fields.customerPhone}
-                onChange={(event) => update('customerPhone', event.currentTarget.value)}
-                placeholder={t.phonePlaceholder}
-                minLength={7}
-                maxLength={32}
-                pattern="[+0-9 .()\\-]{7,32}"
-                required
-                className="h-12 rounded-xl border-store-border bg-white text-base"
-                dir="ltr"
-              />
-            </label>
-          </Card>
-
-          <Card className="grid gap-3 rounded-3xl border-store-border bg-white p-4 sm:p-5">
-            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
-              {t.discountCode}
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              <Input
-                aria-label={t.discountCode}
-                dir="ltr"
-                autoCapitalize="characters"
-                maxLength={32}
-                value={fields.discountCode}
-                onChange={(event) =>
-                  update('discountCode', event.currentTarget.value.toUpperCase())
-                }
-                placeholder={t.discountCodePlaceholder}
-                className="h-12 min-w-0 flex-1 rounded-xl border-store-border bg-white text-base"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                disabled={orderMutation.isPending || !fields.discountCode.trim()}
-                onClick={() => {
-                  setQuoteError('');
-                  void quoteRequest()
-                    .then(setQuote)
-                    .catch(() => {
-                      setQuote(null);
-                      setQuoteError(t.discountUnavailable);
-                    });
-                }}
-                className="h-12 rounded-xl border-store-border font-bold text-store-primary"
-              >
-                {t.applyDiscount}
-              </Button>
-            </div>
-            {quoteError && (
-              <p className="m-0 text-sm font-bold text-store-error" role="alert">
-                {quoteError}
-              </p>
-            )}
-            {quote?.discount && (
-              <p className="m-0 text-sm font-bold text-store-primary" role="status">
-                {quote.discount.code} · {t.discountApplied} · −
-                <bdi dir="auto">{formatStorefrontPrice(quote.discount.amount, locale)}</bdi>
-              </p>
-            )}
-          </Card>
-
-          <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
-            <fieldset className="grid gap-3">
-              <legend className="mb-2 font-heading text-storefront-subsection font-extrabold text-store-ink">
-                {t.fulfillment}
-              </legend>
-              {(
-                [
-                  { value: 'pickup', label: t.pickup },
-                  { value: 'delivery', label: t.delivery },
-                ] as const
-              ).map((option) => (
-                <label
-                  key={option.value}
-                  className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border px-4 transition ${fields.fulfillmentType === option.value ? 'border-store-primary bg-store-primary/5' : 'border-store-border bg-white hover:bg-store-page'}`}
-                >
-                  <input
-                    type="radio"
-                    name="fulfillment"
-                    value={option.value}
-                    checked={fields.fulfillmentType === option.value}
-                    onChange={() => update('fulfillmentType', option.value)}
-                    className="size-4 accent-store-primary"
-                  />
-                  <span className="font-bold text-store-ink">{option.label}</span>
-                </label>
-              ))}
-            </fieldset>
-            {options.data && (
-              <fieldset disabled={uncertain || orderMutation.isPending || reviewMutation.isPending}>
-                <RestaurantRouteFields settings={options.data} fulfillment={fields.fulfillmentType}
-                  area={legacyArea} pickup={pickup}
-                  onArea={(id) => { setLegacyArea(id); setQuote(null); }}
-                  onPickup={(id) => { setPickup(id); setQuote(null); }} />
-              </fieldset>
-            )}
-            {fields.fulfillmentType === 'delivery' && (
+          <fieldset
+            disabled={uncertain || orderMutation.isPending || reviewMutation.isPending}
+            className="contents"
+          >
+            <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
+              <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
+                {locale === 'ar' ? 'بيانات العميل' : 'Your details'}
+              </h2>
+              {session.isPending && (
+                <p role="status" className="text-sm text-store-muted">
+                  {locale === 'ar' ? 'جارٍ تحميل بيانات حسابك…' : 'Loading your account…'}
+                </p>
+              )}
+              {session.isError ? (
+                <p role="alert" className="text-sm text-store-error">
+                  {locale === 'ar' ? 'تعذّر التحقق من الحساب.' : 'Could not check your account.'}{' '}
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => void session.refetch()}
+                  >
+                    {locale === 'ar' ? 'إعادة المحاولة' : 'Try again'}
+                  </button>
+                </p>
+              ) : (
+                !session.isPending &&
+                !session.data && (
+                  <p className="text-sm text-store-muted">
+                    {locale === 'ar' ? 'تقدر تكمل كزائر أو ' : 'Continue as a guest or '}
+                    <StorefrontSignInLink className="font-bold text-store-primary underline">
+                      {locale === 'ar'
+                        ? 'تسجّل الدخول لملء بياناتك ومتابعة طلبك'
+                        : 'sign in to fill your details and track your order'}
+                    </StorefrontSignInLink>
+                  </p>
+                )
+              )}
               <label className="grid gap-2 text-sm font-bold text-store-ink">
-                {t.address}
-                <Textarea
-                  autoComplete="street-address"
-                  value={fields.deliveryAddress}
-                  onChange={(event) => update('deliveryAddress', event.currentTarget.value)}
-                  placeholder={t.addressPlaceholder}
-                  minLength={8}
-                  maxLength={1000}
+                {t.customerName}
+                <Input
+                  autoComplete="name"
+                  dir="auto"
+                  value={fields.customerName}
+                  onChange={(event) => update('customerName', event.currentTarget.value)}
+                  placeholder={t.namePlaceholder}
+                  minLength={2}
+                  maxLength={120}
                   required
-                  className="min-h-28 rounded-xl border-store-border bg-white text-base"
+                  className="h-12 rounded-xl border-store-border bg-white text-base"
                 />
               </label>
-            )}
-          </Card>
+              <label className="grid gap-2 text-sm font-bold text-store-ink">
+                {t.customerPhone}
+                <Input
+                  autoComplete="tel"
+                  type="tel"
+                  inputMode="tel"
+                  value={fields.customerPhone}
+                  onChange={(event) => update('customerPhone', event.currentTarget.value)}
+                  placeholder={t.phonePlaceholder}
+                  minLength={7}
+                  maxLength={32}
+                  pattern="[+0-9 .()\\-]{7,32}"
+                  required
+                  className="h-12 rounded-xl border-store-border bg-white text-base"
+                  dir="ltr"
+                />
+              </label>
+            </Card>
+
+            <Card className="grid gap-3 rounded-3xl border-store-border bg-white p-4 sm:p-5">
+              <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
+                {t.discountCode}
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  aria-label={t.discountCode}
+                  dir="ltr"
+                  autoCapitalize="characters"
+                  maxLength={32}
+                  value={fields.discountCode}
+                  onChange={(event) =>
+                    update('discountCode', event.currentTarget.value.toUpperCase())
+                  }
+                  placeholder={t.discountCodePlaceholder}
+                  className="h-12 min-w-0 flex-1 rounded-xl border-store-border bg-white text-base"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={orderMutation.isPending || !fields.discountCode.trim()}
+                  onClick={() => {
+                    setQuoteError('');
+                    void quoteRequest()
+                      .then(setQuote)
+                      .catch(() => {
+                        setQuote(null);
+                        setQuoteError(t.discountUnavailable);
+                      });
+                  }}
+                  className="h-12 rounded-xl border-store-border font-bold text-store-primary"
+                >
+                  {t.applyDiscount}
+                </Button>
+              </div>
+              {quoteError && (
+                <p className="m-0 text-sm font-bold text-store-error" role="alert">
+                  {quoteError}
+                </p>
+              )}
+              {quote?.discount && (
+                <p className="m-0 text-sm font-bold text-store-primary" role="status">
+                  {quote.discount.code} · {t.discountApplied} · −
+                  <bdi dir="auto">{formatStorefrontPrice(quote.discount.amount, locale)}</bdi>
+                </p>
+              )}
+            </Card>
+
+            <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
+              <fieldset className="grid gap-3">
+                <legend className="mb-2 font-heading text-storefront-subsection font-extrabold text-store-ink">
+                  {t.fulfillment}
+                </legend>
+                {(
+                  [
+                    { value: 'pickup', label: t.pickup },
+                    { value: 'delivery', label: t.delivery },
+                  ] as const
+                ).map((option) => (
+                  <label
+                    key={option.value}
+                    className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border px-4 transition ${fields.fulfillmentType === option.value ? 'border-store-primary bg-store-primary/5' : 'border-store-border bg-white hover:bg-store-page'}`}
+                  >
+                    <input
+                      type="radio"
+                      name="fulfillment"
+                      value={option.value}
+                      checked={fields.fulfillmentType === option.value}
+                      onChange={() => {
+                        setFulfillmentType(option.value);
+                        setQuote(null);
+                        setQuoteError('');
+                      }}
+                      className="size-4 accent-store-primary"
+                    />
+                    <span className="font-bold text-store-ink">{option.label}</span>
+                  </label>
+                ))}
+              </fieldset>
+              {options.data && (
+                <fieldset
+                  disabled={uncertain || orderMutation.isPending || reviewMutation.isPending}
+                >
+                  <RestaurantRouteFields
+                    settings={options.data}
+                    fulfillment={fields.fulfillmentType}
+                    area={deliveryAreaId}
+                    pickup={pickup}
+                    locationId={deliveryAreaId}
+                    onLocation={(id) => {
+                      setDeliveryAreaId(id);
+                      setQuote(null);
+                    }}
+                    onArea={(id) => {
+                      setDeliveryAreaId(id);
+                      setQuote(null);
+                    }}
+                    onPickup={(id) => {
+                      setPickup(id);
+                      setQuote(null);
+                    }}
+                  />
+                </fieldset>
+              )}
+              {fields.fulfillmentType === 'delivery' && (
+                <label className="grid gap-2 text-sm font-bold text-store-ink">
+                  {t.address}
+                  <Textarea
+                    autoComplete="street-address"
+                    dir="auto"
+                    value={fields.deliveryAddress}
+                    onChange={(event) => update('deliveryAddress', event.currentTarget.value)}
+                    placeholder={t.addressPlaceholder}
+                    minLength={8}
+                    maxLength={1000}
+                    required
+                    className="min-h-28 rounded-xl border-store-border bg-white text-base"
+                  />
+                </label>
+              )}
+            </Card>
+          </fieldset>
 
           {orderMutation.isError && (
             <p
               className="rounded-2xl border border-store-error/20 bg-store-error/5 px-4 py-3 text-sm font-bold leading-6 text-store-error"
               role="alert"
             >
-              {orderMutation.error.message || t.orderError}
+              {orderMutation.error.message || t.orderError}{' '}
+              <StorefrontSignInLink className="underline">
+                {locale === 'ar' ? 'تسجيل الدخول' : 'Sign in'}
+              </StorefrontSignInLink>
             </p>
           )}
 
-          {options.isError && restaurant && <p role="alert">تعذر تحميل خيارات الاستلام.{' '}
-            <button type="button" onClick={() => void options.refetch()}>حاول تاني</button>
-          </p>}
+          {options.isError && restaurant && (
+            <p role="alert">
+              تعذر تحميل خيارات الاستلام.{' '}
+              <button type="button" onClick={() => void options.refetch()}>
+                حاول تاني
+              </button>
+            </p>
+          )}
           {reviewMutation.isError && <p role="alert">{reviewMutation.error.message}</p>}
-          {reviewedQuote?.branch && !uncertain && <div className="rounded-xl border p-3 text-sm" role="status">
-            <p>الفرع: {reviewedQuote.branch.name}</p>
-            {fields.fulfillmentType === 'pickup' && reviewedQuote.branch.address && <p>{reviewedQuote.branch.address}</p>}
-            {reviewedQuote.deliveryAreaName && <p>{reviewedQuote.deliveryAreaName}</p>}
-            <p>الإجمالي: {formatStorefrontPrice(reviewedQuote.total, locale)}</p>
-          </div>}
+          {reviewedQuote?.branch && !uncertain && (
+            <div className="rounded-xl border p-3 text-sm" role="status">
+              <p>الفرع: {reviewedQuote.branch.name}</p>
+              {fields.fulfillmentType === 'pickup' && reviewedQuote.branch.address && (
+                <p>{reviewedQuote.branch.address}</p>
+              )}
+              {reviewedQuote.deliveryAreaName && <p>{reviewedQuote.deliveryAreaName}</p>}
+              <p>الإجمالي: {formatStorefrontPrice(reviewedQuote.total, locale)}</p>
+            </div>
+          )}
           <Button
             type="submit"
             formNoValidate={uncertain}
-            disabled={orderMutation.isPending || reviewMutation.isPending || (restaurant && !options.data && !uncertain)}
+            disabled={
+              session.isPending ||
+              session.isError ||
+              orderMutation.isPending ||
+              reviewMutation.isPending ||
+              (restaurant && !options.data && !uncertain)
+            }
             className="h-11 rounded-xl bg-store-accent font-heading text-sm font-extrabold hover:bg-store-primary-dark"
           >
             {orderMutation.isPending && (
               <LoaderCircle className="size-5 animate-spin" aria-hidden="true" />
             )}
-            {uncertain ? 'أعد نفس محاولة التأكيد' : orderMutation.isPending ? t.submittingOrder
-              : reviewMutation.isPending ? 'جارٍ مراجعة الطلب…'
-                : branchRouting && !reviewedQuote ? 'راجع الفرع والسعر' : t.submitOrder}
+            {uncertain
+              ? 'أعد نفس محاولة التأكيد'
+              : orderMutation.isPending
+                ? t.submittingOrder
+                : reviewMutation.isPending
+                  ? 'جارٍ مراجعة الطلب…'
+                  : branchRouting && !reviewedQuote
+                    ? 'راجع الفرع والسعر'
+                    : t.submitOrder}
             {!orderMutation.isPending && <Arrow className="size-4" aria-hidden="true" />}
           </Button>
           <p className="text-center text-xs leading-5 text-store-muted">{t.noPayment}</p>
@@ -484,9 +612,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                     <span className="shrink-0 text-end">
                       {promotion && originalUnitPrice && (
                         <del className="block text-xs text-store-muted">
-                          <bdi dir="auto">
-                            {formatStorefrontPrice(originalUnitPrice, locale)}
-                          </bdi>
+                          <bdi dir="auto">{formatStorefrontPrice(originalUnitPrice, locale)}</bdi>
                         </del>
                       )}
                       <strong className="font-bold text-store-ink">

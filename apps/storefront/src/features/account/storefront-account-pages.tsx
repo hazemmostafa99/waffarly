@@ -1,20 +1,18 @@
 'use client';
 
 import { useRef, useState, type FormEvent } from 'react';
-import Link, { useStorefrontSlug } from '../../components/storefront/storefront-link';
+import Link from '../../components/storefront/storefront-link';
 import { useParams } from 'next/navigation';
 import { ArrowUpRight, BadgeCheck, Heart, MapPin, ShoppingBag, UserRound } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button, Input, useLocale } from '@waffarly/ui';
 import { accountCopy } from './account-copy';
 import { AccountShell } from './account-shell';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useStorefrontCustomer, useStorefrontSignOut } from './hooks/use-storefront-customer';
+import { StorefrontSignInLink } from './storefront-sign-in-link';
 import {
   isStorefrontCustomerNetworkError,
   isStorefrontCustomerServiceUnavailable,
-  loadStorefrontCustomer,
-  signOutStorefrontCustomer,
-  storefrontCustomerSessionKey,
 } from './data/storefront-customer-api';
 
 type AccountFieldProps = {
@@ -25,7 +23,13 @@ type AccountFieldProps = {
   required?: boolean;
 };
 
-function AccountField({ id, label, type = 'text', inputMode, required = false }: AccountFieldProps) {
+function AccountField({
+  id,
+  label,
+  type = 'text',
+  inputMode,
+  required = false,
+}: AccountFieldProps) {
   return (
     <label className="grid gap-1.5 text-storefront-support font-bold text-store-ink" htmlFor={id}>
       {label}
@@ -45,19 +49,9 @@ function AccountField({ id, label, type = 'text', inputMode, required = false }:
 export function StorefrontAccountOverviewPage() {
   const { locale } = useLocale();
   const params = useParams<{ slug: string }>();
-  const storefrontSlug = useStorefrontSlug();
   const t = accountCopy(locale);
-  const queryClient = useQueryClient();
-  const session = useQuery({
-    queryKey: storefrontCustomerSessionKey(storefrontSlug),
-    queryFn: () => loadStorefrontCustomer(storefrontSlug),
-    retry: false,
-  });
-  const signOut = useMutation({
-    mutationFn: () => signOutStorefrontCustomer(storefrontSlug),
-    onSuccess: () => queryClient.setQueryData(storefrontCustomerSessionKey(storefrontSlug), null),
-    gcTime: 0,
-  });
+  const session = useStorefrontCustomer();
+  const signOut = useStorefrontSignOut();
   const accountError = session.error ?? signOut.error;
   const baseHref = `/s/${encodeURIComponent(params.slug)}`;
   const shortcuts: { href: string; label: string; icon: LucideIcon }[] = [
@@ -67,11 +61,7 @@ export function StorefrontAccountOverviewPage() {
   ];
 
   return (
-    <AccountShell
-      active="overview"
-      title={t.overview}
-      description={t.overviewIntro}
-    >
+    <AccountShell active="overview" title={t.overview} description={t.overviewIntro}>
       <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
         <section className="grid content-start gap-4 rounded-2xl border border-store-border bg-store-page p-4 sm:p-5">
           <span className="grid size-12 place-items-center rounded-2xl bg-store-cream text-store-primary">
@@ -108,7 +98,7 @@ export function StorefrontAccountOverviewPage() {
               disabled={session.isPending}
               className="w-full bg-store-primary text-white hover:bg-store-primary-dark"
             >
-              <Link href={`${baseHref}/login`}>{t.signIn}</Link>
+              <StorefrontSignInLink>{t.signIn}</StorefrontSignInLink>
             </Button>
           )}
           {(session.isError || signOut.isError) && (
@@ -181,7 +171,11 @@ export function StorefrontProfilePage() {
   const t = accountCopy(locale);
   const formRef = useRef<HTMLFormElement>(null);
   const [feedback, setFeedback] = useState('');
-  const [savedProfile, setSavedProfile] = useState<{ name: string; phone: string; email: string } | null>(null);
+  const [savedProfile, setSavedProfile] = useState<{
+    name: string;
+    phone: string;
+    email: string;
+  } | null>(null);
 
   function clearFields() {
     formRef.current?.reset();
@@ -211,7 +205,13 @@ export function StorefrontProfilePage() {
           <AccountField id="profile-name" label={t.name} required />
           <AccountField id="profile-phone" inputMode="tel" label={t.phone} required type="tel" />
           <div className="sm:col-span-2">
-            <AccountField id="profile-email" inputMode="email" label={t.email} required type="email" />
+            <AccountField
+              id="profile-email"
+              inputMode="email"
+              label={t.email}
+              required
+              type="email"
+            />
           </div>
           <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:justify-end">
             <Button className="min-h-11" onClick={clearFields} type="button" variant="outline">
@@ -234,7 +234,9 @@ export function StorefrontProfilePage() {
             ].map(([label, value]) => (
               <div className="grid gap-1" key={label}>
                 <dt className="text-storefront-caption text-store-muted">{label}</dt>
-                <dd className="break-words text-storefront-support font-bold text-store-ink">{value}</dd>
+                <dd className="break-words text-storefront-support font-bold text-store-ink">
+                  {value}
+                </dd>
               </div>
             ))}
           </dl>

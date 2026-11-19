@@ -1,32 +1,32 @@
 'use client';
 
 import Image from 'next/image';
-import Link, { useStorefrontSlug } from '../components/storefront/storefront-link';
-import { useParams } from 'next/navigation';
+import Link, {
+  useStorefrontBasePath,
+  useStorefrontSlug,
+} from '../components/storefront/storefront-link';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import type { ComponentProps } from 'react';
-import {
-  ArrowLeft,
-  ArrowRight,
-  MapPin,
-  Utensils,
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, MapPin, Utensils } from 'lucide-react';
 import { Button, Card, Input, useLocale } from '@waffarly/ui';
 import type { Locale } from '@waffarly/ui';
 import type { CustomerSignInRequest, CustomerSignUpRequest } from '@waffarly/contracts';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { PublicStorefrontCatalog, StorefrontOrderReceipt } from '@waffarly/contracts';
 import { StorefrontProductGrid } from './catalog/storefront-product-grid';
 import { useRestaurantFulfillment } from './delivery/restaurant-route-fields';
 import { loadStorefrontOrderReceipt } from './orders/storefront-order-receipt-session';
 import { formatStorefrontPrice } from '../lib/storefront-format';
 import { ApiError } from '@/lib/api-client';
+import { useStorefrontStore } from '@/providers/storefront-providers';
+import { useStorefrontCustomer } from './account/hooks/use-storefront-customer';
+import { storefrontReturnPath } from './account/storefront-sign-in-link';
 import {
   isStorefrontCustomerNetworkError,
   isStorefrontCustomerServiceUnavailable,
   loadStorefrontCustomer,
   signInStorefrontCustomer,
-  signOutStorefrontCustomer,
   signUpStorefrontCustomer,
   storefrontCustomerSessionKey,
 } from '@/features/account/data/storefront-customer-api';
@@ -96,15 +96,15 @@ const copy: Record<'ar' | 'en', StorefrontPageCopy> = {
     filterAll: 'الكل',
     branchesTitle: 'فروعنا',
     branchesIntro: 'اختر فرعًا متاحًا للاستلام أو التوصيل.',
-    chooseBranch: 'اختيار الفرع',
+    chooseBranch: 'الاستلام من الفرع',
     aboutTitle: 'عن المطعم',
     trackingTitle: 'متابعة الطلب',
     trackingIntro: 'تابع آخر حالة متاحة للطلب في جلسة التصفح الحالية.',
     trackingSnapshotNote: 'هذه آخر حالة وصلت في إيصال الطلب، وقد لا تشمل تحديثات لاحقة.',
     accountTitle: 'حسابك',
     loginTitle: 'تسجيل الدخول',
-    signIn: 'دخول',
-    register: 'حساب جديد',
+    signIn: 'تسجيل الدخول',
+    register: 'إنشاء حساب جديد',
     fullName: 'الاسم الكامل',
     email: 'البريد الإلكتروني',
     phone: 'رقم الهاتف',
@@ -127,7 +127,8 @@ const copy: Record<'ar' | 'en', StorefrontPageCopy> = {
     connectionError: 'تعذّر الاتصال. تحقق من الشبكة وحاول مرة أخرى.',
     retry: 'إعادة المحاولة',
     noOffers: 'لا توجد عروض حالية على القائمة.',
-    localDataNote: 'اختيار الفرع هنا مؤقت ولا يغيّر فرع الطلب.',
+    localDataNote:
+      'اختيار فرع هنا يحدد فرع الاستلام لطلبك. للتوصيل، اختار منطقتك من خيارات الاستلام فوق.',
     noBranches: 'لا توجد فروع متاحة حاليًا.',
     branchesError: 'تعذّر تحميل الفروع. حاول مرة أخرى.',
     loadingBranches: 'جارٍ تحميل الفروع…',
@@ -140,7 +141,7 @@ const copy: Record<'ar' | 'en', StorefrontPageCopy> = {
     availableForPickup: 'استلام',
     availableForDelivery: 'توصيل',
     branchUnavailable: 'غير متاح الآن',
-    selectedBranch: 'تم اختيار الفرع في الصفحة الحالية',
+    selectedBranch: 'فرع الاستلام المختار',
     noDescription: 'لم يضف المطعم وصفًا بعد.',
   },
   en: {
@@ -151,11 +152,12 @@ const copy: Record<'ar' | 'en', StorefrontPageCopy> = {
     filterAll: 'All',
     branchesTitle: 'Our branches',
     branchesIntro: 'Choose a branch available for pickup or delivery.',
-    chooseBranch: 'Select branch',
+    chooseBranch: 'Pick up from this branch',
     aboutTitle: 'About the restaurant',
     trackingTitle: 'Track an order',
     trackingIntro: 'See the latest order status available in this browsing session.',
-    trackingSnapshotNote: 'This is the latest status saved on the receipt and may not include later updates.',
+    trackingSnapshotNote:
+      'This is the latest status saved on the receipt and may not include later updates.',
     accountTitle: 'Your account',
     loginTitle: 'Sign in',
     signIn: 'Sign in',
@@ -182,7 +184,8 @@ const copy: Record<'ar' | 'en', StorefrontPageCopy> = {
     connectionError: 'Connection failed. Check your network and try again.',
     retry: 'Try again',
     noOffers: 'There are no current offers on the menu.',
-    localDataNote: 'This selection is temporary and does not change the checkout branch.',
+    localDataNote:
+      'Selecting a branch sets your pickup preference. For delivery, choose your area in the fulfillment options above.',
     noBranches: 'There are no available branches right now.',
     branchesError: 'Branches could not be loaded. Try again.',
     loadingBranches: 'Loading branches…',
@@ -195,7 +198,7 @@ const copy: Record<'ar' | 'en', StorefrontPageCopy> = {
     availableForPickup: 'Pickup',
     availableForDelivery: 'Delivery',
     branchUnavailable: 'Unavailable now',
-    selectedBranch: 'Branch selected on this page',
+    selectedBranch: 'Selected pickup branch',
     noDescription: 'The restaurant has not added a description yet.',
   },
 };
@@ -213,10 +216,12 @@ function StorefrontPageShell({
   title,
   intro,
   children,
+  compact = false,
 }: {
   title: string;
   intro?: string;
   children: ReactNode;
+  compact?: boolean;
 }) {
   const { locale } = useLocale();
   const t = getCopy(locale);
@@ -226,11 +231,11 @@ function StorefrontPageShell({
   return (
     <main
       id="main-content"
-      className="mx-auto min-h-[65vh] w-[calc(100%-2rem)] max-w-[1100px] py-6 sm:py-9"
+      className={`mx-auto min-h-[65vh] w-[calc(100%-2rem)] max-w-[1100px] ${compact ? 'pt-3 pb-8' : 'py-6 sm:py-9'}`}
     >
       <nav
         aria-label={locale === 'ar' ? 'مسار التنقل' : 'Breadcrumbs'}
-        className="mb-4 flex items-center gap-2 text-storefront-caption text-store-muted"
+        className={`${compact ? 'mb-2' : 'mb-4'} flex items-center gap-2 text-storefront-caption text-store-muted`}
       >
         <Link
           className="font-bold text-store-primary hover:text-store-primary-deep"
@@ -241,7 +246,7 @@ function StorefrontPageShell({
         <HomeArrow className="size-3.5" aria-hidden="true" />
         <span aria-current="page">{title}</span>
       </nav>
-      <header className="mb-5 flex flex-col gap-2 sm:mb-6">
+      <header className={compact ? 'sr-only' : 'mb-5 flex flex-col gap-2 sm:mb-6'}>
         <h1 className="font-heading text-storefront-section font-black leading-tight text-store-ink">
           {title}
         </h1>
@@ -257,11 +262,15 @@ export function StorefrontOffersPage({ catalog }: { catalog: PublicStorefrontCat
   const t = getCopy(locale);
   const routes = useStorefrontRoutes();
   const [filter, setFilter] = useState('all');
-  const offers = catalog.products.filter((product) => product.promotion || product.promotionalPrice);
+  const offers = catalog.products.filter(
+    (product) => product.promotion || product.promotionalPrice,
+  );
   const filters = [
     { id: 'all', label: t.filterAll },
     ...catalog.categories
-      .filter((category) => offers.some((product) => product.categories.some((item) => item.id === category.id)))
+      .filter((category) =>
+        offers.some((product) => product.categories.some((item) => item.id === category.id)),
+      )
       .map((category) => ({ id: category.id, label: category.name })),
   ];
   const visibleProducts = offers.filter(
@@ -306,7 +315,11 @@ export function StorefrontOffersPage({ catalog }: { catalog: PublicStorefrontCat
 export function StorefrontBranchesPage({ catalog }: { catalog: PublicStorefrontCatalog }) {
   const { locale } = useLocale();
   const t = getCopy(locale);
-  const [selected, setSelected] = useState<string | null>(null);
+  const selected = useStorefrontStore((state) => state.pickupBranchId);
+  const setSelected = useStorefrontStore((state) => state.setPickupBranchId);
+  const fulfillmentType = useStorefrontStore((state) => state.fulfillmentType);
+  const setFulfillmentType = useStorefrontStore((state) => state.setFulfillmentType);
+  const hydrated = useStorefrontStore((state) => state.hasHydrated);
   const isRestaurant = catalog.activity === 'restaurant';
   const fulfillment = useRestaurantFulfillment(isRestaurant ? catalog.slug : undefined);
   const branches = fulfillment.data?.onlineBranches ?? [];
@@ -335,7 +348,7 @@ export function StorefrontBranchesPage({ catalog }: { catalog: PublicStorefrontC
           </p>
           <div className="grid gap-4 md:grid-cols-3">
             {branches.map((branch) => {
-              const isSelected = selected === branch.branchId;
+              const isSelected = fulfillmentType === 'pickup' && selected === branch.branchId;
               return (
                 <Card
                   key={branch.branchId}
@@ -371,8 +384,11 @@ export function StorefrontBranchesPage({ catalog }: { catalog: PublicStorefrontC
                     <Button
                       type="button"
                       variant={isSelected ? 'outline' : 'default'}
-                      disabled={!branch.acceptingOrders}
-                      onClick={() => setSelected(branch.branchId)}
+                      disabled={!hydrated || !branch.acceptingOrders || !branch.pickup}
+                      onClick={() => {
+                        setFulfillmentType('pickup');
+                        setSelected(branch.branchId);
+                      }}
                       className="w-full"
                     >
                       <MapPin className="me-2 size-4" aria-hidden="true" />
@@ -398,7 +414,14 @@ export function StorefrontAboutPage({ catalog }: { catalog: PublicStorefrontCata
       <Card className="grid gap-5 rounded-[1.6rem] border-store-border bg-white p-5 shadow-[0_12px_32px_rgba(30,38,36,0.045)] sm:p-8">
         <div className="flex items-center gap-3">
           {catalog.logoData && (
-            <Image src={catalog.logoData} alt="" width={56} height={56} unoptimized className="size-14 rounded-xl object-cover" />
+            <Image
+              src={catalog.logoData}
+              alt=""
+              width={56}
+              height={56}
+              unoptimized
+              className="size-14 rounded-xl object-cover"
+            />
           )}
           <h2 className="font-heading text-storefront-section font-black text-store-ink">
             {catalog.merchantName}
@@ -407,9 +430,15 @@ export function StorefrontAboutPage({ catalog }: { catalog: PublicStorefrontCata
         <p className="max-w-3xl text-storefront-body leading-7 text-store-secondary">
           {catalog.restaurantDescription || t.noDescription}
         </p>
-        <div className="flex flex-wrap gap-2" aria-label={locale === 'ar' ? 'أقسام القائمة' : 'Menu categories'}>
+        <div
+          className="flex flex-wrap gap-2"
+          aria-label={locale === 'ar' ? 'أقسام القائمة' : 'Menu categories'}
+        >
           {catalog.categories.map((category) => (
-            <span className="rounded-full bg-store-cream px-3 py-1 text-storefront-support font-bold text-store-primary-deep" key={category.id}>
+            <span
+              className="rounded-full bg-store-cream px-3 py-1 text-storefront-support font-bold text-store-primary-deep"
+              key={category.id}
+            >
               {category.name}
             </span>
           ))}
@@ -449,7 +478,9 @@ export function StorefrontOrderTrackingPage() {
     <StorefrontPageShell title={t.trackingTitle} intro={t.trackingIntro}>
       <Card className="mx-auto grid max-w-3xl gap-5 rounded-[1.6rem] border-store-border bg-white p-5 shadow-[0_12px_32px_rgba(30,38,36,0.045)] sm:p-7">
         {!isLoaded ? (
-          <p role="status" className="text-store-muted">{t.loadingAccount}</p>
+          <p role="status" className="text-store-muted">
+            {t.loadingAccount}
+          </p>
         ) : receipt ? (
           <>
             <p className="rounded-xl bg-store-primary/5 px-4 py-3 text-storefront-support font-bold text-store-primary-deep">
@@ -458,7 +489,9 @@ export function StorefrontOrderTrackingPage() {
             <dl className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-1">
                 <dt className="text-storefront-caption text-store-muted">{t.orderNumber}</dt>
-                <dd className="font-heading font-extrabold text-store-ink" dir="ltr">#{receipt.id.slice(0, 8).toUpperCase()}</dd>
+                <dd className="font-heading font-extrabold text-store-ink" dir="ltr">
+                  #{receipt.id.slice(0, 8).toUpperCase()}
+                </dd>
               </div>
               <div className="grid gap-1">
                 <dt className="text-storefront-caption text-store-muted">{t.orderStatus}</dt>
@@ -469,12 +502,17 @@ export function StorefrontOrderTrackingPage() {
               <div className="grid gap-1">
                 <dt className="text-storefront-caption text-store-muted">{t.orderDate}</dt>
                 <dd className="text-storefront-support text-store-ink">
-                  {new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(receipt.createdAt))}
+                  {new Intl.DateTimeFormat(locale === 'ar' ? 'ar-EG' : 'en-US', {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  }).format(new Date(receipt.createdAt))}
                 </dd>
               </div>
               <div className="grid gap-1">
                 <dt className="text-storefront-caption text-store-muted">{t.orderTotal}</dt>
-                <dd className="font-heading font-extrabold text-store-ink">{formatStorefrontPrice(receipt.total, locale)}</dd>
+                <dd className="font-heading font-extrabold text-store-ink">
+                  {formatStorefrontPrice(receipt.total, locale)}
+                </dd>
               </div>
               {receipt.branchName && (
                 <div className="grid gap-1">
@@ -485,7 +523,10 @@ export function StorefrontOrderTrackingPage() {
             </dl>
           </>
         ) : (
-          <p role="status" className="rounded-xl bg-store-cream p-4 text-storefront-support font-bold text-store-secondary">
+          <p
+            role="status"
+            className="rounded-xl bg-store-cream p-4 text-storefront-support font-bold text-store-secondary"
+          >
             {t.noOrderInSession}
           </p>
         )}
@@ -500,20 +541,21 @@ export function StorefrontOrderTrackingPage() {
 export function StorefrontCustomerLoginPage() {
   const { locale } = useLocale();
   const storefrontSlug = useStorefrontSlug();
+  const base = useStorefrontBasePath(storefrontSlug);
+  const router = useRouter();
   const t = getCopy(locale);
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<'sign-in' | 'register'>('sign-in');
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const submitting = useRef(false);
   const isRegister = mode === 'register';
-  const session = useQuery({
-    queryKey: storefrontCustomerSessionKey(storefrontSlug),
-    queryFn: () => loadStorefrontCustomer(storefrontSlug),
-    retry: false,
-    staleTime: 0,
-    refetchOnWindowFocus: true,
-  });
+  const session = useStorefrontCustomer({ refreshOnMount: true });
+  useEffect(() => {
+    if (!session.data || session.isFetching || session.isError) return;
+    const returnTo = new URLSearchParams(window.location.search).get('returnTo');
+    router.replace(storefrontReturnPath(returnTo, base));
+  }, [session.data, session.isFetching, session.isError, base, router]);
   const signIn = useMutation({
     mutationFn: (data: CustomerSignInRequest) => signInStorefrontCustomer(storefrontSlug, data),
     gcTime: 0,
@@ -522,16 +564,11 @@ export function StorefrontCustomerLoginPage() {
     mutationFn: (data: CustomerSignUpRequest) => signUpStorefrontCustomer(storefrontSlug, data),
     gcTime: 0,
   });
-  const signOut = useMutation({
-    mutationFn: () => signOutStorefrontCustomer(storefrontSlug),
-    gcTime: 0,
-  });
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting.current) return;
     setError('');
-    setNotice('');
     const form = event.currentTarget;
     const values = new FormData(form);
     const read = (name: string) => String(values.get(name) ?? '');
@@ -546,6 +583,7 @@ export function StorefrontCustomerLoginPage() {
     }
 
     submitting.current = true;
+    setIsAuthenticating(true);
     try {
       const customer = isRegister
         ? await signUp.mutateAsync({
@@ -555,8 +593,18 @@ export function StorefrontCustomerLoginPage() {
             password,
           })
         : await signIn.mutateAsync({ identifier: read('identifier'), password });
-      queryClient.setQueryData(storefrontCustomerSessionKey(storefrontSlug), customer);
-      setNotice(isRegister ? t.signUpSuccess : t.signInSuccess);
+      await queryClient.cancelQueries({ queryKey: storefrontCustomerSessionKey(storefrontSlug) });
+      // Confirm the cookie survived before treating the session as persistent.
+      const persisted = await loadStorefrontCustomer(storefrontSlug);
+      if (!persisted || persisted.id !== customer.id) {
+        setError(
+          locale === 'ar'
+            ? 'تعذّر الاحتفاظ بتسجيل الدخول. اسمح بملفات تعريف الارتباط وحاول تاني.'
+            : 'Could not keep you signed in. Allow cookies and try again.',
+        );
+        return;
+      }
+      queryClient.setQueryData(storefrontCustomerSessionKey(storefrontSlug), persisted);
       form.reset();
     } catch (cause) {
       if (cause instanceof ApiError) {
@@ -576,6 +624,7 @@ export function StorefrontCustomerLoginPage() {
       }
     } finally {
       submitting.current = false;
+      setIsAuthenticating(false);
       const passwordField = form.elements.namedItem('password');
       const confirmationField = form.elements.namedItem('confirm-password');
       if (passwordField instanceof HTMLInputElement) passwordField.value = '';
@@ -584,9 +633,9 @@ export function StorefrontCustomerLoginPage() {
   }
 
   return (
-    <StorefrontPageShell title={t.loginTitle}>
+    <StorefrontPageShell title={t.loginTitle} compact>
       <div className="mx-auto grid max-w-4xl overflow-hidden rounded-[1.6rem] border border-store-border bg-white shadow-[0_12px_32px_rgba(30,38,36,0.045)] lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="relative hidden min-h-[500px] bg-store-cream lg:block">
+        <div className="relative hidden bg-store-cream lg:block">
           <Image
             src="/storefront-assets/restaurant.webp"
             alt=""
@@ -597,53 +646,17 @@ export function StorefrontCustomerLoginPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-store-primary-deep/35 to-transparent" />
         </div>
         <div className="p-5 sm:p-8">
-          {session.isPending ? (
+          {session.isPending || (session.data && !session.isError) ? (
             <p
               role="status"
               className="mt-5 rounded-xl bg-store-page p-4 text-storefront-support text-store-muted"
             >
-              {t.loadingAccount}
+              {session.data
+                ? locale === 'ar'
+                  ? 'جارٍ الرجوع لصفحتك…'
+                  : 'Returning to your page…'
+                : t.loadingAccount}
             </p>
-          ) : session.data ? (
-            <div className="mt-5 grid gap-3 rounded-xl bg-store-cream p-4">
-              <p
-                role="status"
-                className="text-storefront-support font-bold text-store-primary-deep"
-              >
-                {t.signedInAs} {session.data.name}
-              </p>
-              {notice && (
-                <p className="text-storefront-support text-store-primary-deep">{notice}</p>
-              )}
-              <Button
-                type="button"
-                disabled={signOut.isPending}
-                variant="outline"
-                onClick={async () => {
-                  setError('');
-                  try {
-                    await signOut.mutateAsync();
-                    queryClient.setQueryData(storefrontCustomerSessionKey(storefrontSlug), null);
-                    setNotice(t.signOutSuccess);
-                  } catch (cause) {
-                    setError(
-                      isStorefrontCustomerServiceUnavailable(cause)
-                        ? t.authUnavailable
-                        : isStorefrontCustomerNetworkError(cause)
-                          ? t.connectionError
-                          : t.authUnavailable,
-                    );
-                  }
-                }}
-              >
-                {signOut.isPending ? t.signingOut : t.signOut}
-              </Button>
-              {error && (
-                <p role="alert" className="text-storefront-support font-bold text-red-700">
-                  {error}
-                </p>
-              )}
-            </div>
           ) : (
             <>
               {session.isError && (
@@ -663,7 +676,7 @@ export function StorefrontCustomerLoginPage() {
               <div
                 role="group"
                 aria-label={t.accountTitle}
-                className="mt-5 grid grid-cols-2 rounded-xl bg-store-page p-1"
+                className="grid grid-cols-2 rounded-xl bg-store-page p-1"
               >
                 {(
                   [
@@ -674,11 +687,10 @@ export function StorefrontCustomerLoginPage() {
                   <button
                     key={tab.id}
                     type="button"
-                    disabled={signIn.isPending || signUp.isPending}
+                    disabled={isAuthenticating}
                     aria-pressed={mode === tab.id}
                     onClick={() => {
                       setMode(tab.id);
-                      setNotice('');
                       setError('');
                     }}
                     className={`min-h-11 rounded-lg px-3 text-storefront-support font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-primary disabled:cursor-not-allowed disabled:opacity-60 ${mode === tab.id ? 'bg-white text-store-primary-deep shadow-sm' : 'text-store-muted'}`}
@@ -689,13 +701,10 @@ export function StorefrontCustomerLoginPage() {
               </div>
               <form
                 onSubmit={(event) => void handleSubmit(event)}
-                aria-busy={submitting.current || signIn.isPending || signUp.isPending}
+                aria-busy={isAuthenticating}
                 className="mt-5 grid gap-3"
               >
-                <fieldset
-                  disabled={submitting.current || signIn.isPending || signUp.isPending}
-                  className="m-0 grid gap-3 border-0 p-0"
-                >
+                <fieldset disabled={isAuthenticating} className="m-0 grid gap-3 border-0 p-0">
                   {isRegister && (
                     <Field
                       label={t.fullName}
@@ -760,14 +769,16 @@ export function StorefrontCustomerLoginPage() {
                   )}
                   <Button
                     type="submit"
-                    disabled={signIn.isPending || signUp.isPending}
+                    disabled={isAuthenticating}
                     className="mt-1 w-full bg-store-primary text-white hover:bg-store-primary-dark"
                   >
-                    {signIn.isPending || signUp.isPending
+                    {isAuthenticating
                       ? locale === 'ar'
                         ? 'جارٍ الإرسال…'
                         : 'Submitting…'
-                      : t.continueLabel}
+                      : isRegister
+                        ? t.register
+                        : t.signIn}
                   </Button>
                   {error && (
                     <p
@@ -775,14 +786,6 @@ export function StorefrontCustomerLoginPage() {
                       className="rounded-lg bg-red-50 px-3 py-2 text-storefront-support font-bold text-red-700"
                     >
                       {error}
-                    </p>
-                  )}
-                  {notice && (
-                    <p
-                      role="status"
-                      className="rounded-lg bg-store-primary/10 px-3 py-2 text-storefront-support font-bold text-store-primary-deep"
-                    >
-                      {notice}
                     </p>
                   )}
                 </fieldset>
@@ -824,6 +827,7 @@ function Field({
         id={id}
         name={name}
         type={type}
+        dir={name === 'email' || name === 'tel' || name === 'identifier' ? 'ltr' : 'auto'}
         inputMode={inputMode}
         autoComplete={autoComplete}
         maxLength={maxLength}

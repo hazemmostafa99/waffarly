@@ -26,13 +26,35 @@ Strict tracking requirements:
 
 - Overall: Core catalog-to-order pages plus the API-gap route UIs are implemented. Tenant account sign-in and merchant-scoped order history are now API-backed; unsupported profile/address/tracking routes remain previews.
 - Current milestone: Preserve the complete storefront journey while keeping Marketplace demo behavior separate from merchant-store accounts.
-- Current slice: Store-specific registration creates a merchant customer, signed-in checkouts link to that customer, and the tenant account shows scoped order history. Profile and address screens remain previews.
+- Current slice: Compact Arabic authentication UI, cookie-backed session restoration, safe return navigation, header account menu, merchant-scoped fulfillment preferences and checkout profile defaults. Profile and address editing remain previews.
 - Visual reference: Supplied Waffarly Bistro UI kit remains the design source; user-provided Wafarly Marketplace screenshots guide relative typography and density only.
 - Target app: `apps/storefront`.
 - Primary route namespace: `/s/[slug]`.
-- Last updated: 2026-11-14.
-- Last verified state: The prior 2026-10-15 viewport evidence remains historical. For the current slice, Prisma Client generation succeeded and the additive storefront-account migration was applied to the configured local database. No tests, app builds/typechecks, or browser account flows were run; manual acceptance is pending.
+- Last updated: 2026-11-19.
+- Last verified state: Source/diff review and local Prettier formatting only for the 2026-11-19 slice; visual/runtime acceptance is pending. The prior 2026-10-15 viewport evidence and 2026-11-14 migration evidence remain historical and do not verify this slice.
 - Worktree note: Preserve all pre-existing workspace edits. The current slice adds tenant-scoped auth, merchant customer creation, authenticated order linkage/history, and updates their route copy. Existing number-formatting behavior and unrelated dirty API/workspace files were left untouched.
+
+### 2026-11-19 - Storefront Login and Fulfillment Flow
+
+- [~] Implemented the user-approved plan. No API/database/shared-contract changes or new dependencies. The pre-existing `apps/storefront/next-env.d.ts` edit was preserved.
+- Login retains its breadcrumb/accessibility heading but hides the duplicate visual title; removed the image's fixed minimum height, clarified submit labels and set field directions. The pending state now also covers the post-login session confirmation.
+- Added narrow `/storefront-api` rewrites for existing merchant customer auth, customer order history and order submission. The host-routing proxy lets these paths reach the rewrites. This puts the HttpOnly cookie on the storefront origin instead of relying on cross-site cookies between a tenant hostname and a differently hosted API. Actual cookie behavior still needs browser acceptance; no claim is made about the prior runtime failure's exact cause.
+- Unified header/account/orders/checkout session reads and logout cache clearing. Login refreshes the server session before redirecting; successful registration/login confirms `me` before caching the profile. Return navigation accepts only known pages in the same storefront, otherwise home.
+- Added the account popover using the shared UI primitive, with customer identity, account/orders links and logout. Replaced the layout's old independent destination selector with one shared fulfillment picker on browsing/cart/product surfaces; account/login/checkout/tracking do not show that extra panel.
+- Store persistence version 3 adds only fulfillment mode and destination/pickup identifiers, preserving existing v1/v2 carts and favorites. Customer identity, contact fields, credentials and full addresses are not persisted. Controlled destination inputs let tenant checkout use merchant-scoped state while other consumers retain their existing shared destination source.
+- Branch-page pickup actions now use the same preference instead of a separate page-only selection; delivery-only/closed branches cannot be selected for pickup. Copy explains that delivery routing follows the selected destination.
+- Checkout defaults untouched name/phone fields from the server profile, preserves edits, carries fulfillment preferences, sends orders through the same-origin cookie path and checks an expected signed-in identity before submission. Form controls freeze during review/submission and uncertain retries; existing request IDs, quote confirmation and retry payloads remain intact.
+- Source/diff review only. No tests, browser suites, typechecks, builds, real registrations, database queries or order submissions were run. Visual and runtime completion remain pending.
+- Formatting: `pnpm exec prettier --write <17 changed TypeScript/TSX files>` failed before formatting because Corepack tried to download pnpm and DNS resolution for the registry was unavailable. Used the installed formatter directly: `node node_modules/prettier/bin/prettier.cjs --write <the same 17 files>` succeeded (exit 0). This is formatting only, not test/typecheck evidence. No package installation or dependency change occurred.
+
+Manual acceptance:
+
+1. On `burger.localhost`, compare login/register on mobile and desktop: compact spacing, no empty image-driven form area, correct Arabic labels and LTR telephone/email display.
+2. Enter login from a filtered menu, product page, account orders and checkout. Confirm return to that page; opening login directly returns home. External, another-tenant and login return paths must fall back to home.
+3. Register a dedicated QA customer, verify its merchant customer entry, refresh the page and open a new tab. Confirm `me`, header identity and account history use the same session. Log out and confirm header/history update; another store remains isolated.
+4. Select delivery, governorate/locality/area before adding items. Changing governorate/locality must clear the old destination; refresh and checkout must preserve the final selection for this merchant only. Check uncovered/closed branches and retry loading failures.
+5. Check pickup branch and address, delivery fees/minimum/ETA, automatic profile defaults and preservation of edits. Delivery requires a full address; pickup does not. Review price/branch before confirming any authorized QA order; check its customer linkage and unchanged idempotent retry behavior.
+6. Profile editing and saved addresses still disclose their page-local preview behavior; no database address storage is implemented by this slice.
 
 ### 2026-11-14 - Merchant-Scoped Storefront Customer Accounts
 
