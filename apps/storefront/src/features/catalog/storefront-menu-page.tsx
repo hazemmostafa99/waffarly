@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useState, type FormEvent } from 'react';
 import Link from '../../components/storefront/storefront-link';
 import { BookOpen, ChevronLeft, Search, SearchX, SlidersHorizontal } from 'lucide-react';
@@ -163,7 +164,7 @@ export function StorefrontMenuPage({
               type="button"
               aria-current={!initialCategoryId ? 'true' : undefined}
               onClick={() => updateUrl({ category: '' })}
-              className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition lg:flex lg:items-center lg:gap-3 lg:rounded-xl lg:px-3 lg:text-start ${!initialCategoryId ? 'border-store-primary bg-store-primary text-white lg:border-store-primary/15 lg:bg-store-primary/5 lg:text-store-primary' : 'border-store-border bg-white text-store-ink hover:border-store-accent/50 lg:border-transparent'}`}
+              className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition lg:flex lg:items-center lg:gap-3 lg:rounded-xl lg:px-3 lg:text-start ${!initialCategoryId ? 'border-store-primary/20 bg-store-primary/5 text-store-primary-deep' : 'border-store-border bg-white text-store-ink hover:border-store-accent/50 lg:border-transparent'}`}
             >
               <BookOpen className="hidden size-5 shrink-0 lg:block" aria-hidden="true" />
               <span className="lg:hidden">{t.allCategoriesShort}</span>
@@ -177,7 +178,7 @@ export function StorefrontMenuPage({
                   key={category.id}
                   aria-current={active ? 'true' : undefined}
                   onClick={() => updateUrl({ category: category.id })}
-                  className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition lg:flex lg:items-center lg:justify-between lg:gap-3 lg:rounded-xl lg:px-3 lg:text-start ${active ? 'border-store-primary bg-store-primary text-white lg:border-store-primary/15 lg:bg-store-primary/5 lg:text-store-primary' : 'border-store-border bg-white text-store-ink hover:border-store-accent/50 lg:border-transparent'}`}
+                  className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition lg:flex lg:items-center lg:justify-between lg:gap-3 lg:rounded-xl lg:px-3 lg:text-start ${active ? 'border-store-primary/20 bg-store-primary/5 text-store-primary-deep' : 'border-store-border bg-white text-store-ink hover:border-store-accent/50 lg:border-transparent'}`}
                 >
                   {imageUrl ? (
                     <span className="relative hidden size-8 shrink-0 overflow-hidden rounded-lg lg:block">

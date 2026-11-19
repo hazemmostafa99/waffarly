@@ -54,7 +54,7 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
   ];
 
   const hero = (
-    <section className="relative isolate grid min-h-[220px] overflow-hidden rounded-3xl bg-store-primary-deep text-white shadow-[0_24px_70px_rgba(6,61,49,0.18)] sm:rounded-[2rem] lg:min-h-[260px] lg:grid-cols-2">
+    <section className="relative isolate grid min-h-[360px] overflow-hidden rounded-3xl bg-store-primary-deep text-white shadow-[0_24px_70px_rgba(6,61,49,0.18)] sm:rounded-[2rem] lg:min-h-[400px] lg:grid-cols-2">
       <div className="absolute inset-0 -z-10 lg:hidden">
         <Image
           src={imageSource}
@@ -72,13 +72,13 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
           <Sparkles className="size-3.5" aria-hidden="true" />
           {catalog.heroEyebrow || t.heroEyebrow}
         </Badge>
-        <h1 className="sr-only">
+        <h1 className="mt-1 max-w-xl break-words font-heading text-storefront-hero font-black text-balance sm:mt-3">
           {catalog.heroTitle || t.heroTitle}
           <span className="mt-1 block text-store-gold">
             {catalog.heroEmphasis || t.heroEmphasis}
           </span>
         </h1>
-        <p className="mt-2 max-w-lg text-storefront-body-large text-white/80 sm:mt-3">
+        <p className="mt-2 max-w-lg text-[clamp(1rem,1.05vw,1.0625rem)] leading-[1.65] text-white/80 sm:mt-3">
           {catalog.restaurantDescription ||
             interpolate(t.heroDescription, { name: catalog.merchantName })}
         </p>
@@ -99,13 +99,13 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
             variant="outline"
             className="h-auto min-h-12 min-w-0 flex-1 rounded-xl border-white bg-white px-4 py-2 font-heading text-sm font-extrabold text-store-primary-deep hover:bg-store-cream hover:text-store-primary-deep sm:h-11 sm:min-h-0 sm:px-5 sm:py-0"
           >
-            <Link href={catalog.categories.length ? '#categories' : '#featured-heading'}>
+            <Link href={catalog.categories.length ? '#categories' : '#products'}>
               {t.browseCategories}
             </Link>
           </Button>
         </div>
       </div>
-      <div className="relative hidden min-h-[260px] lg:col-start-2 lg:row-start-1 lg:block">
+      <div className="relative hidden min-h-[400px] lg:col-start-2 lg:row-start-1 lg:block">
         <Image
           src={imageSource}
           alt=""
@@ -149,8 +149,12 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
   );
 
   const categories = catalog.categories.length > 0 && (
-    <section id="categories" className="mt-5" aria-labelledby="categories-heading">
-      <div className="flex items-end justify-between gap-4">
+    <section
+      id="categories"
+      className="mt-5 scroll-mt-20 lg:scroll-mt-28"
+      aria-labelledby="categories-heading"
+    >
+      <div className="flex items-end justify-end gap-4">
         <div className="sr-only">
           <h2 id="categories-heading" className="sr-only">
             {t.categorySectionTitle}
@@ -195,7 +199,7 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
 
   const featured = (
     <section className="mt-5 pb-5" aria-labelledby="featured-heading">
-      <div className="mb-4 flex items-end justify-between gap-4">
+      <div className="mb-4 flex items-end justify-end gap-4">
         <div className="sr-only">
           <p className="text-sm font-extrabold text-store-accent">{t.brandTagline}</p>
           <h2 id="featured-heading" className="sr-only">
@@ -228,24 +232,26 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
       {hero}
       {highlights}
       {categories}
-      {offers.length > 0 && (
-        <section
-          aria-label={locale === 'ar' ? 'العروض الحالية' : 'Current offers'}
-          className="mt-5"
-        >
-          <div className="mb-3 flex justify-end">
-            <Link
-              className="text-sm font-bold text-store-primary"
-              href={`/s/${catalog.slug}/offers`}
-            >
-              {locale === 'ar' ? 'شوف العروض' : 'View offers'}{' '}
-              <Arrow className="inline size-4" aria-hidden="true" />
-            </Link>
-          </div>
-          <StorefrontProductGrid products={offers} slug={catalog.slug} />
-        </section>
-      )}
-      {(featuredProducts.length > 0 || catalog.products.length === 0) && featured}
+      <div id="products" className="flow-root scroll-mt-20 lg:scroll-mt-28">
+        {offers.length > 0 && (
+          <section
+            aria-label={locale === 'ar' ? 'العروض الحالية' : 'Current offers'}
+            className="mt-5"
+          >
+            <div className="mb-3 flex justify-end">
+              <Link
+                className="text-sm font-bold text-store-primary"
+                href={`/s/${catalog.slug}/offers`}
+              >
+                {locale === 'ar' ? 'شوف العروض' : 'View offers'}{' '}
+                <Arrow className="inline size-4" aria-hidden="true" />
+              </Link>
+            </div>
+            <StorefrontProductGrid products={offers} slug={catalog.slug} />
+          </section>
+        )}
+        {(featuredProducts.length > 0 || catalog.products.length === 0) && featured}
+      </div>
       <section
         aria-label={locale === 'ar' ? 'معلومات المطعم' : 'Restaurant information'}
         className="mb-6 grid gap-3 rounded-2xl border border-store-border bg-white p-4 text-sm sm:grid-cols-2"

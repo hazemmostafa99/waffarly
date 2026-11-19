@@ -267,7 +267,7 @@ export function StorefrontProductCustomizer({
     <>
       {product.variants.length > 0 && (
         <fieldset className="grid min-w-0 gap-2 border-0 p-0">
-          <legend className="mb-2 flex w-full items-center justify-between gap-2 p-0 text-sm font-bold text-store-ink">
+          <legend className="mb-2 flex w-full items-center justify-between gap-2 p-0 font-heading text-sm font-extrabold text-store-ink">
             {t.chooseVariant}
           </legend>
           <div className="grid grid-cols-2 gap-2">
@@ -328,9 +328,9 @@ export function StorefrontProductCustomizer({
         const selected = choices[group.id] ?? [];
         return (
           <fieldset key={group.id} className="grid min-w-0 gap-2 border-0 p-0">
-            <legend className="mb-2 flex w-full items-center justify-between gap-2 p-0 text-sm font-bold text-store-ink">
+            <legend className="mb-2 flex w-full items-center justify-between gap-2 p-0 font-heading text-sm font-extrabold text-store-ink">
               {group.name}{' '}
-              <span className="rounded-md bg-store-cream px-2 py-1 text-[10px] font-medium text-store-muted">
+              <span className="rounded-md bg-store-cream px-2 py-1 font-body text-[10px] font-medium text-store-muted">
                 {group.minSelections > 0 ? t.required : t.optional}
               </span>
             </legend>
@@ -498,7 +498,7 @@ export function StorefrontProductCustomizer({
           type={isDialog ? 'submit' : 'button'}
           disabled={!isSelectionValid || quoteMutation.isPending}
           onClick={isDialog ? undefined : () => submitSelection()}
-          className="flex h-auto min-h-11 min-w-0 flex-1 flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-xl bg-store-accent px-3 py-2 text-sm font-bold hover:bg-store-primary-dark"
+          className="flex h-auto min-h-11 min-w-0 flex-1 flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-xl bg-store-accent px-3 py-2 font-heading text-sm font-extrabold hover:bg-store-primary-dark"
         >
           <span>
             {quoteMutation.isPending
@@ -550,7 +550,7 @@ export function StorefrontProductCustomizer({
       onClick={(event) => {
         if (event.target === event.currentTarget && !submitting.current) onClose?.();
       }}
-      className="fixed inset-0 m-auto max-h-[calc(100dvh-24px)] w-[calc(100%-24px)] max-w-[380px] overflow-hidden rounded-3xl border border-store-border bg-white p-0 text-store-ink shadow-2xl backdrop:bg-store-ink/55 open:flex open:flex-col"
+      className="fixed inset-0 m-auto max-h-[calc(100dvh-24px)] w-[calc(100%-24px)] max-w-[380px] overflow-hidden rounded-3xl border border-store-border bg-white p-0 font-body text-store-ink shadow-2xl backdrop:bg-store-ink/55 open:flex open:flex-col"
     >
       <form onSubmit={submitSelection} className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex shrink-0 items-start justify-between gap-3 px-5 pb-3 pt-5">
@@ -560,7 +560,10 @@ export function StorefrontProductCustomizer({
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p id={`customizer-title-${product.id}`} className="text-base font-bold">
+            <p
+              id={`customizer-title-${product.id}`}
+              className="font-heading text-base font-extrabold"
+            >
               {product.name}
             </p>
             {product.description && (

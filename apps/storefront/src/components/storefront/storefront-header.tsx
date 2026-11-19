@@ -3,7 +3,8 @@
 import { StorefrontCartNotice } from '../../features/cart/storefront-cart-notice';
 import Image from 'next/image';
 import Link, { useStorefrontBasePath } from './storefront-link';
-import { usePathname } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
+import { storefrontHref } from '../../lib/storefront-address';
 import { Gift, Heart, House, Menu, ShoppingBag, Sparkles, UserRound } from 'lucide-react';
 import type { PublicStorefrontCatalog } from '@waffarly/contracts';
 import { Button } from '@waffarly/ui';
@@ -55,6 +56,13 @@ function Brand({ catalog }: { catalog: PublicStorefrontCatalog }) {
 
 export function StorefrontHeader({ catalog }: { catalog: PublicStorefrontCatalog }) {
   const pathname = usePathname();
+  const { slug: routeSlug } = useParams<{ slug: string }>();
+  // Rewrites may expose either the public URL or the internal /s/[slug] route.
+  const currentPath =
+    storefrontHref(storefrontHref(pathname, catalog.slug, true), routeSlug, true).replace(
+      /\/+$/,
+      '',
+    ) || '/';
   const { locale } = useLocale();
   const t = storefrontCopy(locale);
   const cartCount = useStorefrontStore((state) =>
@@ -67,9 +75,20 @@ export function StorefrontHeader({ catalog }: { catalog: PublicStorefrontCatalog
   const cartHref = `${homeHref}/cart`;
   const favoritesHref = `${homeHref}/favorites`;
   const accountHref = `${homeHref}/account`;
-  const isHome = pathname === (homeHref || '/');
-  const isMenu = pathname === menuHref;
-  const isAccount = pathname === accountHref || pathname.startsWith(`${accountHref}/`);
+  const isHome = currentPath === '/';
+  const isMenu = currentPath === '/menu' || currentPath.startsWith('/products/');
+  const isOffers = currentPath === '/offers';
+  const isAbout = currentPath === '/about' || currentPath === '/branches';
+  const isFavorites = currentPath === '/favorites';
+  const isCart = currentPath === '/cart' || currentPath === '/checkout';
+  const isAccount = currentPath === '/account' || currentPath.startsWith('/account/');
+  const desktopLinks = [
+    { href: homeHref || '/', label: t.home, active: isHome },
+    { href: menuHref, label: t.menu, active: isMenu },
+    { href: offersHref, label: t.offers, active: isOffers },
+    { href: aboutHref, label: t.about, active: isAbout },
+    { href: favoritesHref, label: t.favorites, active: isFavorites },
+  ];
 
   return (
     <>
@@ -86,59 +105,43 @@ export function StorefrontHeader({ catalog }: { catalog: PublicStorefrontCatalog
             <Brand catalog={catalog} />
           </Link>
 
-          <nav aria-label={t.menu} className="hidden items-center gap-8 lg:flex">
-            <Link
-              href={homeHref || '/'}
-              aria-current={isHome ? 'page' : undefined}
-              className={`text-sm font-bold transition-colors hover:text-store-accent ${isHome ? 'text-store-accent' : 'text-store-ink'}`}
-            >
-              {t.home}
-            </Link>
-            <Link
-              href={menuHref}
-              aria-current={isMenu ? 'page' : undefined}
-              className={`text-sm font-bold transition-colors hover:text-store-accent ${isMenu ? 'text-store-accent' : 'text-store-ink'}`}
-            >
-              {t.menu}
-            </Link>
-            <Link
-              href={offersHref}
-              aria-current={pathname === offersHref ? 'page' : undefined}
-              className={`text-sm font-bold transition-colors hover:text-store-accent ${pathname === offersHref ? 'text-store-accent' : 'text-store-ink'}`}
-            >
-              {t.offers}
-            </Link>
-            <Link
-              href={aboutHref}
-              aria-current={pathname === aboutHref ? 'page' : undefined}
-              className={`text-sm font-bold transition-colors hover:text-store-accent ${pathname === aboutHref ? 'text-store-accent' : 'text-store-ink'}`}
-            >
-              {t.about}
-            </Link>
-            <Link
-              href={favoritesHref}
-              aria-current={pathname === favoritesHref ? 'page' : undefined}
-              className={`text-sm font-bold transition-colors hover:text-store-accent ${pathname === favoritesHref ? 'text-store-accent' : 'text-store-ink'}`}
-            >
-              {t.favorites}
-            </Link>
+          <nav aria-label={t.menu} className="hidden items-center gap-1 lg:flex xl:gap-2">
+            {desktopLinks.map(({ href, label, active }) => (
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? 'page' : undefined}
+                className={`px-3 py-2 text-sm font-bold transition-colors ${
+                  active
+                    ? 'text-[var(--storefront-gold)]'
+                    : 'text-store-ink hover:text-[var(--storefront-gold)]'
+                }`}
+              >
+                {label}
+              </Link>
+            ))}
           </nav>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <Link
               href={favoritesHref}
               aria-label={t.favorites}
-              className="hidden size-11 items-center justify-center rounded-full text-store-ink transition hover:bg-store-page hover:text-store-accent sm:inline-flex"
+              aria-current={isFavorites ? 'page' : undefined}
+              className={`hidden size-11 items-center justify-center rounded-full transition sm:inline-flex ${isFavorites ? 'text-[var(--storefront-gold)]' : 'text-store-ink hover:text-[var(--storefront-gold)]'}`}
             >
               <Heart className="size-5" aria-hidden="true" />
             </Link>
             <StorefrontAccountMenu />
             <Button
               asChild
-              className="relative size-11 rounded-full bg-transparent p-0 text-store-ink hover:bg-store-page hover:text-store-primary-deep"
+              className={`relative size-11 rounded-full bg-transparent p-0 hover:bg-transparent hover:text-[var(--storefront-gold)] ${isCart ? 'text-[var(--storefront-gold)]' : 'bg-transparent text-store-ink'}`}
               variant="ghost"
             >
-              <Link href={cartHref} aria-label={`${t.cart} (${cartCount})`}>
+              <Link
+                href={cartHref}
+                aria-label={`${t.cart} (${cartCount})`}
+                aria-current={isCart ? 'page' : undefined}
+              >
                 <ShoppingBag className="size-5" aria-hidden="true" />
                 <span className="absolute -end-1 -top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-store-gold px-1 text-xs font-extrabold text-store-primary-deep tabular-nums">
                   {cartCount}
@@ -162,12 +165,12 @@ export function StorefrontHeader({ catalog }: { catalog: PublicStorefrontCatalog
         {[
           { href: homeHref || '/', title: t.home, icon: House, active: isHome },
           { href: menuHref, title: t.menu, icon: Menu, active: isMenu },
-          { href: cartHref, title: t.cart, icon: ShoppingBag, active: pathname === cartHref },
+          { href: cartHref, title: t.cart, icon: ShoppingBag, active: isCart },
           {
             href: favoritesHref,
             title: t.favorites,
             icon: Heart,
-            active: pathname === favoritesHref,
+            active: isFavorites,
           },
           { href: accountHref, title: t.account, icon: UserRound, active: isAccount },
         ].map(({ href, title, icon: Icon, active }) => (
@@ -175,7 +178,7 @@ export function StorefrontHeader({ catalog }: { catalog: PublicStorefrontCatalog
             href={href}
             key={href}
             aria-current={active ? 'page' : undefined}
-            className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-xs font-bold transition-colors ${active ? 'text-store-accent' : 'text-store-muted hover:text-store-primary'}`}
+            className={`flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-xs font-bold transition-colors ${active ? 'text-[var(--storefront-gold)]' : 'text-store-muted hover:text-[var(--storefront-gold)]'}`}
           >
             <span className="relative">
               <Icon className="size-5" aria-hidden="true" />
