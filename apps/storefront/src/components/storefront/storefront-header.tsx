@@ -9,6 +9,8 @@ import { Button } from '@waffarly/ui';
 import { useLocale } from '@waffarly/ui';
 import { storefrontCopy } from '../../lib/storefront-copy';
 import { useStorefrontStore } from '../../providers/storefront-providers';
+import { StorefrontAccountMenu } from '../../features/account/storefront-account-menu';
+import { StorefrontFulfillmentPicker } from '../../features/delivery/storefront-fulfillment-picker';
 
 function Brand({ catalog }: { catalog: PublicStorefrontCatalog }) {
   const logoSize = {
@@ -26,7 +28,9 @@ function Brand({ catalog }: { catalog: PublicStorefrontCatalog }) {
           width={56}
           height={56}
           unoptimized
-          className={logoSize + ' rounded-2xl border border-store-border bg-white object-contain p-1'}
+          className={
+            logoSize + ' rounded-2xl border border-store-border bg-white object-contain p-1'
+          }
         />
       ) : (
         <span
@@ -129,14 +133,7 @@ export function StorefrontHeader({ catalog }: { catalog: PublicStorefrontCatalog
             >
               <Heart className="size-5" aria-hidden="true" />
             </Link>
-            <Link
-              href={accountHref}
-              aria-label={t.account}
-              aria-current={isAccount ? 'page' : undefined}
-              className={`inline-flex size-11 items-center justify-center rounded-full transition ${isAccount ? 'bg-store-primary/10 text-store-primary' : 'text-store-ink hover:bg-store-page hover:text-store-primary-deep'}`}
-            >
-              <UserRound className="size-5" aria-hidden="true" />
-            </Link>
+            <StorefrontAccountMenu />
             <Button
               asChild
               className="relative size-11 rounded-full bg-transparent p-0 text-store-ink hover:bg-store-page hover:text-store-primary-deep"
@@ -152,6 +149,13 @@ export function StorefrontHeader({ catalog }: { catalog: PublicStorefrontCatalog
           </div>
         </div>
       </header>
+
+      {!/\/(?:login|account|checkout|order)(?:\/|$)/.test(pathname) &&
+        catalog.activity === 'restaurant' && (
+          <div className="mx-auto w-[calc(100%-2rem)] max-w-[1240px]">
+            <StorefrontFulfillmentPicker catalog={catalog} />
+          </div>
+        )}
 
       <nav
         aria-label={t.mobileNavigation}

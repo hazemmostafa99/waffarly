@@ -13,6 +13,15 @@
 
 Implement the supplied Arabic RTL restaurant storefront for desktop and mobile in the existing Next.js application. The result must use Tailwind CSS, shadcn/ui-style primitives, typed API contracts, Next.js caching, TanStack React Query where client-side server state is needed, and Zustand for client-only persisted state.
 
+### Approved account and fulfillment flow — 2026-11-19
+
+- Keep the login breadcrumb and accessible heading, hide its duplicate visual title, and let the image follow the form height. Use explicit sign-in/create-account actions and appropriate Arabic/text versus email/telephone directions.
+- Route merchant customer authentication, customer order history and tenant order submission through narrowly scoped same-origin Next.js rewrites to the existing API. Keep HttpOnly server sessions, existing origin validation, merchant isolation and API-owned checkout enforcement. Do not introduce a mock backend or change Marketplace authentication.
+- Confirm the cookie-backed session with `me` after login/registration, then return to a validated page within the same storefront or its home page. The header, account and checkout share one React Query session.
+- Show fulfillment choices before checkout. Persist only fulfillment mode and area/branch identifiers in the existing merchant-scoped client store, carrying them into checkout. Clear the selected destination when its governorate/locality changes. The API remains authoritative for branch assignment, coverage, hours, prices and order idempotency.
+- Default checkout name/phone from the authenticated profile without overwriting customer edits. Delivery requires a detailed address; pickup uses the selected branch. Database-backed address storage remains a separate phase.
+- Follow the current manual-QA preference: no automated tests, browser suites, typechecks or builds unless requested. Record the remaining acceptance scenarios explicitly.
+
 The supplied HTML, CSS, JavaScript, screenshots, tokens, and images define the visual target and intended interactions. They are not production business logic and must not override approved Waffarly contracts, database rules, authorization, or server-side pricing.
 
 ## Non-Negotiable Rules

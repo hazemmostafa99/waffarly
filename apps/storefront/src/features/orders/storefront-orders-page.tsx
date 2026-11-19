@@ -3,7 +3,9 @@
 import { useMemo, useState } from 'react';
 import Link, { useStorefrontSlug } from '../../components/storefront/storefront-link';
 import { useParams } from 'next/navigation';
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { useStorefrontCustomer } from '../account/hooks/use-storefront-customer';
+import { StorefrontSignInLink } from '../account/storefront-sign-in-link';
 import { ArrowDown, ClipboardList } from 'lucide-react';
 import { Button, useLocale } from '@waffarly/ui';
 import { accountCopy } from '../account/account-copy';
@@ -11,10 +13,8 @@ import { AccountShell } from '../account/account-shell';
 import {
   isStorefrontCustomerNetworkError,
   isStorefrontCustomerServiceUnavailable,
-  loadStorefrontCustomer,
   loadStorefrontCustomerOrders,
   storefrontCustomerOrdersKey,
-  storefrontCustomerSessionKey,
 } from '../account/data/storefront-customer-api';
 import { formatStorefrontPrice } from '../../lib/storefront-format';
 
@@ -48,11 +48,7 @@ export function StorefrontOrdersPage() {
   const storefrontSlug = useStorefrontSlug();
   const t = accountCopy(locale);
   const [filter, setFilter] = useState<OrderFilter>('all');
-  const session = useQuery({
-    queryKey: storefrontCustomerSessionKey(storefrontSlug),
-    queryFn: () => loadStorefrontCustomer(storefrontSlug),
-    retry: false,
-  });
+  const session = useStorefrontCustomer();
   const orders = useInfiniteQuery({
     queryKey: storefrontCustomerOrdersKey(storefrontSlug, session.data?.id),
     queryFn: ({ pageParam }) => loadStorefrontCustomerOrders(storefrontSlug, pageParam),
@@ -77,11 +73,7 @@ export function StorefrontOrdersPage() {
   ];
 
   return (
-    <AccountShell
-      active="orders"
-      title={t.orders}
-      description={t.ordersIntro}
-    >
+    <AccountShell active="orders" title={t.orders} description={t.ordersIntro}>
       <section className="grid gap-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
@@ -89,18 +81,18 @@ export function StorefrontOrdersPage() {
           </h2>
           {!session.isError && !orders.isError && (
             <div aria-label={t.filterLabel} className="flex flex-wrap gap-2" role="group">
-            {filters.map(({ key, label }) => (
-              <Button
-                aria-pressed={filter === key}
-                className={`min-h-11 ${filter === key ? 'bg-store-primary text-white hover:bg-store-primary-dark' : ''}`}
-                key={key}
-                onClick={() => setFilter(key)}
-                type="button"
-                variant={filter === key ? 'default' : 'outline'}
-              >
-                {label}
-              </Button>
-            ))}
+              {filters.map(({ key, label }) => (
+                <Button
+                  aria-pressed={filter === key}
+                  className={`min-h-11 ${filter === key ? 'bg-store-primary text-white hover:bg-store-primary-dark' : ''}`}
+                  key={key}
+                  onClick={() => setFilter(key)}
+                  type="button"
+                  variant={filter === key ? 'default' : 'outline'}
+                >
+                  {label}
+                </Button>
+              ))}
             </div>
           )}
         </div>
@@ -156,7 +148,7 @@ export function StorefrontOrdersPage() {
               asChild
               className="mt-1 min-h-11 bg-store-primary text-white hover:bg-store-primary-dark"
             >
-              <Link href={`/s/${encodeURIComponent(params.slug)}/login`}>{t.signIn}</Link>
+              <StorefrontSignInLink>{t.signIn}</StorefrontSignInLink>
             </Button>
           </div>
         ) : orders.isPending ? (

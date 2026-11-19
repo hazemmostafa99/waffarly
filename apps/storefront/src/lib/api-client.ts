@@ -35,9 +35,12 @@ export async function apiGet<T>(
 export async function apiPost<T>(
   path: string,
   body: unknown,
-  options: { credentials?: RequestCredentials } = {},
+  options: { credentials?: RequestCredentials; storefrontSession?: boolean } = {},
 ): Promise<T> {
-  const response = await fetch(new URL(path.replace(/^\//, ''), `${apiBaseUrl()}/`), {
+  const url = options.storefrontSession
+    ? `/storefront-api/${path.replace(/^\//, '')}`
+    : new URL(path.replace(/^\//, ''), `${apiBaseUrl()}/`);
+  const response = await fetch(url, {
     method: 'POST',
     credentials: options.credentials ?? 'same-origin',
     headers: { 'Content-Type': 'application/json' },

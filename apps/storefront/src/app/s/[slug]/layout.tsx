@@ -13,7 +13,6 @@ import { StorefrontProviders } from '../../../providers/storefront-providers';
 import { StorefrontAddressProvider } from '../../../components/storefront/storefront-link';
 import { storefrontRequestHandle } from '../../../lib/storefront-address';
 import { storefrontThemeStyles } from '../../../lib/storefront-theme';
-import { RestaurantDeliveryAreaSelector } from '../../../features/delivery/restaurant-delivery-preview';
 
 type StorefrontRouteProps = {
   params: Promise<{ slug: string }>;
@@ -61,7 +60,6 @@ export default async function StorefrontLayout({ children, params }: StorefrontL
             style={storefrontThemeStyles(catalog)}
           >
             <StorefrontHeader catalog={catalog} />
-            {catalog.activity === 'restaurant' && <RestaurantDeliveryAreaSelector slug={catalog.slug} />}
             <div className="pb-20 lg:pb-0">{children}</div>
             <StorefrontFooter catalog={catalog} />
           </div>

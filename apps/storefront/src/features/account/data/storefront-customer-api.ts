@@ -5,7 +5,7 @@ import type {
   CustomerSignUpRequest,
   StorefrontCustomerProfile,
 } from '@waffarly/contracts';
-import { ApiError, apiBaseUrl } from '@/lib/api-client';
+import { ApiError } from '@/lib/api-client';
 
 export const storefrontCustomerSessionKey = (slug: string) =>
   ['storefront-customer-session', slug] as const;
@@ -14,10 +14,7 @@ export const storefrontCustomerOrdersKey = (slug: string, customerId?: string) =
 
 async function request<T>(slug: string, path: string, body?: unknown): Promise<T> {
   const response = await fetch(
-    new URL(
-      `auth/stores/${encodeURIComponent(slug)}/customer/${path}`,
-      `${apiBaseUrl().replace(/\/$/, '')}/`,
-    ),
+    `/storefront-api/auth/stores/${encodeURIComponent(slug)}/customer/${path}`,
     {
       method: body === undefined ? 'GET' : 'POST',
       credentials: 'include',
@@ -68,10 +65,7 @@ export const signOutStorefrontCustomer = (slug: string) =>
 export function loadStorefrontCustomerOrders(slug: string, cursor?: string) {
   const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
   return fetch(
-    new URL(
-      `catalog/stores/${encodeURIComponent(slug)}/customer/orders${query}`,
-      `${apiBaseUrl().replace(/\/$/, '')}/`,
-    ),
+    `/storefront-api/catalog/stores/${encodeURIComponent(slug)}/customer/orders${query}`,
     { credentials: 'include', cache: 'no-store' },
   ).then(async (response) => {
     if (!response.ok) {

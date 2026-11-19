@@ -37,6 +37,7 @@ export function proxy(request: NextRequest) {
 
   if (
     path.startsWith('/_next/') ||
+    path.startsWith('/storefront-api/') ||
     path === '/favicon.ico' ||
     path.startsWith('/storefront-assets/') ||
     path.startsWith('/marketplace-assets/')
