@@ -41,8 +41,8 @@ export function StorefrontProductCard({
 
   return (
     <>
-      <Card className="group overflow-hidden rounded-card border-store-border bg-store-surface p-0 shadow-card transition duration-300 hover:-translate-y-1 hover:border-store-primary/30">
-        <div className="relative aspect-[4/3] overflow-hidden bg-store-cream">
+      <Card className="group overflow-hidden rounded-2xl border-store-border bg-store-surface p-0 shadow-card transition duration-300 hover:-translate-y-1 hover:border-store-primary/30">
+        <div className="relative aspect-[16/10] overflow-hidden bg-store-cream">
           {imageSource ? (
             <Link href={`/s/${slug}/products/${product.id}`} className="absolute inset-0">
               <Image
@@ -68,40 +68,38 @@ export function StorefrontProductCard({
             aria-label={isFavorite ? t.unfavorite : t.favorite}
             aria-pressed={isFavorite}
             onClick={() => toggleFavorite(product.id)}
-            className={`absolute start-2 top-2 grid size-11 place-items-center rounded-full border border-white/80 bg-white/95 shadow-sm transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent focus-visible:ring-offset-2 ${isFavorite ? 'text-store-gold-muted' : 'text-store-ink'}`}
+            className={`absolute start-2 top-2 grid size-9 place-items-center rounded-full border border-white/80 bg-white/95 shadow-sm transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent focus-visible:ring-offset-2 ${isFavorite ? 'text-store-gold-muted' : 'text-store-ink'}`}
           >
             <Heart className={`size-4 ${isFavorite ? 'fill-current' : ''}`} aria-hidden="true" />
           </button>
           {hasPromotion && (
             <span className="absolute bottom-2 start-2 rounded-full bg-store-error px-2.5 py-1 text-xs font-extrabold text-white shadow-sm">
-              {promotion.type === 'percentage'
-                ? `-${Number(promotion.value)}%`
-                : t.productDiscount}
+              {promotion.type === 'percentage' ? `-${Number(promotion.value)}%` : t.productDiscount}
             </span>
           )}
         </div>
 
-        <div className="grid gap-2.5 p-3 sm:p-4">
-          <div className="min-h-[68px]">
-            <h3 className="line-clamp-2 font-heading text-storefront-product font-extrabold text-store-ink">
+        <div className="grid gap-2 p-2.5 sm:p-3">
+          <div className="min-w-0">
+            <h3 className="line-clamp-2 font-heading text-[13px] leading-5 font-extrabold text-store-ink">
               <Link href={`/s/${slug}/products/${product.id}`} className="hover:text-store-accent">
                 {product.name}
               </Link>
             </h3>
             {product.description && (
-              <p className="mt-1 line-clamp-2 text-storefront-support text-store-muted">
+              <p className="mt-1 line-clamp-1 text-xs leading-5 text-store-muted">
                 {product.description}
               </p>
             )}
           </div>
-          <div className="flex items-center justify-between gap-2 border-t border-store-border pt-2.5">
+          <div className="flex items-center justify-between gap-2 border-t border-store-border pt-2">
             <div className="min-w-0">
               {availableVariants.length > 0 && (
-                <span className="block text-storefront-caption font-medium text-store-muted">
+                <span className="block text-[10px] font-medium text-store-muted">
                   {t.priceFrom}
                 </span>
               )}
-              <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
+              <strong className="font-heading text-sm font-extrabold text-store-primary-deep">
                 <bdi dir="auto">
                   {hasUnavailableVariants ? '—' : formatStorefrontPrice(displayPrice, locale)}
                 </bdi>
@@ -121,12 +119,12 @@ export function StorefrontProductCard({
               }
               disabled={hasUnavailableVariants}
               onClick={() => setIsCustomizing(true)}
-              className="size-11 shrink-0 rounded-full"
+              className="size-9 shrink-0 rounded-xl"
             >
               {hasUnavailableVariants ? (
                 <span className="text-xs">—</span>
               ) : (
-                <Plus className="size-5" aria-hidden="true" />
+                <Plus className="size-4" aria-hidden="true" />
               )}
             </Button>
           </div>

@@ -5,13 +5,8 @@ import Image from 'next/image';
 import Link from '../../components/storefront/storefront-link';
 import { ChevronLeft, ChevronRight, Utensils } from 'lucide-react';
 import type { PublicStorefrontCatalog, PublicStorefrontProduct } from '@waffarly/contracts';
-import { Badge, Card } from '@waffarly/ui';
+import { Card } from '@waffarly/ui';
 import { useLocale } from '@waffarly/ui';
-import {
-  formatStorefrontPrice,
-  getProductOriginalStartingPrice,
-  getProductStartingPrice,
-} from '../../lib/storefront-format';
 import { getStorefrontProductImage } from '../../lib/storefront-images';
 import { storefrontCopy } from '../../lib/storefront-copy';
 import { StorefrontProductCustomizer } from './storefront-product-customizer';
@@ -45,11 +40,11 @@ export function StorefrontProductPage({
   return (
     <main
       id="main-content"
-      className="mx-auto min-h-[70vh] w-[calc(100%-2rem)] max-w-[1240px] pb-10 pt-3 sm:pt-5"
+      className="mx-auto min-h-[70vh] w-[calc(100%-2rem)] max-w-[1080px] pb-10 pt-3 sm:pt-5"
     >
       <nav
         aria-label={t.breadcrumbs}
-        className="mb-4 flex min-h-8 items-center gap-2 overflow-hidden text-storefront-support font-bold text-store-muted sm:mb-5"
+        className="mb-3 flex min-h-6 items-center gap-2 overflow-hidden text-storefront-support font-bold text-store-muted sm:mb-3"
       >
         <Link
           href={`/s/${catalog.slug}`}
@@ -70,9 +65,9 @@ export function StorefrontProductPage({
         </span>
       </nav>
 
-      <div className="grid min-w-0 items-start gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] lg:gap-7">
+      <div className="grid min-w-0 items-start gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-5">
         <section aria-label={t.productImages} className="min-w-0 lg:sticky lg:top-24">
-          <div className="relative aspect-[1.5] overflow-hidden rounded-2xl border border-store-border bg-store-cream shadow-[0_14px_42px_rgba(23,35,48,0.08)] sm:rounded-2xl lg:aspect-[1.5]">
+          <div className="relative aspect-[1.6] max-h-[280px] overflow-hidden rounded-2xl border border-store-border bg-store-cream lg:aspect-[1.25] lg:max-h-[360px]">
             {imageUrl ? (
               <Image
                 key={imageUrl}
@@ -80,7 +75,7 @@ export function StorefrontProductPage({
                 alt={product.name}
                 fill
                 priority
-                sizes="(max-width: 1024px) 100vw, 650px"
+                sizes="(max-width: 1024px) 100vw, 460px"
                 className="object-cover"
                 unoptimized
               />
@@ -105,13 +100,13 @@ export function StorefrontProductPage({
                     aria-label={`${t.viewImage} ${index + 1}`}
                     aria-pressed={active}
                     onClick={() => setSelectedImageUrl(image.publicUrl)}
-                    className={`relative size-[4.5rem] shrink-0 overflow-hidden rounded-xl border-2 bg-store-cream transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent focus-visible:ring-offset-2 sm:size-20 ${active ? 'border-store-primary shadow-sm' : 'border-store-border hover:border-store-accent/60'}`}
+                    className={`relative size-12 shrink-0 overflow-hidden rounded-xl border-2 bg-store-cream transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent focus-visible:ring-offset-2 sm:size-14 ${active ? 'border-store-primary shadow-sm' : 'border-store-border hover:border-store-accent/60'}`}
                   >
                     <Image
                       src={image.publicUrl}
                       alt=""
                       fill
-                      sizes="80px"
+                      sizes="56px"
                       className="object-cover"
                       unoptimized
                     />
@@ -122,63 +117,15 @@ export function StorefrontProductPage({
           )}
         </section>
 
-        <div className="grid min-w-0 gap-3 sm:gap-4">
-          <Card className="grid gap-3 rounded-2xl border-store-border bg-white p-4 shadow-[0_10px_34px_rgba(23,35,48,0.05)] sm:gap-3 sm:rounded-2xl sm:p-4">
-            <div className="flex flex-wrap gap-2">
-              {product.categories.map((category) => (
-                <Badge
-                  key={category.id}
-                  className="border-0 bg-store-cream text-store-primary-deep"
-                >
-                  {category.name}
-                </Badge>
-              ))}
-            </div>
-
-            <header>
-              <h1 className="mt-1 font-heading text-xl sm:text-2xl font-black text-store-ink text-balance">
-                {product.name}
-              </h1>
-              {product.description && (
-                <p className="mt-2 text-sm leading-6 text-store-muted sm:mt-3">
-                  {product.description}
-                </p>
-              )}
-            </header>
-
-            <div className="flex min-h-14 items-center justify-between gap-3 border-y border-store-border py-3">
-              <div>
-                {unavailable ? (
-                  <span className="font-bold text-store-muted">{t.unavailable}</span>
-                ) : (
-                  <>
-                    {product.variants.length > 0 && (
-                      <span className="mb-1 block text-storefront-caption font-medium text-store-muted">
-                        {t.priceFrom}
-                      </span>
-                    )}
-                    <strong className="font-heading text-xl font-extrabold text-store-primary-deep">
-                      <bdi dir="auto">
-                        {formatStorefrontPrice(getProductStartingPrice(product), locale)}
-                      </bdi>
-                    </strong>
-                    {product.promotion?.status === 'active' && (
-                      <del className="ms-2 text-sm text-store-muted">
-                        <bdi dir="auto">
-                          {formatStorefrontPrice(getProductOriginalStartingPrice(product), locale)}
-                        </bdi>
-                      </del>
-                    )}
-                  </>
-                )}
-              </div>
-              {product.variants.length > 0 && !unavailable && (
-                <span className="max-w-40 text-end text-xs leading-5 text-store-muted">
-                  {t.chooseVariant}
-                </span>
-              )}
-            </div>
-          </Card>
+        <Card className="grid min-w-0 gap-4 rounded-2xl border-store-border bg-white p-3 shadow-sm sm:p-4">
+          <header>
+            <h1 className="font-heading text-base font-extrabold leading-6 text-store-ink">
+              {product.name}
+            </h1>
+            {product.description && (
+              <p className="mt-1 text-xs leading-5 text-store-muted">{product.description}</p>
+            )}
+          </header>
 
           {unavailable ? (
             <p
@@ -195,7 +142,7 @@ export function StorefrontProductPage({
               presentation="inline"
             />
           )}
-        </div>
+        </Card>
       </div>
     </main>
   );

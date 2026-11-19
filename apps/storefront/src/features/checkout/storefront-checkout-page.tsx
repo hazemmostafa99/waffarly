@@ -395,7 +395,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
   return (
     <main
       id="main-content"
-      className="mx-auto min-h-[70vh] max-w-[1100px] px-4 pb-44 pt-4 lg:pb-10 sm:px-8 sm:pt-8"
+      className="mx-auto min-h-[70vh] max-w-[1100px] px-4 pb-44 pt-4 lg:pb-10 sm:px-8 sm:pt-5"
     >
       <header className="sr-only">
         <p className="text-storefront-support font-extrabold text-store-accent">
@@ -408,13 +408,128 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
       </header>
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
-        <form onSubmit={submit} className="grid gap-4">
+        <form onSubmit={submit} className="grid gap-3">
           <fieldset
             disabled={uncertain || orderMutation.isPending || reviewMutation.isPending}
             className="contents"
           >
-            <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
-              <fieldset className="grid gap-3">
+            <Card className="grid gap-3 rounded-2xl border-store-border bg-white p-3 sm:p-4">
+              <h2 className="sr-only">{t.discountCode}</h2>
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  aria-label={t.discountCode}
+                  dir="ltr"
+                  style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
+                  autoCapitalize="characters"
+                  maxLength={32}
+                  value={fields.discountCode}
+                  onChange={(event) =>
+                    update('discountCode', event.currentTarget.value.toUpperCase())
+                  }
+                  placeholder={t.discountCodePlaceholder}
+                  className="h-10 min-w-0 flex-1 rounded-xl border-store-border bg-white text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={orderMutation.isPending || !fields.discountCode.trim()}
+                  onClick={() => {
+                    setQuoteError('');
+                    void quoteRequest()
+                      .then(setQuote)
+                      .catch(() => {
+                        setQuote(null);
+                        setQuoteError(t.discountUnavailable);
+                      });
+                  }}
+                  className="h-10 rounded-xl border-store-border text-sm font-bold text-store-primary"
+                >
+                  {t.applyDiscount}
+                </Button>
+              </div>
+              {quoteError && (
+                <p className="m-0 text-sm font-bold text-store-error" role="alert">
+                  {quoteError}
+                </p>
+              )}
+              {quote?.discount && (
+                <p className="m-0 text-sm font-bold text-store-primary" role="status">
+                  {quote.discount.code} · {t.discountApplied} · −
+                  <bdi dir="auto">{formatStorefrontPrice(quote.discount.amount, locale)}</bdi>
+                </p>
+              )}
+            </Card>
+
+            <Card className="grid gap-3 rounded-2xl border-store-border bg-white p-3 sm:p-4">
+              <h2 className="sr-only">{locale === 'ar' ? 'بيانات العميل' : 'Your details'}</h2>
+              {session.isPending && (
+                <p role="status" className="text-sm text-store-muted">
+                  {locale === 'ar' ? 'جارٍ تحميل بيانات حسابك…' : 'Loading your account…'}
+                </p>
+              )}
+              {session.isError ? (
+                <p role="alert" className="text-sm text-store-error">
+                  {locale === 'ar' ? 'تعذّر التحقق من الحساب.' : 'Could not check your account.'}{' '}
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => void session.refetch()}
+                  >
+                    {locale === 'ar' ? 'إعادة المحاولة' : 'Try again'}
+                  </button>
+                </p>
+              ) : (
+                !session.isPending &&
+                !session.data && (
+                  <p className="text-sm text-store-muted">
+                    {locale === 'ar' ? 'تقدر تكمل كزائر أو ' : 'Continue as a guest or '}
+                    <StorefrontSignInLink className="font-bold text-store-primary underline">
+                      {locale === 'ar'
+                        ? 'تسجّل الدخول لملء بياناتك ومتابعة طلبك'
+                        : 'sign in to fill your details and track your order'}
+                    </StorefrontSignInLink>
+                  </p>
+                )
+              )}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="grid min-w-0 gap-1.5 text-xs font-bold text-store-ink">
+                  {t.customerName}
+                  <Input
+                    autoComplete="name"
+                    dir="auto"
+                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
+                    value={fields.customerName}
+                    onChange={(event) => update('customerName', event.currentTarget.value)}
+                    placeholder={t.namePlaceholder}
+                    minLength={2}
+                    maxLength={120}
+                    required
+                    className="h-10 rounded-xl border-store-border bg-white text-sm"
+                  />
+                </label>
+                <label className="grid min-w-0 gap-1.5 text-xs font-bold text-store-ink">
+                  {t.customerPhone}
+                  <Input
+                    autoComplete="tel"
+                    type="tel"
+                    inputMode="tel"
+                    value={fields.customerPhone}
+                    onChange={(event) => update('customerPhone', event.currentTarget.value)}
+                    placeholder={t.phonePlaceholder}
+                    minLength={7}
+                    maxLength={32}
+                    pattern="[+0-9 .()\\-]{7,32}"
+                    required
+                    className="h-10 rounded-xl border-store-border bg-white text-sm"
+                    dir="ltr"
+                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
+                  />
+                </label>
+              </div>
+            </Card>
+
+            <Card className="grid gap-3 rounded-2xl border-store-border bg-white p-3 sm:p-4">
+              <fieldset className="grid grid-cols-2 gap-2">
                 <legend className="sr-only">{t.fulfillment}</legend>
                 {(
                   [
@@ -424,7 +539,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                 ).map((option) => (
                   <label
                     key={option.value}
-                    className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border px-4 transition ${fields.fulfillmentType === option.value ? 'border-store-primary bg-store-primary/5' : 'border-store-border bg-white hover:bg-store-page'}`}
+                    className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm transition ${fields.fulfillmentType === option.value ? 'border-store-primary bg-store-primary/5' : 'border-store-border bg-white hover:bg-store-page'}`}
                   >
                     <input
                       type="radio"
@@ -446,10 +561,10 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                 session.data &&
                 savedAddresses.data &&
                 savedAddresses.data.length > 0 && (
-                  <label className="grid gap-2 text-sm font-bold text-store-ink">
+                  <label className="grid min-w-0 gap-1.5 text-xs font-bold text-store-ink">
                     {locale === 'ar' ? 'استخدم عنوانًا محفوظًا' : 'Use a saved address'}
                     <select
-                      className="h-11 rounded-xl border border-store-border bg-white px-3"
+                      className="h-10 min-w-0 rounded-xl border border-store-border bg-white px-3 text-sm"
                       value={selectedSavedAddressId}
                       onChange={(event) => {
                         const address = savedAddresses.data.find(
@@ -497,6 +612,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
               {options.data && (
                 <fieldset
                   disabled={uncertain || orderMutation.isPending || reviewMutation.isPending}
+                  className="min-w-0 text-xs [&_select]:min-w-0 [&_select]:text-sm"
                 >
                   <RestaurantRouteFields
                     settings={options.data}
@@ -522,7 +638,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                 </fieldset>
               )}
               {fields.fulfillmentType === 'delivery' && (
-                <label className="grid gap-2 text-sm font-bold text-store-ink">
+                <label className="grid min-w-0 gap-1.5 text-xs font-bold text-store-ink">
                   {t.address}
                   <Textarea
                     autoComplete="street-address"
@@ -537,122 +653,9 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                     minLength={8}
                     maxLength={1000}
                     required
-                    className="min-h-24 rounded-xl border-store-border bg-white text-base"
+                    className="min-h-20 rounded-xl border-store-border bg-white text-sm"
                   />
                 </label>
-              )}
-            </Card>
-
-            <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
-              <h2 className="sr-only">{locale === 'ar' ? 'بيانات العميل' : 'Your details'}</h2>
-              {session.isPending && (
-                <p role="status" className="text-sm text-store-muted">
-                  {locale === 'ar' ? 'جارٍ تحميل بيانات حسابك…' : 'Loading your account…'}
-                </p>
-              )}
-              {session.isError ? (
-                <p role="alert" className="text-sm text-store-error">
-                  {locale === 'ar' ? 'تعذّر التحقق من الحساب.' : 'Could not check your account.'}{' '}
-                  <button
-                    type="button"
-                    className="underline"
-                    onClick={() => void session.refetch()}
-                  >
-                    {locale === 'ar' ? 'إعادة المحاولة' : 'Try again'}
-                  </button>
-                </p>
-              ) : (
-                !session.isPending &&
-                !session.data && (
-                  <p className="text-sm text-store-muted">
-                    {locale === 'ar' ? 'تقدر تكمل كزائر أو ' : 'Continue as a guest or '}
-                    <StorefrontSignInLink className="font-bold text-store-primary underline">
-                      {locale === 'ar'
-                        ? 'تسجّل الدخول لملء بياناتك ومتابعة طلبك'
-                        : 'sign in to fill your details and track your order'}
-                    </StorefrontSignInLink>
-                  </p>
-                )
-              )}
-              <label className="grid gap-2 text-sm font-bold text-store-ink">
-                {t.customerName}
-                <Input
-                  autoComplete="name"
-                  dir="auto"
-                  style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                  value={fields.customerName}
-                  onChange={(event) => update('customerName', event.currentTarget.value)}
-                  placeholder={t.namePlaceholder}
-                  minLength={2}
-                  maxLength={120}
-                  required
-                  className="h-12 rounded-xl border-store-border bg-white text-base"
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-store-ink">
-                {t.customerPhone}
-                <Input
-                  autoComplete="tel"
-                  type="tel"
-                  inputMode="tel"
-                  value={fields.customerPhone}
-                  onChange={(event) => update('customerPhone', event.currentTarget.value)}
-                  placeholder={t.phonePlaceholder}
-                  minLength={7}
-                  maxLength={32}
-                  pattern="[+0-9 .()\\-]{7,32}"
-                  required
-                  className="h-12 rounded-xl border-store-border bg-white text-base"
-                  dir="ltr"
-                  style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                />
-              </label>
-            </Card>
-
-            <Card className="grid gap-3 rounded-3xl border-store-border bg-white p-4 sm:p-5">
-              <h2 className="sr-only">{t.discountCode}</h2>
-              <div className="flex flex-wrap gap-2">
-                <Input
-                  aria-label={t.discountCode}
-                  dir="ltr"
-                  style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
-                  autoCapitalize="characters"
-                  maxLength={32}
-                  value={fields.discountCode}
-                  onChange={(event) =>
-                    update('discountCode', event.currentTarget.value.toUpperCase())
-                  }
-                  placeholder={t.discountCodePlaceholder}
-                  className="h-12 min-w-0 flex-1 rounded-xl border-store-border bg-white text-base"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={orderMutation.isPending || !fields.discountCode.trim()}
-                  onClick={() => {
-                    setQuoteError('');
-                    void quoteRequest()
-                      .then(setQuote)
-                      .catch(() => {
-                        setQuote(null);
-                        setQuoteError(t.discountUnavailable);
-                      });
-                  }}
-                  className="h-12 rounded-xl border-store-border font-bold text-store-primary"
-                >
-                  {t.applyDiscount}
-                </Button>
-              </div>
-              {quoteError && (
-                <p className="m-0 text-sm font-bold text-store-error" role="alert">
-                  {quoteError}
-                </p>
-              )}
-              {quote?.discount && (
-                <p className="m-0 text-sm font-bold text-store-primary" role="status">
-                  {quote.discount.code} · {t.discountApplied} · −
-                  <bdi dir="auto">{formatStorefrontPrice(quote.discount.amount, locale)}</bdi>
-                </p>
               )}
             </Card>
           </fieldset>
@@ -728,14 +731,14 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
         </form>
 
         <aside className="lg:sticky lg:top-28">
-          <Card className="rounded-3xl border-store-border bg-white p-4 shadow-[0_12px_36px_rgba(23,35,48,0.06)] sm:p-5">
+          <Card className="rounded-2xl border-store-border bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <h2 className="sr-only">{locale === 'ar' ? 'ملخص السلة' : 'Basket summary'}</h2>
               <span className="rounded-full bg-store-cream px-3 py-1 text-xs font-extrabold text-store-primary">
                 {cart.reduce((count, line) => count + line.quantity, 0)}
               </span>
             </div>
-            <ul className="mt-4 grid gap-3">
+            <ul className="mt-3 grid gap-2">
               {cart.map((line, index) => {
                 const product = catalog.products.find((item) => item.id === line.productId);
                 const promotion = quote?.promotions?.[index];
@@ -744,7 +747,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                 return (
                   <li
                     key={line.key}
-                    className="flex items-start justify-between gap-3 border-b border-store-border pb-3 text-sm"
+                    className="flex items-start justify-between gap-3 border-b border-store-border pb-2 text-xs"
                   >
                     <span className="min-w-0 font-medium text-store-muted">
                       {line.quantity} × {product?.name ?? t.unavailable}
@@ -771,11 +774,8 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                 );
               })}
             </ul>
-            <p className="mt-4 rounded-xl bg-store-cream px-3 py-3 text-xs leading-5 text-store-muted">
-              {t.priceNote}
-            </p>
             {quote && (
-              <div className="mt-4 grid gap-2 border-t border-store-border pt-4 text-sm">
+              <div className="mt-3 grid gap-2 border-t border-store-border pt-3 text-xs">
                 <div className="flex justify-between gap-3">
                   <span className="text-store-muted">{t.orderTotal}</span>
                   <strong>

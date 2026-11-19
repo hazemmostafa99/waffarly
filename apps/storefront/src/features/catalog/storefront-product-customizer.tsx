@@ -300,7 +300,13 @@ export function StorefrontProductCustomizer({
                   <span className="min-w-0 flex-1 break-words text-sm font-bold text-store-ink">
                     {label}
                   </span>
-                  <span className="ms-6 flex w-full flex-col items-start text-xs font-bold text-store-accent">
+                  <span
+                    className={
+                      isDialog
+                        ? 'ms-6 flex w-full flex-col items-start text-xs font-bold text-store-accent'
+                        : 'flex flex-col items-end text-xs font-bold text-store-accent'
+                    }
+                  >
                     {unavailable ? (
                       t.unavailable
                     ) : (
@@ -526,12 +532,9 @@ export function StorefrontProductCustomizer({
 
   if (!isDialog)
     return (
-      <section
-        aria-label={t.customize}
-        className="grid min-w-0 gap-5 rounded-2xl border border-store-border bg-white p-4"
-      >
+      <section aria-label={t.customize} className="grid min-w-0 gap-3">
         {optionFieldsets}
-        <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 -mb-4 rounded-b-2xl border-t border-store-border bg-white p-3 shadow-sm lg:static">
+        <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 border-t border-store-border bg-white pt-3 lg:static">
           {actions}
         </div>
       </section>

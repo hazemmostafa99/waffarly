@@ -12,7 +12,6 @@ import { useLocale } from '@waffarly/ui';
 import { storefrontCopy } from '../../lib/storefront-copy';
 import { useStorefrontStore } from '../../providers/storefront-providers';
 import { StorefrontAccountMenu } from '../../features/account/storefront-account-menu';
-import { StorefrontFulfillmentPicker } from '../../features/delivery/storefront-fulfillment-picker';
 
 function Brand({ catalog }: { catalog: PublicStorefrontCatalog }) {
   const logoSize = {
@@ -71,14 +70,12 @@ export function StorefrontHeader({ catalog }: { catalog: PublicStorefrontCatalog
   const homeHref = useStorefrontBasePath(catalog.slug);
   const menuHref = `${homeHref}/menu`;
   const offersHref = `${homeHref}/offers`;
-  const aboutHref = `${homeHref}/about`;
   const cartHref = `${homeHref}/cart`;
   const favoritesHref = `${homeHref}/favorites`;
   const accountHref = `${homeHref}/account`;
   const isHome = currentPath === '/';
   const isMenu = currentPath === '/menu' || currentPath.startsWith('/products/');
   const isOffers = currentPath === '/offers';
-  const isAbout = currentPath === '/about' || currentPath === '/branches';
   const isFavorites = currentPath === '/favorites';
   const isCart = currentPath === '/cart' || currentPath === '/checkout';
   const isAccount = currentPath === '/account' || currentPath.startsWith('/account/');
@@ -86,7 +83,6 @@ export function StorefrontHeader({ catalog }: { catalog: PublicStorefrontCatalog
     { href: homeHref || '/', label: t.home, active: isHome },
     { href: menuHref, label: t.menu, active: isMenu },
     { href: offersHref, label: t.offers, active: isOffers },
-    { href: aboutHref, label: t.about, active: isAbout },
     { href: favoritesHref, label: t.favorites, active: isFavorites },
   ];
 
@@ -151,12 +147,6 @@ export function StorefrontHeader({ catalog }: { catalog: PublicStorefrontCatalog
           </div>
         </div>
       </header>
-
-      {(isHome || isMenu) && catalog.activity === 'restaurant' && (
-        <div className="mx-auto w-[calc(100%-2rem)] max-w-[1240px]">
-          <StorefrontFulfillmentPicker catalog={catalog} />
-        </div>
-      )}
 
       <nav
         aria-label={t.mobileNavigation}

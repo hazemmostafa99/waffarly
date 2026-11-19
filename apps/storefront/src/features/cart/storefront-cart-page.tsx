@@ -95,7 +95,7 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
   return (
     <main
       id="main-content"
-      className="mx-auto min-h-[70vh] max-w-[1160px] px-4 pb-10 pt-6 sm:px-8 sm:pt-8"
+      className="mx-auto min-h-[70vh] max-w-[1000px] px-4 pb-8 pt-4 sm:px-8 sm:pt-5"
     >
       <header className="sr-only">
         <p className="text-storefront-support font-extrabold text-store-accent">
@@ -112,9 +112,11 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
         </p>
       </header>
 
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_330px] lg:gap-6">
-        <section className="grid gap-3" aria-label={t.cart}>
+      <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-4">
+        <section className="grid gap-2" aria-label={t.cart}>
           {estimates.map(({ line, product, quote }, index) => {
+            const unitPrice = quote?.totalPrice ?? line.unitPriceSnapshot;
+            const lineTotal = fromMinorUnits(toMinorUnits(unitPrice) * line.quantity);
             const variant = product?.variants.find((item) => item.id === line.variantId);
             const isUnavailable =
               !product || (line.variantId !== null && variant?.availability !== 'available');
@@ -136,121 +138,140 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
             return (
               <Card
                 key={line.key}
-                className="grid gap-3 rounded-3xl border-store-border bg-white p-3 grid-cols-[72px_minmax(0,1fr)] sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:items-center sm:p-4"
+                className="grid grid-cols-[80px_minmax(0,1fr)] items-center gap-3 rounded-3xl border-store-border bg-white p-3 shadow-sm sm:grid-cols-[80px_minmax(0,1fr)_auto]"
               >
-                <div className="relative self-start aspect-square overflow-hidden rounded-2xl bg-store-cream sm:aspect-square">
+                <div className="relative aspect-square overflow-hidden rounded-2xl bg-store-cream">
                   {image ? (
                     <Image
                       src={image.publicUrl}
                       alt={product?.name ?? ''}
                       fill
-                      sizes="130px"
+                      sizes="80px"
                       className="object-cover"
                       unoptimized
                     />
                   ) : (
                     <span className="grid size-full place-items-center text-store-accent">
-                      <Utensils className="size-8" aria-hidden="true" />
+                      <Utensils className="size-7" aria-hidden="true" />
                     </span>
                   )}
                 </div>
                 <div className="min-w-0">
-                  <h2 className="font-heading text-sm font-extrabold text-store-ink">
-                    {product?.name ?? t.unavailable}
-                  </h2>
-                  {variant && (
-                    <p className="mt-1 text-storefront-support text-store-muted">
-                      {variant.attributes.length
-                        ? variant.attributes
-                            .map((attribute) => `${attribute.attributeName}: ${attribute.value}`)
-                            .join(' · ')
-                        : variant.name}
-                    </p>
-                  )}
-                  {selectedOptions.length > 0 && (
-                    <ul className="mt-2 grid gap-1 text-storefront-caption text-store-muted">
-                      {selectedOptions.map((option) => (
-                        <li key={option}>{option}</li>
-                      ))}
-                    </ul>
-                  )}
+                  <button
+                    type="button"
+                    disabled={!product}
+                    onClick={() => setEditing(line)}
+                    aria-label={`${locale === 'ar' ? 'تعديل اختيارات' : 'Edit options for'} ${product?.name ?? t.unavailable}`}
+                    className="grid w-full min-w-0 justify-items-start gap-1.5 rounded-lg text-start transition hover:text-store-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent disabled:cursor-default"
+                  >
+                    <span className="break-words font-heading text-sm font-extrabold leading-6 text-store-primary-deep sm:text-[15px]">
+                      {product?.name ?? t.unavailable}
+                    </span>
+                    {variant && (
+                      <span className="inline-flex max-w-full items-center gap-1.5 rounded-lg bg-store-primary/5 px-2 py-0.5 text-xs leading-5 text-store-primary-deep">
+                        <Utensils className="size-3 shrink-0" aria-hidden="true" />
+                        <span className="min-w-0 break-words">
+                          {variant.attributes.length
+                            ? variant.attributes
+                                .map(
+                                  (attribute) => `${attribute.attributeName}: ${attribute.value}`,
+                                )
+                                .join(' · ')
+                            : variant.name}
+                        </span>
+                      </span>
+                    )}
+                    {selectedOptions.length > 0 && (
+                      <span className="break-words text-[11px] leading-5 text-store-muted">
+                        {selectedOptions.join(' · ')}
+                      </span>
+                    )}
+                  </button>
                   {isUnavailable && (
-                    <p className="mt-2 text-sm font-bold text-store-error" role="alert">
+                    <p className="mt-1 text-xs font-bold text-store-error" role="alert">
                       {t.unavailable}
                     </p>
                   )}
                   {quoteQueries[index]?.isError && !isUnavailable && (
-                    <p className="mt-2 text-xs font-bold text-store-gold-muted" role="status">
-                      {t.priceNote}
+                    <p className="mt-1 text-xs text-store-error" role="status">
+                      {locale === 'ar'
+                        ? 'تعذر تحديث السعر. حاول تاني.'
+                        : 'Could not refresh the price. Try again.'}
                     </p>
                   )}
-                  {product && (
-                    <button
-                      type="button"
-                      onClick={() => setEditing(line)}
-                      className="mt-1 inline-flex min-h-8 items-center text-xs font-bold text-store-primary underline underline-offset-4"
-                    >
-                      {locale === 'ar' ? 'تعديل الاختيارات' : 'Edit options'}
-                    </button>
-                  )}
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      aria-label={locale === 'ar' ? 'تقليل الكمية' : 'Decrease quantity'}
-                      onClick={() => setQuantity(line.key, line.quantity - 1)}
-                      className="grid size-9 place-items-center rounded-full border border-store-border bg-white text-store-primary hover:bg-store-cream"
-                    >
-                      <Minus className="size-4" aria-hidden="true" />
-                    </button>
-                    <output
-                      aria-live="polite"
-                      className="min-w-8 text-center font-bold tabular-nums"
-                    >
-                      {line.quantity}
-                    </output>
+                </div>
+                <div className="col-span-2 flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-store-border pt-2 sm:col-span-1 sm:flex-nowrap sm:justify-start sm:gap-3 sm:border-s sm:border-t-0 sm:ps-3 sm:pt-0">
+                  <div className="flex shrink-0 items-center rounded-full border border-store-border bg-store-page/60 p-0.5">
                     <button
                       type="button"
                       aria-label={locale === 'ar' ? 'زيادة الكمية' : 'Increase quantity'}
                       disabled={line.quantity >= 99}
                       onClick={() => setQuantity(line.key, line.quantity + 1)}
-                      className="grid size-9 place-items-center rounded-full border border-store-border bg-white text-store-primary hover:bg-store-cream disabled:opacity-40"
+                      className="grid size-8 place-items-center rounded-full text-store-primary transition hover:bg-store-primary/10 disabled:opacity-40"
                     >
                       <Plus className="size-4" aria-hidden="true" />
                     </button>
+                    <output
+                      aria-live="polite"
+                      aria-label={locale === 'ar' ? 'الكمية' : 'Quantity'}
+                      className="min-w-6 text-center text-sm font-bold tabular-nums"
+                    >
+                      {line.quantity}
+                    </output>
                     <button
                       type="button"
-                      onClick={() => removeLine(line.key)}
-                      className="ms-auto inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm font-bold text-store-error hover:bg-store-error/5"
+                      aria-label={locale === 'ar' ? 'تقليل الكمية' : 'Decrease quantity'}
+                      onClick={() => setQuantity(line.key, line.quantity - 1)}
+                      className="grid size-8 place-items-center rounded-full text-store-primary transition hover:bg-store-primary/10"
                     >
-                      <Trash2 className="size-4" aria-hidden="true" />
-                      {t.remove}
+                      <Minus className="size-4" aria-hidden="true" />
                     </button>
                   </div>
-                </div>
-                <div className="col-start-2 text-end sm:col-start-auto sm:min-w-28">
-                  {quote?.promotion && quote.originalTotalPrice && (
-                    <div className="mb-1 flex flex-col items-end">
-                      <del className="text-xs text-store-muted">
+                  <button
+                    type="button"
+                    aria-label={`${t.remove}: ${product?.name ?? t.unavailable}`}
+                    onClick={() => removeLine(line.key)}
+                    className="grid size-9 shrink-0 place-items-center rounded-xl border border-store-error/20 text-store-error transition hover:bg-store-error/5"
+                  >
+                    <Trash2 className="size-4" aria-hidden="true" />
+                  </button>
+                  <div className="min-w-0 border-s border-store-border ps-3">
+                    <div className="rounded-2xl bg-store-primary/5 px-3 py-2 text-center">
+                      {quote?.promotion && quote.originalTotalPrice && (
+                        <del className="block text-[10px] text-store-muted">
+                          <bdi dir="auto">
+                            {formatStorefrontPrice(
+                              fromMinorUnits(
+                                toMinorUnits(quote.originalTotalPrice) * line.quantity,
+                              ),
+                              locale,
+                            )}
+                          </bdi>
+                        </del>
+                      )}
+                      <strong className="font-heading text-sm font-extrabold text-store-primary-deep">
+                        <bdi dir="auto">{formatStorefrontPrice(lineTotal, locale)}</bdi>
+                      </strong>
+                      <span className="block text-[9px] leading-3 text-store-muted">
                         <bdi dir="auto">
-                          {formatStorefrontPrice(quote.originalTotalPrice, locale)}
-                        </bdi>
-                      </del>
-                      <span className="text-xs font-bold text-store-primary">
-                        {t.productDiscount} −
-                        <bdi dir="auto">
-                          {formatStorefrontPrice(quote.promotion.discountAmount, locale)}
+                          {line.quantity} × {formatStorefrontPrice(unitPrice, locale)}
                         </bdi>
                       </span>
                     </div>
-                  )}
-                  <strong className="font-heading text-lg font-extrabold text-store-primary-deep">
-                    <bdi dir="auto">
-                      {formatStorefrontPrice(quote?.totalPrice ?? line.unitPriceSnapshot, locale)}
-                    </bdi>
-                  </strong>
-                  <span className="mt-1 block text-xs text-store-muted">
-                    {locale === 'ar' ? 'للقطعة' : 'per item'}
-                  </span>
+                    {quote?.promotion && (
+                      <span className="mt-1 block text-center text-[10px] text-store-primary">
+                        {t.productDiscount} −
+                        <bdi dir="auto">
+                          {formatStorefrontPrice(
+                            fromMinorUnits(
+                              toMinorUnits(quote.promotion.discountAmount) * line.quantity,
+                            ),
+                            locale,
+                          )}
+                        </bdi>
+                      </span>
+                    )}
+                  </div>
                 </div>
               </Card>
             );
@@ -258,22 +279,19 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
         </section>
 
         <aside className="lg:sticky lg:top-28">
-          <Card className="rounded-3xl border-store-border bg-white p-4 shadow-[0_12px_36px_rgba(23,35,48,0.06)] sm:p-5">
+          <Card className="rounded-2xl border-store-border bg-white p-4 shadow-sm">
             <h2 className="sr-only">{locale === 'ar' ? 'ملخص الطلب' : 'Order summary'}</h2>
             <div className="flex items-center justify-between gap-3 border-b border-store-border pb-3 text-storefront-support">
-              <span className="text-store-muted">{t.estimatedSubtotal}</span>
-              <strong className="font-heading text-lg font-extrabold text-store-ink">
+              <span className="text-store-muted">{t.productsSubtotal}</span>
+              <strong className="font-heading text-base font-extrabold text-store-ink">
                 <bdi dir="auto">
                   {formatStorefrontPrice(fromMinorUnits(estimatedMinorUnits), locale)}
                 </bdi>
               </strong>
             </div>
-            <p className="mt-4 rounded-xl bg-store-cream px-3 py-3 text-xs leading-5 text-store-muted">
-              {t.priceNote}
-            </p>
             <Button
               asChild
-              className="mt-4 h-11 w-full rounded-xl bg-store-accent font-heading font-extrabold hover:bg-store-primary-dark"
+              className="mt-3 h-10 w-full rounded-xl bg-store-accent font-heading text-sm font-extrabold hover:bg-store-primary-dark"
             >
               <Link href={`/s/${catalog.slug}/checkout`}>
                 {t.checkout}
@@ -283,7 +301,7 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
             <Button
               asChild
               variant="outline"
-              className="mt-2 h-11 w-full rounded-xl border-store-border bg-white font-bold text-store-primary hover:bg-store-cream"
+              className="mt-2 h-10 w-full rounded-xl border-store-border bg-white text-sm font-bold text-store-primary hover:bg-store-cream"
             >
               <Link href={`/s/${catalog.slug}/menu`}>{t.continueShopping}</Link>
             </Button>

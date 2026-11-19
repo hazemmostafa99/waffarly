@@ -100,9 +100,6 @@ export function StorefrontFooter({ catalog }: { catalog: PublicStorefrontCatalog
           <Link className={footerLinkClass} href={homeHref}>
             {t.footerHome}
           </Link>
-          <Link className={footerLinkClass} href={`${homeHref}/about`}>
-            {t.about}
-          </Link>
           <Link className={footerLinkClass} href={`${homeHref}/branches`}>
             {locale === 'ar' ? 'الفروع' : 'Branches'}
           </Link>

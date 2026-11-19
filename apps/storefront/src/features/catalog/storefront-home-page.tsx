@@ -254,20 +254,13 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
       </div>
       <section
         aria-label={locale === 'ar' ? 'معلومات المطعم' : 'Restaurant information'}
-        className="mb-6 grid gap-3 rounded-2xl border border-store-border bg-white p-4 text-sm sm:grid-cols-2"
+        className="mb-6 grid gap-3 rounded-2xl border border-store-border bg-white p-4 text-sm"
       >
         <Link
           href={`/s/${catalog.slug}/branches`}
           className="flex min-h-11 items-center justify-between gap-2 font-bold text-store-primary"
         >
           {locale === 'ar' ? 'الفروع والتوصيل والاستلام' : 'Branches, delivery and pickup'}{' '}
-          <Arrow className="size-4" aria-hidden="true" />
-        </Link>
-        <Link
-          href={`/s/${catalog.slug}/about`}
-          className="flex min-h-11 items-center justify-between gap-2 font-bold text-store-primary"
-        >
-          {locale === 'ar' ? 'عن المطعم ومواعيد العمل' : 'About the restaurant and opening hours'}{' '}
           <Arrow className="size-4" aria-hidden="true" />
         </Link>
       </section>
