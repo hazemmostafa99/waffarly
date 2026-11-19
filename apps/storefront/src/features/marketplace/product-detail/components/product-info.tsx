@@ -25,15 +25,15 @@ export function ProductInfo({ product }: { product: MarketplaceProduct }) {
         }
       >
         <ProductPrice product={product} />
-        <span
-          className={
-            'detail-saving bg-secondary text-accent rounded-[6px] py-[5px] px-2 text-[12px] font-bold'
-          }
-        >
-          {product.origin === 'local-mock'
-            ? 'سعر تجريبي'
-            : `خصم ${product.discount.replace('-', '')}`}
-        </span>
+        {(product.discount || product.origin === 'local-mock') && (
+          <span className="detail-saving rounded-[6px] bg-secondary px-2 py-[5px] text-[12px] font-bold text-accent">
+            {product.origin === 'local-mock'
+              ? 'سعر تجريبي'
+              : product.discount === 'خصم'
+                ? 'خصم على المنتج'
+                : `خصم ${product.discount.replace('-', '')}`}
+          </span>
+        )}
       </div>
       <ProductSellerCard product={product} />
     </>

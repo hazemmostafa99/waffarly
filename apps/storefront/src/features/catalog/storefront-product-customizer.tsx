@@ -91,7 +91,12 @@ export function StorefrontProductCustomizer({
   const addCartLine = useStorefrontStore((state) => state.addCartLine);
   const [variantId, setVariantId] = useState(
     editLine?.variantId ??
-      product.variants.find((variant) => variant.availability === 'available')?.id ??
+      product.variants
+        .filter((variant) => variant.availability === 'available')
+        .sort(
+          (left, right) =>
+            Number(left.promotionalPrice ?? left.price) - Number(right.promotionalPrice ?? right.price),
+        )[0]?.id ??
       '',
   );
   const [quantity, setQuantity] = useState(editLine?.quantity ?? 1);
@@ -262,6 +267,18 @@ export function StorefrontProductCustomizer({
     (quoteMutation.data ? toMinorUnits(quoteMutation.data.totalPrice) : estimatedUnitPrice) *
       quantity,
   );
+  const basePrice = selectedVariant?.price ?? product.basePrice;
+  const salePrice = selectedVariant
+    ? (selectedVariant.promotionalPrice ?? selectedVariant.price)
+    : (product.promotionalPrice ?? basePrice);
+  const hasDiscount = Number(salePrice) < Number(basePrice);
+  const originalTotal = hasDiscount
+    ? fromMinorUnits(
+        (quoteMutation.data?.originalTotalPrice
+          ? toMinorUnits(quoteMutation.data.originalTotalPrice)
+          : estimatedUnitPrice + toMinorUnits(basePrice) - toMinorUnits(salePrice)) * quantity,
+      )
+    : null;
 
   const optionFieldsets = (
     <>
@@ -517,9 +534,14 @@ export function StorefrontProductCustomizer({
                   : 'Save changes'
                 : t.addConfigured}
           </span>
-          <bdi className="text-xs" dir="auto">
-            {formatStorefrontPrice(displayTotal, locale)}
-          </bdi>
+          <span className="flex flex-col items-end gap-0.5 text-xs">
+            {originalTotal && (
+              <del className="text-[10px] font-medium opacity-80">
+                <bdi dir="auto">{formatStorefrontPrice(originalTotal, locale)}</bdi>
+              </del>
+            )}
+            <bdi dir="auto">{formatStorefrontPrice(displayTotal, locale)}</bdi>
+          </span>
         </Button>
       </div>
       <p className="text-[10px] leading-4 text-store-muted">

@@ -36,12 +36,12 @@ export function StorefrontProductCard({
   const displayPrice = getProductStartingPrice(product);
   const originalPrice = getProductOriginalStartingPrice(product);
   const promotion = product.promotion;
-  const hasPromotion = promotion?.status === 'active';
+  const hasPromotion = Number(displayPrice) < Number(originalPrice);
   const hasUnavailableVariants = product.variants.length > 0 && availableVariants.length === 0;
 
   return (
     <>
-      <Card className="group overflow-hidden rounded-2xl border-store-border bg-store-surface p-0 shadow-card transition duration-300 hover:-translate-y-1 hover:border-store-primary/30">
+      <Card className="group min-w-0 overflow-hidden rounded-2xl border-store-border bg-store-surface p-0 shadow-card transition duration-300 hover:-translate-y-1 hover:border-store-primary/30">
         <div className="relative aspect-[16/10] overflow-hidden bg-store-cream">
           {imageSource ? (
             <Link href={`/s/${slug}/products/${product.id}`} className="absolute inset-0">
@@ -68,18 +68,20 @@ export function StorefrontProductCard({
             aria-label={isFavorite ? t.unfavorite : t.favorite}
             aria-pressed={isFavorite}
             onClick={() => toggleFavorite(product.id)}
-            className={`absolute start-2 top-2 grid size-9 place-items-center rounded-full border border-white/80 bg-white/95 shadow-sm transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent focus-visible:ring-offset-2 ${isFavorite ? 'text-store-gold-muted' : 'text-store-ink'}`}
+            className={`absolute right-2 top-2 z-10 grid size-9 place-items-center rounded-full border border-white/80 bg-white/95 shadow-sm transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent focus-visible:ring-offset-2 ${isFavorite ? 'text-store-gold-muted' : 'text-store-ink'}`}
           >
             <Heart className={`size-4 ${isFavorite ? 'fill-current' : ''}`} aria-hidden="true" />
           </button>
           {hasPromotion && (
-            <span className="absolute bottom-2 start-2 rounded-full bg-store-error px-2.5 py-1 text-xs font-extrabold text-white shadow-sm">
-              {promotion.type === 'percentage' ? `-${Number(promotion.value)}%` : t.productDiscount}
+            <span dir="ltr" className="absolute left-2 top-2 rounded-full border border-store-gold/70 bg-store-primary-deep px-2.5 py-1 text-xs font-extrabold leading-5 shadow-md sm:px-3">
+              {promotion?.status === 'active' && promotion.type === 'percentage'
+                ? `-${Number(promotion.value)}%`
+                : t.productDiscount}
             </span>
           )}
         </div>
 
-        <div className="grid gap-2 p-2.5 sm:p-3">
+        <div className="grid min-w-0 gap-2 p-2.5 sm:p-3">
           <div className="min-w-0">
             <h3 className="line-clamp-2 font-heading text-[13px] leading-5 font-extrabold text-store-ink">
               <Link href={`/s/${slug}/products/${product.id}`} className="hover:text-store-accent">
@@ -92,23 +94,23 @@ export function StorefrontProductCard({
               </p>
             )}
           </div>
-          <div className="flex items-center justify-between gap-2 border-t border-store-border pt-2">
-            <div className="min-w-0">
+          <div className="flex min-w-0 flex-wrap items-end justify-between gap-2 border-t border-store-border pt-2.5">
+            <div className="flex min-w-0 flex-col items-start gap-0.5">
               {availableVariants.length > 0 && (
                 <span className="block text-[10px] font-medium text-store-muted">
                   {t.priceFrom}
                 </span>
               )}
-              <strong className="font-heading text-sm font-extrabold text-store-primary-deep">
+              {hasPromotion && (
+                <del className="block whitespace-nowrap text-[11px] leading-4 text-store-muted">
+                  <bdi dir="auto">{formatStorefrontPrice(originalPrice, locale)}</bdi>
+                </del>
+              )}
+              <strong className="block whitespace-nowrap font-heading text-sm font-extrabold leading-5 text-store-primary-deep">
                 <bdi dir="auto">
                   {hasUnavailableVariants ? '—' : formatStorefrontPrice(displayPrice, locale)}
                 </bdi>
               </strong>
-              {hasPromotion && (
-                <del className="ms-1 text-xs text-store-muted">
-                  <bdi dir="auto">{formatStorefrontPrice(originalPrice, locale)}</bdi>
-                </del>
-              )}
             </div>
             <Button
               type="button"

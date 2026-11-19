@@ -7,7 +7,7 @@ import {
   type PublicRestaurantBranch,
   type PublicRestaurantProfile,
 } from '@waffarly/contracts';
-import { DeliveryAreaPicker, useDeliveryArea } from './delivery-area-picker';
+import { DeliveryAreaPicker } from './delivery-area-picker';
 import { useQuery } from '@tanstack/react-query';
 import { apiGetBrowser } from '@/lib/api-client';
 
@@ -60,11 +60,10 @@ export function RestaurantRouteFields({
   pickup: string;
   onArea: (id: string) => void;
   onPickup: (id: string) => void;
-  locationId?: string | undefined;
-  onLocation?: ((id: string) => void) | undefined;
+  locationId: string;
+  onLocation: (id: string) => void;
 }) {
-  const sharedLocation = useDeliveryArea();
-  const locationId = selectedLocation ?? sharedLocation;
+  const locationId = selectedLocation;
   if (settings.onlineBranches !== undefined) {
     if (fulfillment === 'pickup') {
       const branches = settings.onlineBranches.filter(
@@ -97,11 +96,8 @@ export function RestaurantRouteFields({
       <div className="space-y-2">
         <DeliveryAreaPicker
           locations={restaurantDeliveryLocations(settings.onlineBranches)}
-          value={selectedLocation}
+          value={locationId}
           onSelect={onLocation}
-          onChange={() => {
-            if (selectedLocation === undefined) onArea('');
-          }}
         />
         {locationId && (
           <p role="status" className="text-sm">

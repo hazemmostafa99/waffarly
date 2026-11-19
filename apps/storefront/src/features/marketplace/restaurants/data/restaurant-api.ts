@@ -7,6 +7,10 @@ import type {
 import { apiGet, apiGetBrowser } from '@/lib/api-client';
 import type { MarketplaceRestaurant } from '../model/restaurants';
 import type { MarketplaceProduct } from '@/features/marketplace/catalog/model/catalog';
+import {
+  getProductOriginalStartingPrice,
+  getProductStartingPrice,
+} from '@/lib/storefront-format';
 export function mapRestaurant(profile: PublicRestaurantProfile): MarketplaceRestaurant {
   return {
     name: profile.name,
@@ -25,14 +29,17 @@ export function mapRestaurantProduct(
   restaurant: MarketplaceRestaurant,
 ): MarketplaceProduct {
   const image = product.images.find((image) => image.isPrimary) ?? product.images[0];
+  const discountedPrice = getProductStartingPrice(product);
+  const originalPrice = getProductOriginalStartingPrice(product);
+  const discounted = Number(discountedPrice) < Number(originalPrice);
   return {
     id: product.id,
     name: product.name,
     cartName: product.name,
     searchName: product.name,
     description: product.description ?? '',
-    price: Number(product.basePrice),
-    displayPrice: product.basePrice,
+    price: Number(discountedPrice),
+    displayPrice: discountedPrice,
     category: 'food',
     image: { src: image?.publicUrl ?? '', alt: product.name },
     cartImage: image?.publicUrl ?? '',
@@ -41,8 +48,12 @@ export function mapRestaurantProduct(
     merchantType: 'restaurant',
     origin: 'api',
     rating: '',
-    discount: '',
-    oldPrice: '',
+    discount: discounted
+      ? product.promotion?.status === 'active' && product.promotion.type === 'percentage'
+        ? `-${Number(product.promotion.value)}%`
+        : 'خصم'
+      : '',
+    oldPrice: discounted ? originalPrice : '',
     delivery: 'رسوم التوصيل تُراجع عند إتمام الطلب',
     available: product.availability === 'available',
     menuSection:

@@ -12,12 +12,14 @@ export function CheckoutContactForm({
   errors,
   onChange,
   onContinue,
+  showFulfillment = true,
 }: {
   draft: CheckoutDraft;
   demo?: boolean;
   errors: CheckoutErrors;
   onChange: (values: Partial<CheckoutDraft>) => void;
   onContinue: () => void;
+  showFulfillment?: boolean;
 }) {
   const form = useRef<HTMLFormElement>(null);
   useEffect(() => {
@@ -112,7 +114,9 @@ export function CheckoutContactForm({
           </span>
         </label>
       </div>
-      <CheckoutFulfillmentFields demo={demo} draft={draft} errors={errors} onChange={onChange} />
+      {showFulfillment && (
+        <CheckoutFulfillmentFields demo={demo} draft={draft} errors={errors} onChange={onChange} />
+      )}
       <Button
         type="submit"
         className={cn(

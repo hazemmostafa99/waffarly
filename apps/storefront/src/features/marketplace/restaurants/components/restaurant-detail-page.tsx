@@ -8,7 +8,6 @@ import { MarketplaceContainer } from '@/components/marketplace/marketplace-conta
 import { MarketplaceEntityNotFound } from '@/features/marketplace/shared/components/marketplace-entity-not-found';
 import type { MarketplaceRestaurant } from '@/features/marketplace/restaurants/model/restaurants';
 import { RestaurantMenu } from '@/features/marketplace/restaurants/components/restaurant-menu';
-import { RestaurantDeliveryPreview } from '@/features/delivery/restaurant-delivery-preview';
 
 export function RestaurantDetailPage({
   restaurant,
@@ -39,7 +38,6 @@ export function RestaurantDetailPage({
   return (
     <main id="marketplace-main" tabIndex={-1} className="min-h-[60vh] pb-16 pt-6">
       <MarketplaceContainer>
-        {restaurant.slug && <RestaurantDeliveryPreview slug={restaurant.slug} />}
         <nav
           aria-label="مسار التنقل"
           className="mb-4 flex items-center gap-2.5 text-[12px] text-muted-foreground"

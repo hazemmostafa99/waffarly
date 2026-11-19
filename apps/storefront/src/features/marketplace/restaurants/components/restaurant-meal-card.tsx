@@ -36,6 +36,11 @@ export function RestaurantMealCard({
           loading="lazy"
           className={`block aspect-square h-full w-full object-cover object-center ${available ? '' : 'opacity-60 grayscale-[35%]'}`}
         />
+        {product.discount && product.origin === 'api' && (
+          <span className="absolute bottom-0 right-0 rounded-tl-lg bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-white">
+            {product.discount}
+          </span>
+        )}
         <FavoriteButton
           className="left-1.5 top-1.5 size-[30px] text-[16px] shadow-sm"
           productId={product.id}
@@ -61,9 +66,16 @@ export function RestaurantMealCard({
           {product.description ?? 'وجبة توضيحية بحجم وإضافات حسب اختيارك.'}
         </p>
         <div className="mt-auto flex w-full flex-wrap items-center justify-between gap-x-2 gap-y-1 pt-1">
-          <span className="whitespace-nowrap text-[14px] font-bold text-primary">
-            <small className="me-1 text-[10px] font-normal text-muted-foreground">من</small>
-            {money(product.price)}
+          <span className="flex flex-col text-[14px] font-bold text-primary">
+            {product.oldPrice && product.origin === 'api' && (
+              <del className="text-[10px] font-normal text-muted-foreground">
+                {money(Number(product.oldPrice))}
+              </del>
+            )}
+            <span className="whitespace-nowrap">
+              <small className="me-1 text-[10px] font-normal text-muted-foreground">من</small>
+              {money(product.price)}
+            </span>
           </span>
           <MarketplaceButton
             type="button"
