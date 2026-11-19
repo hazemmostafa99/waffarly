@@ -29,7 +29,7 @@ export function StorefrontFavoritesPage({ catalog }: { catalog: PublicStorefront
       id="main-content"
       className="mx-auto min-h-[65vh] max-w-[1100px] px-4 pb-10 pt-6 sm:px-8 sm:pt-8"
     >
-      <header className="mb-5">
+      <header className="sr-only">
         <p className="text-storefront-support font-extrabold text-store-accent">
           {catalog.merchantName}
         </p>
@@ -41,14 +41,12 @@ export function StorefrontFavoritesPage({ catalog }: { catalog: PublicStorefront
       {products.length ? (
         <StorefrontProductGrid products={products} slug={catalog.slug} />
       ) : (
-        <div className="grid min-h-72 place-items-center rounded-[1.6rem] border border-dashed border-store-border bg-white px-6 text-center">
+        <div className="grid min-h-52 place-items-center rounded-[1.6rem] border border-dashed border-store-border bg-white px-6 text-center">
           <div>
             <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-store-cream text-store-gold-muted">
               <Heart className="size-7" aria-hidden="true" />
             </span>
-            <p className="mt-3 font-heading text-storefront-subsection font-extrabold text-store-ink">
-              {t.favoritesEmpty}
-            </p>
+            <p className="mt-3 text-sm font-bold text-store-ink">{t.favoritesEmpty}</p>
             <Button
               asChild
               className="mt-4 rounded-xl bg-store-accent px-5 font-bold hover:bg-store-primary-dark"

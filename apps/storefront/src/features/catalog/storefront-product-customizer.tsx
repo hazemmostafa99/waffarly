@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import Link from '../../components/storefront/storefront-link';
+import Image from 'next/image';
+import { getStorefrontProductImage } from '../../lib/storefront-images';
 import { useMutation } from '@tanstack/react-query';
 import { Minus, Plus, X } from 'lucide-react';
 import type {
@@ -13,9 +14,16 @@ import type {
 import { Button } from '@waffarly/ui';
 import { useLocale } from '@waffarly/ui';
 import { apiPost } from '../../lib/api-client';
-import { formatStorefrontPrice } from '../../lib/storefront-format';
+import {
+  formatStorefrontPrice,
+  getProductStartingPrice,
+  fromMinorUnits,
+  toMinorUnits,
+} from '../../lib/storefront-format';
 import { storefrontCopy } from '../../lib/storefront-copy';
 import { useStorefrontStore } from '../../providers/storefront-providers';
+import type { StorefrontCartLine } from '../cart/storefront-store';
+import { useStorefrontCartFeedback } from '../cart/use-storefront-cart-feedback';
 import { storefrontQueryKeys } from './storefront-query-keys';
 
 function effectiveGroups(product: PublicStorefrontProduct, variantId: string) {
@@ -39,7 +47,8 @@ function effectiveGroups(product: PublicStorefrontProduct, variantId: string) {
             option.variantOverrides?.find((override) => override.variantId === variantId)
               ?.priceAdjustment ?? option.priceAdjustment,
         })),
-    }));
+    }))
+    .filter((group) => group.options.length > 0 || group.minSelections > 0);
 }
 
 function defaultChoices(
@@ -49,7 +58,10 @@ function defaultChoices(
   return Object.fromEntries(
     effectiveGroups(product, variantId).map((group) => [
       group.id,
-      group.options.filter((option) => option.defaultSelected).map((option) => option.id),
+      group.options
+        .filter((option) => option.defaultSelected)
+        .slice(0, group.selectionMode === 'single' ? 1 : group.maxSelections)
+        .map((option) => option.id),
     ]),
   );
 }
@@ -59,6 +71,7 @@ type ProductCustomizerProps = {
   slug: string;
   presentation?: 'dialog' | 'inline';
   onClose?: () => void;
+  editLine?: StorefrontCartLine;
 };
 
 export function StorefrontProductCustomizer({
@@ -66,21 +79,39 @@ export function StorefrontProductCustomizer({
   slug,
   presentation = 'dialog',
   onClose,
+  editLine,
 }: ProductCustomizerProps) {
   const { locale } = useLocale();
   const t = storefrontCopy(locale);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const updateCartLine = useStorefrontStore((state) => state.updateCartLine);
+  const feedback = useStorefrontCartFeedback();
+  const [saveError, setSaveError] = useState('');
+  const submitting = useRef(false);
   const addCartLine = useStorefrontStore((state) => state.addCartLine);
   const [variantId, setVariantId] = useState(
-    product.variants.find((variant) => variant.availability === 'available')?.id ?? '',
+    editLine?.variantId ??
+      product.variants.find((variant) => variant.availability === 'available')?.id ??
+      '',
   );
-  const [quantity, setQuantity] = useState(1);
-  const [wasAdded, setWasAdded] = useState(false);
+  const [quantity, setQuantity] = useState(editLine?.quantity ?? 1);
   const groups = useMemo(() => effectiveGroups(product, variantId), [product, variantId]);
   const [choices, setChoices] = useState<Record<string, string[]>>(() =>
-    defaultChoices(product, variantId),
+    editLine
+      ? Object.fromEntries(
+          editLine.selections.map((group) => [group.groupId, [...group.optionIds]]),
+        )
+      : defaultChoices(product, variantId),
   );
-  const [optionQuantities, setOptionQuantities] = useState<Record<string, number>>({});
+  const [optionQuantities, setOptionQuantities] = useState<Record<string, number>>(() =>
+    Object.fromEntries(
+      editLine?.selections.flatMap(
+        (group) =>
+          group.optionQuantities?.map((option) => [option.optionId, option.quantity]) ?? [],
+      ) ?? [],
+    ),
+  );
+  const imageUrl = getStorefrontProductImage(product, 'detail');
   const isDialog = presentation === 'dialog';
 
   const selections = useMemo<CatalogProductQuoteSelection[]>(
@@ -100,7 +131,17 @@ export function StorefrontProductCustomizer({
     (!product.variants.length || selectedVariant?.availability === 'available') &&
     groups.every((group) => {
       const count = choices[group.id]?.length ?? 0;
-      return count >= group.minSelections && count <= group.maxSelections;
+      return (
+        count >= group.minSelections &&
+        count <= group.maxSelections &&
+        (choices[group.id] ?? []).every((id) => {
+          const option = group.options.find((entry) => entry.id === id);
+          const amount = optionQuantities[id] ?? 1;
+          return (
+            option && Number.isInteger(amount) && amount >= 1 && amount <= (option.maxQuantity ?? 1)
+          );
+        })
+      );
     });
 
   const quoteMutation = useMutation({
@@ -114,30 +155,23 @@ export function StorefrontProductCustomizer({
 
   useEffect(() => {
     const dialog = dialogRef.current;
-    if (isDialog && dialog && !dialog.open) dialog.showModal();
+    if (!isDialog || !dialog) return;
+    if (!dialog.open) dialog.showModal();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
   }, [isDialog]);
 
   function makeQuoteRequest(): CatalogProductQuoteRequest {
     return { ...(product.variants.length ? { variantId } : {}), selections };
   }
 
-  function addQuoteToBasket(quote: CatalogProductQuoteResponse, lineQuantity = quantity) {
-    addCartLine({
-      productId: quote.productId,
-      variantId: quote.variantId,
-      selections: quote.selections.map(({ groupId, optionIds, options }) => ({
-        groupId,
-        optionIds,
-        optionQuantities: options?.map(({ optionId, quantity }) => ({ optionId, quantity })),
-      })),
-      quantity: lineQuantity,
-      unitPriceSnapshot: quote.totalPrice,
-    });
-  }
-
   function clearQuote() {
     quoteMutation.reset();
-    setWasAdded(false);
+
+    setSaveError('');
   }
 
   function updateChoice(groupId: string, optionId: string, checked: boolean, single: boolean) {
@@ -155,37 +189,88 @@ export function StorefrontProductCustomizer({
     clearQuote();
   }
 
-  function checkPrice() {
-    if (!isSelectionValid) return;
-    quoteMutation.mutate(makeQuoteRequest());
-  }
+  function submitSelection(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    if (!isSelectionValid || submitting.current) return;
+    submitting.current = true;
+    if (!editLine) feedback.prepare();
+    setSaveError('');
 
-  function addToBasket(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!quoteMutation.data) return;
-    addQuoteToBasket(quoteMutation.data);
-    onClose?.();
-  }
-
-  function quoteAndAddToBasket() {
-    if (!isSelectionValid || quoteMutation.isPending) return;
-    setWasAdded(false);
     quoteMutation.mutate(makeQuoteRequest(), {
       onSuccess: (quote) => {
-        addQuoteToBasket(quote);
-        setWasAdded(true);
+        const line = {
+          productId: quote.productId,
+          variantId: quote.variantId,
+          selections: quote.selections.map(({ groupId, optionIds, options }) => ({
+            groupId,
+            optionIds,
+            optionQuantities: options?.map(({ optionId, quantity }) => ({ optionId, quantity })),
+          })),
+          quantity,
+          unitPriceSnapshot: quote.totalPrice,
+        };
+        if (editLine) {
+          if (!updateCartLine(editLine.key, line)) {
+            setSaveError(
+              locale === 'ar'
+                ? 'تعذر حفظ التعديل. راجع وجود العنصر وحد الكمية 99 بعد دمج الاختيارات المتطابقة.'
+                : 'Could not save. Check that the item exists and the combined quantity is at most 99.',
+            );
+            return;
+          }
+        } else {
+          if (!addCartLine(line)) {
+            setSaveError(
+              locale === 'ar'
+                ? 'الحد الأقصى 99 قطعة للاختيارات المتطابقة في السلة.'
+                : 'The maximum combined quantity is 99.',
+            );
+            return;
+          }
+          feedback.play();
+        }
+
+        onClose?.();
+      },
+      onSettled: () => {
+        submitting.current = false;
       },
     });
   }
 
+  const estimatedUnitPrice =
+    toMinorUnits(
+      selectedVariant?.promotionalPrice ??
+        selectedVariant?.price ??
+        String(getProductStartingPrice(product)),
+    ) +
+    groups.reduce(
+      (sum, group) =>
+        sum +
+        group.options.reduce(
+          (subtotal, option) =>
+            subtotal +
+            ((choices[group.id] ?? []).includes(option.id)
+              ? Math.round(Number(option.priceAdjustment) * 100) *
+                (optionQuantities[option.id] ?? 1)
+              : 0),
+          0,
+        ),
+      0,
+    );
+  const displayTotal = fromMinorUnits(
+    (quoteMutation.data ? toMinorUnits(quoteMutation.data.totalPrice) : estimatedUnitPrice) *
+      quantity,
+  );
+
   const optionFieldsets = (
     <>
       {product.variants.length > 0 && (
-        <fieldset className="grid gap-3 rounded-2xl border border-store-border bg-white p-3 sm:p-4">
-          <legend className="px-1 font-heading font-extrabold text-store-ink">
+        <fieldset className="grid min-w-0 gap-2 border-0 p-0">
+          <legend className="mb-2 flex w-full items-center justify-between gap-2 p-0 text-sm font-bold text-store-ink">
             {t.chooseVariant}
           </legend>
-          <div className="grid gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {product.variants.map((variant) => {
               const unavailable = variant.availability !== 'available';
               const label = variant.attributes.length
@@ -196,11 +281,11 @@ export function StorefrontProductCustomizer({
               return (
                 <label
                   key={variant.id}
-                  className={`flex min-h-14 items-center gap-3 rounded-xl border px-3 py-2.5 transition ${unavailable ? 'cursor-not-allowed border-store-border bg-store-page/60 opacity-55' : 'cursor-pointer border-store-border bg-white hover:border-store-accent/60 has-[:checked]:border-store-primary has-[:checked]:bg-store-primary/5'}`}
+                  className={`flex min-w-0 flex-wrap items-center gap-2 rounded-xl border px-3 py-2.5 transition ${unavailable ? 'cursor-not-allowed border-store-border bg-store-page/60 opacity-55' : 'cursor-pointer border-store-border bg-white hover:border-store-accent/60 has-[:checked]:border-store-primary has-[:checked]:bg-store-primary/5'}`}
                 >
                   <input
                     type="radio"
-                    name={`variant-${product.id}`}
+                    name={`variant-${product.id}-${presentation}`}
                     value={variant.id}
                     checked={variantId === variant.id}
                     disabled={unavailable || quoteMutation.isPending}
@@ -210,10 +295,12 @@ export function StorefrontProductCustomizer({
                       setOptionQuantities({});
                       clearQuote();
                     }}
-                    className="size-[18px] shrink-0 accent-store-primary"
+                    className="m-0 size-4 shrink-0 accent-store-primary"
                   />
-                  <span className="min-w-0 flex-1 font-bold text-store-ink">{label}</span>
-                  <span className="flex shrink-0 flex-col items-end text-sm font-extrabold text-store-accent">
+                  <span className="min-w-0 flex-1 break-words text-sm font-bold text-store-ink">
+                    {label}
+                  </span>
+                  <span className="ms-6 flex w-full flex-col items-start text-xs font-bold text-store-accent">
                     {unavailable ? (
                       t.unavailable
                     ) : (
@@ -240,35 +327,39 @@ export function StorefrontProductCustomizer({
         const single = group.selectionMode === 'single';
         const selected = choices[group.id] ?? [];
         return (
-          <fieldset
-            key={group.id}
-            className="grid gap-3 rounded-2xl border border-store-border bg-white p-3 sm:p-4"
-          >
-            <legend className="px-1 font-heading font-extrabold text-store-ink">
+          <fieldset key={group.id} className="grid min-w-0 gap-2 border-0 p-0">
+            <legend className="mb-2 flex w-full items-center justify-between gap-2 p-0 text-sm font-bold text-store-ink">
               {group.name}{' '}
-              <span className="font-body text-xs font-bold text-store-muted">
+              <span className="rounded-md bg-store-cream px-2 py-1 text-[10px] font-medium text-store-muted">
                 {group.minSelections > 0 ? t.required : t.optional}
               </span>
             </legend>
+            {group.options.length === 0 && (
+              <p className="text-xs text-store-error" role="status">
+                {locale === 'ar'
+                  ? 'لا توجد اختيارات متاحة للنوع ده.'
+                  : 'No options available for this variant.'}
+              </p>
+            )}
             {group.description && (
               <p className="-mt-1 text-sm leading-6 text-store-muted">{group.description}</p>
             )}
 
             <div className="grid gap-2">
               {single && group.minSelections === 0 && (
-                <label className="flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border border-store-border px-3 py-2 hover:border-store-accent/60 has-[:checked]:border-store-primary has-[:checked]:bg-store-primary/5">
+                <label className="flex min-h-10 cursor-pointer items-center gap-3 rounded-xl border border-store-border px-3 py-2 hover:border-store-accent/60 has-[:checked]:border-store-primary has-[:checked]:bg-store-primary/5">
                   <input
                     type="radio"
-                    name={`modifier-${group.id}`}
+                    name={`modifier-${product.id}-${group.id}-${presentation}`}
                     checked={selected.length === 0}
                     disabled={quoteMutation.isPending}
                     onChange={() => {
                       setChoices((current) => ({ ...current, [group.id]: [] }));
                       clearQuote();
                     }}
-                    className="size-[18px] shrink-0 accent-store-primary"
+                    className="m-0 size-4 shrink-0 accent-store-primary"
                   />
-                  <span className="flex-1 font-medium text-store-ink">{t.noChoice}</span>
+                  <span className="flex-1 text-sm font-medium text-store-ink">{t.noChoice}</span>
                 </label>
               )}
 
@@ -281,19 +372,19 @@ export function StorefrontProductCustomizer({
                 return (
                   <div key={option.id} className="grid gap-2">
                     <label
-                      className={`flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2 transition ${disabled && !checked ? 'cursor-not-allowed border-store-border bg-store-page/60 opacity-55' : 'cursor-pointer border-store-border hover:border-store-accent/60 has-[:checked]:border-store-primary has-[:checked]:bg-store-primary/5'}`}
+                      className={`flex min-h-10 items-center gap-3 rounded-xl border px-3 py-2 transition ${disabled && !checked ? 'cursor-not-allowed border-store-border bg-store-page/60 opacity-55' : 'cursor-pointer border-store-border hover:border-store-accent/60 has-[:checked]:border-store-primary has-[:checked]:bg-store-primary/5'}`}
                     >
                       <input
                         type={single ? 'radio' : 'checkbox'}
-                        name={`modifier-${group.id}`}
+                        name={`modifier-${product.id}-${group.id}-${presentation}`}
                         checked={checked}
                         disabled={disabled}
                         onChange={(event) =>
                           updateChoice(group.id, option.id, event.currentTarget.checked, single)
                         }
-                        className="size-[18px] shrink-0 accent-store-primary"
+                        className="m-0 size-4 shrink-0 accent-store-primary"
                       />
-                      <span className="min-w-0 flex-1 font-medium text-store-ink">
+                      <span className="min-w-0 flex-1 break-words text-sm font-medium text-store-ink">
                         {option.name}
                       </span>
                       <span className="shrink-0 text-sm font-bold text-store-accent">
@@ -346,187 +437,152 @@ export function StorefrontProductCustomizer({
     </>
   );
 
-  const quantityControl = (
-    <div className="flex min-h-14 items-center justify-between gap-4 rounded-2xl bg-store-cream px-4 py-2.5">
-      <span className="font-heading font-extrabold text-store-ink">{t.quantity}</span>
-      <div className="flex h-12 items-center gap-3 rounded-full border border-store-border bg-white px-2">
-        <button
-          type="button"
-          aria-label={t.decreaseQuantity}
-          disabled={quantity <= 1 || quoteMutation.isPending}
-          onClick={() => {
-            setQuantity((value) => Math.max(1, value - 1));
-            setWasAdded(false);
-          }}
-          className="grid size-11 place-items-center rounded-full text-store-primary transition hover:bg-store-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent disabled:opacity-40"
-        >
-          <Minus className="size-4" aria-hidden="true" />
-        </button>
-        <output
-          className="min-w-5 text-center font-bold tabular-nums"
-          aria-label={t.quantity}
-          aria-live="polite"
-        >
-          {quantity}
-        </output>
-        <button
-          type="button"
-          aria-label={t.increaseQuantity}
-          disabled={quantity >= 99 || quoteMutation.isPending}
-          onClick={() => {
-            setQuantity((value) => Math.min(99, value + 1));
-            setWasAdded(false);
-          }}
-          className="grid size-11 place-items-center rounded-full text-store-primary transition hover:bg-store-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent disabled:opacity-40"
-        >
-          <Plus className="size-4" aria-hidden="true" />
-        </button>
-      </div>
-    </div>
-  );
-
-  const quoteFeedback = (
-    <>
-      {quoteMutation.isError && (
-        <p
-          className="rounded-xl border border-store-error/20 bg-store-error/5 px-4 py-3 text-sm font-medium text-store-error"
-          role="alert"
-        >
-          {quoteMutation.error.message || t.priceError}
+  const actions = (
+    <div className="grid gap-2">
+      {!isSelectionValid && (
+        <p role="status" className="text-xs text-store-error">
+          {locale === 'ar'
+            ? 'راجع النوع والاختيارات المطلوبة والحد المسموح لكل مجموعة.'
+            : 'Review the variant and required option limits.'}
+          <button
+            type="button"
+            className="ms-2 underline"
+            onClick={() => {
+              setChoices(defaultChoices(product, variantId));
+              setOptionQuantities({});
+              clearQuote();
+            }}
+          >
+            {locale === 'ar' ? 'إعادة اختيار الإضافات' : 'Reset options'}
+          </button>
         </p>
       )}
-      {quoteMutation.data && (
-        <div className="grid gap-2 rounded-2xl bg-store-primary/10 px-4 py-3 text-sm text-store-primary" role="status">
-          <div className="flex items-center justify-between gap-3">
-            <span className="font-bold">{t.currentPrice}</span>
-            <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
-              <bdi dir="auto">{formatStorefrontPrice(quoteMutation.data.totalPrice, locale)}</bdi>
-            </strong>
-          </div>
-          {quoteMutation.data.promotion && quoteMutation.data.originalTotalPrice && (
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-store-primary/15 pt-2 text-xs">
-              <span>{t.productDiscount}</span>
-              <span className="flex items-center gap-2">
-                <del className="text-store-muted">
-                  <bdi dir="auto">
-                    {formatStorefrontPrice(quoteMutation.data.originalTotalPrice, locale)}
-                  </bdi>
-                </del>
-                <strong>
-                  −<bdi dir="auto">
-                    {formatStorefrontPrice(quoteMutation.data.promotion.discountAmount, locale)}
-                  </bdi>
-                </strong>
-              </span>
-            </div>
-          )}
-        </div>
+      {(quoteMutation.isError || saveError) && (
+        <p role="alert" className="text-xs leading-5 text-store-error">
+          {saveError || quoteMutation.error?.message || t.priceError}
+        </p>
       )}
-      {wasAdded && (
-        <div
-          className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-store-primary/10 px-4 py-3 text-sm text-store-primary-deep"
-          role="status"
-        >
-          <span className="font-bold">{t.addedToBasket}</span>
-          <Link
-            href={`/s/${slug}/cart`}
-            className="font-extrabold underline underline-offset-2 focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent"
+      <div className="flex items-center gap-3">
+        <div className="flex h-11 shrink-0 items-center rounded-xl border border-store-border bg-white">
+          <button
+            type="button"
+            aria-label={t.decreaseQuantity}
+            disabled={quantity <= 1 || quoteMutation.isPending}
+            onClick={() => {
+              setQuantity((value) => value - 1);
+            }}
+            className="grid size-11 cursor-pointer place-items-center rounded-xl text-store-primary disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {t.viewBasket}
-          </Link>
+            <Minus className="size-4" aria-hidden="true" />
+          </button>
+          <output
+            aria-label={t.quantity}
+            aria-live="polite"
+            className="min-w-5 text-center text-sm font-bold tabular-nums"
+          >
+            {quantity}
+          </output>
+          <button
+            type="button"
+            aria-label={t.increaseQuantity}
+            disabled={quantity >= 99 || quoteMutation.isPending}
+            onClick={() => {
+              setQuantity((value) => value + 1);
+            }}
+            className="grid size-11 cursor-pointer place-items-center rounded-xl text-store-primary disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Plus className="size-4" aria-hidden="true" />
+          </button>
         </div>
-      )}
-    </>
-  );
-
-  const actions = isDialog ? (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <Button
-        type="button"
-        variant="outline"
-        disabled={!isSelectionValid || quoteMutation.isPending}
-        onClick={checkPrice}
-        className="h-11 rounded-xl border-store-border bg-white font-bold text-store-primary hover:bg-store-cream"
-      >
-        {quoteMutation.isPending ? t.checkingPrice : t.checkPrice}
-      </Button>
-      <Button
-        type="submit"
-        disabled={!quoteMutation.data || quoteMutation.isPending}
-        className="h-11 rounded-xl bg-store-accent font-bold text-white hover:bg-store-primary-dark"
-      >
-        {t.addConfigured}
-      </Button>
-    </div>
-  ) : (
-    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] sm:items-center">
-      {quantityControl}
-      <Button
-        type="button"
-        disabled={!isSelectionValid || quoteMutation.isPending}
-        onClick={quoteAndAddToBasket}
-        className="h-11 rounded-xl bg-store-accent font-heading text-sm font-extrabold text-white shadow-sm hover:bg-store-primary-dark"
-      >
-        {quoteMutation.isPending ? t.checkingPrice : t.addConfigured}
-        {quoteMutation.isPending ? null : <Plus className="size-4" aria-hidden="true" />}
-      </Button>
+        <Button
+          type={isDialog ? 'submit' : 'button'}
+          disabled={!isSelectionValid || quoteMutation.isPending}
+          onClick={isDialog ? undefined : () => submitSelection()}
+          className="flex h-auto min-h-11 min-w-0 flex-1 flex-wrap items-center justify-between gap-x-2 gap-y-0.5 rounded-xl bg-store-accent px-3 py-2 text-sm font-bold hover:bg-store-primary-dark"
+        >
+          <span>
+            {quoteMutation.isPending
+              ? locale === 'ar'
+                ? 'جارٍ الحفظ…'
+                : 'Saving…'
+              : editLine
+                ? locale === 'ar'
+                  ? 'حفظ التعديلات'
+                  : 'Save changes'
+                : t.addConfigured}
+          </span>
+          <bdi className="text-xs" dir="auto">
+            {formatStorefrontPrice(displayTotal, locale)}
+          </bdi>
+        </Button>
+      </div>
+      <p className="text-[10px] leading-4 text-store-muted">
+        {locale === 'ar'
+          ? 'السعر المعروض تقديري لحد مراجعة الاختيارات عند الحفظ.'
+          : 'Price is estimated until options are checked on save.'}
+      </p>
     </div>
   );
 
-  if (!isDialog) {
+  if (!isDialog)
     return (
-      <section aria-label={t.customize} className="grid min-w-0 gap-3 sm:gap-4">
+      <section
+        aria-label={t.customize}
+        className="grid min-w-0 gap-5 rounded-2xl border border-store-border bg-white p-4"
+      >
         {optionFieldsets}
-        {quoteFeedback}
-        <div className="sticky bottom-0 z-10 -mx-4 rounded-t-2xl border-t border-store-border bg-white/95 p-3 shadow-[0_-8px_24px_rgba(23,35,48,0.08)] backdrop-blur supports-[backdrop-filter]:bg-white/90 sm:static sm:mx-0 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-0">
+        <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 -mb-4 rounded-b-2xl border-t border-store-border bg-white p-3 shadow-sm lg:static">
           {actions}
         </div>
       </section>
     );
-  }
 
   return (
     <dialog
       ref={dialogRef}
+      dir={locale === 'ar' ? 'rtl' : 'ltr'}
       aria-labelledby={`customizer-title-${product.id}`}
       onCancel={(event) => {
         event.preventDefault();
-        onClose?.();
+        if (!submitting.current) onClose?.();
       }}
       onClose={() => onClose?.()}
       onClick={(event) => {
-        if (event.target === event.currentTarget) onClose?.();
+        if (event.target === event.currentTarget && !submitting.current) onClose?.();
       }}
-      className="fixed inset-0 m-auto max-h-[min(88vh,760px)] w-[min(100%-24px,600px)] overflow-y-auto rounded-[1.6rem] border border-store-border bg-store-page p-0 text-store-ink shadow-2xl backdrop:bg-store-ink/55"
+      className="fixed inset-0 m-auto max-h-[calc(100dvh-24px)] w-[calc(100%-24px)] max-w-[380px] overflow-hidden rounded-3xl border border-store-border bg-white p-0 text-store-ink shadow-2xl backdrop:bg-store-ink/55 open:flex open:flex-col"
     >
-      <form onSubmit={addToBasket} className="grid gap-4 p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-sm font-bold text-store-accent">{t.customize}</p>
-            <h2
-              id={`customizer-title-${product.id}`}
-              className="mt-1 font-heading text-storefront-subsection font-extrabold"
-            >
+      <form onSubmit={submitSelection} className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="flex shrink-0 items-start justify-between gap-3 px-5 pb-3 pt-5">
+          {imageUrl && (
+            <div className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-store-cream">
+              <Image src={imageUrl} alt="" fill sizes="56px" unoptimized className="object-cover" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p id={`customizer-title-${product.id}`} className="text-base font-bold">
               {product.name}
-            </h2>
+            </p>
             {product.description && (
-              <p className="mt-2 text-sm leading-6 text-store-muted">{product.description}</p>
+              <p className="mt-1 line-clamp-2 text-xs leading-5 text-store-muted">
+                {product.description}
+              </p>
             )}
           </div>
           <button
             type="button"
+            disabled={quoteMutation.isPending}
             onClick={() => onClose?.()}
             aria-label={t.close}
-            className="grid size-11 shrink-0 place-items-center rounded-full border border-store-border bg-white text-store-ink transition hover:bg-store-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent"
+            className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-full bg-store-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-store-accent disabled:opacity-40"
           >
-            <X className="size-5" aria-hidden="true" />
+            <X className="size-4" aria-hidden="true" />
           </button>
         </div>
-
-        {optionFieldsets}
-        {quantityControl}
-        {quoteFeedback}
-        {actions}
+        <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto overscroll-contain px-5 pb-5">
+          {optionFieldsets}
+        </div>
+        <div className="shrink-0 border-t border-store-border bg-white p-4">{actions}</div>
       </form>
     </dialog>
   );

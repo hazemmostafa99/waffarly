@@ -49,9 +49,6 @@ export function StorefrontFooter({ catalog }: { catalog: PublicStorefrontCatalog
               <span className="truncate font-heading text-xl font-extrabold sm:text-2xl">
                 {catalog.merchantName}
               </span>
-              <span className="mt-1 text-xs font-bold tracking-[0.12em] text-store-gold">
-                WAFFARLY BISTRO
-              </span>
             </span>
           </div>
           <p className="max-w-sm text-sm leading-6 text-white/70">{t.footerNote}</p>
@@ -61,7 +58,7 @@ export function StorefrontFooter({ catalog }: { catalog: PublicStorefrontCatalog
           aria-label={t.footerExplore}
           className="grid content-start justify-items-start gap-3 text-start"
         >
-          <h2 className="mb-1 font-heading text-sm font-extrabold text-white">{t.footerExplore}</h2>
+          <h2 className="sr-only">{t.footerExplore}</h2>
           <Link className={footerLinkClass} href={menuHref}>
             {t.footerMenu}
           </Link>
@@ -77,7 +74,7 @@ export function StorefrontFooter({ catalog }: { catalog: PublicStorefrontCatalog
           aria-label={t.footerOrder}
           className="grid content-start justify-items-start gap-3 text-start"
         >
-          <h2 className="mb-1 font-heading text-sm font-extrabold text-white">{t.footerOrder}</h2>
+          <h2 className="sr-only">{t.footerOrder}</h2>
           <Link className={footerLinkClass} href={`${homeHref}/cart`}>
             {t.footerCart}
           </Link>
@@ -99,9 +96,7 @@ export function StorefrontFooter({ catalog }: { catalog: PublicStorefrontCatalog
           aria-label={t.footerRestaurant}
           className="grid content-start justify-items-start gap-3 text-start"
         >
-          <h2 className="mb-1 font-heading text-sm font-extrabold text-white">
-            {t.footerRestaurant}
-          </h2>
+          <h2 className="sr-only">{t.footerRestaurant}</h2>
           <Link className={footerLinkClass} href={homeHref}>
             {t.footerHome}
           </Link>

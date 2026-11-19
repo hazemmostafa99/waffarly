@@ -317,9 +317,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
         <span className="grid size-16 place-items-center rounded-3xl bg-store-primary/10 text-store-primary">
           <CheckCircle2 className="size-8" aria-hidden="true" />
         </span>
-        <h1 className="mt-4 font-heading text-storefront-page font-black text-store-primary-deep">
-          {t.orderReceived}
-        </h1>
+        <h1 className="mt-4 text-base font-bold text-store-primary-deep">{t.orderReceived}</h1>
         <p className="mt-2 max-w-xl text-storefront-body text-store-muted">{t.orderPending}</p>
         <Card className="mt-5 grid w-full gap-3 rounded-3xl border-store-border bg-white p-4 text-start sm:p-5">
           <div className="flex items-center justify-between gap-4">
@@ -382,9 +380,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
         <span className="grid size-16 place-items-center rounded-3xl bg-store-cream text-store-accent">
           <ShoppingBag className="size-8" aria-hidden="true" />
         </span>
-        <h1 className="mt-4 font-heading text-storefront-page font-black text-store-ink">
-          {t.basketEmpty}
-        </h1>
+        <p className="mt-4 text-sm text-store-muted">{t.basketEmpty}</p>
         <Button
           asChild
           className="mt-5 rounded-xl bg-store-accent px-5 font-bold hover:bg-store-primary-dark"
@@ -399,9 +395,9 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
   return (
     <main
       id="main-content"
-      className="mx-auto min-h-[70vh] max-w-[1100px] px-4 pb-10 pt-6 sm:px-8 sm:pt-8"
+      className="mx-auto min-h-[70vh] max-w-[1100px] px-4 pb-44 pt-4 lg:pb-10 sm:px-8 sm:pt-8"
     >
-      <header className="mb-5">
+      <header className="sr-only">
         <p className="text-storefront-support font-extrabold text-store-accent">
           {catalog.merchantName}
         </p>
@@ -419,9 +415,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
           >
             <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
               <fieldset className="grid gap-3">
-                <legend className="mb-2 font-heading text-storefront-subsection font-extrabold text-store-ink">
-                  {t.fulfillment}
-                </legend>
+                <legend className="sr-only">{t.fulfillment}</legend>
                 {(
                   [
                     { value: 'pickup', label: t.pickup },
@@ -533,6 +527,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                   <Textarea
                     autoComplete="street-address"
                     dir="auto"
+                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                     value={fields.deliveryAddress}
                     onChange={(event) => {
                       setSelectedSavedAddressId('');
@@ -542,16 +537,14 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                     minLength={8}
                     maxLength={1000}
                     required
-                    className="min-h-28 rounded-xl border-store-border bg-white text-base"
+                    className="min-h-24 rounded-xl border-store-border bg-white text-base"
                   />
                 </label>
               )}
             </Card>
 
             <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
-              <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
-                {locale === 'ar' ? 'بيانات العميل' : 'Your details'}
-              </h2>
+              <h2 className="sr-only">{locale === 'ar' ? 'بيانات العميل' : 'Your details'}</h2>
               {session.isPending && (
                 <p role="status" className="text-sm text-store-muted">
                   {locale === 'ar' ? 'جارٍ تحميل بيانات حسابك…' : 'Loading your account…'}
@@ -586,6 +579,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                 <Input
                   autoComplete="name"
                   dir="auto"
+                  style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                   value={fields.customerName}
                   onChange={(event) => update('customerName', event.currentTarget.value)}
                   placeholder={t.namePlaceholder}
@@ -610,18 +604,18 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                   required
                   className="h-12 rounded-xl border-store-border bg-white text-base"
                   dir="ltr"
+                  style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                 />
               </label>
             </Card>
 
             <Card className="grid gap-3 rounded-3xl border-store-border bg-white p-4 sm:p-5">
-              <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
-                {t.discountCode}
-              </h2>
+              <h2 className="sr-only">{t.discountCode}</h2>
               <div className="flex flex-wrap gap-2">
                 <Input
                   aria-label={t.discountCode}
                   dir="ltr"
+                  style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                   autoCapitalize="characters"
                   maxLength={32}
                   value={fields.discountCode}
@@ -661,7 +655,6 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                 </p>
               )}
             </Card>
-
           </fieldset>
 
           {orderMutation.isError && (
@@ -695,41 +688,49 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
               <p>الإجمالي: {formatStorefrontPrice(reviewedQuote.total, locale)}</p>
             </div>
           )}
-          <Button
-            type="submit"
-            formNoValidate={uncertain}
-            disabled={
-              session.isPending ||
-              session.isError ||
-              orderMutation.isPending ||
-              reviewMutation.isPending ||
-              (restaurant && !options.data && !uncertain)
-            }
-            className="h-11 rounded-xl bg-store-accent font-heading text-sm font-extrabold hover:bg-store-primary-dark"
-          >
-            {orderMutation.isPending && (
-              <LoaderCircle className="size-5 animate-spin" aria-hidden="true" />
+          <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 grid gap-2 border-t border-store-border bg-white p-3 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] lg:static lg:rounded-2xl lg:border lg:p-4 lg:shadow-none">
+            {quote && (
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span>{t.finalTotal}</span>
+                <strong>
+                  <bdi dir="auto">{formatStorefrontPrice(quote.total, locale)}</bdi>
+                </strong>
+              </div>
             )}
-            {uncertain
-              ? 'أعد نفس محاولة التأكيد'
-              : orderMutation.isPending
-                ? t.submittingOrder
-                : reviewMutation.isPending
-                  ? 'جارٍ مراجعة الطلب…'
-                  : branchRouting && !reviewedQuote
-                    ? 'راجع الفرع والسعر'
-                    : t.submitOrder}
-            {!orderMutation.isPending && <Arrow className="size-4" aria-hidden="true" />}
-          </Button>
-          <p className="text-center text-xs leading-5 text-store-muted">{t.noPayment}</p>
+            <Button
+              type="submit"
+              formNoValidate={uncertain}
+              disabled={
+                session.isPending ||
+                session.isError ||
+                orderMutation.isPending ||
+                reviewMutation.isPending ||
+                (restaurant && !options.data && !uncertain)
+              }
+              className="h-11 rounded-xl bg-store-accent font-heading text-sm font-extrabold hover:bg-store-primary-dark"
+            >
+              {orderMutation.isPending && (
+                <LoaderCircle className="size-5 animate-spin" aria-hidden="true" />
+              )}
+              {uncertain
+                ? 'أعد نفس محاولة التأكيد'
+                : orderMutation.isPending
+                  ? t.submittingOrder
+                  : reviewMutation.isPending
+                    ? 'جارٍ مراجعة الطلب…'
+                    : branchRouting && !reviewedQuote
+                      ? 'راجع الفرع والسعر'
+                      : t.submitOrder}
+              {!orderMutation.isPending && <Arrow className="size-4" aria-hidden="true" />}
+            </Button>
+            <p className="text-center text-[10px] leading-4 text-store-muted">{t.noPayment}</p>
+          </div>
         </form>
 
         <aside className="lg:sticky lg:top-28">
           <Card className="rounded-3xl border-store-border bg-white p-4 shadow-[0_12px_36px_rgba(23,35,48,0.06)] sm:p-5">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
-                {locale === 'ar' ? 'ملخص السلة' : 'Basket summary'}
-              </h2>
+              <h2 className="sr-only">{locale === 'ar' ? 'ملخص السلة' : 'Basket summary'}</h2>
               <span className="rounded-full bg-store-cream px-3 py-1 text-xs font-extrabold text-store-primary">
                 {cart.reduce((count, line) => count + line.quantity, 0)}
               </span>

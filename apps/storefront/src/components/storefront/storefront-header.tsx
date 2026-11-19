@@ -1,5 +1,6 @@
 'use client';
 
+import { StorefrontCartNotice } from '../../features/cart/storefront-cart-notice';
 import Image from 'next/image';
 import Link, { useStorefrontBasePath } from './storefront-link';
 import { usePathname } from 'next/navigation';
@@ -47,9 +48,6 @@ function Brand({ catalog }: { catalog: PublicStorefrontCatalog }) {
         <span className="truncate font-heading text-base font-extrabold text-store-primary-deep sm:text-lg">
           {catalog.merchantName}
         </span>
-        <span className="mt-1 truncate text-xs font-bold tracking-[0.12em] text-store-gold">
-          WAFFARLY BISTRO
-        </span>
       </span>
     </span>
   );
@@ -75,6 +73,7 @@ export function StorefrontHeader({ catalog }: { catalog: PublicStorefrontCatalog
 
   return (
     <>
+      <StorefrontCartNotice slug={catalog.slug} />
       <div className="bg-store-primary-deep px-4 py-3 text-center text-xs font-bold leading-[18px] text-white sm:py-[13px] sm:text-sm">
         <Gift className="me-1 inline size-4 text-store-gold" aria-hidden="true" />
         <span className="inline-block max-w-[260px] align-middle leading-[18px] sm:max-w-none">

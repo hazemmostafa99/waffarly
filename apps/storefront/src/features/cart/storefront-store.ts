@@ -20,9 +20,11 @@ interface StorefrontPersistedState {
 }
 
 export interface StorefrontState extends StorefrontPersistedState {
+  cartNotice: { id: number; kind: 'added' | 'updated' } | null;
   hasHydrated: boolean;
   setHasHydrated: (value: boolean) => void;
-  addCartLine: (line: Omit<StorefrontCartLine, 'key'>) => void;
+  addCartLine: (line: Omit<StorefrontCartLine, 'key'>) => boolean;
+  updateCartLine: (key: string, line: Omit<StorefrontCartLine, 'key'>) => boolean;
   setCartQuantity: (key: string, quantity: number) => void;
   removeCartLine: (key: string) => void;
   clearCart: () => void;
@@ -60,27 +62,47 @@ export function createStorefrontStore(slug: string) {
         setFulfillmentType: (fulfillmentType) => set({ fulfillmentType }),
         setPickupBranchId: (pickupBranchId) => set({ pickupBranchId }),
         setDeliveryAreaId: (deliveryAreaId) => set({ deliveryAreaId }),
+        cartNotice: null,
         hasHydrated: false,
         setHasHydrated: (value) => set({ hasHydrated: value }),
-        addCartLine: (line) =>
+        addCartLine: (line) => {
+          let added = false;
           set((state) => {
             const key = getCartLineKey(line.productId, line.variantId, line.selections);
             const existing = state.cart.find((item) => item.key === key);
-            if (existing) {
-              return {
-                cart: state.cart.map((item) =>
-                  item.key === key
-                    ? {
-                        ...item,
-                        quantity: Math.min(item.quantity + line.quantity, 99),
-                        unitPriceSnapshot: line.unitPriceSnapshot,
-                      }
-                    : item,
-                ),
-              };
-            }
-            return { cart: [...state.cart, { ...line, key }] };
-          }),
+            const quantity = line.quantity + (existing?.quantity ?? 0);
+            if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) return state;
+            added = true;
+            const cartNotice = { id: (state.cartNotice?.id ?? 0) + 1, kind: 'added' as const };
+            return {
+              cartNotice,
+              cart: existing
+                ? state.cart.map((item) => (item.key === key ? { ...line, key, quantity } : item))
+                : [...state.cart, { ...line, key }],
+            };
+          });
+          return added;
+        },
+        updateCartLine: (originalKey, line) => {
+          let updated = false;
+          set((state) => {
+            if (!state.cart.some((item) => item.key === originalKey)) return state;
+            const key = getCartLineKey(line.productId, line.variantId, line.selections);
+            const matching = state.cart.find(
+              (item) => item.key === key && item.key !== originalKey,
+            );
+            const quantity = line.quantity + (matching?.quantity ?? 0);
+            if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) return state;
+            updated = true;
+            return {
+              cartNotice: { id: (state.cartNotice?.id ?? 0) + 1, kind: 'updated' },
+              cart: state.cart
+                .filter((item) => !matching || item.key !== matching.key)
+                .map((item) => (item.key === originalKey ? { ...line, key, quantity } : item)),
+            };
+          });
+          return updated;
+        },
         setCartQuantity: (key, quantity) =>
           set((state) => ({
             cart:

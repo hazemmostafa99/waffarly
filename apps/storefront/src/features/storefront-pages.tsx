@@ -246,7 +246,7 @@ function StorefrontPageShell({
         <HomeArrow className="size-3.5" aria-hidden="true" />
         <span aria-current="page">{title}</span>
       </nav>
-      <header className={compact ? 'sr-only' : 'mb-5 flex flex-col gap-2 sm:mb-6'}>
+      <header className="sr-only">
         <h1 className="font-heading text-storefront-section font-black leading-tight text-store-ink">
           {title}
         </h1>
@@ -355,9 +355,7 @@ export function StorefrontBranchesPage({ catalog }: { catalog: PublicStorefrontC
                   className={`rounded-[1.35rem] border bg-white p-0 shadow-[0_12px_32px_rgba(30,38,36,0.045)] ${isSelected ? 'border-store-primary ring-2 ring-store-primary/15' : 'border-store-border'}`}
                 >
                   <div className="grid gap-3 p-4">
-                    <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
-                      {branch.name}
-                    </h2>
+                    <p className="text-sm font-bold text-store-ink">{branch.name}</p>
                     {branch.address && (
                       <p className="text-storefront-support leading-5 text-store-muted">
                         {branch.address}
@@ -423,9 +421,7 @@ export function StorefrontAboutPage({ catalog }: { catalog: PublicStorefrontCata
               className="size-14 rounded-xl object-cover"
             />
           )}
-          <h2 className="font-heading text-storefront-section font-black text-store-ink">
-            {catalog.merchantName}
-          </h2>
+          <h2 className="sr-only">{catalog.merchantName}</h2>
         </div>
         <p className="max-w-3xl text-storefront-body leading-7 text-store-secondary">
           {catalog.restaurantDescription || t.noDescription}
@@ -819,6 +815,7 @@ function Field({
   minLength?: number;
   disabled?: boolean;
 }) {
+  const { locale } = useLocale();
   const id = `storefront-auth-${name}`;
   return (
     <label htmlFor={id} className="grid gap-1.5 text-storefront-support font-bold text-store-ink">
@@ -834,7 +831,8 @@ function Field({
         minLength={minLength}
         disabled={disabled}
         required={required}
-        className="h-11 rounded-xl border-store-border bg-white text-start"
+        className="h-11 rounded-xl border-store-border bg-white"
+        style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
       />
     </label>
   );

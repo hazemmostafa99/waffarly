@@ -72,7 +72,7 @@ export function StorefrontProductPage({
 
       <div className="grid min-w-0 items-start gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)] lg:gap-7">
         <section aria-label={t.productImages} className="min-w-0 lg:sticky lg:top-24">
-          <div className="relative aspect-[1.5] overflow-hidden rounded-[1.6rem] border border-store-border bg-store-cream shadow-[0_14px_42px_rgba(23,35,48,0.08)] sm:rounded-[1.9rem] lg:aspect-[1.5]">
+          <div className="relative aspect-[1.5] overflow-hidden rounded-2xl border border-store-border bg-store-cream shadow-[0_14px_42px_rgba(23,35,48,0.08)] sm:rounded-2xl lg:aspect-[1.5]">
             {imageUrl ? (
               <Image
                 key={imageUrl}
@@ -123,7 +123,7 @@ export function StorefrontProductPage({
         </section>
 
         <div className="grid min-w-0 gap-3 sm:gap-4">
-          <Card className="grid gap-3 rounded-[1.6rem] border-store-border bg-white p-4 shadow-[0_10px_34px_rgba(23,35,48,0.05)] sm:gap-4 sm:rounded-[1.9rem] sm:p-5 lg:p-6">
+          <Card className="grid gap-3 rounded-2xl border-store-border bg-white p-4 shadow-[0_10px_34px_rgba(23,35,48,0.05)] sm:gap-3 sm:rounded-2xl sm:p-4">
             <div className="flex flex-wrap gap-2">
               {product.categories.map((category) => (
                 <Badge
@@ -136,14 +136,11 @@ export function StorefrontProductPage({
             </div>
 
             <header>
-              <p className="text-storefront-support font-extrabold text-store-accent">
-                {catalog.merchantName}
-              </p>
-              <h1 className="mt-1 font-heading text-storefront-page font-black text-store-ink text-balance">
+              <h1 className="mt-1 font-heading text-xl sm:text-2xl font-black text-store-ink text-balance">
                 {product.name}
               </h1>
               {product.description && (
-                <p className="mt-2 text-storefront-body text-store-muted sm:mt-3">
+                <p className="mt-2 text-sm leading-6 text-store-muted sm:mt-3">
                   {product.description}
                 </p>
               )}
@@ -160,7 +157,7 @@ export function StorefrontProductPage({
                         {t.priceFrom}
                       </span>
                     )}
-                    <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
+                    <strong className="font-heading text-xl font-extrabold text-store-primary-deep">
                       <bdi dir="auto">
                         {formatStorefrontPrice(getProductStartingPrice(product), locale)}
                       </bdi>

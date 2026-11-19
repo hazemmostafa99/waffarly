@@ -1,5 +1,8 @@
 'use client';
 
+import { useState } from 'react';
+import { StorefrontProductCustomizer } from '../catalog/storefront-product-customizer';
+import type { StorefrontCartLine } from './storefront-store';
 import Link from '../../components/storefront/storefront-link';
 import Image from 'next/image';
 import { useQueries } from '@tanstack/react-query';
@@ -14,6 +17,7 @@ import { useStorefrontStore } from '../../providers/storefront-providers';
 import { storefrontQueryKeys } from '../catalog/storefront-query-keys';
 
 export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatalog }) {
+  const [editing, setEditing] = useState<StorefrontCartLine | null>(null);
   const { locale } = useLocale();
   const t = storefrontCopy(locale);
   const cart = useStorefrontStore((state) => state.cart);
@@ -65,9 +69,7 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
         <span className="grid size-16 place-items-center rounded-3xl bg-store-primary/10 text-store-primary">
           <ShoppingBag className="size-8" aria-hidden="true" />
         </span>
-        <h1 className="mt-4 font-heading text-storefront-page font-black text-store-ink">
-          {t.basket}
-        </h1>
+        <h1 className="sr-only">{t.basket}</h1>
         <p className="mt-2 text-storefront-body text-store-muted">{t.basketEmpty}</p>
         <Button
           asChild
@@ -95,7 +97,7 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
       id="main-content"
       className="mx-auto min-h-[70vh] max-w-[1160px] px-4 pb-10 pt-6 sm:px-8 sm:pt-8"
     >
-      <header className="mb-5">
+      <header className="sr-only">
         <p className="text-storefront-support font-extrabold text-store-accent">
           {catalog.merchantName}
         </p>
@@ -134,9 +136,9 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
             return (
               <Card
                 key={line.key}
-                className="grid gap-3 rounded-3xl border-store-border bg-white p-3 sm:grid-cols-[120px_minmax(0,1fr)_auto] sm:items-center sm:p-4"
+                className="grid gap-3 rounded-3xl border-store-border bg-white p-3 grid-cols-[72px_minmax(0,1fr)] sm:grid-cols-[88px_minmax(0,1fr)_auto] sm:items-center sm:p-4"
               >
-                <div className="relative aspect-[1.3] overflow-hidden rounded-2xl bg-store-cream sm:aspect-square">
+                <div className="relative self-start aspect-square overflow-hidden rounded-2xl bg-store-cream sm:aspect-square">
                   {image ? (
                     <Image
                       src={image.publicUrl}
@@ -153,7 +155,7 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
                   )}
                 </div>
                 <div className="min-w-0">
-                  <h2 className="font-heading text-storefront-product font-extrabold text-store-ink">
+                  <h2 className="font-heading text-sm font-extrabold text-store-ink">
                     {product?.name ?? t.unavailable}
                   </h2>
                   {variant && (
@@ -182,12 +184,21 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
                       {t.priceNote}
                     </p>
                   )}
-                  <div className="mt-3 flex items-center gap-2">
+                  {product && (
+                    <button
+                      type="button"
+                      onClick={() => setEditing(line)}
+                      className="mt-1 inline-flex min-h-8 items-center text-xs font-bold text-store-primary underline underline-offset-4"
+                    >
+                      {locale === 'ar' ? 'تعديل الاختيارات' : 'Edit options'}
+                    </button>
+                  )}
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       aria-label={locale === 'ar' ? 'تقليل الكمية' : 'Decrease quantity'}
                       onClick={() => setQuantity(line.key, line.quantity - 1)}
-                      className="grid size-11 place-items-center rounded-full border border-store-border bg-white text-store-primary hover:bg-store-cream"
+                      className="grid size-9 place-items-center rounded-full border border-store-border bg-white text-store-primary hover:bg-store-cream"
                     >
                       <Minus className="size-4" aria-hidden="true" />
                     </button>
@@ -202,7 +213,7 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
                       aria-label={locale === 'ar' ? 'زيادة الكمية' : 'Increase quantity'}
                       disabled={line.quantity >= 99}
                       onClick={() => setQuantity(line.key, line.quantity + 1)}
-                      className="grid size-11 place-items-center rounded-full border border-store-border bg-white text-store-primary hover:bg-store-cream disabled:opacity-40"
+                      className="grid size-9 place-items-center rounded-full border border-store-border bg-white text-store-primary hover:bg-store-cream disabled:opacity-40"
                     >
                       <Plus className="size-4" aria-hidden="true" />
                     </button>
@@ -216,19 +227,23 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
                     </button>
                   </div>
                 </div>
-                <div className="text-end sm:min-w-28">
+                <div className="col-start-2 text-end sm:col-start-auto sm:min-w-28">
                   {quote?.promotion && quote.originalTotalPrice && (
                     <div className="mb-1 flex flex-col items-end">
                       <del className="text-xs text-store-muted">
-                        <bdi dir="auto">{formatStorefrontPrice(quote.originalTotalPrice, locale)}</bdi>
+                        <bdi dir="auto">
+                          {formatStorefrontPrice(quote.originalTotalPrice, locale)}
+                        </bdi>
                       </del>
                       <span className="text-xs font-bold text-store-primary">
                         {t.productDiscount} −
-                        <bdi dir="auto">{formatStorefrontPrice(quote.promotion.discountAmount, locale)}</bdi>
+                        <bdi dir="auto">
+                          {formatStorefrontPrice(quote.promotion.discountAmount, locale)}
+                        </bdi>
                       </span>
                     </div>
                   )}
-                  <strong className="font-heading text-storefront-price font-extrabold text-store-primary-deep">
+                  <strong className="font-heading text-lg font-extrabold text-store-primary-deep">
                     <bdi dir="auto">
                       {formatStorefrontPrice(quote?.totalPrice ?? line.unitPriceSnapshot, locale)}
                     </bdi>
@@ -244,12 +259,10 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
 
         <aside className="lg:sticky lg:top-28">
           <Card className="rounded-3xl border-store-border bg-white p-4 shadow-[0_12px_36px_rgba(23,35,48,0.06)] sm:p-5">
-            <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
-              {locale === 'ar' ? 'ملخص الطلب' : 'Order summary'}
-            </h2>
-            <div className="mt-4 flex items-center justify-between gap-3 border-b border-store-border pb-3 text-storefront-support">
+            <h2 className="sr-only">{locale === 'ar' ? 'ملخص الطلب' : 'Order summary'}</h2>
+            <div className="flex items-center justify-between gap-3 border-b border-store-border pb-3 text-storefront-support">
               <span className="text-store-muted">{t.estimatedSubtotal}</span>
-              <strong className="font-heading text-storefront-price font-extrabold text-store-ink">
+              <strong className="font-heading text-lg font-extrabold text-store-ink">
                 <bdi dir="auto">
                   {formatStorefrontPrice(fromMinorUnits(estimatedMinorUnits), locale)}
                 </bdi>
@@ -277,6 +290,15 @@ export function StorefrontCartPage({ catalog }: { catalog: PublicStorefrontCatal
           </Card>
         </aside>
       </div>
+      {editing && products.get(editing.productId) && (
+        <StorefrontProductCustomizer
+          key={editing.key}
+          product={products.get(editing.productId)!}
+          slug={catalog.slug}
+          editLine={editing}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </main>
   );
 }

@@ -41,6 +41,7 @@ function AccountField({
   onChange,
   dir = 'auto',
 }: AccountFieldProps) {
+  const { locale } = useLocale();
   return (
     <label className="grid gap-1.5 text-storefront-support font-bold text-store-ink" htmlFor={id}>
       {label}
@@ -48,6 +49,7 @@ function AccountField({
         autoComplete="off"
         className="h-11 rounded-xl border-store-border bg-white text-start"
         dir={dir}
+        style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
         id={id}
         inputMode={inputMode}
         name={id}
@@ -83,13 +85,13 @@ export function StorefrontAccountOverviewPage() {
           </span>
           <div>
             {!session.isError && (
-              <h2 className="font-heading text-storefront-section font-extrabold text-store-ink">
+              <p className="text-sm font-bold text-store-ink">
                 {session.isPending
                   ? t.loadingAccount
                   : session.data
                     ? `${t.signedInAs} ${session.data.name}`
                     : t.guestTitle}
-              </h2>
+              </p>
             )}
             {!session.isError && (
               <p className="mt-1 text-storefront-support leading-5 text-store-secondary">

@@ -158,6 +158,7 @@ function AddressEditor({
           maxLength={500}
           autoComplete="street-address"
           dir="auto"
+          style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
           className="h-11 rounded-xl border-store-border bg-white"
         />
       </label>
@@ -168,6 +169,7 @@ function AddressEditor({
           onChange={(event) => setNotes(event.currentTarget.value)}
           maxLength={500}
           dir="auto"
+          style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
           className="min-h-20 rounded-xl border-store-border bg-white"
         />
       </label>
@@ -341,13 +343,21 @@ export function StorefrontAddressesPage() {
                     </span>
                   )}
                 </div>
-                <p className="m-0 text-sm leading-6 text-store-secondary" dir="auto">
+                <p
+                  className="m-0 text-sm leading-6 text-store-secondary"
+                  dir="auto"
+                  style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
+                >
                   {[address.governorate, address.locality, address.area, address.streetAddress]
                     .filter(Boolean)
                     .join('، ')}
                 </p>
                 {address.notes && (
-                  <p className="m-0 text-sm text-store-muted" dir="auto">
+                  <p
+                    className="m-0 text-sm text-store-muted"
+                    dir="auto"
+                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
+                  >
                     {address.notes}
                   </p>
                 )}

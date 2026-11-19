@@ -31,8 +31,8 @@ export function AccountShell({
   ] as const;
 
   return (
-    <main className="mx-auto w-[calc(100%-2rem)] max-w-[1240px] py-6 sm:py-9 lg:py-11">
-      <header className="mb-5 flex flex-col gap-1.5 sm:mb-6">
+    <main className="mx-auto w-[calc(100%-2rem)] max-w-[1240px] py-4 sm:py-5">
+      <header className="sr-only">
         <h1 className="font-heading text-storefront-page font-extrabold text-store-ink">{title}</h1>
         <p className="max-w-2xl text-storefront-body leading-6 text-store-secondary">
           {description}
