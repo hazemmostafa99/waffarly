@@ -4,15 +4,10 @@ import { useRestaurants } from '../hooks/use-restaurants';
 import { SectionHeading } from '@/components/marketplace/section-heading';
 import Link from 'next/link';
 import { restaurantHref } from '@/features/marketplace/restaurants/model/restaurants';
-import { deliveryBranches } from '@waffarly/contracts';
-import { useDeliveryArea } from '@/features/delivery/delivery-area-picker';
 
 export function MarketplaceRestaurants() {
   const remote = useRestaurants();
-  const area = useDeliveryArea();
-  const restaurants = (remote.data ?? []).filter((restaurant) =>
-    !area || deliveryBranches(restaurant.settings?.onlineBranches ?? [], area).length > 0,
-  );
+  const restaurants = remote.data ?? [];
   if (remote.isPending)
     return (
       <p role="status" className="p-5 text-sm">
@@ -36,12 +31,11 @@ export function MarketplaceRestaurants() {
       id="restaurants"
     >
       <SectionHeading
-        title={area ? 'مطاعم بتوصل لمنطقتك' : 'تصفح المطاعم'}
+        title="تصفح المطاعم"
         subtitle="تصفح المنيو واختار وجبتك واطلب من المطعم"
         more="عرض كل المطاعم"
         moreHref="/restaurants"
       />
-      {!restaurants.length && area && <p className="text-sm">مفيش مطاعم ظاهرة للمنطقة دي. غيّر المنطقة من أعلى الصفحة.</p>}
       <div
         className={
           'restaurants-grid grid grid-cols-6 gap-[13px] max-[1100px]:grid-cols-4 max-[700px]:flex max-[700px]:overflow-auto max-[700px]:[scroll-snap-type:x_mandatory] max-[700px]:pb-[7px]'

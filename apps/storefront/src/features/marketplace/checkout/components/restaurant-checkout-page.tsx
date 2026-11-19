@@ -20,10 +20,10 @@ import {
   type CheckoutErrors,
 } from '../model/checkout';
 import { CheckoutContactForm } from './checkout-contact-form';
+import { CheckoutFulfillmentFields } from './checkout-fulfillment-fields';
 import { RestaurantCheckoutReview } from './restaurant-checkout-review';
 import { RestaurantOrderConfirmation } from './restaurant-order-confirmation';
 import { RestaurantRouteFields, useRestaurantFulfillment } from '@/features/delivery/restaurant-route-fields';
-import { useDeliveryArea } from '@/features/delivery/delivery-area-picker';
 
 export function RestaurantCheckoutPage() {
   const customerSession = useCustomerSession();
@@ -34,14 +34,11 @@ export function RestaurantCheckoutPage() {
   const slug = restaurant?.restaurantSlug;
   const remote = useRestaurantFulfillment(slug);
   const settings = remote.data ?? restaurant?.restaurantSettings;
-  const cartRoute = restaurant?.restaurantCartRoute;
-  const locationId = useDeliveryArea();
-  const [draft, setDraft] = useState<CheckoutDraft>(() => ({
-    ...EMPTY_CHECKOUT, ...(cartRoute ? { fulfillment: cartRoute.fulfillment } : {}),
-  }));
+  const [draft, setDraft] = useState<CheckoutDraft>(() => ({ ...EMPTY_CHECKOUT }));
   const [errors, setErrors] = useState<CheckoutErrors>({});
   const [area, setArea] = useState('');
-  const [pickup, setPickup] = useState(cartRoute?.fulfillment === 'pickup' ? cartRoute.branchId : '');
+  const [pickup, setPickup] = useState('');
+  const [locationId, setLocationId] = useState('');
   const deliveryAreaId = settings?.onlineBranches === undefined ? area : locationId;
   const [quote, setQuote] = useState<StorefrontCheckoutQuote | null>(null);
   const [pending, setPending] = useState(false);
@@ -88,7 +85,11 @@ export function RestaurantCheckoutPage() {
     if (busy.current || envelope.current || !slug || !lines.length) return;
     const validation = validateCheckout(draft, false);
     setErrors(validation);
-    if (Object.keys(validation).length) return;
+    if (Object.keys(validation).length) {
+      if (validation.address && !validation.name && !validation.phone)
+        document.querySelector<HTMLTextAreaElement>('[name="address"]')?.focus();
+      return;
+    }
     if (products.some((product) => product.restaurantSlug !== slug)) {
       setNotice('السلة لازم تكون من مطعم واحد.');
       return;
@@ -238,13 +239,16 @@ export function RestaurantCheckoutPage() {
               )}
               {!quote && !uncertain ? (
                 <fieldset disabled={pending} className="m-0 min-w-0 border-0 p-0">
-                  {settings && <div className="mb-4 rounded-xl border border-border p-3">
-                    <RestaurantRouteFields settings={settings} fulfillment={draft.fulfillment}
-                      area={area} pickup={pickup} onArea={setArea} onPickup={setPickup} />
-                  </div>}
-                  {cartRoute && <p className="text-sm">الفرع وقت إضافة الأصناف: {cartRoute.branchName}</p>}
+                  <div className="mb-4 rounded-[18px] border border-border bg-card p-4 sm:p-5">
+                    <CheckoutFulfillmentFields demo={false} draft={draft} errors={errors} onChange={change}>
+                      {settings && <RestaurantRouteFields settings={settings} fulfillment={draft.fulfillment}
+                        area={area} pickup={pickup} onArea={setArea} onPickup={setPickup}
+                        locationId={locationId} onLocation={setLocationId} />}
+                    </CheckoutFulfillmentFields>
+                  </div>
                   <CheckoutContactForm
                     demo={false}
+                    showFulfillment={false}
                     draft={draft}
                     errors={errors}
                     onChange={change}

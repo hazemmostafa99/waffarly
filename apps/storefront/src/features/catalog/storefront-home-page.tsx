@@ -29,7 +29,12 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
   const direction = locale === 'ar' ? 'left' : 'right';
   const desktopGradient = `linear-gradient(to ${direction}, ${coverTint(shade.desktopEdge)}, ${coverTint(shade.desktopMid)}, transparent)`;
   const Arrow = locale === 'ar' ? ArrowLeft : ArrowRight;
-  const featuredProducts = catalog.products.slice(0, 4);
+  const offers = catalog.products
+    .filter((product) => product.promotion?.status === 'active' || product.promotionalPrice)
+    .slice(0, 4);
+  const featuredProducts = catalog.products
+    .filter((product) => !offers.some((offer) => offer.id === product.id))
+    .slice(0, 4);
   const features = [
     {
       icon: Clock3,
@@ -69,9 +74,11 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
         </Badge>
         <h1 className="mt-1 max-w-xl break-words font-heading text-storefront-hero font-black text-balance sm:mt-3">
           {catalog.heroTitle || t.heroTitle}
-          <span className="mt-1 block text-store-gold">{catalog.heroEmphasis || t.heroEmphasis}</span>
+          <span className="mt-1 block text-store-gold">
+            {catalog.heroEmphasis || t.heroEmphasis}
+          </span>
         </h1>
-        <p className="mt-2 max-w-lg text-storefront-body-large text-white/80 sm:mt-3">
+        <p className="mt-2 max-w-lg text-[clamp(1rem,1.05vw,1.0625rem)] leading-[1.65] text-white/80 sm:mt-3">
           {catalog.restaurantDescription ||
             interpolate(t.heroDescription, { name: catalog.merchantName })}
         </p>
@@ -92,7 +99,9 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
             variant="outline"
             className="h-auto min-h-12 min-w-0 flex-1 rounded-xl border-white bg-white px-4 py-2 font-heading text-sm font-extrabold text-store-primary-deep hover:bg-store-cream hover:text-store-primary-deep sm:h-11 sm:min-h-0 sm:px-5 sm:py-0"
           >
-            <Link href={catalog.categories.length ? '#categories' : '#featured-heading'}>{t.browseCategories}</Link>
+            <Link href={catalog.categories.length ? '#categories' : '#products'}>
+              {t.browseCategories}
+            </Link>
           </Button>
         </div>
       </div>
@@ -140,13 +149,14 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
   );
 
   const categories = catalog.categories.length > 0 && (
-    <section id="categories" className="mt-5 sm:mt-8" aria-labelledby="categories-heading">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <h2
-            id="categories-heading"
-            className="font-heading text-storefront-section font-black text-store-ink"
-          >
+    <section
+      id="categories"
+      className="mt-5 scroll-mt-20 lg:scroll-mt-28"
+      aria-labelledby="categories-heading"
+    >
+      <div className="flex items-end justify-end gap-4">
+        <div className="sr-only">
+          <h2 id="categories-heading" className="sr-only">
             {t.categorySectionTitle}
           </h2>
           <p className="mt-1 text-storefront-support text-store-muted">
@@ -161,18 +171,16 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
           <Arrow className="size-4" aria-hidden="true" />
         </Link>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:mt-6 sm:grid-cols-3 lg:grid-cols-4">
-        {catalog.categories.map((category, index) => {
+      <div className="mt-3 grid auto-cols-[140px] grid-flow-col gap-3 overflow-x-auto pb-2 sm:auto-cols-[180px]">
+        {catalog.categories.map((category) => {
           const categoryProduct = catalog.products.find((product) =>
             product.categories.some((item) => item.id === category.id),
           );
           const categoryImage =
-            categoryProduct?.images.find((image) => image.isPrimary) ??
-            categoryProduct?.images[0];
+            categoryProduct?.images.find((image) => image.isPrimary) ?? categoryProduct?.images[0];
           return (
             <StorefrontCategoryCard
               key={category.id}
-              className={index === 2 ? 'hidden sm:flex' : index === 3 ? 'hidden lg:flex' : index > 3 ? 'hidden' : ''}
               href={`/s/${catalog.slug}/menu?category=${encodeURIComponent(category.id)}`}
               imageUrl={categoryImage?.publicUrl}
               productCount={
@@ -190,14 +198,11 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
   );
 
   const featured = (
-    <section className="mt-9 pb-5 sm:mt-12" aria-labelledby="featured-heading">
-      <div className="mb-4 flex items-end justify-between gap-4">
-        <div>
+    <section className="mt-5 pb-5" aria-labelledby="featured-heading">
+      <div className="mb-4 flex items-end justify-end gap-4">
+        <div className="sr-only">
           <p className="text-sm font-extrabold text-store-accent">{t.brandTagline}</p>
-          <h2
-            id="featured-heading"
-            className="mt-1 font-heading text-storefront-section font-black text-store-ink"
-          >
+          <h2 id="featured-heading" className="sr-only">
             {t.featuredItems}
           </h2>
         </div>
@@ -227,7 +232,38 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
       {hero}
       {highlights}
       {categories}
-      {featured}
+      <div id="products" className="flow-root scroll-mt-20 lg:scroll-mt-28">
+        {offers.length > 0 && (
+          <section
+            aria-label={locale === 'ar' ? 'العروض الحالية' : 'Current offers'}
+            className="mt-5"
+          >
+            <div className="mb-3 flex justify-end">
+              <Link
+                className="text-sm font-bold text-store-primary"
+                href={`/s/${catalog.slug}/offers`}
+              >
+                {locale === 'ar' ? 'شوف العروض' : 'View offers'}{' '}
+                <Arrow className="inline size-4" aria-hidden="true" />
+              </Link>
+            </div>
+            <StorefrontProductGrid products={offers} slug={catalog.slug} />
+          </section>
+        )}
+        {(featuredProducts.length > 0 || catalog.products.length === 0) && featured}
+      </div>
+      <section
+        aria-label={locale === 'ar' ? 'معلومات المطعم' : 'Restaurant information'}
+        className="mb-6 grid gap-3 rounded-2xl border border-store-border bg-white p-4 text-sm"
+      >
+        <Link
+          href={`/s/${catalog.slug}/branches`}
+          className="flex min-h-11 items-center justify-between gap-2 font-bold text-store-primary"
+        >
+          {locale === 'ar' ? 'الفروع والتوصيل والاستلام' : 'Branches, delivery and pickup'}{' '}
+          <Arrow className="size-4" aria-hidden="true" />
+        </Link>
+      </section>
     </main>
   );
 }

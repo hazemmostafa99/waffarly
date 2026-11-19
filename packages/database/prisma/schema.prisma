@@ -229,6 +229,7 @@ model MerchantCustomer {
   merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   account CustomerAccount? @relation(fields: [accountId], references: [id], onDelete: Restrict)
   storefrontCredential MerchantCustomerCredential?
+  storefrontAddresses MerchantCustomerAddress[]
   orders StorefrontOrder[]
 
   @@unique([id, merchantId])
@@ -254,6 +255,28 @@ model MerchantCustomerCredential {
   @@unique([merchantId, phone])
   @@unique([merchantId, email])
   @@map("merchant_customer_credentials")
+}
+
+// Addresses belong to one authenticated customer at one merchant storefront.
+model MerchantCustomerAddress {
+  id                 String           @id @default(uuid()) @db.Uuid
+  merchantId         String           @db.Uuid
+  merchantCustomerId String           @db.Uuid
+  label              String           @db.VarChar(80)
+  deliveryAreaId     String           @db.VarChar(120)
+  governorate        String           @db.VarChar(80)
+  locality           String           @db.VarChar(120)
+  area               String           @db.VarChar(120)
+  streetAddress      String           @db.VarChar(500)
+  notes              String           @default("") @db.VarChar(500)
+  isDefault          Boolean          @default(false)
+  revision           Int              @default(1)
+  createdAt          DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime         @updatedAt @db.Timestamptz(6)
+  customer           MerchantCustomer @relation(fields: [merchantCustomerId, merchantId], references: [id, merchantId], onDelete: Cascade)
+
+  @@index([merchantId, merchantCustomerId, createdAt, id], map: "merchant_customer_addresses_owner_created_idx")
+  @@map("merchant_customer_addresses")
 }
 
 // Inventory identities only; item creation does not establish stock balances.

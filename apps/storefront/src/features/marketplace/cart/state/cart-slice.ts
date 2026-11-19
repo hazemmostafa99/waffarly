@@ -23,16 +23,12 @@ export function conflictsWithRestaurant(
   if (!incoming) return false;
   return cart.some((line) => {
     const existing = line.snapshot ?? findProduct(line.productId);
-    const oldRoute = existing?.restaurantCartRoute;
-    const newRoute = incoming.restaurantCartRoute;
     return (
       existing &&
       (incoming.merchantType === 'restaurant' || existing.merchantType === 'restaurant') &&
       (existing.merchantType !== incoming.merchantType ||
         (existing.restaurantSlug ?? existing.merchantName) !==
-          (incoming.restaurantSlug ?? incoming.merchantName) ||
-        Boolean(oldRoute && newRoute &&
-          (oldRoute.branchId !== newRoute.branchId || oldRoute.fulfillment !== newRoute.fulfillment)))
+          (incoming.restaurantSlug ?? incoming.merchantName))
     );
   });
 }

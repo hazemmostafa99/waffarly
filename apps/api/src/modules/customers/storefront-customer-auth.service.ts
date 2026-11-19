@@ -20,7 +20,11 @@ import {
 } from '../auth/index.js';
 import { MerchantService } from '../merchants/index.js';
 
-const profileFields = { id: true, name: true } satisfies Prisma.MerchantCustomerSelect;
+const profileFields = {
+  id: true,
+  name: true,
+  revision: true,
+} satisfies Prisma.MerchantCustomerSelect;
 type CustomerRecord = Prisma.MerchantCustomerGetPayload<{ select: typeof profileFields }>;
 const DUMMY_HASH = `scrypt$${Buffer.alloc(16).toString('base64url')}$${Buffer.alloc(64).toString('base64url')}`;
 
@@ -29,7 +33,7 @@ function profile(
   email: string,
   phone: string,
 ): StorefrontCustomerProfile {
-  return { id: customer.id, name: customer.name, email, phone };
+  return { id: customer.id, name: customer.name, email, phone, revision: customer.revision };
 }
 
 @Injectable()

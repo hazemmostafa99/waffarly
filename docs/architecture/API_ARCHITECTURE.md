@@ -141,7 +141,10 @@ Tenant storefront accounts (2026-11-14): Customers owns merchant-scoped
 storefront credentials and sessions, using Auth's password/session primitives
 and Merchants' public slug resolution. Storefront signup creates a local customer
 directory record; Orders links signed-in storefront checkout to that record and
-serves merchant-scoped order history. Global Marketplace `CustomerAccount`
+serves merchant-scoped order history. The separately approved 2026-11-19
+self-service profile and saved-address routes also belong to Customers; they use
+revision checks and merchant-scoped persistence. Checkout consumes saved address
+data through its existing order contract. Global Marketplace `CustomerAccount`
 endpoints remain separate. Dependency graph: Customers -> Auth, Merchants;
 Orders -> Customers. No historical guest orders are claimed or backfilled. See
 [storefront customer accounts](../features/customers.md#storefront-customer-accounts-2026-11-14).
@@ -276,7 +279,7 @@ The Orders-owned payment-state response includes optional checkout `context` (th
 | plans         | Plan definitions, duration prices and subscription administration controllers                                                                          | Auth, subscriptions                                       |
 | subscriptions | Merchant paid coverage, manual collections, lifecycle, quotes, history and eligibility                                                                 | Database                                                  |
 | activities    | Business activity definitions and display metadata                                                                                                     | Auth                                                      |
-| storefront    | Owner appearance settings and public storefront composition                                                                                           | Auth, catalog                                             |
+| storefront    | Owner appearance settings and public storefront composition                                                                                            | Auth, catalog                                             |
 | catalog       | Products, categories, reusable modifiers, authoritative pricing, and product inventory configurations                                                  | Auth, inventory                                           |
 | inventory     | Merchant-owned Stock Items/units, branches/warehouses, policy, balances, and transactional movement ledger                                             | Auth                                                      |
 | purchasing    | Merchant-owned supplier directory and draft/confirmed purchase invoices                                                                                | Auth, inventory                                           |

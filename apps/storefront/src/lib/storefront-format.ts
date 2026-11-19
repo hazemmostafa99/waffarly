@@ -31,9 +31,12 @@ export function getProductStartingPrice(product: PublicStorefrontProduct): strin
 }
 
 export function getProductOriginalStartingPrice(product: PublicStorefrontProduct): string {
-  const availablePrices = product.variants
+  const availableVariants = product.variants
     .filter((variant) => variant.availability === 'available')
-    .map((variant) => Number(variant.price));
-  if (availablePrices.length === 0) return product.basePrice;
-  return String(Math.min(...availablePrices));
+    .sort(
+      (left, right) =>
+        Number(left.promotionalPrice ?? left.price) - Number(right.promotionalPrice ?? right.price),
+    );
+  if (availableVariants.length === 0) return product.basePrice;
+  return availableVariants[0]!.price;
 }

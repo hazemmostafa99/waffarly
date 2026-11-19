@@ -19,8 +19,26 @@ Implement the supplied Arabic RTL restaurant storefront for desktop and mobile i
 - Route merchant customer authentication, customer order history and tenant order submission through narrowly scoped same-origin Next.js rewrites to the existing API. Keep HttpOnly server sessions, existing origin validation, merchant isolation and API-owned checkout enforcement. Do not introduce a mock backend or change Marketplace authentication.
 - Confirm the cookie-backed session with `me` after login/registration, then return to a validated page within the same storefront or its home page. The header, account and checkout share one React Query session.
 - Show fulfillment choices before checkout. Persist only fulfillment mode and area/branch identifiers in the existing merchant-scoped client store, carrying them into checkout. Clear the selected destination when its governorate/locality changes. The API remains authoritative for branch assignment, coverage, hours, prices and order idempotency.
-- Default checkout name/phone from the authenticated profile without overwriting customer edits. Delivery requires a detailed address; pickup uses the selected branch. Database-backed address storage remains a separate phase.
+- Default checkout name/phone from the authenticated profile without overwriting customer edits. Delivery requires a detailed address; pickup uses the selected branch. Saved tenant addresses are covered by the separately approved integration below.
 - Follow the current manual-QA preference: no automated tests, browser suites, typechecks or builds unless requested. Record the remaining acceptance scenarios explicitly.
+
+### Approved tenant profile and address integration — 2026-11-19
+
+The user separately authorized connecting tenant-store profile and address pages
+to the existing API. This supersedes the earlier preview-only status for these
+two routes; it does not authorize global Marketplace profile integration or
+favorites synchronization.
+
+- Profile edits use the current merchant customer revision. Changing email or
+  phone requires the current password and updates the credential and customer
+  directory contact atomically.
+- Saved addresses are merchant-scoped, revisioned, limited to 20 per account and
+  maintain one default address. The browser clears address-query data on logout.
+- Checkout loads the signed-in customer's saved addresses, applies the selected
+  destination, and sends a complete address string using the existing order API.
+  The API remains authoritative for coverage and checkout enforcement.
+- Follow the manual-QA preference. Backend/browser acceptance remains pending;
+  do not report the feature complete based on formatting or source review alone.
 
 The supplied HTML, CSS, JavaScript, screenshots, tokens, and images define the visual target and intended interactions. They are not production business logic and must not override approved Waffarly contracts, database rules, authorization, or server-side pricing.
 
@@ -345,31 +363,31 @@ Do not extract a storefront component merely to reduce line count. Extract it wh
 
 ## Routes and Delivery Order
 
-| Order | Route                                                                                          | Screen                          | Data boundary                                                                                                         |
-| ----- | ---------------------------------------------------------------------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| 1     | `/s/[slug]`                                                                                    | Restaurant homepage             | Requires catalog plus merchant presentation content.                                                                  |
-| 2     | `/s/[slug]/menu`                                                                               | Menu/search/filter              | Existing public catalog API.                                                                                          |
-| 3     | `/s/[slug]/products/[productId]`                                                               | Product details/customization   | Catalog data plus server quote API.                                                                                   |
-| 4     | `/s/[slug]/cart`                                                                               | Cart                            | Zustand persistence plus catalog reconciliation.                                                                      |
-| 5     | `/s/[slug]/checkout`                                                                           | Guest checkout                  | Existing create-order API, subject to branch gap.                                                                     |
-| 6     | `/s/[slug]/order/[orderId]`                                                                    | Order tracking design preview   | UI-only preview; no lookup, polling, or real status claim until a safe public contract exists.                        |
-| 7     | `/s/[slug]/favorites`                                                                          | Favorites                       | Local Zustand state until a customer API exists.                                                                      |
-| 8     | `/s/[slug]/offers`                                                                             | Offers design preview           | UI-only sample cards/filters; no live campaigns or price changes.                                                     |
-| 9     | `/s/[slug]/branches`                                                                           | Branches design preview         | UI-only sample cards/selection; no actual addresses or checkout routing.                                              |
-| 10    | `/s/[slug]/about`                                                                              | About restaurant design preview | Neutral content placeholders; no invented merchant claims.                                                            |
-| 11    | `/s/[slug]/login`, `/account`, `/account/profile`, `/account/orders`, and `/account/addresses` | Store customer account | Store-only login and registration, account session, and merchant-scoped order history; profile and addresses remain previews. |
+| Order | Route                                                                                          | Screen                          | Data boundary                                                                                             |
+| ----- | ---------------------------------------------------------------------------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| 1     | `/s/[slug]`                                                                                    | Restaurant homepage             | Requires catalog plus merchant presentation content.                                                      |
+| 2     | `/s/[slug]/menu`                                                                               | Menu/search/filter              | Existing public catalog API.                                                                              |
+| 3     | `/s/[slug]/products/[productId]`                                                               | Product details/customization   | Catalog data plus server quote API.                                                                       |
+| 4     | `/s/[slug]/cart`                                                                               | Cart                            | Zustand persistence plus catalog reconciliation.                                                          |
+| 5     | `/s/[slug]/checkout`                                                                           | Guest checkout                  | Existing create-order API, subject to branch gap.                                                         |
+| 6     | `/s/[slug]/order/[orderId]`                                                                    | Order tracking design preview   | UI-only preview; no lookup, polling, or real status claim until a safe public contract exists.            |
+| 7     | `/s/[slug]/favorites`                                                                          | Favorites                       | Local Zustand state until a customer API exists.                                                          |
+| 8     | `/s/[slug]/offers`                                                                             | Offers design preview           | UI-only sample cards/filters; no live campaigns or price changes.                                         |
+| 9     | `/s/[slug]/branches`                                                                           | Branches design preview         | UI-only sample cards/selection; no actual addresses or checkout routing.                                  |
+| 10    | `/s/[slug]/about`                                                                              | About restaurant design preview | Neutral content placeholders; no invented merchant claims.                                                |
+| 11    | `/s/[slug]/login`, `/account`, `/account/profile`, `/account/orders`, and `/account/addresses` | Store customer account          | Store-only login/registration, live profile edits, merchant-scoped orders and revisioned saved addresses. |
 
 ### UI-only preview policy for routes with API gaps
 
 The user approved implementing the complete route UI before the supporting APIs are ready. This changes presentation scope only; it does not approve backend behavior or fabricated production data.
 
 - Implement the missing order-tracking, offers, branches, about, and account/login route surfaces now, using the same responsive storefront shell, Waffarly tokens, compact sizing, and Arabic/English support.
-- The account area includes store-only sign-in/sign-up, a live account session, and live order history for orders placed at that merchant while signed in. Profile and addresses remain local previews with an unsaved form. Keep these screens in the account/order feature modules.
+- The account area includes store-only sign-in/sign-up, a live account session, and merchant-scoped order history, profile edits and saved addresses. Keep these screens in the account/order feature modules.
 - Keep any sample content in an isolated preview-only module under `features/preview/`. Never put preview records in catalog/order contracts, Zustand persistence, API responses, or production data modules.
 - Every remaining preview-only route must show a visible, accessible disclosure near the top that explicitly says it is a design preview and is not connected to live restaurant data. Do not rely on a tooltip or filename for disclosure.
-- Branches may be selected for visual state only; they must not be saved as a branch preference or passed to checkout. Offers may be filtered/opened locally only; they must not affect prices or discounts. Order tracking must not look up, poll, or imply a real order status. Store login/register and merchant-scoped order history are authorized API-backed exceptions; they must not authenticate a global Marketplace account or show orders from another merchant. Profile/address fields remain blank, are labeled as unsaved preview input, and are cleared when the local preview form is submitted or dismissed. About-page copy must not invent merchant history, contact information, location, hours, or services.
+- Branches may be selected for visual state only; they must not be saved as a branch preference or passed to checkout. Offers may be filtered/opened locally only; they must not affect prices or discounts. Order tracking must not look up, poll, or imply a real order status. Store login/register, merchant-scoped order history, profile and address persistence are authorized API-backed exceptions; they must not authenticate a global Marketplace account or expose another merchant's customer data. About-page copy must not invent merchant history, contact information, location, hours, or services.
 - Use “Preview”/“Sample” content, neutral placeholders, and the supplied assets only as presentation. Do not show fabricated customer PII, order identifiers, operational timestamps, discount values, branch addresses, or claims.
-- Keep the real catalog, quotation, basket, checkout, and order-creation flows unchanged. Tenant account authentication and order history are now API-backed as documented; keep unsupported profile/address/tracking flows in their preview state until their contracts and product rules are approved.
+- Keep the real catalog, quotation, basket, checkout, and order-creation contracts unchanged. Tenant account authentication, profile, addresses and order history are API-backed; favorites and unsupported tracking flows remain outside this integration.
 - Local-only controls (such as preview filters, selected visual cards, tabs, and form field validation) are allowed when their effect is explicitly described as local preview behavior. Never display fake success for a real-world operation.
 
 This is a narrow, documented exception to rules 12–13; all other unsupported routes still require an honest unavailable state rather than fictional live data.
@@ -393,9 +411,9 @@ Not yet represented completely:
 - Homepage hero/editorial content and product badges.
 - Restaurant about content and contact/social fields.
 - Safe public order receipt/status lookup.
-- Storefront customer profile editing and saved addresses/favorites. Tenant login,
-  customer-directory creation, and merchant-scoped order history are implemented;
-  this does not implement global Marketplace profile or favorite behavior.
+- Storefront favorites synchronization; tenant profile, saved addresses, login,
+  customer-directory creation and merchant-scoped order history are implemented
+  separately from global Marketplace profile or favorite behavior.
 - Final delivery rules, fees, service fees, payment, and expanded tracking statuses.
 - Per-item customer notes: quote/create-order contracts do not represent notes, so do not expose the prototype note field until an approved backend contract and persistence path exist.
 

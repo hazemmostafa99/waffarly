@@ -76,9 +76,7 @@ export function StorefrontOrdersPage() {
     <AccountShell active="orders" title={t.orders} description={t.ordersIntro}>
       <section className="grid gap-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
-            {t.orders}
-          </h2>
+          <h2 className="sr-only">{t.orders}</h2>
           {!session.isError && !orders.isError && (
             <div aria-label={t.filterLabel} className="flex flex-wrap gap-2" role="group">
               {filters.map(({ key, label }) => (

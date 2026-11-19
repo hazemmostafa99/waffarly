@@ -58,8 +58,15 @@ export async function apiPost<T>(
   return (await response.json()) as T;
 }
 
-export async function apiGetBrowser<T>(path: string): Promise<T> {
-  const response = await fetch(new URL(path.replace(/^\//, ''), `${apiBaseUrl()}/`), {
+export async function apiGetBrowser<T>(
+  path: string,
+  options: { sameOrigin?: boolean } = {},
+): Promise<T> {
+  const apiPath = path.replace(/^\//, '');
+  const url = options.sameOrigin
+    ? `/storefront-api/${apiPath}`
+    : new URL(apiPath, `${apiBaseUrl()}/`);
+  const response = await fetch(url, {
     cache: 'no-store',
   });
   if (!response.ok) {

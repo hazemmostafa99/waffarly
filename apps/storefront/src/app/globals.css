@@ -633,3 +633,27 @@
     color: var(--storefront-accent-on-primary-deep);
   }
 }
+
+@layer components {
+  .storefront-theme {
+    --text-storefront-product: 1rem;
+    --text-storefront-product--line-height: 1.5;
+    --text-storefront-price: 1.125rem;
+    --text-storefront-price--line-height: 1.5;
+    --text-storefront-subsection: 1rem;
+    --text-storefront-section: 1.125rem;
+    --text-storefront-page: 1.375rem;
+    --text-storefront-body: 0.875rem;
+    --text-storefront-body-large: 1rem;
+  }
+  .storefront-theme
+    :where(button, [role='button'], a, select, input[type='radio'], input[type='checkbox']) {
+    cursor: pointer;
+  }
+  .storefront-theme :where(button, input, select, textarea):disabled {
+    cursor: not-allowed;
+  }
+  .storefront-theme :where(input:not([type='radio']):not([type='checkbox']), textarea) {
+    text-align: match-parent;
+  }
+}

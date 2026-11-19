@@ -11,14 +11,16 @@ export function ProductMedia({ product }: { product: MarketplaceProduct }) {
       )}
     >
       <img {...product.image} />
-      <span
-        className={cn(
-          'discount absolute top-2.5 right-[10px] bg-destructive text-[#fff] rounded-[8px] py-1.5',
-          'px-2 text-[11px] font-black',
-        )}
-      >
-        {product.origin === 'local-mock' ? 'مثال تجريبي' : product.discount}
-      </span>
+      {(product.discount || product.origin === 'local-mock') && (
+        <span
+          className={cn(
+            'discount absolute top-2.5 right-[10px] bg-destructive text-[#fff] rounded-[8px] py-1.5',
+            'px-2 text-[11px] font-black',
+          )}
+        >
+          {product.origin === 'local-mock' ? 'مثال تجريبي' : product.discount}
+        </span>
+      )}
       <FavoriteButton productId={product.id} name={product.cartName} product={product} />
     </div>
   );

@@ -12,8 +12,24 @@ const nextConfig: NextConfig = {
     // Only existing public storefront endpoints are exposed through this prefix.
     return [
       {
+        source: '/storefront-api/marketplace/restaurants/:slug/fulfillment',
+        destination: `${api}/marketplace/restaurants/:slug/fulfillment`,
+      },
+      {
         source: '/storefront-api/auth/stores/:slug/customer/:action(sign-up|login|me|logout)',
         destination: `${api}/auth/stores/:slug/customer/:action`,
+      },
+      {
+        source: '/storefront-api/auth/stores/:slug/customer/profile',
+        destination: `${api}/auth/stores/:slug/customer/profile`,
+      },
+      {
+        source: '/storefront-api/auth/stores/:slug/customer/addresses',
+        destination: `${api}/auth/stores/:slug/customer/addresses`,
+      },
+      {
+        source: '/storefront-api/auth/stores/:slug/customer/addresses/:addressId',
+        destination: `${api}/auth/stores/:slug/customer/addresses/:addressId`,
       },
       {
         source: '/storefront-api/catalog/stores/:slug/customer/orders',

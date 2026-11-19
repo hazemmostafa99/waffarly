@@ -1,12 +1,13 @@
 'use client';
 
-import { useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from '../../components/storefront/storefront-link';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, CheckCircle2, LoaderCircle, ShoppingBag } from 'lucide-react';
 import type {
   CatalogProductQuoteResponse,
   CreateStorefrontOrderRequest,
+  StorefrontCustomerAddress,
   PublicStorefrontCatalog,
   StorefrontOrderReceipt,
   StorefrontCheckoutQuote,
@@ -19,7 +20,11 @@ import {
   useRestaurantFulfillment,
 } from '../delivery/restaurant-route-fields';
 import { useStorefrontCustomer } from '../account/hooks/use-storefront-customer';
-import { loadStorefrontCustomer } from '../account/data/storefront-customer-api';
+import {
+  loadStorefrontCustomer,
+  loadStorefrontCustomerAddresses,
+  storefrontCustomerAddressesKey,
+} from '../account/data/storefront-customer-api';
 import { StorefrontSignInLink } from '../account/storefront-sign-in-link';
 import { formatStorefrontPrice } from '../../lib/storefront-format';
 import { storefrontCopy } from '../../lib/storefront-copy';
@@ -42,6 +47,15 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
   const hasHydrated = useStorefrontStore((state) => state.hasHydrated);
   const clearCart = useStorefrontStore((state) => state.clearCart);
   const session = useStorefrontCustomer();
+  const savedAddresses = useQuery({
+    queryKey: storefrontCustomerAddressesKey(catalog.slug, session.data?.id),
+    queryFn: () => loadStorefrontCustomerAddresses(catalog.slug),
+    enabled: Boolean(session.data),
+    retry: false,
+  });
+  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState('');
+  const appliedDefaultAddress = useRef(false);
+  const addressOwner = useRef<{ slug: string; customerId?: string }>({ slug: catalog.slug });
   const fulfillmentType = useStorefrontStore((state) => state.fulfillmentType);
   const setFulfillmentType = useStorefrontStore((state) => state.setFulfillmentType);
   const deliveryAreaId = useStorefrontStore((state) => state.deliveryAreaId);
@@ -66,19 +80,84 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
   };
   const [quote, setQuote] = useState<StorefrontCheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState('');
-  const restaurant = catalog.activity === 'restaurant';
-  const options = useRestaurantFulfillment(restaurant ? catalog.slug : undefined);
   const [reviewed, setReviewed] = useState<{ key: string; quote: StorefrontCheckoutQuote } | null>(
     null,
   );
+  const applySavedAddress = useCallback(
+    (address: StorefrontCustomerAddress) => {
+      setSelectedSavedAddressId(address.id);
+      setDeliveryAreaId(address.deliveryAreaId);
+      setDraft((current) => ({
+        ...current,
+        deliveryAddress: [
+          address.governorate,
+          address.locality,
+          address.area,
+          address.streetAddress,
+          address.notes ? `${locale === 'ar' ? 'ملاحظات' : 'Notes'}: ${address.notes}` : '',
+        ]
+          .filter(Boolean)
+          .join('، '),
+      }));
+      setQuote(null);
+      setQuoteError('');
+      setReviewed(null);
+    },
+    [locale, setDeliveryAreaId],
+  );
+
+  useEffect(() => {
+    const previousOwner = addressOwner.current;
+    const nextOwner: { slug: string; customerId?: string } = {
+      slug: catalog.slug,
+      ...(session.data?.id ? { customerId: session.data.id } : {}),
+    };
+    const merchantChanged = previousOwner.slug !== nextOwner.slug;
+    const signedInCustomerChanged = Boolean(
+      previousOwner.customerId && previousOwner.customerId !== nextOwner.customerId,
+    );
+    if (merchantChanged || signedInCustomerChanged) {
+      setDraft((current) => ({
+        discountCode: current.discountCode,
+        deliveryAddress: '',
+        ...(merchantChanged ? { discountCode: '' } : {}),
+      }));
+    }
+    addressOwner.current = nextOwner;
+    appliedDefaultAddress.current = false;
+    setSelectedSavedAddressId('');
+  }, [catalog.slug, session.data?.id]);
+
+  useEffect(() => {
+    if (!savedAddresses.isSuccess || appliedDefaultAddress.current) return;
+    appliedDefaultAddress.current = true;
+    if (fields.deliveryAddress || deliveryAreaId) return;
+    const defaultAddress = savedAddresses.data.find((address) => address.isDefault);
+    if (defaultAddress) applySavedAddress(defaultAddress);
+  }, [
+    applySavedAddress,
+    deliveryAreaId,
+    savedAddresses.isSuccess,
+    savedAddresses.data,
+    fields.deliveryAddress,
+  ]);
+  const restaurant = catalog.activity === 'restaurant';
+  const options = useRestaurantFulfillment(restaurant ? catalog.slug : undefined);
   const attempt = useRef<CreateStorefrontOrderRequest | null>(null);
   const [uncertain, setUncertain] = useState(false);
   const branchRouting = options.data?.onlineBranches !== undefined;
+  const availablePickupBranches = options.data?.onlineBranches?.filter(
+    (branch) => branch.pickup && branch.acceptingOrders,
+  );
+  const effectivePickup =
+    availablePickupBranches?.length === 1
+      ? (availablePickupBranches[0]?.branchId ?? '')
+      : (availablePickupBranches?.find((branch) => branch.branchId === pickup)?.branchId ?? '');
   const routeInput =
     fields.fulfillmentType === 'delivery' && deliveryAreaId
       ? { deliveryAreaId }
-      : fields.fulfillmentType === 'pickup' && branchRouting && pickup
-        ? { pickupBranchId: pickup }
+      : fields.fulfillmentType === 'pickup' && branchRouting && effectivePickup
+        ? { pickupBranchId: effectivePickup }
         : {};
   const reviewKey = JSON.stringify({ cart, fields, routeInput });
   const reviewedQuote = reviewed?.key === reviewKey ? reviewed.quote : null;
@@ -236,9 +315,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
         <span className="grid size-16 place-items-center rounded-3xl bg-store-primary/10 text-store-primary">
           <CheckCircle2 className="size-8" aria-hidden="true" />
         </span>
-        <h1 className="mt-4 font-heading text-storefront-page font-black text-store-primary-deep">
-          {t.orderReceived}
-        </h1>
+        <h1 className="mt-4 text-base font-bold text-store-primary-deep">{t.orderReceived}</h1>
         <p className="mt-2 max-w-xl text-storefront-body text-store-muted">{t.orderPending}</p>
         <Card className="mt-5 grid w-full gap-3 rounded-3xl border-store-border bg-white p-4 text-start sm:p-5">
           <div className="flex items-center justify-between gap-4">
@@ -301,9 +378,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
         <span className="grid size-16 place-items-center rounded-3xl bg-store-cream text-store-accent">
           <ShoppingBag className="size-8" aria-hidden="true" />
         </span>
-        <h1 className="mt-4 font-heading text-storefront-page font-black text-store-ink">
-          {t.basketEmpty}
-        </h1>
+        <p className="mt-4 text-sm text-store-muted">{t.basketEmpty}</p>
         <Button
           asChild
           className="mt-5 rounded-xl bg-store-accent px-5 font-bold hover:bg-store-primary-dark"
@@ -318,9 +393,9 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
   return (
     <main
       id="main-content"
-      className="mx-auto min-h-[70vh] max-w-[1100px] px-4 pb-10 pt-6 sm:px-8 sm:pt-8"
+      className="mx-auto min-h-[70vh] max-w-[1100px] px-4 pb-44 pt-4 lg:pb-10 sm:px-8 sm:pt-5"
     >
-      <header className="mb-5">
+      <header className="sr-only">
         <p className="text-storefront-support font-extrabold text-store-accent">
           {catalog.merchantName}
         </p>
@@ -331,15 +406,60 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
       </header>
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-6">
-        <form onSubmit={submit} className="grid gap-4">
+        <form onSubmit={submit} className="grid gap-3">
           <fieldset
             disabled={uncertain || orderMutation.isPending || reviewMutation.isPending}
             className="contents"
           >
-            <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
-              <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
-                {locale === 'ar' ? 'بيانات العميل' : 'Your details'}
-              </h2>
+            <Card className="grid gap-3 rounded-2xl border-store-border bg-white p-3 sm:p-4">
+              <h2 className="sr-only">{t.discountCode}</h2>
+              <div className="flex flex-wrap gap-2">
+                <Input
+                  aria-label={t.discountCode}
+                  dir="ltr"
+                  style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
+                  autoCapitalize="characters"
+                  maxLength={32}
+                  value={fields.discountCode}
+                  onChange={(event) =>
+                    update('discountCode', event.currentTarget.value.toUpperCase())
+                  }
+                  placeholder={t.discountCodePlaceholder}
+                  className="h-10 min-w-0 flex-1 rounded-xl border-store-border bg-white text-sm"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={orderMutation.isPending || !fields.discountCode.trim()}
+                  onClick={() => {
+                    setQuoteError('');
+                    void quoteRequest()
+                      .then(setQuote)
+                      .catch(() => {
+                        setQuote(null);
+                        setQuoteError(t.discountUnavailable);
+                      });
+                  }}
+                  className="h-10 rounded-xl border-store-border text-sm font-bold text-store-primary"
+                >
+                  {t.applyDiscount}
+                </Button>
+              </div>
+              {quoteError && (
+                <p className="m-0 text-sm font-bold text-store-error" role="alert">
+                  {quoteError}
+                </p>
+              )}
+              {quote?.discount && (
+                <p className="m-0 text-sm font-bold text-store-primary" role="status">
+                  {quote.discount.code} · {t.discountApplied} · −
+                  <bdi dir="auto">{formatStorefrontPrice(quote.discount.amount, locale)}</bdi>
+                </p>
+              )}
+            </Card>
+
+            <Card className="grid gap-3 rounded-2xl border-store-border bg-white p-3 sm:p-4">
+              <h2 className="sr-only">{locale === 'ar' ? 'بيانات العميل' : 'Your details'}</h2>
               {session.isPending && (
                 <p role="status" className="text-sm text-store-muted">
                   {locale === 'ar' ? 'جارٍ تحميل بيانات حسابك…' : 'Loading your account…'}
@@ -369,92 +489,46 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                   </p>
                 )
               )}
-              <label className="grid gap-2 text-sm font-bold text-store-ink">
-                {t.customerName}
-                <Input
-                  autoComplete="name"
-                  dir="auto"
-                  value={fields.customerName}
-                  onChange={(event) => update('customerName', event.currentTarget.value)}
-                  placeholder={t.namePlaceholder}
-                  minLength={2}
-                  maxLength={120}
-                  required
-                  className="h-12 rounded-xl border-store-border bg-white text-base"
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-store-ink">
-                {t.customerPhone}
-                <Input
-                  autoComplete="tel"
-                  type="tel"
-                  inputMode="tel"
-                  value={fields.customerPhone}
-                  onChange={(event) => update('customerPhone', event.currentTarget.value)}
-                  placeholder={t.phonePlaceholder}
-                  minLength={7}
-                  maxLength={32}
-                  pattern="[+0-9 .()\\-]{7,32}"
-                  required
-                  className="h-12 rounded-xl border-store-border bg-white text-base"
-                  dir="ltr"
-                />
-              </label>
-            </Card>
-
-            <Card className="grid gap-3 rounded-3xl border-store-border bg-white p-4 sm:p-5">
-              <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
-                {t.discountCode}
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                <Input
-                  aria-label={t.discountCode}
-                  dir="ltr"
-                  autoCapitalize="characters"
-                  maxLength={32}
-                  value={fields.discountCode}
-                  onChange={(event) =>
-                    update('discountCode', event.currentTarget.value.toUpperCase())
-                  }
-                  placeholder={t.discountCodePlaceholder}
-                  className="h-12 min-w-0 flex-1 rounded-xl border-store-border bg-white text-base"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={orderMutation.isPending || !fields.discountCode.trim()}
-                  onClick={() => {
-                    setQuoteError('');
-                    void quoteRequest()
-                      .then(setQuote)
-                      .catch(() => {
-                        setQuote(null);
-                        setQuoteError(t.discountUnavailable);
-                      });
-                  }}
-                  className="h-12 rounded-xl border-store-border font-bold text-store-primary"
-                >
-                  {t.applyDiscount}
-                </Button>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="grid min-w-0 gap-1.5 text-xs font-bold text-store-ink">
+                  {t.customerName}
+                  <Input
+                    autoComplete="name"
+                    dir="auto"
+                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
+                    value={fields.customerName}
+                    onChange={(event) => update('customerName', event.currentTarget.value)}
+                    placeholder={t.namePlaceholder}
+                    minLength={2}
+                    maxLength={120}
+                    required
+                    className="h-10 rounded-xl border-store-border bg-white text-sm"
+                  />
+                </label>
+                <label className="grid min-w-0 gap-1.5 text-xs font-bold text-store-ink">
+                  {t.customerPhone}
+                  <Input
+                    autoComplete="tel"
+                    type="tel"
+                    inputMode="tel"
+                    value={fields.customerPhone}
+                    onChange={(event) => update('customerPhone', event.currentTarget.value)}
+                    placeholder={t.phonePlaceholder}
+                    minLength={7}
+                    maxLength={32}
+                    pattern="[+0-9 .()\\-]{7,32}"
+                    required
+                    className="h-10 rounded-xl border-store-border bg-white text-sm"
+                    dir="ltr"
+                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
+                  />
+                </label>
               </div>
-              {quoteError && (
-                <p className="m-0 text-sm font-bold text-store-error" role="alert">
-                  {quoteError}
-                </p>
-              )}
-              {quote?.discount && (
-                <p className="m-0 text-sm font-bold text-store-primary" role="status">
-                  {quote.discount.code} · {t.discountApplied} · −
-                  <bdi dir="auto">{formatStorefrontPrice(quote.discount.amount, locale)}</bdi>
-                </p>
-              )}
             </Card>
 
-            <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
-              <fieldset className="grid gap-3">
-                <legend className="mb-2 font-heading text-storefront-subsection font-extrabold text-store-ink">
-                  {t.fulfillment}
-                </legend>
+            <Card className="grid gap-3 rounded-2xl border-store-border bg-white p-3 sm:p-4">
+              <fieldset className="grid grid-cols-2 gap-2">
+                <legend className="sr-only">{t.fulfillment}</legend>
                 {(
                   [
                     { value: 'pickup', label: t.pickup },
@@ -463,7 +537,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                 ).map((option) => (
                   <label
                     key={option.value}
-                    className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border px-4 transition ${fields.fulfillmentType === option.value ? 'border-store-primary bg-store-primary/5' : 'border-store-border bg-white hover:bg-store-page'}`}
+                    className={`flex min-h-10 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm transition ${fields.fulfillmentType === option.value ? 'border-store-primary bg-store-primary/5' : 'border-store-border bg-white hover:bg-store-page'}`}
                   >
                     <input
                       type="radio"
@@ -481,21 +555,76 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                   </label>
                 ))}
               </fieldset>
+              {fields.fulfillmentType === 'delivery' &&
+                session.data &&
+                savedAddresses.data &&
+                savedAddresses.data.length > 0 && (
+                  <label className="grid min-w-0 gap-1.5 text-xs font-bold text-store-ink">
+                    {locale === 'ar' ? 'استخدم عنوانًا محفوظًا' : 'Use a saved address'}
+                    <select
+                      className="h-10 min-w-0 rounded-xl border border-store-border bg-white px-3 text-sm"
+                      value={selectedSavedAddressId}
+                      onChange={(event) => {
+                        const address = savedAddresses.data.find(
+                          (entry) => entry.id === event.currentTarget.value,
+                        );
+                        if (address) applySavedAddress(address);
+                        else {
+                          setSelectedSavedAddressId('');
+                          setDeliveryAreaId('');
+                          update('deliveryAddress', '');
+                          setQuote(null);
+                          setQuoteError('');
+                          setReviewed(null);
+                        }
+                      }}
+                    >
+                      <option value="">
+                        {locale === 'ar'
+                          ? 'إدخال عنوان لهذا الطلب'
+                          : 'Enter an address for this order'}
+                      </option>
+                      {savedAddresses.data.map((address) => (
+                        <option key={address.id} value={address.id}>
+                          {address.label} ·{' '}
+                          {[address.locality, address.area].filter(Boolean).join('، ')}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              {fields.fulfillmentType === 'delivery' && savedAddresses.isError && session.data && (
+                <p role="alert" className="text-sm text-store-error">
+                  {locale === 'ar'
+                    ? 'تعذّر تحميل عناوينك المحفوظة.'
+                    : 'Could not load your saved addresses.'}{' '}
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => void savedAddresses.refetch()}
+                  >
+                    {locale === 'ar' ? 'حاول تاني' : 'Try again'}
+                  </button>
+                </p>
+              )}
               {options.data && (
                 <fieldset
                   disabled={uncertain || orderMutation.isPending || reviewMutation.isPending}
+                  className="min-w-0 text-xs [&_select]:min-w-0 [&_select]:text-sm"
                 >
                   <RestaurantRouteFields
                     settings={options.data}
                     fulfillment={fields.fulfillmentType}
                     area={deliveryAreaId}
-                    pickup={pickup}
+                    pickup={effectivePickup}
                     locationId={deliveryAreaId}
                     onLocation={(id) => {
+                      setSelectedSavedAddressId('');
                       setDeliveryAreaId(id);
                       setQuote(null);
                     }}
                     onArea={(id) => {
+                      setSelectedSavedAddressId('');
                       setDeliveryAreaId(id);
                       setQuote(null);
                     }}
@@ -507,18 +636,22 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                 </fieldset>
               )}
               {fields.fulfillmentType === 'delivery' && (
-                <label className="grid gap-2 text-sm font-bold text-store-ink">
+                <label className="grid min-w-0 gap-1.5 text-xs font-bold text-store-ink">
                   {t.address}
                   <Textarea
                     autoComplete="street-address"
                     dir="auto"
+                    style={{ textAlign: locale === 'ar' ? 'right' : 'left' }}
                     value={fields.deliveryAddress}
-                    onChange={(event) => update('deliveryAddress', event.currentTarget.value)}
+                    onChange={(event) => {
+                      setSelectedSavedAddressId('');
+                      update('deliveryAddress', event.currentTarget.value);
+                    }}
                     placeholder={t.addressPlaceholder}
                     minLength={8}
                     maxLength={1000}
                     required
-                    className="min-h-28 rounded-xl border-store-border bg-white text-base"
+                    className="min-h-20 rounded-xl border-store-border bg-white text-sm"
                   />
                 </label>
               )}
@@ -556,46 +689,54 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
               <p>الإجمالي: {formatStorefrontPrice(reviewedQuote.total, locale)}</p>
             </div>
           )}
-          <Button
-            type="submit"
-            formNoValidate={uncertain}
-            disabled={
-              session.isPending ||
-              session.isError ||
-              orderMutation.isPending ||
-              reviewMutation.isPending ||
-              (restaurant && !options.data && !uncertain)
-            }
-            className="h-11 rounded-xl bg-store-accent font-heading text-sm font-extrabold hover:bg-store-primary-dark"
-          >
-            {orderMutation.isPending && (
-              <LoaderCircle className="size-5 animate-spin" aria-hidden="true" />
+          <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-30 grid gap-2 border-t border-store-border bg-white p-3 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] lg:static lg:rounded-2xl lg:border lg:p-4 lg:shadow-none">
+            {quote && (
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span>{t.finalTotal}</span>
+                <strong>
+                  <bdi dir="auto">{formatStorefrontPrice(quote.total, locale)}</bdi>
+                </strong>
+              </div>
             )}
-            {uncertain
-              ? 'أعد نفس محاولة التأكيد'
-              : orderMutation.isPending
-                ? t.submittingOrder
-                : reviewMutation.isPending
-                  ? 'جارٍ مراجعة الطلب…'
-                  : branchRouting && !reviewedQuote
-                    ? 'راجع الفرع والسعر'
-                    : t.submitOrder}
-            {!orderMutation.isPending && <Arrow className="size-4" aria-hidden="true" />}
-          </Button>
-          <p className="text-center text-xs leading-5 text-store-muted">{t.noPayment}</p>
+            <Button
+              type="submit"
+              formNoValidate={uncertain}
+              disabled={
+                session.isPending ||
+                session.isError ||
+                orderMutation.isPending ||
+                reviewMutation.isPending ||
+                (restaurant && !options.data && !uncertain)
+              }
+              className="h-11 rounded-xl bg-store-accent font-heading text-sm font-extrabold hover:bg-store-primary-dark"
+            >
+              {orderMutation.isPending && (
+                <LoaderCircle className="size-5 animate-spin" aria-hidden="true" />
+              )}
+              {uncertain
+                ? 'أعد نفس محاولة التأكيد'
+                : orderMutation.isPending
+                  ? t.submittingOrder
+                  : reviewMutation.isPending
+                    ? 'جارٍ مراجعة الطلب…'
+                    : branchRouting && !reviewedQuote
+                      ? 'راجع الفرع والسعر'
+                      : t.submitOrder}
+              {!orderMutation.isPending && <Arrow className="size-4" aria-hidden="true" />}
+            </Button>
+            <p className="text-center text-[10px] leading-4 text-store-muted">{t.noPayment}</p>
+          </div>
         </form>
 
         <aside className="lg:sticky lg:top-28">
-          <Card className="rounded-3xl border-store-border bg-white p-4 shadow-[0_12px_36px_rgba(23,35,48,0.06)] sm:p-5">
+          <Card className="rounded-2xl border-store-border bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
-                {locale === 'ar' ? 'ملخص السلة' : 'Basket summary'}
-              </h2>
+              <h2 className="sr-only">{locale === 'ar' ? 'ملخص السلة' : 'Basket summary'}</h2>
               <span className="rounded-full bg-store-cream px-3 py-1 text-xs font-extrabold text-store-primary">
                 {cart.reduce((count, line) => count + line.quantity, 0)}
               </span>
             </div>
-            <ul className="mt-4 grid gap-3">
+            <ul className="mt-3 grid gap-2">
               {cart.map((line, index) => {
                 const product = catalog.products.find((item) => item.id === line.productId);
                 const promotion = quote?.promotions?.[index];
@@ -604,7 +745,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                 return (
                   <li
                     key={line.key}
-                    className="flex items-start justify-between gap-3 border-b border-store-border pb-3 text-sm"
+                    className="flex items-start justify-between gap-3 border-b border-store-border pb-2 text-xs"
                   >
                     <span className="min-w-0 font-medium text-store-muted">
                       {line.quantity} × {product?.name ?? t.unavailable}
@@ -631,11 +772,8 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                 );
               })}
             </ul>
-            <p className="mt-4 rounded-xl bg-store-cream px-3 py-3 text-xs leading-5 text-store-muted">
-              {t.priceNote}
-            </p>
             {quote && (
-              <div className="mt-4 grid gap-2 border-t border-store-border pt-4 text-sm">
+              <div className="mt-3 grid gap-2 border-t border-store-border pt-3 text-xs">
                 <div className="flex justify-between gap-3">
                   <span className="text-store-muted">{t.orderTotal}</span>
                   <strong>

@@ -28,8 +28,16 @@ uses a merchant-scoped customer credential and session, creates the merchant's
 customer-directory record, and links signed-in storefront orders to that record.
 It does not create or authenticate a global Waffarly Marketplace account. The
 store account overview shows that session and supports logout; tenant order
-history is live and merchant-scoped, while saved addresses and profile editing
-remain previews. See [storefront customer accounts](../customers.md#storefront-customer-accounts-2026-11-14).
+history is live and merchant-scoped. See
+[storefront customer accounts](../customers.md#storefront-customer-accounts-2026-11-14).
+
+Tenant storefront profile/address authorization (2026-11-19): the user explicitly
+approved backend persistence for `/s/[slug]/account/profile` and
+`/s/[slug]/account/addresses`, with checkout selection of saved addresses. This
+applies only to the signed-in account for one merchant store. It does not change
+the separate local-data requirement for the global Marketplace account, its demo
+address book, or favorites. See
+[storefront profile and saved addresses](../customers.md#storefront-profile-and-saved-addresses-2026-11-19).
 
 Restaurant integration authorization (2026-11-11): following user manual review,
 the user explicitly authorized backend preparation/seed and then restaurant
@@ -168,15 +176,15 @@ Do not build empty architecture layers for features that have no implementation 
 
 Retained for the later integration phase only. Do not call or extend these endpoints during UI development. Their availability does not authorize integration now. These are local repository capabilities, not reference-site endpoints:
 
-| Capability                 | Existing code                                                                                    | Planning consequence                                                                                                                     |
-| -------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Store catalog              | `GET /catalog/stores/:slug` in `apps/api/src/modules/storefront/public-storefront.controller.ts` | One merchant at a time; no global marketplace search contract established by this inspection                                             |
-| Category/product pages     | `GET /catalog/stores/:slug/categories` and `/products`                                           | Existing cursor query parsing; inspect bounds/search/filter support before extension                                                     |
-| Product quote              | `POST /catalog/stores/:slug/products/:id/quote`                                                  | Reuse Catalog pricing; server checks slug/product/options rather than client display prices                                              |
-| Guest order creation       | `POST /catalog/stores/:slug/orders` in `orders/storefront-orders.controller.ts`                  | Supports customerName/customerPhone, pickup/delivery, optional deliveryAddress and configured item quantities; delivery needs an address |
-| Existing frontend checkout | `features/checkout/storefront-checkout-page.tsx`                                                 | Reuse behavior/contracts after review, not its unrelated storefront styling or fixture IDs                                               |
-| Customer pages             | Tenant storefront login/history now use merchant-scoped APIs; see customer and storefront docs  | Tenant profile/address/favorite previews remain local; Marketplace customer flows keep their separate contracts and roadmap                 |
-| Merchant application       | Existing `/join` flow                                                                            | Candidate seller CTA destination, no duplicate onboarding system                                                                         |
+| Capability                 | Existing code                                                                                                  | Planning consequence                                                                                                                     |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Store catalog              | `GET /catalog/stores/:slug` in `apps/api/src/modules/storefront/public-storefront.controller.ts`               | One merchant at a time; no global marketplace search contract established by this inspection                                             |
+| Category/product pages     | `GET /catalog/stores/:slug/categories` and `/products`                                                         | Existing cursor query parsing; inspect bounds/search/filter support before extension                                                     |
+| Product quote              | `POST /catalog/stores/:slug/products/:id/quote`                                                                | Reuse Catalog pricing; server checks slug/product/options rather than client display prices                                              |
+| Guest order creation       | `POST /catalog/stores/:slug/orders` in `orders/storefront-orders.controller.ts`                                | Supports customerName/customerPhone, pickup/delivery, optional deliveryAddress and configured item quantities; delivery needs an address |
+| Existing frontend checkout | `features/checkout/storefront-checkout-page.tsx`                                                               | Reuse behavior/contracts after review, not its unrelated storefront styling or fixture IDs                                               |
+| Customer pages             | Tenant storefront login/profile/addresses/history use merchant-scoped APIs; Marketplace routes remain separate | Tenant favorites remain local; global Marketplace customer flows keep their separate contracts and roadmap                               |
+| Merchant application       | Existing `/join` flow                                                                                          | Candidate seller CTA destination, no duplicate onboarding system                                                                         |
 
 Do not fan out over every seller client-side to simulate global search. Define a bounded public composition/listing contract. Storefront owns composition, Catalog owns products and pricing, Orders owns order creation/lifecycle, Auth owns supported actors/sessions, and Payments owns payment behavior. Preserve acyclic dependencies and use module `index.ts` exports. No API/database/contracts were changed by the cleanup.
 

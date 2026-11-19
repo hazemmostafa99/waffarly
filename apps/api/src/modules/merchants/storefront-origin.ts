@@ -38,6 +38,22 @@ export function storefrontRequestScope(
     const write = ['POST', 'OPTIONS'].includes(method) && !path.endsWith('/me');
     if (read || write) return { handle, slug: storefrontCustomerAuth[1] };
   }
+  const storefrontProfile = /^\/auth\/stores\/([a-z0-9]+(?:-[a-z0-9]+)*)\/customer\/profile$/.exec(
+    path,
+  );
+  if (storefrontProfile?.[1] && ['PATCH', 'OPTIONS'].includes(method))
+    return { handle, slug: storefrontProfile[1] };
+  const storefrontAddresses =
+    /^\/auth\/stores\/([a-z0-9]+(?:-[a-z0-9]+)*)\/customer\/addresses(?:\/([0-9a-f-]{36}))?$/.exec(
+      path,
+    );
+  if (storefrontAddresses?.[1]) {
+    const collection = !storefrontAddresses[2];
+    const allowed = collection
+      ? ['GET', 'POST', 'OPTIONS'].includes(method)
+      : ['PATCH', 'DELETE', 'OPTIONS'].includes(method);
+    if (allowed) return { handle, slug: storefrontAddresses[1] };
+  }
   const catalog =
     /^\/catalog\/stores\/([a-z0-9]+(?:-[a-z0-9]+)*)(?:\/(?:categories|products))?$/.exec(path);
   const checkout =

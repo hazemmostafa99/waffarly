@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
 import Image from 'next/image';
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from '../../components/storefront/storefront-link';
 import { BookOpen, ChevronLeft, Search, SearchX, SlidersHorizontal } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -151,41 +151,20 @@ export function StorefrontMenuPage({
         </span>
       </nav>
 
-      <header className="grid min-h-[200px] grid-cols-[minmax(0,1fr)_100px] items-center gap-3 overflow-hidden rounded-3xl bg-store-primary/10 p-4 sm:grid-cols-[minmax(0,1fr)_150px] sm:p-5 lg:min-h-[224px] lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-6 lg:rounded-[1.75rem] lg:p-6">
-        <div className="min-w-0 -translate-y-2">
-          <p className="text-sm font-extrabold text-store-accent">{t.menuHeroEyebrow}</p>
-          <h1 className="mt-1 max-w-3xl font-heading text-storefront-page font-black text-store-ink text-balance">
-            {t.menuHeroTitle}
-          </h1>
-          <p className="mt-2 max-w-2xl text-storefront-body text-store-muted">{t.menuIntro}</p>
-        </div>
-        <div className="relative aspect-[1.05] w-full overflow-hidden rounded-2xl bg-white/40 lg:aspect-[1.68]">
-          <Image
-            src="/storefront-assets/burger.webp"
-            alt=""
-            fill
-            priority
-            sizes="(max-width: 640px) 100px, (max-width: 1024px) 150px, 300px"
-            className="object-cover"
-            unoptimized
-          />
-        </div>
-      </header>
+      <h1 className="sr-only">{t.menu}</h1>
 
       <div className="mt-4 grid min-w-0 gap-4 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-6">
         <aside className="min-w-0 lg:sticky lg:top-24 lg:h-fit lg:rounded-[1.6rem] lg:border lg:border-store-border lg:bg-white lg:p-4">
-          <h2 className="hidden font-heading text-storefront-subsection font-extrabold text-store-ink lg:block">
-            {t.menuCategories}
-          </h2>
+          <h2 className="sr-only">{t.menuCategories}</h2>
           <nav
             aria-label={t.menuCategories}
-            className="flex min-w-0 gap-2 overflow-x-auto pb-2 lg:mt-3 lg:grid lg:overflow-visible lg:pb-0"
+            className="flex min-w-0 gap-2 overflow-x-auto pb-2 lg:grid lg:overflow-visible lg:pb-0"
           >
             <button
               type="button"
               aria-current={!initialCategoryId ? 'true' : undefined}
               onClick={() => updateUrl({ category: '' })}
-              className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition lg:flex lg:items-center lg:gap-3 lg:rounded-xl lg:px-3 lg:text-start ${!initialCategoryId ? 'border-store-primary bg-store-primary text-white lg:border-store-primary/15 lg:bg-store-primary/5 lg:text-store-primary' : 'border-store-border bg-white text-store-ink hover:border-store-accent/50 lg:border-transparent'}`}
+              className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition lg:flex lg:items-center lg:gap-3 lg:rounded-xl lg:px-3 lg:text-start ${!initialCategoryId ? 'border-store-primary/20 bg-store-primary/5 text-store-primary-deep' : 'border-store-border bg-white text-store-ink hover:border-store-accent/50 lg:border-transparent'}`}
             >
               <BookOpen className="hidden size-5 shrink-0 lg:block" aria-hidden="true" />
               <span className="lg:hidden">{t.allCategoriesShort}</span>
@@ -199,7 +178,7 @@ export function StorefrontMenuPage({
                   key={category.id}
                   aria-current={active ? 'true' : undefined}
                   onClick={() => updateUrl({ category: category.id })}
-                  className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition lg:flex lg:items-center lg:justify-between lg:gap-3 lg:rounded-xl lg:px-3 lg:text-start ${active ? 'border-store-primary bg-store-primary text-white lg:border-store-primary/15 lg:bg-store-primary/5 lg:text-store-primary' : 'border-store-border bg-white text-store-ink hover:border-store-accent/50 lg:border-transparent'}`}
+                  className={`min-h-11 shrink-0 rounded-full border px-4 text-sm font-bold transition lg:flex lg:items-center lg:justify-between lg:gap-3 lg:rounded-xl lg:px-3 lg:text-start ${active ? 'border-store-primary/20 bg-store-primary/5 text-store-primary-deep' : 'border-store-border bg-white text-store-ink hover:border-store-accent/50 lg:border-transparent'}`}
                 >
                   {imageUrl ? (
                     <span className="relative hidden size-8 shrink-0 overflow-hidden rounded-lg lg:block">
@@ -257,11 +236,9 @@ export function StorefrontMenuPage({
             </label>
           </div>
 
-          <header className="mb-4 mt-4 flex items-end justify-between gap-4 sm:mb-4 sm:mt-5">
+          <header className="my-3 text-xs">
             <div>
-              <h2 className="font-heading text-storefront-section font-extrabold text-store-ink">
-                {t.allProducts}
-              </h2>
+              <h2 className="sr-only">{t.allProducts}</h2>
               <p className="mt-1 text-storefront-support text-store-muted">
                 {number} {t.productsToDisplay}
               </p>
