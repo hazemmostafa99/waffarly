@@ -4,6 +4,11 @@ import type {
   CustomerSignInRequest,
   CustomerSignUpRequest,
   StorefrontCustomerProfile,
+  StorefrontCustomerAddress,
+  CreateStorefrontCustomerAddressRequest,
+  DeleteStorefrontCustomerAddressRequest,
+  UpdateStorefrontCustomerAddressRequest,
+  UpdateStorefrontCustomerProfileRequest,
 } from '@waffarly/contracts';
 import { ApiError } from '@/lib/api-client';
 
@@ -11,12 +16,19 @@ export const storefrontCustomerSessionKey = (slug: string) =>
   ['storefront-customer-session', slug] as const;
 export const storefrontCustomerOrdersKey = (slug: string, customerId?: string) =>
   ['storefront-customer-orders', slug, customerId ?? 'signed-out'] as const;
+export const storefrontCustomerAddressesKey = (slug: string, customerId?: string) =>
+  ['storefront-customer-addresses', slug, customerId ?? 'signed-out'] as const;
 
-async function request<T>(slug: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(
+  slug: string,
+  path: string,
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE' = 'GET',
+  body?: unknown,
+): Promise<T> {
   const response = await fetch(
     `/storefront-api/auth/stores/${encodeURIComponent(slug)}/customer/${path}`,
     {
-      method: body === undefined ? 'GET' : 'POST',
+      method,
       credentials: 'include',
       cache: 'no-store',
       ...(body === undefined
@@ -56,11 +68,50 @@ export function isStorefrontCustomerNetworkError(error: unknown): boolean {
 }
 
 export const signInStorefrontCustomer = (slug: string, data: CustomerSignInRequest) =>
-  request<StorefrontCustomerProfile>(slug, 'login', data);
+  request<StorefrontCustomerProfile>(slug, 'login', 'POST', data);
 export const signUpStorefrontCustomer = (slug: string, data: CustomerSignUpRequest) =>
-  request<StorefrontCustomerProfile>(slug, 'sign-up', data);
+  request<StorefrontCustomerProfile>(slug, 'sign-up', 'POST', data);
 export const signOutStorefrontCustomer = (slug: string) =>
-  request<{ authenticated: false }>(slug, 'logout', {});
+  request<{ authenticated: false }>(slug, 'logout', 'POST', {});
+
+export function updateStorefrontCustomerProfile(
+  slug: string,
+  data: UpdateStorefrontCustomerProfileRequest,
+) {
+  return request<StorefrontCustomerProfile>(slug, 'profile', 'PATCH', data);
+}
+
+export function loadStorefrontCustomerAddresses(slug: string) {
+  return request<StorefrontCustomerAddress[]>(slug, 'addresses');
+}
+
+export function createStorefrontCustomerAddress(
+  slug: string,
+  data: CreateStorefrontCustomerAddressRequest,
+) {
+  return request<StorefrontCustomerAddress>(slug, 'addresses', 'POST', data);
+}
+
+export function updateStorefrontCustomerAddress(
+  slug: string,
+  id: string,
+  data: UpdateStorefrontCustomerAddressRequest,
+) {
+  return request<StorefrontCustomerAddress>(
+    slug,
+    `addresses/${encodeURIComponent(id)}`,
+    'PATCH',
+    data,
+  );
+}
+
+export function deleteStorefrontCustomerAddress(
+  slug: string,
+  id: string,
+  data: DeleteStorefrontCustomerAddressRequest,
+) {
+  return request<{ deleted: true }>(slug, `addresses/${encodeURIComponent(id)}`, 'DELETE', data);
+}
 
 export function loadStorefrontCustomerOrders(slug: string, cursor?: string) {
   const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';

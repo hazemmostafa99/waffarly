@@ -1,12 +1,13 @@
 'use client';
 
-import { useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import Link from '../../components/storefront/storefront-link';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, CheckCircle2, LoaderCircle, ShoppingBag } from 'lucide-react';
 import type {
   CatalogProductQuoteResponse,
   CreateStorefrontOrderRequest,
+  StorefrontCustomerAddress,
   PublicStorefrontCatalog,
   StorefrontOrderReceipt,
   StorefrontCheckoutQuote,
@@ -19,7 +20,11 @@ import {
   useRestaurantFulfillment,
 } from '../delivery/restaurant-route-fields';
 import { useStorefrontCustomer } from '../account/hooks/use-storefront-customer';
-import { loadStorefrontCustomer } from '../account/data/storefront-customer-api';
+import {
+  loadStorefrontCustomer,
+  loadStorefrontCustomerAddresses,
+  storefrontCustomerAddressesKey,
+} from '../account/data/storefront-customer-api';
 import { StorefrontSignInLink } from '../account/storefront-sign-in-link';
 import { formatStorefrontPrice } from '../../lib/storefront-format';
 import { storefrontCopy } from '../../lib/storefront-copy';
@@ -42,6 +47,15 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
   const hasHydrated = useStorefrontStore((state) => state.hasHydrated);
   const clearCart = useStorefrontStore((state) => state.clearCart);
   const session = useStorefrontCustomer();
+  const savedAddresses = useQuery({
+    queryKey: storefrontCustomerAddressesKey(catalog.slug, session.data?.id),
+    queryFn: () => loadStorefrontCustomerAddresses(catalog.slug),
+    enabled: Boolean(session.data),
+    retry: false,
+  });
+  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState('');
+  const appliedDefaultAddress = useRef(false);
+  const addressOwner = useRef<{ slug: string; customerId?: string }>({ slug: catalog.slug });
   const fulfillmentType = useStorefrontStore((state) => state.fulfillmentType);
   const setFulfillmentType = useStorefrontStore((state) => state.setFulfillmentType);
   const deliveryAreaId = useStorefrontStore((state) => state.deliveryAreaId);
@@ -66,11 +80,71 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
   };
   const [quote, setQuote] = useState<StorefrontCheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState('');
-  const restaurant = catalog.activity === 'restaurant';
-  const options = useRestaurantFulfillment(restaurant ? catalog.slug : undefined);
   const [reviewed, setReviewed] = useState<{ key: string; quote: StorefrontCheckoutQuote } | null>(
     null,
   );
+  const applySavedAddress = useCallback(
+    (address: StorefrontCustomerAddress) => {
+      setSelectedSavedAddressId(address.id);
+      setDeliveryAreaId(address.deliveryAreaId);
+      setDraft((current) => ({
+        ...current,
+        deliveryAddress: [
+          address.governorate,
+          address.locality,
+          address.area,
+          address.streetAddress,
+          address.notes ? `${locale === 'ar' ? 'ملاحظات' : 'Notes'}: ${address.notes}` : '',
+        ]
+          .filter(Boolean)
+          .join('، '),
+      }));
+      setQuote(null);
+      setQuoteError('');
+      setReviewed(null);
+    },
+    [locale, setDeliveryAreaId],
+  );
+
+  useEffect(() => {
+    const previousOwner = addressOwner.current;
+    const nextOwner: { slug: string; customerId?: string } = {
+      slug: catalog.slug,
+      ...(session.data?.id ? { customerId: session.data.id } : {}),
+    };
+    const merchantChanged = previousOwner.slug !== nextOwner.slug;
+    const signedInCustomerChanged = Boolean(
+      previousOwner.customerId && previousOwner.customerId !== nextOwner.customerId,
+    );
+    if (merchantChanged || signedInCustomerChanged) {
+      setDraft((current) => ({
+        ...current,
+        customerName: undefined,
+        customerPhone: undefined,
+        deliveryAddress: '',
+        ...(merchantChanged ? { discountCode: '' } : {}),
+      }));
+    }
+    addressOwner.current = nextOwner;
+    appliedDefaultAddress.current = false;
+    setSelectedSavedAddressId('');
+  }, [catalog.slug, session.data?.id]);
+
+  useEffect(() => {
+    if (!savedAddresses.isSuccess || appliedDefaultAddress.current) return;
+    appliedDefaultAddress.current = true;
+    if (fields.deliveryAddress || deliveryAreaId) return;
+    const defaultAddress = savedAddresses.data.find((address) => address.isDefault);
+    if (defaultAddress) applySavedAddress(defaultAddress);
+  }, [
+    applySavedAddress,
+    deliveryAreaId,
+    savedAddresses.isSuccess,
+    savedAddresses.data,
+    fields.deliveryAddress,
+  ]);
+  const restaurant = catalog.activity === 'restaurant';
+  const options = useRestaurantFulfillment(restaurant ? catalog.slug : undefined);
   const attempt = useRef<CreateStorefrontOrderRequest | null>(null);
   const [uncertain, setUncertain] = useState(false);
   const branchRouting = options.data?.onlineBranches !== undefined;
@@ -345,6 +419,58 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                   {locale === 'ar' ? 'جارٍ تحميل بيانات حسابك…' : 'Loading your account…'}
                 </p>
               )}
+              {fields.fulfillmentType === 'delivery' &&
+                session.data &&
+                savedAddresses.data &&
+                savedAddresses.data.length > 0 && (
+                  <label className="grid gap-2 text-sm font-bold text-store-ink">
+                    {locale === 'ar' ? 'استخدم عنوانًا محفوظًا' : 'Use a saved address'}
+                    <select
+                      className="h-11 rounded-xl border border-store-border bg-white px-3"
+                      value={selectedSavedAddressId}
+                      onChange={(event) => {
+                        const address = savedAddresses.data.find(
+                          (entry) => entry.id === event.currentTarget.value,
+                        );
+                        if (address) applySavedAddress(address);
+                        else {
+                          setSelectedSavedAddressId('');
+                          setDeliveryAreaId('');
+                          update('deliveryAddress', '');
+                          setQuote(null);
+                          setQuoteError('');
+                          setReviewed(null);
+                        }
+                      }}
+                    >
+                      <option value="">
+                        {locale === 'ar'
+                          ? 'إدخال عنوان لهذا الطلب'
+                          : 'Enter an address for this order'}
+                      </option>
+                      {savedAddresses.data.map((address) => (
+                        <option key={address.id} value={address.id}>
+                          {address.label} ·{' '}
+                          {[address.locality, address.area].filter(Boolean).join('، ')}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              {savedAddresses.isError && session.data && (
+                <p role="alert" className="text-sm text-store-error">
+                  {locale === 'ar'
+                    ? 'تعذّر تحميل عناوينك المحفوظة.'
+                    : 'Could not load your saved addresses.'}{' '}
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => void savedAddresses.refetch()}
+                  >
+                    {locale === 'ar' ? 'حاول تاني' : 'Try again'}
+                  </button>
+                </p>
+              )}
               {session.isError ? (
                 <p role="alert" className="text-sm text-store-error">
                   {locale === 'ar' ? 'تعذّر التحقق من الحساب.' : 'Could not check your account.'}{' '}
@@ -492,10 +618,12 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                     pickup={pickup}
                     locationId={deliveryAreaId}
                     onLocation={(id) => {
+                      setSelectedSavedAddressId('');
                       setDeliveryAreaId(id);
                       setQuote(null);
                     }}
                     onArea={(id) => {
+                      setSelectedSavedAddressId('');
                       setDeliveryAreaId(id);
                       setQuote(null);
                     }}
@@ -513,7 +641,10 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                     autoComplete="street-address"
                     dir="auto"
                     value={fields.deliveryAddress}
-                    onChange={(event) => update('deliveryAddress', event.currentTarget.value)}
+                    onChange={(event) => {
+                      setSelectedSavedAddressId('');
+                      update('deliveryAddress', event.currentTarget.value);
+                    }}
                     placeholder={t.addressPlaceholder}
                     minLength={8}
                     maxLength={1000}

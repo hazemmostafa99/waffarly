@@ -23,6 +23,60 @@ export interface StorefrontCustomerProfile {
   name: string;
   phone: string;
   email: string;
+  revision: number;
+}
+
+/** A delivery address saved inside one merchant storefront account. */
+export interface StorefrontCustomerAddress {
+  id: string;
+  label: string;
+  deliveryAreaId: string;
+  governorate: string;
+  locality: string;
+  area: string;
+  streetAddress: string;
+  notes: string;
+  isDefault: boolean;
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateStorefrontCustomerProfileRequest {
+  revision: number;
+  name?: string;
+  phone?: string;
+  email?: string;
+  currentPassword?: string;
+}
+
+export interface StorefrontCustomerAddressInput {
+  label: string;
+  deliveryAreaId: string;
+  governorate: string;
+  locality: string;
+  area: string;
+  streetAddress: string;
+  notes?: string;
+  isDefault?: boolean;
+}
+
+export type CreateStorefrontCustomerAddressRequest = StorefrontCustomerAddressInput;
+
+export interface UpdateStorefrontCustomerAddressRequest {
+  revision: number;
+  label?: string;
+  deliveryAreaId?: string;
+  governorate?: string;
+  locality?: string;
+  area?: string;
+  streetAddress?: string;
+  notes?: string;
+  isDefault?: boolean;
+}
+
+export interface DeleteStorefrontCustomerAddressRequest {
+  revision: number;
 }
 
 export interface CreateMerchantCustomerRequest {

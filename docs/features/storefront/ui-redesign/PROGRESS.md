@@ -24,15 +24,24 @@ Strict tracking requirements:
 
 ## Current Status
 
-- Overall: Core catalog-to-order pages plus the API-gap route UIs are implemented. Tenant account sign-in and merchant-scoped order history are now API-backed; unsupported profile/address/tracking routes remain previews.
+- Overall: Core catalog-to-order pages plus the API-gap route UIs are implemented. Tenant account sign-in, profile editing, saved addresses and merchant-scoped order history are API-backed; unrelated preview routes remain local.
 - Current milestone: Preserve the complete storefront journey while keeping Marketplace demo behavior separate from merchant-store accounts.
-- Current slice: Compact Arabic authentication UI, cookie-backed session restoration, safe return navigation, header account menu, merchant-scoped fulfillment preferences and checkout profile defaults. Profile and address editing remain previews.
+- Current slice: Tenant customer profile and saved-address persistence, connected to account forms and checkout address selection. Earlier login/session/fulfillment flow remains the preceding slice.
 - Visual reference: Supplied Waffarly Bistro UI kit remains the design source; user-provided Wafarly Marketplace screenshots guide relative typography and density only.
 - Target app: `apps/storefront`.
 - Primary route namespace: `/s/[slug]`.
 - Last updated: 2026-11-19.
-- Last verified state: Source/diff review and local Prettier formatting only for the 2026-11-19 slice; visual/runtime acceptance is pending. The prior 2026-10-15 viewport evidence and 2026-11-14 migration evidence remain historical and do not verify this slice.
-- Worktree note: Preserve all pre-existing workspace edits. The current slice adds tenant-scoped auth, merchant customer creation, authenticated order linkage/history, and updates their route copy. Existing number-formatting behavior and unrelated dirty API/workspace files were left untouched.
+- Last verified state: Source/diff review, local Prettier formatting, Prisma client generation and development migration application for the current 2026-11-19 slice; visual/runtime/manual acceptance remains pending. The prior 2026-10-15 viewport evidence and 2026-11-14 migration evidence remain historical and do not verify this slice.
+- Worktree note: Current work extends the existing tenant account flow with scoped profile/address endpoints, address persistence, cache cleanup, and checkout selection. Changes remain on `main`; no commit, push or deployment was made.
+
+### 2026-11-19 - Tenant Profile and Saved Addresses
+
+- [~] Implemented the explicitly approved tenant-store profile and address integration. The earlier 2026-11-14 preview-only state is superseded for these two features only; global Marketplace profile and favorites remain separate.
+- Added revisioned profile updates. Email/mobile changes require the current password and update `MerchantCustomer` contact fields and the store credential within one transaction.
+- Added merchant-scoped address list/create/update/delete routes and `MerchantCustomerAddress`. The database constraint, row lock and service logic enforce one default address and a maximum of 20 addresses per customer at that store.
+- Account pages load and save server data. Logout removes address/order query data. Checkout can select a saved address and carries its full location text and delivery area through the existing order flow; existing API coverage and pricing checks stay authoritative.
+- Added the migration and updated customer/API/storefront feature documentation. Applied the three pending migrations to the configured local development database at `localhost:5433/waffarly` with Prisma `migrate deploy`, after checking the SQL and confirming the database container was healthy. This included two earlier pending main-branch migrations as well as the address migration; no database reset was run.
+- No tests, browser suites, typechecks or builds were run, following the manual-QA preference. Runtime/manual acceptance is still pending. Source review and formatting are not completion evidence.
 
 ### 2026-11-19 - Storefront Login and Fulfillment Flow
 
@@ -54,13 +63,13 @@ Manual acceptance:
 3. Register a dedicated QA customer, verify its merchant customer entry, refresh the page and open a new tab. Confirm `me`, header identity and account history use the same session. Log out and confirm header/history update; another store remains isolated.
 4. Select delivery, governorate/locality/area before adding items. Changing governorate/locality must clear the old destination; refresh and checkout must preserve the final selection for this merchant only. Check uncovered/closed branches and retry loading failures.
 5. Check pickup branch and address, delivery fees/minimum/ETA, automatic profile defaults and preservation of edits. Delivery requires a full address; pickup does not. Review price/branch before confirming any authorized QA order; check its customer linkage and unchanged idempotent retry behavior.
-6. Profile editing and saved addresses still disclose their page-local preview behavior; no database address storage is implemented by this slice.
+6. Tenant profile and saved-address acceptance is listed in the 2026-11-19 integration slice above; those two routes are no longer previews. Other preview routes keep their existing acceptance requirements.
 
 ### 2026-11-14 - Merchant-Scoped Storefront Customer Accounts
 
 - The user clarified that an account created at `/s/[slug]/login` belongs only to that merchant, creates a customer-directory record, and remains separate from the global Waffarly Marketplace account.
 - Added merchant-local credentials and sessions, sign-up/login/me/logout routes, bounded attempt limits, same-merchant order linkage on signed-in checkout, and cursor-based account order history. Global customer authentication and Marketplace checkout routes remain separate.
-- Updated account copy and route descriptions: order history is live for the signed-in merchant account; profile/address editing and unsupported tracking flows remain visibly preview-only.
+- At that time, profile/address editing and unsupported tracking flows remained visibly preview-only. The profile and address status was superseded by the separately authorized 2026-11-19 integration above.
 - `node node_modules/prisma/build/index.js generate --config prisma.config.ts` from `packages/database`: succeeded. `migrate status`: only `20261114150000_merchant_customer_storefront_accounts` was pending. `migrate deploy`: succeeded; no database reset or backfill.
 - No tests, app builds/typechecks, or browser account registration/order flows were run, per the existing manual-QA preference. Manual acceptance is still needed for store isolation, signup visibility in `/owner/customers`, logged-in checkout linkage, and the order-history screen.
 

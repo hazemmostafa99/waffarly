@@ -39,6 +39,7 @@ export function useRestaurantFulfillment(slug: string | undefined) {
     queryFn: () =>
       apiGetBrowser<RestaurantFulfillmentOptions>(
         `marketplace/restaurants/${encodeURIComponent(slug!)}/fulfillment`,
+        { sameOrigin: true },
       ),
   });
 }

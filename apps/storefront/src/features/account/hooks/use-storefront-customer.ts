@@ -32,6 +32,7 @@ export function useStorefrontSignOut() {
       await queryClient.cancelQueries({ queryKey: storefrontCustomerSessionKey(slug) });
       queryClient.setQueryData(storefrontCustomerSessionKey(slug), null);
       queryClient.removeQueries({ queryKey: ['storefront-customer-orders', slug] });
+      queryClient.removeQueries({ queryKey: ['storefront-customer-addresses', slug] });
     },
     gcTime: 0,
   });

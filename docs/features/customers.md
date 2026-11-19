@@ -20,21 +20,74 @@ order-association flow remains available.
 The same email or phone may be used to create a separate account at another
 merchant. Storefront credentials and sessions remain independent of the global
 Waffarly account. Contact ownership is not verified, password recovery is not
-available, and customer profile/address pages remain previews. The owner
-directory contact fields are not credential-management controls.
+available, and the owner directory contact fields are not credential-management
+controls. Profile and address previews described in the original 2026-11-14
+delivery were superseded by the separately approved 2026-11-19 integration below.
 
 Migration: `20261114150000_merchant_customer_storefront_accounts` adds the
 merchant-scoped credential table and widens `auth_sessions.subjectKind` for the
 new session kind. Applied to the configured local development database without
 resetting data. Existing contacts and orders are not modified.
 
-| Method | Route | Behavior |
-| ------ | ----- | -------- |
-| POST | `/auth/stores/:slug/customer/sign-up` | Create a customer and login for that merchant |
-| POST | `/auth/stores/:slug/customer/login` | Sign in using that store's normalized email or mobile |
-| GET | `/auth/stores/:slug/customer/me` | Read the current store-specific session |
-| POST | `/auth/stores/:slug/customer/logout` | Revoke the current store-specific session |
-| GET | `/catalog/stores/:slug/customer/orders` | List orders linked to that signed-in customer at this store |
+| Method | Route                                   | Behavior                                                    |
+| ------ | --------------------------------------- | ----------------------------------------------------------- |
+| POST   | `/auth/stores/:slug/customer/sign-up`   | Create a customer and login for that merchant               |
+| POST   | `/auth/stores/:slug/customer/login`     | Sign in using that store's normalized email or mobile       |
+| GET    | `/auth/stores/:slug/customer/me`        | Read the current store-specific session                     |
+| POST   | `/auth/stores/:slug/customer/logout`    | Revoke the current store-specific session                   |
+| GET    | `/catalog/stores/:slug/customer/orders` | List orders linked to that signed-in customer at this store |
+
+## Storefront profile and saved addresses (2026-11-19)
+
+The user separately approved backend integration for tenant-store customer
+profiles and delivery addresses. This does not change global Marketplace customer
+accounts or the Marketplace UI's local-data phase.
+
+`Customers` owns these authenticated self-service routes. The storefront slug is
+resolved to a merchant, and every profile and address query/write is scoped to
+that merchant and the customer from the existing HttpOnly session. Request bodies
+cannot supply a merchant or customer ID. Profile writes use the customer revision;
+changing email or phone also requires the current password and updates the
+merchant directory contact and sign-in credential together. Email/phone uniqueness
+continues to apply within one merchant.
+
+Saved addresses live in `MerchantCustomerAddress`, linked by a compound
+`(merchantCustomerId, merchantId)` foreign key. A customer can save up to 20
+addresses per store and have at most one default address. Changes require the
+address revision. Address writes lock the parent customer row so concurrent saves
+cannot exceed the limit or create competing defaults; a partial unique index is a
+database backstop. Removing or unsetting the default promotes the oldest remaining
+address. An address from one store cannot be read or changed through another
+store's session.
+
+Checkout can load this customer's saved addresses. Selecting one fills the
+existing delivery-area selection and full textual delivery address, including
+optional delivery notes; checkout then uses the existing order API, which remains authoritative for current branch
+coverage, availability, pricing and order creation. The saved address is copied
+into the existing order address snapshot; later edits do not rewrite past orders.
+No payment or collection is implied. Address area details are retained as entered
+for display; the order endpoint still decides whether the selected destination is
+currently serviceable.
+
+| Method | Route                                              | Behavior                                                            |
+| ------ | -------------------------------------------------- | ------------------------------------------------------------------- |
+| PATCH  | `/auth/stores/:slug/customer/profile`              | Update the signed-in merchant customer profile with revision checks |
+| GET    | `/auth/stores/:slug/customer/addresses`            | List saved addresses for that merchant customer                     |
+| POST   | `/auth/stores/:slug/customer/addresses`            | Add an address (maximum 20); the first is default unless unchecked  |
+| PATCH  | `/auth/stores/:slug/customer/addresses/:addressId` | Edit an address or change its default status using its revision     |
+| DELETE | `/auth/stores/:slug/customer/addresses/:addressId` | Delete an address using its revision                                |
+
+Migration: `20261119100000_storefront_customer_profile_addresses` adds the
+address table, tenant-safe foreign key, owner index and one-default partial unique
+index. Migration application is recorded only after confirming the configured
+target is the local development database. The configured target is
+`localhost:5433/waffarly`. After confirming its container was healthy and
+reviewing the pending migration SQL, all three pending development migrations
+were applied with `migrate deploy`, without a reset. This also applied the earlier
+order inbox index and order-origin correction migrations. Manual acceptance
+remains required for profile reloads, contact-password checks, tenant isolation,
+address CRUD/default behavior and checkout address selection. No automated checks
+are run for this slice per the current manual-QA preference.
 
 Sessions use an eight-hour `HttpOnly`, `SameSite=Lax` cookie whose name includes
 the storefront slug. Signup allows 5 attempts per IP per hour; sign-in allows
@@ -109,7 +162,7 @@ cannot access another store or the global Marketplace customer session.
 | `archivedAt`                             | Nullable soft-archive timestamp; history remains readable                             |
 | `revision`                               | Starts at 1; optimistic concurrency for changes                                       |
 | `creationRequest`, `creationFingerprint` | Tenant-scoped creation retry identity and normalized-payload fingerprint              |
-| `createdBy`, `updatedBy`                 | Attributable owner username or trusted creation source                                 |
+| `createdBy`, `updatedBy`                 | Attributable owner username or trusted creation source                                |
 | `createdAt`, `updatedAt`                 | Timestamps                                                                            |
 
 Manual owner creation always sets `firstChannel = manual`. Clients cannot claim
