@@ -148,11 +148,18 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
   const attempt = useRef<CreateStorefrontOrderRequest | null>(null);
   const [uncertain, setUncertain] = useState(false);
   const branchRouting = options.data?.onlineBranches !== undefined;
+  const availablePickupBranches = options.data?.onlineBranches?.filter(
+    (branch) => branch.pickup && branch.acceptingOrders,
+  );
+  const effectivePickup =
+    availablePickupBranches?.length === 1
+      ? (availablePickupBranches[0]?.branchId ?? '')
+      : (availablePickupBranches?.find((branch) => branch.branchId === pickup)?.branchId ?? '');
   const routeInput =
     fields.fulfillmentType === 'delivery' && deliveryAreaId
       ? { deliveryAreaId }
-      : fields.fulfillmentType === 'pickup' && branchRouting && pickup
-        ? { pickupBranchId: pickup }
+      : fields.fulfillmentType === 'pickup' && branchRouting && effectivePickup
+        ? { pickupBranchId: effectivePickup }
         : {};
   const reviewKey = JSON.stringify({ cart, fields, routeInput });
   const reviewedQuote = reviewed?.key === reviewKey ? reviewed.quote : null;
@@ -411,14 +418,36 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
             className="contents"
           >
             <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
-              <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
-                {locale === 'ar' ? 'بيانات العميل' : 'Your details'}
-              </h2>
-              {session.isPending && (
-                <p role="status" className="text-sm text-store-muted">
-                  {locale === 'ar' ? 'جارٍ تحميل بيانات حسابك…' : 'Loading your account…'}
-                </p>
-              )}
+              <fieldset className="grid gap-3">
+                <legend className="mb-2 font-heading text-storefront-subsection font-extrabold text-store-ink">
+                  {t.fulfillment}
+                </legend>
+                {(
+                  [
+                    { value: 'pickup', label: t.pickup },
+                    { value: 'delivery', label: t.delivery },
+                  ] as const
+                ).map((option) => (
+                  <label
+                    key={option.value}
+                    className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border px-4 transition ${fields.fulfillmentType === option.value ? 'border-store-primary bg-store-primary/5' : 'border-store-border bg-white hover:bg-store-page'}`}
+                  >
+                    <input
+                      type="radio"
+                      name="fulfillment"
+                      value={option.value}
+                      checked={fields.fulfillmentType === option.value}
+                      onChange={() => {
+                        setFulfillmentType(option.value);
+                        setQuote(null);
+                        setQuoteError('');
+                      }}
+                      className="size-4 accent-store-primary"
+                    />
+                    <span className="font-bold text-store-ink">{option.label}</span>
+                  </label>
+                ))}
+              </fieldset>
               {fields.fulfillmentType === 'delivery' &&
                 session.data &&
                 savedAddresses.data &&
@@ -457,7 +486,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                     </select>
                   </label>
                 )}
-              {savedAddresses.isError && session.data && (
+              {fields.fulfillmentType === 'delivery' && savedAddresses.isError && session.data && (
                 <p role="alert" className="text-sm text-store-error">
                   {locale === 'ar'
                     ? 'تعذّر تحميل عناوينك المحفوظة.'
@@ -469,6 +498,63 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                   >
                     {locale === 'ar' ? 'حاول تاني' : 'Try again'}
                   </button>
+                </p>
+              )}
+              {options.data && (
+                <fieldset
+                  disabled={uncertain || orderMutation.isPending || reviewMutation.isPending}
+                >
+                  <RestaurantRouteFields
+                    settings={options.data}
+                    fulfillment={fields.fulfillmentType}
+                    area={deliveryAreaId}
+                    pickup={effectivePickup}
+                    locationId={deliveryAreaId}
+                    onLocation={(id) => {
+                      setSelectedSavedAddressId('');
+                      setDeliveryAreaId(id);
+                      setQuote(null);
+                    }}
+                    onArea={(id) => {
+                      setSelectedSavedAddressId('');
+                      setDeliveryAreaId(id);
+                      setQuote(null);
+                    }}
+                    onPickup={(id) => {
+                      setPickup(id);
+                      setQuote(null);
+                    }}
+                  />
+                </fieldset>
+              )}
+              {fields.fulfillmentType === 'delivery' && (
+                <label className="grid gap-2 text-sm font-bold text-store-ink">
+                  {t.address}
+                  <Textarea
+                    autoComplete="street-address"
+                    dir="auto"
+                    value={fields.deliveryAddress}
+                    onChange={(event) => {
+                      setSelectedSavedAddressId('');
+                      update('deliveryAddress', event.currentTarget.value);
+                    }}
+                    placeholder={t.addressPlaceholder}
+                    minLength={8}
+                    maxLength={1000}
+                    required
+                    className="min-h-28 rounded-xl border-store-border bg-white text-base"
+                  />
+                </label>
+              )}
+            </Card>
+
+            <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
+              <h2 className="font-heading text-storefront-subsection font-extrabold text-store-ink">
+                {locale === 'ar' ? 'بيانات العميل' : 'Your details'}
+              </h2>
+              {session.isPending && (
+                <p role="status" className="text-sm text-store-muted">
+                  {locale === 'ar' ? 'جارٍ تحميل بيانات حسابك…' : 'Loading your account…'}
                 </p>
               )}
               {session.isError ? (
@@ -576,84 +662,6 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
               )}
             </Card>
 
-            <Card className="grid gap-4 rounded-3xl border-store-border bg-white p-4 sm:p-5">
-              <fieldset className="grid gap-3">
-                <legend className="mb-2 font-heading text-storefront-subsection font-extrabold text-store-ink">
-                  {t.fulfillment}
-                </legend>
-                {(
-                  [
-                    { value: 'pickup', label: t.pickup },
-                    { value: 'delivery', label: t.delivery },
-                  ] as const
-                ).map((option) => (
-                  <label
-                    key={option.value}
-                    className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border px-4 transition ${fields.fulfillmentType === option.value ? 'border-store-primary bg-store-primary/5' : 'border-store-border bg-white hover:bg-store-page'}`}
-                  >
-                    <input
-                      type="radio"
-                      name="fulfillment"
-                      value={option.value}
-                      checked={fields.fulfillmentType === option.value}
-                      onChange={() => {
-                        setFulfillmentType(option.value);
-                        setQuote(null);
-                        setQuoteError('');
-                      }}
-                      className="size-4 accent-store-primary"
-                    />
-                    <span className="font-bold text-store-ink">{option.label}</span>
-                  </label>
-                ))}
-              </fieldset>
-              {options.data && (
-                <fieldset
-                  disabled={uncertain || orderMutation.isPending || reviewMutation.isPending}
-                >
-                  <RestaurantRouteFields
-                    settings={options.data}
-                    fulfillment={fields.fulfillmentType}
-                    area={deliveryAreaId}
-                    pickup={pickup}
-                    locationId={deliveryAreaId}
-                    onLocation={(id) => {
-                      setSelectedSavedAddressId('');
-                      setDeliveryAreaId(id);
-                      setQuote(null);
-                    }}
-                    onArea={(id) => {
-                      setSelectedSavedAddressId('');
-                      setDeliveryAreaId(id);
-                      setQuote(null);
-                    }}
-                    onPickup={(id) => {
-                      setPickup(id);
-                      setQuote(null);
-                    }}
-                  />
-                </fieldset>
-              )}
-              {fields.fulfillmentType === 'delivery' && (
-                <label className="grid gap-2 text-sm font-bold text-store-ink">
-                  {t.address}
-                  <Textarea
-                    autoComplete="street-address"
-                    dir="auto"
-                    value={fields.deliveryAddress}
-                    onChange={(event) => {
-                      setSelectedSavedAddressId('');
-                      update('deliveryAddress', event.currentTarget.value);
-                    }}
-                    placeholder={t.addressPlaceholder}
-                    minLength={8}
-                    maxLength={1000}
-                    required
-                    className="min-h-28 rounded-xl border-store-border bg-white text-base"
-                  />
-                </label>
-              )}
-            </Card>
           </fieldset>
 
           {orderMutation.isError && (

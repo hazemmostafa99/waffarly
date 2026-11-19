@@ -150,12 +150,11 @@ export function StorefrontHeader({ catalog }: { catalog: PublicStorefrontCatalog
         </div>
       </header>
 
-      {!/\/(?:login|account|checkout|order)(?:\/|$)/.test(pathname) &&
-        catalog.activity === 'restaurant' && (
-          <div className="mx-auto w-[calc(100%-2rem)] max-w-[1240px]">
-            <StorefrontFulfillmentPicker catalog={catalog} />
-          </div>
-        )}
+      {(isHome || isMenu) && catalog.activity === 'restaurant' && (
+        <div className="mx-auto w-[calc(100%-2rem)] max-w-[1240px]">
+          <StorefrontFulfillmentPicker catalog={catalog} />
+        </div>
+      )}
 
       <nav
         aria-label={t.mobileNavigation}
