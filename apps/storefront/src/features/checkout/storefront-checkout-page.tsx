@@ -118,9 +118,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
     );
     if (merchantChanged || signedInCustomerChanged) {
       setDraft((current) => ({
-        ...current,
-        customerName: undefined,
-        customerPhone: undefined,
+        discountCode: current.discountCode,
         deliveryAddress: '',
         ...(merchantChanged ? { discountCode: '' } : {}),
       }));

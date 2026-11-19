@@ -23,7 +23,7 @@ import {
 type AccountFieldProps = {
   id: string;
   label: string;
-  type?: 'text' | 'email' | 'tel';
+  type?: 'text' | 'email' | 'tel' | 'password';
   inputMode?: 'text' | 'email' | 'tel';
   required?: boolean;
   value: string;
@@ -238,12 +238,13 @@ export function StorefrontProfilePage() {
   });
 
   useEffect(() => {
-    if (!session.data || edited.current) return;
+    const customer = session.data;
+    if (!customer || edited.current) return;
     setFields((current) => ({
       ...current,
-      name: session.data.name,
-      phone: session.data.phone,
-      email: session.data.email,
+      name: customer.name,
+      phone: customer.phone,
+      email: customer.email,
     }));
   }, [session.data]);
 

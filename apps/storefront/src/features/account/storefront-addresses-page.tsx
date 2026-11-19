@@ -406,7 +406,7 @@ export function StorefrontAddressesPage() {
           {editing && (
             <AddressEditor
               key={editing === 'new' ? 'new' : editing.id}
-              address={editing === 'new' ? undefined : editing}
+              {...(editing === 'new' ? {} : { address: editing })}
               makeDefaultByDefault={addresses.data.length === 0}
               busy={save.isPending}
               error={save.isError ? errorText : ''}
