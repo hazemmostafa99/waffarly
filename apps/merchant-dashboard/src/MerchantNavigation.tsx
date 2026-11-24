@@ -1,21 +1,29 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useLocale } from '@waffarly/ui';
+import type { BusinessActivitySettings } from '@waffarly/contracts';
 import { Icon } from './Icons.js';
 import {
   dashboardLink,
   settingsLink,
-  merchantNavigationGroups,
+  navigationGroupsForActivity,
   findMerchantNavigationLink,
   type MerchantNavigationLink,
   type MerchantNavigationGroup,
 } from './merchant-navigation.js';
 
-export function MerchantNavigation({ onNavigate }: { onNavigate: () => void }) {
+export function MerchantNavigation({
+  onNavigate,
+  activitySettings,
+}: {
+  onNavigate: () => void;
+  activitySettings: BusinessActivitySettings;
+}) {
   const { locale, t } = useLocale();
   const { pathname } = useLocation();
+  const groups = navigationGroupsForActivity(activitySettings);
   const current = findMerchantNavigationLink(pathname);
-  const activeGroup = merchantNavigationGroups.find((group) =>
+  const activeGroup = groups.find((group) =>
     current ? group.links.includes(current) : false,
   );
   const [openState, setOpenState] = useState({
@@ -44,7 +52,7 @@ export function MerchantNavigation({ onNavigate }: { onNavigate: () => void }) {
   return (
     <nav aria-label={t('Merchant navigation')}>
       {renderLink(dashboardLink)}
-      {merchantNavigationGroups.map((group) => (
+      {groups.map((group) => (
         <NavigationGroup
           key={group.id}
           group={group}

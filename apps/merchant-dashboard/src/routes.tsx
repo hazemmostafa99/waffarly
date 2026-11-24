@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ReactNode } from 'react';
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, useOutletContext } from 'react-router-dom';
 import { MerchantLayout } from './MerchantLayout.js';
+import type { MerchantOutletContext } from './lib/merchant-context.js';
 import { MerchantRouteLoading } from './components/MerchantRouteLoading.js';
 import { MerchantRouteBoundary } from './components/MerchantRouteBoundary.js';
 
@@ -126,6 +127,12 @@ function loadOnRoute(element: ReactNode) {
   );
 }
 
+/** A pasted tables URL follows the same activity rule as the sidebar link. */
+function DiningTablesRoute() {
+  const { activitySettings } = useOutletContext<MerchantOutletContext>();
+  return activitySettings.hasDiningTables ? loadOnRoute(<TablesPage />) : <Navigate to="/" replace />;
+}
+
 export const router = createBrowserRouter([
   {
     path: '/design-system',
@@ -193,7 +200,7 @@ export const router = createBrowserRouter([
       { path: 'delivery-couriers', element: loadOnRoute(<CouriersPage />) },
       { path: 'pos-registers', element: loadOnRoute(<RegistersPage />) },
       { path: 'pos-cash', element: loadOnRoute(<CashCustodyPage />) },
-      { path: 'pos-tables', element: loadOnRoute(<TablesPage />) },
+      { path: 'pos-tables', element: <DiningTablesRoute /> },
       { path: 'pos-shift-reports', element: loadOnRoute(<ReferenceReportsPage />) },
       { path: 'pos-item-returns', element: loadOnRoute(<ReferenceReportsPage />) },
       { path: 'pos-operations', element: loadOnRoute(<ReferenceReportsPage />) },

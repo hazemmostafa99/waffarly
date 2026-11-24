@@ -785,9 +785,7 @@ export function ProductBuilderPage() {
                   enabled: promotionEnabled,
                   type: promotionType,
                   value: Number(promotionValue).toFixed(2),
-                  startsAt: promotionStartsAt
-                    ? fromCairoDateTimeInput(promotionStartsAt)
-                    : null,
+                  startsAt: promotionStartsAt ? fromCairoDateTimeInput(promotionStartsAt) : null,
                   endsAt: promotionEndsAt ? fromCairoDateTimeInput(promotionEndsAt) : null,
                 }
               : null,
@@ -826,9 +824,7 @@ export function ProductBuilderPage() {
   return (
     <div className="product-builder-page" dir={isArabic ? 'rtl' : 'ltr'}>
       <h1 className="sr-only">
-        {isEditing
-          ? text('Edit product', 'تعديل المنتج')
-          : text('Create a product', 'إضافة منتج')}
+        {isEditing ? text('Edit product', 'تعديل المنتج') : text('Create a product', 'إضافة منتج')}
       </h1>
 
       <div
@@ -918,6 +914,7 @@ export function ProductBuilderPage() {
             >
               {activeTab === 0 && (
                 <ProductInformationTab
+                  clothing={profile.activity === 'clothing'}
                   name={name}
                   onNameChange={setName}
                   description={description}
@@ -935,7 +932,9 @@ export function ProductBuilderPage() {
                   onPromotionStartsAtChange={setPromotionStartsAt}
                   promotionEndsAt={promotionEndsAt}
                   onPromotionEndsAtChange={setPromotionEndsAt}
-                  previewPrices={variants.length ? variants.map((variant) => variant.price) : [basePrice]}
+                  previewPrices={
+                    variants.length ? variants.map((variant) => variant.price) : [basePrice]
+                  }
                   formatNumber={formatNumber}
                   categories={categories}
                   categoryIds={categoryIds}
@@ -955,6 +954,7 @@ export function ProductBuilderPage() {
               )}
               <div hidden={activeTab !== 1}>
                 <OptionsTab
+                  clothing={profile.activity === 'clothing'}
                   key={productId ?? 'new-product'}
                   groups={groups}
                   recipe={inventoryEnabled && inventoryMode === 'RECIPE'}

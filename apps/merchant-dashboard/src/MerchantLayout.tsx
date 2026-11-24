@@ -86,7 +86,10 @@ export function MerchantLayout() {
         >
           <Icon name="close" />
         </button>
-        <MerchantNavigation onNavigate={() => setMenuOpen(false)} />
+        <MerchantNavigation
+          activitySettings={resolveBusinessActivitySettings(profile.activity)}
+          onNavigate={() => setMenuOpen(false)}
+        />
         <div className="merchant-sidebar-footer">
           <NavLink to="/account" className="min-w-0 no-underline">
             <SubscriptionStatusBadge status={profile.subscriptionStatus} />

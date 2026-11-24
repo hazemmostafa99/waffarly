@@ -5,6 +5,7 @@ import { CustomerChoicesPreview } from './CustomerChoicesPreview.js';
 import type { VariantDraft } from './product-builder.types.js';
 
 export function VariantComposer({
+  clothing,
   variants,
   basePrice,
   onApply,
@@ -12,6 +13,7 @@ export function VariantComposer({
   initialDraft,
   text,
 }: {
+  clothing: boolean;
   variants: VariantDraft[];
   basePrice: string;
   onApply: (variants: VariantDraft[]) => void;
@@ -29,7 +31,12 @@ export function VariantComposer({
       barcode: '',
       stockQuantity: '',
       availability: 'available',
-      attributes: [],
+      attributes: clothing
+        ? [
+            { name: text('Size', 'المقاس'), value: '' },
+            { name: text('Color', 'اللون'), value: '' },
+          ]
+        : [],
     };
   }
   const [draft, setDraft] = useState<VariantDraft[]>(() =>
@@ -37,7 +44,9 @@ export function VariantComposer({
       ? structuredClone(initialDraft)
       : variants.length
         ? structuredClone(variants)
-        : [text('Small', 'صغير'), text('Medium', 'وسط'), text('Large', 'كبير')].map(newVariant),
+        : clothing
+          ? [newVariant()]
+          : [text('Small', 'صغير'), text('Medium', 'وسط'), text('Large', 'كبير')].map(newVariant),
   );
   const baseline = useRef(JSON.stringify(draft));
   const [touched, setTouched] = useState<Set<string>>(new Set());
@@ -219,10 +228,18 @@ export function VariantComposer({
       onOpenChange={(open) => {
         if (!open) suspend();
       }}
-      title={text('Sizes and types', 'الأحجام والأنواع')}
+      title={
+        clothing
+          ? text('Sizes and colors', 'المقاسات والألوان')
+          : text('Sizes and types', 'الأحجام والأنواع')
+      }
       description={text(
-        'Set a selling price for each size or type. Apply when you are ready.',
-        'حدّد سعر بيع كل حجم أو نوع، ثم طبّق التغييرات عند الانتهاء.',
+        clothing
+          ? 'Add one row per size and color. Fill the two attributes below, then apply.'
+          : 'Set a selling price for each size or type. Apply when you are ready.',
+        clothing
+          ? 'أضف صفًا لكل مقاس ولون. أكمل الخاصيتين بالأسفل، ثم طبّق.'
+          : 'حدّد سعر بيع كل حجم أو نوع، ثم طبّق التغييرات عند الانتهاء.',
       )}
       closeLabel={text('Close', 'إغلاق')}
       className="choice-composer-dialog variant-composer-dialog"
@@ -252,7 +269,11 @@ export function VariantComposer({
           <div className="choice-composer-rows variant-composer-rows">
             {draft.length > 0 && (
               <div className="choice-composer-table-head" aria-hidden="true">
-                <span>{text('Size or type name', 'اسم الحجم أو النوع')}</span>
+                <span>
+                  {clothing
+                    ? text('Size / color name', 'اسم المقاس واللون')
+                    : text('Size or type name', 'اسم الحجم أو النوع')}
+                </span>
                 <span>{text('Selling price (EGP)', 'سعر البيع (ج.م)')}</span>
                 <span />
               </div>
@@ -278,7 +299,11 @@ export function VariantComposer({
                         }}
                         value={variant.name}
                         maxLength={160}
-                        placeholder={text('e.g. Large', 'مثال: كبير')}
+                        placeholder={
+                          clothing
+                            ? text('e.g. M / Black', 'مثال: M / أسود')
+                            : text('e.g. Large', 'مثال: كبير')
+                        }
                         aria-invalid={showError(`${variant.id}:name`) && Boolean(errors.name)}
                         onBlur={() => markTouched(`${variant.id}:name`)}
                         aria-describedby={

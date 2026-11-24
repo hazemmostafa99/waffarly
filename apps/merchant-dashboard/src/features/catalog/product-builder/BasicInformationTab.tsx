@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ProductPromotionFields } from './ProductPromotionFields.js';
 
 export function BasicInformationTab({
+  clothing,
   name,
   onNameChange,
   description,
@@ -23,6 +24,7 @@ export function BasicInformationTab({
   formatNumber,
   text,
 }: {
+  clothing: boolean;
   name: string;
   onNameChange: (value: string) => void;
   description: string;
@@ -58,7 +60,11 @@ export function BasicInformationTab({
             maxLength={160}
             value={name}
             onChange={(event) => onNameChange(event.target.value)}
-            placeholder={text('e.g. Classic burger', 'مثال: برجر كلاسيك')}
+            placeholder={
+              clothing
+                ? text('e.g. Cotton T-shirt', 'مثال: تيشيرت قطن')
+                : text('e.g. Classic burger', 'مثال: برجر كلاسيك')
+            }
           />
           <small>
             {text(
@@ -93,8 +99,12 @@ export function BasicInformationTab({
           {productMode === 'variants' && (
             <small>
               {text(
-                'Required for the catalog. Each size uses its own price when available.',
-                'مطلوب للكتالوج. يظهر سعر كل حجم بدلًا منه عند اختيار الأحجام.',
+                clothing
+                  ? 'Required for the catalog. Each size and color choice can have its own price.'
+                  : 'Required for the catalog. Each size uses its own price when available.',
+                clothing
+                  ? 'مطلوب للكتالوج. يمكن تحديد سعر مستقل لكل مقاس ولون.'
+                  : 'مطلوب للكتالوج. يظهر سعر كل حجم بدلًا منه عند اختيار الأحجام.',
               )}
             </small>
           )}
@@ -132,8 +142,12 @@ export function BasicInformationTab({
             value={description}
             onChange={(event) => onDescriptionChange(event.target.value)}
             placeholder={text(
-              'Describe the ingredients or what makes it special.',
-              'اكتب وصفًا للمكونات أو ما يميز المنتج.',
+              clothing
+                ? 'Describe the fabric, fit, and care details customers need.'
+                : 'Describe the ingredients or what makes it special.',
+              clothing
+                ? 'اذكر الخامة والمقاس المناسب وطريقة العناية بالمنتج.'
+                : 'اكتب وصفًا للمكونات أو ما يميز المنتج.',
             )}
           />
           <small>{text(String(description.length), String(description.length) + '/1000')}</small>

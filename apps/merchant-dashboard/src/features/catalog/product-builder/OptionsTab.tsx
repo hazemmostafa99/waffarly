@@ -11,6 +11,7 @@ import { Icon } from '../../../Icons.js';
 import type { ChoiceGroupDraft, GroupDraft, VariantDraft } from './product-builder.types.js';
 
 export function OptionsTab({
+  clothing,
   groups,
   recipe,
   productMode,
@@ -28,6 +29,7 @@ export function OptionsTab({
   onVariantsChange,
   text,
 }: {
+  clothing: boolean;
   groups: GroupDraft[];
   recipe: boolean;
   productMode: 'simple' | 'variants';
@@ -119,7 +121,9 @@ export function OptionsTab({
   function applyVariants(next: VariantDraft[]) {
     onVariantsChange(next);
     setFeedback({
-      message: text('Sizes and prices updated.', 'تم تحديث الأحجام والأسعار.'),
+      message: clothing
+        ? text('Sizes, colors, and prices updated.', 'تم تحديث المقاسات والألوان والأسعار.')
+        : text('Sizes and prices updated.', 'تم تحديث الأحجام والأسعار.'),
       target: 'variants',
     });
   }
@@ -131,8 +135,12 @@ export function OptionsTab({
           <h2>{text('Customer choices', 'خيارات العميل')}</h2>
           <p>
             {text(
-              'Start with one price. Add sizes or extras only when customers need them.',
-              'ابدأ بسعر واحد. أضف أحجامًا أو إضافات فقط إذا احتاج العميل إليها.',
+              clothing
+                ? 'Add a size and color choice for each item you sell.'
+                : 'Start with one price. Add sizes or extras only when customers need them.',
+              clothing
+                ? 'أضف اختيار المقاس واللون لكل قطعة تبيعها.'
+                : 'ابدأ بسعر واحد. أضف أحجامًا أو إضافات فقط إذا احتاج العميل إليها.',
             )}
           </p>
         </div>
@@ -159,7 +167,11 @@ export function OptionsTab({
           </p>
           {variantDraft && (
             <div>
-              <span>{text('Sizes and types', 'الأحجام والأنواع')}</span>
+              <span>
+                {clothing
+                  ? text('Sizes and colors', 'المقاسات والألوان')
+                  : text('Sizes and types', 'الأحجام والأنواع')}
+              </span>
               <button
                 type="button"
                 className="builder-text-button"
@@ -223,11 +235,19 @@ export function OptionsTab({
             <span className="builder-template-icon">
               <Icon name="layers" />
             </span>
-            <strong>{text('Sizes or types', 'أحجام أو أنواع')}</strong>
+            <strong>
+              {clothing
+                ? text('Sizes and colors', 'المقاسات والألوان')
+                : text('Sizes or types', 'أحجام أو أنواع')}
+            </strong>
             <small>
               {text(
-                'Small, medium, large — each with its own price.',
-                'صغير، وسط، كبير — لكل حجم سعره.',
+                clothing
+                  ? 'Create one sellable choice for each size and color, with its own price.'
+                  : 'Small, medium, large — each with its own price.',
+                clothing
+                  ? 'أنشئ اختيارًا مستقلًا لكل مقاس ولون، بسعره الخاص.'
+                  : 'صغير، وسط، كبير — لكل حجم سعره.',
               )}
             </small>
             <span className="builder-template-action">
@@ -484,6 +504,7 @@ export function OptionsTab({
       )}
       {variantsOpen && (
         <VariantComposer
+          clothing={clothing}
           variants={variants}
           basePrice={basePrice}
           initialDraft={variantDraft ?? undefined}

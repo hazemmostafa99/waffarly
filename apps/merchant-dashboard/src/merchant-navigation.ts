@@ -1,4 +1,6 @@
 // Sidebar labels and destinations; routes retain their existing public URLs.
+import type { BusinessActivitySettings } from '@waffarly/contracts';
+
 export type MerchantNavigationLink = {
   path: string;
   en: string;
@@ -176,6 +178,18 @@ export const merchantNavigationGroups: MerchantNavigationGroup[] = [
     ],
   },
 ];
+
+/** Keep restaurant-only destinations out of other merchants' sidebars. */
+export function navigationGroupsForActivity(
+  settings: BusinessActivitySettings,
+): MerchantNavigationGroup[] {
+  if (settings.hasDiningTables) return merchantNavigationGroups;
+  return merchantNavigationGroups.map((group) =>
+    group.id === 'pos'
+      ? { ...group, links: group.links.filter((link) => link.path !== '/pos-tables') }
+      : group,
+  );
+}
 
 export function findMerchantNavigationLink(pathname: string): MerchantNavigationLink | undefined {
   const links = [

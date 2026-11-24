@@ -3,6 +3,7 @@ import { BasicInformationTab } from './BasicInformationTab.js';
 import { ProductDetailsTab } from './ProductDetailsTab.js';
 
 export function ProductInformationTab({
+  clothing,
   name,
   onNameChange,
   description,
@@ -34,6 +35,7 @@ export function ProductInformationTab({
   uploading,
   text,
 }: {
+  clothing: boolean;
   name: string;
   onNameChange: (value: string) => void;
   description: string;
@@ -80,6 +82,7 @@ export function ProductInformationTab({
         </div>
       </div>
       <BasicInformationTab
+        clothing={clothing}
         name={name}
         onNameChange={onNameChange}
         description={description}

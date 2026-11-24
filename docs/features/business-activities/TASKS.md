@@ -9,8 +9,8 @@ actual files changed and checks run in [HANDOFF.md](HANDOFF.md).
 | 01 | Record the current restaurant journeys | User accepted the running restaurant flow on 2026-11-24; agent source checks are recorded and individual live checks remain unrun | Existing behavior |
 | 02 | Define simple activity settings | Defined in shared contracts on 2026-11-24; restaurant initially selects `RECIPE` but can also use `DIRECT`; other current keys initially select `DIRECT` | Shared activity definition |
 | 03 | Deliver the chosen activity to merchant apps | API POS session now includes activity; owner and POS outlet contexts resolve settings; missing or unknown activity uses `other` settings | Merchant account and apps |
-| 04 | Make dashboard navigation fit the activity | Clothing does not see restaurant-only pages; direct routes follow the same rule | Merchant dashboard |
-| 05 | Finish a clothing product flow | A clothing item can be set up with its sellable size/color choices and reviewed | Catalog |
+| 04 | Make dashboard navigation fit the activity | Tables sidebar link and `/pos-tables` route are available only when `hasDiningTables` is true; other shared pages remain available | Merchant dashboard |
+| 05 | Finish a clothing product flow | First UI slice done: clothing guidance and editable size/color variant starter. Saving and review through a live clothing merchant remain to be checked | Catalog |
 | 06 | Finish clothing stock flow | Each sellable choice uses the correct stock and stock changes can be reviewed | Inventory |
 | 07 | Finish clothing POS sale | Cashier can find, sell, and review the correct choice with correct price and stock effect | POS and sales |
 | 08 | Finish clothing return flow | A return records the selected choice and applies the right stock rule | POS and returns |
