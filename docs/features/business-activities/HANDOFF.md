@@ -11,8 +11,9 @@ and [task list](TASKS.md).
 
 ## Current state
 
-- Workspace: `F:\Projects\waffarly`; branch checked before this documentation
-  change: `main`; working tree was clean.
+- Workspace: `F:\Projects\waffarly`; current branch: `business-activities`.
+  It was created from `main` at the user's request and renamed from the
+  initial `codex/business-activities` name at their request.
 - Approved scope in this chat: create the English plan, small task list,
   project workflow rules, documentation index link, and this handoff. No feature
   code implementation was approved or started.
@@ -28,19 +29,24 @@ and [task list](TASKS.md).
 - `TASKS.md`: ordered, small delivery tasks and their completion conditions.
 - Root `AGENTS.md`: feature coding and handoff rules.
 - `docs/README.md`: entry link for future work.
+- `RESTAURANT_BASELINE.md`: Task 01 checklist; all live steps remain not run.
 
 ## Checks and limits
 
-The new files and entry links were checked, and `git diff --check` passed. No code
-tests, builds, or live restaurant/POS journeys have been run for this
-documentation-only task. Example behavior for future activities is proposed,
-not implemented or verified. The exact scope of supermarket and home
-goods/electrical activities still needs a decision before their tasks.
+The original documentation links and `git diff --check` passed. Task 01 source
+review confirmed restaurant recipe defaults and settings routing. Live
+restaurant/POS journeys have not run: local app and PostgreSQL ports are closed,
+Corepack cannot reach the registry for pinned pnpm, and Docker engine access was
+denied in this session. See `RESTAURANT_BASELINE.md` for exact results. Example
+behavior for future activities is proposed, not implemented or verified. The
+exact scope of supermarket and home goods/electrical activities still needs a
+decision before their tasks.
 
 ## Next action
 
-Start Task 01 by writing and running a focused manual baseline for existing
-restaurant journeys. Before any code edit, verify current branch and working
-tree, read relevant feature instructions, and present a complete task plan for
-approval. This handoff records the documentation approval only; it does not
-approve later implementation.
+Continue Task 01 by running the focused manual baseline in
+`RESTAURANT_BASELINE.md` once local services and disposable demo data are
+available. Record actual results and close the task only after those checks.
+Before any code edit, verify current branch and working tree, read relevant
+feature instructions, and present a complete task plan for approval. This
+handoff does not approve later implementation.
