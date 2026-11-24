@@ -132,7 +132,7 @@ export function Component() {
   }, []);
   useEffect(() => {
     const title = document.title;
-    document.title = 'Waffarly · POS design preview';
+    document.title = 'Wfarly · POS design preview';
     return () => {
       document.title = title;
     };
@@ -245,7 +245,7 @@ export function Component() {
         >
           <Link
             to="/prototype"
-            aria-label={t('Waffarly design preview')}
+            aria-label={t('Wfarly design preview')}
             className="mb-8 flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground"
           >
             <svg width="27" height="27" viewBox="0 0 28 28" aria-hidden="true">

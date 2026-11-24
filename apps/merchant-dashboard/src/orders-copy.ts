@@ -21,7 +21,7 @@ const arabic: Record<string, string> = {
   'All fulfillment': 'كل طرق الاستلام',
   'All sources': 'كل المصادر',
   'Order source': 'مصدر الطلب',
-  Waffarly: 'وفّرلي',
+  Wfarly: 'وفّرلي',
   Storefront: 'المتجر الإلكتروني',
   POS: 'نقطة البيع',
   Pickup: 'استلام من المتجر',

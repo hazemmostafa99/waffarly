@@ -129,7 +129,7 @@ const messages = {
     footerHome: 'Home',
     footerCart: 'Basket',
     footerCheckout: 'Checkout',
-    footerCredit: 'Restaurant storefront by Waffarly',
+    footerCredit: 'Restaurant storefront by Wfarly',
     announcement: 'Welcome to {{name}} · Explore the menu',
     home: 'Home',
     menu: 'Menu',

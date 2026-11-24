@@ -19,7 +19,7 @@ const tabs: { id: Tab; icon: string; ar: string; en: string }[] = [
     id: 'publication',
     icon: 'store',
     ar: 'الظهور على وفرلي',
-    en: 'Visibility on Waffarly',
+    en: 'Visibility on Wfarly',
   },
   {
     id: 'hours',

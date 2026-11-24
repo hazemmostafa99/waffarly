@@ -84,7 +84,7 @@ export function Login() {
               <LayoutGrid aria-hidden="true" size={18} />
             </span>
             <span className="hidden truncate text-sm font-semibold tracking-tight sm:inline">
-              {t('Waffarly · POS')}
+              {t('Wfarly · POS')}
             </span>
           </div>
 

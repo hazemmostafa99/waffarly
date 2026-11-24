@@ -191,7 +191,7 @@ export function MerchantsPage() {
         <CompactStatCard
           label={t('Businesses')}
           value={merchants.data?.length ?? '—'}
-          helper={t('Businesses registered on Waffarly')}
+          helper={t('Businesses registered on Wfarly')}
           icon={Store}
           tone="mint"
           loading={merchants.isPending}

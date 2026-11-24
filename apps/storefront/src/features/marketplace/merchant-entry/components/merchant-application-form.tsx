@@ -75,7 +75,7 @@ export function MerchantApplicationForm({ onSubmitted }: { onSubmitted?: () => v
           ? failure instanceof ApiError && failure.statusCode === 400
             ? 'راجع البيانات وأرقام التواصل وحاول مرة أخرى.'
             : 'تعذر تأكيد استلام الطلب. تحقق مع فريق وفّرلي قبل إعادة الإرسال لتجنب تكراره.'
-          : 'We could not confirm receipt. Check with Waffarly before resubmitting to avoid a duplicate.',
+          : 'We could not confirm receipt. Check with Wfarly before resubmitting to avoid a duplicate.',
       );
     } finally {
       busy.current = false;
@@ -103,7 +103,7 @@ export function MerchantApplicationForm({ onSubmitted }: { onSubmitted?: () => v
           <p className="mb-0 mt-1 text-[13px] leading-6 text-muted-foreground">
             {isArabic
               ? 'فريق وفّرلي هيراجع بيانات نشاطك ويتواصل معاك.'
-              : 'The Waffarly team will review your business details and contact you.'}
+              : 'The Wfarly team will review your business details and contact you.'}
           </p>
         </div>
         <div className="mt-1 w-full rounded-2xl border border-border bg-[var(--purple-50)] p-4 text-start">

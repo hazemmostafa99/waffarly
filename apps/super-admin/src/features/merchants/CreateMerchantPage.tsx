@@ -389,7 +389,7 @@ export function CreateMerchantPage() {
             <RuleStep
               number="3"
               title={t('Record activation separately')}
-              description={t('Only activate after the first month was collected outside Waffarly.')}
+              description={t('Only activate after the first month was collected outside Wfarly.')}
             />
           </div>
           <Link
