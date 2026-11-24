@@ -6,8 +6,8 @@ actual files changed and checks run in [HANDOFF.md](HANDOFF.md).
 
 | ID | Task | Done when | Main area |
 | --- | --- | --- | --- |
-| 01 | Record the current restaurant journeys | Product, recipe stock, POS, order, return, and settings checks are written with actual results | Existing behavior |
-| 02 | Define simple activity settings | Each supported activity has an easy-to-read set of supported actions; restaurant gives today's results | Shared activity definition |
+| 01 | Record the current restaurant journeys | User accepted the running restaurant flow on 2026-11-24; agent source checks are recorded and individual live checks remain unrun | Existing behavior |
+| 02 | Define simple activity settings | Defined in shared contracts on 2026-11-24; restaurant initially selects `RECIPE` but can also use `DIRECT`; other current keys initially select `DIRECT` | Shared activity definition |
 | 03 | Deliver the chosen activity to merchant apps | The signed-in merchant receives the correct settings; missing or unknown values have a safe, explicit result | Merchant account and apps |
 | 04 | Make dashboard navigation fit the activity | Clothing does not see restaurant-only pages; direct routes follow the same rule | Merchant dashboard |
 | 05 | Finish a clothing product flow | A clothing item can be set up with its sellable size/color choices and reviewed | Catalog |

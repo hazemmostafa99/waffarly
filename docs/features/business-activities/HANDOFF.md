@@ -29,24 +29,43 @@ and [task list](TASKS.md).
 - `TASKS.md`: ordered, small delivery tasks and their completion conditions.
 - Root `AGENTS.md`: feature coding and handoff rules.
 - `docs/README.md`: entry link for future work.
-- `RESTAURANT_BASELINE.md`: Task 01 checklist; all live steps remain not run.
+- `RESTAURANT_BASELINE.md`: Task 01 checklist and user-accepted restaurant
+  baseline; individual steps were not independently run by the agent.
+
+## Task 02 implementation
+
+User approved the limited shared-settings task. `packages/contracts/src/activities.ts`
+now defines `BUSINESS_ACTIVITY_SETTINGS` for every current key. Restaurants
+initially select recipe stock and have kitchen and tables; the other keys
+initially select direct stock and have no kitchen or tables.
+`packages/contracts/src/index.ts` exports it. These are
+target settings only; no dashboard, POS, API, or database behavior reads them
+yet. `TASKS.md` records the completed definition.
+`defaultInventoryMode` is only the new-product starting choice. The user
+clarified that restaurant products may use either `RECIPE` or `DIRECT`, and the
+current product builder offers both; the shared settings must not restrict it.
+The local TypeScript compiler completed `packages/contracts/tsconfig.json`
+with `--noEmit` successfully; `git diff --check` passed. No app flow or
+automated test suite was run for this constants-only task.
 
 ## Checks and limits
 
 The original documentation links and `git diff --check` passed. Task 01 source
-review confirmed restaurant recipe defaults and settings routing. Live
-restaurant/POS journeys have not run: local app and PostgreSQL ports are closed,
-Corepack cannot reach the registry for pinned pnpm, and Docker engine access was
-denied in this session. See `RESTAURANT_BASELINE.md` for exact results. Example
+review confirmed restaurant recipe defaults and settings routing. The user's
+running restaurant flow was accepted by the user as working. The agent's port
+checks were from a separate command session and do not establish the state of
+the user's running apps. Browser inspection was unavailable because Computer
+Use could not determine the current URL safely. Corepack could not reach the
+registry for pinned pnpm, and Docker engine access was denied in the command
+session. See `RESTAURANT_BASELINE.md` for exact results. Example
 behavior for future activities is proposed, not implemented or verified. The
 exact scope of supermarket and home goods/electrical activities still needs a
 decision before their tasks.
 
 ## Next action
 
-Continue Task 01 by running the focused manual baseline in
-`RESTAURANT_BASELINE.md` once local services and disposable demo data are
-available. Record actual results and close the task only after those checks.
-Before any code edit, verify current branch and working tree, read relevant
-feature instructions, and present a complete task plan for approval. This
-handoff does not approve later implementation.
+Task 01 is closed on the user's acceptance, with independent agent checks
+clearly marked as not run. Task 02 adds only the shared definition. Next, plan
+Task 03 to deliver the chosen activity settings to the merchant apps. Verify
+the branch and working tree and get approval for that task's full scope before
+editing. Task 02 approval does not approve Task 03.

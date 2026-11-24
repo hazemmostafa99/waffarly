@@ -19,7 +19,9 @@ to be agreed before their tasks start.
 - Activity is mainly a classification today. It is not a complete switch for
   dashboard, POS, and stock behavior.
 - Some restaurant behavior is already separate: restaurant settings and recipe
-  stock usage. Other activities default to direct stock usage. The merchant menu
+  stock usage. A restaurant product can use either `RECIPE` or `DIRECT`; `RECIPE`
+  is only the initial choice for a new product. Other activities initially
+  select `DIRECT`. The merchant menu
   still contains restaurant items such as tables for everyone.
 - Existing restaurant flows are the reference behavior to preserve.
 
@@ -44,7 +46,7 @@ access or staff permissions.
 | Area | Restaurant | Clothing | Supermarket | Home goods / electrical |
 | --- | --- | --- | --- | --- |
 | Products | Menu items, choices, recipes | Items with size and color | Barcodes and selling units | Models and useful details |
-| Stock | Ingredients consumed by recipe | Quantity for each sellable choice | Direct quantity and packs | Direct quantity by item or model |
+| Stock | Recipe ingredients or a ready-made item, chosen per product | Quantity for each sellable choice | Direct quantity and packs | Direct quantity by item or model |
 | POS | Orders, kitchen, and tables where used | Direct sale and item returns | Fast direct sale | Direct sale; warranty only if required |
 | Dashboard | Order and preparation work | Sales, stock, and returns | Sales and low stock | Sales and stock |
 
