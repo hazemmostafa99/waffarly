@@ -25,6 +25,7 @@ belong with their feature; keep this directory's root for this index.
 - [Purchase cost and product profitability — phased delivery](features/purchase-cost-profitability/README.md)
 - [Catalog](features/catalog/OVERVIEW.md)
 - [Super Admin](features/super-admin/OVERVIEW.md)
+- [Business activities delivery plan](features/business-activities/README.md)
 
 Plans and progress notes record their original scope and date. For implemented
 behavior, follow the delivery documents and any superseding updates they link to.
