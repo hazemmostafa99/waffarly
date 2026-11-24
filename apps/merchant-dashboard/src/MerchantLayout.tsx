@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { useLocale } from '@waffarly/ui';
 import { useCallback, useEffect, useState } from 'react';
-import type { OwnerProfile } from '@waffarly/contracts';
+import { resolveBusinessActivitySettings, type OwnerProfile } from '@waffarly/contracts';
 import { apiRequest } from './lib/api-client.js';
 import { Icon } from './Icons.js';
 import { dashboardCopy } from './dashboard-copy.js';
@@ -211,7 +211,14 @@ export function MerchantLayout() {
               {errorText(error)}
             </p>
           )}
-          <Outlet context={{ profile, search, updateProfile }} />
+          <Outlet
+            context={{
+              profile,
+              activitySettings: resolveBusinessActivitySettings(profile.activity),
+              search,
+              updateProfile,
+            }}
+          />
           <footer className="merchant-content-footer">
             {t('Waffarly')} <span>·</span> {t('Everything your business needs, in one place.')}
           </footer>

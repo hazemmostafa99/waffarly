@@ -25,6 +25,16 @@ export const BUSINESS_ACTIVITY_SETTINGS: Record<BusinessActivityKey, BusinessAct
   other: { defaultInventoryMode: 'DIRECT', hasKitchen: false, hasDiningTables: false },
 };
 
+/** Return safe retail defaults for a missing or unknown stored activity key. */
+export function resolveBusinessActivitySettings(
+  activity: string | null | undefined,
+): BusinessActivitySettings {
+  if (!BUSINESS_ACTIVITY_KEYS.includes(activity as BusinessActivityKey)) {
+    return BUSINESS_ACTIVITY_SETTINGS.other;
+  }
+  return BUSINESS_ACTIVITY_SETTINGS[activity as BusinessActivityKey];
+}
+
 export interface BusinessActivitySummary {
   key: BusinessActivityKey;
   name: string;

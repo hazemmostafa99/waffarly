@@ -128,6 +128,8 @@ export interface PosEmployeeSummary {
 export interface PosEmployeeSession {
   id: string;
   merchantId: string;
+  /** Returned by the API; optional for older in-process employee actors. */
+  activity?: import('./activities.js').BusinessActivityKey;
   username: string;
   displayName: string;
   role: PosEmployeeRole | null;

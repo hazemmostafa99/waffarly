@@ -144,6 +144,7 @@ export {
   BUSINESS_ACTIVITY_KEYS,
   BUSINESS_ACTIVITY_LABELS,
   BUSINESS_ACTIVITY_SETTINGS,
+  resolveBusinessActivitySettings,
   type BusinessActivityKey,
   type BusinessActivitySettings,
   type BusinessActivitySummary,

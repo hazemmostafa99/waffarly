@@ -225,6 +225,7 @@ export class AuthService {
     return {
       id: employee.id,
       merchantId: employee.merchantId,
+      activity: employee.merchant.activity as BusinessActivityKey,
       username: employee.username,
       displayName: employee.displayName,
       role: isPosEmployeeRole(employee.role) ? employee.role : null,

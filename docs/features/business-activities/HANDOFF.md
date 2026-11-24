@@ -48,6 +48,19 @@ The local TypeScript compiler completed `packages/contracts/tsconfig.json`
 with `--noEmit` successfully; `git diff --check` passed. No app flow or
 automated test suite was run for this constants-only task.
 
+## Task 03 implementation
+
+User approved passing the chosen activity to both merchant apps. The owner
+profile already contained `activity`; API POS sessions now include the merchant
+activity. `resolveBusinessActivitySettings` returns the selected settings and
+uses the `other` settings for a missing or unknown key. Dashboard and POS
+layouts place the resolved settings in their outlet contexts for later tasks.
+No navigation, sale, stock, or restaurant product-mode behavior changed.
+
+Contracts build, API/dashboard/POS typechecks, and direct resolver assertions
+for restaurant, clothing, unknown, and missing keys passed. No live app journey
+or API/database suite was run for this wiring task.
+
 ## Checks and limits
 
 The original documentation links and `git diff --check` passed. Task 01 source
@@ -64,8 +77,7 @@ decision before their tasks.
 
 ## Next action
 
-Task 01 is closed on the user's acceptance, with independent agent checks
-clearly marked as not run. Task 02 adds only the shared definition. Next, plan
-Task 03 to deliver the chosen activity settings to the merchant apps. Verify
-the branch and working tree and get approval for that task's full scope before
-editing. Task 02 approval does not approve Task 03.
+Tasks 01–03 are recorded above. Next, plan Task 04: make dashboard navigation
+fit the activity, including direct-route behavior. Verify the branch and working
+tree and get approval for that task's full scope before editing. Task 03
+approval does not approve Task 04.
