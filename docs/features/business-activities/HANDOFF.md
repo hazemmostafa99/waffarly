@@ -1,6 +1,6 @@
 # Business activities handoff
 
-Updated: 2026-11-24
+Updated: 2026-11-25
 
 ## Goal and acceptance
 
@@ -90,6 +90,14 @@ files were formatted. A live clothing merchant create/save/reopen flow was not
 run, so Task 05 remains in progress until that review is recorded.
 
 ## Checks and limits
+
+On 2026-11-25, `main` was merged into `business-activities` as `02038d5a`
+with no conflicts. The new `main` commit renamed Waffarly display text to
+Wfarly across the apps; it did not add another business-activity task or
+change the database schema. Both the new display text and activity-aware
+dashboard/Product Builder code remain present after the merge. TypeScript
+checks passed for merchant-dashboard, POS, storefront, super-admin, and UI.
+The merge was not pushed. Work continues on `business-activities`.
 
 The original documentation links and `git diff --check` passed. Task 01 source
 review confirmed restaurant recipe defaults and settings routing. The user's
