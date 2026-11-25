@@ -15,7 +15,7 @@ export function reportSourceLabel(source: string, locale: string): string {
   const names: Record<string, [string, string]> = {
     pos: ['Point of sale', 'نقاط البيع'],
     storefront: ['Your storefront', 'متجرك الإلكتروني'],
-    waffarly: ['Waffarly', 'وفرلي'],
+    waffarly: ['Wfarly', 'وفرلي'],
   };
   return names[source]?.[locale === 'ar' ? 1 : 0] ?? source;
 }

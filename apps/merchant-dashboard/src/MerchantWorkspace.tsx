@@ -569,7 +569,7 @@ export function MerchantWorkspace({
             ❖
           </span>
           <span>
-            <strong>{t('Waffarly')}</strong>
+            <strong>{t('Wfarly')}</strong>
             <small>{t('Merchant')}</small>
           </span>
         </a>
@@ -896,7 +896,7 @@ export function MerchantWorkspace({
             </div>
           )}
           <footer className="merchant-content-footer">
-            {t('Waffarly')} <span>·</span> {t('Everything your business needs, in one place.')}
+            {t('Wfarly')} <span>·</span> {t('Everything your business needs, in one place.')}
           </footer>
         </main>
       </div>

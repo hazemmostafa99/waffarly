@@ -58,7 +58,7 @@ export function MerchantLayout() {
             className="fixed inset-x-4 bottom-4 z-50 rounded-xl border border-warning/30 bg-waffarly-warning-bg p-4 text-sm text-waffarly-gold-ink shadow-lg"
           >
             {t(
-              'Your subscription is inactive. You can review records and finish existing work. Contact Waffarly to renew or reactivate.',
+              'Your subscription is inactive. You can review records and finish existing work. Contact Wfarly to renew or reactivate.',
             )}
             <NavLink to="/account" className="ms-2 font-semibold underline">
               {locale === 'ar' ? 'تفاصيل الاشتراك' : 'Subscription details'}
@@ -74,7 +74,7 @@ export function MerchantLayout() {
             <Icon name="store" />
           </span>
           <span>
-            <strong>Waffarly</strong>
+            <strong>Wfarly</strong>
             <small>Merchant</small>
           </span>
         </NavLink>
@@ -223,7 +223,7 @@ export function MerchantLayout() {
             }}
           />
           <footer className="merchant-content-footer">
-            {t('Waffarly')} <span>·</span> {t('Everything your business needs, in one place.')}
+            {t('Wfarly')} <span>·</span> {t('Everything your business needs, in one place.')}
           </footer>
         </main>
       </div>

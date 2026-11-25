@@ -160,7 +160,7 @@ export function PosWorkspaceFrame({
         >
           <NavLink
             to={posEmployeeHome(employee)}
-            aria-label={t('Waffarly POS')}
+            aria-label={t('Wfarly POS')}
             className="mb-8 hidden size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground lg:flex"
           >
             <LayoutGrid aria-hidden="true" size={24} />

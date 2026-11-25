@@ -211,7 +211,7 @@ export function getMerchantBreadcrumbs(pathname: string, search: string): Mercha
     const section = {
       identity: branding,
       design: branding,
-      publication: { en: 'Visibility on Waffarly', ar: 'الظهور على وفرلي' },
+      publication: { en: 'Visibility on Wfarly', ar: 'الظهور على وفرلي' },
       hours: { en: 'Opening hours', ar: 'مواعيد العمل' },
       delivery: { en: 'Delivery & pickup', ar: 'التوصيل والاستلام' },
       account: { en: 'Account & subscription', ar: 'الحساب والاشتراك' },

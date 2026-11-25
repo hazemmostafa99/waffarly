@@ -683,7 +683,7 @@ function PosReceiptHistoryScreen({ employee }: { employee: PosEmployeeSession })
                     <>
                       {t(
                         receipt.source === 'waffarly'
-                          ? 'Waffarly'
+                          ? 'Wfarly'
                           : receipt.source === 'storefront'
                             ? 'Storefront'
                             : receipt.source === 'pos'

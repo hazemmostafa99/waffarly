@@ -14,7 +14,7 @@ export const ar: Record<string, string> = {
   'Currently covered businesses': 'عملاء لديهم اشتراك سارٍ',
   'Follow up before coverage ends': 'تابع التجديد قبل انتهاء الاشتراك',
   'Existing access is preserved': 'الوصول الحالي محفوظ',
-  'Confirmed outside Waffarly': 'تحصيل خارجي مؤكد',
+  'Confirmed outside Wfarly': 'تحصيل خارجي مؤكد',
   'All subscriptions': 'كل الاشتراكات',
   'Find a business and manage its subscription.': 'ابحث عن العميل لإدارة باقته ومدة اشتراكه.',
   'Not assigned': 'لم تُعيَّن باقة',
@@ -137,7 +137,7 @@ export const ar: Record<string, string> = {
   'Total price': 'السعر الإجمالي',
   'Unused coverage credit': 'رصيد المدة المتبقية',
   'Amount to collect': 'المبلغ المطلوب تحصيله',
-  'I confirm the displayed amount was collected outside Waffarly.':
+  'I confirm the displayed amount was collected outside Wfarly.':
     'أؤكد تحصيل المبلغ المعروض خارج وفرلي.',
   'Refresh subscription and review again': 'تحديث الاشتراك والمراجعة مجددًا',
   'Subscription updated.': 'تم تحديث الاشتراك.',
@@ -151,7 +151,7 @@ export const ar: Record<string, string> = {
   'Use assigned plan': 'استخدام الباقة المعينة',
   'Review the current plan, coverage, collections, and subscription activity.':
     'راجع الباقة الحالية والفترات المدفوعة والتحصيلات وسجل إجراءات الاشتراك.',
-  'Your subscription is inactive. You can review records and finish existing work. Contact Waffarly to renew or reactivate.':
+  'Your subscription is inactive. You can review records and finish existing work. Contact Wfarly to renew or reactivate.':
     'اشتراكك غير سارٍ. يمكنك مراجعة السجلات وإنهاء الأعمال المفتوحة. تواصل مع وفرلي للتجديد أو إعادة التفعيل.',
   'Select an available plan.': 'اختر باقة متاحة.',
   'This duration is not available for this plan.': 'هذه المدة غير متاحة لهذه الباقة.',
@@ -455,7 +455,7 @@ export const ar: Record<string, string> = {
     'يجب أن يساوي مجموع المبالغ إجمالي الطلب بالكامل.',
   'Saving...': 'جارٍ الحفظ...',
   'Save split': 'حفظ التقسيم',
-  'Waffarly · POS': 'وفّرلي · نقاط البيع',
+  'Wfarly · POS': 'وفّرلي · نقاط البيع',
   'Sign in with your business code and employee account.':
     'سجّل الدخول باستخدام معرّف المتجر وحساب الموظف.',
   'Business code': 'معرّف المتجر',
@@ -548,7 +548,7 @@ export const ar: Record<string, string> = {
   'The current API records first-month activation only; plan assignment, later payments, renewal, and expiry details are not available here.':
     'تسجل الخدمة الحالية تفعيل الشهر الأول فقط؛ ولا تتوفر هنا بيانات تخصيص الباقات أو الدفعات اللاحقة أو التجديد أو انتهاء الاشتراك.',
   'View monthly plans': 'عرض الباقات الشهرية',
-  'Creating a business and recording first-month access are separate. Activation requires confirmation of collection outside Waffarly.':
+  'Creating a business and recording first-month access are separate. Activation requires confirmation of collection outside Wfarly.':
     'إنشاء المتجر وتسجيل الوصول للشهر الأول خطوتان منفصلتان. يتطلب التفعيل تأكيد تحصيل المبلغ خارج وفرلي.',
   'Could not load access records.': 'تعذر تحميل سجلات الوصول.',
   'First-month access summary': 'ملخص تفعيل الشهر الأول',
@@ -582,7 +582,7 @@ export const ar: Record<string, string> = {
   'Confirm the owner’s identity before sharing account details.':
     'تحقق من هوية المالك قبل مشاركة بيانات الحساب.',
   'Record activation separately': 'تسجيل التفعيل بشكل منفصل',
-  'Only activate after the first month was collected outside Waffarly.':
+  'Only activate after the first month was collected outside Wfarly.':
     'لا تفعّل الحساب إلا بعد تحصيل مبلغ الشهر الأول خارج وفّرلي.',
   'View registered businesses': 'عرض المتاجر المسجلة',
   'Creating business…': 'جارٍ إنشاء المتجر…',
@@ -600,12 +600,12 @@ export const ar: Record<string, string> = {
   'The API currently exposes first-month activation only; no plan, expiry, or renewal details are available here.':
     'تعرض الخدمة حاليًا حالة تفعيل الشهر الأول فقط؛ ولا تتوفر هنا تفاصيل الباقة أو الانتهاء أو التجديد.',
   'Activation recorded': 'تاريخ تسجيل التفعيل',
-  'Activate only after confirming that the first month was collected outside Waffarly.':
+  'Activate only after confirming that the first month was collected outside Wfarly.':
     'لا تفعّل إلا بعد التأكد من تحصيل مبلغ الشهر الأول خارج وفّرلي.',
   'Loading merchant details…': 'جارٍ تحميل تفاصيل المتجر…',
   'SUPER ADMIN': 'مدير النظام',
   'Welcome back': 'مرحبًا بعودتك',
-  'Waffarly platform': 'منصة وفرلي',
+  'Wfarly platform': 'منصة وفرلي',
   'Administration workspace': 'مساحة إدارة المنصة',
   'Platform administrator': 'مسؤول المنصة',
   'Open navigation': 'فتح قائمة التنقل',
@@ -617,7 +617,7 @@ export const ar: Record<string, string> = {
   'Platform overview': 'نظرة عامة على المنصة',
   'Manage businesses': 'إدارة المتاجر',
   'Some overview data could not be loaded.': 'تعذر تحميل بعض بيانات النظرة العامة.',
-  'Businesses registered on Waffarly': 'المتاجر المسجلة على وفرلي',
+  'Businesses registered on Wfarly': 'المتاجر المسجلة على وفرلي',
   'Applications awaiting an admin decision': 'طلبات تنتظر قرار الإدارة',
   'First-month access': 'تفعيل الشهر الأول',
   'Businesses with first-month activation recorded': 'المتاجر التي سُجّل تفعيل الشهر الأول لها',
@@ -650,7 +650,7 @@ export const ar: Record<string, string> = {
   'Business records are unavailable.': 'بيانات المتاجر غير متاحة حاليًا.',
   'Business summary': 'ملخص المتاجر',
   'Registered businesses': 'المتاجر المسجلة',
-  'Search and filter the businesses registered on Waffarly.':
+  'Search and filter the businesses registered on Wfarly.':
     'ابحث في المتاجر المسجلة على وفرلي وصفّها حسب النشاط أو الوصول.',
   'Business contact': 'رقم تواصل المتجر',
   'Businesses awaiting first-month activation': 'متاجر بانتظار تفعيل الشهر الأول',
@@ -672,7 +672,7 @@ export const ar: Record<string, string> = {
     'راجع الطلبات، وأنشئ المتاجر، وتابع حالة الوصول.',
   'Secure platform access': 'وصول آمن إلى المنصة',
   'Signing out…': 'جارٍ تسجيل الخروج…',
-  Waffarly: 'وفّرلي',
+  Wfarly: 'وفّرلي',
   Storefront: 'المتجر الإلكتروني',
   POS: 'نقطة البيع',
   'Order source': 'مصدر الطلب',
@@ -728,7 +728,7 @@ export const ar: Record<string, string> = {
   'Application approved. The business and owner account are created. Subscription access is still inactive.':
     'تمت الموافقة على الطلب وإنشاء المتجر وحساب المالك. لم يُفعّل الاشتراك بعد.',
   'Loading Super Admin…': 'جارٍ تحميل لوحة إدارة المنصة…',
-  'Waffarly · Platform': 'وفّرلي · إدارة المنصة',
+  'Wfarly · Platform': 'وفّرلي · إدارة المنصة',
   'Super Admin': 'إدارة المنصة',
   'Sign in to review applications, create businesses, and activate their first month.':
     'سجّل الدخول لمراجعة الطلبات وإضافة المتاجر وتفعيل الشهر الأول.',
@@ -871,9 +871,9 @@ export const ar: Record<string, string> = {
   'Sign in failed.': 'تعذّر تسجيل الدخول.',
   'Sign out failed.': 'تعذّر تسجيل الخروج.',
   'Loading Merchant Dashboard…': 'جارٍ تحميل لوحة المتجر…',
-  'Waffarly · Merchant': 'وفّرلي · المتجر',
+  'Wfarly · Merchant': 'وفّرلي · المتجر',
   'Merchant Dashboard': 'لوحة إدارة المتجر',
-  'Your account opens after Waffarly activates the first month of your subscription.':
+  'Your account opens after Wfarly activates the first month of your subscription.':
     'يمكنك الدخول بعد تفعيل الشهر الأول من اشتراكك بواسطة وفّرلي.',
   'Business account': 'حساب المتجر',
   'Contact details': 'البيانات العامة',
@@ -1145,7 +1145,7 @@ export const ar: Record<string, string> = {
   "'s business only. The preview uses sample catalog content.":
     ' فقط. تستخدم المعاينة كتالوجًا تجريبيًا.',
   'Save design': 'حفظ التصميم',
-  'Waffarly · Foundation': 'وفّرلي',
+  'Wfarly · Foundation': 'وفّرلي',
   'POS Workspace': 'نقطة البيع',
   'This online-first application shell is ready for approved POS requirements.':
     'مساحة نقطة البيع جاهزة لإضافة الميزات المعتمدة.',
@@ -1189,10 +1189,10 @@ export const ar: Record<string, string> = {
   'GOOD THINGS ARE GATHERED HERE': 'هنا نجتمع على الخير',
   'SCROLL TO EXPLORE ↓': 'مرّر للاستكشاف ↓',
   'For business owners': 'لأصحاب المتاجر',
-  'Apply to join Waffarly': 'انضم إلى وفّرلي',
+  'Apply to join Wfarly': 'انضم إلى وفّرلي',
   'Share your business and contact details. Our team will review your application.':
     'شارك بيانات متجرك ووسائل التواصل. سيراجع فريقنا طلبك.',
-  'Confirm that the first month was collected outside Waffarly for {{name}}?':
+  'Confirm that the first month was collected outside Wfarly for {{name}}?':
     'هل تؤكد تحصيل قيمة الشهر الأول خارج وفّرلي لمتجر {{name}}؟',
   'Approve {{name}} and create its owner account?':
     'هل تريد الموافقة على {{name}} وإنشاء حساب المالك؟',
@@ -1206,7 +1206,7 @@ export const ar: Record<string, string> = {
   'Last edited by {{name}} on {{date}}': 'آخر تعديل بواسطة {{name}} في {{date}}',
   '{{layout}} business storefront preview': 'معاينة واجهة متجر بتخطيط {{layout}}',
   'A better home for your business.': 'بداية أفضل لمتجرك.',
-  'Bring your business to Waffarly. Share your details and our team will help you get started.':
+  'Bring your business to Wfarly. Share your details and our team will help you get started.':
     'انضم بمتجرك إلى وفّرلي. شارك بياناتك وسيساعدك فريقنا على البدء.',
   'Built around your business': 'مصمّم لعملك',
   'Your business, your identity': 'متجرك بهويتك',
@@ -1632,7 +1632,7 @@ export const ar: Record<string, string> = {
     'معاينة تصميم · طلبات تجريبية فقط. بدون مدفوعات حقيقية.',
   'Live POS': 'نقطة البيع الفعلية',
   'POS navigation': 'التنقل في نقطة البيع',
-  'Waffarly design preview': 'معاينة تصميم وفّرلي',
+  'Wfarly design preview': 'معاينة تصميم وفّرلي',
   'Preview help': 'مساعدة المعاينة',
   'Sample shift': 'وردية تجريبية',
   'Shift open': 'الوردية مفتوحة',
@@ -1770,7 +1770,7 @@ export const ar: Record<string, string> = {
   'POS accent preview': 'معاينة لون نقطة البيع',
   'POS workspace': 'مساحة نقطة البيع',
   'POS operator': 'موظف نقطة البيع',
-  'Waffarly POS': 'وفّرلي لنقطة البيع',
+  'Wfarly POS': 'وفّرلي لنقطة البيع',
   'Saved draft': 'مسودة محفوظة',
   'All drafts ({{count}})': 'كل المسودات ({{count}})',
   'Select a table': 'اختر ترابيزة',

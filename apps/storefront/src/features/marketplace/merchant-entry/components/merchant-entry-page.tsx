@@ -41,12 +41,12 @@ export function MerchantEntryPage() {
               {!submitted && (
                 <header className="mb-4 border-b border-border pb-3">
                   <h1 className="m-0 text-[21px] font-bold leading-8 text-primary">
-                    {isArabic ? 'انضم كتاجر إلى وفّرلي' : 'Sell on Waffarly'}
+                    {isArabic ? 'انضم كتاجر إلى وفّرلي' : 'Sell on Wfarly'}
                   </h1>
                   <p className="mb-0 mt-1 text-[12px] leading-6 text-muted-foreground">
                     {isArabic
                       ? 'قدّم بيانات نشاطك ليراجعها فريق وفّرلي.'
-                      : 'Submit your business details for review by Waffarly.'}
+                      : 'Submit your business details for review by Wfarly.'}
                   </p>
                 </header>
               )}

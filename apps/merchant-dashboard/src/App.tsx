@@ -55,10 +55,10 @@ export function App() {
   if (profile === null)
     return (
       <main id="main-content" tabIndex={-1} className="shell narrow">
-        <div className="eyebrow">{t('Waffarly · Merchant')}</div>
+        <div className="eyebrow">{t('Wfarly · Merchant')}</div>
         <h1>{t('Merchant Dashboard')}</h1>
         <p>
-          {t('Your account opens after Waffarly activates the first month of your subscription.')}
+          {t('Your account opens after Wfarly activates the first month of your subscription.')}
         </p>
         <form className="panel form" onSubmit={(event) => void signIn(event)}>
           <label>

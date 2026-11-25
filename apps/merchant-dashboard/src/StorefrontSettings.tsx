@@ -20,7 +20,7 @@ const maxLogoBytes = 10 * 1024 * 1024;
 
 const palettes = [
   {
-    name: 'Waffarly',
+    name: 'Wfarly',
     nameAr: 'وفّرلي',
     primaryColor: '#0f705a',
     accentColor: '#f5b544',
@@ -188,7 +188,7 @@ export function StorefrontSettings({
     setDescription(
       locale === 'ar'
         ? 'وفّرلي يقدم أفضل أنواع الوافل والبرجر والحلويات الطازجة بمكونات عالية الجودة.'
-        : 'Waffarly serves the best waffles, burgers, and fresh desserts made with quality ingredients.',
+        : 'Wfarly serves the best waffles, burgers, and fresh desserts made with quality ingredients.',
     );
   }, [locale]);
 

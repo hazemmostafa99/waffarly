@@ -83,7 +83,7 @@ export function PosAppearanceSettings() {
       className="register-table-card"
       title={text('POS appearance', 'مظهر نقطة البيع')}
       description={text(
-        'Choose the accent used across this merchant’s POS. Cashier shifts and other Waffarly apps are unaffected.',
+        'Choose the accent used across this merchant’s POS. Cashier shifts and other Wfarly apps are unaffected.',
         'اختر اللون المميز لنقاط البيع لدى هذا التاجر. لا يتغير حساب الكاشير أو تطبيقات وفلري الأخرى.',
       )}
     >

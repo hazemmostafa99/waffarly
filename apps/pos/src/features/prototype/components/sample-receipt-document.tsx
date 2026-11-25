@@ -21,7 +21,7 @@ export function SampleReceiptDocument({ order }: { order: DemoOrder }) {
           <span className="receipt-mark" aria-hidden="true">
             W
           </span>
-          <strong>Waffarly Bakery &amp; Cafe</strong>
+          <strong>Wfarly Bakery &amp; Cafe</strong>
           <span>Maadi branch · Sample register</span>
           <b>{t('SAMPLE · NOT A FISCAL DOCUMENT')}</b>
         </header>

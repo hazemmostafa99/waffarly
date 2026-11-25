@@ -6,8 +6,8 @@ import '@waffarly/ui/theme.css';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Waffarly Storefront',
-  description: 'Bring your business to Waffarly. انضم بمتجرك إلى وفّرلي.',
+  title: 'Wfarly Storefront',
+  description: 'Bring your business to Wfarly. انضم بمتجرك إلى وفّرلي.',
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {

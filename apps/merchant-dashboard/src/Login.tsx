@@ -43,7 +43,7 @@ export function Login() {
       dir={locale === 'ar' ? 'rtl' : 'ltr'}
     >
       <div className="merchant-login-topbar">
-        <div className="merchant-login-brand">{t('Waffarly · Merchant')}</div>
+        <div className="merchant-login-brand">{t('Wfarly · Merchant')}</div>
       </div>
       <section className="merchant-login-card" aria-labelledby="merchant-login-title">
         <header className="merchant-login-heading">

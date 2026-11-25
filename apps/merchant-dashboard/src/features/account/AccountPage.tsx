@@ -389,7 +389,7 @@ export function AccountPage() {
             {!canEdit && (
               <p className="mb-0 mt-3 text-xs text-muted-foreground">
                 {text(
-                  'Contact Waffarly to reactivate your subscription before editing details.',
+                  'Contact Wfarly to reactivate your subscription before editing details.',
                   'تواصل مع وفّرلي لإعادة تفعيل الاشتراك قبل تعديل البيانات.',
                 )}
               </p>
@@ -509,7 +509,7 @@ export function AccountPage() {
             {subscription.status === 'legacy' && (
               <p className="m-0 max-w-none rounded-xl bg-waffarly-info-bg p-4 text-sm text-waffarly-info">
                 {text(
-                  'Your existing account remains available. Waffarly is reviewing its subscription details; no expiry or payment amount has been assumed.',
+                  'Your existing account remains available. Wfarly is reviewing its subscription details; no expiry or payment amount has been assumed.',
                   'حسابك الحالي متاح. وفّرلي بتراجع تفاصيل الاشتراك؛ مفيش تاريخ انتهاء أو مبلغ مفترض.',
                 )}
               </p>
@@ -525,7 +525,7 @@ export function AccountPage() {
             {subscription.status === 'suspended' && (
               <p className="m-0 max-w-none text-sm text-destructive">
                 {text(
-                  'Your subscription is suspended. Time continues to run. Contact Waffarly to restore access.',
+                  'Your subscription is suspended. Time continues to run. Contact Wfarly to restore access.',
                   'اشتراكك موقوف والمدة مستمرة. تواصل مع وفّرلي لإعادة التفعيل.',
                 )}
               </p>
@@ -592,7 +592,7 @@ export function AccountPage() {
               </Button>
               <p className="m-0 max-w-none text-center text-xs text-muted-foreground">
                 {text(
-                  'Renewal and collection are arranged manually with Waffarly. No automatic charge.',
+                  'Renewal and collection are arranged manually with Wfarly. No automatic charge.',
                   'التجديد والتحصيل بيتموا مع وفّرلي يدويًا. مفيش خصم تلقائي.',
                 )}
               </p>
