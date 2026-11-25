@@ -22,7 +22,12 @@ import type {
   SplitPosOrderChecksResponse,
 } from '@waffarly/contracts';
 import { parseRequest, ZodValidationPipe } from '../../../../common/http/zod-validation.pipe.js';
-import { CurrentPosEmployee, PosEmployeeGuard } from '../../../auth/index.js';
+import {
+  ActivityFeatureGuard,
+  CurrentPosEmployee,
+  PosEmployeeGuard,
+  RequireActivityFeature,
+} from '../../../auth/index.js';
 import {
   movePosDiningSessionSchema,
   posDiningTableListSchema,
@@ -30,7 +35,8 @@ import {
 } from '../../dining/pos-dining.schemas.js';
 import { PosDiningService } from '../../dining/pos-dining.service.js';
 
-@UseGuards(PosEmployeeGuard)
+@UseGuards(PosEmployeeGuard, ActivityFeatureGuard)
+@RequireActivityFeature('diningTables')
 @Controller('pos/dining')
 export class PosDiningController {
   constructor(@Inject(PosDiningService) private readonly dining: PosDiningService) {}
@@ -63,7 +69,8 @@ export class PosDiningController {
   }
 }
 
-@UseGuards(PosEmployeeGuard)
+@UseGuards(PosEmployeeGuard, ActivityFeatureGuard)
+@RequireActivityFeature('diningTables')
 @Controller('pos/orders')
 export class PosDiningOrdersController {
   constructor(@Inject(CheckSplitService) private readonly checks: CheckSplitService) {}

@@ -9,6 +9,7 @@ const posCatalogQuerySchema = z
   .object({
     productCursor: z.string().uuid().optional(),
     categoryCursor: z.string().uuid().optional(),
+    search: z.string().trim().min(1).max(100).optional(),
   })
   .strict();
 
@@ -24,6 +25,7 @@ export class PosCatalogController {
       employee.merchantId,
       parsed.productCursor,
       parsed.categoryCursor,
+      parsed.search,
     );
   }
 }

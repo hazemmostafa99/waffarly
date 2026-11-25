@@ -1,7 +1,11 @@
+import { usePosText } from '../../lib/use-pos-text.js';
+import { actorActivityFeatures } from '@waffarly/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dialog, Input, useLocale } from '@waffarly/ui';
 import { AlertTriangle, CheckCircle2, ReceiptText } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import type { PosEmployeeSession } from '@waffarly/contracts';
 import { posWorkspaceScope, usePosWorkspaceStore } from '../../app/pos-workspace-store.js';
 import { PosButton } from '../../components/pos-button.js';
 import { getPosOrderNumber } from './pos-order-number.js';
@@ -46,7 +50,10 @@ export function PosConfirmedOrderPanel({
   onAddItems: () => void;
   onRetryPendingAmendment: () => void;
 }) {
-  const { t, errorText, formatDate, formatNumber } = useLocale();
+  const { employee } = useOutletContext<{ employee: PosEmployeeSession }>();
+  const retailSale = !actorActivityFeatures(employee).kitchen;
+  const { errorText, formatDate, formatNumber } = useLocale();
+  const t = usePosText();
   const queryClient = useQueryClient();
   const scope = posWorkspaceScope(merchantId, employeeId);
   const workspace = usePosWorkspaceStore((state) =>
@@ -252,7 +259,9 @@ export function PosConfirmedOrderPanel({
                 ? 'Dine in'
                 : order.fulfillmentType === 'delivery'
                   ? 'Delivery'
-                  : 'Takeaway',
+                  : retailSale
+                    ? 'In-store sale'
+                    : 'Takeaway',
             )}{' '}
             · {order.customerName || t('Walk-in customer')}
           </p>
@@ -285,7 +294,7 @@ export function PosConfirmedOrderPanel({
           </div>
         ) : (
           <section aria-label={t('Confirmed items')} className="grid gap-3">
-            {order.fulfillmentType === 'dine_in' ? (
+            {retailSale ? null : order.fulfillmentType === 'dine_in' ? (
               <div className="grid gap-2 rounded-lg border border-border bg-secondary/40 p-3">
                 {order.kitchenTicket ? (
                   <div className="grid gap-1" role="status">
@@ -360,9 +369,8 @@ export function PosConfirmedOrderPanel({
                     )}
                     {line.promotionDiscount && Number(line.promotionDiscount) > 0 && (
                       <p className="mt-1 text-xs font-medium text-emerald-700">
-                        {t('Product discount')}: −{money(
-                          (Number(line.promotionDiscount) * line.quantity).toFixed(2),
-                        )}
+                        {t('Product discount')}: −
+                        {money((Number(line.promotionDiscount) * line.quantity).toFixed(2))}
                       </p>
                     )}
                   </div>

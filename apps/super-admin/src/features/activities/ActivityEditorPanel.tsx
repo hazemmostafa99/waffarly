@@ -1,9 +1,30 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import type { BusinessActivitySummary } from '@waffarly/contracts';
+import {
+  ACTIVITY_FEATURES,
+  type ActivityFeature,
+  type ActivityFeatureSettings,
+  type BusinessActivitySummary,
+} from '@waffarly/contracts';
 import { AlertTriangle, Pencil } from 'lucide-react';
 import { Button, Card, Input, Textarea, useLocale } from '@waffarly/ui';
 import { ApiError } from '../../lib/api-client.js';
 import { useUpdateBusinessActivityMutation } from './activity-queries.js';
+
+/** Label and short explanation shown for each activity feature switch. */
+const featureCopy: Record<ActivityFeature, { label: string; hint: string }> = {
+  kitchen: {
+    label: 'Kitchen',
+    hint: 'Kitchen screen, kitchen tickets, preparation steps and the Kitchen employee role.',
+  },
+  diningTables: {
+    label: 'Dining tables',
+    hint: 'POS tables and dine-in orders.',
+  },
+  delivery: {
+    label: 'Delivery',
+    hint: 'POS delivery sales, couriers and delivery follow-up.',
+  },
+};
 
 interface ActivityEditorPanelProps {
   activity: BusinessActivitySummary;
@@ -17,6 +38,7 @@ export function ActivityEditorPanel({ activity, onClose, onSaved }: ActivityEdit
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [name, setName] = useState(activity.name);
   const [description, setDescription] = useState(activity.description);
+  const [features, setFeatures] = useState<ActivityFeatureSettings>(activity.features);
   const [conflict, setConflict] = useState(false);
 
   useEffect(() => {
@@ -37,6 +59,7 @@ export function ActivityEditorPanel({ activity, onClose, onSaved }: ActivityEdit
         body: {
           name: name.trim(),
           description: description.trim(),
+          features,
           revision: activity.revision,
         },
       });
@@ -68,7 +91,7 @@ export function ActivityEditorPanel({ activity, onClose, onSaved }: ActivityEdit
           {t('Edit activity')}
         </h2>
         <p className="mb-0 mt-1 text-xs leading-5 text-waffarly-muted">
-          {t('Update the display name and description for this business activity.')}
+          {t('Update the display name, description and features for this business activity.')}
         </p>
         <code
           className="mt-2 inline-block rounded bg-waffarly-input px-2 py-1 text-[10px] text-waffarly-muted"
@@ -135,6 +158,41 @@ export function ActivityEditorPanel({ activity, onClose, onSaved }: ActivityEdit
               className="min-h-24 rounded-xl border-waffarly-border bg-white text-sm leading-5"
             />
           </label>
+          <fieldset className="m-0 grid min-w-0 gap-2 border-0 p-0">
+            <legend className="mb-1 text-xs font-semibold text-waffarly-ink">
+              {t('Features for merchants of this activity')}
+            </legend>
+            {ACTIVITY_FEATURES.map((feature) => {
+              const available = activity.availableFeatures[feature];
+              return (
+                <label
+                  key={feature}
+                  className="flex items-start gap-2 rounded-xl border border-waffarly-border px-3 py-2 text-xs"
+                >
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={available && features[feature]}
+                    disabled={!available}
+                    onChange={(event) => {
+                      mutation.reset();
+                      setFeatures((current) => ({ ...current, [feature]: event.target.checked }));
+                    }}
+                  />
+                  <span className="grid gap-0.5">
+                    <span className="font-semibold text-waffarly-ink">
+                      {t(featureCopy[feature].label)}
+                    </span>
+                    <span className="leading-5 text-waffarly-muted">
+                      {available
+                        ? t(featureCopy[feature].hint)
+                        : t('Not available for this activity.')}
+                    </span>
+                  </span>
+                </label>
+              );
+            })}
+          </fieldset>
         </fieldset>
 
         <div className="flex flex-wrap gap-2">

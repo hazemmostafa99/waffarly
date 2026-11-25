@@ -35,7 +35,7 @@ export function toItemReturnSummary(record: ItemReturnRecord): PosItemReturnSumm
       productName: line.productName,
       variantName: line.variantName,
       quantity: line.quantity,
-      disposition: 'waste',
+      disposition: line.disposition === 'restock' ? 'restock' : 'waste',
       unitPrice: formatCents(toCents(line.unitPrice.toString())),
       amount: formatCents(toCents(line.amount.toString())),
     })),

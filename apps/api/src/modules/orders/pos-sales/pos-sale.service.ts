@@ -7,6 +7,7 @@ import type {
   PosEmployeeSession,
   PosOrderQuoteResponse,
 } from '@waffarly/contracts';
+import { actorActivityFeatures } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 
 import { createHash } from 'node:crypto';
@@ -62,6 +63,7 @@ const orderSummaryInclude = {
 
 import {
   quotePosSaleItems,
+  requireFulfillmentFeature,
   requirePosSellPermission,
   replayPosSale,
   quoteSelectionsForRequirements,
@@ -89,6 +91,11 @@ export class PosSaleService {
     requirePosSellPermission(employee);
     // 1. Validate the sale command before opening its transaction.
     const request = parseCreatePosOrderRequest(input);
+    const features = actorActivityFeatures(employee);
+    requireFulfillmentFeature(features, request.fulfillmentType);
+    // Without a kitchen there is no ticket or preparation: a delivery sale is ready for a courier.
+    const retailSale = !features.kitchen;
+    const readyForCourier = retailSale && request.fulfillmentType === 'delivery';
     const actor = `pos:${employee.id}`;
     const fingerprint = createHash('sha256').update(JSON.stringify(request)).digest('hex');
     for (let attempt = 0; ; attempt++) {
@@ -136,6 +143,9 @@ export class PosSaleService {
                 branchId: shift.branchId,
                 total: formatCents(orderTotalCents),
                 currency: 'EGP',
+                ...(readyForCourier
+                  ? { status: 'ready', acceptedAt: new Date(), readyAt: new Date() }
+                  : {}),
               },
               select: { id: true },
             });
@@ -318,7 +328,7 @@ export class PosSaleService {
               order.id,
               formatCents(orderTotalCents),
             );
-            if (request.fulfillmentType !== 'dine_in') {
+            if (!retailSale && request.fulfillmentType !== 'dine_in') {
               await createPosKitchenTicket(tx, {
                 merchantId: employee.merchantId,
                 branchId: shift.branchId,

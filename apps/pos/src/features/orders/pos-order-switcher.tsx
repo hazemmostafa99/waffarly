@@ -1,3 +1,4 @@
+import { usePosText } from '../../lib/use-pos-text.js';
 import { Dialog, Input, Popover, cn, useLocale } from '@waffarly/ui';
 import { Check, ChevronUp, FileText, Search, Trash2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -47,7 +48,8 @@ export function PosOrderSwitcher({
   failed: boolean;
   onLoadMore: () => void;
 }) {
-  const { t, formatNumber } = useLocale();
+  const { formatNumber } = useLocale();
+  const t = usePosText();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState<'draft' | 'active' | 'history'>('draft');

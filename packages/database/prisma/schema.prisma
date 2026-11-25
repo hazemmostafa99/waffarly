@@ -1092,10 +1092,14 @@ model SubscriptionEvent {
 
 // Dashboard overrides of code-managed definitions. Applicability is catalog metadata only.
 model BusinessActivity {
-  key         String   @id @db.VarChar(80)
-  name        String   @db.VarChar(160)
-  description String   @db.VarChar(1000)
-  revision    Int      @default(1)
+  key                 String   @id @db.VarChar(80)
+  name                String   @db.VarChar(160)
+  description         String   @db.VarChar(1000)
+  /// Super Admin feature switches; kitchen and tables are restaurant-only (CHECK constraint).
+  kitchenEnabled      Boolean  @default(false)
+  diningTablesEnabled Boolean  @default(false)
+  deliveryEnabled     Boolean  @default(true)
+  revision            Int      @default(1)
   updatedBy   String   @db.VarChar(80)
   updatedAt   DateTime @updatedAt @db.Timestamptz(6)
 

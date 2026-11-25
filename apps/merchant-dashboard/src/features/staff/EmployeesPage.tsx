@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import type { MerchantOutletContext } from '../../lib/merchant-context.js';
 import {
   POS_EMPLOYEE_ROLES,
   resolvePosEmployeePermissions,
@@ -40,6 +42,11 @@ function emptyDraft(): Draft {
 
 export function EmployeesPage() {
   const { locale, errorText } = useLocale();
+  const { activityFeatures } = useOutletContext<MerchantOutletContext>();
+  // The Kitchen role is offered only when the activity kitchen is on; the API enforces the same rule.
+  const availableRoles = POS_EMPLOYEE_ROLES.filter(
+    (role) => role !== 'kitchen' || activityFeatures.kitchen,
+  );
   const text = (en: string, ar: string) => (locale === 'ar' ? ar : en);
   const [page, setPage] = useState<CursorPage<PosEmployeeSummary>>({ items: [], nextCursor: null });
   const [history, setHistory] = useState<Array<string | undefined>>([]);
@@ -234,9 +241,7 @@ export function EmployeesPage() {
       header: text('Assigned branch', 'الفرع المعيّن'),
       cell: (employee) => (
         <div className="employee-table-branches">
-          <span
-            className={`products-pill ${employee.branch.archivedAt ? 'cream' : 'blue'}`}
-          >
+          <span className={`products-pill ${employee.branch.archivedAt ? 'cream' : 'blue'}`}>
             {employee.branch.name}
             {employee.branch.archivedAt ? ` · ${text('Archived', 'مؤرشف')}` : ''}
           </span>
@@ -316,7 +321,7 @@ export function EmployeesPage() {
             }}
           >
             <option value="">{text('All roles', 'كل الأدوار')}</option>
-            {POS_EMPLOYEE_ROLES.map((role) => (
+            {availableRoles.map((role) => (
               <option key={role} value={role}>
                 {text(...employeeRoleLabels[role])}
               </option>
@@ -479,7 +484,7 @@ export function EmployeesPage() {
                     <option value="">
                       {text('Existing permissions only', 'الصلاحيات الحالية فقط')}
                     </option>
-                    {POS_EMPLOYEE_ROLES.map((role) => (
+                    {availableRoles.map((role) => (
                       <option key={role} value={role}>
                         {text(...employeeRoleLabels[role])}
                       </option>
@@ -546,9 +551,7 @@ export function EmployeesPage() {
                 {draft.branch ? (
                   <p>{draft.branch.name}</p>
                 ) : (
-                  <p role="status">
-                    {text('Choose an active branch.', 'اختر فرعًا نشطًا.')}
-                  </p>
+                  <p role="status">{text('Choose an active branch.', 'اختر فرعًا نشطًا.')}</p>
                 )}
               </fieldset>
             </fieldset>

@@ -144,12 +144,27 @@ export {
   BUSINESS_ACTIVITY_KEYS,
   BUSINESS_ACTIVITY_LABELS,
   BUSINESS_ACTIVITY_SETTINGS,
+  ACTIVITY_FEATURES,
+  ACTIVITY_FEATURE_AVAILABILITY,
+  activityFeatureAvailability,
+  actorActivityFeatures,
+  resolveActivityFeatures,
   resolveBusinessActivitySettings,
+  type ActivityFeature,
+  type ActivityFeatureSettings,
   type BusinessActivityKey,
   type BusinessActivitySettings,
   type BusinessActivitySummary,
   type UpdateBusinessActivityRequest,
 } from './activities.js';
+export {
+  BUSINESS_ACTIVITY_WORDING,
+  activityChoicePhrases,
+  activityPosTextOverrides,
+  resolveActivityWording,
+  type ActivityWording,
+  type ActivityWords,
+} from './activity-wording.js';
 export type {
   MerchantStorefrontSettings,
   SaveMerchantStorefrontRequest,

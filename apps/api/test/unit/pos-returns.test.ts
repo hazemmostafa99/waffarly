@@ -48,6 +48,21 @@ describe('POS item returns', () => {
     );
   });
 
+  it('accepts sellable and damaged conditions while rejecting unknown stock effects', () => {
+    for (const disposition of ['restock', 'waste']) {
+      const request = { ...valid, lines: [{ ...valid.lines[0], disposition }] };
+      assert.deepEqual(parseRecordPosItemReturnRequest(request), request);
+    }
+    assert.throws(
+      () =>
+        parseRecordPosItemReturnRequest({
+          ...valid,
+          lines: [{ ...valid.lines[0], disposition: 'refund' }],
+        }),
+      BadRequestException,
+    );
+  });
+
   it('validates owner return report date ranges, branch scope, cursor and bounded page size', () => {
     const query = {
       from: '2026-10-01T00:00:00.000Z',

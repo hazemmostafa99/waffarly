@@ -129,8 +129,13 @@ function loadOnRoute(element: ReactNode) {
 
 /** A pasted tables URL follows the same activity rule as the sidebar link. */
 function DiningTablesRoute() {
-  const { activitySettings } = useOutletContext<MerchantOutletContext>();
-  return activitySettings.hasDiningTables ? loadOnRoute(<TablesPage />) : <Navigate to="/" replace />;
+  const { activityFeatures } = useOutletContext<MerchantOutletContext>();
+  return activityFeatures.diningTables ? loadOnRoute(<TablesPage />) : <Navigate to="/" replace />;
+}
+
+function DeliveryCouriersRoute() {
+  const { activityFeatures } = useOutletContext<MerchantOutletContext>();
+  return activityFeatures.delivery ? loadOnRoute(<CouriersPage />) : <Navigate to="/" replace />;
 }
 
 export const router = createBrowserRouter([
@@ -197,7 +202,7 @@ export const router = createBrowserRouter([
       { path: 'staff/payroll', element: loadOnRoute(<PayrollPage />) },
       { path: 'staff/advances', element: loadOnRoute(<StaffAdvancesPage />) },
       { path: 'staff/expenses', element: loadOnRoute(<ExpensesPage />) },
-      { path: 'delivery-couriers', element: loadOnRoute(<CouriersPage />) },
+      { path: 'delivery-couriers', element: <DeliveryCouriersRoute /> },
       { path: 'pos-registers', element: loadOnRoute(<RegistersPage />) },
       { path: 'pos-cash', element: loadOnRoute(<CashCustodyPage />) },
       { path: 'pos-tables', element: <DiningTablesRoute /> },

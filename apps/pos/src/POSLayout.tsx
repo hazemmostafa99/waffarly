@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocale } from '@waffarly/ui';
-import { resolveBusinessActivitySettings } from '@waffarly/contracts';
+import { actorActivityFeatures } from '@waffarly/contracts';
 import { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { usePosWorkspaceStore } from './app/pos-workspace-store.js';
@@ -142,9 +142,7 @@ export function POSLayout() {
           )}
         </p>
       )}
-      <Outlet
-        context={{ employee, activitySettings: resolveBusinessActivitySettings(employee.activity) }}
-      />
+      <Outlet context={{ employee, activityFeatures: actorActivityFeatures(employee) }} />
     </PosWorkspaceFrame>
   );
 }

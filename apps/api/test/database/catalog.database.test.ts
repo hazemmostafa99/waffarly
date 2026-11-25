@@ -230,6 +230,22 @@ it(
           assert.equal('sku' in publicVariant, false);
           assert.equal('barcode' in publicVariant, false);
           assert.equal('stockQuantity' in publicVariant, false);
+          const posSearch = await serviceQuery.getPosSellableCatalog(
+            merchant.id,
+            undefined,
+            undefined,
+            '9900000000099',
+          );
+          assert.equal(posSearch.products.items.length, 1);
+          assert.equal(posSearch.products.items[0]?.name, 'Verification coffee');
+          assert.equal(posSearch.products.items[0]?.variants[0]?.barcode, '9900000000099');
+          const otherMerchantBarcode = await serviceQuery.getPosSellableCatalog(
+            merchant.id,
+            undefined,
+            undefined,
+            '9900000000001',
+          );
+          assert.equal(otherMerchantBarcode.products.items.length, 0);
           const soldOutPublicVariant = publicCatalog.products
             .find((product) => product.name === 'Verification coffee')
             ?.variants.find((variant) => variant.name === 'Out of stock cup');

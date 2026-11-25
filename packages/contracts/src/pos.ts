@@ -1,3 +1,5 @@
+import { resolveActivityFeatures } from './activities.js';
+
 export const POS_LEGACY_EMPLOYEE_PERMISSIONS = [
   'accept_recipe_orders',
   'start_preparation',
@@ -97,8 +99,18 @@ export function hasPosEmployeePermission(
   return permission === 'view_receipts' && employee.permissions.includes('sell');
 }
 
-export function posEmployeeHome(employee: Pick<PosEmployeeSession, 'permissions'>): string {
-  if (hasPosEmployeePermission(employee, 'view_orders')) return '/kitchen';
+export function posEmployeeHome(
+  employee: Pick<PosEmployeeSession, 'permissions'> &
+    Partial<Pick<PosEmployeeSession, 'activity' | 'activityFeatures'>>,
+): string {
+  // In-process callers without activity keep the historical restaurant landing page.
+  const hasKitchen = employee.activityFeatures
+    ? employee.activityFeatures.kitchen
+    : employee.activity
+      ? resolveActivityFeatures(employee.activity, null).kitchen
+      : true;
+  if (hasKitchen && hasPosEmployeePermission(employee, 'view_orders')) return '/kitchen';
+  if (!hasKitchen && employee.permissions.includes('sell')) return '/catalog';
   if (hasPosEmployeePermission(employee, 'view_inventory')) return '/inventory';
   if (hasPosEmployeePermission(employee, 'view_receipts')) return '/orders';
   return '/access';
@@ -130,6 +142,8 @@ export interface PosEmployeeSession {
   merchantId: string;
   /** Returned by the API; optional for older in-process employee actors. */
   activity?: import('./activities.js').BusinessActivityKey;
+  /** Effective activity feature switches; returned by the API with every POS session. */
+  activityFeatures?: import('./activities.js').ActivityFeatureSettings;
   username: string;
   displayName: string;
   role: PosEmployeeRole | null;

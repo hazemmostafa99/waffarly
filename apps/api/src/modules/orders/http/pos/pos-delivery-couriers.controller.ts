@@ -2,11 +2,17 @@
 import { Controller, Get, Inject, Query, UseGuards } from '@nestjs/common';
 import type { CursorPage, DeliveryCourierOption, PosEmployeeSession } from '@waffarly/contracts';
 import { ZodValidationPipe } from '../../../../common/http/zod-validation.pipe.js';
-import { CurrentPosEmployee, PosEmployeeGuard } from '../../../auth/index.js';
+import {
+  ActivityFeatureGuard,
+  CurrentPosEmployee,
+  PosEmployeeGuard,
+  RequireActivityFeature,
+} from '../../../auth/index.js';
 import { DeliveryCourierService } from '../../delivery/delivery-courier.service.js';
 import { listPosDeliveryCouriersSchema } from '../../delivery/delivery-courier.schemas.js';
 
-@UseGuards(PosEmployeeGuard)
+@UseGuards(PosEmployeeGuard, ActivityFeatureGuard)
+@RequireActivityFeature('delivery')
 @Controller('pos/delivery-couriers')
 export class PosDeliveryCouriersController {
   constructor(@Inject(DeliveryCourierService) private readonly couriers: DeliveryCourierService) {}

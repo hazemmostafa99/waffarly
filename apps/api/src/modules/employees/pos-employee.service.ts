@@ -1,9 +1,17 @@
 /** Manages staff accounts, their roles and single-branch assignment for one merchant. */
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   POS_LEGACY_EMPLOYEE_PERMISSIONS,
   POS_EMPLOYEE_PERMISSIONS,
+  type ActivityFeatureSettings,
   type PosEmployeePermission,
+  type PosEmployeeRole,
   isPosEmployeeRole,
   resolvePosEmployeePermissions,
   type CursorPage,
@@ -21,6 +29,15 @@ import {
   updatePosEmployeeSchema,
   type PosEmployeeListQuery,
 } from './pos-employee.schemas.js';
+
+/** The Kitchen role only exists for merchants whose activity has the kitchen feature on. */
+function requireRoleAvailable(
+  role: PosEmployeeRole | null | undefined,
+  features: ActivityFeatureSettings,
+): void {
+  if (role === 'kitchen' && !features.kitchen)
+    throw new BadRequestException('The kitchen role is not available for this business activity.');
+}
 
 const employeeInclude = {
   branch: { select: { id: true, name: true, archivedAt: true } },
@@ -71,8 +88,15 @@ export class PosEmployeeService {
     return { items, nextCursor: hasMore ? (items.at(-1)?.id ?? null) : null };
   }
 
-  async create(merchantId: string, actor: string, input: unknown): Promise<PosEmployeeSummary> {
+  /** `features` comes from the owner session; HTTP callers always pass it so roles follow the activity. */
+  async create(
+    merchantId: string,
+    actor: string,
+    input: unknown,
+    features?: ActivityFeatureSettings,
+  ): Promise<PosEmployeeSummary> {
     const parsed = parseRequest(createPosEmployeeSchema, input);
+    if (features) requireRoleAvailable(parsed.role, features);
     const passwordHash = await hashPassword(parsed.password);
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -108,8 +132,10 @@ export class PosEmployeeService {
     actor: string,
     employeeId: string,
     input: unknown,
+    features?: ActivityFeatureSettings,
   ): Promise<PosEmployeeSummary> {
     const parsed = parseRequest(updatePosEmployeeSchema, input);
+    if (features) requireRoleAvailable(parsed.role, features);
     const passwordHash = parsed.password ? await hashPassword(parsed.password) : undefined;
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.posEmployee.findFirst({

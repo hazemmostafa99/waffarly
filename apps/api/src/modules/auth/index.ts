@@ -1,4 +1,5 @@
 export { AdminGuard } from './admin.guard.js';
+export { ActivityFeatureGuard, RequireActivityFeature } from './activity-feature.guard.js';
 export { AuthModule } from './auth.module.js';
 export { AuthService } from './auth.service.js';
 export { CurrentAdmin, CurrentOwner, CurrentPosEmployee } from './current-actor.js';

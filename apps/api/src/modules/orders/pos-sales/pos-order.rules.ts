@@ -3,6 +3,7 @@
  */
 import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import type {
+  ActivityFeatureSettings,
   CreatePosOrderResponse,
   PosEmployeeSession,
   PosOrderQuoteRequest,
@@ -50,6 +51,20 @@ export async function quotePosSaleItems(
 export function requirePosSellPermission(employee: PosEmployeeSession): void {
   if (!employee.permissions.includes('sell'))
     throw new ForbiddenException('This employee is not authorized to sell.');
+}
+
+/**
+ * Checks the sale type against the merchant's activity features: in-store (takeaway) is
+ * always allowed, dine-in needs dining tables, and delivery needs the delivery feature.
+ */
+export function requireFulfillmentFeature(
+  features: ActivityFeatureSettings,
+  fulfillmentType: 'dine_in' | 'takeaway' | 'delivery',
+): void {
+  if (fulfillmentType === 'dine_in' && !features.diningTables)
+    throw new BadRequestException('Dine-in sales are not available for this business activity.');
+  if (fulfillmentType === 'delivery' && !features.delivery)
+    throw new BadRequestException('Delivery sales are not available for this business activity.');
 }
 export function replayPosSale(
   previous: { action: string; fingerprint: string; createdBy: string; result: unknown },

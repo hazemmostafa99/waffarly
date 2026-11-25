@@ -2,7 +2,7 @@ export interface RecordPosItemReturnRequest {
   requestId: string;
   branchId: string;
   reason: string;
-  lines: Array<{ orderLineId: string; quantity: number }>;
+  lines: Array<{ orderLineId: string; quantity: number; disposition?: 'restock' | 'waste' | undefined }>;
   approval?: { username: string; password: string } | undefined;
 }
 
@@ -11,7 +11,7 @@ export interface PosItemReturnLine {
   productName: string;
   variantName: string | null;
   quantity: number;
-  disposition: 'waste';
+  disposition: 'restock' | 'waste';
   unitPrice: string;
   amount: string;
 }
@@ -74,7 +74,7 @@ export interface OwnerPosItemReturnReportRow {
     productName: string;
     variantName: string | null;
     quantity: number;
-    disposition: 'waste';
+    disposition: 'restock' | 'waste';
     referenceValue: string;
   }>;
 }

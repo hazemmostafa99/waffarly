@@ -1,9 +1,10 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useLocale } from '@waffarly/ui';
-import type { BusinessActivitySettings } from '@waffarly/contracts';
+import type { ActivityFeatureSettings, ActivityWording } from '@waffarly/contracts';
 import { Icon } from './Icons.js';
 import {
+  activityLinkLabel,
   dashboardLink,
   settingsLink,
   navigationGroupsForActivity,
@@ -14,18 +15,18 @@ import {
 
 export function MerchantNavigation({
   onNavigate,
-  activitySettings,
+  activityFeatures,
+  activityWording,
 }: {
   onNavigate: () => void;
-  activitySettings: BusinessActivitySettings;
+  activityFeatures: ActivityFeatureSettings;
+  activityWording: ActivityWording;
 }) {
   const { locale, t } = useLocale();
   const { pathname } = useLocation();
-  const groups = navigationGroupsForActivity(activitySettings);
+  const groups = navigationGroupsForActivity(activityFeatures);
   const current = findMerchantNavigationLink(pathname);
-  const activeGroup = groups.find((group) =>
-    current ? group.links.includes(current) : false,
-  );
+  const activeGroup = groups.find((group) => (current ? group.links.includes(current) : false));
   const [openState, setOpenState] = useState({
     pathname,
     groupId: activeGroup?.id ?? null,
@@ -44,7 +45,11 @@ export function MerchantNavigation({
         onClick={onNavigate}
       >
         <Icon name={link.icon} />
-        <span>{locale === 'ar' ? link.ar : link.en}</span>
+        <span>
+          {locale === 'ar'
+            ? activityLinkLabel(link, activityWording).ar
+            : activityLinkLabel(link, activityWording).en}
+        </span>
       </Link>
     );
   }

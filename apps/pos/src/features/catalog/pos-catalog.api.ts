@@ -5,10 +5,12 @@ export const posCatalogKey = (merchantId: string) => ['pos', 'catalog', merchant
 
 export function getPosSellableCatalog(
   productCursor: string | undefined,
+  search: string,
   signal: AbortSignal,
 ): Promise<PosSellableCatalog> {
   const params = new URLSearchParams();
   if (productCursor) params.set('productCursor', productCursor);
+  if (search) params.set('search', search);
   const query = params.size > 0 ? `?${params.toString()}` : '';
   return apiRequest(`/pos/catalog${query}`, { method: 'GET', signal });
 }

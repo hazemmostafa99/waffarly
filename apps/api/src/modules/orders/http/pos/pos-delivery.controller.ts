@@ -13,10 +13,16 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { PosEmployeeSession } from '@waffarly/contracts';
-import { CurrentPosEmployee, PosEmployeeGuard } from '../../../auth/index.js';
+import {
+  ActivityFeatureGuard,
+  CurrentPosEmployee,
+  PosEmployeeGuard,
+  RequireActivityFeature,
+} from '../../../auth/index.js';
 import { PosDeliveryService } from '../../delivery/pos-delivery.service.js';
 
-@UseGuards(PosEmployeeGuard)
+@UseGuards(PosEmployeeGuard, ActivityFeatureGuard)
+@RequireActivityFeature('delivery')
 @Controller('pos/deliveries')
 export class PosDeliveryController {
   constructor(@Inject(PosDeliveryService) private readonly deliveries: PosDeliveryService) {}

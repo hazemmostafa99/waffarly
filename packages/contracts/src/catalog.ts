@@ -340,6 +340,8 @@ export interface PublicStorefrontProduct {
   variants: Array<{
     id: string;
     name: string;
+    sku?: string | null;
+    barcode?: string | null;
     price: string;
     promotionalPrice?: string | null;
     availability: CatalogAvailability;
@@ -348,7 +350,9 @@ export interface PublicStorefrontProduct {
   }>;
 }
 
-export interface PublicStorefrontCatalog extends Partial<import('./merchant-storefront.js').StorefrontHeroSettings> {
+export interface PublicStorefrontCatalog extends Partial<
+  import('./merchant-storefront.js').StorefrontHeroSettings
+> {
   slug: string;
   merchantName: string;
   activity: string;
@@ -679,7 +683,11 @@ export interface StorefrontCheckoutQuote {
   fulfillmentQuoteKey?: string | undefined;
   unitPrices: string[];
   originalUnitPrices?: string[];
-  promotions?: Array<{ type: 'percentage' | 'amount'; value: string; discountAmount: string } | null>;
+  promotions?: Array<{
+    type: 'percentage' | 'amount';
+    value: string;
+    discountAmount: string;
+  } | null>;
   subtotal: string;
   deliveryFee: string;
   total: string;

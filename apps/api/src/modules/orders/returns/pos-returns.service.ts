@@ -1,6 +1,6 @@
 /**
  * Records approved physical item returns against the original sale.
- * These records describe waste; they do not refund money or put items back into stock.
+ * Sellable clothing returns restore stock; damaged returns record waste without a refund.
  */
 import {
   itemReturnInclude,
@@ -24,17 +24,22 @@ import type {
   RecordPosItemReturnResponse,
   RecordPosItemReturnRequest,
 } from '@waffarly/contracts';
-import type { Prisma } from '@waffarly/database';
+import { Prisma } from '@waffarly/database';
 import { createHash, randomUUID } from 'node:crypto';
 import { formatCents, toCents } from '../../../common/money/money.js';
 import { PrismaService } from '../../../infrastructure/database/prisma.service.js';
+import { InventoryLedgerService } from '../../inventory/inventory-ledger.service.js';
+import { resolveConsumptionWarehouse } from '../stock/order-stock.persistence.js';
 import { isPosEmployeeRole, resolvePosEmployeePermissions } from '@waffarly/contracts';
 
 import { type OwnerPosItemReturnReportsInput } from './pos-returns.schemas.js';
 
 @Injectable()
 export class PosReturnsService {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(InventoryLedgerService) private readonly ledger: InventoryLedgerService,
+  ) {}
 
   listOwnerReports(
     merchantId: string,
@@ -172,6 +177,7 @@ export class PosReturnsService {
         where: { orderId, merchantId: employee.merchantId },
         include: {
           selections: { orderBy: [{ groupPosition: 'asc' }, { optionPosition: 'asc' }] },
+          stockRequirements: true,
         },
       });
       const lineById = new Map(lines.map((line) => [line.id, line]));
@@ -190,6 +196,14 @@ export class PosReturnsService {
         const alreadyReturned = returnedByLine.get(line.id) ?? 0;
         if (requested.quantity > line.quantity - alreadyReturned)
           throw new ConflictException('The requested quantity exceeds the units not yet returned.');
+        const disposition = requested.disposition ?? 'waste';
+        if (disposition === 'restock' && employee.activity !== 'clothing')
+          throw new ConflictException('Restocking returned items is available for clothing sales.');
+        if (
+          disposition === 'restock' &&
+          (line.stockHandling !== 'direct_sale' || !line.stockRequirements.length)
+        )
+          throw new ConflictException('This sale has no direct stock to restore.');
         const unitCents = toCents(line.unitPrice.toString());
         const amount = formatCents(unitCents * BigInt(requested.quantity));
         totalCents += unitCents * BigInt(requested.quantity);
@@ -198,7 +212,7 @@ export class PosReturnsService {
           productName: line.productName,
           variantName: line.variantName,
           quantity: requested.quantity,
-          disposition: 'waste' as const,
+          disposition,
           unitPrice: formatCents(unitCents),
           amount,
         };
@@ -207,6 +221,42 @@ export class PosReturnsService {
       const returnId = randomUUID();
       const issuedAt = new Date();
       const returnNumber = `RET-${returnId.replaceAll('-', '').slice(0, 12).toUpperCase()}`;
+      const restockLines = input.lines.filter((line) => line.disposition === 'restock');
+      if (restockLines.length) {
+        const warehouse = await resolveConsumptionWarehouse(
+          tx,
+          employee.merchantId,
+          input.branchId,
+        );
+        const quantities = new Map<string, { baseUnit: string; quantity: Prisma.Decimal }>();
+        for (const requested of restockLines) {
+          const soldLine = lineById.get(requested.orderLineId)!;
+          for (const requirement of soldLine.stockRequirements) {
+            // Frozen requirement is for the whole sold line; restore only the returned share.
+            const share = requirement.quantity.mul(requested.quantity).div(soldLine.quantity);
+            const current = quantities.get(requirement.stockItemId);
+            quantities.set(requirement.stockItemId, {
+              baseUnit: requirement.baseUnit,
+              quantity: current ? current.quantity.add(share) : share,
+            });
+          }
+        }
+        await this.ledger.postMovementBatch(tx, employee.merchantId, actor, {
+          requestId: returnId,
+          sourceType: 'pos_item_return',
+          sourceId: returnId,
+          kind: 'sale_restoration',
+          reason: `Sellable items returned on ${returnNumber}`,
+          movements: [...quantities].map(([stockItemId, item]) => ({
+            warehouseId: warehouse.id,
+            stockItemId,
+            condition: 'available',
+            unitCode: item.baseUnit,
+            enteredQuantity: item.quantity.toFixed(6),
+            baseDelta: item.quantity.toFixed(6),
+          })),
+        });
+      }
       const summary: PosItemReturnSummary = {
         id: returnId,
         requestId: input.requestId,

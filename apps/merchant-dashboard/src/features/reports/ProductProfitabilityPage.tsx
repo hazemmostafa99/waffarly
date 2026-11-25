@@ -9,7 +9,7 @@ import type {
 } from '@waffarly/contracts';
 import { InventoryHeader } from '../inventory/InventoryHeader.js';
 import { InventoryCard } from '../inventory/InventoryCard.js';
-import { inventoryCopy } from '../inventory/inventory-copy.js';
+import { inventoryCopy, useInventoryText } from '../inventory/inventory-copy.js';
 import { apiRequest } from '../../lib/api-client.js';
 import { ReportBars, ReportPanel } from './ReportComponents.js';
 import './business-reports.css';
@@ -46,7 +46,7 @@ function cairoMonthStart(value: Date): string {
 export function ProductProfitabilityPage() {
   const [searchParams] = useSearchParams();
   const { locale, t, errorText, formatDigits } = useLocale();
-  const text = useCallback((value: string) => inventoryCopy(value, locale, t), [locale, t]);
+  const text = useInventoryText();
   const now = new Date();
   const [from, setFrom] = useState(() => searchParams.get('from') ?? cairoMonthStart(now));
   const [to, setTo] = useState(() => searchParams.get('to') ?? cairoDate(now));

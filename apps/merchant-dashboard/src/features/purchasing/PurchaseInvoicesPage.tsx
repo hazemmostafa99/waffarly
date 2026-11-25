@@ -13,7 +13,7 @@ import type {
 } from '@waffarly/contracts';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { ApiError, apiRequest, apiRequestPage } from '../../lib/api-client.js';
-import { inventoryCopy } from '../inventory/inventory-copy.js';
+import { inventoryCopy, useInventoryText } from '../inventory/inventory-copy.js';
 import {
   Link,
   useLocation,
@@ -40,7 +40,7 @@ export function PurchaseInvoicesPage() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const text = (value: string) => inventoryCopy(value, locale, t);
+  const text = useInventoryText();
   const normalizedPath = pathname.replace(/\/$/, '');
   const isNewInvoiceRoute = normalizedPath === '/inventory/purchases/new';
   const editRouteMatch = normalizedPath.match(/^\/inventory\/purchases\/([^/]+)\/edit$/);

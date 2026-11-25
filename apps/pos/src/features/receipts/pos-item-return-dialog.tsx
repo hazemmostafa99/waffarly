@@ -1,8 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { PosItemReturnSummary, RecordPosItemReturnRequest } from '@waffarly/contracts';
+import type {
+  PosEmployeeSession,
+  PosItemReturnSummary,
+  RecordPosItemReturnRequest,
+} from '@waffarly/contracts';
 import { Dialog, Input, useLocale } from '@waffarly/ui';
 import { AlertTriangle, CheckCircle2, RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useOutletContext } from 'react-router-dom';
 import { usePosWorkspaceStore, type PendingPosItemReturn } from '../../app/pos-workspace-store.js';
 import { PosButton } from '../../components/pos-button.js';
 import { ApiError } from '../../lib/api-client.js';
@@ -24,6 +29,8 @@ export function PosItemReturnDialog({
   onClose: () => void;
 }) {
   const { t, errorText, formatDate, formatNumber } = useLocale();
+  const { employee } = useOutletContext<{ employee: PosEmployeeSession }>();
+  const isClothing = employee.activity === 'clothing';
   const queryClient = useQueryClient();
   const queryKey = posOrderReturnsKey(merchantId, orderId);
   const savePendingItemReturn = usePosWorkspaceStore((state) => state.savePendingItemReturn);
@@ -40,6 +47,12 @@ export function PosItemReturnDialog({
       storedCommand?.request.lines.map((line) => [line.orderLineId, String(line.quantity)]) ?? [],
     ),
   );
+  const [dispositions, setDispositions] = useState<Record<string, 'restock' | 'waste'>>(() =>
+    Object.fromEntries(
+      storedCommand?.request.lines.map((line) => [line.orderLineId, line.disposition ?? 'waste']) ??
+        [],
+    ),
+  );
   const [approvalUsername, setApprovalUsername] = useState('');
   const [approvalPassword, setApprovalPassword] = useState('');
   const [saveError, setSaveError] = useState('');
@@ -52,6 +65,11 @@ export function PosItemReturnDialog({
     setQuantities(
       Object.fromEntries(
         storedCommand.request.lines.map((line) => [line.orderLineId, String(line.quantity)]),
+      ),
+    );
+    setDispositions(
+      Object.fromEntries(
+        storedCommand.request.lines.map((line) => [line.orderLineId, line.disposition ?? 'waste']),
       ),
     );
   }, [pendingCommand, storedCommand]);
@@ -115,7 +133,13 @@ export function PosItemReturnDialog({
       const quantity = Number(raw);
       if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > item.returnableQuantity)
         return [];
-      return [{ orderLineId: item.orderLineId, quantity }];
+      return [
+        {
+          orderLineId: item.orderLineId,
+          quantity,
+          disposition: isClothing ? (dispositions[item.orderLineId] ?? 'waste') : 'waste',
+        },
+      ];
     });
     if (!lines.length || !quantitiesValid) return null;
     const request: Omit<RecordPosItemReturnRequest, 'approval'> = {
@@ -201,9 +225,13 @@ export function PosItemReturnDialog({
           <div className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-warning-foreground">
             <AlertTriangle size={18} className="mt-0.5 shrink-0" aria-hidden="true" />
             <p className="m-0 text-xs leading-relaxed">
-              {t(
-                'Returned items are recorded as waste. The original receipt, payment, and stock are unchanged. Use the refund action separately to return money.',
-              )}
+              {isClothing
+                ? t(
+                    'Sellable items return to stock. Damaged items are recorded as waste. Use the refund action separately to return money.',
+                  )
+                : t(
+                    'Returned items are recorded as waste. The original receipt, payment, and stock are unchanged. Use the refund action separately to return money.',
+                  )}
             </p>
           </div>
 
@@ -306,6 +334,23 @@ export function PosItemReturnDialog({
                           }))
                         }
                       />
+                      {isClothing && (
+                        <select
+                          className="min-h-9 rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                          aria-label={`${t('Return condition')}: ${item.productName}`}
+                          value={dispositions[item.orderLineId] ?? 'waste'}
+                          disabled={Boolean(pendingCommand) || mutation.isPending}
+                          onChange={(event) =>
+                            setDispositions((current) => ({
+                              ...current,
+                              [item.orderLineId]: event.target.value as 'restock' | 'waste',
+                            }))
+                          }
+                        >
+                          <option value="restock">{t('Sellable — return to stock')}</option>
+                          <option value="waste">{t('Damaged — waste')}</option>
+                        </select>
+                      )}
                     </span>
                   </label>
                 ))}
@@ -440,7 +485,9 @@ function ReturnSummary({
           {itemReturn.lines.map((line) => (
             <div key={line.orderLineId} className="flex items-start justify-between gap-3">
               <span className="min-w-0 break-words">
-                {line.productName} × {formatNumber(line.quantity)} · {t('Waste')}
+                {line.productName}
+                {line.variantName ? ` · ${line.variantName}` : ''} × {formatNumber(line.quantity)} ·{' '}
+                {t(line.disposition === 'restock' ? 'Returned to stock' : 'Waste')}
               </span>
               <bdi dir="ltr" className="shrink-0">
                 {formatNumber(Number(line.amount), {

@@ -9,6 +9,9 @@ const settings = z
   .object({
     name: z.string().trim().min(1).max(160),
     description: z.string().trim().max(1000),
+    features: z
+      .object({ kitchen: z.boolean(), diningTables: z.boolean(), delivery: z.boolean() })
+      .strict(),
     revision: z.number().int().min(0).max(2147483646),
   })
   .strict();
@@ -28,11 +31,7 @@ export class ActivitiesController {
   }
 
   @Patch(':key')
-  update(
-    @Param('key') key: string,
-    @Body() body: unknown,
-    @CurrentAdmin() administrator: string,
-  ) {
+  update(@Param('key') key: string, @Body() body: unknown, @CurrentAdmin() administrator: string) {
     return this.activities.update(
       parse(z.enum(BUSINESS_ACTIVITY_KEYS), key),
       parse(settings, body),

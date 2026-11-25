@@ -1,7 +1,12 @@
 import { Navigate, Outlet, useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { useLocale } from '@waffarly/ui';
 import { useCallback, useEffect, useState } from 'react';
-import { resolveBusinessActivitySettings, type OwnerProfile } from '@waffarly/contracts';
+import {
+  actorActivityFeatures,
+  resolveActivityWording,
+  resolveBusinessActivitySettings,
+  type OwnerProfile,
+} from '@waffarly/contracts';
 import { apiRequest } from './lib/api-client.js';
 import { Icon } from './Icons.js';
 import { dashboardCopy } from './dashboard-copy.js';
@@ -14,8 +19,12 @@ export function MerchantLayout() {
   const copy = (message: string) => dashboardCopy(message, locale, t);
   const navigate = useNavigate();
   const location = useLocation();
-  const breadcrumbs = getMerchantBreadcrumbs(location.pathname, location.search);
   const [profile, setProfile] = useState<OwnerProfile | null | undefined>(undefined);
+  const breadcrumbs = getMerchantBreadcrumbs(
+    location.pathname,
+    location.search,
+    profile ? resolveActivityWording(profile.activity) : null,
+  );
   const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
@@ -87,7 +96,8 @@ export function MerchantLayout() {
           <Icon name="close" />
         </button>
         <MerchantNavigation
-          activitySettings={resolveBusinessActivitySettings(profile.activity)}
+          activityFeatures={actorActivityFeatures(profile)}
+          activityWording={resolveActivityWording(profile.activity)}
           onNavigate={() => setMenuOpen(false)}
         />
         <div className="merchant-sidebar-footer">
@@ -188,26 +198,26 @@ export function MerchantLayout() {
           className={`merchant-content ${location.pathname === '/' ? 'merchant-content-dashboard' : location.pathname === '/settings' ? 'merchant-content-settings' : ''}`}
         >
           <div className="merchant-page-navigation">
-          {breadcrumbs.length > 0 && (
-            <nav
-              className="merchant-breadcrumbs"
-              aria-label={locale === 'ar' ? 'مسار الصفحة' : 'Breadcrumbs'}
-            >
-              {breadcrumbs.map((item, index) => (
-                <span key={`${item.en}-${index}`}>
-                  {index > 0 && <Icon name="chevron" />}
-                  {item.to && index < breadcrumbs.length - 1 ? (
-                    <NavLink to={item.to}>{locale === 'ar' ? item.ar : item.en}</NavLink>
-                  ) : (
-                    <span aria-current={index === breadcrumbs.length - 1 ? 'page' : undefined}>
-                      {locale === 'ar' ? item.ar : item.en}
-                    </span>
-                  )}
-                </span>
-              ))}
-            </nav>
-          )}
-          <div id="merchant-page-actions" />
+            {breadcrumbs.length > 0 && (
+              <nav
+                className="merchant-breadcrumbs"
+                aria-label={locale === 'ar' ? 'مسار الصفحة' : 'Breadcrumbs'}
+              >
+                {breadcrumbs.map((item, index) => (
+                  <span key={`${item.en}-${index}`}>
+                    {index > 0 && <Icon name="chevron" />}
+                    {item.to && index < breadcrumbs.length - 1 ? (
+                      <NavLink to={item.to}>{locale === 'ar' ? item.ar : item.en}</NavLink>
+                    ) : (
+                      <span aria-current={index === breadcrumbs.length - 1 ? 'page' : undefined}>
+                        {locale === 'ar' ? item.ar : item.en}
+                      </span>
+                    )}
+                  </span>
+                ))}
+              </nav>
+            )}
+            <div id="merchant-page-actions" />
           </div>
           {error && (
             <p className="error" role="alert">
@@ -218,6 +228,7 @@ export function MerchantLayout() {
             context={{
               profile,
               activitySettings: resolveBusinessActivitySettings(profile.activity),
+              activityFeatures: actorActivityFeatures(profile),
               search,
               updateProfile,
             }}

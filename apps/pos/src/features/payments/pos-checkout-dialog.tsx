@@ -1,3 +1,4 @@
+import { usePosText } from '../../lib/use-pos-text.js';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   PosOrderPaymentStateResponse,
@@ -34,7 +35,8 @@ export function PosCheckoutDialog({
   orderId: string;
   onClose: () => void;
 }) {
-  const { t, errorText, formatNumber } = useLocale();
+  const { errorText, formatNumber } = useLocale();
+  const t = usePosText();
   const viewport = usePosViewport();
   const queryClient = useQueryClient();
   const queryKey = posPaymentStateKey(merchantId, orderId);

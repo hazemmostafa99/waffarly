@@ -34,7 +34,7 @@ import type {
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { ApiError, apiRequest, apiRequestPage, apiRequestSingle } from '../../lib/api-client.js';
 import { InventoryHeader } from './InventoryHeader.js';
-import { inventoryCopy } from './inventory-copy.js';
+import { inventoryCopy, useInventoryText } from './inventory-copy.js';
 
 type OpeningLineDraft = {
   key: string;
@@ -74,7 +74,7 @@ export function InventoryOperationsPage({
   view?: 'overview' | 'history' | 'opening' | 'settings';
 }) {
   const { locale, t, errorText, formatDigits } = useLocale();
-  const text = (value: string) => inventoryCopy(value, locale, t);
+  const text = useInventoryText();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();

@@ -1,9 +1,13 @@
-import type { PosOrderPaymentStateResponse } from '@waffarly/contracts';
+import { usePosText } from '../../lib/use-pos-text.js';
+import { actorActivityFeatures } from '@waffarly/contracts';
+import type { PosEmployeeSession, PosOrderPaymentStateResponse } from '@waffarly/contracts';
+import { useOutletContext } from 'react-router-dom';
 import { useLocale } from '@waffarly/ui';
 import { PosButton } from '../../components/pos-button.js';
 
 export function PosCheckoutOrderIdentity({ state }: { state: PosOrderPaymentStateResponse }) {
-  const { t } = useLocale();
+  const t = usePosText();
+  const { employee } = useOutletContext<{ employee: PosEmployeeSession }>();
   const context = state.context;
   if (!context) return null;
   return (
@@ -18,7 +22,9 @@ export function PosCheckoutOrderIdentity({ state }: { state: PosOrderPaymentStat
               ? 'Dine in'
               : context.order.fulfillmentType === 'delivery'
                 ? 'Delivery'
-                : 'Takeaway',
+                : actorActivityFeatures(employee).kitchen
+                  ? 'Takeaway'
+                  : 'In-store sale',
           )}
         </span>
         {context.tableCode && (
@@ -38,7 +44,8 @@ export function PosCheckoutOrderContext({
   state: PosOrderPaymentStateResponse;
   onRefresh: () => void;
 }) {
-  const { t, formatNumber } = useLocale();
+  const { formatNumber } = useLocale();
+  const t = usePosText();
   const context = state.context;
   if (!context)
     return (

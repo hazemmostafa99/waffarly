@@ -13,7 +13,7 @@ import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { apiRequest } from '../../lib/api-client.js';
 import { InventoryHeader } from './InventoryHeader.js';
 import { InventoryCard } from './InventoryCard.js';
-import { inventoryCopy } from './inventory-copy.js';
+import { inventoryCopy, useInventoryText } from './inventory-copy.js';
 import { StockItemPicker, WarehousePicker } from './components/InventoryPickers.js';
 import { cacheStockItem, stockUnitOptions } from './stock-unit-options.js';
 
@@ -35,7 +35,7 @@ const emptyLine = (): DraftLine => ({
 
 export function InventoryStockActionPage({ action }: { action: 'waste' | 'transfer' }) {
   const { locale, t, errorText, formatDigits } = useLocale();
-  const text = (value: string) => inventoryCopy(value, locale, t);
+  const text = useInventoryText();
   const navigate = useNavigate();
   const [items, setItems] = useState<StockItem[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseSummary[]>([]);

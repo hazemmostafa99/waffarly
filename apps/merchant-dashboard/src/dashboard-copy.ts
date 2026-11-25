@@ -10,9 +10,12 @@ const arabic: Record<string, string> = {
   '1 June – 7 June 2024': '١ يونيو — ٧ يونيو ٢٠٢٤',
   'Total Sales': 'إجمالي المبيعات',
   'Total Orders': 'إجمالي الطلبات',
+  'Latest Sales': 'أحدث المبيعات',
+  'Sales from all sources': 'المبيعات من جميع المصادر',
   'Latest Orders': 'أحدث الطلبات',
   'Latest orders from all sources': 'آخر الطلبات من جميع المصادر',
-  'Track orders from Wfarly, Storefront and POS.': 'تابع طلبات وفّرلي والمتجر الإلكتروني ونقطة البيع.',
+  'Track orders from Wfarly, Storefront and POS.':
+    'تابع طلبات وفّرلي والمتجر الإلكتروني ونقطة البيع.',
   'Orders from all sources': 'الطلبات من جميع المصادر',
   Wfarly: 'وفّرلي',
   Storefront: 'المتجر الإلكتروني',

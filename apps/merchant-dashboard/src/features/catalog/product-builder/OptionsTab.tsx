@@ -6,12 +6,13 @@ import {
   ChoiceConfigurationOverview,
   type ChoiceEditorView,
 } from './ChoiceConfigurationOverview.js';
-import type { CatalogModifierGroupSummary } from '@waffarly/contracts';
+import type { ActivityWording, CatalogModifierGroupSummary } from '@waffarly/contracts';
+import { activityChoicePhrases } from '@waffarly/contracts';
 import { Icon } from '../../../Icons.js';
 import type { ChoiceGroupDraft, GroupDraft, VariantDraft } from './product-builder.types.js';
 
 export function OptionsTab({
-  clothing,
+  wording,
   groups,
   recipe,
   productMode,
@@ -29,7 +30,7 @@ export function OptionsTab({
   onVariantsChange,
   text,
 }: {
-  clothing: boolean;
+  wording: ActivityWording;
   groups: GroupDraft[];
   recipe: boolean;
   productMode: 'simple' | 'variants';
@@ -47,6 +48,8 @@ export function OptionsTab({
   onVariantsChange: (variants: VariantDraft[]) => void;
   text: (english: string, arabic: string) => string;
 }) {
+  const say = (words: { en: string; ar: string }) => text(words.en, words.ar);
+  const phrases = activityChoicePhrases(wording);
   const availableLibraryGroups = modifierLibrary.filter(
     (group) => !groups.some((assigned) => assigned.modifierGroupId === group.id),
   );
@@ -120,12 +123,7 @@ export function OptionsTab({
   }
   function applyVariants(next: VariantDraft[]) {
     onVariantsChange(next);
-    setFeedback({
-      message: clothing
-        ? text('Sizes, colors, and prices updated.', 'تم تحديث المقاسات والألوان والأسعار.')
-        : text('Sizes and prices updated.', 'تم تحديث الأحجام والأسعار.'),
-      target: 'variants',
-    });
+    setFeedback({ message: say(phrases.updated), target: 'variants' });
   }
   return (
     <div className="builder-fields">
@@ -133,16 +131,7 @@ export function OptionsTab({
         <span>03</span>
         <div>
           <h2>{text('Customer choices', 'خيارات العميل')}</h2>
-          <p>
-            {text(
-              clothing
-                ? 'Add a size and color choice for each item you sell.'
-                : 'Start with one price. Add sizes or extras only when customers need them.',
-              clothing
-                ? 'أضف اختيار المقاس واللون لكل قطعة تبيعها.'
-                : 'ابدأ بسعر واحد. أضف أحجامًا أو إضافات فقط إذا احتاج العميل إليها.',
-            )}
-          </p>
+          <p>{say(wording.choices.optionsIntro)}</p>
         </div>
       </div>
       <div className="composer-feedback" role="status" aria-live="polite" aria-atomic="true">
@@ -167,11 +156,7 @@ export function OptionsTab({
           </p>
           {variantDraft && (
             <div>
-              <span>
-                {clothing
-                  ? text('Sizes and colors', 'المقاسات والألوان')
-                  : text('Sizes and types', 'الأحجام والأنواع')}
-              </span>
+              <span>{say(wording.choices.title)}</span>
               <button
                 type="button"
                 className="builder-text-button"
@@ -235,26 +220,11 @@ export function OptionsTab({
             <span className="builder-template-icon">
               <Icon name="layers" />
             </span>
-            <strong>
-              {clothing
-                ? text('Sizes and colors', 'المقاسات والألوان')
-                : text('Sizes or types', 'أحجام أو أنواع')}
-            </strong>
-            <small>
-              {text(
-                clothing
-                  ? 'Create one sellable choice for each size and color, with its own price.'
-                  : 'Small, medium, large — each with its own price.',
-                clothing
-                  ? 'أنشئ اختيارًا مستقلًا لكل مقاس ولون، بسعره الخاص.'
-                  : 'صغير، وسط، كبير — لكل حجم سعره.',
-              )}
-            </small>
+            <strong>{say(wording.choices.templateTitle)}</strong>
+            <small>{say(wording.choices.templateHint)}</small>
             <span className="builder-template-action">
               <Icon name="plus" />
-              {variants.length
-                ? text('Edit sizes', 'تعديل الأحجام')
-                : text('Add sizes', 'إضافة أحجام')}
+              {say(variants.length ? phrases.edit : phrases.add)}
             </span>
           </button>
           <button
@@ -266,12 +236,7 @@ export function OptionsTab({
               <Icon name="plus" />
             </span>
             <strong>{text('Extras', 'إضافات')}</strong>
-            <small>
-              {text(
-                'Extra cheese, sauce — free or for an extra charge.',
-                'جبنة إضافية، صوص — مجانًا أو بسعر إضافي.',
-              )}
-            </small>
+            <small>{say(wording.extras.templateHint)}</small>
             <span className="builder-template-action">
               <Icon name="plus" />
               {text('Add extras', 'إضافة اختيارات')}
@@ -367,11 +332,11 @@ export function OptionsTab({
             <Icon name="layers" />
           </span>
           <span className="builder-choice-summary-copy">
-            <strong>{text('Sizes and types', 'الأحجام والأنواع')}</strong>
+            <strong>{say(wording.choices.title)}</strong>
             <small>
               {text(
-                `${variants.length} sizes or types · each has its own selling price`,
-                `${variants.length} أحجام أو أنواع · لكل منها سعر بيع مستقل`,
+                `${phrases.count(variants.length).en} · each has its own selling price`,
+                `${phrases.count(variants.length).ar} · لكل منها سعر بيع مستقل`,
               )}
             </small>
             <span className="builder-choice-summary-options">
@@ -504,7 +469,7 @@ export function OptionsTab({
       )}
       {variantsOpen && (
         <VariantComposer
-          clothing={clothing}
+          wording={wording}
           variants={variants}
           basePrice={basePrice}
           initialDraft={variantDraft ?? undefined}
@@ -518,6 +483,7 @@ export function OptionsTab({
       )}
       {composerTemplate && (
         <ChoiceGroupComposer
+          wording={wording}
           template={composerTemplate}
           basePrice={basePrice}
           creating={creatingGroup}

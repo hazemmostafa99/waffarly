@@ -15,6 +15,7 @@ import type {
   ProductInventoryMode,
   StockItem,
 } from '@waffarly/contracts';
+import { resolveActivityWording } from '@waffarly/contracts';
 import { Icon } from '../../../Icons.js';
 import { apiRequest, apiUpload } from '../../../lib/api-client.js';
 import { ProductInventoryTab, type ProductInventoryTargetDraft } from './ProductInventoryTab.js';
@@ -43,6 +44,8 @@ export function ProductBuilderPage() {
   const activityDefaultMode: ProductInventoryMode =
     profile.activity === 'restaurant' ? 'RECIPE' : 'DIRECT';
   const text = (english: string, arabic: string) => formatDigits(isArabic ? arabic : english);
+  // All activity-specific builder text (examples, size/model/pack names) comes from here.
+  const wording = resolveActivityWording(profile.activity);
   const [activeTab, setActiveTab] = useState(0);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -914,7 +917,7 @@ export function ProductBuilderPage() {
             >
               {activeTab === 0 && (
                 <ProductInformationTab
-                  clothing={profile.activity === 'clothing'}
+                  wording={wording}
                   name={name}
                   onNameChange={setName}
                   description={description}
@@ -954,7 +957,7 @@ export function ProductBuilderPage() {
               )}
               <div hidden={activeTab !== 1}>
                 <OptionsTab
-                  clothing={profile.activity === 'clothing'}
+                  wording={wording}
                   key={productId ?? 'new-product'}
                   groups={groups}
                   recipe={inventoryEnabled && inventoryMode === 'RECIPE'}
@@ -977,6 +980,7 @@ export function ProductBuilderPage() {
               {activeTab === 2 && (
                 <>
                   <ProductInventoryTab
+                    wording={wording}
                     productName={name}
                     enabled={inventoryEnabled}
                     onEnabledChange={setInventoryEnabled}
@@ -1007,6 +1011,7 @@ export function ProductBuilderPage() {
               )}
               {activeTab === 3 && (
                 <PreviewPublishTab
+                  wording={wording}
                   onEditStep={(step) => {
                     if (!submitting) {
                       setError('');
@@ -1112,6 +1117,7 @@ export function ProductBuilderPage() {
             )}
           </main>
           <ProductPreview
+            wording={wording}
             name={name}
             description={description}
             basePrice={basePrice}

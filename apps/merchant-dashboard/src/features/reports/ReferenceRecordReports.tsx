@@ -298,6 +298,12 @@ export function ReferenceItemReturns({
                                   value={item.referenceValue}
                                   locale={locale}
                                 />
+                                <p>
+                                  {t('Condition', 'الحالة')}:{' '}
+                                  {item.disposition === 'restock'
+                                    ? t('Returned to stock', 'رجع للمخزون')
+                                    : t('Waste', 'هالك')}
+                                </p>
                               </div>
                             ))}
                             <p>
@@ -309,10 +315,15 @@ export function ReferenceItemReturns({
                                 t('No separate approval required', 'لا يحتاج اعتمادًا منفصلًا')}
                             </p>
                             <p>
-                              {t(
-                                'Physical item returns do not automatically restore food ingredients to stock.',
-                                'المرتجع الفعلي ليس بالضرورة استردادًا ماليًا، ولا يعيد مكونات الطعام إلى المخزون تلقائيًا.',
-                              )}
+                              {row.lines.some((item) => item.disposition === 'restock')
+                                ? t(
+                                    'A physical return is not a refund. Only items marked sellable were returned to stock.',
+                                    'المرتجع الفعلي ليس استردادًا ماليًا. الأصناف السليمة فقط هي التي رجعت للمخزون.',
+                                  )
+                                : t(
+                                    'Physical item returns do not automatically restore food ingredients to stock.',
+                                    'المرتجع الفعلي ليس بالضرورة استردادًا ماليًا، ولا يعيد مكونات الطعام إلى المخزون تلقائيًا.',
+                                  )}
                             </p>
                           </>,
                         )

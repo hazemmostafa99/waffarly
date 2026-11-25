@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Button, Input, useLocale } from '@waffarly/ui';
 import type { PurchaseInvoice } from '@waffarly/contracts';
 import { apiRequest } from '../../lib/api-client.js';
-import { inventoryCopy } from '../inventory/inventory-copy.js';
+import { inventoryCopy, useInventoryText } from '../inventory/inventory-copy.js';
 import { stockDecimalLabel, stockUnitLabel } from '../inventory/stock-unit-options.js';
 
 export function PurchaseInvoiceAdjustmentsPanel({
@@ -15,7 +15,7 @@ export function PurchaseInvoiceAdjustmentsPanel({
   onBusyChange?: (busy: boolean) => void;
 }) {
   const { locale, t, formatDigits, errorText } = useLocale();
-  const text = (value: string) => inventoryCopy(value, locale, t);
+  const text = useInventoryText();
   const [correctionCosts, setCorrectionCosts] = useState<Record<string, string>>({});
   const [correctionReason, setCorrectionReason] = useState('');
   const [returnQuantities, setReturnQuantities] = useState<Record<string, string>>({});

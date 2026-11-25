@@ -1343,6 +1343,7 @@ it(
             await tx.posDiningSession.deleteMany({ where: { merchantId } });
             await tx.posDiningTable.deleteMany({ where: { merchantId } });
             await tx.posShift.deleteMany({ where: { merchantId } });
+            await tx.posBranchOrderSession.deleteMany({ where: { merchantId } });
             await tx.posRegister.deleteMany({ where: { merchantId } });
             await tx.posEmployee.deleteMany({ where: { merchantId } });
             await tx.branch.deleteMany({ where: { merchantId } });

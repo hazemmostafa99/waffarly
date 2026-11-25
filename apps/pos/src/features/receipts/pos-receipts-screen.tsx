@@ -1,3 +1,5 @@
+import { usePosText } from '../../lib/use-pos-text.js';
+import { actorActivityFeatures } from '@waffarly/contracts';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   PosEmployeeSession,
@@ -25,6 +27,13 @@ const orderStatuses: StorefrontOrderSummary['status'][] = [
   'cancelled',
 ];
 
+/** Statuses that only a kitchen produces; shops never see them in the filter. */
+const kitchenOnlyStatuses = new Set<StorefrontOrderSummary['status']>([
+  'accepted',
+  'preparing',
+  'rejected',
+]);
+
 export function PosOrdersScreen() {
   const { employee } = useOutletContext<{ employee: PosEmployeeSession }>();
   return employee.permissions.includes('sell') ? (
@@ -35,7 +44,9 @@ export function PosOrdersScreen() {
 }
 
 function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
-  const { t, errorText, formatNumber } = useLocale();
+  const { errorText, formatNumber } = useLocale();
+  const t = usePosText();
+  const retailSale = !actorActivityFeatures(employee).kitchen;
   const queryClient = useQueryClient();
   const selectedBranchId = employee.branch.id;
   const [search, setSearch] = useState('');
@@ -140,7 +151,7 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <h2 id="pos-orders-history-heading" className="text-base font-semibold">
-            {t('Orders')}
+            {t(retailSale ? 'Sales' : 'Orders')}
           </h2>
           <span className="text-[11px] text-muted-foreground">
             {t('Orders shown')}: {formatNumber(orders.length)}
@@ -164,8 +175,16 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder={t('Search order number, customer or table')}
-              aria-label={t('Search order number, customer or table')}
+              placeholder={t(
+                retailSale
+                  ? 'Search sale number or customer'
+                  : 'Search order number, customer or table',
+              )}
+              aria-label={t(
+                retailSale
+                  ? 'Search sale number or customer'
+                  : 'Search order number, customer or table',
+              )}
               className="min-h-10 ps-9"
             />
           </label>
@@ -197,28 +216,32 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
               }
             >
               <option value="">{t('All statuses')}</option>
-              {orderStatuses.map((value) => (
-                <option key={value} value={value}>
-                  {t(value)}
-                </option>
-              ))}
+              {orderStatuses
+                .filter((value) => !retailSale || !kitchenOnlyStatuses.has(value))
+                .map((value) => (
+                  <option key={value} value={value}>
+                    {t(value)}
+                  </option>
+                ))}
             </select>
           </label>
-          <label className="grid min-w-0 gap-1 text-[11px] text-muted-foreground">
-            {t('Order type')}
-            <select
-              className="min-h-9 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground"
-              value={fulfillmentType}
-              onChange={(event) =>
-                setFulfillmentType(event.target.value as PosSalesFilters['fulfillmentType'] | '')
-              }
-            >
-              <option value="">{t('All order types')}</option>
-              <option value="dine_in">{t('Dine in')}</option>
-              <option value="takeaway">{t('Takeaway')}</option>
-              <option value="delivery">{t('Delivery')}</option>
-            </select>
-          </label>
+          {!retailSale && (
+            <label className="grid min-w-0 gap-1 text-[11px] text-muted-foreground">
+              {t('Order type')}
+              <select
+                className="min-h-9 w-full rounded-md border border-input bg-background px-2 text-xs text-foreground"
+                value={fulfillmentType}
+                onChange={(event) =>
+                  setFulfillmentType(event.target.value as PosSalesFilters['fulfillmentType'] | '')
+                }
+              >
+                <option value="">{t('All order types')}</option>
+                <option value="dine_in">{t('Dine in')}</option>
+                <option value="takeaway">{t('Takeaway')}</option>
+                <option value="delivery">{t('Delivery')}</option>
+              </select>
+            </label>
+          )}
           <label className="grid min-w-0 gap-1 text-[11px] text-muted-foreground">
             {t('Settlement')}
             <select
@@ -327,7 +350,7 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
                   </span>
                   <span className="grid min-w-0 gap-0.5">
                     <span className="truncate text-xs font-semibold">
-                      {order.customerName || t(order.fulfillmentType)}
+                      {order.customerName || t(saleTypeLabel(order.fulfillmentType, retailSale))}
                       {order.tableCode ? ` · ${t('Table')} ${order.tableCode}` : ''}
                     </span>
                     <span className="truncate text-[11px] text-muted-foreground">
@@ -397,6 +420,7 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
         <PosOrderDetailsDialog
           merchantId={employee.merchantId}
           order={selectedOrder}
+          retailSale={retailSale}
           onClose={() => setSelectedOrder(null)}
           onOpenReceipt={(checkId) => setActiveReceipt({ orderId: selectedOrder.id, checkId })}
         />
@@ -408,15 +432,18 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
 function PosOrderDetailsDialog({
   merchantId,
   order,
+  retailSale,
   onClose,
   onOpenReceipt,
 }: {
+  retailSale: boolean;
   merchantId: string;
   order: StorefrontOrderSummary;
   onClose: () => void;
   onOpenReceipt: (checkId: string) => void;
 }) {
-  const { formatNumber, t, errorText } = useLocale();
+  const { formatNumber, errorText } = useLocale();
+  const t = usePosText();
   const paymentQuery = useQuery({
     queryKey: posPaymentStateKey(merchantId, order.id),
     queryFn: ({ signal }) => getPosOrderPaymentState(order.id, signal),
@@ -438,7 +465,7 @@ function PosOrderDetailsDialog({
         if (!open) onClose();
       }}
       title={`${t('Order')} #${getDisplayOrderNumber(order)}`}
-      description={order.customerName || t(order.fulfillmentType)}
+      description={order.customerName || t(saleTypeLabel(order.fulfillmentType, retailSale))}
       closeLabel={t('Close')}
       className="flex max-h-[calc(100dvh-20px)] flex-col overflow-hidden"
     >
@@ -576,7 +603,8 @@ function PosOrderDetailsDialog({
 }
 
 function PosReceiptHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
-  const { t, errorText, formatNumber } = useLocale();
+  const { errorText, formatNumber } = useLocale();
+  const t = usePosText();
   const branchId = employee.branch.id;
   const [search, setSearch] = useState('');
   const [activeReceipt, setActiveReceipt] = useState<{ orderId: string; checkId: string } | null>(
@@ -744,6 +772,11 @@ function PosReceiptHistoryScreen({ employee }: { employee: PosEmployeeSession })
       )}
     </section>
   );
+}
+
+/** Retail in-store sales are stored as takeaway; show them as in-store sales. */
+function saleTypeLabel(fulfillmentType: string, retailSale: boolean): string {
+  return retailSale && fulfillmentType === 'takeaway' ? 'In-store sale' : fulfillmentType;
 }
 
 function getDisplayOrderNumber(order: StorefrontOrderSummary): string {

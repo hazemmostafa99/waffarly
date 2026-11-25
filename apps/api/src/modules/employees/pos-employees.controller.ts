@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { CursorPage, OwnerProfile, PosEmployeeSummary } from '@waffarly/contracts';
+import { actorActivityFeatures } from '@waffarly/contracts';
 import { ZodValidationPipe } from '../../common/http/zod-validation.pipe.js';
 import { CurrentOwner, OwnerGuard } from '../auth/index.js';
 import { PosEmployeeService } from './pos-employee.service.js';
@@ -33,7 +34,12 @@ export class PosEmployeesController {
 
   @Post()
   create(@CurrentOwner() owner: OwnerProfile, @Body() body: unknown): Promise<PosEmployeeSummary> {
-    return this.employees.create(owner.merchantId, owner.username, body);
+    return this.employees.create(
+      owner.merchantId,
+      owner.username,
+      body,
+      actorActivityFeatures(owner),
+    );
   }
 
   @Patch(':id')
@@ -42,6 +48,12 @@ export class PosEmployeesController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() body: unknown,
   ): Promise<PosEmployeeSummary> {
-    return this.employees.update(owner.merchantId, owner.username, id, body);
+    return this.employees.update(
+      owner.merchantId,
+      owner.username,
+      id,
+      body,
+      actorActivityFeatures(owner),
+    );
   }
 }

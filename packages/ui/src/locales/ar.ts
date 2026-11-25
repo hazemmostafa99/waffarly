@@ -518,13 +518,11 @@ export const ar: Record<string, string> = {
   'Business activity catalog': 'كتالوج أنشطة الأعمال',
   'Business categories supported by the platform.': 'فئات الأعمال التي تدعمها المنصة.',
   'Customized descriptions': 'أوصاف مخصصة',
-  'Categories with administrator-edited display details.':
-    'فئات عدّل المسؤول بيانات عرضها.',
+  'Categories with administrator-edited display details.': 'فئات عدّل المسؤول بيانات عرضها.',
   'Review and edit the business categories available during onboarding.':
     'راجع وعدّل فئات الأعمال المتاحة أثناء التسجيل.',
   'Search by activity name, key, or description': 'ابحث باسم النشاط أو معرّفه أو وصفه',
-  'Try another activity name, key, or description.':
-    'جرّب اسم نشاط أو معرّفًا أو وصفًا آخر.',
+  'Try another activity name, key, or description.': 'جرّب اسم نشاط أو معرّفًا أو وصفًا آخر.',
   'About business activities': 'عن أنشطة الأعمال',
   'Activities classify businesses in onboarding and storefront discovery.':
     'تُصنّف الأنشطة المتاجر أثناء التسجيل وعند استكشاف واجهات المتاجر.',
@@ -1234,6 +1232,8 @@ export const ar: Record<string, string> = {
   Restaurants: 'مطاعم',
   'Clothing stores': 'محلات ملابس',
   Supermarkets: 'سوبر ماركت',
+  'Home goods stores': 'محلات أدوات منزلية',
+  'Electrical stores': 'محلات أدوات كهربائية',
   'Other business': 'نشاط آخر',
   'All business activities': 'كل الأنشطة',
   'Business activities ·': 'الأنشطة التجارية ·',
@@ -1451,7 +1451,8 @@ export const ar: Record<string, string> = {
   'Any settlement': 'كل حالات الحساب',
   'From date': 'من تاريخ',
   'To date': 'إلى تاريخ',
-  'The end date must be on or after the start date.': 'يجب أن يكون تاريخ النهاية في نفس تاريخ البداية أو بعده.',
+  'The end date must be on or after the start date.':
+    'يجب أن يكون تاريخ النهاية في نفس تاريخ البداية أو بعده.',
   'No matching orders': 'لا توجد طلبات مطابقة',
   'No orders yet': 'لا توجد طلبات حتى الآن',
   'Try another order or adjust filters.': 'جرّب رقمًا آخر أو غيّر عوامل التصفية.',
@@ -1590,6 +1591,32 @@ export const ar: Record<string, string> = {
   'Current order': 'الطلب الحالي',
   Table: 'ترابيزة',
   Takeaway: 'تيك أواي',
+  'In-store sale': 'بيع داخل المحل',
+  Sales: 'المبيعات',
+  Inventory: 'المخزون',
+  'Item returns': 'المرتجعات والهالك',
+  'Business reports': 'مركز التقارير',
+  Refund: 'استرداد',
+  Features: 'المزايا',
+  'Dining tables': 'الترابيزات',
+  'No extra features': 'لا توجد مزايا إضافية',
+  'Not available for this activity.': 'غير متاحة لهذا النشاط.',
+  'Features for merchants of this activity': 'المزايا المتاحة لتجار هذا النشاط',
+  'Update the display name, description and features for this business activity.':
+    'عدّل اسم العرض والوصف والمزايا لهذا النشاط.',
+  'Kitchen screen, kitchen tickets, preparation steps and the Kitchen employee role.':
+    'شاشة المطبخ وتذاكر المطبخ ومراحل التحضير ودور موظف المطبخ.',
+  'POS tables and dine-in orders.': 'ترابيزات نقطة البيع وطلبات الصالة.',
+  'POS delivery sales, couriers and delivery follow-up.':
+    'البيع بالتوصيل من نقطة البيع والمناديب ومتابعة التوصيل.',
+  'Approved by': 'اعتمده',
+  'Search sale number or customer': 'ابحث برقم البيع أو اسم العميل',
+  'Return condition': 'حالة المرتجع',
+  'Sellable — return to stock': 'سليم — يرجع للمخزون',
+  'Damaged — waste': 'تالف — هالك',
+  'Returned to stock': 'رجع للمخزون',
+  'Sellable items return to stock. Damaged items are recorded as waste. Use the refund action separately to return money.':
+    'الأصناف السليمة ترجع للمخزون، والتالفة تتسجل هالك. استخدم إجراء استرداد المبلغ بشكل منفصل.',
   Delivery: 'دليفري',
   '2 guests · Main dining': 'ضيفان · الصالة الرئيسية',
   'Walk-in customer': 'عميل مباشر',
@@ -1817,8 +1844,7 @@ export const ar: Record<string, string> = {
   'Review this register and opening cash, or start a new shift.':
     'راجع جهاز الكاشير والعهدة الافتتاحية، أو ابدأ وردية جديدة.',
   'The assigned branch is inactive.': 'الفرع المعيّن لهذا الحساب متوقف.',
-  'Select an active branch that belongs to this business.':
-    'اختر فرعًا نشطًا تابعًا لهذا النشاط.',
+  'Select an active branch that belongs to this business.': 'اختر فرعًا نشطًا تابعًا لهذا النشاط.',
   Register: 'جهاز الكاشير',
   Online: 'متصل',
   'Offline - shift opening unavailable': 'غير متصل - لا يمكن فتح الوردية',

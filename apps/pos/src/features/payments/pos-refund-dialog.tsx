@@ -1,3 +1,4 @@
+import { usePosText } from '../../lib/use-pos-text.js';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PosRefundReceipt, PosRefundSummary } from '@waffarly/contracts';
 import { Dialog, Input, useLocale } from '@waffarly/ui';
@@ -37,7 +38,8 @@ export function PosRefundDialog({
   requiresApproval: boolean;
   onClose: () => void;
 }) {
-  const { t, errorText, formatDate, formatNumber, locale } = useLocale();
+  const { errorText, formatDate, formatNumber, locale } = useLocale();
+  const t = usePosText();
   const queryClient = useQueryClient();
   const queryKey = posPaymentStateKey(merchantId, orderId);
   const recoveryKey = posRefundRecoveryKey(orderId, checkId);

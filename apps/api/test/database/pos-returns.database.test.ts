@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
+import { InventoryLedgerService } from '../../src/modules/inventory/inventory-ledger.service.js';
 import { PosReturnsService } from '../../src/modules/orders/returns/pos-returns.service.js';
 
 const databaseUrl = getTestDatabaseUrl();
@@ -107,7 +108,10 @@ it(
               return Reflect.get(target, property, target);
             },
           }) as unknown as PrismaService;
-          const service = new PosReturnsService(transactionClient);
+          const service = new PosReturnsService(
+            transactionClient,
+            new InventoryLedgerService(transactionClient),
+          );
           const command = {
             requestId: randomUUID(),
             branchId: branch.id,
@@ -163,6 +167,127 @@ it(
               await transaction.storefrontOrder.findUniqueOrThrow({ where: { id: order.id } })
             ).total.toString(),
             '80',
+          );
+
+          await assert.rejects(
+            service.record(
+              employee,
+              order.id,
+              {
+                ...command,
+                requestId: randomUUID(),
+                lines: [{ orderLineId: line.id, quantity: 1, disposition: 'restock' }],
+              },
+              supervisorRow.id,
+            ),
+            ConflictException,
+          );
+
+          await transaction.merchant.update({
+            where: { id: merchant.id },
+            data: { activity: 'clothing' },
+          });
+          employee.activity = 'clothing';
+          const warehouse = await transaction.warehouse.create({
+            data: {
+              merchantId: merchant.id,
+              branchId: branch.id,
+              name: 'Clothing stock',
+              isDefaultConsumption: true,
+              createdBy: 'pos-item-return-test',
+              updatedBy: 'pos-item-return-test',
+            },
+          });
+          const stockItem = await transaction.stockItem.create({
+            data: {
+              merchantId: merchant.id,
+              creationRequest: randomUUID(),
+              creationFingerprint: randomUUID().replaceAll('-', ''),
+              name: 'Blue shirt size M',
+              baseUnit: 'piece',
+              createdBy: 'pos-item-return-test',
+              updatedBy: 'pos-item-return-test',
+            },
+          });
+          const clothingOrder = await transaction.storefrontOrder.create({
+            data: {
+              merchantId: merchant.id,
+              branchId: branch.id,
+              source: 'pos',
+              fulfillmentType: 'takeaway',
+              status: 'completed',
+              completedAt: new Date(),
+              total: '100.00',
+              currency: 'EGP',
+            },
+          });
+          const clothingLine = await transaction.storefrontOrderLine.create({
+            data: {
+              merchantId: merchant.id,
+              orderId: clothingOrder.id,
+              productId: randomUUID(),
+              variantId: randomUUID(),
+              productName: 'Blue shirt',
+              variantName: 'M / Blue',
+              stockHandling: 'direct_sale',
+              stockRequirementsFrozenAt: new Date(),
+              quantity: 2,
+              unitPrice: '50.00',
+              lineTotal: '100.00',
+              stockRequirements: {
+                create: {
+                  stockItemId: stockItem.id,
+                  stockItemName: stockItem.name,
+                  baseUnit: 'piece',
+                  quantity: '2.000000',
+                },
+              },
+            },
+          });
+          const sellable = await service.record(
+            employee,
+            clothingOrder.id,
+            {
+              requestId: randomUUID(),
+              branchId: branch.id,
+              reason: 'Sellable shirt returned',
+              lines: [{ orderLineId: clothingLine.id, quantity: 1, disposition: 'restock' }],
+            },
+            supervisorRow.id,
+          );
+          assert.equal(sellable.return.lines[0]?.variantName, 'M / Blue');
+          assert.equal(sellable.return.lines[0]?.disposition, 'restock');
+          assert.equal(
+            (
+              await transaction.stockBalance.findUniqueOrThrow({
+                where: {
+                  merchantId_warehouseId_stockItemId_condition: {
+                    merchantId: merchant.id,
+                    warehouseId: warehouse.id,
+                    stockItemId: stockItem.id,
+                    condition: 'available',
+                  },
+                },
+              })
+            ).quantity.toString(),
+            '1',
+          );
+          await service.record(
+            employee,
+            clothingOrder.id,
+            {
+              requestId: randomUUID(),
+              branchId: branch.id,
+              reason: 'Damaged shirt returned',
+              lines: [{ orderLineId: clothingLine.id, quantity: 1, disposition: 'waste' }],
+            },
+            supervisorRow.id,
+          );
+          assert.equal(
+            await transaction.stockMovement.count({
+              where: { merchantId: merchant.id, stockItemId: stockItem.id },
+            }),
+            1,
           );
           throw rollback;
         }),

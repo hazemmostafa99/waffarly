@@ -87,6 +87,12 @@ describe('POS employee role permissions', () => {
     assert.equal(posEmployeeHome({ permissions: ['view_inventory'] }), '/inventory');
     assert.equal(posEmployeeHome({ permissions: ['view_receipts'] }), '/orders');
     assert.equal(posEmployeeHome({ permissions: [] }), '/access');
+    assert.equal(posEmployeeHome({ activity: 'restaurant', permissions: ['sell'] }), '/kitchen');
+    assert.equal(posEmployeeHome({ activity: 'clothing', permissions: ['sell'] }), '/catalog');
+    assert.equal(
+      posEmployeeHome({ activity: 'supermarket', permissions: ['view_inventory'] }),
+      '/inventory',
+    );
     assert.equal(hasPosEmployeePermission({ permissions: ['sell'] }, 'view_receipts'), true);
   });
 

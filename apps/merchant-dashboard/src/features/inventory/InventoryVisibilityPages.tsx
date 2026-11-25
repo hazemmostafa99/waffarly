@@ -18,7 +18,7 @@ import { InventoryCard } from './InventoryCard.js';
 import { InventoryHeader } from './InventoryHeader.js';
 import { StockItemPicker, WarehousePicker } from './components/InventoryPickers.js';
 import { stockDecimalLabel, stockUnitLabel, stockUnitOptions } from './stock-unit-options.js';
-import { inventoryCopy } from './inventory-copy.js';
+import { inventoryCopy, useInventoryText } from './inventory-copy.js';
 
 type ThresholdEditorState = { row: InventoryStockHealth | null; key: string };
 const movementLabels: Record<string, string> = {
@@ -45,7 +45,7 @@ const sourceLabels: Record<string, string> = {
 
 export function InventoryHealthPage() {
   const { locale, t, errorText, formatDigits } = useLocale();
-  const text = useCallback((value: string) => inventoryCopy(value, locale, t), [locale, t]);
+  const text = useInventoryText();
   const [searchParams, setSearchParams] = useSearchParams();
   const focusedStockItemId = searchParams.get('stockItemId') ?? '';
   const [focusedItem, setFocusedItem] = useState<StockItem | null>(null);
@@ -476,7 +476,7 @@ export function InventoryHealthPage() {
 export function StockItemDetailPage() {
   const { itemId = '' } = useParams();
   const { locale, t, errorText, formatDigits } = useLocale();
-  const text = useCallback((value: string) => inventoryCopy(value, locale, t), [locale, t]);
+  const text = useInventoryText();
   const navigate = useNavigate();
   const [item, setItem] = useState<StockItem | null>(null);
   const [costSummary, setCostSummary] = useState<StockItemCostSummary | null>(null);
@@ -1007,7 +1007,7 @@ function OpeningCostEditor({
 export function StockMovementDetailPage() {
   const { movementId = '' } = useParams();
   const { locale, t, errorText, formatDigits } = useLocale();
-  const text = useCallback((value: string) => inventoryCopy(value, locale, t), [locale, t]);
+  const text = useInventoryText();
   const navigate = useNavigate();
   const [movement, setMovement] = useState<StockMovement | null>(null);
   const [loading, setLoading] = useState(true);

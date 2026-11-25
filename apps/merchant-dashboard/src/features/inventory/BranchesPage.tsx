@@ -5,7 +5,7 @@ import type { InventoryBranch, InventoryWarehouse } from '@waffarly/contracts';
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { Icon } from '../../Icons.js';
 import { apiRequest, apiRequestPage } from '../../lib/api-client.js';
-import { inventoryCopy } from './inventory-copy.js';
+import { inventoryCopy, useInventoryText } from './inventory-copy.js';
 import { InventoryHeader } from './InventoryHeader.js';
 
 type BranchEditorState = { branch: InventoryBranch | null; key: string };
@@ -20,7 +20,7 @@ type ArchiveTarget =
 export function BranchesPage() {
   const { locale, t, errorText, formatDigits } = useLocale();
   const [searchParams, setSearchParams] = useSearchParams();
-  const text = (value: string) => inventoryCopy(value, locale, t);
+  const text = useInventoryText();
   const [branches, setBranches] = useState<InventoryBranch[]>([]);
   const [expandedBranchId, setExpandedBranchId] = useState('');
   const [status, setStatus] = useState<'active' | 'archived' | 'all'>('active');

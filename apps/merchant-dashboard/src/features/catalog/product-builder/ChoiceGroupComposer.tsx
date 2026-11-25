@@ -1,6 +1,7 @@
 import { useModifierStockItems } from './use-modifier-stock-items.js';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Dialog, useLocale } from '@waffarly/ui';
+import type { ActivityWording } from '@waffarly/contracts';
 import { Icon } from '../../../Icons.js';
 import { CustomerChoicesPreview } from './CustomerChoicesPreview.js';
 import { ModifierDetailsEditor } from './ModifierDetailsEditor.js';
@@ -19,6 +20,7 @@ export type ChoiceTemplate = 'extras' | 'custom';
 type ChoiceRow = OptionDraft;
 
 export function ChoiceGroupComposer({
+  wording,
   template,
   basePrice,
   creating,
@@ -32,6 +34,7 @@ export function ChoiceGroupComposer({
   recipe,
   text,
 }: {
+  wording: ActivityWording;
   template: ChoiceTemplate;
   basePrice: string;
   creating: boolean;
@@ -53,12 +56,9 @@ export function ChoiceGroupComposer({
           id: 'composer',
           modifierGroupId: 'composer',
           description: '',
-          name:
-            template === 'extras'
-              ? text('Extras', 'الإضافات')
-              : '',
+          name: template === 'extras' ? text('Extras', 'الإضافات') : '',
           options: (template === 'extras'
-            ? [text('Extra cheese', 'جبنة إضافية'), text('Extra sauce', 'صوص إضافي')]
+            ? wording.extras.starterOptions.map((option) => text(option.en, option.ar))
             : ['']
           ).map((option) => ({
             id: crypto.randomUUID(),
@@ -867,6 +867,7 @@ export function ChoiceGroupComposer({
             </strong>
           </div>
           <CustomerChoicesPreview
+            wording={wording}
             groups={previewGroup.options.length ? [previewGroup] : []}
             variants={variants}
             showStockSummary={recipe}

@@ -1,5 +1,5 @@
 // Sidebar labels and destinations; routes retain their existing public URLs.
-import type { BusinessActivitySettings } from '@waffarly/contracts';
+import type { ActivityFeatureSettings, ActivityWording } from '@waffarly/contracts';
 
 export type MerchantNavigationLink = {
   path: string;
@@ -179,16 +179,19 @@ export const merchantNavigationGroups: MerchantNavigationGroup[] = [
   },
 ];
 
-/** Keep restaurant-only destinations out of other merchants' sidebars. */
+/** Keep links to switched-off activity features (tables, delivery couriers) out of the sidebar. */
 export function navigationGroupsForActivity(
-  settings: BusinessActivitySettings,
+  features: ActivityFeatureSettings,
 ): MerchantNavigationGroup[] {
-  if (settings.hasDiningTables) return merchantNavigationGroups;
-  return merchantNavigationGroups.map((group) =>
-    group.id === 'pos'
-      ? { ...group, links: group.links.filter((link) => link.path !== '/pos-tables') }
-      : group,
-  );
+  if (features.diningTables && features.delivery) return merchantNavigationGroups;
+  return merchantNavigationGroups.map((group) => ({
+    ...group,
+    links: group.links.filter(
+      (link) =>
+        (features.diningTables || link.path !== '/pos-tables') &&
+        (features.delivery || link.path !== '/delivery-couriers'),
+    ),
+  }));
 }
 
 export function findMerchantNavigationLink(pathname: string): MerchantNavigationLink | undefined {
@@ -204,7 +207,11 @@ export function findMerchantNavigationLink(pathname: string): MerchantNavigation
     .sort((a, b) => b.path.length - a.path.length)[0]?.link;
 }
 
-export function getMerchantBreadcrumbs(pathname: string, search: string): MerchantBreadcrumb[] {
+export function getMerchantBreadcrumbs(
+  pathname: string,
+  search: string,
+  wording?: ActivityWording | null,
+): MerchantBreadcrumb[] {
   if (pathname === '/settings') {
     const settings = new URLSearchParams(search).get('section') ?? 'identity';
     const branding = { en: 'Identity and appearance', ar: 'الهوية والمظهر' };
@@ -235,11 +242,21 @@ export function getMerchantBreadcrumbs(pathname: string, search: string): Mercha
     current ? item.links.includes(current) : false,
   );
   if (group && current) {
-    return [
-      { en: group.en, ar: group.ar },
-      { en: current.en, ar: current.ar },
-    ];
+    return [{ en: group.en, ar: group.ar }, activityLinkLabel(current, wording)];
   }
   if (current === settingsLink) return [{ en: 'Settings', ar: 'الإعدادات' }];
-  return current ? [{ en: current.en, ar: current.ar }] : [];
+  return current ? [activityLinkLabel(current, wording)] : [];
+}
+
+/**
+ * Activity wording can rename a link. Today only the stock items page changes:
+ * restaurants see "Stock items & materials"; shops see "Stock items".
+ */
+export function activityLinkLabel(
+  link: Pick<MerchantNavigationLink, 'path' | 'en' | 'ar'>,
+  wording?: ActivityWording | null,
+): { en: string; ar: string } {
+  return wording && link.path === '/inventory/items'
+    ? wording.stock.itemsTitle
+    : { en: link.en, ar: link.ar };
 }

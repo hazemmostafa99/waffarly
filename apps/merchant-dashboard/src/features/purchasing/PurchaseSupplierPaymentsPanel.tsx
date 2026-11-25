@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button, Input, useLocale } from '@waffarly/ui';
 import type { PurchaseCashMovementOption, PurchaseInvoice } from '@waffarly/contracts';
 import { apiRequest } from '../../lib/api-client.js';
-import { inventoryCopy } from '../inventory/inventory-copy.js';
+import { inventoryCopy, useInventoryText } from '../inventory/inventory-copy.js';
 
 export function PurchaseSupplierPaymentsPanel({
   invoice,
@@ -15,7 +15,7 @@ export function PurchaseSupplierPaymentsPanel({
   onBusyChange?: (busy: boolean) => void;
 }) {
   const { locale, t, formatDigits, errorText } = useLocale();
-  const text = (value: string) => inventoryCopy(value, locale, t);
+  const text = useInventoryText();
   const [movements, setMovements] = useState<PurchaseCashMovementOption[]>([]);
   const [movementKey, setMovementKey] = useState('');
   const [amount, setAmount] = useState('');

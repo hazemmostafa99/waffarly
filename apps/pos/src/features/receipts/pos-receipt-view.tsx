@@ -1,6 +1,9 @@
+import { usePosText } from '../../lib/use-pos-text.js';
+import { actorActivityFeatures } from '@waffarly/contracts';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import type { PosReceipt } from '@waffarly/contracts';
+import { useOutletContext } from 'react-router-dom';
+import type { PosEmployeeSession, PosReceipt } from '@waffarly/contracts';
 import { useLocale } from '@waffarly/ui';
 import { ArrowLeft, Printer, RotateCcw } from 'lucide-react';
 import { PosButton } from '../../components/pos-button.js';
@@ -31,7 +34,10 @@ export function PosReceiptView({
   backLabel?: string;
   onBack: () => void;
 }) {
-  const { t, errorText, formatNumber, locale } = useLocale();
+  const { errorText, formatNumber, locale } = useLocale();
+  const t = usePosText();
+  const { employee } = useOutletContext<{ employee: PosEmployeeSession }>();
+  const retailSale = !actorActivityFeatures(employee).kitchen;
   const [returnDialogOpen, setReturnDialogOpen] = useState(false);
   const query = useQuery({
     queryKey: posCheckReceiptKey(merchantId, orderId, checkId),
@@ -74,6 +80,7 @@ export function PosReceiptView({
     <>
       <ReceiptDocument
         receipt={query.data}
+        retailSale={retailSale}
         locale={locale}
         t={t}
         formatCount={formatNumber}
@@ -101,6 +108,7 @@ export function PosReceiptView({
 
 function ReceiptDocument({
   receipt,
+  retailSale,
   locale,
   t,
   formatCount,
@@ -111,6 +119,7 @@ function ReceiptDocument({
   canRecordItemReturn,
 }: {
   receipt: PosReceipt;
+  retailSale: boolean;
   locale: 'en' | 'ar';
   t: (value: string) => string;
   formatCount: (value: number) => string;
@@ -133,7 +142,7 @@ function ReceiptDocument({
         ? t('Dine in')
         : receipt.fulfillmentType === 'delivery'
           ? t('Delivery')
-          : t('Takeaway');
+          : t(retailSale ? 'In-store sale' : 'Takeaway');
   const cashierName = isReadablePosLabel(receipt.cashierName)
     ? receipt.cashierName.trim()
     : t('Cashier name unavailable');
@@ -195,9 +204,9 @@ function ReceiptDocument({
                   ? 'Wfarly'
                   : receipt.source === 'storefront'
                     ? 'Storefront'
-                      : receipt.source === 'pos'
-                        ? 'POS'
-                        : receipt.source,
+                    : receipt.source === 'pos'
+                      ? 'POS'
+                      : receipt.source,
               )}
             />
           )}
@@ -226,7 +235,8 @@ function ReceiptDocument({
                     )}
                     {item.promotionDiscount && Number(item.promotionDiscount) > 0 && (
                       <small className="break-words font-semibold text-emerald-700">
-                        {t('Product discount')}: −{formatMoney(item.promotionDiscount, receipt.currency)}
+                        {t('Product discount')}: −
+                        {formatMoney(item.promotionDiscount, receipt.currency)}
                       </small>
                     )}
                     {item.selections.map((selection) => (

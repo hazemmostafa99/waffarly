@@ -11,7 +11,11 @@ import {
 } from '@nestjs/common';
 import type { PosEmployeeSession, RecordPosCheckPaymentResponse } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
-import { isPosEmployeeRole, resolvePosEmployeePermissions } from '@waffarly/contracts';
+import {
+  isPosEmployeeRole,
+  actorActivityFeatures,
+  resolvePosEmployeePermissions,
+} from '@waffarly/contracts';
 import { createHash } from 'node:crypto';
 import { formatCents, toCents } from '../../../common/money/money.js';
 
@@ -162,6 +166,7 @@ export class CheckPaymentService {
               posShiftId: true,
               revision: true,
               status: true,
+              source: true,
               cancelledAt: true,
             },
           });
@@ -243,6 +248,26 @@ export class CheckPaymentService {
             data: { revision: { increment: 1 }, settledAt },
             select: { id: true, amount: true, revision: true, settledAt: true },
           });
+          // Retail in-store sales have no kitchen handover; full settlement completes them.
+          if (
+            settledAt &&
+            order.source === 'pos' &&
+            observedOrder.fulfillmentType === 'takeaway' &&
+            !actorActivityFeatures(employee).kitchen &&
+            (await tx.posOrderCheck.count({
+              where: {
+                orderId,
+                merchantId: employee.merchantId,
+                settledAt: null,
+                cancelledAt: null,
+              },
+            })) === 0
+          ) {
+            await tx.storefrontOrder.update({
+              where: { id: orderId },
+              data: { status: 'completed', completedAt: settledAt },
+            });
+          }
           const receipt = settledAt
             ? await issueSettledCheckReceipt(tx, employee, orderId, checkId, settledAt)
             : null;

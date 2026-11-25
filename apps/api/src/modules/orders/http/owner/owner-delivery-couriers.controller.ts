@@ -17,7 +17,12 @@ import type {
   OwnerProfile,
 } from '@waffarly/contracts';
 import { ZodValidationPipe } from '../../../../common/http/zod-validation.pipe.js';
-import { CurrentOwner, OwnerGuard } from '../../../auth/index.js';
+import {
+  ActivityFeatureGuard,
+  CurrentOwner,
+  OwnerGuard,
+  RequireActivityFeature,
+} from '../../../auth/index.js';
 import { DeliveryCourierService } from '../../delivery/delivery-courier.service.js';
 import {
   createDeliveryCourierSchema,
@@ -25,7 +30,8 @@ import {
   updateDeliveryCourierSchema,
 } from '../../delivery/delivery-courier.schemas.js';
 
-@UseGuards(OwnerGuard)
+@UseGuards(OwnerGuard, ActivityFeatureGuard)
+@RequireActivityFeature('delivery')
 @Controller('owner/delivery-couriers')
 export class OwnerDeliveryCouriersController {
   constructor(@Inject(DeliveryCourierService) private readonly couriers: DeliveryCourierService) {}

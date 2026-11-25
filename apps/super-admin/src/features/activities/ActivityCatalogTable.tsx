@@ -28,6 +28,9 @@ export function ActivityCatalogTable({ activities, onEdit }: ActivityCatalogTabl
               {t('Description')}
             </th>
             <th className="min-w-40 px-3 py-3 text-start" scope="col">
+              {t('Features')}
+            </th>
+            <th className="min-w-40 px-3 py-3 text-start" scope="col">
               {t('Last updated')}
             </th>
             <th className="w-24 px-3 py-3 text-end" scope="col">
@@ -51,6 +54,15 @@ export function ActivityCatalogTable({ activities, onEdit }: ActivityCatalogTabl
               </th>
               <td className="px-3 py-3 text-xs leading-5 text-waffarly-muted">
                 {t(activity.description)}
+              </td>
+              <td className="px-3 py-3 text-xs leading-5 text-waffarly-muted">
+                {[
+                  activity.features.kitchen && t('Kitchen'),
+                  activity.features.diningTables && t('Dining tables'),
+                  activity.features.delivery && t('Delivery'),
+                ]
+                  .filter(Boolean)
+                  .join('، ') || t('No extra features')}
               </td>
               <td className="px-3 py-3 text-xs text-waffarly-muted">
                 {activity.updatedAt

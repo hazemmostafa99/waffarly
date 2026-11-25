@@ -158,6 +158,7 @@ export function Dashboard() {
   const copy = (message: string) => dashboardCopy(message, locale, t);
   const navigate = useNavigate();
   const { profile, search } = useOutletContext<{ profile: OwnerProfile; search: string }>();
+  const isRetail = profile.activity !== 'restaurant';
   const [period, setPeriod] = useState<ReportPeriod>('weekly');
   const [orders, setOrders] = useState<StorefrontOrderListItem[]>([]);
   const [orderStats, setOrderStats] = useState<StorefrontOrderListStats | null>(null);
@@ -176,9 +177,7 @@ export function Dashboard() {
     setLoading(true);
     setLoadError(false);
     void Promise.allSettled([
-      apiRequestSingle<StorefrontOrderListPage>(
-        '/owner/orders/inbox?limit=50&includeStats=false',
-      ),
+      apiRequestSingle<StorefrontOrderListPage>('/owner/orders/inbox?limit=50&includeStats=false'),
       apiRequestSingle<StorefrontOrderListPage>(
         `/owner/orders/inbox?limit=1&from=${dateBounds.from}&to=${dateBounds.to}&report=true`,
       ),
@@ -188,8 +187,7 @@ export function Dashboard() {
         if (!current) return;
         if (latestResult.status === 'fulfilled') setOrders(latestResult.value.items);
         else setOrders([]);
-        if (reportResult.status === 'fulfilled')
-          setOrderStats(reportResult.value.stats ?? null);
+        if (reportResult.status === 'fulfilled') setOrderStats(reportResult.value.stats ?? null);
         else setOrderStats(null);
         if (latestResult.status === 'rejected' || reportResult.status === 'rejected') {
           setLoadError(true);
@@ -208,12 +206,9 @@ export function Dashboard() {
     const term = search.trim().toLocaleLowerCase();
     const filtered = term
       ? orders.filter((order) =>
-          [
-            order.id,
-            order.customerName,
-            order.customerPhone,
-            order.previewItemName,
-          ].some((value) => value?.toLocaleLowerCase().includes(term)),
+          [order.id, order.customerName, order.customerPhone, order.previewItemName].some((value) =>
+            value?.toLocaleLowerCase().includes(term),
+          ),
         )
       : orders;
     return filtered.slice(0, 5);
@@ -303,7 +298,12 @@ export function Dashboard() {
   );
   const stats = [
     ['Order Value', loading || loadError ? '—' : money(report.orderValue, 2), 'revenue', 'mint'],
-    ['Total Orders', loading || loadError ? '—' : formatNumber(report.orders), 'calendar', 'cream'],
+    [
+      isRetail ? 'Total Sales' : 'Total Orders',
+      loading || loadError ? '—' : formatNumber(report.orders),
+      'calendar',
+      'cream',
+    ],
     [
       'Unique Customers',
       loading || loadError ? '—' : formatNumber(report.customers),
@@ -317,12 +317,19 @@ export function Dashboard() {
       'lavender',
     ],
   ] as const;
-  const actions = [
-    ['Add Product', 'box', '/products/new', 'mint'],
-    ['Create Discount', 'discounts', '/discounts?action=create', 'cream'],
-    ['Add Branch', 'store', '/branches?action=create', 'cream'],
-    ['Manage Customers', 'customers', '/customers', 'blue'],
-  ] as const;
+  const actions = isRetail
+    ? ([
+        ['Add Product', 'box', '/products/new', 'mint'],
+        ['Inventory', 'box', '/inventory', 'cream'],
+        ['Item returns', 'receipt', '/pos-item-returns', 'cream'],
+        ['Business reports', 'revenue', '/reports', 'blue'],
+      ] as const)
+    : ([
+        ['Add Product', 'box', '/products/new', 'mint'],
+        ['Create Discount', 'discounts', '/discounts?action=create', 'cream'],
+        ['Add Branch', 'store', '/branches?action=create', 'cream'],
+        ['Manage Customers', 'customers', '/customers', 'blue'],
+      ] as const);
 
   return (
     <div className="dashboard-view">
@@ -394,7 +401,7 @@ export function Dashboard() {
         <section className="dashboard-card dashboard-orders">
           <div className="dashboard-card-heading">
             <div>
-              <h2>{copy('Latest Orders')}</h2>
+              <h2>{copy(isRetail ? 'Latest Sales' : 'Latest Orders')}</h2>
               <p>{copy('Latest orders from all sources')}</p>
             </div>
             <button type="button" onClick={() => navigate('/orders')}>
@@ -461,7 +468,7 @@ export function Dashboard() {
         <section className="dashboard-card dashboard-sales">
           <div className="dashboard-card-heading">
             <div>
-              <h2>{copy('Orders from all sources')}</h2>
+              <h2>{copy(isRetail ? 'Sales from all sources' : 'Orders from all sources')}</h2>
               <p>
                 {copy(
                   period === 'monthly'
@@ -495,7 +502,9 @@ export function Dashboard() {
               return (
                 <div className="dashboard-source-stat" key={source}>
                   <span>{copy(sourceLabel(source))}</span>
-                  <strong>{loading || loadError ? '—' : formatNumber(sourceStats?.orderCount ?? 0)}</strong>
+                  <strong>
+                    {loading || loadError ? '—' : formatNumber(sourceStats?.orderCount ?? 0)}
+                  </strong>
                   <small dir="ltr">
                     {loading || loadError ? '—' : money(Number(sourceStats?.orderValue ?? 0), 2)}
                   </small>
@@ -518,48 +527,50 @@ export function Dashboard() {
       </div>
 
       <div className="dashboard-bottom-grid">
-        <section className="dashboard-card dashboard-branches">
-          <div className="dashboard-card-heading">
-            <h2>{copy('Orders by Fulfillment')}</h2>
-          </div>
-          <div className="dashboard-branch-content">
-            <div
-              className="dashboard-donut"
-              style={{ background: fulfillmentGradient }}
-              role="img"
-              aria-label={`${copy('Pickup')}: ${formatNumber(fulfillment.pickup)}, ${copy('Delivery')}: ${formatNumber(fulfillment.delivery)}`}
-            >
-              <div>
-                <strong dir="ltr">{formatNumber(fulfillmentTotal)}</strong>
-                <small>{copy('Orders in selected period')}</small>
-              </div>
+        {!isRetail && (
+          <section className="dashboard-card dashboard-branches">
+            <div className="dashboard-card-heading">
+              <h2>{copy('Orders by Fulfillment')}</h2>
             </div>
-            <ul className="dashboard-branch-legend">
-              {(['pickup', 'delivery'] as const).map((kind) => {
-                const count = fulfillment[kind];
-                const share = fulfillmentTotal ? Math.round((count / fulfillmentTotal) * 100) : 0;
-                return (
-                  <li key={kind}>
-                    <span
-                      className="dashboard-branch-dot"
-                      style={{ background: kind === 'pickup' ? '#1b654f' : '#77b9ef' }}
-                    />
-                    <span>
-                      {copy(kind === 'pickup' ? 'Pickup' : 'Delivery')}
-                      <small>
-                        {formatNumber(count)} {copy('orders')}
-                      </small>
-                    </span>
-                    <strong dir="ltr">{formatNumber(share)}%</strong>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-          {!loading && !loadError && fulfillmentTotal === 0 && (
-            <p className="dashboard-empty-note">{copy('No orders in this period.')}</p>
-          )}
-        </section>
+            <div className="dashboard-branch-content">
+              <div
+                className="dashboard-donut"
+                style={{ background: fulfillmentGradient }}
+                role="img"
+                aria-label={`${copy('Pickup')}: ${formatNumber(fulfillment.pickup)}, ${copy('Delivery')}: ${formatNumber(fulfillment.delivery)}`}
+              >
+                <div>
+                  <strong dir="ltr">{formatNumber(fulfillmentTotal)}</strong>
+                  <small>{copy('Orders in selected period')}</small>
+                </div>
+              </div>
+              <ul className="dashboard-branch-legend">
+                {(['pickup', 'delivery'] as const).map((kind) => {
+                  const count = fulfillment[kind];
+                  const share = fulfillmentTotal ? Math.round((count / fulfillmentTotal) * 100) : 0;
+                  return (
+                    <li key={kind}>
+                      <span
+                        className="dashboard-branch-dot"
+                        style={{ background: kind === 'pickup' ? '#1b654f' : '#77b9ef' }}
+                      />
+                      <span>
+                        {copy(kind === 'pickup' ? 'Pickup' : 'Delivery')}
+                        <small>
+                          {formatNumber(count)} {copy('orders')}
+                        </small>
+                      </span>
+                      <strong dir="ltr">{formatNumber(share)}%</strong>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+            {!loading && !loadError && fulfillmentTotal === 0 && (
+              <p className="dashboard-empty-note">{copy('No orders in this period.')}</p>
+            )}
+          </section>
+        )}
 
         <section className="dashboard-card dashboard-bestsellers">
           <div className="dashboard-card-heading">

@@ -1,9 +1,11 @@
+import { activityChoicePhrases, type ActivityWording } from '@waffarly/contracts';
 import { CustomerChoicesPreview } from './CustomerChoicesPreview.js';
 import { Icon } from '../../../Icons.js';
 import type { GroupDraft, VariantDraft } from './product-builder.types.js';
 import { productPreviewPrice } from './product-promotion-preview.js';
 
 export function ProductPreview({
+  wording,
   name,
   description,
   basePrice,
@@ -17,6 +19,7 @@ export function ProductPreview({
   formatNumber,
   text,
 }: {
+  wording: ActivityWording;
   name: string;
   description: string;
   basePrice: string;
@@ -33,9 +36,10 @@ export function ProductPreview({
   const availableVariants = variants.filter((variant) => variant.availability === 'available');
   const pricedVariants = availableVariants.length ? availableVariants : variants;
   const variantPrices = pricedVariants
-    .map((variant) =>
-      productPreviewPrice(variant.price, promotionEnabled, promotionType, promotionValue) ??
-      Number(variant.price),
+    .map(
+      (variant) =>
+        productPreviewPrice(variant.price, promotionEnabled, promotionType, promotionValue) ??
+        Number(variant.price),
     )
     .filter((price) => Number.isFinite(price) && price > 0);
   const validBasePrice =
@@ -91,7 +95,10 @@ export function ProductPreview({
               </>
             ) : (
               <span className="preview-price-empty">
-                {text('Enter variant prices', 'أدخل أسعار الأحجام')}
+                {text(
+                  activityChoicePhrases(wording).enterPrices.en,
+                  activityChoicePhrases(wording).enterPrices.ar,
+                )}
               </span>
             )
           ) : validBasePrice ? (
@@ -119,6 +126,7 @@ export function ProductPreview({
           )}
       </div>
       <CustomerChoicesPreview
+        wording={wording}
         groups={groups}
         variants={variants}
         basePrice={basePrice}

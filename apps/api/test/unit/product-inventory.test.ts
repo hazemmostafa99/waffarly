@@ -10,6 +10,9 @@ describe('product inventory rules', () => {
   it('defaults restaurant products to recipes and other activities to direct items', () => {
     assert.equal(defaultInventoryModeForActivity('restaurant'), 'RECIPE');
     assert.equal(defaultInventoryModeForActivity('clothing'), 'DIRECT');
+    assert.equal(defaultInventoryModeForActivity('supermarket'), 'DIRECT');
+    assert.equal(defaultInventoryModeForActivity('home_goods'), 'DIRECT');
+    assert.equal(defaultInventoryModeForActivity('electrical'), 'DIRECT');
     assert.equal(defaultInventoryModeForActivity('other'), 'DIRECT');
   });
 

@@ -1,6 +1,14 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { usePosText } from '../../lib/use-pos-text.js';
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import type {
   AddPosKitchenItemsRequest,
+  ActivityFeatureSettings,
   CatalogProductQuoteSelection,
   CreatePosOrderRequest,
   PosDiningTableOption,
@@ -60,22 +68,42 @@ import { PosOrderSwitcher, type PosSwitcherEntry } from '../orders/pos-order-swi
 import { PosCheckoutDialog } from '../payments/pos-checkout-dialog.js';
 import { PosButton } from '../../components/pos-button.js';
 import { getPosOrderNumber } from '../orders/pos-order-number.js';
-import {
-  getCurrentPosShift,
-  posCurrentShiftKey,
-} from '../shifts/pos-shifts.api.js';
+import { getCurrentPosShift, posCurrentShiftKey } from '../shifts/pos-shifts.api.js';
 
-type LayoutContext = { employee: PosEmployeeSession };
+type LayoutContext = {
+  employee: PosEmployeeSession;
+  activityFeatures: ActivityFeatureSettings;
+};
+type DraftFulfillment = 'dine-in' | 'takeaway' | 'delivery';
+
+/**
+ * Sale types this merchant may use, in button order; the API refuses any other type.
+ * Shops call takeaway an "In-store sale". Example for clothing with delivery on:
+ * [['takeaway', 'In-store sale'], ['delivery', 'Delivery']].
+ */
+function fulfillmentOptions(features: ActivityFeatureSettings): Array<[DraftFulfillment, string]> {
+  return [
+    ...(features.diningTables ? [['dine-in', 'Dine in'] as [DraftFulfillment, string]] : []),
+    ['takeaway', features.kitchen ? 'Takeaway' : 'In-store sale'],
+    ...(features.delivery ? [['delivery', 'Delivery'] as [DraftFulfillment, string]] : []),
+  ];
+}
 type ConfiguredProduct = {
   variantId?: string;
   selections: CatalogProductQuoteSelection[];
 };
 
 export function POSCatalogScreen() {
-  const { employee } = useOutletContext<LayoutContext>();
+  const { employee, activityFeatures } = useOutletContext<LayoutContext>();
+  const retailSale = !activityFeatures.kitchen;
+  const saleTypes = fulfillmentOptions(activityFeatures);
+  /** The draft's sale type, or in-store/takeaway when its saved type was switched off. */
+  const allowedFulfillment = (value: DraftFulfillment | undefined): DraftFulfillment =>
+    value && saleTypes.some(([option]) => option === value) ? value : 'takeaway';
   const [searchParams] = useSearchParams();
   const requestedTableId = searchParams.get('tableId');
-  const { t, errorText, formatNumber } = useLocale();
+  const { errorText, formatNumber } = useLocale();
+  const t = usePosText();
   const queryClient = useQueryClient();
   const hydrate = usePosWorkspaceStore((state) => state.hydrate);
   const workspace = usePosWorkspaceStore((state) => state.workspace);
@@ -109,6 +137,7 @@ export function POSCatalogScreen() {
   const [configuringProduct, setConfiguringProduct] = useState<PublicStorefrontProduct | null>(
     null,
   );
+  const [barcodeVariantId, setBarcodeVariantId] = useState<string | null>(null);
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [checkoutOrderId, setCheckoutOrderId] = useState('');
   const [amendingOrderId, setAmendingOrderId] = useState<string | null>(null);
@@ -185,10 +214,11 @@ export function POSCatalogScreen() {
   }, [workspace, drafts, selectedBranchId, discardEmptyDrafts, employee.merchantId, employee.id]);
   const activeDraft =
     drafts.find((draft) => draft.id === workspace?.selectedDraftId) ?? drafts[0] ?? null;
+  const draftFulfillment = allowedFulfillment(activeDraft?.fulfillment);
   const localCustomerErrors =
-    activeDraft?.fulfillment === 'delivery' ? validateDeliveryDetails(activeDraft) : {};
+    activeDraft && draftFulfillment === 'delivery' ? validateDeliveryDetails(activeDraft) : {};
   const customerErrors: CustomerErrors = {};
-  if (activeDraft?.id === customerValidation.draftId && activeDraft?.fulfillment === 'delivery') {
+  if (activeDraft?.id === customerValidation.draftId && draftFulfillment === 'delivery') {
     for (const field of customerValidation.touched) {
       const message = customerValidation.serverErrors[field] ?? localCustomerErrors[field];
       if (message) customerErrors[field] = message;
@@ -361,16 +391,25 @@ export function POSCatalogScreen() {
   const diningTablesQuery = useQuery({
     queryKey: posDiningTablesKey(employee.merchantId, selectedBranchId),
     queryFn: ({ signal }) => getPosDiningTables(selectedBranchId, signal),
-    enabled: canSell && Boolean(selectedBranchId),
+    enabled: canSell && activityFeatures.diningTables && Boolean(selectedBranchId),
     staleTime: 5_000,
     refetchOnWindowFocus: true,
   });
 
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  // Typing filters the loaded products at once; the server search waits for a short pause.
+  const [serverSearch, setServerSearch] = useState('');
+  useEffect(() => {
+    const timer = window.setTimeout(() => setServerSearch(normalizedSearch), 250);
+    return () => window.clearTimeout(timer);
+  }, [normalizedSearch]);
   const catalogQuery = useInfiniteQuery({
-    queryKey: posCatalogKey(employee.merchantId),
-    queryFn: ({ pageParam, signal }) => getPosSellableCatalog(pageParam, signal),
+    queryKey: [...posCatalogKey(employee.merchantId), serverSearch],
+    queryFn: ({ pageParam, signal }) => getPosSellableCatalog(pageParam, serverSearch, signal),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.products.nextCursor ?? undefined,
+    // Keep the previous list visible while the next search loads, so the grid does not blank out.
+    placeholderData: keepPreviousData,
     enabled: canSell,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
@@ -380,7 +419,6 @@ export function POSCatalogScreen() {
     () => catalogQuery.data?.pages.flatMap((page) => page.products.items) ?? [],
     [catalogQuery.data],
   );
-  const normalizedSearch = search.trim().toLocaleLowerCase();
   const visibleProducts = useMemo(
     () =>
       products.filter((product) => {
@@ -391,6 +429,8 @@ export function POSCatalogScreen() {
           product.description ?? '',
           ...product.categories.map((category) => category.name),
           ...product.variants.map((variant) => variant.name),
+          ...product.variants.map((variant) => variant.sku ?? ''),
+          ...product.variants.map((variant) => variant.barcode ?? ''),
         ]
           .join(' ')
           .toLocaleLowerCase();
@@ -680,15 +720,47 @@ export function POSCatalogScreen() {
   function closeConfigurator() {
     setConfiguringProduct(null);
     setEditingLineId(null);
+    setBarcodeVariantId(null);
   }
 
-  function chooseProduct(product: PublicStorefrontProduct) {
+  function chooseProduct(product: PublicStorefrontProduct, variantId?: string) {
     if (productHasChoices(product)) {
       setEditingLineId(null);
+      setBarcodeVariantId(variantId ?? null);
       setConfiguringProduct(product);
       return;
     }
-    addConfiguredProduct(product, { selections: [] });
+    addConfiguredProduct(product, { ...(variantId ? { variantId } : {}), selections: [] });
+  }
+
+  /**
+   * A scanner types the barcode and presses Enter faster than the debounced catalog search.
+   * Match against loaded products first, then ask the server for that exact barcode.
+   * Only a single exact match is added; anything else leaves the text for a normal search.
+   */
+  async function addScannedBarcode(barcode: string) {
+    const exactMatches = (candidates: PublicStorefrontProduct[]) =>
+      candidates.flatMap((product) =>
+        product.variants
+          .filter((variant) => variant.barcode?.toLocaleLowerCase() === barcode)
+          .map((variant) => ({ product, variantId: variant.id })),
+      );
+    let matches = exactMatches(products);
+    if (!matches.length) {
+      try {
+        const page = await queryClient.fetchQuery({
+          queryKey: [...posCatalogKey(employee.merchantId), 'barcode', barcode],
+          queryFn: ({ signal }) => getPosSellableCatalog(undefined, barcode, signal),
+          staleTime: 30_000,
+        });
+        matches = exactMatches(page.products.items);
+      } catch {
+        return;
+      }
+    }
+    if (matches.length !== 1) return;
+    chooseProduct(matches[0]!.product, matches[0]!.variantId);
+    setSearch('');
   }
 
   function editConfiguredProduct(line: PosDraftLine, product: PublicStorefrontProduct) {
@@ -780,7 +852,7 @@ export function POSCatalogScreen() {
       createMutation.mutate({ draftId: activeDraft.id, payload: pending.payload });
       return;
     }
-    if (activeDraft.fulfillment === 'delivery' && Object.keys(localCustomerErrors).length) {
+    if (draftFulfillment === 'delivery' && Object.keys(localCustomerErrors).length) {
       setCustomerValidation({
         draftId: activeDraft.id,
         touched: [...customerFields],
@@ -799,12 +871,12 @@ export function POSCatalogScreen() {
       requestId: crypto.randomUUID(),
       registerId,
       fulfillmentType:
-        activeDraft.fulfillment === 'dine-in'
+        draftFulfillment === 'dine-in'
           ? 'dine_in'
-          : activeDraft.fulfillment === 'takeaway'
-            ? 'takeaway'
-            : 'delivery',
-      ...(activeDraft.fulfillment === 'dine-in' && activeDraft.tableId
+          : draftFulfillment === 'delivery'
+            ? 'delivery'
+            : 'takeaway',
+      ...(draftFulfillment === 'dine-in' && activeDraft.tableId
         ? { tableId: activeDraft.tableId }
         : {}),
       ...(activeDraft.customerName?.trim()
@@ -813,7 +885,7 @@ export function POSCatalogScreen() {
       ...(activeDraft.customerPhone?.trim()
         ? { customerPhone: activeDraft.customerPhone.trim() }
         : {}),
-      ...(activeDraft.deliveryAddress?.trim()
+      ...(draftFulfillment === 'delivery' && activeDraft.deliveryAddress?.trim()
         ? { deliveryAddress: activeDraft.deliveryAddress.trim() }
         : {}),
       items: activeDraft.lines.map((line) => {
@@ -871,13 +943,8 @@ export function POSCatalogScreen() {
   const switcherEntries: PosSwitcherEntry[] = [
     ...drafts.map((draft): PosSwitcherEntry => {
       const table = diningTablesQuery.data?.find((entry) => entry.id === draft.tableId);
-      const service = t(
-        draft.fulfillment === 'dine-in'
-          ? 'Dine in'
-          : draft.fulfillment === 'delivery'
-            ? 'Delivery'
-            : 'Takeaway',
-      );
+      const fulfillment = allowedFulfillment(draft.fulfillment);
+      const service = t(saleTypes.find(([option]) => option === fulfillment)?.[1] ?? 'Takeaway');
       return {
         id: draft.id,
         kind: 'draft',
@@ -968,6 +1035,17 @@ export function POSCatalogScreen() {
                   value={search}
                   placeholder={t('Search products...')}
                   onChange={(event) => setSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter' || !retailSale || !normalizedSearch) return;
+                    if (
+                      (confirmedOrder && !amendingOrderId) ||
+                      pendingKitchenAmendment ||
+                      (amendingOrderId && !amendmentAllowed)
+                    )
+                      return;
+                    event.preventDefault();
+                    void addScannedBarcode(normalizedSearch);
+                  }}
                   className="h-11 min-w-0 border-0 bg-transparent px-0 text-sm shadow-none focus-visible:ring-0 lg:h-9 lg:text-xs"
                 />
                 <kbd className="hidden rounded border border-border px-1.5 text-[10px] sm:inline-flex">
@@ -1083,7 +1161,14 @@ export function POSCatalogScreen() {
                       Boolean(pendingKitchenAmendment) ||
                       Boolean(amendingOrderId && !amendmentAllowed)
                     }
-                    onAdd={() => chooseProduct(product)}
+                    onAdd={() =>
+                      chooseProduct(
+                        product,
+                        product.variants.find(
+                          (variant) => variant.barcode?.toLocaleLowerCase() === normalizedSearch,
+                        )?.id,
+                      )
+                    }
                   />
                 ))}
               </div>
@@ -1247,42 +1332,45 @@ export function POSCatalogScreen() {
                     <div
                       className={cn(
                         'grid shrink-0 items-start gap-2 border-b border-border p-2',
-                        activeDraft?.fulfillment === 'dine-in' && 'sm:grid-cols-2',
+                        draftFulfillment === 'dine-in' && 'sm:grid-cols-2',
                       )}
                     >
-                      <div
-                        className="grid shrink-0 grid-cols-3 gap-1"
-                        role="group"
-                        aria-label={t('Fulfillment type')}
-                      >
-                        {(
-                          [
-                            ['dine-in', 'Dine in'],
-                            ['takeaway', 'Takeaway'],
-                            ['delivery', 'Delivery'],
-                          ] as const
-                        ).map(([value, label]) => (
-                          <button
-                            key={value}
-                            type="button"
-                            aria-pressed={activeDraft?.fulfillment === value}
-                            disabled={Boolean(pendingSale)}
-                            onClick={() =>
-                              updateDraft((draft) => ({ ...draft, fulfillment: value }))
-                            }
-                            className={cn(
-                              'flex min-h-9 items-center justify-center rounded-lg border px-2 text-xs font-semibold transition-colors [@media(pointer:coarse)]:min-h-11',
-                              activeDraft?.fulfillment === value
-                                ? 'border-primary bg-primary text-primary-foreground'
-                                : 'border-border bg-card text-muted-foreground hover:text-foreground',
-                            )}
-                          >
-                            {t(label)}
-                          </button>
-                        ))}
-                      </div>
+                      {saleTypes.length === 1 ? (
+                        <span className="text-xs font-semibold text-foreground">
+                          {t(saleTypes[0]![1])}
+                        </span>
+                      ) : (
+                        <div
+                          className={cn(
+                            'grid shrink-0 gap-1',
+                            saleTypes.length === 3 ? 'grid-cols-3' : 'grid-cols-2',
+                          )}
+                          role="group"
+                          aria-label={t('Fulfillment type')}
+                        >
+                          {saleTypes.map(([value, label]) => (
+                            <button
+                              key={value}
+                              type="button"
+                              aria-pressed={draftFulfillment === value}
+                              disabled={Boolean(pendingSale)}
+                              onClick={() =>
+                                updateDraft((draft) => ({ ...draft, fulfillment: value }))
+                              }
+                              className={cn(
+                                'flex min-h-9 items-center justify-center rounded-lg border px-2 text-xs font-semibold transition-colors [@media(pointer:coarse)]:min-h-11',
+                                draftFulfillment === value
+                                  ? 'border-primary bg-primary text-primary-foreground'
+                                  : 'border-border bg-card text-muted-foreground hover:text-foreground',
+                              )}
+                            >
+                              {t(label)}
+                            </button>
+                          ))}
+                        </div>
+                      )}
 
-                      {activeDraft?.fulfillment === 'dine-in' && (
+                      {activeDraft && draftFulfillment === 'dine-in' && (
                         <label className="grid min-w-0 gap-1 text-[11px] text-muted-foreground">
                           <span className="sr-only">{t('Table')}</span>
                           <select
@@ -1326,7 +1414,7 @@ export function POSCatalogScreen() {
                         </label>
                       )}
                     </div>
-                    {activeDraft?.fulfillment === 'delivery' && (
+                    {activeDraft && draftFulfillment === 'delivery' && (
                       <PosDeliveryDetails
                         values={activeDraft}
                         errors={customerErrors}
@@ -1455,7 +1543,8 @@ export function POSCatalogScreen() {
                                         <small className="font-semibold text-emerald-700">
                                           {t('Product discount')} −
                                           {formatNumber(
-                                            Number(quote.quote.promotion.discountAmount) * line.quantity,
+                                            Number(quote.quote.promotion.discountAmount) *
+                                              line.quantity,
                                             { style: 'currency', currency: 'EGP' },
                                           )}
                                         </small>
@@ -1867,7 +1956,9 @@ export function POSCatalogScreen() {
           initialConfiguration={
             editingLineId
               ? draftLineConfiguration(activeDraft?.lines.find((line) => line.id === editingLineId))
-              : undefined
+              : barcodeVariantId
+                ? { variantId: barcodeVariantId, selections: [] }
+                : undefined
           }
           submitLabel={t(editingLineId ? 'Save changes' : 'Add item')}
           onClose={closeConfigurator}
@@ -1905,10 +1996,12 @@ function LiveProductCard({
   disabled: boolean;
 }) {
   const image = product.images.find((candidate) => candidate.isPrimary) ?? product.images[0];
-  const { t } = useLocale();
+  const t = usePosText();
   const configurable = productHasChoices(product);
   const description = product.description?.trim();
-  const availableVariants = product.variants.filter((variant) => variant.availability === 'available');
+  const availableVariants = product.variants.filter(
+    (variant) => variant.availability === 'available',
+  );
   const originalPrice = availableVariants.length
     ? Math.min(...availableVariants.map((variant) => Number(variant.price)))
     : Number(product.basePrice);
@@ -2012,7 +2105,8 @@ function ProductConfigurator({
   onClose: () => void;
   onSubmit: (configured: ConfiguredProduct) => void;
 }) {
-  const { t, formatNumber } = useLocale();
+  const { formatNumber } = useLocale();
+  const t = usePosText();
   const firstAvailableVariantId =
     product.variants.find((variant) => variant.availability === 'available')?.id ?? '';
   const initialVariantId = product.variants.some(
@@ -2041,7 +2135,9 @@ function ProductConfigurator({
       group.variantOverrides?.find((override) => override.variantId === variantId)?.available !==
       false,
   );
-  const regularBasePriceCents = Math.round(Number(selectedVariant?.price ?? product.basePrice) * 100);
+  const regularBasePriceCents = Math.round(
+    Number(selectedVariant?.price ?? product.basePrice) * 100,
+  );
   const promotionalPrice = selectedVariant?.promotionalPrice ?? product.promotionalPrice;
   const basePriceCents = Math.round(
     Number(promotionalPrice ?? selectedVariant?.price ?? product.basePrice) * 100,

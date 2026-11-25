@@ -1,6 +1,8 @@
 import {
   isPosEmployeeRole,
+  resolveActivityFeatures,
   resolvePosEmployeePermissions,
+  type ActivityFeatureSettings,
   type PosEmployeePermission,
   type PosEmployeeRegister,
   type BusinessActivityKey,
@@ -159,6 +161,27 @@ export class AuthService {
     return this.config.superAdminUsername;
   }
 
+  /**
+   * Feature switches Super Admin saved for this activity, limited to what the activity allows.
+   * Read on every request so a Super Admin change applies to signed-in merchants at once.
+   */
+  private async activityFeatures(activity: string): Promise<ActivityFeatureSettings> {
+    const saved = await this.prisma.businessActivity.findUnique({
+      where: { key: activity },
+      select: { kitchenEnabled: true, diningTablesEnabled: true, deliveryEnabled: true },
+    });
+    return resolveActivityFeatures(
+      activity,
+      saved
+        ? {
+            kitchen: saved.kitchenEnabled,
+            diningTables: saved.diningTablesEnabled,
+            delivery: saved.deliveryEnabled,
+          }
+        : null,
+    );
+  }
+
   async requireOwner(request: Request): Promise<OwnerProfile> {
     const subjectId = await this.readSession(request, OWNER_COOKIE, 'OWNER');
     const account = await this.prisma.ownerAccount.findUnique({
@@ -175,6 +198,7 @@ export class AuthService {
       merchantId: account.merchantId,
       merchantName: account.merchant.name,
       activity: account.merchant.activity as BusinessActivityKey,
+      activityFeatures: await this.activityFeatures(account.merchant.activity),
       contactPhone: account.merchant.contactPhone,
       ownerName: account.merchant.ownerName,
       ownerMobile: account.merchant.ownerMobile,
@@ -226,6 +250,7 @@ export class AuthService {
       id: employee.id,
       merchantId: employee.merchantId,
       activity: employee.merchant.activity as BusinessActivityKey,
+      activityFeatures: await this.activityFeatures(employee.merchant.activity),
       username: employee.username,
       displayName: employee.displayName,
       role: isPosEmployeeRole(employee.role) ? employee.role : null,

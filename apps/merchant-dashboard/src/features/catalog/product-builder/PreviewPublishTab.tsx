@@ -1,11 +1,14 @@
 import type {
+  ActivityWording,
   CatalogCategorySummary,
   CatalogMediaAsset,
   ProductInventoryMode,
 } from '@waffarly/contracts';
+import { activityChoicePhrases } from '@waffarly/contracts';
 import type { GroupDraft, VariantDraft } from './product-builder.types.js';
 
 export function PreviewPublishTab({
+  wording,
   onEditStep,
   name,
   description,
@@ -23,6 +26,7 @@ export function PreviewPublishTab({
   formatNumber,
   text,
 }: {
+  wording: ActivityWording;
   onEditStep: (step: number) => void;
   name: string;
   description: string;
@@ -40,6 +44,8 @@ export function PreviewPublishTab({
   formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
   text: (english: string, arabic: string) => string;
 }) {
+  const say = (words: { en: string; ar: string }) => text(words.en, words.ar);
+  const phrases = activityChoicePhrases(wording);
   const validPrice = /^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(basePrice) && Number(basePrice) > 0;
   const basicReady = Boolean(name.trim() && validPrice);
   const detailsReady = categories.length > 0 && images.length > 0;
@@ -128,12 +134,12 @@ export function PreviewPublishTab({
           <strong>{name || text('Name not entered', 'لم يُكتب اسم المنتج')}</strong>
           {productMode === 'variants' ? (
             <span>
-              {text('Size prices', 'أسعار الأحجام')} ·{' '}
+              {say(phrases.prices)} ·{' '}
               {variants.length
                 ? variants
                     .map((variant) => variant.name + ' — ' + priceSummary(variant.price))
                     .join(' · ')
-                : text('No sizes added', 'لم تتم إضافة أحجام')}
+                : say(phrases.noneAdded)}
             </span>
           ) : (
             <span>{priceSummary(basePrice)}</span>
@@ -163,7 +169,7 @@ export function PreviewPublishTab({
           <div>
             <span className="review-section-number">02</span>
             <div>
-              <h3>{text('Sizes and customer choices', 'الأحجام وخيارات العميل')}</h3>
+              <h3>{say(phrases.withCustomerChoices)}</h3>
               <p>{text('Extra choices are optional.', 'الخيارات الإضافية اختيارية.')}</p>
             </div>
           </div>
@@ -174,9 +180,7 @@ export function PreviewPublishTab({
         </div>
         <div className="product-review-section-content">
           <span>
-            {variants.length
-              ? text(String(variants.length) + ' sizes', String(variants.length) + ' أحجام')
-              : text('One product size', 'منتج بدون أحجام')}
+            {variants.length ? say(phrases.shortCount(variants.length)) : say(phrases.single)}
           </span>
           <span>
             {groups.length

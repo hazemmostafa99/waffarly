@@ -12,8 +12,10 @@ import {
 } from '@nestjs/common';
 import type { PosEmployeeSession } from '@waffarly/contracts';
 import {
+  ActivityFeatureGuard,
   CurrentPosEmployee,
   PosEmployeeGuard,
+  RequireActivityFeature,
   requireEmployeePermission,
 } from '../../../auth/index.js';
 import { KitchenOrderAmendmentService } from '../../kitchen/kitchen-order-amendment.service.js';
@@ -27,7 +29,8 @@ import {
 } from '../../fulfillment/order-lifecycle.schemas.js';
 import { parseRequest } from '../../../../common/http/zod-validation.pipe.js';
 
-@UseGuards(PosEmployeeGuard)
+@UseGuards(PosEmployeeGuard, ActivityFeatureGuard)
+@RequireActivityFeature('kitchen')
 @Controller('pos/orders')
 export class PosOrderKitchenController {
   constructor(

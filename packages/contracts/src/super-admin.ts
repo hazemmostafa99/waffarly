@@ -94,6 +94,8 @@ export interface OwnerProfile {
   merchantId: string;
   merchantName: string;
   activity?: BusinessActivityKey;
+  /** Effective activity feature switches; returned by the API with every owner session. */
+  activityFeatures?: import('./activities.js').ActivityFeatureSettings;
   contactPhone: string;
   ownerName: string;
   ownerMobile: string;

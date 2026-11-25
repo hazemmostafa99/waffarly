@@ -3,9 +3,10 @@ import { Dialog, useLocale } from '@waffarly/ui';
 import { Icon } from '../../../Icons.js';
 import { CustomerChoicesPreview } from './CustomerChoicesPreview.js';
 import type { VariantDraft } from './product-builder.types.js';
+import { activityChoicePhrases, type ActivityWording } from '@waffarly/contracts';
 
 export function VariantComposer({
-  clothing,
+  wording,
   variants,
   basePrice,
   onApply,
@@ -13,7 +14,7 @@ export function VariantComposer({
   initialDraft,
   text,
 }: {
-  clothing: boolean;
+  wording: ActivityWording;
   variants: VariantDraft[];
   basePrice: string;
   onApply: (variants: VariantDraft[]) => void;
@@ -22,6 +23,8 @@ export function VariantComposer({
   text: (english: string, arabic: string) => string;
 }) {
   const { formatNumber } = useLocale();
+  const say = (words: { en: string; ar: string }) => text(words.en, words.ar);
+  const phrases = activityChoicePhrases(wording);
   function newVariant(name = ''): VariantDraft {
     return {
       id: crypto.randomUUID(),
@@ -31,22 +34,21 @@ export function VariantComposer({
       barcode: '',
       stockQuantity: '',
       availability: 'available',
-      attributes: clothing
-        ? [
-            { name: text('Size', 'المقاس'), value: '' },
-            { name: text('Color', 'اللون'), value: '' },
-          ]
-        : [],
+      attributes: wording.choices.starterAttributes.map((attribute) => ({
+        name: say(attribute),
+        value: '',
+      })),
     };
   }
+  const starterNames = wording.choices.starterNames.map(say);
   const [draft, setDraft] = useState<VariantDraft[]>(() =>
     initialDraft
       ? structuredClone(initialDraft)
       : variants.length
         ? structuredClone(variants)
-        : clothing
-          ? [newVariant()]
-          : [text('Small', 'صغير'), text('Medium', 'وسط'), text('Large', 'كبير')].map(newVariant),
+        : starterNames.length
+          ? starterNames.map(newVariant)
+          : [newVariant()],
   );
   const baseline = useRef(JSON.stringify(draft));
   const [touched, setTouched] = useState<Set<string>>(new Set());
@@ -75,9 +77,7 @@ export function VariantComposer({
   const validPrice = (value: string) =>
     /^(?:0|[1-9]\d{0,9})(?:\.\d{1,2})?$/.test(value) && Number(value) > 0;
   function rowErrors(variant: VariantDraft) {
-    const name = !variant.name.trim()
-      ? text('Enter a size or type name.', 'اكتب اسم الحجم أو النوع.')
-      : '';
+    const name = !variant.name.trim() ? say(wording.choices.nameRequired) : '';
     const price = !validPrice(variant.price)
       ? text(
           'Enter a price greater than zero, with up to 2 decimals.',
@@ -92,12 +92,8 @@ export function VariantComposer({
           item[field].trim().toLowerCase() === variant[field].trim().toLowerCase(),
       );
     const attributes = variant.attributes.map((attribute) => attribute.name.trim().toLowerCase());
-    const sku = duplicate('sku')
-      ? text('This SKU is already used by another size.', 'رمز SKU مستخدم لحجم آخر.')
-      : '';
-    const barcode = duplicate('barcode')
-      ? text('This barcode is already used by another size.', 'الباركود مستخدم لحجم آخر.')
-      : '';
+    const sku = duplicate('sku') ? say(phrases.skuUsed) : '';
+    const barcode = duplicate('barcode') ? say(phrases.barcodeUsed) : '';
     const stockQuantity =
       variant.stockQuantity !== '' &&
       (!/^\d+$/.test(variant.stockQuantity) ||
@@ -228,19 +224,8 @@ export function VariantComposer({
       onOpenChange={(open) => {
         if (!open) suspend();
       }}
-      title={
-        clothing
-          ? text('Sizes and colors', 'المقاسات والألوان')
-          : text('Sizes and types', 'الأحجام والأنواع')
-      }
-      description={text(
-        clothing
-          ? 'Add one row per size and color. Fill the two attributes below, then apply.'
-          : 'Set a selling price for each size or type. Apply when you are ready.',
-        clothing
-          ? 'أضف صفًا لكل مقاس ولون. أكمل الخاصيتين بالأسفل، ثم طبّق.'
-          : 'حدّد سعر بيع كل حجم أو نوع، ثم طبّق التغييرات عند الانتهاء.',
-      )}
+      title={say(wording.choices.title)}
+      description={say(wording.choices.composerHint)}
       closeLabel={text('Close', 'إغلاق')}
       className="choice-composer-dialog variant-composer-dialog"
     >
@@ -260,7 +245,7 @@ export function VariantComposer({
           </div>
           {priceUndo && (
             <div className="composer-inline-notice" role="status">
-              <span>{text('Price copied to all sizes.', 'تم نسخ السعر إلى كل الأحجام.')}</span>
+              <span>{say(phrases.priceCopied)}</span>
               <button type="button" className="builder-text-button" onClick={undoPrice}>
                 {text('Undo', 'تراجع')}
               </button>
@@ -269,11 +254,7 @@ export function VariantComposer({
           <div className="choice-composer-rows variant-composer-rows">
             {draft.length > 0 && (
               <div className="choice-composer-table-head" aria-hidden="true">
-                <span>
-                  {clothing
-                    ? text('Size / color name', 'اسم المقاس واللون')
-                    : text('Size or type name', 'اسم الحجم أو النوع')}
-                </span>
+                <span>{say(wording.choices.nameColumn)}</span>
                 <span>{text('Selling price (EGP)', 'سعر البيع (ج.م)')}</span>
                 <span />
               </div>
@@ -284,12 +265,18 @@ export function VariantComposer({
                 <section
                   className="variant-composer-item"
                   key={variant.id}
-                  aria-label={text(`Size or type ${index + 1}`, `الحجم أو النوع ${index + 1}`)}
+                  aria-label={text(
+                    `${wording.choices.item.en} ${index + 1}`,
+                    `${wording.choices.item.ar} ${index + 1}`,
+                  )}
                 >
                   <div className="choice-composer-row">
                     <label className="builder-field">
                       <span className="composer-mobile-label">
-                        {text(`Size or type ${index + 1}`, `الحجم أو النوع ${index + 1}`)}
+                        {text(
+                          `${wording.choices.item.en} ${index + 1}`,
+                          `${wording.choices.item.ar} ${index + 1}`,
+                        )}
                       </span>
                       <input
                         autoFocus={index === 0}
@@ -299,11 +286,7 @@ export function VariantComposer({
                         }}
                         value={variant.name}
                         maxLength={160}
-                        placeholder={
-                          clothing
-                            ? text('e.g. M / Black', 'مثال: M / أسود')
-                            : text('e.g. Large', 'مثال: كبير')
-                        }
+                        placeholder={say(wording.choices.nameExample)}
                         aria-invalid={showError(`${variant.id}:name`) && Boolean(errors.name)}
                         onBlur={() => markTouched(`${variant.id}:name`)}
                         aria-describedby={
@@ -331,8 +314,8 @@ export function VariantComposer({
                     <label className="builder-field">
                       <span className="composer-mobile-label">
                         {text(
-                          `Selling price for size or type ${index + 1} (EGP)`,
-                          `سعر بيع الحجم أو النوع ${index + 1} (ج.م)`,
+                          `Selling price for ${wording.choices.item.en.toLowerCase()} ${index + 1} (EGP)`,
+                          `سعر بيع ${wording.choices.item.ar} ${index + 1} (ج.م)`,
                         )}
                       </span>
                       <input
@@ -374,8 +357,8 @@ export function VariantComposer({
                       type="button"
                       className="builder-remove-button"
                       aria-label={text(
-                        `Remove size or type ${index + 1}`,
-                        `حذف الحجم أو النوع ${index + 1}`,
+                        `Remove ${wording.choices.item.en.toLowerCase()} ${index + 1}`,
+                        `حذف ${wording.choices.item.ar} ${index + 1}`,
                       )}
                       onClick={() =>
                         setDraft((current) => current.filter((item) => item.id !== variant.id))
@@ -392,7 +375,7 @@ export function VariantComposer({
                       onClick={() => duplicateVariant(variant)}
                     >
                       <Icon name="plus" />
-                      {text('Duplicate size', 'تكرار الحجم')}
+                      {say(phrases.duplicate)}
                     </button>
                     <button
                       type="button"
@@ -400,7 +383,7 @@ export function VariantComposer({
                       disabled={draft.length < 2 || !validPrice(variant.price)}
                       onClick={() => copyPrice(variant)}
                     >
-                      {text('Copy price to all sizes', 'نسخ السعر لكل الأحجام')}
+                      {say(phrases.copyPrice)}
                     </button>
                   </div>
                   <details
@@ -639,7 +622,7 @@ export function VariantComposer({
                       <div className="builder-order-buttons">
                         <button
                           type="button"
-                          aria-label={text('Move size up', 'تحريك الحجم لأعلى')}
+                          aria-label={say(phrases.moveUp)}
                           disabled={index === 0}
                           onClick={() => move(index, -1)}
                         >
@@ -647,7 +630,7 @@ export function VariantComposer({
                         </button>
                         <button
                           type="button"
-                          aria-label={text('Move size down', 'تحريك الحجم لأسفل')}
+                          aria-label={say(phrases.moveDown)}
                           disabled={index === draft.length - 1}
                           onClick={() => move(index, 1)}
                         >
@@ -661,10 +644,7 @@ export function VariantComposer({
             })}
             {!draft.length && (
               <p className="composer-empty-notice" role="status">
-                {text(
-                  'All sizes have been removed from this draft. Apply to sell at one product price, or add a new size below.',
-                  'تم حذف الأحجام من المسودة. طبّق لاستخدام سعر واحد للمنتج، أو أضف حجمًا جديدًا أدناه.',
-                )}
+                {say(wording.choices.allRemoved)}
               </p>
             )}
             <button
@@ -674,7 +654,7 @@ export function VariantComposer({
               disabled={draft.length >= 100}
             >
               <Icon name="plus" />
-              {text('Add size or type', 'إضافة حجم أو نوع')}
+              {say(wording.choices.addItem)}
             </button>
           </div>
         </div>
@@ -694,6 +674,7 @@ export function VariantComposer({
             </strong>
           </div>
           <CustomerChoicesPreview
+            wording={wording}
             groups={[]}
             variants={draft.map((variant) => ({
               ...variant,
@@ -708,7 +689,7 @@ export function VariantComposer({
         <button type="button" className="builder-button primary" onClick={apply}>
           <Icon name="check" />
           {draft.length
-            ? text('Apply sizes and prices', 'تطبيق الأحجام والأسعار')
+            ? say(phrases.apply)
             : text('Use one product price', 'استخدام سعر واحد للمنتج')}
         </button>
         <button type="button" className="builder-button" onClick={() => onClose()}>
@@ -716,7 +697,7 @@ export function VariantComposer({
         </button>
         <small className="choice-composer-footer-note">
           {draft.length
-            ? text(`${draft.length} sizes or types`, `${draft.length} أحجام أو أنواع`)
+            ? say(phrases.count(draft.length))
             : text('One product price', 'سعر واحد للمنتج')}
         </small>
         <p className="composer-draft-hint">

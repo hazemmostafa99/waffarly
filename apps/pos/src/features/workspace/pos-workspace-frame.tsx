@@ -20,6 +20,8 @@ import { useQuery } from '@tanstack/react-query';
 import {
   hasPosEmployeePermission,
   posEmployeeHome,
+  activityPosTextOverrides,
+  actorActivityFeatures,
   type PosEmployeeSession,
 } from '@waffarly/contracts';
 import { PosButton } from '../../components/pos-button.js';
@@ -41,7 +43,16 @@ export function PosWorkspaceFrame({
   onSignOut: () => void;
   children: ReactNode;
 }) {
-  const { t } = useLocale();
+  const { t: translate, locale } = useLocale();
+  // Shops see "Sales" instead of "Orders" in the menu; restaurants keep `t` unchanged.
+  const navText = activityPosTextOverrides(
+    employee.activity,
+    actorActivityFeatures(employee).kitchen,
+  );
+  const t: typeof translate = (message, values) => {
+    const override = typeof message === 'string' ? navText[message] : undefined;
+    return override ? (locale === 'ar' ? override.ar : override.en) : translate(message, values);
+  };
   const location = useLocation();
   const theme = usePosAppearanceStore((state) => state.theme);
   const setTheme = usePosAppearanceStore((state) => state.setTheme);
@@ -54,6 +65,7 @@ export function PosWorkspaceFrame({
   const registerId = employee.deviceRegister?.id ?? '';
   const branchId = employee.branch.id;
   const canSell = employee.permissions.includes('sell');
+  const activityFeatures = actorActivityFeatures(employee);
   const shiftQuery = useQuery({
     queryKey: posCurrentShiftKey(employee.merchantId, branchId, registerId),
     queryFn: ({ signal }) => getCurrentPosShift(registerId, signal),
@@ -96,11 +108,15 @@ export function PosWorkspaceFrame({
     ...(employee.permissions.includes('sell')
       ? [
           { to: '/catalog', label: 'New sale', icon: ShoppingBag },
-          { to: '/dining', label: 'Tables', icon: Utensils },
-          { to: '/deliveries', label: 'Delivery follow-up', icon: ShoppingBag },
+          ...(activityFeatures.diningTables
+            ? [{ to: '/dining', label: 'Tables', icon: Utensils }]
+            : []),
+          ...(activityFeatures.delivery
+            ? [{ to: '/deliveries', label: 'Delivery follow-up', icon: ShoppingBag }]
+            : []),
         ]
       : []),
-    ...(hasPosEmployeePermission(employee, 'view_orders')
+    ...(activityFeatures.kitchen && hasPosEmployeePermission(employee, 'view_orders')
       ? [{ to: '/kitchen', label: 'Kitchen', icon: LayoutDashboard }]
       : []),
     ...(hasPosEmployeePermission(employee, 'view_receipts')

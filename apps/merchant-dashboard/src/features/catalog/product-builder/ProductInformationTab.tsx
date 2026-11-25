@@ -1,9 +1,13 @@
-import type { CatalogCategorySummary, CatalogMediaAsset } from '@waffarly/contracts';
+import type {
+  ActivityWording,
+  CatalogCategorySummary,
+  CatalogMediaAsset,
+} from '@waffarly/contracts';
 import { BasicInformationTab } from './BasicInformationTab.js';
 import { ProductDetailsTab } from './ProductDetailsTab.js';
 
 export function ProductInformationTab({
-  clothing,
+  wording,
   name,
   onNameChange,
   description,
@@ -35,7 +39,7 @@ export function ProductInformationTab({
   uploading,
   text,
 }: {
-  clothing: boolean;
+  wording: ActivityWording;
   name: string;
   onNameChange: (value: string) => void;
   description: string;
@@ -82,7 +86,7 @@ export function ProductInformationTab({
         </div>
       </div>
       <BasicInformationTab
-        clothing={clothing}
+        wording={wording}
         name={name}
         onNameChange={onNameChange}
         description={description}

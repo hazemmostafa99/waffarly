@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
-import type { CursorPage, InventoryBranch, OwnerPosItemReturnReportRow } from '@waffarly/contracts';
+import type {
+  CursorPage,
+  InventoryBranch,
+  OwnerPosItemReturnReportRow,
+  OwnerProfile,
+} from '@waffarly/contracts';
+import { useOutletContext } from 'react-router-dom';
 import { Button, DashboardCard, DataTable, useLocale, type DataTableColumn } from '@waffarly/ui';
 import { Icon } from '../../Icons.js';
 import { PagedEntitySelect } from '../../components/PagedEntitySelect.js';
@@ -30,6 +36,7 @@ function reportRange(fromDate: string, toDate: string): { from: string; to: stri
 }
 
 export function ItemReturnReportsPage() {
+  const { profile } = useOutletContext<{ profile: OwnerProfile }>();
   const { locale, errorText, formatNumber } = useLocale();
   const text = (en: string, ar: string) => (locale === 'ar' ? ar : en);
   const [page, setPage] = useState(emptyPage);
@@ -112,7 +119,10 @@ export function ItemReturnReportsPage() {
   const amount = (value: string) => `${value} EGP`;
   const fulfillment = (value: OwnerPosItemReturnReportRow['fulfillmentType']) => {
     if (value === 'dine_in') return text('Dine in', 'صالة');
-    if (value === 'takeaway') return text('Takeaway', 'تيك أواي');
+    if (value === 'takeaway')
+      return profile.activity === 'restaurant'
+        ? text('Takeaway', 'تيك أواي')
+        : text('In-store sale', 'بيع داخل المحل');
     if (value === 'delivery') return text('Delivery', 'توصيل');
     return text('Unknown', 'غير محدد');
   };
@@ -155,7 +165,9 @@ export function ItemReturnReportsPage() {
                   {text('Qty', 'الكمية')} {formatNumber(line.quantity)}
                 </span>
                 <span className="inventory-location-status is-archived">
-                  {text('Waste', 'هالك')}
+                  {line.disposition === 'restock'
+                    ? text('Returned to stock', 'رجع للمخزون')
+                    : text('Waste', 'هالك')}
                 </span>
               </div>
             </div>

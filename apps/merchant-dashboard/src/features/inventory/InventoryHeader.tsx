@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useLocale } from '@waffarly/ui';
 import { Icon } from '../../Icons.js';
-import { inventoryCopy } from './inventory-copy.js';
+import { inventoryCopy, useInventoryText } from './inventory-copy.js';
 
 export function InventoryHeader({
   title,
@@ -18,7 +18,7 @@ export function InventoryHeader({
 }) {
   const { locale, t } = useLocale();
   const { pathname } = useLocation();
-  const text = (value: string) => inventoryCopy(value, locale, t);
+  const text = useInventoryText();
   const pageTitle = <h1 className="sr-only">{text(title)}</h1>;
   const actionGroup = actions && <div className="inventory-toolbar-actions">{actions}</div>;
   const isInventoryWorkspace =

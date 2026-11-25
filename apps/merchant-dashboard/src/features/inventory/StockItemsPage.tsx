@@ -12,7 +12,7 @@ import {
 import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { apiRequestPage, apiRequest } from '../../lib/api-client.js';
 import { InventoryHeader } from './InventoryHeader.js';
-import { inventoryCopy } from './inventory-copy.js';
+import { inventoryCopy, useInventoryText } from './inventory-copy.js';
 
 type EditorState = { item: StockItem | null; key: string };
 type PackDraft = { code: string; name: string; baseQuantity: string };
@@ -29,7 +29,7 @@ export function StockItemsPage() {
   const { locale, t, errorText, formatDigits } = useLocale();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const text = (value: string) => inventoryCopy(value, locale, t);
+  const text = useInventoryText();
   const [items, setItems] = useState<StockItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [history, setHistory] = useState<Array<string | undefined>>([]);

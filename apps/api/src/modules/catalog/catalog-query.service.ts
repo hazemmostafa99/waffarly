@@ -11,9 +11,7 @@ function imageSource(value: unknown): string | null {
   return typeof value.src === 'string' ? value.src : null;
 }
 
-function storefrontLogoScale(
-  value: string | undefined,
-): PublicStorefrontCatalog['logoScale'] {
+function storefrontLogoScale(value: string | undefined): PublicStorefrontCatalog['logoScale'] {
   return value === 'small' || value === 'large' ? value : 'medium';
 }
 
@@ -41,9 +39,10 @@ export class CatalogQueryService {
       heroTitle: merchant.storefront?.heroTitle ?? null,
       heroEyebrow: merchant.storefront?.heroEyebrow ?? null,
       heroEmphasis: merchant.storefront?.heroEmphasis ?? null,
-      heroShade: merchant.storefront?.heroShade === 'light' || merchant.storefront?.heroShade === 'strong'
-        ? merchant.storefront.heroShade
-        : 'medium',
+      heroShade:
+        merchant.storefront?.heroShade === 'light' || merchant.storefront?.heroShade === 'strong'
+          ? merchant.storefront.heroShade
+          : 'medium',
       logoData:
         imageSource(merchant.restaurantProfile?.logoImage) ?? merchant.storefront?.logoData ?? null,
       coverImageUrl: imageSource(merchant.restaurantProfile?.coverImage),
@@ -59,10 +58,11 @@ export class CatalogQueryService {
     merchantId: string,
     productCursor?: string,
     categoryCursor?: string,
+    search?: string,
   ): Promise<PosSellableCatalog> {
     const [categories, products] = await Promise.all([
       this.listPublicCategories(merchantId, categoryCursor),
-      this.listPublicProducts(merchantId, productCursor),
+      this.listPublicProducts(merchantId, productCursor, search, true),
     ]);
     return { categories, products };
   }
@@ -138,7 +138,16 @@ export class CatalogQueryService {
           ),
           modifierGroups: product.modifierGroups,
           variants: product.variants.map(
-            ({ id, name, price, promotionalPrice, availability, position, attributes, stockQuantity }) => ({
+            ({
+              id,
+              name,
+              price,
+              promotionalPrice,
+              availability,
+              position,
+              attributes,
+              stockQuantity,
+            }) => ({
               id,
               name,
               price,
@@ -232,6 +241,8 @@ export class CatalogQueryService {
   private async listPublicProducts(
     merchantId: string,
     cursor?: string,
+    search?: string,
+    includeIdentifiers = false,
   ): Promise<CursorPage<PublicStorefrontProduct>> {
     const visibleCategoryWhere = {
       availability: 'available' as const,
@@ -246,9 +257,36 @@ export class CatalogQueryService {
       availability: 'available' as const,
       archivedAt: null,
     };
+    const searchWhere = search
+      ? {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' as const } },
+            { description: { contains: search, mode: 'insensitive' as const } },
+            {
+              variants: {
+                some: {
+                  OR: [
+                    { name: { contains: search, mode: 'insensitive' as const } },
+                    { sku: { contains: search, mode: 'insensitive' as const } },
+                    { barcode: { contains: search, mode: 'insensitive' as const } },
+                  ],
+                },
+              },
+            },
+            {
+              categoryLinks: {
+                some: {
+                  merchantId,
+                  category: { name: { contains: search, mode: 'insensitive' as const } },
+                },
+              },
+            },
+          ],
+        }
+      : {};
     if (cursor) {
       const anchor = await this.prisma.product.findFirst({
-        where: { ...visibleProductWhere, id: cursor },
+        where: { ...visibleProductWhere, ...searchWhere, id: cursor },
         select: { id: true },
       });
       if (!anchor) throw new BadRequestException('Product pagination cursor is invalid.');
@@ -257,6 +295,7 @@ export class CatalogQueryService {
     const products = await this.prisma.product.findMany({
       where: {
         ...visibleProductWhere,
+        ...(search ? { AND: [searchWhere] } : {}),
         OR: [
           { categoryLinks: { none: {} } },
           {
@@ -324,9 +363,21 @@ export class CatalogQueryService {
           selectionMode: group.selectionMode as 'single' | 'multiple',
         })),
         variants: publicProduct.variants.map(
-          ({ id, name, price, promotionalPrice, availability, position, stockQuantity, attributes }) => ({
+          ({
             id,
             name,
+            sku,
+            barcode,
+            price,
+            promotionalPrice,
+            availability,
+            position,
+            stockQuantity,
+            attributes,
+          }) => ({
+            id,
+            name,
+            ...(includeIdentifiers ? { sku, barcode } : {}),
             price,
             promotionalPrice,
             availability:

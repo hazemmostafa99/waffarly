@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import {
   STOCK_BASE_UNITS,
+  type ActivityWording,
   type CreateStockItemRequest,
   type ProductInventoryMode,
   type StockBaseUnit,
@@ -28,6 +29,7 @@ export interface ProductInventoryTargetDraft {
 type InventoryDrafts = Partial<Record<ProductInventoryMode, ProductInventoryTargetDraft[]>>;
 
 export function ProductInventoryTab({
+  wording,
   enabled,
   onEnabledChange,
   mode,
@@ -43,6 +45,7 @@ export function ProductInventoryTab({
   onStockItemLoaded,
   text,
 }: {
+  wording: ActivityWording;
   enabled: boolean;
   onEnabledChange: (enabled: boolean) => void;
   mode: ProductInventoryMode;
@@ -551,7 +554,10 @@ export function ProductInventoryTab({
                                   setCreating({ ...creating, name: event.target.value });
                                   createRequest.current = null;
                                 }}
-                                placeholder={t('e.g. Burger patty', 'مثال: لحم برجر')}
+                                placeholder={t(
+                                  wording.stock.itemExample.en,
+                                  wording.stock.itemExample.ar,
+                                )}
                               />
                             </label>
                             <label className="builder-field">

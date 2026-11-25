@@ -1,5 +1,5 @@
 import { createPosOrderServices } from '../support/pos-order-services.js';
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import type { PosEmployeeSession } from '@waffarly/contracts';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -38,6 +38,61 @@ function quote(product: string, price: string) {
 }
 
 describe('POS sales', () => {
+  it('allows each sale type only when the activity feature is on', async () => {
+    const { sales } = createPosOrderServices(
+      {
+        $transaction: async () => {
+          throw new Error('sale reached transaction');
+        },
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+    );
+    const request = {
+      requestId: '88888888-8888-4888-8888-888888888888',
+      registerId: '99999999-9999-4999-8999-999999999999',
+      fulfillmentType: 'delivery' as const,
+      deliveryAddress: 'Test street',
+      customerName: 'Test Customer',
+      customerPhone: '01000000000',
+      items: [{ lineId, productId, selections: [], quantity: 1, expectedProductRevision: 3 }],
+    };
+    const shopFeatures = { kitchen: false, diningTables: false, delivery: true };
+    // Shops may deliver by default, so validation passes and the sale reaches its transaction.
+    await assert.rejects(
+      sales.create({ ...employee, activity: 'clothing', activityFeatures: shopFeatures }, request),
+      /sale reached transaction/,
+    );
+    // Super Admin switched delivery off for this activity.
+    await assert.rejects(
+      sales.create(
+        {
+          ...employee,
+          activity: 'clothing',
+          activityFeatures: { ...shopFeatures, delivery: false },
+        },
+        request,
+      ),
+      BadRequestException,
+    );
+    // Shops have no dining tables, so dine-in is refused before any write.
+    await assert.rejects(
+      sales.create(
+        { ...employee, activity: 'clothing', activityFeatures: shopFeatures },
+        { ...request, fulfillmentType: 'dine_in', tableId: '77777777-7777-4777-8777-777777777777' },
+      ),
+      BadRequestException,
+    );
+    await assert.rejects(
+      sales.create({ ...employee, activity: 'restaurant' }, request),
+      /sale reached transaction/,
+    );
+  });
+
   it('retries serialization conflicts without changing the sale request', async () => {
     let attempts = 0;
     const tx = { storefrontOrderAction: { findUnique: async () => null } };
@@ -264,6 +319,7 @@ describe('POS sales', () => {
           variantName: null,
           basePrice: { toString: () => '10.00' },
           modifierTotal: { toString: () => '0.00' },
+          promotionDiscount: { toString: () => '0.00' },
           quantity: 1,
           unitPrice: { toString: () => '10.00' },
           lineTotal: { toString: () => '10.00' },
@@ -319,6 +375,7 @@ describe('POS sales', () => {
             variantName: data.variantName as null,
             basePrice: { toString: () => basePrice },
             modifierTotal: { toString: () => modifierTotal },
+            promotionDiscount: { toString: () => '0.00' },
             quantity: data.quantity as number,
             unitPrice: { toString: () => data.unitPrice as string },
             lineTotal: { toString: () => amount },

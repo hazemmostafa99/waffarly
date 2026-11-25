@@ -1,6 +1,8 @@
 import {
   hasPosEmployeePermission,
   posEmployeeHome,
+  actorActivityFeatures,
+  type ActivityFeature,
   type PosEmployeePermission,
   type PosEmployeeSession,
 } from '@waffarly/contracts';
@@ -35,4 +37,25 @@ export function EmployeeAccessNotice() {
         : 'No operational permissions are assigned to this account. Contact the account owner.'}
     </p>
   );
+}
+
+/** Keep switched-off activity features (kitchen, tables, delivery) unreachable through a pasted URL. */
+export function ActivityAccess({
+  feature,
+  children,
+}: {
+  feature: ActivityFeature;
+  children: ReactNode;
+}) {
+  const { employee } = useOutletContext<{ employee: PosEmployeeSession }>();
+  return actorActivityFeatures(employee)[feature] ? (
+    children
+  ) : (
+    <Navigate to={posEmployeeHome(employee)} replace />
+  );
+}
+
+export function PosHomeRoute() {
+  const { employee } = useOutletContext<{ employee: PosEmployeeSession }>();
+  return <Navigate to={posEmployeeHome(employee)} replace />;
 }

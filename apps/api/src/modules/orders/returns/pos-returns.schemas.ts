@@ -13,7 +13,11 @@ const recordPosItemReturnSchema = z
     lines: z
       .array(
         z
-          .object({ orderLineId: z.string().uuid(), quantity: z.number().int().min(1).max(99) })
+          .object({
+            orderLineId: z.string().uuid(),
+            quantity: z.number().int().min(1).max(99),
+            disposition: z.enum(['restock', 'waste']).optional(),
+          })
           .strict(),
       )
       .min(1)

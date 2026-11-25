@@ -1,8 +1,37 @@
+import { useCallback } from 'react';
+import { useOutletContext } from 'react-router-dom';
+import {
+  resolveActivityWording,
+  type ActivityWording,
+  type ActivityWords,
+  type OwnerProfile,
+} from '@waffarly/contracts';
+import { useLocale } from '@waffarly/ui';
+
+/** The signed-in merchant's activity wording, or null outside the merchant layout. */
+export function useMerchantActivityWording(): ActivityWording | null {
+  const context = useOutletContext<{ profile?: OwnerProfile } | null | undefined>();
+  return context?.profile ? resolveActivityWording(context.profile.activity) : null;
+}
+
+/** Inventory text for the merchant's activity; shops get wording without recipes or menu. */
+export function useInventoryText() {
+  const { locale, t } = useLocale();
+  const overrides = useMerchantActivityWording()?.stock.textOverrides;
+  return useCallback(
+    (value: string) => inventoryCopy(value, locale, t, overrides),
+    [locale, t, overrides],
+  );
+}
+
 export function inventoryCopy(
   message: string,
   locale: string,
   translate: (text: string) => string,
+  overrides?: Readonly<Record<string, ActivityWords>>,
 ) {
+  const override = overrides?.[message];
+  if (override) return locale === 'ar' ? override.ar : override.en;
   const arabic: Record<string, string> = {
     'Stock balances': 'أرصدة المخزون',
     'Stock operations': 'عمليات المخزون',

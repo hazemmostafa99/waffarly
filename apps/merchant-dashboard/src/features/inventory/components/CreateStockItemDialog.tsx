@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import {
   STOCK_BASE_UNITS,
+  resolveActivityWording,
   type CreateStockItemRequest,
   type StockBaseUnit,
   type StockItem,
@@ -9,6 +10,7 @@ import { Dialog, useLocale } from '@waffarly/ui';
 import { Icon } from '../../../Icons.js';
 import { apiRequest } from '../../../lib/api-client.js';
 import { stockUnitLabel } from '../stock-unit-options.js';
+import { useMerchantActivityWording } from '../inventory-copy.js';
 
 export function CreateStockItemDialog({
   initialName,
@@ -23,6 +25,8 @@ export function CreateStockItemDialog({
 }) {
   const { locale, errorText } = useLocale();
   const text = (english: string, arabic: string) => (locale === 'ar' ? arabic : english);
+  const itemExample = (useMerchantActivityWording() ?? resolveActivityWording(null)).stock
+    .itemExample;
   const [name, setName] = useState(initialName);
   const [baseUnit, setBaseUnit] = useState<StockBaseUnit>(defaultUnit);
   const [busy, setBusy] = useState(false);
@@ -105,7 +109,7 @@ export function CreateStockItemDialog({
               disabled={busy}
               aria-invalid={attempted && !name.trim()}
               onChange={(event) => setName(event.target.value)}
-              placeholder={text('e.g. Burger patty', 'مثال: لحم برجر')}
+              placeholder={text(itemExample.en, itemExample.ar)}
             />
             {attempted && !name.trim() && (
               <small className="choice-field-error">

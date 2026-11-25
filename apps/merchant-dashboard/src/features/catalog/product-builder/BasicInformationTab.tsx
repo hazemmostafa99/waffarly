@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import type { ActivityWording } from '@waffarly/contracts';
 import { ProductPromotionFields } from './ProductPromotionFields.js';
 
 export function BasicInformationTab({
-  clothing,
+  wording,
   name,
   onNameChange,
   description,
@@ -24,7 +25,7 @@ export function BasicInformationTab({
   formatNumber,
   text,
 }: {
-  clothing: boolean;
+  wording: ActivityWording;
   name: string;
   onNameChange: (value: string) => void;
   description: string;
@@ -47,6 +48,7 @@ export function BasicInformationTab({
   text: (english: string, arabic: string) => string;
 }) {
   const [descriptionOpen, setDescriptionOpen] = useState(Boolean(description));
+  const say = (words: { en: string; ar: string }) => text(words.en, words.ar);
   return (
     <div className="builder-fields basic-information-fields">
       <div className="basic-name-price-row">
@@ -60,11 +62,7 @@ export function BasicInformationTab({
             maxLength={160}
             value={name}
             onChange={(event) => onNameChange(event.target.value)}
-            placeholder={
-              clothing
-                ? text('e.g. Cotton T-shirt', 'مثال: تيشيرت قطن')
-                : text('e.g. Classic burger', 'مثال: برجر كلاسيك')
-            }
+            placeholder={say(wording.product.nameExample)}
           />
           <small>
             {text(
@@ -96,18 +94,7 @@ export function BasicInformationTab({
             />
             <b>EGP</b>
           </div>
-          {productMode === 'variants' && (
-            <small>
-              {text(
-                clothing
-                  ? 'Required for the catalog. Each size and color choice can have its own price.'
-                  : 'Required for the catalog. Each size uses its own price when available.',
-                clothing
-                  ? 'مطلوب للكتالوج. يمكن تحديد سعر مستقل لكل مقاس ولون.'
-                  : 'مطلوب للكتالوج. يظهر سعر كل حجم بدلًا منه عند اختيار الأحجام.',
-              )}
-            </small>
-          )}
+          {productMode === 'variants' && <small>{say(wording.product.choicePriceHint)}</small>}
         </label>
       </div>
       <ProductPromotionFields
@@ -141,14 +128,7 @@ export function BasicInformationTab({
             maxLength={1000}
             value={description}
             onChange={(event) => onDescriptionChange(event.target.value)}
-            placeholder={text(
-              clothing
-                ? 'Describe the fabric, fit, and care details customers need.'
-                : 'Describe the ingredients or what makes it special.',
-              clothing
-                ? 'اذكر الخامة والمقاس المناسب وطريقة العناية بالمنتج.'
-                : 'اكتب وصفًا للمكونات أو ما يميز المنتج.',
-            )}
+            placeholder={say(wording.product.descriptionHint)}
           />
           <small>{text(String(description.length), String(description.length) + '/1000')}</small>
         </div>

@@ -119,7 +119,7 @@ export async function listItemReturnReports(
         productName: line.productName,
         variantName: line.variantName,
         quantity: line.quantity,
-        disposition: 'waste' as const,
+        disposition: line.disposition === 'restock' ? ('restock' as const) : ('waste' as const),
         referenceValue: line.amount.toFixed(2),
       })),
     };

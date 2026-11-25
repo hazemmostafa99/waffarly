@@ -1,11 +1,12 @@
 import { useId, useState } from 'react';
 import { useLocale } from '@waffarly/ui';
 import type { GroupDraft, VariantDraft } from './product-builder.types.js';
-import type { StockItem } from '@waffarly/contracts';
+import type { ActivityWording, StockItem } from '@waffarly/contracts';
 import { StockEffectsSummary } from './ChoiceConfigurationOverview.js';
 import { productPreviewPrice } from './product-promotion-preview.js';
 
 export function CustomerChoicesPreview({
+  wording,
   groups,
   variants = [],
   basePrice,
@@ -17,6 +18,7 @@ export function CustomerChoicesPreview({
   stockItems = {},
   failedItems = [],
 }: {
+  wording: ActivityWording;
   groups: GroupDraft[];
   variants?: VariantDraft[];
   basePrice: string;
@@ -38,7 +40,8 @@ export function CustomerChoicesPreview({
   const money = (amount: number) =>
     formatNumber(amount, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const effectivePrice = (price: string) =>
-    productPreviewPrice(price, promotionEnabled, promotionType, promotionValue) ?? Number(price || 0);
+    productPreviewPrice(price, promotionEnabled, promotionType, promotionValue) ??
+    Number(price || 0);
   const variant =
     variants.find((item) => item.id === variantId && item.availability === 'available') ??
     [...variants]
@@ -110,7 +113,7 @@ export function CustomerChoicesPreview({
       )}
       {variants.length > 0 && (
         <fieldset className="customer-preview-group">
-          <legend>{text('Size or type', 'الحجم أو النوع')}</legend>
+          <legend>{text(wording.choices.item.en, wording.choices.item.ar)}</legend>
           {variants.map((item) => (
             <label className="customer-preview-option" key={item.id}>
               <input
@@ -120,7 +123,9 @@ export function CustomerChoicesPreview({
                 disabled={item.availability !== 'available'}
                 onChange={() => setVariantId(item.id)}
               />
-              <span>{item.name || text('New size or type', 'حجم أو نوع جديد')}</span>
+              <span>
+                {item.name || text(wording.choices.newItem.en, wording.choices.newItem.ar)}
+              </span>
               <b className="customer-preview-prices">
                 {item.availability === 'available' ? (
                   <>

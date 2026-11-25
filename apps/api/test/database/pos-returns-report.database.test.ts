@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
+import { InventoryLedgerService } from '../../src/modules/inventory/inventory-ledger.service.js';
 import { PosReturnsService } from '../../src/modules/orders/returns/pos-returns.service.js';
 
 const databaseUrl = getTestDatabaseUrl();
@@ -269,7 +270,10 @@ it(
               return Reflect.get(target, property, target);
             },
           }) as unknown as PrismaService;
-          const service = new PosReturnsService(transactionClient);
+          const service = new PosReturnsService(
+            transactionClient,
+            new InventoryLedgerService(transactionClient),
+          );
           const baseQuery = {
             from: '2026-10-01T00:00:00.000Z',
             to: '2026-10-20T00:00:00.000Z',
