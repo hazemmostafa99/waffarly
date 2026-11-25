@@ -118,3 +118,13 @@ needs a live clothing create/save/reopen review. Next, inspect that flow with a
 disposable clothing merchant before closing Task 05 or planning Task 06 stock
 work. Verify branch and working tree before further changes, and plan any new
 code slice for approval.
+
+On 2026-11-25, the agent tried to open the documented Dashboard URL
+`http://localhost:5174/login` in a browser; it returned
+`ERR_CONNECTION_REFUSED`. Docker's local engine was also unavailable in this
+session. No clothing merchant or product was created. Source review confirmed
+that the current builder sends each variant's name, price, and Size/Color
+attributes in the product save request, then maps saved attributes back into
+the edit form. This checks the code path, not the live save/reopen result.
+Resume the manual review when a reachable Dashboard and disposable clothing
+merchant are available; leave Task 05 open until then.
