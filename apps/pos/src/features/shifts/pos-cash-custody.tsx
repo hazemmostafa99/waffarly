@@ -219,16 +219,16 @@ export function PosCashCustody({
   return (
     <section
       aria-label={text('Cash custody after shift close', 'عهدة النقدية بعد تقفيل الشيفت')}
-      className="grid gap-4 rounded-xl border border-border bg-card p-4 sm:p-5"
+      className="grid gap-3 rounded-lg border border-border bg-card p-3 text-sm sm:p-4"
     >
       <div>
-        <h3 className="m-0 text-base font-semibold">
-          {text('Cash custody after shift close', 'عهدة النقدية بعد تقفيل الشيفت')}
+        <h3 className="m-0 text-sm font-semibold">
+          {text('Cash custody after shift close', 'فلوس الورديات المقفولة')}
         </h3>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="m-0 mt-1 text-xs text-muted-foreground">
           {text(
             'Closing a shift does not hand over its cash. Remaining cash stays in custody until a recorded handoff.',
-            'تقفيل الشيفت مش توريد. الفلوس بتفضل بالعهدة لحد ما تسلّمها وتسجّل الحركة.',
+            'قفل الوردية مش معناه إن الفلوس اتسلّمت. الفلوس بتفضل عهدة عليك لحد ما تورّدها للخزنة من هنا.',
           )}
         </p>
       </div>
@@ -242,7 +242,7 @@ export function PosCashCustody({
           <p>
             {text(
               'A saved cash handoff needs confirmation. Retry before recording another.',
-              'فيه تسليم نقدية محفوظ محتاج تأكيد. أعد إرساله قبل أي حركة جديدة.',
+              'فيه توريد محفوظ لسه ما اتأكدش. ابعته تاني قبل أي حاجة جديدة.',
             )}
           </p>
           <PosButton disabled={busy} onClick={() => void send(pending)}>
@@ -262,21 +262,30 @@ export function PosCashCustody({
           <div className="grid gap-3">
             {drawers.data?.items.map((row) => (
               <div key={row.id} className="grid gap-2 rounded-lg border border-border p-3">
-                <strong>
-                  {row.registerName} · {row.closedAt ? formatDate(row.closedAt, true) : ''}
-                </strong>
-                <dl className="grid grid-cols-2 gap-2 text-sm">
-                  <dt>{text('Remaining custody', 'المتبقي بالعهدة')}</dt>
-                  <dd>{money(row.remainingCash)}</dd>
-                  <dt>{text('Awaiting safe receipt', 'بانتظار استلام الخزنة')}</dt>
-                  <dd>{money(row.pendingAmount)}</dd>
-                  <dt>{text('Received in safe', 'المستلم بالخزنة')}</dt>
-                  <dd>{money(row.receivedInSafe)}</dd>
-                  <dt>{text('Received by next shift', 'المستلم للشيفت التالي')}</dt>
-                  <dd>{money(row.carriedForward)}</dd>
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <strong className="text-sm">{row.registerName}</strong>
+                  <span className="text-xs text-muted-foreground">
+                    {row.closedAt ? formatDate(row.closedAt, true) : ''}
+                  </span>
+                </div>
+                <dl className="m-0 grid grid-cols-2 gap-x-3 gap-y-1 text-xs sm:grid-cols-4">
+                  {[
+                    [text('Remaining custody', 'لسه معاك'), row.remainingCash],
+                    [text('Awaiting safe receipt', 'مستني الخزنة تستلم'), row.pendingAmount],
+                    [text('Received in safe', 'اتسلّم في الخزنة'), row.receivedInSafe],
+                    [text('Received by next shift', 'اتنقل للوردية اللي بعدها'), row.carriedForward],
+                  ].map(([label, value]) => (
+                    <div key={label} className="grid gap-0.5 rounded-md bg-secondary/50 px-2 py-1.5">
+                      <dt className="text-muted-foreground">{label}</dt>
+                      <dd className="m-0 font-semibold tabular-nums">{money(value!)}</dd>
+                    </div>
+                  ))}
                 </dl>
                 {Number(row.remainingCash) > 0 && (
                   <PosButton
+                    size="sm"
+                    variant="solid"
+                    className="w-full sm:w-fit"
                     disabled={busy || !!pending}
                     onClick={() => {
                       setSelected(row);
@@ -294,7 +303,7 @@ export function PosCashCustody({
             <p className="text-sm text-muted-foreground">
               {text(
                 'No closed shifts for this cashier and register.',
-                'مفيش شيفتات مقفولة للكاشير ده على الدرج ده.',
+                'مفيش ورديات مقفولة ليك على الدرج ده.',
               )}
             </p>
           )}
@@ -306,7 +315,7 @@ export function PosCashCustody({
             )}
             {drawers.data?.nextCursor && (
               <PosButton onClick={() => setCursor(drawers.data!.nextCursor)}>
-                {text('Older shifts', 'شيفتات أقدم')}
+                {text('Older shifts', 'ورديات أقدم')}
               </PosButton>
             )}
           </div>
@@ -314,7 +323,7 @@ export function PosCashCustody({
       )}
       <details className="rounded-lg border border-border p-3">
         <summary className="cursor-pointer text-sm font-semibold">
-          {text('My handoffs & receipt status', 'تسليماتي وحالة الاستلام')}
+          {text('My handoffs & receipt status', 'الفلوس اللي ورّدتها وحالتها')}
         </summary>
         <div className="mt-3 grid gap-3">
           {ownTransfers.isError ? (
@@ -374,7 +383,7 @@ export function PosCashCustody({
       </details>
       {canReceive && (
         <div className="grid gap-3 border-t border-border pt-4">
-          <h4>{text('Safe transfers awaiting receipt', 'توريدات بانتظار استلام الخزنة')}</h4>
+          <h4>{text('Safe transfers awaiting receipt', 'توريدات مستنية الخزنة تستلمها')}</h4>
           {receipts.isError && (
             <p role="alert">
               {text('Could not load pending receipts.', 'تعذر تحميل التوريدات المعلقة.')}
@@ -421,7 +430,7 @@ export function PosCashCustody({
           <fieldset disabled={busy || !!pending} className="grid gap-4">
             <h4>
               {selected
-                ? text('Hand cash to safe', 'تسليم النقدية للخزنة')
+                ? text('Hand cash to safe', 'توريد الفلوس للخزنة')
                 : text('Confirm safe receipt', 'تأكيد استلام الخزنة')}
             </h4>
             {selected ? (
@@ -446,7 +455,7 @@ export function PosCashCustody({
                   />
                 </label>
                 <label className={fieldClass}>
-                  {text('Handoff reference', 'مرجع التسليم')}
+                  {text('Handoff reference', 'رقم الكيس أو إيصال التوريد')}
                   <Input name="reference" required maxLength={80} />
                 </label>
                 <label className={fieldClass}>

@@ -193,8 +193,7 @@ export const ar: Record<string, string> = {
     'عدّ النقدية واقفل الشيفت قبل تسليم العهدة المتبقية.',
   'Use the cash-drop action for an open shift.':
     'استخدم توريد للخزنة من حركات النقدية للشيفت المفتوح.',
-  'Count the cash physically present. Expected cash appears after closing.':
-    'عدّ النقد الموجود فعلًا؛ المتوقع هيظهر بعد الإقفال.',
+  'Count the cash physically present. Expected cash appears after closing.': 'عِدّ الفلوس اللي في الدرج دلوقتي واكتب المبلغ. المبلغ المتوقع والفرق هيظهروا في التقرير بعد القفل.',
   'Ordinary unpaid checks block closing. Pending deliveries require cashier confirmation.':
     'الحسابات العادية غير المسددة بتمنع الإقفال. طلبات التوصيل المعلقة محتاجة تأكيد الكاشير قبل القفل.',
   'Delivery follow-up': 'متابعة الدليفري',
@@ -220,8 +219,7 @@ export const ar: Record<string, string> = {
   'Money outside the drawer': 'فلوس لسه برّه الدرج',
   'Review delivery follow-up': 'مراجعة متابعة الدليفري',
   'Customer balance and courier cash': 'باقي على العملاء والكاش مع الطيارين',
-  'These amounts are not drawer cash. You can close after confirming, and a later shift records cash when it is received.':
-    'المبالغ دي مش موجودة في الدرج. تقدر تقفل بعد التأكيد، والوردية اللي تستلم الفلوس بعدين هتسجلها.',
+  'These amounts are not drawer cash. You can close after confirming, and a later shift records cash when it is received.': 'الفلوس دي لسه مع العملاء أو الطيارين، مش في الدرج. تقدر تقفل بعد ما تأكد، والوردية اللي تستلمها بعدين هتسجلها.',
   'Receiving employee username': 'اسم مستخدم الموظف المستلم للمتابعة',
   'Enter the employee receiving pending deliveries.':
     'اكتب اسم مستخدم الموظف اللي هيستلم متابعة الدليفري المعلق.',
@@ -352,7 +350,7 @@ export const ar: Record<string, string> = {
   'Orders with any payment, or orders already in preparation, cannot be cancelled here.':
     'لا يمكن إلغاء الطلب من هنا إذا سُجّل عليه أي دفع أو بدأ المطبخ في تحضيره.',
   'Cancellation reason': 'سبب الإلغاء',
-  'Supervisor approval': 'اعتماد المشرف',
+  'Supervisor approval': 'موافقة المشرف',
   'Supervisor username': 'اسم مستخدم المشرف',
   'Supervisor password': 'كلمة مرور المشرف',
   'Credentials are checked for this action and are never saved on this device.':
@@ -1881,15 +1879,13 @@ export const ar: Record<string, string> = {
     'اطلب من مالك النشاط إنشاء جهاز نقطة بيع قبل فتح الوردية.',
   'Register shift is open': 'الوردية مفتوحة',
   'Opened by {{name}}': 'فتحها {{name}}',
-  'Operators share this register shift; each sale will be recorded under the employee who performs it.':
-    'يستخدم الموظفون هذه الوردية المشتركة، ويُسجَّل كل بيع باسم الموظف الذي أجراه.',
+  'Operators share this register shift; each sale will be recorded under the employee who performs it.': 'كل الموظفين على الجهاز ده بيبيعوا على نفس الوردية، وكل بيع بيتسجل باسم اللي عمله.',
   'Resolve saved opening request': 'استكمال طلب فتح الوردية المحفوظ',
-  'Start a new shift': 'بدء وردية جديدة',
+  'Start a new shift': 'افتح وردية جديدة',
   'Select a register': 'اختر جهاز الكاشير',
-  'Opening cash float (EGP)': 'عهدة الكاشير الافتتاحية (جنيه)',
-  'You are opening the shift with no cash float (0 EGP). Confirm to continue.':
-    'هتفتح الوردية بدون عهدة (0 جنيه). أكد عشان تكمل.',
-  'Confirm and open with no float': 'تأكيد وفتح بدون عهدة',
+  'Opening cash float (EGP)': 'فلوس البداية في الدرج (جنيه)',
+  'You are opening the shift with no cash float (0 EGP). Confirm to continue.': 'هتفتح الوردية والدرج فاضي (0 جنيه). دوس تأكيد عشان تكمل.',
+  'Confirm and open with no float': 'تأكيد وفتح من غير فلوس بداية',
   'The opening amount is recorded once. The same request is safely reused after a network interruption.':
     'يُسجَّل مبلغ العهدة مرة واحدة، ويُعاد استخدام الطلب نفسه بأمان عند انقطاع الإنترنت.',
   'Enter a non-negative amount with up to two decimal places.':
@@ -2000,21 +1996,20 @@ export const ar: Record<string, string> = {
   'Refresh totals': 'تحديث الإجماليات',
   'Cash sales': 'المبيعات النقدية',
   'Cash refunds': 'المبالغ المستردة نقدًا',
-  'Cash added': 'إضافة نقدية',
-  'Cash removed': 'سحب نقدي',
-  'Cash dropped to safe': 'توريد نقدي للخزنة',
+  'Cash added': 'إضافة فلوس',
+  'Cash removed': 'سحب فلوس',
+  'Cash dropped to safe': 'توريد للخزنة',
   'Drop reference': 'مرجع التوريد',
-  'Safe bag / drop reference': 'رقم كيس أو مرجع التوريد',
+  'Safe bag / drop reference': 'رقم الكيس أو إيصال التوريد',
   'Enter a safe bag / drop reference.': 'أدخل رقم كيس أو مرجع التوريد.',
   'Terminal sales': 'مدفوعات الماكينة',
   'Terminal refunds': 'استردادات الماكينة',
   'Expected cash in drawer': 'النقد المتوقع في الدرج',
-  'Shift close is blocked: {{count}} check(s) still need settlement.':
-    'تعذر إغلاق الوردية: ما زال هناك {{count}} حساب بحاجة إلى التسوية.',
-  'Remaining balance: {{amount}}': 'المبلغ المتبقي: {{amount}}',
-  'Manual cash movements': 'الحركات النقدية اليدوية',
+  'Shift close is blocked: {{count}} check(s) still need settlement.': 'مش هينفع تقفل الوردية: فيه {{count}} حساب لسه ما اتدفعش.',
+  'Remaining balance: {{amount}}': 'المتبقي {{amount}}. حصّله أو الغِ الطلب الأول.',
+  'Manual cash movements': 'الحركات اللي اتسجلت في الوردية دي',
   'Cash in / cash out': 'إضافة أو سحب نقدي',
-  'Register cash movements': 'حركات نقدية بالصندوق',
+  'Register cash movements': 'إضافة أو سحب فلوس',
   'Record an addition, paid-out expense, or secured cash drop with a reason. Cashiers need supervisor approval.':
     'سجّل إضافة نقدية أو مصروفًا مدفوعًا أو توريدًا مؤمنًا للخزنة مع السبب. يحتاج الكاشير إلى اعتماد المشرف.',
   'Record a till adjustment with a reason. Cashiers need supervisor approval.':
@@ -2022,24 +2017,22 @@ export const ar: Record<string, string> = {
   'Movement type': 'نوع الحركة',
   'Amount (EGP)': 'المبلغ (جنيه)',
   Reason: 'السبب',
-  'Supervisor credentials are checked by the server and never saved on this device.':
-    'يتحقق الخادم من بيانات المشرف ولا تُحفظ على هذا الجهاز.',
+  'Supervisor credentials are checked by the server and never saved on this device.': 'بيانات المشرف بتتراجع على السيرفر ومش بتتحفظ على الجهاز ده.',
   'Retry saved movement': 'إعادة محاولة الحركة المحفوظة',
-  'Record movement': 'تسجيل الحركة',
-  'Close register shift': 'إغلاق وردية الكاشير',
+  'Record movement': 'سجّل الحركة',
+  'Close register shift': 'قفل الوردية',
   'Count the physical till. Open checks must be settled before this shift can close.':
     'احسب النقد الموجود فعليًا. يجب تسوية الحسابات المفتوحة قبل إغلاق الوردية.',
-  'Counted cash (EGP)': 'النقد المعدود (جنيه)',
-  'Variance reason': 'سبب الفرق',
+  'Counted cash (EGP)': 'الفلوس اللي عدّيتها (جنيه)',
+  'Variance reason': 'سبب الفرق (لو فيه)',
   'Required when counted cash differs': 'مطلوب عند اختلاف المبلغ المعدود',
   'Optional when totals match': 'اختياري عند تطابق الإجماليات',
-  'A cash variance needs approval from a different supervisor.': 'يتطلب فرق النقد اعتماد مشرف آخر.',
-  'This close request is saved. Retry the exact same count; re-enter supervisor credentials if the count has a variance.':
-    'تم حفظ طلب الإغلاق. أعد الطلب بنفس المبلغ، وأدخل بيانات المشرف مجددًا إذا وُجد فرق.',
+  'A cash variance needs approval from a different supervisor.': 'فيه فرق في الفلوس، فلازم مشرف تاني يوافق.',
+  'This close request is saved. Retry the exact same count; re-enter supervisor credentials if the count has a variance.': 'طلب القفل محفوظ. ابعته تاني بنفس المبلغ، ولو فيه فرق دخّل بيانات المشرف تاني.',
   'Expected cash': 'النقد المتوقع',
   'Closing...': 'جارٍ الإغلاق...',
   'Retry shift close': 'إعادة محاولة إغلاق الوردية',
-  'Close shift and save report': 'إغلاق الوردية وحفظ التقرير',
+  'Close shift and save report': 'اقفل الوردية واحفظ التقرير',
   'Enter both supervisor username and password.': 'أدخل اسم مستخدم المشرف وكلمة المرور.',
   'Supervisor approval is required for a cash movement.': 'يلزم اعتماد المشرف لهذه الحركة النقدية.',
   'Supervisor approval is required for a cash variance.': 'يلزم اعتماد المشرف لفرق النقد.',
@@ -2057,7 +2050,7 @@ export const ar: Record<string, string> = {
     'اتصل بالإنترنت لإعادة محاولة إغلاق الوردية المحفوظ.',
   'Could not load cash reconciliation. Refresh before recording cash or closing the shift.':
     'تعذر تحميل تسوية الصندوق. حدّث البيانات قبل تسجيل النقد أو إغلاق الوردية.',
-  'Loading shift reconciliation...': 'جارٍ تحميل تسوية الوردية...',
+  'Loading shift reconciliation...': 'جارٍ تحميل حسابات الوردية...',
   'Saved cash movement needs confirmation': 'حركة نقدية محفوظة بانتظار التأكيد',
   'Retry the exact same request. The amount and reason stay fixed to prevent duplicate till changes.':
     'أعد المحاولة بالطلب نفسه. يظل المبلغ والسبب كما هما لمنع تكرار حركة الصندوق.',
@@ -2082,13 +2075,19 @@ export const ar: Record<string, string> = {
   'Shift totals stay hidden until the physical count is submitted.':
     'تظل إجماليات الوردية مخفية حتى إرسال قيمة الجرد الفعلي.',
   'Refresh shift status': 'تحديث حالة الوردية',
-  'Explain a cash difference if the count is short or over':
-    'وضّح سبب الفرق إذا كان النقد أقل أو أكثر من المتوقع.',
+  'Explain a cash difference if the count is short or over': 'لو الفلوس ناقصة أو زيادة، اكتب السبب',
   'The close report shows the comparison after the count is accepted.':
     'يعرض تقرير الإغلاق المقارنة بعد اعتماد الجرد.',
   'Checking count...': 'جارٍ التحقق من الجرد...',
   'Enter a reason for the cash variance before closing.': 'أدخل سبب فرق النقد قبل إغلاق الوردية.',
   'Settle or cancel every open check before closing this shift.':
     'سوِّ كل الحسابات المفتوحة أو ألغها قبل إغلاق الوردية.',
+  'The change you put in the drawer before selling. Leave 0 if there is none.': 'الفكّة اللي حاططها في الدرج قبل ما تبدأ تبيع. لو مفيش، سيبها 0.',
+  'Money you put into the drawer, like extra change.': 'فلوس بتحطها في الدرج، زي فكّة زيادة.',
+  'Money you take out of the drawer to pay for something, like an expense.': 'فلوس بتطلّعها من الدرج عشان تدفع حاجة، زي مصروف.',
+  'Extra cash you move from the drawer to the safe during the shift.': 'فلوس زيادة بتنقلها من الدرج للخزنة وانت لسه في الوردية.',
+  'Cash custody': 'العهدة والتوريد',
+  'Open orders': 'افتح الطلبات',
+  'Cashiers need supervisor approval for this.': 'الكاشير محتاج موافقة المشرف على الحركة دي.',
 };
 // Delivery custody and shift handover.
