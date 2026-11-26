@@ -55,7 +55,7 @@ export class RestaurantOrderPolicyService {
           : 'اختار فرع متاح للاستلام.');
       const minimum = route?.area.minimum ?? '0.00';
       if (subtotal < toCents(minimum))
-        throw new ConflictException('The delivery minimum has not been reached.');
+        throw new ConflictException('الطلب أقل من الحد الأدنى للتوصيل.');
       const fee = toCents(route?.area.fee ?? '0');
       const receivingBranch = { id: branch.branchId, name: branch.name, address: branch.address };
       const snapshot = {
@@ -77,7 +77,7 @@ export class RestaurantOrderPolicyService {
     let areaName: string | null = null;
     if (fulfillment === 'delivery') {
       if (subtotal < toCents(settings.minimumDeliveryOrder))
-        throw new ConflictException('The delivery minimum has not been reached.');
+        throw new ConflictException('الطلب أقل من الحد الأدنى للتوصيل.');
       if (settings.deliveryAreas.length) {
         const area = settings.deliveryAreas.find((entry) => entry.id === areaId);
         if (!area) throw new BadRequestException('Choose a supported delivery area.');

@@ -2,6 +2,7 @@
 import type { PublicRestaurantBranch, RestaurantSettingsInput } from '@waffarly/contracts';
 import type { Prisma } from '@waffarly/database';
 import { restaurantOperatingState, type RestaurantOrderChannel } from './restaurant-hours.js';
+import { toCents } from '../../common/money/money.js';
 
 export async function restaurantOnlineBranches(
   db: Prisma.TransactionClient,
@@ -28,6 +29,10 @@ export async function restaurantOnlineBranches(
     }, now).isOpen;
     return [{
       ...branch,
+      // An area without its own minimum uses the restaurant-wide delivery minimum.
+      areas: branch.areas.map((area) =>
+        toCents(area.minimum) > 0n ? area : { ...area, minimum: settings.minimumDeliveryOrder },
+      ),
       delivery: settings.deliveryEnabled && branch.delivery,
       pickup: settings.pickupEnabled && branch.pickup,
       name,
