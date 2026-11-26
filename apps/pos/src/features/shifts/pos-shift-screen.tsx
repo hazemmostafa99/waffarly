@@ -10,6 +10,7 @@ import { ApiError } from '../../lib/api-client.js';
 import { isReadablePosLabel } from '../../lib/display-label.js';
 import { PosShiftCashManagement } from './pos-shift-cash-management.js';
 import { PosCarryoverSelect } from './pos-cash-custody.js';
+import { PosRegisterPairing } from '../registers/pos-register-pairing.js';
 import {
   getCurrentPosShift,
   openPosShift,
@@ -168,6 +169,15 @@ export function PosShiftScreen() {
             {t('Ask the merchant owner to assign the cashier or supervisor role.')}
           </p>
         </section>
+      </div>
+    );
+  }
+
+  // Opening a shift is where an unpaired browser is asked to choose its register.
+  if (!employee.deviceRegister) {
+    return (
+      <div className="px-3 pt-3 pb-6 sm:px-4">
+        <PosRegisterPairing employee={employee} />
       </div>
     );
   }

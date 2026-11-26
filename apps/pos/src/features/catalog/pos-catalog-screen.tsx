@@ -1651,7 +1651,9 @@ export function POSCatalogScreen() {
                 )}
                 {!shiftQuery.data && (
                   <Link className="block text-xs text-primary underline" to="/shift">
-                    {t('Open a register shift before confirming')}
+                    {registerId
+                      ? t('Open a register shift before confirming')
+                      : t('Connect a register, then open a shift before confirming')}
                   </Link>
                 )}
                 {!online && (

@@ -60,7 +60,7 @@ test('unpaired browser may list available registers and bind one', async () => {
   assert.equal(bindRequest.posEmployee, employee);
 });
 
-test('unpaired browser cannot access the POS workspace before setup', async () => {
+test('unpaired browser cannot read a register before setup', async () => {
   const guard = makeGuard(employee);
   const request = {
     path: '/pos/shifts/current',
@@ -70,6 +70,32 @@ test('unpaired browser cannot access the POS workspace before setup', async () =
   } as unknown as ActorRequest;
 
   await assert.rejects(guard.canActivate(requestContext(request)), ForbiddenException);
+});
+
+test('unpaired browser may browse and quote but not change anything', async () => {
+  const guard = makeGuard(employee);
+  const browse = {
+    path: '/pos/orders',
+    method: 'GET',
+    query: { branchId },
+    body: {},
+  } as unknown as ActorRequest;
+  const quote = {
+    path: '/pos/orders/quote',
+    method: 'POST',
+    query: {},
+    body: { items: [] },
+  } as unknown as ActorRequest;
+  const accept = {
+    path: '/pos/orders/88888888-8888-4888-8888-888888888888/accept',
+    method: 'POST',
+    query: {},
+    body: {},
+  } as unknown as ActorRequest;
+
+  assert.equal(await guard.canActivate(requestContext(browse)), true);
+  assert.equal(await guard.canActivate(requestContext(quote)), true);
+  await assert.rejects(guard.canActivate(requestContext(accept)), ForbiddenException);
 });
 
 test('paired browser rejects another register from query or command payload', async () => {

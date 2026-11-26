@@ -1803,6 +1803,10 @@ export const ar: Record<string, string> = {
   'Ask the owner to add a register or unpair a browser after its shift is closed.':
     'اطلب من المالك إضافة جهاز أو فك ربط متصفح بعد إغلاق ورديته.',
   'Connecting…': 'جارٍ الربط…',
+  'To open a shift or take payments, connect this browser to a cashier register. You can keep browsing orders without it.':
+    'لفتح وردية أو تحصيل مدفوعات، اربط هذا المتصفح بجهاز كاشير. تقدر تكمل تصفح الطلبات من غير ربط.',
+  'Connect a register, then open a shift before confirming':
+    'اربط جهاز كاشير ثم افتح وردية قبل تأكيد الطلب',
   'Connect register': 'ربط جهاز الكاشير',
   'Pair this browser with a POS register before continuing.':
     'اربط هذا المتصفح بجهاز كاشير قبل المتابعة.',

@@ -11,7 +11,6 @@ import {
 } from './features/auth/pos-session.api.js';
 import { PosDeliveryRecoveryNotice } from './features/delivery/pos-delivery-screen.js';
 import { PosPaymentRecoveryNotice } from './features/payments/pos-payment-recovery-notice.js';
-import { PosRegisterPairing } from './features/registers/pos-register-pairing.js';
 import { PosWorkspaceFrame } from './features/workspace/pos-workspace-frame.js';
 import { PosButton } from './components/pos-button.js';
 
@@ -111,15 +110,9 @@ export function POSLayout() {
 
   if (!employee) return null;
 
-  if (!employee.deviceRegister) {
-    return (
-      <PosRegisterPairing
-        employee={employee}
-        signingOut={signOutMutation.isPending}
-        onSignOut={() => void signOut()}
-      />
-    );
-  }
+  // Saved payment and delivery retries run on the paired register, so wait for pairing.
+  const canRecoverRegisterWork =
+    employee.permissions.includes('sell') && Boolean(employee.deviceRegister);
 
   return (
     <PosWorkspaceFrame
@@ -127,8 +120,8 @@ export function POSLayout() {
       signingOut={signOutMutation.isPending}
       onSignOut={() => void signOut()}
     >
-      {employee.permissions.includes('sell') && <PosPaymentRecoveryNotice employee={employee} />}
-      {employee.permissions.includes('sell') && <PosDeliveryRecoveryNotice employee={employee} />}
+      {canRecoverRegisterWork && <PosPaymentRecoveryNotice employee={employee} />}
+      {canRecoverRegisterWork && <PosDeliveryRecoveryNotice employee={employee} />}
       {sessionQuery.error && (
         <p
           className="m-0 max-w-none rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm text-foreground"

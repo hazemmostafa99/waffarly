@@ -1,6 +1,6 @@
 /** Finds saved shift close reports for authorized staff and owners. */
 import { toCloseReport, toOwnerCloseReportRow } from '../shift.mapper.js';
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 
 import type {
   OwnerShiftReportPage,
@@ -110,6 +110,10 @@ export async function getCloseReport(
   shiftId: string,
 ): Promise<PosShiftCloseReportContract> {
   requireShiftAccess(employee);
+  // Shift ids are not register-scoped, so an unpaired browser could otherwise read any register's report.
+  if (employee.deviceRegister === null) {
+    throw new ForbiddenException('Pair this browser with a POS register before continuing.');
+  }
   const report = await prisma.posShiftCloseReport.findFirst({
     where: {
       shiftId,
