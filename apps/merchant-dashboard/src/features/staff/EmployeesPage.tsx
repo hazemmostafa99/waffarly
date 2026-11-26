@@ -45,6 +45,16 @@ function emptyDraft(): Draft {
   };
 }
 
+/**
+ * Lowercases a typed username and drops the store prefix when the owner pastes the
+ * full sign-in name, so it is not saved twice: ("test-flow", "Test-Flow.Ali") -> "ali".
+ */
+function usernameWithoutStorePrefix(storeHandle: string, value: string): string {
+  const username = value.toLowerCase();
+  const prefix = `${storeHandle}.`;
+  return storeHandle && username.startsWith(prefix) ? username.slice(prefix.length) : username;
+}
+
 /** True when the owner added or removed permissions from the role's defaults. */
 function isCustomized(role: PosEmployeeRole | null, permissions: readonly string[]): boolean {
   const defaults = defaultPosEmployeePermissions(role);
@@ -503,17 +513,31 @@ export function EmployeesPage() {
                 </label>
                 <label>
                   {text('Username', 'اسم المستخدم')}
-                  <Input
-                    required
-                    minLength={3}
-                    maxLength={80}
-                    disabled={Boolean(editing)}
-                    autoComplete="username"
-                    value={draft.username}
-                    onChange={(event) =>
-                      setDraft({ ...draft, username: event.target.value.toLowerCase() })
-                    }
-                  />
+                  {/* The store subdomain is a fixed prefix; only the username after it is saved. */}
+                  <span className={`employee-username-field${storeHandle ? ' has-prefix' : ''}`} dir="ltr">
+                    {storeHandle && (
+                      <span className="employee-username-prefix" aria-hidden="true">
+                        {storeHandle}.
+                      </span>
+                    )}
+                    <Input
+                      required
+                      minLength={3}
+                      maxLength={80}
+                      disabled={Boolean(editing)}
+                      autoComplete="username"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      dir="ltr"
+                      value={draft.username}
+                      onChange={(event) =>
+                        setDraft({
+                          ...draft,
+                          username: usernameWithoutStorePrefix(storeHandle, event.target.value),
+                        })
+                      }
+                    />
+                  </span>
                   {storeHandle && draft.username && (
                     <small>
                       {text('POS sign-in name: ', 'اسم الدخول على نقاط البيع: ')}
