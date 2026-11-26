@@ -8,6 +8,18 @@
 -- so every existing employee keeps exactly the access they had.
 -- Example: a cashier saved as {accept_recipe_orders,start_preparation} becomes
 -- {accept_recipe_orders,open_register_shift,sell,start_preparation}.
+
+-- Shift-close approval and cash movements were only granted through role presets,
+-- so the saved-list check never allowed them. Allow every permission the API knows.
+ALTER TABLE "pos_employees" DROP CONSTRAINT "pos_employees_permissions_check";
+ALTER TABLE "pos_employees" ADD CONSTRAINT "pos_employees_permissions_check" CHECK (
+  "permissions" <@ ARRAY[
+    'accept_recipe_orders', 'start_preparation', 'open_register_shift', 'sell',
+    'approve_discounts', 'approve_voids', 'approve_refunds', 'approve_shift_close',
+    'manage_cash_movements', 'view_orders', 'view_receipts', 'view_inventory'
+  ]::TEXT[]
+);
+
 UPDATE "pos_employees"
 SET "permissions" = ARRAY(
   SELECT DISTINCT grant_name
