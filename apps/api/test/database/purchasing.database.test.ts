@@ -376,6 +376,9 @@ it(
     } finally {
       if (merchantId) {
         await client.purchaseInvoiceLine.deleteMany({ where: { merchantId } });
+        await client.stockMovement.deleteMany({ where: { merchantId } }); // Movements reference cost revisions.
+        await client.stockItemCostEvent.deleteMany({ where: { merchantId } });
+        await client.stockItemCostCurrent.deleteMany({ where: { merchantId } });
         await client.purchaseInvoice.deleteMany({ where: { merchantId } });
         await client.stockMovement.deleteMany({ where: { merchantId } });
         await client.stockMovementBatch.deleteMany({ where: { merchantId } });
@@ -396,6 +399,9 @@ it(
 async function cleanupMerchants(client: PrismaClient, merchantIds: string[]) {
   const where = { merchantId: { in: merchantIds } };
   await client.purchaseInvoiceLine.deleteMany({ where });
+  await client.stockMovement.deleteMany({ where }); // Movements reference cost revisions.
+  await client.stockItemCostEvent.deleteMany({ where });
+  await client.stockItemCostCurrent.deleteMany({ where });
   await client.purchaseInvoice.deleteMany({ where });
   await client.stockMovement.deleteMany({ where });
   await client.stockMovementBatch.deleteMany({ where });

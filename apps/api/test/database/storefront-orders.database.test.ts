@@ -15,7 +15,7 @@ import { ProductConfigurationReportService } from '../../src/modules/reports/pro
 const databaseUrl = getTestDatabaseUrl();
 
 it(
-  'snapshots configured products, reserves tracked stock, and restores it when a pending order is rejected',
+  'snapshots configured products, saves stock requirements for acceptance, and keeps stock when a pending order is rejected',
   { skip: !databaseUrl },
   async (testContext) => {
     assert.ok(databaseUrl, 'Configure TEST_DATABASE_URL and apply migrations first.');
@@ -159,26 +159,19 @@ it(
           assert.equal(first.total, '220.00');
           assert.equal(first.status, 'pending');
           await assert.rejects(products.remove(merchant.id, product.id), /cannot be deleted/i);
-          await assert.rejects(
-            products.update(merchant.id, 'order-verification-test', product.id, product.revision, {
-              variants: [
-                {
-                  id: variantId,
-                  name: 'Large',
-                  price: '100.00',
-                  stockQuantity: 3,
-                  availability: 'available',
-                  position: 0,
-                },
-              ],
-              inventoryConfiguration: directConfiguration,
-            }),
-            /pending order holds a stock reservation/i,
-          );
-          const reservedVariant = await transaction.productVariant.findUniqueOrThrow({
+          // Online DIRECT lines save a stock requirement and deduct it at acceptance,
+          // so a pending order reserves nothing and leaves the variant stock untouched.
+          const pendingVariant = await transaction.productVariant.findUniqueOrThrow({
             where: { id: product.variants[0]!.id },
           });
-          assert.equal(reservedVariant.stockQuantity, 1);
+          assert.equal(pendingVariant.stockQuantity, 3);
+          const savedRequirements = await transaction.storefrontOrderLineStockRequirement.findMany({
+            where: { merchantId: merchant.id, orderLine: { orderId: first.id } },
+          });
+          assert.deepEqual(
+            savedRequirements.map((requirement) => requirement.quantity.toString()),
+            ['2'],
+          );
 
           const listed = await orders.listForOwner(merchant.id, { limit: 1 });
           assert.equal(listed.items.length, 1);
@@ -231,7 +224,17 @@ it(
               },
             ],
           });
-          await orderStatus.updateStatus(merchant.id, second.id, 'accepted');
+          // Inventory-tracked orders are accepted at a branch (covered by the recipe
+          // lifecycle tests), never through the legacy status update.
+          await assert.rejects(
+            orderStatus.updateStatus(merchant.id, second.id, 'accepted'),
+            /branch-based acceptance/,
+          );
+          // The report and snapshot checks below only need an accepted order.
+          await transaction.storefrontOrder.update({
+            where: { id: second.id },
+            data: { status: 'accepted', acceptedAt: new Date() },
+          });
           const orderPageOne = await orders.listForOwner(merchant.id, { limit: 1 });
           assert.equal(orderPageOne.items.length, 1);
           assert.ok(orderPageOne.nextCursor);
@@ -258,7 +261,9 @@ it(
           const acceptedVariant = await transaction.productVariant.findUniqueOrThrow({
             where: { id: product.variants[0]!.id },
           });
-          assert.equal(acceptedVariant.stockQuantity, 2);
+          // Stock for DIRECT lines moves in the warehouse ledger at branch acceptance,
+          // not in the variant's quantity.
+          assert.equal(acceptedVariant.stockQuantity, 3);
 
           const currentProductRevision = await transaction.product.findUniqueOrThrow({
             where: { id: product.id },

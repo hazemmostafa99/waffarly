@@ -319,6 +319,9 @@ it(
                     create: [
                       {
                         productId: randomUUID(),
+                        // POS direct-stock sales consume stock at sale time, so kitchen
+                        // acceptance needs no saved requirement or current cost.
+                        stockHandling: 'direct_sale',
                         productName: 'Soup',
                         quantity: 1,
                         unitPrice: '5.00',
@@ -327,6 +330,7 @@ it(
                       },
                       {
                         productId: randomUUID(),
+                        stockHandling: 'direct_sale',
                         productName: 'Bread',
                         quantity: 1,
                         unitPrice: '5.00',
@@ -342,6 +346,7 @@ it(
                       create: [
                         {
                           productId: randomUUID(),
+                          stockHandling: 'direct_sale',
                           productName: 'Two shareable items',
                           quantity: 2,
                           unitPrice: lineUnitPrice,
