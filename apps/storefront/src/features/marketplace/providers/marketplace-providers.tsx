@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useStore } from 'zustand';
 import { createMarketplaceStore } from '@/features/marketplace/state/create-marketplace-store';
+import { followSavedStoreAcrossTabs } from '@/lib/follow-saved-store-across-tabs';
 import type { MarketplaceState } from '@/features/marketplace/state/marketplace-state';
 
 function createMarketplaceQueryClient() {
@@ -25,6 +26,7 @@ export function MarketplaceProviders({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void store.persist.rehydrate();
+    return followSavedStoreAcrossTabs(store);
   }, [store]);
 
   return (
