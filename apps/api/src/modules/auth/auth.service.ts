@@ -130,10 +130,18 @@ export class AuthService {
   }
 
   async loginPos(input: PosLoginRequest, request: Request, response: Response): Promise<void> {
-    const merchant = await this.prisma.merchant.findUnique({
-      where: { storefrontSlug: input.storefrontSlug.trim().toLowerCase() },
-      select: { id: true, firstMonthActivatedAt: true },
-    });
+    // Cashiers may type the business code or the store address the owner shares
+    // (e.g. "my-cafe" from my-cafe.waffarly.com); the business code wins if both match.
+    const storeCode = input.storefrontSlug.trim().toLowerCase();
+    const merchant =
+      (await this.prisma.merchant.findUnique({
+        where: { storefrontSlug: storeCode },
+        select: { id: true, firstMonthActivatedAt: true },
+      })) ??
+      (await this.prisma.merchant.findUnique({
+        where: { storefrontHandle: storeCode },
+        select: { id: true, firstMonthActivatedAt: true },
+      }));
     const employee = merchant
       ? await this.prisma.posEmployee.findFirst({
           where: { merchantId: merchant.id, username: input.username.trim().toLowerCase(), ownerAccountId: null },

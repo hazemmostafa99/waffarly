@@ -9,6 +9,7 @@ import {
 import type {
   CursorPage,
   InventoryBranch,
+  MerchantAccountOverview,
   PosEmployeePermission,
   PosEmployeeRole,
   PosEmployeeSummary,
@@ -84,6 +85,19 @@ export function EmployeesPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [refresh, setRefresh] = useState(0);
+  // Cashiers sign in to the POS with this code; show it where their accounts are created.
+  const [businessCode, setBusinessCode] = useState('');
+  useEffect(() => {
+    let current = true;
+    void apiRequest<MerchantAccountOverview>('/owner/account')
+      .then((data) => {
+        if (current) setBusinessCode(data.profile.storefrontSlug);
+      })
+      .catch(() => undefined);
+    return () => {
+      current = false;
+    };
+  }, []);
   const effectivePermissionCount = POS_EMPLOYEE_PERMISSIONS.filter((permission) =>
     hasPosEmployeePermission({ permissions: draft.permissions }, permission),
   ).length;
@@ -306,6 +320,14 @@ export function EmployeesPage() {
   return (
     <section className="employee-workspace" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <h1 className="sr-only">{text('Employees', 'الموظفون')}</h1>
+      {businessCode && (
+        <p className="products-notice" role="note">
+          {text('POS business code for cashier sign-in:', 'معرّف المتجر لدخول الكاشير على نقاط البيع:')}{' '}
+          <bdi dir="ltr" className="font-mono font-semibold">
+            {businessCode}
+          </bdi>
+        </p>
+      )}
 
       {error && !editorOpen && (
         <div className="products-error employee-load-error" role="alert">
