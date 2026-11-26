@@ -823,8 +823,8 @@ function OwnerOrderActions({
     }
     const trimmed = reason.trim();
     if (!trimmed) return;
-    // Stock is deducted on acceptance, so only accepted orders have stock to restore.
-    void run('cancel', { reason: trimmed, restoreStock: order.status !== 'pending' });
+    // Pending orders were rejected above; an accepted order already deducted stock, so restore it.
+    void run('cancel', { reason: trimmed, restoreStock: true });
   }
 
   return (

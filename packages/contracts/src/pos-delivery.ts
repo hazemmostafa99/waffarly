@@ -33,7 +33,7 @@ export type PosDeliveryCommand = {
   revision: number;
 } & (
   // registerId links a ready website delivery to the cashier's open shift on first dispatch.
-  | { action: 'dispatch'; courierId: string; registerId?: string }
+  | { action: 'dispatch'; courierId: string; registerId?: string | undefined }
   // Allows exact recovery of a dispatch saved by an older POS client.
   | { action: 'dispatch'; courierName: string }
   | { action: 'delivered' }
