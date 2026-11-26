@@ -929,7 +929,7 @@ function SupervisorFields({
       <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
         {t('Supervisor username')}
         <Input
-          autoComplete="username"
+          autoComplete="off"
           value={username}
           onChange={(event) => setUsername(event.target.value)}
           className="min-h-11 text-sm"
@@ -939,7 +939,7 @@ function SupervisorFields({
         {t('Supervisor password')}
         <Input
           type="password"
-          autoComplete="current-password"
+          autoComplete="new-password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           className="min-h-11 text-sm"

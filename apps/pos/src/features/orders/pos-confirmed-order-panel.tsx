@@ -645,7 +645,7 @@ export function PosConfirmedOrderPanel({
               <label className="grid gap-1.5 text-sm font-medium">
                 {t('Supervisor username')}
                 <Input
-                  autoComplete="username"
+                  autoComplete="off"
                   required
                   value={approvalUsername}
                   onChange={(event) => setApprovalUsername(event.target.value)}
@@ -656,7 +656,7 @@ export function PosConfirmedOrderPanel({
                 {t('Supervisor password')}
                 <Input
                   type="password"
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   required
                   value={approvalPassword}
                   onChange={(event) => setApprovalPassword(event.target.value)}
