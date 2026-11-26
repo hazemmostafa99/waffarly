@@ -457,7 +457,7 @@ export function PosCashCustody({
                 </label>
                 <label className={fieldClass}>
                   {text('Handoff reference', 'رقم الكيس أو إيصال التوريد')}
-                  <Input name="reference" required maxLength={80} />
+                  <Input name="reference" maxLength={80} placeholder={text('Optional', 'اختياري')} />
                 </label>
                 <label className={fieldClass}>
                   {text('Reason', 'السبب')}

@@ -28,7 +28,13 @@ export const transferCashSchema = z
     requestId: uuid,
     safeId: uuid,
     amount: positive,
-    reference: z.string().trim().min(1).max(80),
+    // Optional bag or receipt number; a blank form field arrives as '' and means none.
+    reference: z
+      .string()
+      .trim()
+      .max(80)
+      .optional()
+      .transform((value) => value || undefined),
     reason: z.string().trim().min(1).max(500),
   })
   .strict();

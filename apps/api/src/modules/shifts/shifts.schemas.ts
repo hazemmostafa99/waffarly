@@ -110,13 +110,7 @@ export const recordPosShiftCashMovementSchema = z
         message: 'Only cash drops can target a safe.',
       });
     }
-    if (input.kind === 'cash_drop' && !input.dropReference) {
-      context.addIssue({
-        code: 'custom',
-        path: ['dropReference'],
-        message: 'A cash-drop reference is required.',
-      });
-    }
+    // The bag or receipt number is optional; the server names the safe transfer when it is blank.
     if (input.kind !== 'cash_drop' && input.dropReference !== undefined) {
       context.addIssue({
         code: 'custom',

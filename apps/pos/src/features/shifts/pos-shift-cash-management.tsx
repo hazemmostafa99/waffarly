@@ -271,10 +271,6 @@ export function PosShiftCashManagement({
       setFormError(locale === 'ar' ? 'اختر الخزنة المستلمة.' : 'Select a receiving safe.');
       return;
     }
-    if (!saved && kind === 'cash_drop' && !dropReference.trim()) {
-      setFormError('Enter a safe bag / drop reference.');
-      return;
-    }
     if (!saved && (!/^(?=.*[1-9])\d{1,10}(?:\.\d{1,2})?$/.test(amount) || !reason.trim())) {
       setFormError('Enter a positive amount and a reason for this cash movement.');
       return;
@@ -288,7 +284,10 @@ export function PosShiftCashManagement({
         kind,
         amount,
         reason: reason.trim(),
-        ...(kind === 'cash_drop' ? { dropReference: dropReference.trim(), safeId } : {}),
+        // The bag or receipt number is optional; the server names the transfer when blank.
+        ...(kind === 'cash_drop'
+          ? { safeId, ...(dropReference.trim() ? { dropReference: dropReference.trim() } : {}) }
+          : {}),
       },
     );
   }
@@ -591,7 +590,7 @@ export function PosShiftCashManagement({
                       {t(movementKinds.find((option) => option.kind === selectedKind)!.hint)}
                     </p>
                   </fieldset>
-                  <div className="grid gap-3 sm:grid-cols-[minmax(9rem,1fr)_minmax(12rem,2fr)]">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
                       {t('Amount (EGP)')}
                       <Input
@@ -616,23 +615,21 @@ export function PosShiftCashManagement({
                       />
                     </label>
                     {selectedKind === 'cash_drop' && (
-                      <div className="sm:col-span-2">
-                        <PosSafeSelect
-                          key={branchId}
-                          employee={employee}
-                          branchId={branchId}
-                          value={pendingMovement?.request.safeId ?? safeId}
-                          onChange={setSafeId}
-                          disabled={Boolean(pendingMovement) || movementMutation.isPending}
-                        />
-                      </div>
+                      <PosSafeSelect
+                        key={branchId}
+                        employee={employee}
+                        branchId={branchId}
+                        value={pendingMovement?.request.safeId ?? safeId}
+                        onChange={setSafeId}
+                        disabled={Boolean(pendingMovement) || movementMutation.isPending}
+                      />
                     )}
                     {selectedKind === 'cash_drop' && (
-                      <label className="grid gap-1.5 text-xs font-medium text-muted-foreground sm:col-span-2">
+                      <label className="grid content-start gap-1.5 text-xs font-medium text-muted-foreground">
                         {t('Safe bag / drop reference')}
                         <Input
-                          required
                           maxLength={80}
+                          placeholder={t('Optional')}
                           value={pendingMovement?.request.dropReference ?? dropReference}
                           disabled={Boolean(pendingMovement) || movementMutation.isPending}
                           onChange={(event) => setDropReference(event.target.value)}

@@ -41,6 +41,7 @@ import { carryoverOptions, drawerLedger, drawers } from './custody/drawers.js';
 import { listSafes, safeLedger } from './custody/safe.query.js';
 import { listTransfers } from './custody/transfer.query.js';
 import { assertPosRegisterAssignment } from './access/shift-access.rules.js';
+import { safeTransferFallbackReference } from './shifts.rules.js';
 
 @Injectable()
 export class CashCustodyService {
@@ -150,7 +151,7 @@ export class CashCustodyService {
             destinationSafeId: safe.id,
             amount: q.amount,
             requestId: q.requestId,
-            reference: q.reference,
+            reference: q.reference ?? safeTransferFallbackReference(q.requestId),
             reason: q.reason,
             createdBy: actor,
             fingerprint: hash,
