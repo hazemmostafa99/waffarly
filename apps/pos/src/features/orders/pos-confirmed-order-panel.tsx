@@ -234,10 +234,9 @@ export function PosConfirmedOrderPanel({
       aria-label={t('Current order')}
       data-testid="confirmed-order-panel"
     >
-      <header className="space-y-3 border-b border-border p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-medium text-muted-foreground">{t('Current order')}</span>
-          <bdi className="text-xs font-semibold tabular-nums">
+      <header className="grid gap-1 border-b border-border px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <bdi className="rounded bg-secondary px-1.5 py-0.5 text-xs font-bold tabular-nums">
             #
             {getPosOrderNumber(
               order ?? {
@@ -247,13 +246,19 @@ export function PosConfirmedOrderPanel({
               },
             )}
           </bdi>
-        </div>
-        <div className="flex items-center gap-2 text-sm font-semibold">
-          <CheckCircle2 className="shrink-0 text-success" size={18} aria-hidden="true" />
-          {t('Order confirmed')}
+          <span className="flex min-w-0 items-center gap-1 text-sm font-semibold">
+            <CheckCircle2 className="shrink-0 text-success" size={15} aria-hidden="true" />
+            <span className="truncate">{t('Order confirmed')}</span>
+          </span>
+          <span
+            className="ms-auto shrink-0 rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] font-semibold"
+            role="status"
+          >
+            {t(status)}
+          </span>
         </div>
         {order && !orderQuery.isError && (
-          <p className="text-xs text-muted-foreground">
+          <p className="m-0 truncate text-xs text-muted-foreground">
             {t(
               order.fulfillmentType === 'dine_in'
                 ? 'Dine in'
@@ -264,15 +269,9 @@ export function PosConfirmedOrderPanel({
             · {order.customerName || t('Walk-in customer')}
           </p>
         )}
-        <span
-          className="inline-flex rounded-md border border-border bg-secondary px-2 py-1 text-xs font-semibold"
-          role="status"
-        >
-          {t(status)}
-        </span>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5" data-pos-order-scroll>
+      <div className="min-h-0 flex-1 overflow-y-auto p-3" data-pos-order-scroll>
         {orderQuery.isLoading ? (
           <p role="status" className="text-sm text-muted-foreground">
             {t('Loading order details...')}
@@ -291,9 +290,9 @@ export function PosConfirmedOrderPanel({
             </PosButton>
           </div>
         ) : (
-          <section aria-label={t('Confirmed items')} className="grid gap-3">
+          <section aria-label={t('Confirmed items')} className="grid gap-2">
             {order.fulfillmentType === 'dine_in' ? (
-              <div className="grid gap-2 rounded-lg border border-border bg-secondary/40 p-3">
+              <div className="grid gap-2 rounded-lg border border-border bg-secondary/40 p-2.5">
                 {order.kitchenTicket ? (
                   <div className="grid gap-1" role="status">
                     <strong className="text-sm">{t('Sent to kitchen')}</strong>
@@ -335,23 +334,29 @@ export function PosConfirmedOrderPanel({
                 )}
               </div>
             ) : (
-              <div className="rounded-lg border border-border bg-secondary/40 p-3" role="status">
-                <strong className="text-sm">
+              // One quiet line: dispatch is automatic, so the cashier only needs confirmation.
+              <p
+                className="m-0 flex flex-wrap items-center gap-x-1.5 rounded-md bg-secondary/40 px-2.5 py-1.5 text-xs"
+                role="status"
+              >
+                <strong className="font-semibold">
                   {order.kitchenTicket
                     ? t('Automatically sent to kitchen')
                     : t('Kitchen dispatch pending')}
                 </strong>
                 {order.kitchenTicket && (
-                  <p className="m-0 mt-1 text-xs text-muted-foreground">
-                    {t('Station: {{station}}', { station: t(order.kitchenTicket.station.name) })} ·{' '}
+                  <span className="text-muted-foreground">
+                    · {t(order.kitchenTicket.station.name)} ·{' '}
                     {formatDate(order.kitchenTicket.dispatchedAt, true)}
-                  </p>
+                  </span>
                 )}
-              </div>
+              </p>
             )}
-            <h3 className="text-xs font-semibold text-muted-foreground">{t('Confirmed items')}</h3>
+            <h3 className="m-0 mt-1 text-xs font-semibold text-muted-foreground">
+              {t('Confirmed items')}
+            </h3>
             {order.lines.map((line) => (
-              <article key={line.id} className="rounded-lg border border-border p-3">
+              <article key={line.id} className="rounded-lg border border-border px-2.5 py-2">
                 <div className="flex items-start justify-between gap-3 text-sm">
                   <div className="min-w-0 flex-1">
                     <p className="break-words font-semibold">{line.productName}</p>
@@ -391,26 +396,28 @@ export function PosConfirmedOrderPanel({
         )}
       </div>
 
-      <footer className="grid gap-3 border-t border-border p-4 sm:p-5">
+      <footer className="grid gap-2 border-t border-border p-3">
         {order && !orderQuery.isError && (
-          <div className="grid gap-2 text-sm">
-            <div className="flex justify-between gap-3 text-muted-foreground">
-              <span>{t('Order total')}</span>
-              <span className="tabular-nums">{money(order.total)}</span>
+          <div className="grid gap-1 text-sm">
+            <div className="flex flex-wrap justify-between gap-x-3 text-xs text-muted-foreground">
+              <span>
+                {t('Order total')}{' '}
+                <span className="tabular-nums text-foreground">{money(order.total)}</span>
+              </span>
+              {payment && !paymentQuery.isError && (
+                <span>
+                  {t('Collected')}{' '}
+                  <span className="tabular-nums text-foreground">
+                    {money(formatMoneyCents(paidCents))}
+                  </span>
+                </span>
+              )}
             </div>
             {payment && !paymentQuery.isError && (
-              <>
-                <div className="flex justify-between gap-3 text-muted-foreground">
-                  <span>{t('Collected')}</span>
-                  <span className="tabular-nums">{money(formatMoneyCents(paidCents))}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <strong>{t('Remaining balance')}</strong>
-                  <strong className="text-xl tabular-nums">
-                    {money(formatMoneyCents(dueCents))}
-                  </strong>
-                </div>
-              </>
+              <div className="flex items-center justify-between gap-3">
+                <strong className="text-sm">{t('Remaining balance')}</strong>
+                <strong className="text-lg tabular-nums">{money(formatMoneyCents(dueCents))}</strong>
+              </div>
             )}
           </div>
         )}
@@ -429,14 +436,15 @@ export function PosConfirmedOrderPanel({
             {t('Connect to the internet before recording a payment.')}
           </p>
         )}
-        {hasPendingAmendment ? (
-          <div className="grid gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3">
+        {hasPendingAmendment && (
+          <div className="grid gap-2 rounded-lg border border-warning/40 bg-warning/10 p-2.5">
             <p className="m-0 text-xs text-warning" role="status">
               {t('An added-items request is saved. Retry the exact request to check its result.')}
             </p>
             <PosButton
               type="button"
               variant="solid"
+              size="sm"
               className="w-full"
               disabled={!online}
               onClick={onRetryPendingAmendment}
@@ -444,47 +452,17 @@ export function PosConfirmedOrderPanel({
               {t('Retry saved item addition')}
             </PosButton>
           </div>
-        ) : canAddItems && verified ? (
-          <PosButton
-            type="button"
-            variant="outline"
-            className="w-full"
-            disabled={!online}
-            onClick={onAddItems}
-          >
-            <ReceiptText size={16} aria-hidden="true" />
-            {t('Add items to this order')}
-          </PosButton>
-        ) : null}
-        {canCancel && (
-          <PosButton
-            type="button"
-            variant="outline"
-            className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
-            disabled={!online || cancellationMutation.isPending}
-            onClick={openCancellationDialog}
-          >
-            <AlertTriangle size={16} aria-hidden="true" />
-            {t(pendingCancellation ? 'Retry saved cancellation' : 'Cancel unpaid order')}
-          </PosButton>
         )}
-        {cancellationMutation.isError && (
-          <div className="grid gap-2" role="alert">
-            <p className="m-0 text-xs text-destructive">
-              {errorText(
-                cancellationMutation.error instanceof Error
-                  ? cancellationMutation.error.message
-                  : t('The order could not be cancelled.'),
-              )}
-            </p>
-            <PosButton
-              type="button"
-              variant="outline"
-              onClick={() => void Promise.all([orderQuery.refetch(), paymentQuery.refetch()])}
-            >
-              {t('Refresh order status')}
-            </PosButton>
-          </div>
+        {!settled && !cancelled && (
+          <PosButton
+            type="button"
+            variant="solid"
+            className="w-full font-semibold"
+            disabled={!verified || !online}
+            onClick={onCheckout}
+          >
+            {t('Take payment')}
+          </PosButton>
         )}
         {settled &&
           verified &&
@@ -495,10 +473,11 @@ export function PosConfirmedOrderPanel({
                 key={check.id}
                 type="button"
                 variant="solid"
+                size="sm"
                 className="w-full"
                 onClick={() => setReceiptCheckId(check.id)}
               >
-                <ReceiptText size={16} aria-hidden="true" />
+                <ReceiptText size={15} aria-hidden="true" />
                 {t('View / print receipt')}
                 {payment.checks.length > 1
                   ? ` · ${t('Check')} ${formatNumber(check.position + 1)}`
@@ -519,11 +498,12 @@ export function PosConfirmedOrderPanel({
                 key={`refund-${check.id}`}
                 type="button"
                 variant="outline"
+                size="sm"
                 className="w-full"
                 disabled={!online || (refundableCents > 0n && !refundShiftId)}
                 onClick={() => setRefundCheckId(check.id)}
               >
-                <AlertTriangle size={16} aria-hidden="true" />
+                <AlertTriangle size={15} aria-hidden="true" />
                 {t(refundableCents > 0n ? 'Refund' : 'View refunds')}{' '}
                 {payment.checks.length > 1
                   ? `· ${t('Check')} ${formatNumber(check.position + 1)}`
@@ -534,25 +514,61 @@ export function PosConfirmedOrderPanel({
               </PosButton>
             );
           })}
-        {!settled && !cancelled && (
+        {/* Secondary actions share one row so the confirmed items keep the space. */}
+        <div className="flex gap-2">
+          {!hasPendingAmendment && canAddItems && verified && (
+            <PosButton
+              type="button"
+              variant="outline"
+              size="sm"
+              className="min-w-0 flex-1 px-2 text-xs"
+              disabled={!online}
+              onClick={onAddItems}
+            >
+              <ReceiptText size={15} aria-hidden="true" />
+              <span className="truncate">{t('Add items to this order')}</span>
+            </PosButton>
+          )}
           <PosButton
             type="button"
-            variant="solid"
-            className="w-full"
-            disabled={!verified || !online}
-            onClick={onCheckout}
+            variant="outline"
+            size="sm"
+            className="min-w-0 flex-1 px-2 text-xs"
+            onClick={() => onNewOrder(settled && verified)}
           >
-            {t('Take payment')}
+            <span className="truncate">{t('Start another order')}</span>
           </PosButton>
+        </div>
+        {canCancel && (
+          <button
+            type="button"
+            className="inline-flex items-center justify-center gap-1.5 justify-self-center rounded-md px-2 py-1 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+            disabled={!online || cancellationMutation.isPending}
+            onClick={openCancellationDialog}
+          >
+            <AlertTriangle size={13} aria-hidden="true" />
+            {t(pendingCancellation ? 'Retry saved cancellation' : 'Cancel unpaid order')}
+          </button>
         )}
-        <PosButton
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={() => onNewOrder(settled && verified)}
-        >
-          {t('Start another order')}
-        </PosButton>
+        {cancellationMutation.isError && (
+          <div className="grid gap-2" role="alert">
+            <p className="m-0 text-xs text-destructive">
+              {errorText(
+                cancellationMutation.error instanceof Error
+                  ? cancellationMutation.error.message
+                  : t('The order could not be cancelled.'),
+              )}
+            </p>
+            <PosButton
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void Promise.all([orderQuery.refetch(), paymentQuery.refetch()])}
+            >
+              {t('Refresh order status')}
+            </PosButton>
+          </div>
+        )}
       </footer>
 
       {receiptCheckId && (
