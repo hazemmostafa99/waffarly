@@ -1,4 +1,5 @@
 import {
+  POS_EMPLOYEE_PERMISSIONS,
   isPosEmployeeRole,
   resolvePosEmployeePermissions,
   type PosEmployeePermission,
@@ -186,18 +187,16 @@ export class AuthService {
         displayName: owner.ownerName,
         passwordHash: disabledPasswordHash,
         role: 'supervisor',
-        // Supervisor grants operational actions; store only the extra kitchen/read grants.
-        permissions: [
-          'accept_recipe_orders',
-          'start_preparation',
-          'view_orders',
-          'view_receipts',
-          'view_inventory',
-        ],
+        // Saved permissions are exact, so the owner's operator holds every POS permission.
+        permissions: [...POS_EMPLOYEE_PERMISSIONS],
         createdBy: owner.username,
         updatedBy: owner.username,
       },
-      update: { displayName: owner.ownerName, active: true },
+      update: {
+        displayName: owner.ownerName,
+        active: true,
+        permissions: [...POS_EMPLOYEE_PERMISSIONS],
+      },
       select: { id: true },
     });
     const deviceId = this.getOrCreatePosDeviceId(request);

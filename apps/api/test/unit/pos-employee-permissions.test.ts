@@ -1,5 +1,7 @@
 import {
   POS_LEGACY_EMPLOYEE_PERMISSIONS,
+  defaultPosEmployeePermissions,
+  normalizePosEmployeePermissions,
   resolvePosEmployeePermissions,
   hasPosEmployeePermission,
   posEmployeeHome,
@@ -13,28 +15,18 @@ import {
 } from '../../src/modules/employees/pos-employee.schemas.js';
 
 describe('POS employee role permissions', () => {
-  it('preserves the legacy order grants without adding sales or shift access', () => {
-    const permissions = resolvePosEmployeePermissions(null, POS_LEGACY_EMPLOYEE_PERMISSIONS);
-    assert.deepEqual(permissions, ['accept_recipe_orders', 'start_preparation']);
-  });
-
-  it('adds only cashier sales and register opening to explicitly assigned staff', () => {
-    const permissions = resolvePosEmployeePermissions('cashier', [
-      ...POS_LEGACY_EMPLOYEE_PERMISSIONS,
+  it('gives cashiers, supervisors and no-role staff the original kitchen grants by default', () => {
+    assert.deepEqual(defaultPosEmployeePermissions(null), [
+      'accept_recipe_orders',
+      'start_preparation',
     ]);
-    assert.deepEqual(permissions, [
+    assert.deepEqual(defaultPosEmployeePermissions('cashier'), [
       'accept_recipe_orders',
       'open_register_shift',
       'sell',
       'start_preparation',
     ]);
-  });
-
-  it('adds supervisor approval grants without applying numeric limits', () => {
-    const permissions = resolvePosEmployeePermissions('supervisor', [
-      ...POS_LEGACY_EMPLOYEE_PERMISSIONS,
-    ]);
-    assert.deepEqual(permissions, [
+    assert.deepEqual(defaultPosEmployeePermissions('supervisor'), [
       'accept_recipe_orders',
       'approve_discounts',
       'approve_refunds',
@@ -47,42 +39,40 @@ describe('POS employee role permissions', () => {
     ]);
   });
 
-  it('ignores permission values not supported by the current server', () => {
-    assert.deepEqual(resolvePosEmployeePermissions(null, ['manage_everything']), []);
-  });
-
-  it('removes previous operational grants when assigning a new preset', () => {
-    const oldGrants = ['sell', 'approve_refunds', ...POS_LEGACY_EMPLOYEE_PERMISSIONS];
-    assert.deepEqual(resolvePosEmployeePermissions('accountant', oldGrants), ['view_receipts']);
-    assert.deepEqual(resolvePosEmployeePermissions('inventory_officer', oldGrants), [
-      'view_inventory',
-    ]);
-    assert.deepEqual(resolvePosEmployeePermissions('customer_service', oldGrants), ['view_orders']);
-    assert.deepEqual(resolvePosEmployeePermissions('kitchen', oldGrants), [
+  it('uses only the preset for the newer roles', () => {
+    assert.deepEqual(defaultPosEmployeePermissions('accountant'), ['view_receipts']);
+    assert.deepEqual(defaultPosEmployeePermissions('inventory_officer'), ['view_inventory']);
+    assert.deepEqual(defaultPosEmployeePermissions('customer_service'), ['view_orders']);
+    assert.deepEqual(defaultPosEmployeePermissions('kitchen'), [
       'accept_recipe_orders',
       'start_preparation',
       'view_orders',
     ]);
-    assert.equal(
-      resolvePosEmployeePermissions('branch_manager', oldGrants).includes('approve_refunds'),
-      true,
+    const manager = defaultPosEmployeePermissions('branch_manager');
+    assert.equal(manager.includes('approve_refunds'), true);
+    assert.equal(manager.includes('approve_discounts'), true);
+    assert.equal(manager.includes('approve_voids'), false);
+    assert.equal(manager.includes('approve_shift_close'), true);
+    assert.equal(manager.includes('manage_cash_movements'), true);
+  });
+
+  it('treats saved permissions as exact, whatever the role', () => {
+    // The owner removed selling from a cashier and added inventory to an accountant.
+    assert.deepEqual(resolvePosEmployeePermissions('cashier', ['open_register_shift']), [
+      'open_register_shift',
+    ]);
+    assert.deepEqual(
+      resolvePosEmployeePermissions('accountant', ['view_receipts', 'view_inventory']),
+      ['view_inventory', 'view_receipts'],
     );
-    assert.equal(
-      resolvePosEmployeePermissions('branch_manager', oldGrants).includes('approve_discounts'),
-      true,
-    );
-    assert.equal(
-      resolvePosEmployeePermissions('branch_manager', oldGrants).includes('approve_voids'),
-      false,
-    );
-    assert.equal(
-      resolvePosEmployeePermissions('branch_manager', oldGrants).includes('approve_shift_close'),
-      true,
-    );
-    assert.equal(
-      resolvePosEmployeePermissions('branch_manager', oldGrants).includes('manage_cash_movements'),
-      true,
-    );
+    assert.deepEqual(resolvePosEmployeePermissions('branch_manager', []), []);
+  });
+
+  it('ignores permission values not supported by the current server', () => {
+    assert.deepEqual(resolvePosEmployeePermissions(null, ['manage_everything']), []);
+    assert.deepEqual(normalizePosEmployeePermissions(['sell', 'sell', 'manage_everything']), [
+      'sell',
+    ]);
   });
 
   it('preserves historical read access and chooses a usable role landing page', () => {
@@ -98,7 +88,7 @@ describe('POS employee role permissions', () => {
     assert.equal(hasPosEmployeePermission({ permissions: ['sell'] }, 'view_receipts'), true);
   });
 
-  it('accepts each employee preset while rejecting ownership and submitted grants', () => {
+  it('accepts each employee preset and known permissions while rejecting ownership', () => {
     const input = {
       username: 'employee1',
       displayName: 'Employee One',
@@ -134,6 +124,10 @@ describe('POS employee role permissions', () => {
     assert.equal(
       createPosEmployeeSchema.safeParse({ ...input, role: 'accountant', permissions: ['sell'] })
         .success,
+      true,
+    );
+    assert.equal(
+      createPosEmployeeSchema.safeParse({ ...input, permissions: ['manage_everything'] }).success,
       false,
     );
   });

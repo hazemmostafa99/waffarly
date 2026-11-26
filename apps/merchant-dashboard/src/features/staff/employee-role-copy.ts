@@ -30,12 +30,6 @@ export const employeePermissionLabels: Record<PosEmployeePermission, [string, st
     'Discount approval grant (workflow pending)',
     'صلاحية اعتماد الخصومات (مسار الاعتماد قيد التطوير)',
   ],
-  approve_voids: [
-    'Void approval grant (workflow pending)',
-    'صلاحية اعتماد الإلغاء (مسار الاعتماد قيد التطوير)',
-  ],
-  approve_refunds: [
-    'Refund approval grant (workflow pending)',
-    'صلاحية اعتماد الاسترجاع (مسار الاعتماد قيد التطوير)',
-  ],
+  approve_voids: ['Approve voids and cancellations', 'اعتماد الإلغاء'],
+  approve_refunds: ['Approve refunds and returns', 'اعتماد المرتجعات والاسترجاع'],
 };

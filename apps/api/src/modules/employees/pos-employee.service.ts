@@ -1,10 +1,9 @@
-/** Manages staff accounts, their roles and single-branch assignment for one merchant. */
+/** Manages staff accounts, their roles, permissions and single-branch assignment for one merchant. */
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
-  POS_LEGACY_EMPLOYEE_PERMISSIONS,
-  POS_EMPLOYEE_PERMISSIONS,
-  type PosEmployeePermission,
+  defaultPosEmployeePermissions,
   isPosEmployeeRole,
+  normalizePosEmployeePermissions,
   resolvePosEmployeePermissions,
   type CursorPage,
   type PosEmployeeSummary,
@@ -86,10 +85,9 @@ export class PosEmployeeService {
             displayName: parsed.displayName,
             passwordHash,
             role: parsed.role ?? null,
-            permissions:
-              !parsed.role || parsed.role === 'cashier' || parsed.role === 'supervisor'
-                ? [...POS_LEGACY_EMPLOYEE_PERMISSIONS]
-                : [],
+            permissions: parsed.permissions
+              ? normalizePosEmployeePermissions(parsed.permissions)
+              : defaultPosEmployeePermissions(parsed.role ?? null),
             createdBy: actor,
             updatedBy: actor,
           },
@@ -115,12 +113,19 @@ export class PosEmployeeService {
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.posEmployee.findFirst({
         where: { id: employeeId, merchantId, ownerAccountId: null },
-        select: { branchId: true, revision: true },
+        select: { branchId: true, revision: true, role: true },
       });
       if (!current) throw new NotFoundException('Employee was not found.');
       if (current.revision !== parsed.revision) {
         throw new ConflictException('Employee changed since it was loaded. Refresh and try again.');
       }
+      // Without an explicit list, a role change starts from the new role's defaults
+      // so moving a cashier to accounting does not keep sales access.
+      const permissions = parsed.permissions
+        ? normalizePosEmployeePermissions(parsed.permissions)
+        : parsed.role !== undefined && parsed.role !== current.role
+          ? defaultPosEmployeePermissions(parsed.role)
+          : undefined;
 
       await this.assertActiveBranch(tx, merchantId, parsed.branchId);
       const changed = await tx.posEmployee.updateMany({
@@ -130,6 +135,7 @@ export class PosEmployeeService {
           displayName: parsed.displayName,
           active: parsed.active,
           ...(parsed.role !== undefined ? { role: parsed.role } : {}),
+          ...(permissions ? { permissions } : {}),
           revision: { increment: 1 },
           updatedBy: actor,
           ...(passwordHash ? { passwordHash } : {}),
@@ -184,18 +190,15 @@ function toEmployeeSummary(employee: {
     name: assignedBranch.name,
     archivedAt: assignedBranch.archivedAt?.toISOString() ?? null,
   };
+  const role = isPosEmployeeRole(employee.role) ? employee.role : null;
+  const permissions = resolvePosEmployeePermissions(role, employee.permissions);
   return {
     id: employee.id,
     username: employee.username,
     displayName: employee.displayName,
-    role: isPosEmployeeRole(employee.role) ? employee.role : null,
-    savedPermissions: employee.permissions.filter((value): value is PosEmployeePermission =>
-      (POS_EMPLOYEE_PERMISSIONS as readonly string[]).includes(value),
-    ),
-    permissions: resolvePosEmployeePermissions(
-      isPosEmployeeRole(employee.role) ? employee.role : null,
-      employee.permissions,
-    ),
+    role,
+    savedPermissions: permissions,
+    permissions,
     active: employee.active,
     revision: employee.revision,
     branch,

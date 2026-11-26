@@ -1,12 +1,15 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import {
+  POS_EMPLOYEE_PERMISSIONS,
   POS_EMPLOYEE_ROLES,
-  resolvePosEmployeePermissions,
+  defaultPosEmployeePermissions,
   hasPosEmployeePermission,
+  normalizePosEmployeePermissions,
 } from '@waffarly/contracts';
 import type {
   CursorPage,
   InventoryBranch,
+  PosEmployeePermission,
   PosEmployeeRole,
   PosEmployeeSummary,
 } from '@waffarly/contracts';
@@ -24,6 +27,7 @@ type Draft = {
   password: string;
   active: boolean;
   role: PosEmployeeRole | null;
+  permissions: PosEmployeePermission[];
   branch: BranchChoice | null;
 };
 
@@ -34,8 +38,34 @@ function emptyDraft(): Draft {
     password: '',
     active: true,
     role: 'cashier',
+    permissions: defaultPosEmployeePermissions('cashier'),
     branch: null,
   };
+}
+
+/** True when the owner added or removed permissions from the role's defaults. */
+function isCustomized(role: PosEmployeeRole | null, permissions: readonly string[]): boolean {
+  const defaults = defaultPosEmployeePermissions(role);
+  const current = normalizePosEmployeePermissions(permissions);
+  return defaults.join() !== current.join();
+}
+
+/**
+ * A permission that comes with another one, e.g. selling also shows orders and
+ * receipts. Returns the granting permission so the form can explain the lock.
+ */
+function impliedBy(
+  permission: PosEmployeePermission,
+  selected: readonly PosEmployeePermission[],
+): PosEmployeePermission | null {
+  if (selected.includes(permission)) return null;
+  const candidates: PosEmployeePermission[] =
+    permission === 'view_orders'
+      ? ['sell', 'accept_recipe_orders', 'start_preparation']
+      : permission === 'view_receipts'
+        ? ['sell']
+        : [];
+  return candidates.find((candidate) => selected.includes(candidate)) ?? null;
 }
 
 export function EmployeesPage() {
@@ -54,23 +84,20 @@ export function EmployeesPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [refresh, setRefresh] = useState(0);
-  const previewPermissions = resolvePosEmployeePermissions(
-    draft.role,
-    editing?.savedPermissions ??
-      (editing
-        ? editing.permissions.filter(
-            (permission) =>
-              permission === 'accept_recipe_orders' || permission === 'start_preparation',
-          )
-        : draft.role === 'cashier' || draft.role === 'supervisor' || draft.role === null
-          ? ['accept_recipe_orders', 'start_preparation']
-          : []),
-  );
-  const preview = { permissions: previewPermissions };
-  const visiblePermissions = [...previewPermissions];
-  for (const permission of ['view_orders', 'view_receipts'] as const) {
-    if (hasPosEmployeePermission(preview, permission) && !visiblePermissions.includes(permission))
-      visiblePermissions.push(permission);
+  const effectivePermissionCount = POS_EMPLOYEE_PERMISSIONS.filter((permission) =>
+    hasPosEmployeePermission({ permissions: draft.permissions }, permission),
+  ).length;
+  const draftCustomized = isCustomized(draft.role, draft.permissions);
+
+  function togglePermission(permission: PosEmployeePermission, granted: boolean) {
+    setDraft((current) => ({
+      ...current,
+      permissions: normalizePosEmployeePermissions(
+        granted
+          ? [...current.permissions, permission]
+          : current.permissions.filter((value) => value !== permission),
+      ),
+    }));
   }
 
   useEffect(() => {
@@ -119,6 +146,7 @@ export function EmployeesPage() {
       password: '',
       active: employee.active,
       role: employee.role,
+      permissions: normalizePosEmployeePermissions(employee.permissions),
       branch: employee.branch.archivedAt ? null : employee.branch,
     });
     setError('');
@@ -158,6 +186,7 @@ export function EmployeesPage() {
             displayName: draft.displayName,
             active: draft.active,
             role: draft.role,
+            permissions: draft.permissions,
             branchId: draft.branch.id,
             ...(draft.password ? { password: draft.password } : {}),
           }
@@ -166,6 +195,7 @@ export function EmployeesPage() {
             displayName: draft.displayName,
             password: draft.password,
             role: draft.role,
+            permissions: draft.permissions,
             branchId: draft.branch.id,
           };
       const saved = await apiRequest<PosEmployeeSummary>(
@@ -222,10 +252,15 @@ export function EmployeesPage() {
       id: 'role',
       header: text('Role', 'الدور'),
       cell: (employee) => (
-        <span className={`products-pill ${employee.role ? 'blue' : 'cream'}`}>
-          {employee.role
-            ? text(...employeeRoleLabels[employee.role])
-            : text('Legacy access', 'الصلاحيات الحالية')}
+        <span className="employee-role-cell">
+          <span className={`products-pill ${employee.role ? 'blue' : 'cream'}`}>
+            {employee.role
+              ? text(...employeeRoleLabels[employee.role])
+              : text('Custom permissions', 'صلاحيات مخصصة')}
+          </span>
+          {employee.role && isCustomized(employee.role, employee.permissions) && (
+            <span className="products-pill cream">{text('Customized', 'معدّلة')}</span>
+          )}
         </span>
       ),
     },
@@ -469,15 +504,20 @@ export function EmployeesPage() {
                   <select
                     aria-label={text('Role', 'الدور')}
                     value={draft.role ?? ''}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      const role = event.target.value
+                        ? (event.target.value as PosEmployeeRole)
+                        : null;
+                      // Picking a role fills in its defaults; "no role" keeps the current choice.
                       setDraft({
                         ...draft,
-                        role: event.target.value ? (event.target.value as PosEmployeeRole) : null,
-                      })
-                    }
+                        role,
+                        permissions: role ? defaultPosEmployeePermissions(role) : draft.permissions,
+                      });
+                    }}
                   >
                     <option value="">
-                      {text('Existing permissions only', 'الصلاحيات الحالية فقط')}
+                      {text('No role — custom permissions', 'بدون دور — صلاحيات مخصصة')}
                     </option>
                     {POS_EMPLOYEE_ROLES.map((role) => (
                       <option key={role} value={role}>
@@ -500,32 +540,76 @@ export function EmployeesPage() {
                   </label>
                 )}
               </div>
-              <details className="employee-role-help" aria-live="polite">
+              <details className="employee-role-help" open aria-live="polite">
                 <summary>
-                  <strong>{text('Permissions for this role', 'صلاحيات هذا الدور')}</strong>
+                  <strong>{text('Permissions', 'الصلاحيات')}</strong>
+                  {draftCustomized && draft.role && (
+                    <span className="employee-permission-count">
+                      {text('Customized', 'معدّلة')}
+                    </span>
+                  )}
                   <span className="employee-permission-count">
-                    {visiblePermissions.length} {text('permissions', 'صلاحيات')}
+                    {effectivePermissionCount} / {POS_EMPLOYEE_PERMISSIONS.length}
                   </span>
                   <span className="employee-role-disclosure-icon" aria-hidden="true">
                     <span />
                   </span>
                 </summary>
                 <div className="employee-role-help-content">
-                  <ul>
-                    {visiblePermissions.map((permission) => (
-                      <li key={permission}>{text(...employeePermissionLabels[permission])}</li>
-                    ))}
+                  <div className="employee-permission-actions">
+                    <span>
+                      {text(
+                        'Tick what this employee can do. Choosing a role fills in its defaults.',
+                        'حدّد ما يستطيع الموظف فعله. اختيار الدور يملأ صلاحياته الافتراضية.',
+                      )}
+                    </span>
+                    {draft.role && draftCustomized && (
+                      <button
+                        className="products-button"
+                        type="button"
+                        onClick={() =>
+                          setDraft({
+                            ...draft,
+                            permissions: defaultPosEmployeePermissions(draft.role),
+                          })
+                        }
+                      >
+                        {text('Reset to role defaults', 'استرجاع صلاحيات الدور')}
+                      </button>
+                    )}
+                  </div>
+                  <ul className="employee-permission-list">
+                    {POS_EMPLOYEE_PERMISSIONS.map((permission) => {
+                      const grantedBy = impliedBy(permission, draft.permissions);
+                      return (
+                        <li key={permission}>
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={draft.permissions.includes(permission) || !!grantedBy}
+                              disabled={!!grantedBy}
+                              onChange={(event) =>
+                                togglePermission(permission, event.target.checked)
+                              }
+                            />
+                            <span>
+                              {text(...employeePermissionLabels[permission])}
+                              {grantedBy && (
+                                <small>
+                                  {text('Included with: ', 'مشمولة مع: ')}
+                                  {text(...employeePermissionLabels[grantedBy])}
+                                </small>
+                              )}
+                            </span>
+                          </label>
+                        </li>
+                      );
+                    })}
                   </ul>
                   <p>
                     {text(
-                      'Access applies only to the assigned active branch below. Employees sign in through the employee/POS workspace.',
-                      'يقتصر الوصول على الفرع النشط المعيّن أدناه. يسجل الموظف دخوله من مساحة الموظفين / نقاط البيع.',
-                    )}
-                  </p>
-                  <p>
-                    {text(
-                      'Stock changes, refunds, employee management, settings and account ownership remain owner-controlled. Accountants currently have read-only receipt access; inventory officers have read-only stock balances.',
-                      'تظل تعديلات المخزون والاسترجاعات وإدارة الموظفين والإعدادات وملكية الحساب تحت تحكم المالك. المتاح للمحاسب حاليًا هو عرض الإيصالات، ولمسؤول المخزون عرض الأرصدة فقط.',
+                      'Access applies only to the assigned active branch below. Changes apply to the employee’s next POS action. Employee management, settings and account ownership remain owner-only.',
+                      'يقتصر الوصول على الفرع النشط المعيّن أدناه، والتعديلات تسري من أول عملية تالية للموظف على نقاط البيع. تظل إدارة الموظفين والإعدادات وملكية الحساب للمالك فقط.',
                     )}
                   </p>
                 </div>

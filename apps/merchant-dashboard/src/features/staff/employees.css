@@ -231,6 +231,47 @@
   content: '\2713';
   font-weight: 700;
 }
+.employee-role-help-content > ul.employee-permission-list > li {
+  padding: 0;
+}
+.employee-role-help-content > ul.employee-permission-list > li::before {
+  content: none;
+}
+.employee-permission-list label {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 8px !important;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.employee-permission-list input {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+  accent-color: #005b43;
+}
+.employee-permission-list input:disabled + span {
+  color: var(--dashboard-muted);
+}
+.employee-permission-list small {
+  display: block;
+  color: var(--dashboard-muted);
+  font-size: 11px;
+}
+.employee-permission-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.employee-role-cell {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
 .employee-role-help-content > p {
   margin: 0;
   color: var(--dashboard-muted);
