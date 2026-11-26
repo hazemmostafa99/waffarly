@@ -92,7 +92,7 @@ describe('subscription administration HTTP boundaries', () => {
       { expectedDue: 100 },
       { expectedDue: '-1.00' },
       { externalCollectionConfirmed: false },
-      { reason: ' ' },
+      { reason: 'x'.repeat(1001) },
       { revision: 0 },
       { merchantId: randomUUID() },
       { action: 'delete' },

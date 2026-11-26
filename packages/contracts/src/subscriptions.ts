@@ -42,7 +42,8 @@ export interface SubscriptionDetail extends SubscriptionSummary {
 export interface SubscriptionCommand {
   requestId: string;
   revision: number;
-  reason: string;
+  /** Optional note or collection reference; blank is allowed. */
+  reason?: string | undefined;
   action:
     | 'assign'
     | 'activate'

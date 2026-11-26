@@ -128,7 +128,6 @@ export function SubscriptionEditor({
     quote.data.subscriptionRevision === s?.revision;
   const canSave = Boolean(
     s &&
-    reason.trim() &&
     !save.isPending &&
     (!needsPlan || planId) &&
     (!monetary || (validQuote && confirmed)),
@@ -348,12 +347,11 @@ export function SubscriptionEditor({
                 <label className="subscription-field" htmlFor={`${formId}-reason`}>
                   <span>
                     {t('Reason / collection reference')}
-                    <small>{t('Required')}</small>
+                    <small>{t('Optional')}</small>
                   </span>
                   <Input
                     id={`${formId}-reason`}
                     aria-label={t('Reason / collection reference')}
-                    required
                     maxLength={1000}
                     placeholder={t(
                       monetary
@@ -503,11 +501,6 @@ export function SubscriptionEditor({
                     {save.isPending ? t('Saving…') : t(subscriptionActions[action])}
                     {!save.isPending && <CheckCircle2 size={16} />}
                   </Button>
-                  {!reason.trim() && (
-                    <p className="subscription-review-help">
-                      {t('Add a reason or collection reference to continue.')}
-                    </p>
-                  )}
                   {monetary && !confirmed && (
                     <p className="subscription-review-help">
                       {t('Confirm collection to activate the action.')}

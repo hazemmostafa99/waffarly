@@ -17,7 +17,8 @@ export const subscriptionCommandSchema = z
   .object({
     requestId: z.uuid(),
     revision: z.number().int().positive().max(2147483646),
-    reason: z.string().trim().min(1).max(1000),
+    // Optional: administrators may leave the reason / collection reference blank.
+    reason: z.string().trim().max(1000).default(''),
     action: z.enum([
       'assign',
       'activate',
