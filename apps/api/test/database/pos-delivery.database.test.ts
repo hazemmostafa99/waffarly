@@ -1,5 +1,5 @@
 import { createPosOrderServices } from '../support/pos-order-services.js';
-import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { deleteTestMerchantSubscriptions, testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import assert from 'node:assert/strict';
@@ -31,6 +31,7 @@ it(
       data: {
         name: `Delivery test ${token}`,
         storefrontSlug: `delivery-${token}`,
+        storefrontHandle: testStorefrontHandle(),
         activity: 'restaurant',
         contactPhone: '01000000000',
         ownerName: 'Test',

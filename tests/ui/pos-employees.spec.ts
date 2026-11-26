@@ -323,14 +323,12 @@ test('owner configures a cashier and register, then the cashier can open a shift
   });
 
   await posPage.goto('http://127.0.0.1:5275/login');
-  await posPage.getByLabel('Business code', { exact: true }).fill('browser-test-restaurant');
-  await posPage.getByLabel('Username', { exact: true }).fill('amira1');
+  await posPage.getByLabel('Sign-in name', { exact: true }).fill('browser-test-restaurant.amira1');
   await posPage.getByLabel('Password', { exact: true }).fill('browser-test-password');
   await posPage.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(posPage.getByRole('heading', { name: 'Incoming orders' })).toBeVisible();
   expect(loginPayload).toEqual({
-    storefrontSlug: 'browser-test-restaurant',
-    username: 'amira1',
+    login: 'browser-test-restaurant.amira1',
     password: 'browser-test-password',
   });
 

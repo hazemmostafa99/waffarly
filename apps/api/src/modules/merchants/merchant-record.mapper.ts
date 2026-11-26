@@ -12,7 +12,7 @@ export type MerchantWithOwner = {
   id: string;
   name: string;
   storefrontSlug: string;
-  storefrontHandle?: string | null;
+  storefrontHandle: string;
   activity?: string;
   contactPhone: string;
   ownerName: string;
@@ -28,7 +28,7 @@ export function toMerchantSummary(merchant: MerchantWithOwner): MerchantSummary 
     id: merchant.id,
     name: merchant.name,
     businessCode: merchant.storefrontSlug,
-    storefrontHandle: merchant.storefrontHandle ?? null,
+    storefrontHandle: merchant.storefrontHandle,
     activity: (merchant.activity ?? 'other') as BusinessActivityKey,
     contactPhone: merchant.contactPhone,
     ownerName: merchant.ownerName,
@@ -49,6 +49,7 @@ export function toMerchantSummary(merchant: MerchantWithOwner): MerchantSummary 
 
 export type MerchantApplicationRecord = {
   id: string;
+  storefrontHandle: string | null;
   name: string;
   activity?: string;
   contactPhone: string;
@@ -71,6 +72,7 @@ export function toRejectedApplicationSummary(
   }
   return {
     id: application.id,
+    storefrontHandle: application.storefrontHandle,
     name: application.name,
     activity: (application.activity ?? 'other') as BusinessActivityKey,
     contactPhone: application.contactPhone,
@@ -92,6 +94,7 @@ export function toApplicationSummary(
 ): MerchantApplicationSummary {
   return {
     id: application.id,
+    storefrontHandle: application.storefrontHandle,
     name: application.name,
     activity: (application.activity ?? 'other') as BusinessActivityKey,
     contactPhone: application.contactPhone,

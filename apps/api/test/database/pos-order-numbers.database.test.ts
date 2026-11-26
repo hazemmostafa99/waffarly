@@ -1,4 +1,4 @@
-import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { deleteTestMerchantSubscriptions, testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import assert from 'node:assert/strict';
@@ -19,6 +19,7 @@ it(
       data: {
         name: 'Order number test',
         storefrontSlug: `number-test-${token}`,
+        storefrontHandle: testStorefrontHandle(),
         activity: 'restaurant',
         contactPhone: '01000000000',
         ownerName: 'Test',

@@ -3,6 +3,7 @@ import {
   POS_EMPLOYEE_PERMISSIONS,
   POS_EMPLOYEE_ROLES,
   defaultPosEmployeePermissions,
+  formatPosSignInName,
   hasPosEmployeePermission,
   normalizePosEmployeePermissions,
 } from '@waffarly/contracts';
@@ -85,13 +86,13 @@ export function EmployeesPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [refresh, setRefresh] = useState(0);
-  // Cashiers sign in to the POS with this code; show it where their accounts are created.
-  const [businessCode, setBusinessCode] = useState('');
+  // Cashiers sign in to POS as "<subdomain>.<username>"; show it where accounts are created.
+  const [storeHandle, setStoreHandle] = useState('');
   useEffect(() => {
     let current = true;
     void apiRequest<MerchantAccountOverview>('/owner/account')
       .then((data) => {
-        if (current) setBusinessCode(data.profile.storefrontSlug);
+        if (current) setStoreHandle(data.profile.storefrontHandle ?? '');
       })
       .catch(() => undefined);
     return () => {
@@ -257,7 +258,11 @@ export function EmployeesPage() {
           </span>
           <div>
             <strong>{employee.displayName}</strong>
-            <small dir="ltr">@{employee.username}</small>
+            <small dir="ltr">
+              {storeHandle
+                ? formatPosSignInName(storeHandle, employee.username)
+                : `@${employee.username}`}
+            </small>
           </div>
         </div>
       ),
@@ -320,11 +325,14 @@ export function EmployeesPage() {
   return (
     <section className="employee-workspace" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <h1 className="sr-only">{text('Employees', 'الموظفون')}</h1>
-      {businessCode && (
+      {storeHandle && (
         <p className="products-notice" role="note">
-          {text('POS business code for cashier sign-in:', 'معرّف المتجر لدخول الكاشير على نقاط البيع:')}{' '}
-          <bdi dir="ltr" className="font-mono font-semibold">
-            {businessCode}
+          {text(
+            'Cashiers sign in to POS with the store subdomain, a dot, then their username:',
+            'الكاشير يدخل نقاط البيع بالسب دومين بتاع المتجر وبعده نقطة وبعدها اسم المستخدم:',
+          )}{' '}
+          <bdi dir="ltr" className="whitespace-nowrap font-mono font-semibold">
+            {formatPosSignInName(storeHandle, 'username')}
           </bdi>
         </p>
       )}
@@ -506,6 +514,14 @@ export function EmployeesPage() {
                       setDraft({ ...draft, username: event.target.value.toLowerCase() })
                     }
                   />
+                  {storeHandle && draft.username && (
+                    <small>
+                      {text('POS sign-in name: ', 'اسم الدخول على نقاط البيع: ')}
+                      <bdi dir="ltr" className="font-mono font-semibold">
+                        {formatPosSignInName(storeHandle, draft.username.trim())}
+                      </bdi>
+                    </small>
+                  )}
                 </label>
                 <label>
                   {editing

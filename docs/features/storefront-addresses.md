@@ -28,8 +28,9 @@ same merchant against simultaneous competing assignments. A repeat of the same
 handle is idempotent and preserves original actor/time. Rename/removal/reuse
 semantics are deliberately unsupported in this initial slice.
 
-The technical `storefrontSlug` remains the public catalog identifier and POS
-business code. No existing code, account or historical order is renamed.
+The technical `storefrontSlug` remains the public catalog identifier. Since 2026-11-26 it
+is no longer the POS business code (see the section at the end). No existing code,
+account or historical order is renamed.
 
 ## Frontend behavior
 
@@ -70,3 +71,26 @@ acceptance remains manual and was not performed by this change.
 See [local setup](../setup/local-storefront-subdomains.md) and
 [production configuration](../setup/STOREFRONT_SUBDOMAINS.md). This production
 routing change adds no database migration, shared API contract or module dependency.
+
+## Required subdomain and POS sign-in names — 2026-11-26
+
+User-approved change. The handle ("subdomain") is now required for every merchant and
+is the first part of every POS cashier sign-in name.
+
+- Migration `20261126180000_required_storefront_handle` gave each merchant without a
+  handle a temporary one from its name (Latin letters/digits joined by hyphens, cut to
+  50 characters) or `store-<first 6 id chars>` when the name has none, with `-2`, `-3`…
+  on conflicts, attributed to `migration`. `merchants.storefrontHandle` is then NOT NULL.
+- `POST /admin/merchants` requires `storefrontHandle`. Merchant applications
+  (`POST /merchant-applications`) require a requested handle; a handle already used by a
+  merchant or another pending application returns 409. Approval
+  (`POST /admin/merchant-applications/:id/approve`) requires `storefrontHandle`, prefilled
+  in Super Admin from the request and editable; the unique column decides on save.
+- `PUT /admin/merchants/:id/storefront-handle` now also changes an existing handle. The
+  old subdomain stops resolving and every POS sign-in name changes; Super Admin must tick
+  a warning before saving. Concurrent changes are guarded by matching the current value.
+- POS login (`POST /auth/pos/login`) takes `{ login, password }` where `login` is
+  `<subdomain>.<username>`, e.g. `ahmed-cafe.ali`, split at the first dot
+  (`parsePosSignInName`). The technical `storefrontSlug` is no longer accepted there and
+  is no longer shown in Super Admin, the merchant dashboard or POS; it stays the internal
+  catalog/order identifier. Supervisor approvals still use the plain username.

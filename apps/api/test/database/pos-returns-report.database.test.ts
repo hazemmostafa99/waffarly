@@ -1,3 +1,4 @@
+import { testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
@@ -26,6 +27,7 @@ it(
             data: {
               name: `POS return report ${token}`,
               storefrontSlug: `pos-return-report-${token}`,
+              storefrontHandle: testStorefrontHandle(),
               activity: 'restaurant',
               contactPhone: '01000000000',
               ownerName: 'POS return report test',
@@ -174,6 +176,7 @@ it(
             data: {
               name: `Foreign return report ${token}`,
               storefrontSlug: `foreign-return-report-${token}`,
+              storefrontHandle: testStorefrontHandle(),
               activity: 'restaurant',
               contactPhone: '01000000000',
               ownerName: 'Foreign report test',

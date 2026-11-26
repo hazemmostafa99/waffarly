@@ -1,4 +1,4 @@
-import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { deleteTestMerchantSubscriptions, testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
@@ -29,6 +29,7 @@ it(
         data: {
           name: 'Cash custody test',
           storefrontSlug: `cash-${token}`,
+          storefrontHandle: testStorefrontHandle(),
           activity: 'restaurant',
           contactPhone: '01000000000',
           ownerName: 'Owner',
@@ -40,6 +41,7 @@ it(
         data: {
           name: 'Other tenant',
           storefrontSlug: `other-cash-${token}`,
+          storefrontHandle: testStorefrontHandle(),
           activity: 'restaurant',
           contactPhone: '01000000000',
           ownerName: 'Owner',

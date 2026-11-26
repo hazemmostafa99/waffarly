@@ -1,7 +1,7 @@
 import type { BusinessActivityKey } from './activities.js';
 
 export interface MerchantSummary {
-  storefrontHandle?: string | null;
+  storefrontHandle: string;
   subscriptionStatus?: import('./subscriptions.js').SubscriptionStatus;
   id: string;
   name: string;
@@ -16,7 +16,7 @@ export interface MerchantSummary {
 }
 
 export interface CreateMerchantRequest {
-  storefrontHandle?: string | undefined;
+  storefrontHandle: string;
   subscription?: { planId: string; months: import('./plans.js').SubscriptionMonths } | undefined;
   name: string;
   activity?: BusinessActivityKey;
@@ -40,6 +40,8 @@ export interface ResetMerchantOwnerPasswordResponse {
 }
 
 export interface SubmitMerchantApplicationRequest {
+  /** Requested subdomain; also the first part of every POS cashier sign-in name. */
+  storefrontHandle: string;
   name: string;
   activity?: BusinessActivityKey;
   contactPhone: string;
@@ -47,7 +49,10 @@ export interface SubmitMerchantApplicationRequest {
   ownerMobile: string;
 }
 
-export interface MerchantApplicationSummary extends SubmitMerchantApplicationRequest {
+export interface MerchantApplicationSummary
+  extends Omit<SubmitMerchantApplicationRequest, 'storefrontHandle'> {
+  /** Null for applications sent before the subdomain became required. */
+  storefrontHandle: string | null;
   id: string;
   createdAt: string;
   approvedAt: string | null;
@@ -59,7 +64,9 @@ export interface MerchantApplicationSummary extends SubmitMerchantApplicationReq
   priorRejectedApplications: RejectedMerchantApplicationSummary[];
 }
 
-export interface RejectedMerchantApplicationSummary extends SubmitMerchantApplicationRequest {
+export interface RejectedMerchantApplicationSummary
+  extends Omit<SubmitMerchantApplicationRequest, 'storefrontHandle'> {
+  storefrontHandle: string | null;
   id: string;
   createdAt: string;
   approvedAt: string | null;
@@ -71,6 +78,8 @@ export interface RejectedMerchantApplicationSummary extends SubmitMerchantApplic
 }
 
 export interface ApproveMerchantApplicationRequest {
+  /** Confirms or replaces the subdomain the applicant asked for. */
+  storefrontHandle: string;
   username: string;
   password: string;
 }

@@ -414,10 +414,13 @@ export function AccountPage() {
             </div>
             <div className="space-y-2 rounded-xl border border-border bg-background p-4">
               <span className="text-xs text-muted-foreground">
-                {text('POS business code (cashier sign-in)', 'معرّف المتجر (لدخول الكاشير على نقاط البيع)')}
+                {text(
+                  'Subdomain (cashiers sign in as subdomain.username)',
+                  'السب دومين (الكاشير يدخل بالسب دومين.اسم المستخدم)',
+                )}
               </span>
               <div className="break-all font-mono text-sm font-semibold" dir="ltr">
-                {profile.storefrontSlug}
+                {profile.storefrontHandle}
               </div>
               <a
                 href={storefrontUrl}

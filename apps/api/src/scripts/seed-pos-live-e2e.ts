@@ -29,6 +29,7 @@ try {
       data: {
         name: 'POS live E2E test business',
         storefrontSlug: 'pos-live-e2e',
+        storefrontHandle: 'pos-live-e2e',
         activity: 'restaurant',
         contactPhone: '01000000000',
         ownerName: 'CI test owner',

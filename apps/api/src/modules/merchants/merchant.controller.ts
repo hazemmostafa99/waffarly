@@ -24,7 +24,7 @@ import {
 } from './storefront-address.schemas.js';
 
 const creationSchema = z.object({
-  storefrontHandle: storefrontHandleSchema.optional(),
+  storefrontHandle: storefrontHandleSchema,
   subscription: z
     .object({
       planId: z.uuid(),

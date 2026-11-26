@@ -1,3 +1,4 @@
+import { testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import assert from 'node:assert/strict';
@@ -37,6 +38,7 @@ it(
             const merchantData = () => ({
               name: 'Account test',
               storefrontSlug: `account-${randomUUID()}`,
+              storefrontHandle: testStorefrontHandle(),
               contactPhone: '01000000000',
               ownerName: 'Owner',
               ownerMobile: '01100000000',

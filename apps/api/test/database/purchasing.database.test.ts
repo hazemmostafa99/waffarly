@@ -1,4 +1,4 @@
-import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { deleteTestMerchantSubscriptions, testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { PrismaClient } from '@waffarly/database';
@@ -30,6 +30,7 @@ it(
         data: {
           name: `Purchasing ${token}`,
           storefrontSlug: `purchasing-${token}`,
+          storefrontHandle: testStorefrontHandle(),
           activity: 'restaurant',
           contactPhone: '01000000000',
           ownerName: 'Purchasing test',
@@ -41,6 +42,7 @@ it(
         data: {
           name: `Other purchasing ${token}`,
           storefrontSlug: `other-purchasing-${token}`,
+          storefrontHandle: testStorefrontHandle(),
           activity: 'restaurant',
           contactPhone: '01000000000',
           ownerName: 'Other purchasing test',
@@ -321,6 +323,7 @@ it(
         data: {
           name: `Purchasing concurrency ${token}`,
           storefrontSlug: `purchasing-concurrency-${token}`,
+          storefrontHandle: testStorefrontHandle(),
           activity: 'restaurant',
           contactPhone: '01000000000',
           ownerName: 'Purchasing concurrency test',

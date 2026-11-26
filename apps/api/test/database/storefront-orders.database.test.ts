@@ -1,3 +1,4 @@
+import { testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { InventoryLedgerService } from '../../src/modules/inventory/index.js';
 import { StorefrontOrderStatusService } from '../../src/modules/orders/fulfillment/storefront-order-status.service.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
@@ -30,6 +31,7 @@ it(
             data: {
               name: `Order verification ${suffix}`,
               storefrontSlug: `order-verification-${suffix}`,
+              storefrontHandle: testStorefrontHandle(),
               activity: 'restaurant',
               contactPhone: '01000000000',
               ownerName: 'Order verification',

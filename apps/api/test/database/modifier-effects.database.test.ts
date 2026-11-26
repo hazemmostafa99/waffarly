@@ -1,4 +1,4 @@
-import { enableTestLegacyAccess } from '../support/merchant-fixtures.js';
+import { enableTestLegacyAccess, testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 
@@ -30,6 +30,7 @@ it(
               data: {
                 name: 'M5 test',
                 storefrontSlug: `m5-${suffix}`,
+                storefrontHandle: testStorefrontHandle(),
                 activity: 'restaurant',
                 contactPhone: '01000000000',
                 ownerName: 'Test',
@@ -41,6 +42,7 @@ it(
               data: {
                 name: 'Foreign M5',
                 storefrontSlug: `m5-other-${suffix}`,
+                storefrontHandle: testStorefrontHandle(),
                 activity: 'other',
                 contactPhone: '01000000000',
                 ownerName: 'Test',

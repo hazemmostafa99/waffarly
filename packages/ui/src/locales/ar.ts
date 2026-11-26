@@ -473,12 +473,22 @@ export const ar: Record<string, string> = {
   'Saving...': 'جارٍ الحفظ...',
   'Save split': 'حفظ التقسيم',
   'Wfarly · POS': 'وفّرلي · نقاط البيع',
+  'Sign in with your store subdomain and username, for example ahmed-cafe.ali.':
+    'ادخل بالسب دومين بتاع المتجر واسم المستخدم، مثل ahmed-cafe.ali.',
+  'Sign-in name': 'اسم الدخول',
+  'Store subdomain, a dot, then your username.': 'السب دومين بتاع المتجر، وبعده نقطة، وبعدها اسم المستخدم.',
+  'Sign in as store-subdomain.username, for example ahmed-cafe.ali.':
+    'اكتب اسم الدخول بالشكل ده: السب-دومين.اسم-المستخدم، مثل ahmed-cafe.ali.',
   'Sign in with your business code and employee account.':
     'سجّل الدخول باستخدام معرّف المتجر وحساب الموظف.',
   'Business code': 'معرّف المتجر',
   'Copy business code': 'نسخ معرّف المتجر',
   Copied: 'تم النسخ',
   'Use this code when signing in to POS.': 'استخدم هذا المعرّف عند تسجيل الدخول إلى نقاط البيع.',
+  Subdomain: 'السب دومين',
+  'Copy subdomain': 'نسخ السب دومين',
+  'Cashiers sign in to POS as subdomain.username.':
+    'الكاشير يدخل نقاط البيع بالشكل ده: السب-دومين.اسم-المستخدم',
   'Select the code to copy it manually.': 'حدّد المعرّف لنسخه يدويًا.',
   'Point of Sale': 'نقطة البيع',
   'Sign in to access the POS workspace.': 'سجّل الدخول إلى مساحة نقاط البيع.',

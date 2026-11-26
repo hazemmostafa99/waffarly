@@ -1,3 +1,4 @@
+import { testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { ConflictException } from '@nestjs/common';
@@ -26,6 +27,7 @@ it(
             data: {
               name: `POS item return ${token}`,
               storefrontSlug: `pos-item-return-${token}`,
+              storefrontHandle: testStorefrontHandle(),
               activity: 'restaurant',
               contactPhone: '01000000000',
               ownerName: 'POS item return test',

@@ -1,5 +1,5 @@
 import { InventoryPolicyService } from '../../src/modules/inventory/policy/inventory-policy.service.js';
-import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { deleteTestMerchantSubscriptions, testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 
@@ -32,6 +32,7 @@ it(
             data: {
               name: `Inventory ledger ${token}`,
               storefrontSlug: `inventory-ledger-${token}`,
+              storefrontHandle: testStorefrontHandle(),
               activity: 'restaurant',
               contactPhone: '01000000000',
               ownerName: 'Inventory ledger test',
@@ -42,6 +43,7 @@ it(
             data: {
               name: `Other inventory ledger ${token}`,
               storefrontSlug: `other-inventory-ledger-${token}`,
+              storefrontHandle: testStorefrontHandle(),
               activity: 'restaurant',
               contactPhone: '01000000000',
               ownerName: 'Other inventory ledger test',
@@ -378,6 +380,7 @@ it(
         data: {
           name: `Inventory concurrency ${token}`,
           storefrontSlug: `inventory-concurrency-${token}`,
+          storefrontHandle: testStorefrontHandle(),
           activity: 'restaurant',
           contactPhone: '01000000000',
           ownerName: 'Inventory concurrency test',

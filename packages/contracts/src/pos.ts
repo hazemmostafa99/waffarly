@@ -170,9 +170,9 @@ export interface PosEmployeeRegister {
   name: string;
 }
 
+/** Cashiers sign in as "<store subdomain>.<username>", e.g. "ahmed-cafe.ali". */
 export interface PosLoginRequest {
-  storefrontSlug: string;
-  username: string;
+  login: string;
   password: string;
 }
 

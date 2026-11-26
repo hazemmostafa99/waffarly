@@ -1,10 +1,6 @@
 import { StorefrontOrderStatusService } from '../../src/modules/orders/fulfillment/storefront-order-status.service.js';
 import { createPosOrderServices } from '../support/pos-order-services.js';
-import {
-  enableTestLegacyAccess,
-  openTestBranchShift,
-  deleteTestMerchantSubscriptions,
-} from '../support/merchant-fixtures.js';
+import { deleteTestMerchantSubscriptions, enableTestLegacyAccess, openTestBranchShift, testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { type Prisma } from '@waffarly/database';
@@ -60,6 +56,7 @@ async function fixture(tx: Prisma.TransactionClient, scoped: never) {
     data: {
       name: 'M6 fixture',
       storefrontSlug: `recipe-${randomUUID()}`,
+      storefrontHandle: testStorefrontHandle(),
       activity: 'restaurant',
       contactPhone: '01000000000',
       ownerName: 'Test',
@@ -1331,6 +1328,7 @@ it(
             data: {
               name: `POS employee create ${token}`,
               storefrontSlug: `pos-employee-create-${token}`,
+              storefrontHandle: testStorefrontHandle(),
               activity: 'restaurant',
               contactPhone: '01000000000',
               ownerName: 'POS employee test',
@@ -1379,6 +1377,7 @@ it(
             data: {
               name: `POS employee sessions ${token}`,
               storefrontSlug: `pos-employee-sessions-${token}`,
+              storefrontHandle: testStorefrontHandle(),
               activity: 'restaurant',
               contactPhone: '01000000000',
               ownerName: 'POS session test',

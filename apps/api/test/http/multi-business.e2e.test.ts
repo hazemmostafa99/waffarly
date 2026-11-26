@@ -83,7 +83,7 @@ it('preserves the business activity when an application is approved', async () =
   const service = new MerchantService(prisma as unknown as PrismaService);
   const merchant = await service.approveApplication(
     'application',
-    { username: 'owner', password: 'correct-horse-battery-staple' },
+    { storefrontHandle: 'clothing-store', username: 'owner', password: 'correct-horse-battery-staple' },
     'admin',
   );
   assert.equal(merchant.activity, 'clothing');

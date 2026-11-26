@@ -1,3 +1,4 @@
+import { testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 
@@ -27,6 +28,7 @@ it(
             data: {
               name: 'Catalog seed verification',
               storefrontSlug: `catalog-seed-${suffix}`,
+              storefrontHandle: testStorefrontHandle(),
               activity: 'restaurant',
               contactPhone: '01000000000',
               ownerName: 'Catalog seed verification',

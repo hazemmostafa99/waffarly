@@ -1,3 +1,4 @@
+import { testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 
@@ -28,6 +29,7 @@ it(
               data: {
                 name: `Catalog verification ${suffix}`,
                 storefrontSlug: `catalog-verification-${suffix}-${randomUUID().replaceAll('-', '')}`,
+                storefrontHandle: testStorefrontHandle(),
                 activity: 'restaurant',
                 contactPhone: `010000${suffix.padStart(6, '0')}`,
                 ownerName: 'Catalog verification',

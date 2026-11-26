@@ -140,6 +140,7 @@ async function ensureMerchant() {
     data: {
       name: DEMO.merchantName,
       storefrontSlug: DEMO.slug,
+      storefrontHandle: DEMO.slug,
       activity: 'restaurant',
       contactPhone: '01000000000',
       ownerName: 'صاحب المطعم التجريبي',

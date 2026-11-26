@@ -1,3 +1,4 @@
+import { testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 
@@ -29,6 +30,7 @@ it(
               data: {
                 name: `Pagination ${label} ${suffix}`,
                 storefrontSlug: `pagination-${label}-${suffix}`,
+                storefrontHandle: testStorefrontHandle(),
                 activity: 'restaurant',
                 contactPhone: `010${suffix.slice(0, 8)}`,
                 ownerName: 'Pagination verification',

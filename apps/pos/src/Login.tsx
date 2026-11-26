@@ -1,3 +1,4 @@
+import { parsePosSignInName } from '@waffarly/contracts';
 import { useLocale, Input, PasswordInput } from '@waffarly/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LayoutGrid, LoaderCircle, LogIn, Moon, Sun } from 'lucide-react';
@@ -19,7 +20,7 @@ export function Login() {
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia('(prefers-color-scheme: dark)').matches,
   );
-  const [login, setLogin] = useState({ storefrontSlug: '', username: '', password: '' });
+  const [login, setLogin] = useState({ login: '', password: '' });
   const [ownerMode, setOwnerMode] = useState(
     () => new URLSearchParams(window.location.search).get('owner') === '1',
   );
@@ -190,7 +191,7 @@ export function Login() {
                   ? locale === 'ar'
                     ? 'ادخل بحساب التاجر للوصول لنقطة البيع الخاصة بفرعك.'
                     : 'Use your merchant account to access your branch POS.'
-                  : t('Sign in with your business code and employee account.')}
+                  : t('Sign in with your store subdomain and username, for example ahmed-cafe.ali.')}
               </p>
               <button type="button" className="mt-3 text-sm font-medium text-primary underline" onClick={() => setOwnerMode(!ownerMode)}>
                 {ownerMode
@@ -295,36 +296,35 @@ export function Login() {
               onSubmit={(event) => void signIn(event)}
             >
               <div className="space-y-2">
-                <label htmlFor="pos-business-code" className="block text-xs font-semibold">
-                  {t('Business code')}
+                <label htmlFor="pos-login-name" className="block text-xs font-semibold">
+                  {t('Sign-in name')}
                 </label>
                 <Input
-                  id="pos-business-code"
-                  name="storefrontSlug"
-                  autoComplete="organization"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  className="h-12 border-border bg-background text-base md:text-sm"
-                  value={login.storefrontSlug}
-                  onChange={(event) => setLogin({ ...login, storefrontSlug: event.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="pos-username" className="block text-xs font-semibold">
-                  {t('Username')}
-                </label>
-                <Input
-                  id="pos-username"
+                  id="pos-login-name"
                   name="username"
                   autoComplete="username"
                   autoCapitalize="none"
                   spellCheck={false}
+                  dir="ltr"
+                  placeholder="ahmed-cafe.ali"
+                  aria-describedby="pos-login-name-hint"
                   className="h-12 border-border bg-background text-base md:text-sm"
-                  value={login.username}
-                  onChange={(event) => setLogin({ ...login, username: event.target.value })}
+                  value={login.login}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    // Block submit until the name has both parts: "<subdomain>.<username>".
+                    event.target.setCustomValidity(
+                      value.trim() && !parsePosSignInName(value)
+                        ? t('Sign in as store-subdomain.username, for example ahmed-cafe.ali.')
+                        : '',
+                    );
+                    setLogin({ ...login, login: value });
+                  }}
                   required
                 />
+                <p id="pos-login-name-hint" className="m-0 text-xs text-muted-foreground">
+                  {t('Store subdomain, a dot, then your username.')}
+                </p>
               </div>
               <div className="space-y-2 [&_button]:inset-y-1.5 [&_button]:rounded-md [&_button]:bg-secondary [&_button]:text-foreground [&_button]:hover:bg-muted [&_button]:focus-visible:ring-2 [&_button]:focus-visible:ring-ring">
                 <label htmlFor="pos-password" className="block text-xs font-semibold">

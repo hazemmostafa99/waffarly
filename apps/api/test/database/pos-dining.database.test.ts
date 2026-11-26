@@ -1,6 +1,6 @@
 import { CheckSplitService } from '../../src/modules/orders/billing/check-split.service.js';
 import { createPosOrderServices } from '../support/pos-order-services.js';
-import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { deleteTestMerchantSubscriptions, testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
@@ -35,6 +35,7 @@ it(
         data: {
           name: `POS dining verification ${token}`,
           storefrontSlug: `pos-dining-${token}`,
+          storefrontHandle: testStorefrontHandle(),
           activity: 'restaurant',
           contactPhone: '01000000000',
           ownerName: 'POS dining verification',

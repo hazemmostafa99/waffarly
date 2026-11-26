@@ -14,17 +14,15 @@ export function MerchantDetailsPage() {
   const isArabic = locale === 'ar';
   const merchants = useMerchantsQuery();
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
-  const [businessCodeCopyState, setBusinessCodeCopyState] = useState<'copied' | 'failed' | null>(
-    null,
-  );
-  async function copyBusinessCode(businessCode: string) {
+  const [handleCopyState, setHandleCopyState] = useState<'copied' | 'failed' | null>(null);
+  async function copySubdomain(handle: string) {
     try {
       if (!navigator.clipboard?.writeText) throw new Error('Clipboard is unavailable.');
-      await navigator.clipboard.writeText(businessCode);
-      setBusinessCodeCopyState('copied');
-      window.setTimeout(() => setBusinessCodeCopyState(null), 2000);
+      await navigator.clipboard.writeText(handle);
+      setHandleCopyState('copied');
+      window.setTimeout(() => setHandleCopyState(null), 2000);
     } catch {
-      setBusinessCodeCopyState('failed');
+      setHandleCopyState('failed');
     }
   }
 
@@ -140,7 +138,7 @@ export function MerchantDetailsPage() {
               className="grid min-w-0 gap-1 text-start sm:col-span-2"
               dir={isArabic ? 'rtl' : 'ltr'}
             >
-              <dt className="text-[11px] font-medium text-waffarly-muted">{t('Business code')}</dt>
+              <dt className="text-[11px] font-medium text-waffarly-muted">{t('Subdomain')}</dt>
               <dd
                 className="m-0 flex flex-wrap items-center justify-start gap-2"
                 dir={isArabic ? 'rtl' : 'ltr'}
@@ -149,22 +147,22 @@ export function MerchantDetailsPage() {
                   className="break-all rounded-md bg-waffarly-input px-2 py-1 text-left font-mono text-sm font-semibold text-waffarly-ink"
                   dir="ltr"
                 >
-                  {merchant.businessCode}
+                  {merchant.storefrontHandle}
                 </bdi>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   className="border-waffarly-border bg-white text-waffarly-primary hover:bg-waffarly-input"
-                  aria-label={t('Copy business code')}
-                  onClick={() => void copyBusinessCode(merchant.businessCode)}
+                  aria-label={t('Copy subdomain')}
+                  onClick={() => void copySubdomain(merchant.storefrontHandle)}
                 >
-                  {businessCodeCopyState === 'copied' ? (
+                  {handleCopyState === 'copied' ? (
                     <Check size={14} aria-hidden="true" />
                   ) : (
                     <Copy size={14} aria-hidden="true" />
                   )}
-                  {businessCodeCopyState === 'copied' ? t('Copied') : t('Copy business code')}
+                  {handleCopyState === 'copied' ? t('Copied') : t('Copy subdomain')}
                 </Button>
               </dd>
               <small
@@ -172,11 +170,11 @@ export function MerchantDetailsPage() {
                 aria-live="polite"
                 dir={isArabic ? 'rtl' : 'ltr'}
               >
-                {businessCodeCopyState === 'failed'
+                {handleCopyState === 'failed'
                   ? t('Select the code to copy it manually.')
-                  : businessCodeCopyState === 'copied'
+                  : handleCopyState === 'copied'
                     ? t('Copied')
-                    : t('Use this code when signing in to POS.')}
+                    : t('Cashiers sign in to POS as subdomain.username.')}
               </small>
             </div>
           </dl>

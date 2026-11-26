@@ -1,4 +1,9 @@
-export { RESERVED_STOREFRONT_HANDLES, isStorefrontHandle } from './storefront-address.js';
+export {
+  RESERVED_STOREFRONT_HANDLES,
+  formatPosSignInName,
+  isStorefrontHandle,
+  parsePosSignInName,
+} from './storefront-address.js';
 export type {
   AssignStorefrontHandleRequest,
   PublicStorefrontAddress,

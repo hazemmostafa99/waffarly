@@ -52,8 +52,7 @@ test('signs in with the existing cashier credentials and preserves the redirect'
   );
 
   await page.goto('/login');
-  await page.getByLabel('Business code', { exact: true }).fill('test-cafe');
-  await page.getByLabel('Username', { exact: true }).fill('cashier1');
+  await page.getByLabel('Sign-in name', { exact: true }).fill('test-cafe.cashier1');
   await page.getByLabel('Password', { exact: true }).fill('local-test-password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Signing in…', exact: true })).toBeDisabled();
@@ -61,8 +60,7 @@ test('signs in with the existing cashier credentials and preserves the redirect'
 
   await expect(page).toHaveURL(/\/$/);
   expect(loginPayload).toEqual({
-    storefrontSlug: 'test-cafe',
-    username: 'cashier1',
+    login: 'test-cafe.cashier1',
     password: 'local-test-password',
   });
 });
@@ -75,14 +73,12 @@ test('shows invalid credentials without losing the entered business code or user
     route.fulfill({ status: 401, json: { message: 'Invalid credentials.' } }),
   );
 
-  await page.getByLabel('Business code', { exact: true }).fill('test-cafe');
-  await page.getByLabel('Username', { exact: true }).fill('cashier1');
+  await page.getByLabel('Sign-in name', { exact: true }).fill('test-cafe.cashier1');
   await page.getByLabel('Password', { exact: true }).fill('wrong-password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 
   await expect(page.getByRole('alert')).toContainText('Invalid credentials.');
-  await expect(page.getByLabel('Business code', { exact: true })).toHaveValue('test-cafe');
-  await expect(page.getByLabel('Username', { exact: true })).toHaveValue('cashier1');
+  await expect(page.getByLabel('Sign-in name', { exact: true })).toHaveValue('test-cafe.cashier1');
 });
 
 test('allows retry after a failed saved-session check', async ({ page }) => {
@@ -108,8 +104,7 @@ test('allows retry after a failed saved-session check', async ({ page }) => {
 test('supports light and dark themes, Arabic RTL, and password visibility', async ({ page }) => {
   await prepareLogin(page);
 
-  await page.getByLabel('Business code', { exact: true }).fill('test-cafe');
-  await page.getByLabel('Username', { exact: true }).fill('cashier1');
+  await page.getByLabel('Sign-in name', { exact: true }).fill('test-cafe.cashier1');
   const theme = page.locator('.pos-theme');
   await page.getByLabel('Theme', { exact: true }).selectOption('light');
   await expect(theme).toHaveAttribute('data-theme', 'light');
@@ -140,9 +135,8 @@ test('requires all credential fields before submitting', async ({ page }) => {
   await prepareLogin(page);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 
-  await expect(page.getByLabel('Business code', { exact: true })).toBeFocused();
-  await expect(page.getByLabel('Business code', { exact: true })).toHaveAttribute('required', '');
-  await expect(page.getByLabel('Username', { exact: true })).toHaveAttribute('required', '');
+  await expect(page.getByLabel('Sign-in name', { exact: true })).toBeFocused();
+  await expect(page.getByLabel('Sign-in name', { exact: true })).toHaveAttribute('required', '');
   await expect(page.getByLabel('Password', { exact: true })).toHaveAttribute('required', '');
 });
 

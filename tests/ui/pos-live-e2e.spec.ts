@@ -43,8 +43,7 @@ async function settleCashCheckAndReadReceipt(page: Page, orderId: string, amount
 
 async function signInAsEmployee(page: Page, username: string, password: string) {
   await page.goto('/login');
-  await page.getByLabel('Business code', { exact: true }).fill('pos-live-e2e');
-  await page.getByLabel('Username', { exact: true }).fill(username);
+  await page.getByLabel('Sign-in name', { exact: true }).fill(`pos-live-e2e.${username}`);
   await page.getByLabel('Password', { exact: true }).fill(password);
   const loginResponse = page.waitForResponse(
     (response) => new URL(response.url()).pathname === '/auth/pos/login',
@@ -89,8 +88,7 @@ test('live POS sales cover splits, refunds, Kitchen and payment-gated handover a
   const appearanceReadPromise = page.waitForResponse(
     (response) => new URL(response.url()).pathname === '/pos/appearance',
   );
-  await page.getByLabel('Business code', { exact: true }).fill('pos-live-e2e');
-  await page.getByLabel('Username', { exact: true }).fill('cashier');
+  await page.getByLabel('Sign-in name', { exact: true }).fill('pos-live-e2e.cashier');
   await page.getByLabel('Password', { exact: true }).fill('pos-live-e2e-only-password');
 
   const loginResponse = page.waitForResponse(
