@@ -100,8 +100,18 @@ owner controller, separately from checkout submission.
 Customer access separates browser/session identity (`customer-order-session.ts`
 and `order-identity.rules.ts`), scoped reads (`customer-orders.query.ts`) and the
 customer-visible response (`customer-order.mapper.ts`). The service still
-coordinates explicit guest claims. Guest identity caching remains per request;
-account and guest access are not inferred from contact details.
+coordinates explicit guest claims and, when a signed-in customer reads their
+orders on a browser that still holds guest orders, moves those orders into the
+account automatically. Guest identity caching remains per request; account and
+guest access are not inferred from contact details.
+
+Merchant-website guests use a separate browser cookie
+(`storefront-guest-cookie.ts`, `waffarly_store_guest_orders`) so their orders never
+mix with Marketplace guest orders. Basket review and order submission keep the
+cookie; the order stays a `storefront` order and gets a guest access row. The
+store's `customer/orders` list shows those orders to the guest, and when a store
+customer signs in on that browser `OrderCustomerService.attachGuestOrders` links
+them to the merchant customer and deletes the guest access rows.
 
 Delivery separates the merchant courier directory and its owner/POS entry points
 from work-list reads (`delivery-queue.query.ts`), employee/custodian checks

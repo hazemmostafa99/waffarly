@@ -39,6 +39,11 @@ const nextConfig: NextConfig = {
         source: '/storefront-api/catalog/stores/:slug/orders',
         destination: `${api}/catalog/stores/:slug/orders`,
       },
+      {
+        // Reviewing the basket gives a guest the cookie that lets them follow their orders.
+        source: '/storefront-api/catalog/stores/:slug/orders/quote',
+        destination: `${api}/catalog/stores/:slug/orders/quote`,
+      },
     ];
   },
 };

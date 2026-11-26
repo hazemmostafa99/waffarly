@@ -12,10 +12,13 @@ import {
   Param,
   Post,
   Req,
+  Res,
 } from '@nestjs/common';
 import type { CreateStorefrontOrderRequest } from '@waffarly/contracts';
 
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
+import { AppConfiguration } from '../../../../config/app-configuration.js';
+import { keepStorefrontGuest } from '../../customers/storefront-guest-cookie.js';
 import { CustomerOrderAccessService } from '../../customers/customer-order-access.service.js';
 import { StorefrontCustomerAuthService } from '../../../customers/index.js';
 import { parseRequest } from '../../../../common/http/zod-validation.pipe.js';
@@ -29,6 +32,7 @@ export class PublicStorefrontOrdersController {
     @Inject(CustomerOrderAccessService) private readonly access: CustomerOrderAccessService,
     @Inject(StorefrontCustomerAuthService)
     private readonly storefrontCustomerAuth: StorefrontCustomerAuthService,
+    @Inject(AppConfiguration) private readonly config: AppConfiguration,
   ) {}
 
   @Post('customer')
@@ -52,8 +56,17 @@ export class PublicStorefrontOrdersController {
 
   @Post('quote')
   @HttpCode(HttpStatus.OK)
-  async quote(@Param('slug') slug: string, @Body() body: unknown) {
+  async quote(
+    @Param('slug') slug: string,
+    @Body() body: unknown,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     assertValidStorefrontSlug(slug);
+    // Give a guest their browser cookie at review time, before the order is sent, so a
+    // retried order keeps the same cookie even when the first response was lost.
+    if (!(await this.storefrontCustomerAuth.current(slug, request)))
+      keepStorefrontGuest(request, response, this.config.isProduction);
     const parsed = parseRequest(createOrderSchema, {
       ...(body && typeof body === 'object' ? body : {}),
       customerName: 'Quote',
@@ -64,7 +77,12 @@ export class PublicStorefrontOrdersController {
   }
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Param('slug') slug: string, @Body() body: unknown, @Req() request: Request) {
+  async create(
+    @Param('slug') slug: string,
+    @Body() body: unknown,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
     assertValidStorefrontSlug(slug);
     const parsed = parseRequest(createOrderSchema, body);
     const customer = await this.storefrontCustomerAuth.current(slug, request);
@@ -74,6 +92,7 @@ export class PublicStorefrontOrdersController {
       undefined,
       undefined,
       customer?.customerId,
+      customer ? undefined : keepStorefrontGuest(request, response, this.config.isProduction),
     );
   }
 }

@@ -54,7 +54,8 @@ export function StorefrontOrdersPage() {
     queryFn: ({ pageParam }) => loadStorefrontCustomerOrders(storefrontSlug, pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
-    enabled: Boolean(session.data),
+    // Guests load too: the store returns this browser's guest orders.
+    enabled: !session.isPending && !session.isError,
     retry: false,
   });
   const allOrders = useMemo(
@@ -95,12 +96,23 @@ export function StorefrontOrdersPage() {
           )}
         </div>
 
-        {!session.isError && !orders.isError && (
+        {!session.isError && !orders.isError && session.data && (
           <p
             className="rounded-xl border border-store-gold/40 bg-store-cream px-4 py-3 text-storefront-support leading-5 text-store-secondary"
             role="note"
           >
             {t.filterNotice}
+          </p>
+        )}
+        {!session.isPending && !session.data && !orders.isError && allOrders.length > 0 && (
+          <p
+            className="rounded-xl border border-store-gold/40 bg-store-cream px-4 py-3 text-storefront-support leading-5 text-store-secondary"
+            role="note"
+          >
+            {t.guestOrdersNotice}{' '}
+            <StorefrontSignInLink className="font-bold text-store-primary underline underline-offset-4">
+              {t.signIn}
+            </StorefrontSignInLink>
           </p>
         )}
 
@@ -131,7 +143,7 @@ export function StorefrontOrdersPage() {
               {t.retry}
             </Button>
           </div>
-        ) : !session.data ? (
+        ) : !session.data && !orders.isPending && allOrders.length === 0 ? (
           <div className="grid justify-items-center gap-3 rounded-2xl border border-dashed border-store-border bg-store-page px-5 py-9 text-center">
             <span className="grid size-14 place-items-center rounded-2xl bg-white text-store-primary shadow-sm">
               <ClipboardList className="size-7" aria-hidden="true" />

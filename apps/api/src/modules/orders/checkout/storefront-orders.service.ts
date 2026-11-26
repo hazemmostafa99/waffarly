@@ -147,6 +147,7 @@ export class StorefrontOrdersService {
     identity?: OrderIdentity,
     replayScope?: Prisma.CustomerOrderAccessWhereInput,
     merchantCustomerId?: string,
+    storefrontGuest?: OrderIdentity,
   ): Promise<StorefrontOrderReceipt> {
     const merchant = await this.prisma.merchant.findUnique({
       where: { storefrontSlug: slug },
@@ -332,9 +333,12 @@ export class StorefrontOrdersService {
             },
             include: { discountRedemption: true },
           });
-          if (identity)
+          // Marketplace orders record their owner; a merchant-website guest records this
+          // browser so the guest can follow the order and keep it after signing in.
+          const access = identity ?? storefrontGuest;
+          if (access)
             await transaction.customerOrderAccess.create({
-              data: { orderId: saved.id, merchantId: merchant.id, ...identity },
+              data: { orderId: saved.id, merchantId: merchant.id, ...access },
             });
           return toReceipt(saved);
         },
