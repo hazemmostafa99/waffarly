@@ -147,6 +147,8 @@ export class PosOrderQueryService {
 
   async detail(employee: PosEmployeeSession, orderId: string): Promise<StorefrontOrderSummary> {
     requirePosSellPermission(employee);
+    // Orders of an archived branch stay hidden even if a session outlives the archive.
+    if (employee.branch.archivedAt !== null) throw new NotFoundException('The POS order was not found.');
     const order = await this.prisma.storefrontOrder.findFirst({
       where: {
         id: orderId,
@@ -165,6 +167,8 @@ export class PosOrderQueryService {
     orderId: string,
   ): Promise<PosOrderPaymentStateResponse> {
     requirePosSellPermission(employee);
+    // Orders of an archived branch stay hidden even if a session outlives the archive.
+    if (employee.branch.archivedAt !== null) throw new NotFoundException('The POS order was not found.');
     const order = await this.prisma.storefrontOrder.findFirst({
       where: {
         id: orderId,
