@@ -1478,6 +1478,8 @@ export const ar: Record<string, string> = {
   'Loading order details…': 'جارٍ تحميل تفاصيل الطلب…',
   'Could not load order details.': 'تعذر تحميل تفاصيل الطلب.',
   'Receipt is available after settlement.': 'يتاح الإيصال بعد سداد الحساب.',
+  'Open a shift and stay online to refund this order.':
+    'افتح وردية وتأكد من الاتصال بالإنترنت لاسترداد هذا الطلب.',
   completed: 'مكتمل',
   'Payment methods': 'وسائل الدفع',
   'Add payment method': 'إضافة وسيلة دفع',

@@ -5,13 +5,16 @@ import type {
   StorefrontOrderSummary,
 } from '@waffarly/contracts';
 import { Dialog, Input, useLocale } from '@waffarly/ui';
-import { ClipboardList, Printer, RefreshCw, Search } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { AlertTriangle, ClipboardList, Printer, RefreshCw, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { PosButton } from '../../components/pos-button.js';
 import { getPosOrderNumber } from '../orders/pos-order-number.js';
 import { listPosSales, posOrderKeys, type PosSalesFilters } from '../orders/pos-orders.api.js';
+import { formatMoneyCents, parseMoneyCents } from '../payments/payment-form-model.js';
 import { getPosOrderPaymentState, posPaymentStateKey } from '../payments/pos-payments.api.js';
+import { PosRefundDialog } from '../payments/pos-refund-dialog.js';
+import { getCurrentPosShift, posCurrentShiftKey } from '../shifts/pos-shifts.api.js';
 import { PosReceiptView } from './pos-receipt-view.js';
 import { listPosReceipts, posReceiptHistoryKey } from './pos-receipts.api.js';
 
@@ -51,6 +54,30 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
   const [activeReceipt, setActiveReceipt] = useState<{ orderId: string; checkId: string } | null>(
     null,
   );
+  const [refundTarget, setRefundTarget] = useState<{
+    order: StorefrontOrderSummary;
+    checkId: string;
+  } | null>(null);
+  const [online, setOnline] = useState(() => navigator.onLine);
+  // Refunds are paid out of this register's open shift, even for orders from older shifts.
+  const registerId = employee.deviceRegister?.id ?? '';
+  const shiftQuery = useQuery({
+    queryKey: posCurrentShiftKey(employee.merchantId, selectedBranchId, registerId),
+    queryFn: ({ signal }) => getCurrentPosShift(registerId, signal),
+    enabled: Boolean(selectedBranchId && registerId),
+    refetchOnWindowFocus: true,
+  });
+  const refundShiftId = shiftQuery.data?.id ?? null;
+
+  useEffect(() => {
+    const updateOnline = () => setOnline(navigator.onLine);
+    window.addEventListener('online', updateOnline);
+    window.addEventListener('offline', updateOnline);
+    return () => {
+      window.removeEventListener('online', updateOnline);
+      window.removeEventListener('offline', updateOnline);
+    };
+  }, []);
   const dateRangeInvalid = Boolean(createdFrom && createdTo && createdFrom > createdTo);
   const filters = useMemo<PosSalesFilters>(() => {
     const from = toLocalDateBoundary(createdFrom, false);
@@ -399,6 +426,27 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
           order={selectedOrder}
           onClose={() => setSelectedOrder(null)}
           onOpenReceipt={(checkId) => setActiveReceipt({ orderId: selectedOrder.id, checkId })}
+          canRefund={online && Boolean(refundShiftId)}
+          onRefund={(checkId) => {
+            setRefundTarget({ order: selectedOrder, checkId });
+            setSelectedOrder(null);
+          }}
+        />
+      )}
+      {refundTarget && (
+        <PosRefundDialog
+          merchantId={employee.merchantId}
+          employeeId={employee.id}
+          branchId={selectedBranchId}
+          orderId={refundTarget.order.id}
+          checkId={refundTarget.checkId}
+          refundShiftId={refundShiftId}
+          requiresApproval={!employee.permissions.includes('approve_refunds')}
+          onClose={() => {
+            // Return to the same order so the cashier sees the updated refundable amount.
+            setSelectedOrder(refundTarget.order);
+            setRefundTarget(null);
+          }}
         />
       )}
     </section>
@@ -410,11 +458,16 @@ function PosOrderDetailsDialog({
   order,
   onClose,
   onOpenReceipt,
+  canRefund,
+  onRefund,
 }: {
   merchantId: string;
   order: StorefrontOrderSummary;
   onClose: () => void;
   onOpenReceipt: (checkId: string) => void;
+  /** False while offline or without an open shift on this register. */
+  canRefund: boolean;
+  onRefund: (checkId: string) => void;
 }) {
   const { formatNumber, t, errorText } = useLocale();
   const paymentQuery = useQuery({
@@ -558,6 +611,42 @@ function PosOrderDetailsDialog({
             ) : (
               <span className="text-[11px] text-muted-foreground">
                 {t('Receipt is available after settlement.')}
+              </span>
+            )}
+            {!['cancelled', 'rejected'].includes(order.status) &&
+              payment.checks.map((check) => {
+                const refundableCents = check.payments.reduce(
+                  (sum, tender) =>
+                    sum + (parseMoneyCents(tender.refundableAmount ?? tender.amount) ?? 0n),
+                  0n,
+                );
+                if (refundableCents <= 0n && !check.refunds?.length) return null;
+                return (
+                  <PosButton
+                    key={`refund-${check.id}`}
+                    type="button"
+                    variant="outline"
+                    className="min-h-9 w-full gap-1.5 text-xs"
+                    disabled={refundableCents > 0n && !canRefund}
+                    onClick={() => onRefund(check.id)}
+                  >
+                    <AlertTriangle aria-hidden="true" size={14} />
+                    {t(refundableCents > 0n ? 'Refund' : 'View refunds')}
+                    {payment.checks.length > 1
+                      ? ` · ${t('Check')} ${formatNumber(check.position + 1)}`
+                      : ''}
+                    <bdi className="ms-auto tabular-nums" dir="ltr">
+                      {formatNumber(Number(formatMoneyCents(refundableCents)), {
+                        style: 'currency',
+                        currency: payment.currency,
+                      })}
+                    </bdi>
+                  </PosButton>
+                );
+              })}
+            {!canRefund && !['cancelled', 'rejected'].includes(order.status) && paidAmount > 0 && (
+              <span className="text-[11px] text-muted-foreground">
+                {t('Open a shift and stay online to refund this order.')}
               </span>
             )}
           </div>
