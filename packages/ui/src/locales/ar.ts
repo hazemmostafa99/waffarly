@@ -1887,6 +1887,9 @@ export const ar: Record<string, string> = {
   'Start a new shift': 'بدء وردية جديدة',
   'Select a register': 'اختر جهاز الكاشير',
   'Opening cash float (EGP)': 'عهدة الكاشير الافتتاحية (جنيه)',
+  'You are opening the shift with no cash float (0 EGP). Confirm to continue.':
+    'هتفتح الوردية بدون عهدة (0 جنيه). أكد عشان تكمل.',
+  'Confirm and open with no float': 'تأكيد وفتح بدون عهدة',
   'The opening amount is recorded once. The same request is safely reused after a network interruption.':
     'يُسجَّل مبلغ العهدة مرة واحدة، ويُعاد استخدام الطلب نفسه بأمان عند انقطاع الإنترنت.',
   'Enter a non-negative amount with up to two decimal places.':

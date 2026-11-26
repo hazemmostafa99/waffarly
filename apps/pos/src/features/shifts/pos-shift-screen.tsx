@@ -47,7 +47,9 @@ export function PosShiftScreen() {
     workspace?.pendingShiftClose?.registerId === registerId
       ? (workspace.pendingShiftClose ?? null)
       : null;
-  const [openingFloat, setOpeningFloat] = useState('');
+  const [openingFloat, setOpeningFloat] = useState('0');
+  // Opening with no float is allowed, but the cashier confirms it once before submitting.
+  const [confirmNoFloat, setConfirmNoFloat] = useState(false);
   const [sourceShiftId, setSourceShiftId] = useState('');
   useEffect(() => {
     setSourceShiftId('');
@@ -86,7 +88,8 @@ export function PosShiftScreen() {
     mutationFn: (input: OpenPosShiftRequest) => openPosShift(input),
     onSuccess: async (shift, variables) => {
       setSourceShiftId('');
-      setOpeningFloat('');
+      setOpeningFloat('0');
+      setConfirmNoFloat(false);
       removePendingShiftOpen(employee.merchantId, employee.id, variables.requestId);
       queryClient.setQueryData(currentShiftKey, shift);
       await queryClient.invalidateQueries({ queryKey: currentShiftKey });
@@ -137,6 +140,11 @@ export function PosShiftScreen() {
       setFormError(t('Enter a non-negative amount with up to two decimal places.'));
       return;
     }
+    if (Number(openingFloat) === 0 && !confirmNoFloat) {
+      setConfirmNoFloat(true);
+      return;
+    }
+    setConfirmNoFloat(false);
     const action = {
       branchId,
       registerId,
@@ -386,9 +394,31 @@ export function PosShiftScreen() {
               value={pendingShiftOpen?.openingFloat ?? openingFloat}
               disabled={Boolean(pendingShiftOpen) || openMutation.isPending}
               className="min-h-12 text-sm font-semibold tabular-nums"
-              onChange={(event) => setOpeningFloat(event.target.value)}
+              onChange={(event) => {
+                setOpeningFloat(event.target.value);
+                setConfirmNoFloat(false);
+              }}
             />
           </label>
+          {confirmNoFloat && !pendingShiftOpen && (
+            <div
+              role="alert"
+              className="flex max-w-lg flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm"
+            >
+              <span className="flex gap-2 leading-relaxed text-foreground">
+                <Info className="mt-0.5 shrink-0" size={15} aria-hidden="true" />
+                {t('You are opening the shift with no cash float (0 EGP). Confirm to continue.')}
+              </span>
+              <PosButton
+                type="button"
+                variant="outline"
+                className="min-h-10 px-3 text-xs"
+                onClick={() => setConfirmNoFloat(false)}
+              >
+                {t('Cancel')}
+              </PosButton>
+            </div>
+          )}
           <div className="grid gap-3 border-t border-border pt-3 sm:flex sm:items-center sm:justify-between">
             {branchId && registerId && (
               <PosCarryoverSelect
@@ -423,7 +453,9 @@ export function PosShiftScreen() {
                 ? t('Opening...')
                 : pendingShiftOpen
                   ? t('Retry saved request')
-                  : t('Open shift')}
+                  : confirmNoFloat
+                    ? t('Confirm and open with no float')
+                    : t('Open shift')}
             </PosButton>
           </div>
         </form>
