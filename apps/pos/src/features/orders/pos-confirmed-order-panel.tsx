@@ -16,6 +16,9 @@ import {
   posOrderDetailKey,
   posOrderKeys,
 } from './pos-orders.api.js';
+import type { PosEmployeeSession } from '@waffarly/contracts';
+import { posSessionKey } from '../auth/pos-session.api.js';
+import { requirePairedRegister } from '../registers/register-pairing-prompt.js';
 
 export function PosConfirmedOrderPanel({
   merchantId,
@@ -48,6 +51,9 @@ export function PosConfirmedOrderPanel({
 }) {
   const { t, errorText, formatDate, formatNumber } = useLocale();
   const queryClient = useQueryClient();
+  // Register actions ask for pairing first; the layout keeps the session cached.
+  const hasRegisterForActions = () =>
+    requirePairedRegister(queryClient.getQueryData<PosEmployeeSession>(posSessionKey));
   const scope = posWorkspaceScope(merchantId, employeeId);
   const workspace = usePosWorkspaceStore((state) =>
     state.activeScope === scope ? state.workspace : null,
@@ -185,6 +191,7 @@ export function PosConfirmedOrderPanel({
   }
 
   function openCancellationDialog() {
+    if (!hasRegisterForActions()) return;
     cancellationMutation.reset();
     setCancellationSaveError('');
     setCancellationReason(pendingCancellation?.reason ?? '');
@@ -304,7 +311,9 @@ export function PosConfirmedOrderPanel({
                       type="button"
                       variant="solid"
                       disabled={!online || dispatchMutation.isPending || order.status !== 'pending'}
-                      onClick={() => dispatchMutation.mutate()}
+                      onClick={() => {
+                        if (hasRegisterForActions()) dispatchMutation.mutate();
+                      }}
                     >
                       {dispatchMutation.isPending ? t('Sending to kitchen…') : t('Send to kitchen')}
                     </PosButton>

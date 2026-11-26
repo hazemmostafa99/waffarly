@@ -10,6 +10,10 @@ import {
   orderActionMessage,
   formatOrderActionError,
 } from './features/orders/order-action-errors.js';
+import {
+  isRegisterPairingError,
+  requirePairedRegister,
+} from './features/registers/register-pairing-prompt.js';
 import { PickupCollection } from './features/payments/pickup-collection.js';
 import {
   posWorkspaceScope,
@@ -132,6 +136,8 @@ export function POSScreen() {
             ? 'sell'
             : 'start_preparation';
     if (!employee.permissions.includes(requiredPermission)) return;
+    // Ask for the register before saving a command that this browser cannot send.
+    if (!requirePairedRegister(employee)) return;
     try {
       // Write the exact idempotent command before sending it. A timeout must reuse this payload.
       savePendingAction(employee.merchantId, employee.id, order.id, pending);
@@ -160,7 +166,9 @@ export function POSScreen() {
       setActionErrors((current) => ({ ...current, [order.id]: message }));
       if (
         cause instanceof ApiError &&
-        ([400, 422].includes(cause.statusCode) || cause.errorCode === 'ORDER_SHIFT_REQUIRED')
+        ([400, 422].includes(cause.statusCode) ||
+          cause.errorCode === 'ORDER_SHIFT_REQUIRED' ||
+          isRegisterPairingError(cause))
       ) {
         try {
           removePendingAction(employee.merchantId, employee.id, order.id);

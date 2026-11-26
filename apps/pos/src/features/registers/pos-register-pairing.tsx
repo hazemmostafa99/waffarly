@@ -11,7 +11,14 @@ import { posSessionKey } from '../auth/pos-session.api.js';
  * Inline pairing card shown only where register work starts (opening a shift).
  * Browsing the POS does not require a paired browser.
  */
-export function PosRegisterPairing({ employee }: { employee: PosEmployeeSession }) {
+export function PosRegisterPairing({
+  employee,
+  framed = true,
+}: {
+  employee: PosEmployeeSession;
+  /** False inside a dialog, which supplies its own frame and title. */
+  framed?: boolean;
+}) {
   const { t, errorText } = useLocale();
   const queryClient = useQueryClient();
   const [registerId, setRegisterId] = useState('');
@@ -34,16 +41,28 @@ export function PosRegisterPairing({ employee }: { employee: PosEmployeeSession 
 
   return (
     <section
-      className="mx-auto grid w-full max-w-lg gap-4 rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-5"
-      aria-labelledby="pos-register-pairing-heading"
+      className={
+        framed
+          ? 'mx-auto grid w-full max-w-lg gap-4 rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm sm:p-5'
+          : 'grid w-full gap-4'
+      }
+      aria-label={framed ? undefined : t('Connect this browser to a register')}
+      aria-labelledby={framed ? 'pos-register-pairing-heading' : undefined}
     >
       <header className="grid gap-1.5">
-        <p className="m-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {t('POS device setup')}
-        </p>
-        <h3 id="pos-register-pairing-heading" className="m-0 text-lg font-semibold tracking-tight">
-          {t('Connect this browser to a register')}
-        </h3>
+        {framed && (
+          <>
+            <p className="m-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('POS device setup')}
+            </p>
+            <h3
+              id="pos-register-pairing-heading"
+              className="m-0 text-lg font-semibold tracking-tight"
+            >
+              {t('Connect this browser to a register')}
+            </h3>
+          </>
+        )}
         <p className="m-0 text-sm leading-6 text-muted-foreground">
           {t(
             'To open a shift or take payments, connect this browser to a cashier register. You can keep browsing orders without it.',

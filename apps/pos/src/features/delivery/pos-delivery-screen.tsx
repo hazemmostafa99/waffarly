@@ -20,6 +20,7 @@ import {
 } from '../shifts/pos-shifts.api.js';
 import { recordPosCheckPayment } from '../payments/pos-payments.api.js';
 import { useDeliveryRecovery, type PendingDeliveryWrite } from './delivery-recovery.js';
+import { requirePairedRegister } from '../registers/register-pairing-prompt.js';
 
 type ReadyDelivery = {
   id: string;
@@ -177,6 +178,8 @@ export function PosDeliveryScreen() {
   });
   function submit(saved: PendingDeliveryWrite) {
     setFormError('');
+    // Ask for the register before saving a delivery command this browser cannot send.
+    if (!requirePairedRegister(employee)) return;
     try {
       if (!online || recovery.scope !== scope || recovery.error)
         throw new Error(

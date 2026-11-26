@@ -12,6 +12,7 @@ import {
 import { PosDeliveryRecoveryNotice } from './features/delivery/pos-delivery-screen.js';
 import { PosPaymentRecoveryNotice } from './features/payments/pos-payment-recovery-notice.js';
 import { PosWorkspaceFrame } from './features/workspace/pos-workspace-frame.js';
+import { PosRegisterPairingDialog } from './features/registers/register-pairing-prompt.js';
 import { PosButton } from './components/pos-button.js';
 
 export function POSLayout() {
@@ -135,6 +136,7 @@ export function POSLayout() {
         </p>
       )}
       <Outlet context={{ employee }} />
+      <PosRegisterPairingDialog employee={employee} />
     </PosWorkspaceFrame>
   );
 }
