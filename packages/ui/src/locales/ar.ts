@@ -2091,5 +2091,6 @@ export const ar: Record<string, string> = {
   'Open orders': 'افتح الطلبات',
   'Cashiers need supervisor approval for this.': 'الكاشير محتاج موافقة المشرف على الحركة دي.',
   'Collect payment': 'تحصيل الحساب',
+  'Collect and hand over': 'تحصيل وتسليم',
 };
 // Delivery custody and shift handover.

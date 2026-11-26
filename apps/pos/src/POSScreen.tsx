@@ -183,6 +183,21 @@ export function POSScreen() {
     }
   }
 
+  /**
+   * Collect and hand over in one step: after the kitchen card's checkout closes, re-read the
+   * queue and confirm handover only if that order is now fully paid. Closing without paying
+   * leaves the order untouched.
+   */
+  async function handOverAfterCollection(orderId: string) {
+    const refreshed = await ordersQuery.refetch();
+    const order = refreshed.data?.pages
+      .flatMap((page) => page.items)
+      .find((item) => item.id === orderId);
+    if (!order || order.status !== 'ready' || order.handoverEligible !== true) return;
+    if (pendingActions[orderId]) return;
+    await performAction(order);
+  }
+
   function getStatusClass(status: StorefrontOrderSummary['status']) {
     if (status === 'pending') return 'bg-warning/15 text-warning';
     if (status === 'accepted') return 'bg-info/15 text-info';
@@ -568,7 +583,7 @@ export function POSScreen() {
                       className="min-h-9 w-full justify-center text-xs max-[767px]:min-h-11"
                     >
                       <Banknote size={16} aria-hidden="true" />
-                      {t('Collect payment')}
+                      {t('Collect and hand over')}
                     </PosButton>
                   ) : (canAct || canRetry) && (
                     <PosButton
@@ -676,11 +691,9 @@ export function POSScreen() {
           orderId={collectingOrderId}
           requiresRefundApproval={!employee.permissions.includes('approve_refunds')}
           onClose={() => {
+            const orderId = collectingOrderId;
             setCollectingOrderId(null);
-            // Paid orders become eligible, so the card switches to "Confirm handover".
-            void queryClient.invalidateQueries({
-              queryKey: posOrderKeys.branch(employee.merchantId, branchId),
-            });
+            void handOverAfterCollection(orderId);
           }}
         />
       )}
