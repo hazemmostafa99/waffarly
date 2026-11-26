@@ -905,72 +905,116 @@ function DispatchCard({
   text: (en: string, ar: string) => string;
   onSubmit: (courierId: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
   const [courierId, setCourierId] = useState('');
+  const orderNumber = getPosOrderNumber({
+    id: order.id,
+    orderReference: order.orderReference,
+    branchOrderNumber: order.branchOrderNumber,
+  });
   return (
-    <form
-      className="grid gap-3 rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4 lg:grid-cols-[minmax(0,1fr)_minmax(14rem,20rem)_auto] lg:items-end"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onSubmit(courierId);
-      }}
-    >
-      <div className="grid min-w-0 gap-1.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="m-0 text-base font-bold">
-            {text('Order', 'طلب')}{' '}
-            <bdi dir="ltr">
-              #
-              {getPosOrderNumber({
-                id: order.id,
-                orderReference: order.orderReference,
-                branchOrderNumber: order.branchOrderNumber,
-              })}
-            </bdi>
-          </h3>
-          <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-semibold text-success">
-            <PackageCheck aria-hidden="true" size={13} />
-            {text('Ready', 'جاهز')}
-          </span>
-        </div>
-        <p className="m-0 flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-          <UserRound aria-hidden="true" size={15} className="shrink-0" />
+    <article className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-border bg-card px-3 py-2.5 shadow-sm sm:px-4">
+      {/* Compact row: choosing the courier happens in a popup so long lists stay clean. */}
+      <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+        <strong className="text-sm">
+          {text('Order', 'طلب')} <bdi dir="ltr">#{orderNumber}</bdi>
+        </strong>
+        <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[11px] font-semibold text-success">
+          <PackageCheck aria-hidden="true" size={12} />
+          {text('Ready', 'جاهز')}
+        </span>
+        <span className="inline-flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+          <UserRound aria-hidden="true" size={13} className="shrink-0" />
           <span className="truncate">
             {order.customerName || text('Customer name unavailable', 'اسم العميل غير متاح')}
           </span>
-        </p>
-        <p className="m-0 text-sm">
-          {text('Order total', 'إجمالي الطلب')}:{' '}
+        </span>
+      </span>
+      <span className="flex items-center gap-2">
+        <span className="rounded-lg bg-muted/50 px-2 py-1 text-xs">
+          {text('Total', 'الإجمالي')}{' '}
           <strong className="tabular-nums">
             <bdi dir="ltr">
               {order.total} {text('EGP', 'ج.م.')}
             </bdi>
           </strong>
-        </p>
-      </div>
-      <CourierPicker
-        label={text('Which courier is taking it?', 'مين الطيار اللي هياخده؟')}
-        value={courierId}
-        onChange={setCourierId}
-        disabled={disabled}
-        couriers={couriers}
-        text={text}
-      />
-      <PosButton
-        type="submit"
-        variant="solid"
-        className="min-h-11"
-        disabled={
-          disabled ||
-          !courierId ||
-          couriers.loading ||
-          Boolean(couriers.error) ||
-          !couriers.options.some((courier) => courier.id === courierId)
-        }
+        </span>
+        <PosButton
+          type="button"
+          variant="solid"
+          size="sm"
+          className="min-h-9"
+          aria-haspopup="dialog"
+          disabled={disabled}
+          onClick={() => setOpen(true)}
+        >
+          <Bike aria-hidden="true" size={14} />
+          {text('Hand over to courier', 'سلّمه للطيار')}
+        </PosButton>
+      </span>
+
+      <Dialog
+        open={open}
+        onOpenChange={setOpen}
+        title={`${text('Hand over', 'تسليم للطيار')} · ${text('Order', 'طلب')} #${orderNumber}`}
+        closeLabel={text('Close', 'إغلاق')}
+        className="w-[min(480px,calc(100%-24px))] [&_[data-slot=dialog-header]]:px-4 [&_[data-slot=dialog-header]]:py-3 [&_[data-slot=dialog-header]_h2]:text-base [&_[data-slot=dialog-header]_button]:size-9"
       >
-        <Bike aria-hidden="true" size={17} />
-        {text('Hand over to courier', 'سلّمه للطيار')}
-      </PosButton>
-    </form>
+        <form
+          className="grid gap-2.5 p-3 sm:p-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSubmit(courierId);
+            setOpen(false);
+          }}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-2.5 py-2 text-xs">
+            <span className="inline-flex min-w-0 items-center gap-1 text-muted-foreground">
+              <UserRound aria-hidden="true" size={13} className="shrink-0" />
+              <span className="truncate">
+                {order.customerName || text('Customer name unavailable', 'اسم العميل غير متاح')}
+              </span>
+            </span>
+            <span>
+              {text('Total', 'الإجمالي')}{' '}
+              <strong className="text-sm tabular-nums">
+                <bdi dir="ltr">
+                  {order.total} {text('EGP', 'ج.م.')}
+                </bdi>
+              </strong>
+            </span>
+          </div>
+          <CourierPicker
+            label={text('Which courier is taking it?', 'مين الطيار اللي هياخده؟')}
+            value={courierId}
+            onChange={setCourierId}
+            disabled={disabled}
+            couriers={couriers}
+            text={text}
+          />
+          <div className="flex flex-wrap gap-2">
+            <PosButton
+              type="submit"
+              variant="solid"
+              className="min-h-10"
+              disabled={
+                disabled ||
+                !courierId ||
+                couriers.loading ||
+                Boolean(couriers.error) ||
+                !couriers.options.some((courier) => courier.id === courierId)
+              }
+            >
+              <Bike aria-hidden="true" size={15} />
+              {text('Hand over to courier', 'سلّمه للطيار')}
+            </PosButton>
+            <PosButton type="button" className="min-h-10" onClick={() => setOpen(false)}>
+              {text('Cancel', 'إلغاء')}
+            </PosButton>
+          </div>
+        </form>
+      </Dialog>
+    </article>
   );
 }
 
