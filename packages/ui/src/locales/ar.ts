@@ -1626,6 +1626,7 @@ export const ar: Record<string, string> = {
   Sell: 'بيع',
   Tables: 'ترابيزات',
   Kitchen: 'المطبخ',
+  Inventory: 'المخزون',
   'New items sent to the sample kitchen.': 'تم إرسال الأصناف الجديدة للمطبخ التجريبي.',
   'Order completed. The table is available again.': 'تم إكمال الطلب. الترابيزة متاحة الآن.',
   'DESIGN PREVIEW · Sample orders only. No real payments.':

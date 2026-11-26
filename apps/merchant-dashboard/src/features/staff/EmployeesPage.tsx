@@ -581,10 +581,12 @@ export function EmployeesPage() {
                   <ul className="employee-permission-list">
                     {POS_EMPLOYEE_PERMISSIONS.map((permission) => {
                       const grantedBy = impliedBy(permission, draft.permissions);
+                      const inputId = `employee-permission-${permission}`;
                       return (
                         <li key={permission}>
-                          <label>
+                          <label htmlFor={inputId}>
                             <input
+                              id={inputId}
                               type="checkbox"
                               checked={draft.permissions.includes(permission) || !!grantedBy}
                               disabled={!!grantedBy}
