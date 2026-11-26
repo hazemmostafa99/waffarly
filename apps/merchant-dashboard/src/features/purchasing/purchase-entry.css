@@ -207,6 +207,10 @@
   line-height: 1.5;
 }
 .purchase-entry input:focus-visible,
+/* Selects center their text themselves; vertical padding in the 36px table cells cut it off. */
+.purchase-entry select {
+  padding-block: 0;
+}
 .purchase-entry select:focus-visible,
 .purchase-entry textarea:focus-visible {
   outline: 2px solid #9bc8ae;
