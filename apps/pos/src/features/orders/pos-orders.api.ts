@@ -99,7 +99,7 @@ export type PosSalesFilters = {
   status?: StorefrontOrderSummary['status'];
   fulfillmentType?: Extract<
     StorefrontOrderSummary['fulfillmentType'],
-    'dine_in' | 'takeaway' | 'delivery'
+    'dine_in' | 'takeaway' | 'delivery' | 'pickup'
   >;
   settlement?: 'open' | 'settled';
   createdFrom?: string;

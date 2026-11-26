@@ -33,6 +33,14 @@ const orderSummaryInclude = {
   },
 } satisfies Prisma.StorefrontOrderInclude;
 
+/**
+ * The order history is the branch's full record: cashier sales plus every Waffarly
+ * marketplace and storefront order. Active sales stay cashier-only bills.
+ */
+function posOrderSourceWhere(mode: 'active' | 'history'): { source?: 'pos' } {
+  return mode === 'history' ? {} : { source: 'pos' };
+}
+
 import { requirePosSellPermission } from './pos-order.rules.js';
 
 @Injectable()
@@ -46,7 +54,7 @@ export class PosOrderQueryService {
       search?: string | undefined;
       mode: 'active' | 'history';
       status?: StorefrontOrderStatus | undefined;
-      fulfillmentType?: 'dine_in' | 'takeaway' | 'delivery' | undefined;
+      fulfillmentType?: 'dine_in' | 'takeaway' | 'delivery' | 'pickup' | undefined;
       settlement?: 'open' | 'settled' | undefined;
       createdFrom?: Date | undefined;
       createdTo?: Date | undefined;
@@ -65,10 +73,11 @@ export class PosOrderQueryService {
       branchOrderNumber !== null && Number.isSafeInteger(branchOrderNumber)
         ? branchOrderNumber
         : null;
+    const sourceWhere = posOrderSourceWhere(input.mode);
     const where: Prisma.StorefrontOrderWhereInput = {
       merchantId: employee.merchantId,
       branchId: input.branchId,
-      source: 'pos',
+      ...sourceWhere,
       ...(input.status
         ? { status: input.status }
         : input.mode === 'active'
@@ -127,7 +136,7 @@ export class PosOrderQueryService {
         where: {
           merchantId: employee.merchantId,
           branchId: input.branchId,
-          source: 'pos',
+          ...sourceWhere,
           id: input.cursor,
         },
         select: { id: true },
@@ -173,16 +182,8 @@ export class PosOrderQueryService {
       where: {
         id: orderId,
         merchantId: employee.merchantId,
-        OR: [
-          { source: 'pos' },
-          {
-            source: { in: ['waffarly', 'storefront'] },
-            // Website pickups and dispatched website deliveries are collected on a shift.
-            fulfillmentType: { in: ['pickup', 'delivery'] },
-            posShiftId: { not: null },
-            status: { in: ['ready', 'completed'] },
-          },
-        ],
+        // Read-only view for every branch order in the cumulative history; payment
+        // and refund commands keep their own source and shift checks.
         branchId: employee.branch.id,
       },
       include: {

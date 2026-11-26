@@ -244,6 +244,7 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
               <option value="dine_in">{t('Dine in')}</option>
               <option value="takeaway">{t('Takeaway')}</option>
               <option value="delivery">{t('Delivery')}</option>
+              <option value="pickup">{t('Pickup')}</option>
             </select>
           </label>
           <label className="grid min-w-0 gap-1 text-[11px] text-muted-foreground">
