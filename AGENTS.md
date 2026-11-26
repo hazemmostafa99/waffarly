@@ -1,13 +1,3 @@
-## Branch workflow — 2026-11-19
-
-- Perform implementation work on `main` only. Check the active branch and working
-  tree before editing; do not start implementation on `production-demo`.
-- `production-demo` is reserved for explicitly requested deployment work. Do not
-  switch to it, merge deployment changes, push, or deploy without authorization
-  for that operation. Do not create a feature branch unless the user requests one.
-- Preserve unrelated local changes when switching branches. If they prevent a
-  safe switch to `main`, explain the conflict before taking further action.
-
 ## Restaurant ordering authorization — 2026-11-13
 
 The user explicitly authorized real API-backed ordering for all persisted

@@ -34,7 +34,7 @@ import {
   type PendingPosKitchenAmendment,
 } from '../../app/pos-workspace-store.js';
 import { ApiError } from '../../lib/api-client.js';
-import { PosDeliveryDetails } from './pos-delivery-details.js';
+import { PosDeliveryDetails, isValidDeliveryFee } from './pos-delivery-details.js';
 import {
   customerFields,
   customerErrorsFromIssues,
@@ -816,6 +816,9 @@ export function POSCatalogScreen() {
       ...(activeDraft.deliveryAddress?.trim()
         ? { deliveryAddress: activeDraft.deliveryAddress.trim() }
         : {}),
+      ...(activeDraft.fulfillment === 'delivery' && activeDraft.deliveryFee?.trim()
+        ? { deliveryFee: activeDraft.deliveryFee.trim() }
+        : {}),
       items: activeDraft.lines.map((line) => {
         const quote = quoteByLine.get(line.id);
         if (!quote) throw new Error(t('The server quote is missing a cart item.'));
@@ -863,6 +866,13 @@ export function POSCatalogScreen() {
   const lineQuoteById = new Map((quoteQuery.data?.items ?? []).map((item) => [item.lineId, item]));
   const pendingSale = activeDraft ? workspace?.pendingSales[activeDraft.id] : undefined;
   const subtotal = quoteQuery.data?.subtotal ?? '0.00';
+  // Display-only; the server adds the same typed fee to the saved order total.
+  const draftDeliveryFee =
+    activeDraft?.fulfillment === 'delivery' &&
+    activeDraft.deliveryFee?.trim() &&
+    isValidDeliveryFee(activeDraft.deliveryFee)
+      ? Number(activeDraft.deliveryFee)
+      : 0;
   const amendedOrderTotal = formatMoneyCents(
     (parseMoneyCents(amendmentOrder?.total ?? '0.00') ?? 0n) + (parseMoneyCents(subtotal) ?? 0n),
   );
@@ -1336,6 +1346,10 @@ export function POSCatalogScreen() {
                           if (updateDraft((draft) => ({ ...draft, [field]: value })))
                             touchCustomerField(field, true);
                         }}
+                        deliveryFee={activeDraft.deliveryFee ?? ''}
+                        onDeliveryFeeChange={(value) =>
+                          updateDraft((draft) => ({ ...draft, deliveryFee: value }))
+                        }
                       />
                     )}
                   </>
@@ -1625,7 +1639,10 @@ export function POSCatalogScreen() {
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-[13px] font-semibold">{t('Total')}</span>
                       <strong className="text-base tabular-nums tracking-tight text-primary">
-                        {formatNumber(Number(subtotal), { style: 'currency', currency: 'EGP' })}
+                        {formatNumber(Number(subtotal) + draftDeliveryFee, {
+                          style: 'currency',
+                          currency: 'EGP',
+                        })}
                       </strong>
                     </div>
                   </div>
@@ -1651,7 +1668,9 @@ export function POSCatalogScreen() {
                 )}
                 {!shiftQuery.data && (
                   <Link className="block text-xs text-primary underline" to="/shift">
-                    {t('Open a register shift before confirming')}
+                    {registerId
+                      ? t('Open a register shift before confirming')
+                      : t('Connect a register, then open a shift before confirming')}
                   </Link>
                 )}
                 {!online && (

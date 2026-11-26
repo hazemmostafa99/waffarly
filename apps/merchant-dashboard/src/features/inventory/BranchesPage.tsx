@@ -625,7 +625,8 @@ function BranchEditor({
   const { errorText } = useLocale();
   const [name, setName] = useState(branch?.name ?? '');
   const [address, setAddress] = useState(branch?.address ?? '');
-  const [defaultWarehouseName, setDefaultWarehouseName] = useState('Main warehouse');
+  // Prefilled in the merchant's language; the merchant can replace it before saving.
+  const [defaultWarehouseName, setDefaultWarehouseName] = useState(() => copy('Main warehouse'));
   const [error, setError] = useState('');
   const [nameError, setNameError] = useState('');
   const [defaultWarehouseError, setDefaultWarehouseError] = useState('');

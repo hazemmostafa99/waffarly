@@ -19,6 +19,7 @@ import { useCreatedMerchantStore } from './created-merchant-store.js';
 import { StorefrontHandleField } from './StorefrontHandleField.js';
 
 const emptyMerchant: CreateMerchantRequest = {
+  storefrontHandle: '',
   name: '',
   activity: 'restaurant',
   contactPhone: '',
@@ -153,7 +154,7 @@ export function CreateMerchantPage() {
               setFormError('');
               pendingRequest.current = {
                 ...form,
-                storefrontHandle: form.storefrontHandle?.trim() || undefined,
+                storefrontHandle: form.storefrontHandle.trim(),
                 subscription: { planId, months },
               };
               createMerchant.mutate();
@@ -222,7 +223,7 @@ export function CreateMerchantPage() {
                 />
               </FormField>
               <StorefrontHandleField
-                value={form.storefrontHandle ?? ''}
+                value={form.storefrontHandle}
                 onChange={(value) => updateForm('storefrontHandle', value)}
                 disabled={createMerchant.isPending}
               />

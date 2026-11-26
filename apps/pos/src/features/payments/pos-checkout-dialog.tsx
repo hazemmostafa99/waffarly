@@ -222,8 +222,12 @@ export function PosCheckoutDialog({
       closeLabel={t('Close')}
       style={viewport.dialogStyle}
       className={cn(
-        'fixed inset-x-0 top-[var(--pos-visible-top)] bottom-auto my-2 flex w-[min(560px,calc(100%-20px))] max-h-[calc(var(--pos-visible-height)-16px)] flex-col overflow-hidden rounded-xl sm:rounded-2xl lg:inset-y-0 lg:m-auto',
-        '[&_[data-slot=dialog-header]_h2]:text-lg [&_[data-slot=dialog-header]_p]:text-xs',
+        'fixed inset-x-0 top-[var(--pos-visible-top)] bottom-auto my-2 flex max-h-[calc(var(--pos-visible-height)-16px)] flex-col overflow-hidden rounded-xl lg:inset-y-0 lg:m-auto',
+        // Collecting one amount needs a narrow confirmation; the receipt keeps its paper width.
+        receiptCheckId ? 'w-[min(560px,calc(100%-20px))]' : 'w-[min(420px,calc(100%-20px))]',
+        '[&_[data-slot=dialog-header]]:items-center [&_[data-slot=dialog-header]]:px-4 [&_[data-slot=dialog-header]]:py-3',
+        '[&_[data-slot=dialog-header]_h2]:text-base [&_[data-slot=dialog-header]_p]:mt-0.5 [&_[data-slot=dialog-header]_p]:text-xs',
+        '[&_[data-slot=dialog-header]>button]:size-9 [&_[data-slot=dialog-header]>button]:text-lg',
         viewport.compact &&
           '[&_[data-slot=dialog-header]]:p-3 [&_[data-slot=dialog-header]_h2]:text-base [&_[data-slot=dialog-header]_p]:hidden',
       )}
@@ -285,41 +289,39 @@ export function PosCheckoutDialog({
         >
           <div
             className={cn(
-              'grid shrink-0 gap-3 border-b border-border bg-card px-4 py-3 sm:px-6',
-              viewport.compact && 'gap-2 px-3 py-2',
+              'grid shrink-0 gap-2 border-b border-border bg-card px-4 py-3',
+              viewport.compact && 'px-3 py-2',
             )}
           >
             {activeCheck && paymentState && (
-              <section
-                className="grid gap-3 rounded-xl border border-border bg-secondary/60 p-3 sm:p-4"
-                aria-label={t('Order balance')}
-              >
-                <div>
-                  <p className="m-0 truncate text-xs text-muted-foreground">
-                    <bdi dir="ltr">
-                      #
-                      {getPosOrderNumber(
-                        paymentState.context?.order ?? {
-                          id: orderId,
-                          orderReference: null,
-                          branchOrderNumber: null,
-                        },
-                      )}
-                    </bdi>
-                  </p>
+              <section className="grid gap-2" aria-label={t('Order balance')}>
+                <div className="flex min-w-0 items-center gap-2">
+                  <bdi
+                    dir="ltr"
+                    className="shrink-0 rounded bg-secondary px-1.5 py-0.5 text-xs font-bold tabular-nums"
+                  >
+                    #
+                    {getPosOrderNumber(
+                      paymentState.context?.order ?? {
+                        id: orderId,
+                        orderReference: null,
+                        branchOrderNumber: null,
+                      },
+                    )}
+                  </bdi>
                   <PosCheckoutOrderIdentity state={paymentState} />
                 </div>
-                <div className="flex items-end justify-between gap-3 border-t border-border/70 pt-3">
-                  <div>
-                    <p className="m-0 text-xs text-muted-foreground">{t('Amount due')}</p>
-                    <strong className="mt-0.5 block text-xl font-bold tabular-nums sm:text-2xl">
+                <div className="flex items-center justify-between gap-3 rounded-lg bg-secondary/60 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="m-0 text-[11px] text-muted-foreground">{t('Amount due')}</p>
+                    <strong className="block text-xl font-bold tabular-nums">
                       {formatNumber(Number(activeCheck.balanceDue), {
                         style: 'currency',
                         currency: paymentState.currency,
                       })}
                     </strong>
                   </div>
-                  <span className="mb-1 rounded-md bg-background px-2.5 py-1.5 text-xs font-medium">
+                  <span className="shrink-0 rounded-full bg-background px-2.5 py-1 text-[11px] font-medium">
                     {t('Cash payment')}
                   </span>
                 </div>
@@ -338,6 +340,7 @@ export function PosCheckoutDialog({
                   <PosButton
                     type="button"
                     variant="outline"
+                    size="sm"
                     className="w-full"
                     onClick={() => setReceiptCheckId(activeCheck.id)}
                   >
@@ -351,8 +354,8 @@ export function PosCheckoutDialog({
           <div
             data-checkout-scroll
             className={cn(
-              'grid min-h-0 gap-4 overflow-y-auto p-4 sm:p-6',
-              viewport.compact && 'gap-3 p-3 sm:p-3',
+              'grid min-h-0 content-start gap-2 overflow-y-auto px-4 py-3',
+              viewport.compact && 'p-3',
             )}
           >
             {hasUnsupportedChecks && (
@@ -433,8 +436,8 @@ export function PosCheckoutDialog({
           </div>
           <footer
             className={cn(
-              'grid shrink-0 gap-3 border-t border-border bg-card p-4 pt-3 pb-[max(16px,env(safe-area-inset-bottom))] sm:px-6',
-              viewport.compact && 'gap-2 px-3 py-2 sm:px-3',
+              'grid shrink-0 gap-2 border-t border-border bg-card px-4 pt-3 pb-[max(12px,env(safe-area-inset-bottom))]',
+              viewport.compact && 'px-3 py-2',
             )}
           >
             {activeCheck?.status === 'open' && !canCollectBalance && (
@@ -472,7 +475,7 @@ export function PosCheckoutDialog({
                   <PosButton
                     type="submit"
                     variant="solid"
-                    className="w-full text-[0.8125rem]"
+                    className="w-full text-sm font-semibold"
                     disabled={mutation.isPending || !online || !paymentState.revision}
                   >
                     {mutation.isPending

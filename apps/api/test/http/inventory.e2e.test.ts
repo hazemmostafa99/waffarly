@@ -7,6 +7,7 @@ import request from 'supertest';
 import { AuthService } from '../../src/modules/auth/auth.service.js';
 import { OwnerGuard } from '../../src/modules/auth/owner.guard.js';
 import { InventoryController } from '../../src/modules/inventory/inventory.controller.js';
+import { InventoryCostService } from '../../src/modules/inventory/inventory-cost.service.js';
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
 
 const owner: OwnerProfile = {
@@ -72,6 +73,8 @@ describe('inventory owner endpoints', () => {
             ]),
           ),
         },
+        // These tests do not call cost endpoints; the controller only needs the dependency.
+        { provide: InventoryCostService, useValue: {} },
       ],
     }).compile();
     app = module.createNestApplication({ logger: false });

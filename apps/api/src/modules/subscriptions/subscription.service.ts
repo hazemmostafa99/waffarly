@@ -259,7 +259,7 @@ export class SubscriptionService {
             fingerprint,
             action: input.action,
             administrator,
-            reason: input.reason,
+            reason: input.reason ?? '',
             collected,
             result: {},
           },

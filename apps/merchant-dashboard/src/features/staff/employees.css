@@ -133,6 +133,33 @@
 .employee-editor input:disabled {
   color: var(--dashboard-muted);
 }
+/* Username box with the store subdomain shown as a fixed, non-editable prefix. */
+.employee-username-field {
+  display: flex;
+  min-width: 0;
+  font-weight: 400;
+}
+.employee-username-prefix {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  max-width: 40%;
+  overflow: hidden;
+  padding: 0 6px;
+  border: 1px solid var(--dashboard-border);
+  border-right: 0;
+  border-radius: 7px 0 0 7px;
+  background: var(--dashboard-surface-muted, #f4f6f5);
+  color: var(--dashboard-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: none;
+}
+.employee-editor .employee-username-field.has-prefix input {
+  flex: 1;
+  border-radius: 0 7px 7px 0;
+}
 .employee-role-help {
   max-width: none;
   margin: 0;
@@ -230,6 +257,47 @@
   color: #176444;
   content: '\2713';
   font-weight: 700;
+}
+.employee-role-help-content > ul.employee-permission-list > li {
+  padding: 0;
+}
+.employee-role-help-content > ul.employee-permission-list > li::before {
+  content: none;
+}
+.employee-permission-list label {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 8px !important;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.employee-permission-list input {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+  accent-color: #005b43;
+}
+.employee-permission-list input:disabled + span {
+  color: var(--dashboard-muted);
+}
+.employee-permission-list small {
+  display: block;
+  color: var(--dashboard-muted);
+  font-size: 11px;
+}
+.employee-permission-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.employee-role-cell {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 .employee-role-help-content > p {
   margin: 0;

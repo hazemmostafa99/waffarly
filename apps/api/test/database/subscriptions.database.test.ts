@@ -1,3 +1,4 @@
+import { testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import assert from 'node:assert/strict';
@@ -25,6 +26,7 @@ function scoped(tx: Prisma.TransactionClient): PrismaService {
 const merchantData = () => ({
   name: 'Subscription test',
   storefrontSlug: `subscription-test-${randomUUID()}`,
+  storefrontHandle: testStorefrontHandle(),
   contactPhone: '01000000000',
   ownerName: 'Subscription owner',
   ownerMobile: '01100000000',
@@ -306,6 +308,7 @@ it(
                 displayName: 'Recovery cashier',
                 passwordHash: 'unused',
                 role: 'cashier',
+                permissions: ['open_register_shift', 'sell'],
                 createdBy: 'subscription-test',
                 updatedBy: 'subscription-test',
               },
@@ -317,6 +320,8 @@ it(
                 subjectId: employee.id,
                 tokenHash: createHash('sha256').update(posToken).digest('hex'),
                 expiresAt: new Date(Date.now() + 60000),
+                // POS sessions belong to one browser.
+                deviceId: randomUUID(),
               },
             });
             const posReq = (path: string) =>
@@ -400,6 +405,7 @@ it(
             const created = await merchants.create(
               {
                 name: 'Subscription onboarding',
+                storefrontHandle: testStorefrontHandle(),
                 contactPhone: '01000000000',
                 ownerName: 'Test owner',
                 ownerMobile: '01100000000',

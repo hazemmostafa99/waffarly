@@ -1,3 +1,4 @@
+import { testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import type { Prisma } from '@waffarly/database';
@@ -28,10 +29,10 @@ it(
             ownerMobile: '01100000000',
           };
           const merchant = await tx.merchant.create({
-            data: { ...merchantData, storefrontSlug: `couriers-${token}` },
+            data: { ...merchantData, storefrontSlug: `couriers-${token}`, storefrontHandle: testStorefrontHandle() },
           });
           const otherMerchant = await tx.merchant.create({
-            data: { ...merchantData, storefrontSlug: `couriers-other-${token}` },
+            data: { ...merchantData, storefrontSlug: `couriers-other-${token}`, storefrontHandle: testStorefrontHandle() },
           });
           const branch = await tx.branch.create({
             data: { merchantId: merchant.id, name: 'Main', createdBy: 'test', updatedBy: 'test' },

@@ -1,3 +1,4 @@
+import { testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 
@@ -27,6 +28,7 @@ it(
             data: {
               name: `Inventory verification ${token}`,
               storefrontSlug: `inventory-verification-${token}`,
+              storefrontHandle: testStorefrontHandle(),
               activity: 'restaurant',
               contactPhone: '01000000000',
               ownerName: 'Inventory verification',
@@ -37,6 +39,7 @@ it(
             data: {
               name: `Inventory other ${token}`,
               storefrontSlug: `inventory-other-${token}`,
+              storefrontHandle: testStorefrontHandle(),
               activity: 'restaurant',
               contactPhone: '01000000000',
               ownerName: 'Inventory other',

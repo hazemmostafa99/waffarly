@@ -37,6 +37,21 @@ export async function resolveRestaurantReceivingBranch(
   return branches[0]!;
 }
 
+/**
+ * Picks the receiving branch for a website order from a store without restaurant settings.
+ * With exactly one active branch the order goes there at checkout, so it gets its #1, #2, #3
+ * number from that branch's open shift straight away. With none or several, it stays without
+ * a branch and the cashier who accepts it decides (it is numbered at acceptance).
+ */
+export async function soleActiveBranch(db: Prisma.TransactionClient, merchantId: string) {
+  const branches = await db.branch.findMany({
+    where: { merchantId, archivedAt: null },
+    select: { id: true, name: true },
+    take: 2,
+  });
+  return branches.length === 1 ? branches[0]! : null;
+}
+
 export async function quoteCheckoutDiscount(
   db: Prisma.TransactionClient,
   merchantId: string,

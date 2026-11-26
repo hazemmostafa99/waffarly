@@ -13,6 +13,7 @@ import { DashboardDialog } from '../../components/DashboardDialog.js';
 import { apiRequestPage, apiRequest } from '../../lib/api-client.js';
 import { InventoryHeader } from './InventoryHeader.js';
 import { inventoryCopy } from './inventory-copy.js';
+import { stockUnitLabel } from './stock-unit-options.js';
 
 type EditorState = { item: StockItem | null; key: string };
 type PackDraft = { code: string; name: string; baseQuantity: string };
@@ -103,9 +104,9 @@ export function StockItemsPage() {
               <span key={unit.id} title={`1 ${unit.code} = ${unit.baseQuantity} ${item.baseUnit}`}>
                 {formatDigits(unit.name)}{' '}
                 <small>
-                  <bdi dir="ltr">
-                    {formatDigits(`1 ${unit.code} = ${unit.baseQuantity} ${item.baseUnit}`)}
-                  </bdi>
+                  {formatDigits(
+                    `1 ${unit.name} = ${unit.baseQuantity} ${stockUnitLabel(item.baseUnit, locale)}`,
+                  )}
                 </small>
               </span>
             ))}
@@ -560,22 +561,29 @@ function StockItemEditor({
               required
             />
           </label>
-          <label>
-            {text('Measurement unit')}
-            <select
-              aria-label={text('Measurement unit')}
-              value={baseUnit}
-              disabled={!created}
-              onChange={(event) => setBaseUnit(event.target.value as StockBaseUnit)}
-            >
-              {STOCK_BASE_UNITS.map((unit) => (
-                <option key={unit} value={unit}>
-                  {text(baseLabels[unit])}
-                </option>
-              ))}
-            </select>
-            <small>{text('The base unit cannot change after creation.')}</small>
-          </label>
+          {created ? (
+            <label>
+              {text('Measurement unit')}
+              <select
+                aria-label={text('Measurement unit')}
+                value={baseUnit}
+                onChange={(event) => setBaseUnit(event.target.value as StockBaseUnit)}
+              >
+                {STOCK_BASE_UNITS.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {text(baseLabels[unit])}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            // Stock, recipes and costs are stored in this unit, so editing shows it as fixed text.
+            <div className="inventory-fixed-unit">
+              <span>{text('Measurement unit')}</span>
+              <strong>{text(baseLabels[baseUnit])}</strong>
+              <small>{text('The base unit cannot change after creation.')}</small>
+            </div>
+          )}
         </div>
         <details className="inventory-section-details" open={Boolean(item?.description)}>
           <summary>{text('Description (optional)')}</summary>

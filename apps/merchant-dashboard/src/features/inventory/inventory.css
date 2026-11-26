@@ -2489,6 +2489,32 @@ html[dir='rtl'] .inventory-editor .products-dialog-footer {
   gap: 5px;
   min-width: 0;
 }
+/* Read-only base unit on an existing item: shown as fixed text, not a locked dropdown. */
+.inventory-fixed-unit {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-width: 0;
+  color: var(--dashboard-ink);
+  font-size: 13px;
+  font-weight: 500;
+}
+.inventory-fixed-unit strong {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 11px;
+  border: 1px dashed var(--dashboard-border);
+  border-radius: 8px;
+  background: #f5f8f6;
+  font-size: 14px;
+  font-weight: 650;
+}
+.inventory-fixed-unit small {
+  color: #5d6c80;
+  font-size: 12px;
+  font-weight: 400;
+}
 .inventory-page.inventory-workspace .inventory-disclosure {
   min-height: 36px;
   padding: 8px 10px;

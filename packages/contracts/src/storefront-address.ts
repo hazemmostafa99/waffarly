@@ -32,3 +32,22 @@ export interface PublicStorefrontAddress {
   handle: string;
   storefrontSlug: string;
 }
+
+/** The name a cashier types to sign in to POS, e.g. ("ahmed-cafe", "ali") -> "ahmed-cafe.ali". */
+export function formatPosSignInName(storefrontHandle: string, username: string): string {
+  return `${storefrontHandle}.${username}`;
+}
+
+/**
+ * Splits a POS sign-in name at its first dot. Subdomains never contain dots, so the rest is
+ * the username even when it has dots: "ahmed-cafe.ali.m" -> { "ahmed-cafe", "ali.m" }.
+ * Returns null when either part is missing, e.g. "ali" or "ahmed-cafe.".
+ */
+export function parsePosSignInName(
+  login: string,
+): { storefrontHandle: string; username: string } | null {
+  const value = login.trim().toLowerCase();
+  const dot = value.indexOf('.');
+  if (dot <= 0 || dot === value.length - 1) return null;
+  return { storefrontHandle: value.slice(0, dot), username: value.slice(dot + 1) };
+}

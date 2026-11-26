@@ -10,6 +10,7 @@ import { ApiError } from '../../lib/api-client.js';
 import { isReadablePosLabel } from '../../lib/display-label.js';
 import { PosShiftCashManagement } from './pos-shift-cash-management.js';
 import { PosCarryoverSelect } from './pos-cash-custody.js';
+import { PosRegisterPairing } from '../registers/pos-register-pairing.js';
 import {
   getCurrentPosShift,
   openPosShift,
@@ -46,7 +47,9 @@ export function PosShiftScreen() {
     workspace?.pendingShiftClose?.registerId === registerId
       ? (workspace.pendingShiftClose ?? null)
       : null;
-  const [openingFloat, setOpeningFloat] = useState('');
+  const [openingFloat, setOpeningFloat] = useState('0');
+  // Opening with no float is allowed, but the cashier confirms it once before submitting.
+  const [confirmNoFloat, setConfirmNoFloat] = useState(false);
   const [sourceShiftId, setSourceShiftId] = useState('');
   useEffect(() => {
     setSourceShiftId('');
@@ -85,7 +88,8 @@ export function PosShiftScreen() {
     mutationFn: (input: OpenPosShiftRequest) => openPosShift(input),
     onSuccess: async (shift, variables) => {
       setSourceShiftId('');
-      setOpeningFloat('');
+      setOpeningFloat('0');
+      setConfirmNoFloat(false);
       removePendingShiftOpen(employee.merchantId, employee.id, variables.requestId);
       queryClient.setQueryData(currentShiftKey, shift);
       await queryClient.invalidateQueries({ queryKey: currentShiftKey });
@@ -136,6 +140,11 @@ export function PosShiftScreen() {
       setFormError(t('Enter a non-negative amount with up to two decimal places.'));
       return;
     }
+    if (Number(openingFloat) === 0 && !confirmNoFloat) {
+      setConfirmNoFloat(true);
+      return;
+    }
+    setConfirmNoFloat(false);
     const action = {
       branchId,
       registerId,
@@ -172,6 +181,15 @@ export function PosShiftScreen() {
     );
   }
 
+  // Opening a shift is where an unpaired browser is asked to choose its register.
+  if (!employee.deviceRegister) {
+    return (
+      <div className="px-3 pt-3 pb-6 sm:px-4">
+        <PosRegisterPairing employee={employee} />
+      </div>
+    );
+  }
+
   const queryError =
     currentShiftQuery.error instanceof Error ? currentShiftQuery.error.message : '';
   const selectedRegister = employee.deviceRegister;
@@ -190,11 +208,11 @@ export function PosShiftScreen() {
 
   return (
     <section
-      className="grid w-full content-start gap-4 p-3 pb-6 md:p-4 md:pb-6"
+      className="grid w-full content-start gap-3 p-3 pb-6 md:p-4 md:pb-6"
       aria-labelledby="pos-shift-heading"
     >
       <h2 id="pos-shift-heading" className="sr-only">
-        {t('Open register shift')}
+        {t('Register shift')}
       </h2>
 
       {queryError && (
@@ -254,61 +272,62 @@ export function PosShiftScreen() {
           </p>
         </div>
       ) : activeShift ? (
-        <article className="overflow-hidden rounded-xl border border-success/30 bg-card text-card-foreground shadow-sm">
-          <div className="grid gap-3 p-3 sm:grid-cols-[minmax(0,1fr)_minmax(13rem,auto)] sm:items-center sm:p-4">
-            <div className="grid min-w-0 gap-2">
-              <div className="flex items-center justify-between gap-2">
-                <p className="mb-0 flex items-center gap-2 text-sm text-muted-foreground">
-                  <Store size={15} aria-hidden="true" />
-                  {selectedBranch?.name ?? t('Branch')}
-                </p>
-                <PosButton
-                  type="button"
-                  size="icon"
-                  variant="outline"
-                  aria-label={t('Refresh')}
-                  title={t('Refresh')}
-                  className="size-10 shrink-0 [@media(pointer:coarse)]:size-11"
-                  disabled={refreshDisabled}
-                  onClick={refreshShiftData}
-                >
-                  <RefreshCw size={14} aria-hidden="true" />
-                </PosButton>
-              </div>
-              <p className="m-0 flex items-center gap-2 text-xs font-medium text-foreground">
-                <Wallet size={14} aria-hidden="true" />
+        // One compact status bar: what is open, who opened it, and the starting cash.
+        <article className="grid gap-2 rounded-xl border border-success/30 bg-card p-3 text-card-foreground shadow-sm">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-1 text-xs font-semibold text-success">
+              <span className="size-2 rounded-full bg-success" aria-hidden="true" />
+              {t('Register shift is open')}
+            </span>
+            <span className="inline-flex min-w-0 items-center gap-1.5 text-sm font-semibold">
+              <Wallet size={15} aria-hidden="true" />
+              <span className="truncate">
                 {activeShift.registerName || selectedRegister?.name || t('Cashier register')}
-              </p>
-              <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5">
-                  <UserRound size={14} aria-hidden="true" />
-                  {t('Opened by {{name}}', { name: openedByName })}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Clock3 size={14} aria-hidden="true" />
-                  {formatDate(activeShift.openedAt, true)}
-                </span>
-              </div>
-            </div>
-            <div className="grid gap-1 rounded-lg border border-border bg-secondary/50 p-4 sm:min-w-52">
-              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                <CircleDollarSign size={14} aria-hidden="true" />
-                {t('Opening cash float (EGP)')}
               </span>
-              <strong className="text-base font-bold tabular-nums">
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Store size={14} aria-hidden="true" />
+              {selectedBranch?.name ?? t('Branch')}
+            </span>
+            <PosButton
+              type="button"
+              size="icon"
+              variant="outline"
+              aria-label={t('Refresh')}
+              title={t('Refresh')}
+              className="ms-auto size-9 shrink-0 [@media(pointer:coarse)]:size-11"
+              disabled={refreshDisabled}
+              onClick={refreshShiftData}
+            >
+              <RefreshCw size={14} aria-hidden="true" />
+            </PosButton>
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <UserRound size={13} aria-hidden="true" />
+              {t('Opened by {{name}}', { name: openedByName })}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Clock3 size={13} aria-hidden="true" />
+              {formatDate(activeShift.openedAt, true)}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <CircleDollarSign size={13} aria-hidden="true" />
+              {t('Opening cash float (EGP)')}:{' '}
+              <strong className="tabular-nums text-foreground">
                 {formatNumber(Number(activeShift.openingFloat), {
                   style: 'currency',
                   currency: activeShift.currency,
                 })}
               </strong>
-            </div>
-            <p className="m-0 flex gap-2 rounded-lg bg-info/10 p-3 text-xs leading-relaxed text-info sm:col-span-2">
-              <Info className="mt-0.5 shrink-0" size={15} aria-hidden="true" />
-              {t(
-                'Operators share this register shift; each sale will be recorded under the employee who performs it.',
-              )}
-            </p>
+            </span>
           </div>
+          <p className="m-0 flex gap-1.5 text-xs text-muted-foreground">
+            <Info className="mt-0.5 shrink-0" size={13} aria-hidden="true" />
+            {t(
+              'Operators share this register shift; each sale will be recorded under the employee who performs it.',
+            )}
+          </p>
         </article>
       ) : pendingShiftCashMovement || pendingShiftClose ? (
         <article className="grid gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3 text-card-foreground">
@@ -336,6 +355,7 @@ export function PosShiftScreen() {
       ) : (
         <form
           className="grid gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm sm:p-4"
+          noValidate
           onSubmit={handleOpen}
         >
           <div className="flex items-start justify-between gap-2">
@@ -361,10 +381,13 @@ export function PosShiftScreen() {
               <RefreshCw size={14} aria-hidden="true" />
             </PosButton>
           </div>
-          <label className="grid max-w-lg gap-2 text-sm font-medium">
+          <label className="grid max-w-lg gap-1.5 text-sm font-medium">
             <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
               <CircleDollarSign size={15} aria-hidden="true" />
               {t('Opening cash float (EGP)')}
+            </span>
+            <span className="text-xs font-normal text-muted-foreground">
+              {t('The change you put in the drawer before selling. Leave 0 if there is none.')}
             </span>
             <Input
               type="number"
@@ -376,9 +399,31 @@ export function PosShiftScreen() {
               value={pendingShiftOpen?.openingFloat ?? openingFloat}
               disabled={Boolean(pendingShiftOpen) || openMutation.isPending}
               className="min-h-12 text-sm font-semibold tabular-nums"
-              onChange={(event) => setOpeningFloat(event.target.value)}
+              onChange={(event) => {
+                setOpeningFloat(event.target.value);
+                setConfirmNoFloat(false);
+              }}
             />
           </label>
+          {confirmNoFloat && !pendingShiftOpen && (
+            <div
+              role="alert"
+              className="flex max-w-lg flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm"
+            >
+              <span className="flex gap-2 leading-relaxed text-foreground">
+                <Info className="mt-0.5 shrink-0" size={15} aria-hidden="true" />
+                {t('You are opening the shift with no cash float (0 EGP). Confirm to continue.')}
+              </span>
+              <PosButton
+                type="button"
+                variant="outline"
+                className="min-h-10 px-3 text-xs"
+                onClick={() => setConfirmNoFloat(false)}
+              >
+                {t('Cancel')}
+              </PosButton>
+            </div>
+          )}
           <div className="grid gap-3 border-t border-border pt-3 sm:flex sm:items-center sm:justify-between">
             {branchId && registerId && (
               <PosCarryoverSelect
@@ -391,12 +436,6 @@ export function PosShiftScreen() {
                 disabled={Boolean(pendingShiftOpen) || openMutation.isPending}
               />
             )}
-            <p className="m-0 flex max-w-2xl gap-2 text-xs leading-relaxed text-muted-foreground">
-              <Info className="mt-0.5 shrink-0" size={15} aria-hidden="true" />
-              {t(
-                'The opening amount is recorded once. The same request is safely reused after a network interruption.',
-              )}
-            </p>
             <PosButton
               type="submit"
               variant="solid"
@@ -413,7 +452,9 @@ export function PosShiftScreen() {
                 ? t('Opening...')
                 : pendingShiftOpen
                   ? t('Retry saved request')
-                  : t('Open shift')}
+                  : confirmNoFloat
+                    ? t('Confirm and open with no float')
+                    : t('Open shift')}
             </PosButton>
           </div>
         </form>

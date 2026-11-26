@@ -83,7 +83,7 @@ export const posActiveSalesPageSchema = posOrderPageSchema.extend({
   status: z
     .enum(['pending', 'accepted', 'rejected', 'preparing', 'ready', 'completed', 'cancelled'])
     .optional(),
-  fulfillmentType: z.enum(['dine_in', 'takeaway', 'delivery']).optional(),
+  fulfillmentType: z.enum(['dine_in', 'takeaway', 'delivery', 'pickup']).optional(),
   settlement: z.enum(['open', 'settled']).optional(),
   createdFrom: z.coerce.date().optional(),
   createdTo: z.coerce.date().optional(),

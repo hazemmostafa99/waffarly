@@ -35,3 +35,21 @@ export function storefrontHref(href: string, slug: string, hostBased: boolean): 
   }
   return href;
 }
+
+export function notFoundHomeHref(pathname: string, hostBased: boolean): string {
+  if (hostBased) return '/';
+  // On the main domain, /s/coffee/menu returns to /s/coffee.
+  const storePath = /^\/s\/([^/]+)(?:\/|$)/.exec(pathname);
+  const storeHome = storePath ? `/s/${storePath[1]}` : null;
+  // If the store home itself is missing, return to Marketplace instead of looping.
+  return storeHome && pathname !== storeHome ? storeHome : '/';
+}
+
+export function marketplaceHomeHref(host: string): string {
+  if (process.env.NODE_ENV === 'development') {
+    const port = /:(\d+)$/.exec(host)?.[1];
+    return `http://localhost${port ? `:${port}` : ''}/`;
+  }
+  const domain = process.env.STOREFRONT_BASE_DOMAIN?.trim().toLowerCase();
+  return domain ? `https://${domain}/` : '/';
+}

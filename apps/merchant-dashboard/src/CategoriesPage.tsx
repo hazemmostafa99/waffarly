@@ -332,7 +332,7 @@ export function CategoriesPage() {
           }
           tone="cream"
           icon={<Icon name="eye" />}
-          detail={`↑ 6% ${copy('Compared with last month')}`}
+          detail={copy('Visible in the store')}
         />
         <SummaryCard
           label={copy('Subcategories')}
@@ -343,7 +343,7 @@ export function CategoriesPage() {
           }
           tone="mint"
           icon={<Icon name="layers" />}
-          detail={`↑ 9% ${copy('Compared with last month')}`}
+          detail={copy('Under a parent category')}
         />
         <SummaryCard
           label={copy('Main Categories')}
@@ -354,14 +354,14 @@ export function CategoriesPage() {
           }
           tone="blue"
           icon={<Icon name="tag" />}
-          detail={`↑ 20% ${copy('Compared with last month')}`}
+          detail={copy('Top-level categories')}
         />
         <SummaryCard
           label={copy('Total Categories')}
           value={loading || !hasLoaded ? '—' : activeCategories.length}
           tone="rose"
           icon={<Icon name="box" />}
-          detail={`↑ 12% ${copy('Compared with last month')}`}
+          detail={copy('In the current catalog')}
         />
       </div>
 

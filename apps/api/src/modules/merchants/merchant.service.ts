@@ -60,10 +60,7 @@ export class MerchantService {
     input: CreateMerchantRequest,
     administrator = 'super-admin',
   ): Promise<MerchantSummary> {
-    const storefrontHandle =
-      input.storefrontHandle === undefined
-        ? undefined
-        : parseRequest(storefrontHandleSchema, input.storefrontHandle);
+    const storefrontHandle = parseRequest(storefrontHandleSchema, input.storefrontHandle);
     const username = input.username.trim().toLowerCase();
     const existing = await this.prisma.ownerAccount.findUnique({ where: { username } });
     if (existing) throw new ConflictException('Username is already in use.');
@@ -77,13 +74,9 @@ export class MerchantService {
             id,
             name: input.name.trim(),
             storefrontSlug: createStorefrontSlug(input.name, id),
-            ...(storefrontHandle
-              ? {
-                  storefrontHandle,
-                  storefrontHandleAssignedAt: new Date(),
-                  storefrontHandleAssignedBy: administrator,
-                }
-              : {}),
+            storefrontHandle,
+            storefrontHandleAssignedAt: new Date(),
+            storefrontHandleAssignedBy: administrator,
             activity: input.activity ?? 'other',
             contactPhone: input.contactPhone.trim(),
             ownerName: input.ownerName.trim(),
@@ -100,7 +93,7 @@ export class MerchantService {
       });
     } catch (error) {
       if (isUniqueConstraintError(error)) {
-        throw new ConflictException('Username or storefront handle is already in use.');
+        throw new ConflictException('Username or subdomain is already in use.');
       }
       throw error;
     }
@@ -132,13 +125,10 @@ export class MerchantService {
         });
         if (!current) throw new NotFoundException('Merchant was not found.');
         if (current.storefrontHandle === handle) return toMerchantSummary(current);
-        if (current.storefrontHandle !== null) {
-          throw new ConflictException(
-            'This merchant already has a storefront address. Address changes are not supported.',
-          );
-        }
+        // Changing the subdomain also changes every POS sign-in name ("<subdomain>.<username>")
+        // and the public store address; Super Admin confirms this warning before saving.
         const result = await tx.merchant.updateMany({
-          where: { id, storefrontHandle: null },
+          where: { id, storefrontHandle: current.storefrontHandle },
           data: {
             storefrontHandle: handle,
             storefrontHandleAssignedAt: new Date(),
@@ -151,7 +141,7 @@ export class MerchantService {
       });
     } catch (error) {
       if (isUniqueConstraintError(error))
-        throw new ConflictException('Storefront handle is already in use.');
+        throw new ConflictException('This subdomain is already in use.');
       throw error;
     }
   }
@@ -161,6 +151,24 @@ export class MerchantService {
   }
 
   async submitApplication(input: SubmitMerchantApplicationRequest): Promise<{ received: true }> {
+    // Early feedback only: approval rechecks the subdomain against the unique merchant column.
+    const [merchant, pendingApplication] = await Promise.all([
+      this.prisma.merchant.findUnique({
+        where: { storefrontHandle: input.storefrontHandle },
+        select: { id: true },
+      }),
+      this.prisma.merchantApplication.findFirst({
+        where: {
+          storefrontHandle: input.storefrontHandle,
+          approvedAt: null,
+          rejectedAt: null,
+          merchantId: null,
+        },
+        select: { id: true },
+      }),
+    ]);
+    if (merchant || pendingApplication)
+      throw new ConflictException('This subdomain is already in use. Choose another one.');
     await this.prisma.merchantApplication.create({
       data: { ...input, activity: input.activity ?? 'other' },
     });
@@ -216,6 +224,7 @@ export class MerchantService {
     administratorUsername: string,
   ): Promise<MerchantSummary> {
     const username = input.username.trim().toLowerCase();
+    const storefrontHandle = parseRequest(storefrontHandleSchema, input.storefrontHandle);
     const passwordHash = await hashPassword(input.password);
 
     try {
@@ -242,6 +251,9 @@ export class MerchantService {
             id,
             name: application.name,
             storefrontSlug: createStorefrontSlug(application.name, id),
+            storefrontHandle,
+            storefrontHandleAssignedAt: new Date(),
+            storefrontHandleAssignedBy: administratorUsername,
             activity: application.activity ?? 'other',
             contactPhone: application.contactPhone,
             ownerName: application.ownerName,
@@ -255,7 +267,7 @@ export class MerchantService {
       });
     } catch (error) {
       if (isUniqueConstraintError(error)) {
-        throw new ConflictException('Username is already in use.');
+        throw new ConflictException('Username or subdomain is already in use.');
       }
       throw error;
     }

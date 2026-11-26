@@ -33,6 +33,14 @@ const orderSummaryInclude = {
   },
 } satisfies Prisma.StorefrontOrderInclude;
 
+/**
+ * The order history is the branch's full record: cashier sales plus every Waffarly
+ * marketplace and storefront order. Active sales stay cashier-only bills.
+ */
+function posOrderSourceWhere(mode: 'active' | 'history'): { source?: 'pos' } {
+  return mode === 'history' ? {} : { source: 'pos' };
+}
+
 import { requirePosSellPermission } from './pos-order.rules.js';
 
 @Injectable()
@@ -46,7 +54,7 @@ export class PosOrderQueryService {
       search?: string | undefined;
       mode: 'active' | 'history';
       status?: StorefrontOrderStatus | undefined;
-      fulfillmentType?: 'dine_in' | 'takeaway' | 'delivery' | undefined;
+      fulfillmentType?: 'dine_in' | 'takeaway' | 'delivery' | 'pickup' | undefined;
       settlement?: 'open' | 'settled' | undefined;
       createdFrom?: Date | undefined;
       createdTo?: Date | undefined;
@@ -65,10 +73,11 @@ export class PosOrderQueryService {
       branchOrderNumber !== null && Number.isSafeInteger(branchOrderNumber)
         ? branchOrderNumber
         : null;
+    const sourceWhere = posOrderSourceWhere(input.mode);
     const where: Prisma.StorefrontOrderWhereInput = {
       merchantId: employee.merchantId,
       branchId: input.branchId,
-      source: 'pos',
+      ...sourceWhere,
       ...(input.status
         ? { status: input.status }
         : input.mode === 'active'
@@ -82,7 +91,12 @@ export class PosOrderQueryService {
             ],
           }
         : {}),
-      ...(input.fulfillmentType ? { fulfillmentType: input.fulfillmentType } : {}),
+      // Website pickup orders are collected at the counter, so cashiers see them as takeaway.
+      ...(input.fulfillmentType === 'takeaway' || input.fulfillmentType === 'pickup'
+        ? { fulfillmentType: { in: ['takeaway', 'pickup'] } }
+        : input.fulfillmentType
+          ? { fulfillmentType: input.fulfillmentType }
+          : {}),
       ...(input.settlement === 'open'
         ? { checks: { some: { settledAt: null, cancelledAt: null } } }
         : input.settlement === 'settled'
@@ -127,7 +141,7 @@ export class PosOrderQueryService {
         where: {
           merchantId: employee.merchantId,
           branchId: input.branchId,
-          source: 'pos',
+          ...sourceWhere,
           id: input.cursor,
         },
         select: { id: true },
@@ -147,6 +161,8 @@ export class PosOrderQueryService {
 
   async detail(employee: PosEmployeeSession, orderId: string): Promise<StorefrontOrderSummary> {
     requirePosSellPermission(employee);
+    // Orders of an archived branch stay hidden even if a session outlives the archive.
+    if (employee.branch.archivedAt !== null) throw new NotFoundException('The POS order was not found.');
     const order = await this.prisma.storefrontOrder.findFirst({
       where: {
         id: orderId,
@@ -165,19 +181,14 @@ export class PosOrderQueryService {
     orderId: string,
   ): Promise<PosOrderPaymentStateResponse> {
     requirePosSellPermission(employee);
+    // Orders of an archived branch stay hidden even if a session outlives the archive.
+    if (employee.branch.archivedAt !== null) throw new NotFoundException('The POS order was not found.');
     const order = await this.prisma.storefrontOrder.findFirst({
       where: {
         id: orderId,
         merchantId: employee.merchantId,
-        OR: [
-          { source: 'pos' },
-          {
-            source: { in: ['waffarly', 'storefront'] },
-            fulfillmentType: 'pickup',
-            posShiftId: { not: null },
-            status: { in: ['ready', 'completed'] },
-          },
-        ],
+        // Read-only view for every branch order in the cumulative history; payment
+        // and refund commands keep their own source and shift checks.
         branchId: employee.branch.id,
       },
       include: {

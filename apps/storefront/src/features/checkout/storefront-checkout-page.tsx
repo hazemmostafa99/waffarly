@@ -180,6 +180,8 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
           ? { discountCode: fields.discountCode.trim().toUpperCase() }
           : {}),
       },
+      // Through the store host so a guest receives the cookie that keeps their orders.
+      { credentials: 'include', storefrontSession: true },
     );
   }
 

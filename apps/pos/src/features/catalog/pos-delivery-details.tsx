@@ -23,12 +23,16 @@ export function PosDeliveryDetails({
   disabled,
   onChange,
   onBlur,
+  deliveryFee,
+  onDeliveryFeeChange,
 }: {
   values: Partial<Record<CustomerField, string>>;
   errors: CustomerErrors;
   disabled: boolean;
   onChange: (field: CustomerField, value: string) => void;
   onBlur: (field: CustomerField) => void;
+  deliveryFee: string;
+  onDeliveryFeeChange: (value: string) => void;
 }) {
   const { t } = useLocale();
   return (
@@ -81,6 +85,27 @@ export function PosDeliveryDetails({
           </div>
         );
       })}
+      {/* Optional; added to the items total and saved as the order's delivery fee. */}
+      <div className="min-w-0">
+        <label htmlFor="pos-deliveryFee" className="mb-1 block text-xs font-medium">
+          {t('Delivery fee (EGP)')}
+        </label>
+        <Input
+          id="pos-deliveryFee"
+          inputMode="decimal"
+          dir="ltr"
+          placeholder="0.00"
+          value={deliveryFee}
+          aria-invalid={Boolean(deliveryFee) && !isValidDeliveryFee(deliveryFee)}
+          onChange={(event) => onDeliveryFeeChange(event.target.value)}
+          className="rounded-lg text-base lg:text-xs"
+        />
+      </div>
     </fieldset>
   );
+}
+
+/** Accepts an empty value or EGP with up to two decimals, e.g. "25" or "12.50". */
+export function isValidDeliveryFee(value: string): boolean {
+  return value.trim() === '' || /^\d{1,7}(?:\.\d{1,2})?$/.test(value.trim());
 }

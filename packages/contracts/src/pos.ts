@@ -28,6 +28,8 @@ export const POS_EMPLOYEE_ROLE_PERMISSIONS = {
     'sell',
     'view_receipts',
     'view_inventory',
+    'approve_discounts',
+    'approve_refunds',
     'approve_shift_close',
     'manage_cash_movements',
   ],
@@ -63,27 +65,50 @@ export const POS_EMPLOYEE_PERMISSIONS = [
 
 export type PosEmployeePermission = (typeof POS_EMPLOYEE_PERMISSIONS)[number];
 
-export function resolvePosEmployeePermissions(
-  role: PosEmployeeRole | null,
-  savedPermissions: readonly string[],
+/** Drops unknown or repeated values and returns the permissions in a stable order. */
+export function normalizePosEmployeePermissions(
+  permissions: readonly string[],
 ): PosEmployeePermission[] {
   const knownPermissions = new Set<string>(POS_EMPLOYEE_PERMISSIONS);
-  const resolved = new Set<PosEmployeePermission>();
-  // Preserve legacy grants only for existing role types. New presets are exact,
-  // so moving a cashier to accounting cannot retain sales or kitchen access.
-  const legacyGrants = role === null || role === 'cashier' || role === 'supervisor';
-  for (const permission of legacyGrants ? savedPermissions : []) {
-    if (knownPermissions.has(permission)) resolved.add(permission as PosEmployeePermission);
+  const normalized = new Set<PosEmployeePermission>();
+  for (const permission of permissions) {
+    if (knownPermissions.has(permission)) normalized.add(permission as PosEmployeePermission);
   }
-  if (role) {
-    for (const permission of POS_EMPLOYEE_ROLE_PERMISSIONS[role]) {
-      resolved.add(permission as PosEmployeePermission);
-    }
-  }
-  return [...resolved].sort();
+  return [...normalized].sort();
 }
 
-/** Read access implied by historical operational grants remains compatible. */
+/**
+ * The permissions a role starts with before the owner adds or removes any.
+ * Cashiers, supervisors and employees without a role also start with the
+ * original kitchen grants, matching how those accounts were created before.
+ */
+export function defaultPosEmployeePermissions(
+  role: PosEmployeeRole | null,
+): PosEmployeePermission[] {
+  const withKitchen = role === null || role === 'cashier' || role === 'supervisor';
+  return normalizePosEmployeePermissions([
+    ...(role ? POS_EMPLOYEE_ROLE_PERMISSIONS[role] : []),
+    ...(withKitchen ? POS_LEGACY_EMPLOYEE_PERMISSIONS : []),
+  ]);
+}
+
+/**
+ * Returns an employee's effective permissions. The saved list is the exact set
+ * the owner chose; the role only decides which defaults the owner started from.
+ * Migration 20261126160000_explicit_employee_permissions stored the previous
+ * role-based result for every existing employee.
+ */
+export function resolvePosEmployeePermissions(
+  _role: PosEmployeeRole | null,
+  savedPermissions: readonly string[],
+): PosEmployeePermission[] {
+  return normalizePosEmployeePermissions(savedPermissions);
+}
+
+/**
+ * Read access implied by operational grants: selling needs to see orders and
+ * receipts, and kitchen work needs to see orders.
+ */
 export function hasPosEmployeePermission(
   employee: Pick<PosEmployeeSession, 'permissions'>,
   permission: PosEmployeePermission,
@@ -116,7 +141,7 @@ export interface PosEmployeeSummary {
   displayName: string;
   role: PosEmployeeRole | null;
   permissions: PosEmployeePermission[];
-  /** Stored grants before the role preset; used by the owner's permission preview. */
+  /** Same as `permissions`; kept for older dashboard builds. */
   savedPermissions?: PosEmployeePermission[];
   active: boolean;
   revision: number;
@@ -128,6 +153,8 @@ export interface PosEmployeeSummary {
 export interface PosEmployeeSession {
   id: string;
   merchantId: string;
+  /** This operator is linked to the merchant owner account, not a staff login. */
+  owner?: boolean;
   username: string;
   displayName: string;
   role: PosEmployeeRole | null;
@@ -145,9 +172,9 @@ export interface PosEmployeeRegister {
   name: string;
 }
 
+/** Cashiers sign in as "<store subdomain>.<username>", e.g. "ahmed-cafe.ali". */
 export interface PosLoginRequest {
-  storefrontSlug: string;
-  username: string;
+  login: string;
   password: string;
 }
 
@@ -156,6 +183,8 @@ export interface CreatePosEmployeeRequest {
   displayName: string;
   password: string;
   role?: PosEmployeeRole | null;
+  /** Exact permissions to grant. Omitted: the role's default permissions. */
+  permissions?: PosEmployeePermission[];
   branchId: string;
 }
 
@@ -164,6 +193,8 @@ export interface UpdatePosEmployeeRequest {
   displayName: string;
   active: boolean;
   role?: PosEmployeeRole | null;
+  /** Exact permissions to grant. Omitted: unchanged, or the new role's defaults when the role changes. */
+  permissions?: PosEmployeePermission[];
   branchId: string;
   password?: string | undefined;
 }

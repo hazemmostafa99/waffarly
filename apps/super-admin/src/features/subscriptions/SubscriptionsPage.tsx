@@ -28,6 +28,7 @@ import { apiRequest, apiRequestPage } from '../../lib/api-client.js';
 import { useMonthlyPlansQuery } from '../plans/plans-queries.js';
 import { subscriptionStatusLabels as labels } from './subscription-status.js';
 import { SubscriptionEditor } from './SubscriptionEditor.js';
+import { SubscriptionSavedDialog, type SavedSubscription } from './SubscriptionSavedDialog.js';
 import './subscriptions.css';
 
 const statuses: SubscriptionStatus[] = [
@@ -43,6 +44,7 @@ export function SubscriptionsPage() {
   const { t, formatDate, formatNumber, errorText, locale } = useLocale();
   const [params, setParams] = useSearchParams();
   const [cursors, setCursors] = useState<string[]>([]);
+  const [saved, setSaved] = useState<SavedSubscription | null>(null);
   const merchantId = params.get('merchant') ?? '';
   const search = new URLSearchParams();
   for (const key of ['q', 'status', 'planId', 'expiring'])
@@ -164,7 +166,16 @@ export function SubscriptionsPage() {
         </div>
       )}
       {merchantId ? (
-        <SubscriptionEditor key={merchantId} merchantId={merchantId} onClose={showAll} />
+        <SubscriptionEditor
+          key={merchantId}
+          merchantId={merchantId}
+          onClose={showAll}
+          onSaved={(result) => {
+            // Leave the editor for the list, then confirm the result in a popup.
+            setSaved(result);
+            showAll();
+          }}
+        />
       ) : (
         <section
           className="subscription-surface subscription-list"
@@ -394,6 +405,7 @@ export function SubscriptionsPage() {
           </footer>
         </section>
       )}
+      <SubscriptionSavedDialog saved={saved} onClose={() => setSaved(null)} />
     </div>
   );
 }

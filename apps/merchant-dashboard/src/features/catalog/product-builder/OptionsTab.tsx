@@ -126,7 +126,7 @@ export function OptionsTab({
   return (
     <div className="builder-fields">
       <div className="builder-section-heading">
-        <span>03</span>
+        <span>02</span>
         <div>
           <h2>{text('Customer choices', 'خيارات العميل')}</h2>
           <p>

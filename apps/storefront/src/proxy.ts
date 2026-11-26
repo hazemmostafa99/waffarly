@@ -13,17 +13,20 @@ function redirectLegacyMarketplacePath(request: NextRequest, path: string) {
   return NextResponse.redirect(url, 308);
 }
 
-function unavailable() {
-  return new NextResponse(
-    'المتجر غير موجود أو العنوان محجوز لتطبيق آخر. / Store not found or reserved application address.',
-    {
-      status: 404,
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Cache-Control': 'no-store',
-      },
-    },
-  );
+function unavailable(request: NextRequest, handle: string | null) {
+  const url = new URL(request.url);
+  url.pathname = '/unavailable';
+  url.search = '';
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.delete('x-waffarly-storefront-handle');
+  if (handle !== null && isStorefrontHandle(handle)) {
+    requestHeaders.set('x-waffarly-storefront-handle', handle);
+  }
+  return NextResponse.rewrite(url, {
+    status: 404,
+    headers: { 'Cache-Control': 'no-store' },
+    request: { headers: requestHeaders },
+  });
 }
 
 export function proxy(request: NextRequest) {
@@ -40,7 +43,8 @@ export function proxy(request: NextRequest) {
     path.startsWith('/storefront-api/') ||
     path === '/favicon.ico' ||
     path.startsWith('/storefront-assets/') ||
-    path.startsWith('/marketplace-assets/')
+    path.startsWith('/marketplace-assets/') ||
+    path === '/unavailable'
   ) {
     return next();
   }
@@ -56,7 +60,7 @@ export function proxy(request: NextRequest) {
     if (legacyMarketplacePath.test(path)) {
       return redirectLegacyMarketplacePath(request, path);
     }
-    if (/^\/s(?:\/|$)/.test(path)) return unavailable();
+    if (/^\/s(?:\/|$)/.test(path)) return unavailable(request, handle);
     return next();
   }
 
@@ -71,5 +75,5 @@ export function proxy(request: NextRequest) {
     }
   }
 
-  return unavailable();
+  return unavailable(request, handle);
 }

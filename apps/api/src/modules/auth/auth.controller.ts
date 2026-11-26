@@ -85,6 +85,23 @@ export class AuthController {
     return { authenticated: true };
   }
 
+  @Get('pos/owner-branches')
+  ownerPosBranches(@Req() request: Request): Promise<Array<{ id: string; name: string }>> {
+    return this.auth.ownerPosBranches(request);
+  }
+
+  @Post('pos/owner-login')
+  @HttpCode(200)
+  async ownerPosLogin(
+    @Body() body: unknown,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{ authenticated: true }> {
+    const { branchId } = parseRequest(z.object({ branchId: z.string().uuid() }).strict(), body);
+    await this.auth.loginOwnerPos(request, response, branchId);
+    return { authenticated: true };
+  }
+
   @Get('pos/me')
   posMe(@Req() request: Request): Promise<PosEmployeeSession> {
     return this.auth.requirePosEmployee(request);
@@ -96,7 +113,7 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<{ authenticated: false }> {
-    await this.auth.logout(request, response, 'POS');
+    await this.auth.logoutPos(request, response);
     return { authenticated: false };
   }
 }

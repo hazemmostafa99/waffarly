@@ -655,7 +655,7 @@ export function PosRefundDialog({
                   <label className="grid gap-1.5 text-sm">
                     {t('Supervisor username')}
                     <Input
-                      autoComplete="username"
+                      autoComplete="off"
                       required
                       value={approvalUsername}
                       disabled={mutation.isPending}
@@ -666,7 +666,7 @@ export function PosRefundDialog({
                     {t('Supervisor password')}
                     <Input
                       type="password"
-                      autoComplete="current-password"
+                      autoComplete="new-password"
                       required
                       value={approvalPassword}
                       disabled={mutation.isPending}

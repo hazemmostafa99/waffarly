@@ -1,4 +1,4 @@
-import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { deleteTestMerchantSubscriptions, testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
@@ -31,6 +31,7 @@ it(
         data: {
           name: `POS shift reconciliation ${token}`,
           storefrontSlug: `pos-reconcile-${token}`,
+          storefrontHandle: testStorefrontHandle(),
           activity: 'restaurant',
           contactPhone: '01000000000',
           ownerName: 'POS shift reconciliation',
@@ -67,7 +68,7 @@ it(
           displayName: 'Reconciliation supervisor',
           passwordHash: 'database-test-only',
           role: 'supervisor',
-          permissions: [],
+          permissions: ['open_register_shift', 'sell', 'approve_discounts', 'approve_voids', 'approve_refunds', 'approve_shift_close', 'manage_cash_movements'],
           createdBy: 'pos-shift-reconciliation-test',
           updatedBy: 'pos-shift-reconciliation-test',
         },
@@ -405,6 +406,7 @@ it(
         data: {
           name: `Foreign shift reports ${token}`,
           storefrontSlug: `foreign-shift-reports-${token}`,
+          storefrontHandle: testStorefrontHandle(),
           activity: 'restaurant',
           contactPhone: '01000000000',
           ownerName: 'Foreign shift report test',
@@ -495,7 +497,11 @@ it(
         to: new Date(Date.now() + 366 * 24 * 60 * 60 * 1000).toISOString(),
         limit: 25,
       });
-      assert.deepEqual(outsideRange, { items: [], nextCursor: null });
+      assert.deepEqual(outsideRange, {
+        items: [],
+        nextCursor: null,
+        summary: { closedCount: 0, matchedCount: 0, netVariance: '0.00', varianceCount: 0 },
+      });
       await assert.rejects(
         service.listOwnerCloseReports(merchant.id, {
           ...reportRange,
@@ -520,6 +526,7 @@ it(
             await tx.posShift.deleteMany({ where: { merchantId } });
             await tx.posRegister.deleteMany({ where: { merchantId } });
             await tx.posEmployee.deleteMany({ where: { merchantId } });
+            await tx.posBranchOrderSession.deleteMany({ where: { merchantId } });
             await tx.branch.deleteMany({ where: { merchantId } });
             // Remove the subscription created with this test merchant before its parent row.
             await deleteTestMerchantSubscriptions(tx, [merchantId]);

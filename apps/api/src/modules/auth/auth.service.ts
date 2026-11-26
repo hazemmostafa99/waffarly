@@ -1,5 +1,7 @@
 import {
+  POS_EMPLOYEE_PERMISSIONS,
   isPosEmployeeRole,
+  parsePosSignInName,
   resolvePosEmployeePermissions,
   type PosEmployeePermission,
   type PosEmployeeRegister,
@@ -112,6 +114,13 @@ export class AuthService {
       await tx.authSession.deleteMany({
         where: { subjectKind: 'OWNER', subjectId: account.id },
       });
+      const posOperators = await tx.posEmployee.findMany({
+        where: { ownerAccountId: account.id },
+        select: { id: true },
+      });
+      await tx.authSession.deleteMany({
+        where: { subjectKind: 'POS', subjectId: { in: posOperators.map(({ id }) => id) } },
+      });
 
       return {
         merchantId,
@@ -122,18 +131,18 @@ export class AuthService {
   }
 
   async loginPos(input: PosLoginRequest, request: Request, response: Response): Promise<void> {
-    const merchant = await this.prisma.merchant.findUnique({
-      where: { storefrontSlug: input.storefrontSlug.trim().toLowerCase() },
-      select: { id: true, firstMonthActivatedAt: true },
-    });
-    const employee = merchant
-      ? await this.prisma.posEmployee.findUnique({
-          where: {
-            merchantId_username: {
-              merchantId: merchant.id,
-              username: input.username.trim().toLowerCase(),
-            },
-          },
+    // The login was validated as "<subdomain>.<username>" by posLoginSchema.
+    const signIn = parsePosSignInName(input.login);
+    const merchant = signIn
+      ? await this.prisma.merchant.findUnique({
+          where: { storefrontHandle: signIn.storefrontHandle },
+          select: { id: true, firstMonthActivatedAt: true },
+        })
+      : null;
+    const employee =
+      merchant && signIn
+      ? await this.prisma.posEmployee.findFirst({
+          where: { merchantId: merchant.id, username: signIn.username, ownerAccountId: null },
           include: { branch: { select: { archivedAt: true } } },
         })
       : null;
@@ -148,6 +157,70 @@ export class AuthService {
     response.cookie(POS_DEVICE_COOKIE, deviceId, {
       ...this.cookieOptions(),
       maxAge: POS_DEVICE_COOKIE_LIFETIME_MS,
+    });
+  }
+
+  async ownerPosBranches(request: Request): Promise<Array<{ id: string; name: string }>> {
+    const owner = await this.requireOwner(request);
+    return this.prisma.branch.findMany({
+      where: { merchantId: owner.merchantId, archivedAt: null },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async loginOwnerPos(request: Request, response: Response, branchId: string): Promise<void> {
+    const owner = await this.requireOwner(request);
+    const account = await this.prisma.ownerAccount.findUniqueOrThrow({
+      where: { merchantId: owner.merchantId },
+      select: { id: true },
+    });
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: branchId, merchantId: owner.merchantId, archivedAt: null },
+      select: { id: true },
+    });
+    if (!branch) throw new ForbiddenException('Select an active branch of your business.');
+    const operator = await this.ownerPosOperator(account.id, owner.merchantId, branchId, owner.ownerName, owner.username);
+    const deviceId = this.getOrCreatePosDeviceId(request);
+    await this.startSession('POS', operator.id, POS_COOKIE, response, undefined, deviceId);
+    response.cookie(POS_DEVICE_COOKIE, deviceId, {
+      ...this.cookieOptions(),
+      maxAge: POS_DEVICE_COOKIE_LIFETIME_MS,
+    });
+  }
+
+  /** The owner's per-branch POS identity. It only attributes owner POS work and approvals;
+   * it has no usable staff password and always holds every POS permission. */
+  private async ownerPosOperator(
+    accountId: string,
+    merchantId: string,
+    branchId: string,
+    ownerName: string,
+    ownerUsername: string,
+  ): Promise<{ id: string }> {
+    const disabledPasswordHash = await hashPassword(randomBytes(32).toString('base64url'));
+    return this.prisma.posEmployee.upsert({
+      where: { ownerOperatorKey: `${accountId}:${branchId}` },
+      create: {
+        merchantId,
+        branchId,
+        ownerAccountId: accountId,
+        ownerOperatorKey: `${accountId}:${branchId}`,
+        username: `@owner:${branchId}`,
+        displayName: ownerName,
+        passwordHash: disabledPasswordHash,
+        role: 'supervisor',
+        // Saved permissions are exact, so the owner's operator holds every POS permission.
+        permissions: [...POS_EMPLOYEE_PERMISSIONS],
+        createdBy: ownerUsername,
+        updatedBy: ownerUsername,
+      },
+      update: {
+        displayName: ownerName,
+        active: true,
+        permissions: [...POS_EMPLOYEE_PERMISSIONS],
+      },
+      select: { id: true },
     });
   }
 
@@ -189,10 +262,17 @@ export class AuthService {
       where: { id: session.subjectId },
       include: {
         merchant: true,
+        ownerAccount: { select: { id: true } },
         branch: { select: { id: true, name: true, archivedAt: true } },
       },
     });
     if (!employee || !employee.active) throw new UnauthorizedException('POS session is invalid.');
+    if (employee.ownerAccountId) {
+      const owner = await this.requireOwner(request);
+      if (owner.merchantId !== employee.merchantId) {
+        throw new UnauthorizedException('Owner POS session is invalid.');
+      }
+    }
     const access = await this.subscriptions.access(employee.merchantId);
     if (!access.allowed && !isSubscriptionRecoveryRequest(request.method, request.path)) {
       throw new ForbiddenException('Subscription is not active.');
@@ -228,6 +308,7 @@ export class AuthService {
       username: employee.username,
       displayName: employee.displayName,
       role: isPosEmployeeRole(employee.role) ? employee.role : null,
+      owner: !!employee.ownerAccount,
       permissions: resolvePosEmployeePermissions(
         isPosEmployeeRole(employee.role) ? employee.role : null,
         employee.permissions,
@@ -249,17 +330,17 @@ export class AuthService {
       'approve_voids' | 'approve_refunds' | 'approve_shift_close' | 'manage_cash_movements'
     >;
   }): Promise<string> {
-    const employee = await this.prisma.posEmployee.findUnique({
-      where: {
-        merchantId_username: {
-          merchantId: input.merchantId,
-          username: input.username.trim().toLowerCase(),
-        },
-      },
+    const employee = await this.prisma.posEmployee.findFirst({
+      where: { merchantId: input.merchantId, username: input.username.trim().toLowerCase(), ownerAccountId: null },
       include: {
         branch: { select: { id: true, archivedAt: true } },
       },
     });
+    if (!employee) {
+      // The business owner may approve with their own dashboard credentials.
+      const ownerApprover = await this.verifyOwnerApproval(input);
+      if (ownerApprover) return ownerApprover;
+    }
     if (
       !employee ||
       !employee.active ||
@@ -277,6 +358,36 @@ export class AuthService {
     return employee.id;
   }
 
+  /** Returns the owner's operator ID for this branch when the credentials are the owner's. */
+  private async verifyOwnerApproval(input: {
+    merchantId: string;
+    branchId: string;
+    actingEmployeeId: string;
+    username: string;
+    password: string;
+  }): Promise<string | null> {
+    const account = await this.prisma.ownerAccount.findFirst({
+      where: { merchantId: input.merchantId, username: input.username.trim().toLowerCase() },
+      select: { id: true, username: true, passwordHash: true, merchant: { select: { ownerName: true } } },
+    });
+    if (!account || !(await verifyPassword(input.password, account.passwordHash))) return null;
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: input.branchId, merchantId: input.merchantId, archivedAt: null },
+      select: { id: true },
+    });
+    if (!branch) throw new ForbiddenException('The supervisor is not assigned to this branch.');
+    const operator = await this.ownerPosOperator(
+      account.id,
+      input.merchantId,
+      input.branchId,
+      account.merchant.ownerName,
+      account.username,
+    );
+    if (operator.id === input.actingEmployeeId)
+      throw new ForbiddenException('A different supervisor must approve this action.');
+    return operator.id;
+  }
+
   async logout(
     request: Request,
     response: Response,
@@ -288,6 +399,21 @@ export class AuthService {
       await this.prisma.authSession.deleteMany({ where: { tokenHash: tokenHash(token) } });
     }
     response.clearCookie(name, this.cookieOptions());
+  }
+
+  async logoutPos(request: Request, response: Response): Promise<void> {
+    const token = readCookie(request, POS_COOKIE);
+    const session = token
+      ? await this.prisma.authSession.findUnique({ where: { tokenHash: tokenHash(token) } })
+      : null;
+    const operator = session?.subjectKind === 'POS'
+      ? await this.prisma.posEmployee.findUnique({
+          where: { id: session.subjectId },
+          select: { ownerAccountId: true },
+        })
+      : null;
+    await this.logout(request, response, 'POS');
+    if (operator?.ownerAccountId) await this.logout(request, response, 'OWNER');
   }
 
   private async startSession(

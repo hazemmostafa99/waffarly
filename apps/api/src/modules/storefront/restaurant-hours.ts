@@ -1,11 +1,20 @@
 import type { RestaurantSettingsInput, RestaurantOperatingState } from '@waffarly/contracts';
+
+/**
+ * Where an order is being placed. Marketplace publication only controls listing
+ * on Waffarly; the restaurant's own storefront takes orders while it is open.
+ */
+export type RestaurantOrderChannel = 'marketplace' | 'storefront';
+
 export function restaurantOperatingState(
   settings: Pick<
     RestaurantSettingsInput,
     'timezone' | 'openingHours' | 'scheduleExceptions' | 'alwaysOpen' | 'ordersPaused' | 'published'
   >,
   now = new Date(),
+  channel: RestaurantOrderChannel = 'marketplace',
 ): RestaurantOperatingState {
+  const listed = channel === 'storefront' || settings.published;
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: settings.timezone,
     year: 'numeric',
@@ -42,8 +51,8 @@ export function restaurantOperatingState(
   const isOpen = (settings.alwaysOpen && !exception) || inPeriod || spillover;
   return {
     isOpen,
-    acceptingOrders: settings.published && isOpen && !settings.ordersPaused,
-    reason: !settings.published
+    acceptingOrders: listed && isOpen && !settings.ordersPaused,
+    reason: !listed
       ? 'unpublished'
       : settings.ordersPaused
         ? 'paused'

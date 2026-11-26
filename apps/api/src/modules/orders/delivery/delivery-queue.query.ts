@@ -17,6 +17,7 @@ import { readDeliveryBalances } from '../../shifts/index.js';
 import { posDeliveryListSchema } from './pos-delivery.schemas.js';
 
 import { assertDeliveryBranchAccess } from './delivery-access.rules.js';
+import { deliveryDeskOrderSources } from './delivery-order-sources.rules.js';
 
 export async function listDeliveryQueue(
   db: PrismaService,
@@ -56,7 +57,8 @@ export async function listReadyDeliveries(
   const where: Prisma.StorefrontOrderWhereInput = {
     merchantId: employee.merchantId,
     branchId: query.branchId,
-    source: 'pos',
+    // Website deliveries wait here too; their first dispatch links them to a cashier shift.
+    source: { in: [...deliveryDeskOrderSources] },
     fulfillmentType: 'delivery',
     status: 'ready',
     delivery: { is: null },

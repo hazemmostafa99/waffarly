@@ -503,8 +503,10 @@ function EntityPickerMenu({
             window.innerWidth - width - 12,
           ),
         ),
-        top: above ? undefined : bounds.bottom + 6,
-        bottom: above ? window.innerHeight - bounds.top + 6 : undefined,
+        // Set the unused edge to 'auto': the stylesheet's default `top` would otherwise
+        // combine with `bottom` and squeeze an upward menu to zero height.
+        top: above ? 'auto' : bounds.bottom + 6,
+        bottom: above ? window.innerHeight - bounds.top + 6 : 'auto',
         maxHeight: Math.max(120, above ? bounds.top - 18 : below),
         overflowY: 'auto',
         zIndex: 100,

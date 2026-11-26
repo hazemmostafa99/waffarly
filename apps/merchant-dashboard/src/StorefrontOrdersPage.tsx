@@ -27,10 +27,11 @@ const statusColors: Record<StorefrontOrderStatus, string> = {
 };
 
 export function StorefrontOrdersPage() {
-  const { t, locale, formatNumber, formatDigits } = useLocale();
+  const { t, locale, formatNumber, formatDigits, errorText } = useLocale();
   const language = locale === 'ar' ? 'ar' : 'en';
   const copy = (message: string, values?: Record<string, unknown>) =>
     ordersCopy(message, locale, t, values);
+  const text = (en: string, ar: string) => (locale === 'ar' ? ar : en);
   const { search: globalSearch } = useOutletContext<{ search: string }>();
   const [searchParams] = useSearchParams();
   const linkedOrderId = searchParams.get('orderId');
@@ -572,6 +573,20 @@ export function StorefrontOrdersPage() {
                                           </div>
                                         ))}
                                       </div>
+                                      <OrderDetailSummary
+                                        order={detail}
+                                        money={money}
+                                        text={text}
+                                      />
+                                      <OwnerOrderActions
+                                        order={detail}
+                                        text={text}
+                                        errorText={errorText}
+                                        onChanged={(updated) => {
+                                          setDetails((current) => ({ ...current, [updated.id]: updated }));
+                                          setRefreshKey((value) => value + 1);
+                                        }}
+                                      />
                                     </>
                                   ) : (
                                     <p role="status">
@@ -713,5 +728,160 @@ export function StorefrontOrdersPage() {
         </aside>
       </div>
     </section>
+  );
+}
+
+/** Branch, subtotal, delivery fee and total for an expanded order. */
+function OrderDetailSummary({
+  order,
+  money,
+  text,
+}: {
+  order: StorefrontOrderSummary;
+  money: (value: string) => string;
+  text: (en: string, ar: string) => string;
+}) {
+  const branchName = order.inventoryLifecycle?.branchName;
+  const fee = order.deliveryFee && Number(order.deliveryFee) > 0 ? order.deliveryFee : null;
+  return (
+    <dl className="orders-expanded-summary">
+      {branchName && (
+        <div>
+          <dt>{text('Branch', 'الفرع')}</dt>
+          <dd>{branchName}</dd>
+        </div>
+      )}
+      {order.subtotal && (
+        <div>
+          <dt>{text('Items', 'المنتجات')}</dt>
+          <dd dir="ltr">{money(order.subtotal)}</dd>
+        </div>
+      )}
+      {fee && (
+        <div>
+          <dt>{text('Delivery fee', 'رسوم التوصيل')}</dt>
+          <dd dir="ltr">{money(fee)}</dd>
+        </div>
+      )}
+      <div>
+        <dt>{text('Total', 'الإجمالي')}</dt>
+        <dd dir="ltr">
+          <strong>{money(order.total)}</strong>
+        </dd>
+      </div>
+    </dl>
+  );
+}
+
+/**
+ * Lets the owner accept, start preparing or cancel a website order from the
+ * dashboard. The API still requires an open cashier shift at the order's branch.
+ */
+function OwnerOrderActions({
+  order,
+  text,
+  errorText,
+  onChanged,
+}: {
+  order: StorefrontOrderSummary;
+  text: (en: string, ar: string) => string;
+  errorText: (message: string) => string;
+  onChanged: (order: StorefrontOrderSummary) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+  const [reason, setReason] = useState('');
+  const website = order.source === 'storefront' || order.source === 'waffarly';
+  const branchId = order.inventoryLifecycle?.branchId ?? null;
+  // Cancellation is allowed only before preparation starts, so preparing orders show no actions.
+  if (!website || !['pending', 'accepted'].includes(order.status)) return null;
+
+  async function run(action: 'accept' | 'start-preparation' | 'cancel' | 'reject', body: object) {
+    setBusy(true);
+    setError('');
+    try {
+      // Rejecting a pending order is a status change; the other actions are lifecycle commands.
+      const updated = await apiRequestSingle<StorefrontOrderSummary>(
+        action === 'reject' ? `/owner/orders/${order.id}/status` : `/owner/orders/${order.id}/${action}`,
+        action === 'reject'
+          ? { method: 'PATCH', body: JSON.stringify({ status: 'rejected' }) }
+          : { method: 'POST', body: JSON.stringify({ requestId: crypto.randomUUID(), ...body }) },
+      );
+      onChanged(updated);
+    } catch (cause) {
+      setError(cause instanceof Error ? errorText(cause.message) : text('Action failed.', 'تعذر تنفيذ الإجراء.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function cancel() {
+    if (order.status === 'pending') {
+      void run('reject', {});
+      return;
+    }
+    const trimmed = reason.trim();
+    if (!trimmed) return;
+    // Pending orders were rejected above; an accepted order already deducted stock, so restore it.
+    void run('cancel', { reason: trimmed, restoreStock: true });
+  }
+
+  return (
+    <div className="orders-expanded-actions">
+      {order.status === 'pending' && (
+        <button
+          type="button"
+          className="products-button"
+          disabled={busy || !branchId}
+          onClick={() => void run('accept', { branchId })}
+        >
+          {text('Accept and deduct stock', 'قبول الطلب وخصم المخزون')}
+        </button>
+      )}
+      {order.status === 'accepted' && (
+        <button
+          type="button"
+          className="products-button"
+          disabled={busy}
+          onClick={() => void run('start-preparation', {})}
+        >
+          {text('Start preparation', 'بدء التحضير')}
+        </button>
+      )}
+      {/* Only own-storefront orders can be rejected while pending. */}
+      {order.status === 'pending' && order.source !== 'storefront' ? null : !cancelling ? (
+        <button type="button" className="products-button" disabled={busy} onClick={() => setCancelling(true)}>
+          {order.status === 'pending' ? text('Reject order', 'رفض الطلب') : text('Cancel order', 'إلغاء الطلب')}
+        </button>
+      ) : (
+        <>
+          {order.status !== 'pending' && <input
+            className="products-input"
+            aria-label={text('Cancellation reason', 'سبب الإلغاء')}
+            placeholder={text('Cancellation reason', 'سبب الإلغاء')}
+            maxLength={500}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+          />}
+          <button
+            type="button"
+            className="products-button"
+            disabled={busy || (order.status !== 'pending' && !reason.trim())}
+            onClick={cancel}
+          >
+            {order.status === 'pending' ? text('Confirm rejection', 'تأكيد الرفض') : text('Confirm', 'تأكيد')}
+          </button>
+          <button type="button" className="products-button" disabled={busy} onClick={() => setCancelling(false)}>
+            {text('Back', 'رجوع')}
+          </button>
+        </>
+      )}
+      {error && (
+        <p className="products-error" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

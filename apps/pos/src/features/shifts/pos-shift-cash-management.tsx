@@ -5,7 +5,7 @@ import type {
   PosShiftSummary,
   RecordPosShiftCashMovementRequest,
 } from '@waffarly/contracts';
-import { Input, useLocale } from '@waffarly/ui';
+import { cn, Input, useLocale } from '@waffarly/ui';
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -13,7 +13,7 @@ import {
   RefreshCw,
   Wallet,
 } from 'lucide-react';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { PosCashCustody, PosSafeSelect } from './pos-cash-custody.js';
 import { isCorrectableShiftCloseRejection } from './shift-close-recovery.js';
@@ -29,6 +29,35 @@ import {
   previewPosShiftClose,
   recordPosShiftCashMovement,
 } from './pos-shifts.api.js';
+
+type ShiftTab = 'close' | 'cash' | 'custody';
+
+const shiftTabs: { value: ShiftTab; label: string }[] = [
+  { value: 'close', label: 'Close register shift' },
+  { value: 'cash', label: 'Register cash movements' },
+  { value: 'custody', label: 'Cash custody' },
+];
+
+type MovementKind = 'cash_in' | 'cash_out' | 'cash_drop';
+
+/** Each movement kind with the short hint shown under the type buttons. */
+const movementKinds: { kind: MovementKind; label: string; hint: string }[] = [
+  {
+    kind: 'cash_in',
+    label: 'Cash added',
+    hint: 'Money you put into the drawer, like extra change.',
+  },
+  {
+    kind: 'cash_out',
+    label: 'Cash removed',
+    hint: 'Money you take out of the drawer to pay for something, like an expense.',
+  },
+  {
+    kind: 'cash_drop',
+    label: 'Cash dropped to safe',
+    hint: 'Extra cash you move from the drawer to the safe during the shift.',
+  },
+];
 
 interface PosShiftCashManagementProps {
   employee: PosEmployeeSession;
@@ -67,7 +96,8 @@ export function PosShiftCashManagement({
   const canManageCash = employee.permissions.includes('manage_cash_movements');
   const canApproveClose = employee.permissions.includes('approve_shift_close');
   const canSell = employee.permissions.includes('sell');
-  const [kind, setKind] = useState<'cash_in' | 'cash_out' | 'cash_drop'>('cash_in');
+  const [kind, setKind] = useState<MovementKind>('cash_in');
+  const selectedKind = pendingMovement?.request.kind ?? kind;
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
   const [dropReference, setDropReference] = useState('');
@@ -80,6 +110,8 @@ export function PosShiftCashManagement({
   const [supervisorUsername, setSupervisorUsername] = useState('');
   const [supervisorPassword, setSupervisorPassword] = useState('');
   const [requiresCloseApproval, setRequiresCloseApproval] = useState(false);
+  // One job at a time: closing, moving cash in or out, or handing custody to the safe.
+  const [activeTab, setActiveTab] = useState<ShiftTab>('close');
   // errorText localizes these keys once when rendering; do not translate them on assignment.
   const [formError, setFormError] = useState('');
 
@@ -109,6 +141,8 @@ export function PosShiftCashManagement({
     }) => recordPosShiftCashMovement(command.shiftId, command.request, command.approval),
     onSuccess: async (result, variables) => {
       removePendingShiftCashMovement(employee.merchantId, employee.id, variables.request.requestId);
+      // Approval is per action; a leftover username would block the next close silently.
+      setSupervisorUsername('');
       setSupervisorPassword('');
       setAmount('');
       setReason('');
@@ -134,6 +168,7 @@ export function PosShiftCashManagement({
     }) => closePosShift(command.shiftId, command.request, command.approval),
     onSuccess: async (report, variables) => {
       removePendingShiftClose(employee.merchantId, employee.id, variables.request.requestId);
+      setSupervisorUsername('');
       setSupervisorPassword('');
       setCountedCash('');
       setCloseReason('');
@@ -172,6 +207,8 @@ export function PosShiftCashManagement({
 
   useEffect(() => {
     if (pendingMovement) {
+      // A saved movement must be retried before anything else, so show its form.
+      setActiveTab('cash');
       setKind(pendingMovement.request.kind);
       setAmount(pendingMovement.request.amount);
       setReason(pendingMovement.request.reason);
@@ -234,10 +271,6 @@ export function PosShiftCashManagement({
       setFormError(locale === 'ar' ? 'اختر الخزنة المستلمة.' : 'Select a receiving safe.');
       return;
     }
-    if (!saved && kind === 'cash_drop' && !dropReference.trim()) {
-      setFormError('Enter a safe bag / drop reference.');
-      return;
-    }
     if (!saved && (!/^(?=.*[1-9])\d{1,10}(?:\.\d{1,2})?$/.test(amount) || !reason.trim())) {
       setFormError('Enter a positive amount and a reason for this cash movement.');
       return;
@@ -251,7 +284,10 @@ export function PosShiftCashManagement({
         kind,
         amount,
         reason: reason.trim(),
-        ...(kind === 'cash_drop' ? { dropReference: dropReference.trim(), safeId } : {}),
+        // The bag or receipt number is optional; the server names the transfer when blank.
+        ...(kind === 'cash_drop'
+          ? { safeId, ...(dropReference.trim() ? { dropReference: dropReference.trim() } : {}) }
+          : {}),
       },
     );
   }
@@ -393,10 +429,17 @@ export function PosShiftCashManagement({
     (closePreviewMutation.error instanceof Error ? closePreviewMutation.error.message : '') ||
     (closeMutation.error instanceof Error ? closeMutation.error.message : '');
 
+  // The alert sits above long forms; bring it into view so a rejected close is never silent.
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
+
   return (
     <div className="grid gap-3" aria-live="polite">
       {error && (
         <p
+          ref={errorRef}
           className="m-0 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
           role="alert"
         >
@@ -425,6 +468,7 @@ export function PosShiftCashManagement({
               <PosButton
                 type="button"
                 variant="outline"
+                size="sm"
                 onClick={() => void reconciliation.refetch()}
                 disabled={reconciliation.isFetching}
               >
@@ -435,102 +479,118 @@ export function PosShiftCashManagement({
             <>
               {reconciliation.data.unsettledCheckCount > 0 && (
                 <div
-                  className="grid gap-1 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm"
                   role="status"
                 >
-                  <strong>
-                    {t('Shift close is blocked: {{count}} check(s) still need settlement.', {
-                      count: reconciliation.data.unsettledCheckCount,
-                    })}
-                  </strong>
-                  <span>
-                    {t('Remaining balance: {{amount}}', {
-                      amount: formatMoney(reconciliation.data.unsettledBalance),
-                    })}
-                  </span>
+                  <div className="grid gap-0.5">
+                    <strong className="text-warning">
+                      {t('Shift close is blocked: {{count}} check(s) still need settlement.', {
+                        count: reconciliation.data.unsettledCheckCount,
+                      })}
+                    </strong>
+                    <span className="text-xs text-foreground">
+                      {t('Remaining balance: {{amount}}', {
+                        amount: formatMoney(reconciliation.data.unsettledBalance),
+                      })}
+                    </span>
+                  </div>
+                  <Link
+                    className="rounded-md border border-warning/40 px-2.5 py-1.5 text-xs font-medium text-warning hover:bg-warning/10"
+                    to="/orders"
+                  >
+                    {t('Open orders')}
+                  </Link>
                 </div>
               )}
               {(reconciliation.data.pendingDeliveryCount ?? 0) > 0 && (
-                <div className="rounded-lg border border-warning/40 bg-warning/10 p-3">
-                  <strong>
-                    {t('Pending deliveries')}: {reconciliation.data.pendingDeliveryCount}
-                  </strong>
-                  <p>
-                    {t('Customer balance and courier cash')}:{' '}
-                    {formatMoney(reconciliation.data.pendingDeliveryBalance ?? '0.00')}
-                  </p>
-                  <Link className="underline" to="/deliveries">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm">
+                  <div className="grid gap-0.5">
+                    <strong className="text-warning">
+                      {t('Pending deliveries')}: {reconciliation.data.pendingDeliveryCount} ·{' '}
+                      {formatMoney(reconciliation.data.pendingDeliveryBalance ?? '0.00')}
+                    </strong>
+                    <span className="text-xs text-foreground">
+                      {t(
+                        'These amounts are not drawer cash. You can close after confirming, and a later shift records cash when it is received.',
+                      )}
+                    </span>
+                  </div>
+                  <Link
+                    className="rounded-md border border-warning/40 px-2.5 py-1.5 text-xs font-medium text-warning hover:bg-warning/10"
+                    to="/deliveries"
+                  >
                     {t('Review delivery follow-up')}
                   </Link>
-                  <p className="text-xs">
-                    {t(
-                      'These amounts are not drawer cash. You can close after confirming, and a later shift records cash when it is received.',
-                    )}
-                  </p>
                 </div>
               )}
-              {reconciliation.data.manualMovements.length > 0 && (
-                <details className="rounded-lg border border-border bg-background/60 p-3">
-                  <summary className="cursor-pointer text-sm font-semibold">
-                    {t('Manual cash movements')} ({reconciliation.data.manualMovements.length})
-                  </summary>
-                  <ul className="m-0 mt-3 grid list-none gap-2 p-0 text-xs">
-                    {reconciliation.data.manualMovements.map((movement) => (
-                      <li
-                        key={movement.id}
-                        className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-2"
-                      >
-                        <span>
-                          {movement.kind === 'cash_in'
-                            ? t('Cash added')
-                            : movement.kind === 'cash_drop'
-                              ? t('Cash dropped to safe')
-                              : t('Cash removed')}{' '}
-                          · {movement.reason}
-                          {movement.dropReference
-                            ? ` · ${t('Drop reference')}: ${movement.dropReference}`
-                            : ''}{' '}
-                          · {movement.operatorName}
-                        </span>
-                        <strong className="tabular-nums">
-                          {movement.kind === 'cash_in' ? '+' : '−'}
-                          {formatMoney(movement.amount)}
-                        </strong>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
 
-              {canSell && (
+              <div
+                role="tablist"
+                aria-label={t('Register shift')}
+                className={cn(
+                  'grid gap-1 rounded-lg bg-secondary/50 p-1',
+                  canSell ? 'grid-cols-3' : 'grid-cols-2',
+                )}
+              >
+                {shiftTabs
+                  .filter((tab) => tab.value !== 'cash' || canSell)
+                  .map((tab) => (
+                    <button
+                      key={tab.value}
+                      type="button"
+                      role="tab"
+                      aria-selected={activeTab === tab.value}
+                      disabled={Boolean(pendingMovement) && tab.value !== 'cash'}
+                      onClick={() => setActiveTab(tab.value)}
+                      className={cn(
+                        'min-h-9 rounded-md px-2 text-xs font-semibold transition-colors disabled:opacity-50 sm:text-sm',
+                        activeTab === tab.value
+                          ? 'bg-card text-primary shadow-sm ring-1 ring-border'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      {t(tab.label)}
+                    </button>
+                  ))}
+              </div>
+
+              {activeTab === 'cash' && canSell && (
                 <form
                   className="grid gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm sm:p-4"
+                  noValidate
                   onSubmit={handleMovement}
                 >
-                  <div>
-                    <h3 className="m-0 text-sm font-semibold">{t('Register cash movements')}</h3>
-                    <p className="m-0 mt-1 text-xs text-muted-foreground">
-                      {t(
-                        'Record an addition, paid-out expense, or secured cash drop with a reason. Cashiers need supervisor approval.',
-                      )}
-                    </p>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-[12rem_minmax(9rem,1fr)_minmax(12rem,2fr)]">
-                    <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
+                  <fieldset className="m-0 grid gap-1.5 border-0 p-0">
+                    <legend className="mb-1.5 text-xs font-medium text-muted-foreground">
                       {t('Movement type')}
-                      <select
-                        className="min-h-11 rounded-md border border-input bg-background px-3 text-sm text-foreground"
-                        value={pendingMovement?.request.kind ?? kind}
-                        disabled={Boolean(pendingMovement) || movementMutation.isPending}
-                        onChange={(event) =>
-                          setKind(event.target.value as 'cash_in' | 'cash_out' | 'cash_drop')
-                        }
-                      >
-                        <option value="cash_in">{t('Cash added')}</option>
-                        <option value="cash_out">{t('Cash removed')}</option>
-                        <option value="cash_drop">{t('Cash dropped to safe')}</option>
-                      </select>
-                    </label>
+                    </legend>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {movementKinds.map((option) => {
+                        const selected = selectedKind === option.kind;
+                        return (
+                          <button
+                            key={option.kind}
+                            type="button"
+                            aria-pressed={selected}
+                            disabled={Boolean(pendingMovement) || movementMutation.isPending}
+                            onClick={() => setKind(option.kind)}
+                            className={cn(
+                              'min-h-10 rounded-md border px-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed',
+                              selected
+                                ? 'border-primary bg-primary/10 text-foreground'
+                                : 'border-border text-muted-foreground hover:bg-secondary',
+                            )}
+                          >
+                            {t(option.label)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="m-0 text-xs text-muted-foreground">
+                      {t(movementKinds.find((option) => option.kind === selectedKind)!.hint)}
+                    </p>
+                  </fieldset>
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
                       {t('Amount (EGP)')}
                       <Input
@@ -540,7 +600,7 @@ export function PosShiftCashManagement({
                         value={pendingMovement?.request.amount ?? amount}
                         disabled={Boolean(pendingMovement) || movementMutation.isPending}
                         onChange={(event) => setAmount(event.target.value)}
-                        className="min-h-11 text-sm tabular-nums"
+                        className="min-h-10 text-sm tabular-nums"
                       />
                     </label>
                     <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
@@ -551,52 +611,48 @@ export function PosShiftCashManagement({
                         value={pendingMovement?.request.reason ?? reason}
                         disabled={Boolean(pendingMovement) || movementMutation.isPending}
                         onChange={(event) => setReason(event.target.value)}
-                        className="min-h-11 text-sm"
+                        className="min-h-10 text-sm"
                       />
                     </label>
-                    {(kind === 'cash_drop' || pendingMovement?.request.kind === 'cash_drop') && (
-                      <div className="sm:col-span-3">
-                        <PosSafeSelect
-                          key={branchId}
-                          employee={employee}
-                          branchId={branchId}
-                          value={pendingMovement?.request.safeId ?? safeId}
-                          onChange={setSafeId}
-                          disabled={Boolean(pendingMovement) || movementMutation.isPending}
-                        />
-                      </div>
+                    {selectedKind === 'cash_drop' && (
+                      <PosSafeSelect
+                        key={branchId}
+                        employee={employee}
+                        branchId={branchId}
+                        value={pendingMovement?.request.safeId ?? safeId}
+                        onChange={setSafeId}
+                        disabled={Boolean(pendingMovement) || movementMutation.isPending}
+                      />
                     )}
-                    {(kind === 'cash_drop' || pendingMovement?.request.kind === 'cash_drop') && (
-                      <label className="grid gap-1.5 text-xs font-medium text-muted-foreground sm:col-span-3">
+                    {selectedKind === 'cash_drop' && (
+                      <label className="grid content-start gap-1.5 text-xs font-medium text-muted-foreground">
                         {t('Safe bag / drop reference')}
                         <Input
-                          required
                           maxLength={80}
+                          placeholder={t('Optional')}
                           value={pendingMovement?.request.dropReference ?? dropReference}
                           disabled={Boolean(pendingMovement) || movementMutation.isPending}
                           onChange={(event) => setDropReference(event.target.value)}
-                          className="min-h-11 text-sm"
+                          className="min-h-10 text-sm"
                         />
                       </label>
                     )}
                   </div>
                   {!canManageCash && (
-                    <SupervisorFields
-                      username={supervisorUsername}
-                      password={supervisorPassword}
-                      setUsername={setSupervisorUsername}
-                      setPassword={setSupervisorPassword}
-                    />
+                    <SupervisorApproval note={t('Cashiers need supervisor approval for this.')}>
+                      <SupervisorFields
+                        username={supervisorUsername}
+                        password={supervisorPassword}
+                        setUsername={setSupervisorUsername}
+                        setPassword={setSupervisorPassword}
+                      />
+                    </SupervisorApproval>
                   )}
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-                    <p className="m-0 text-xs text-muted-foreground">
-                      {t(
-                        'Supervisor credentials are checked by the server and never saved on this device.',
-                      )}
-                    </p>
+                  <div className="flex justify-end border-t border-border pt-3">
                     <PosButton
                       type="submit"
-                      variant="outline"
+                      variant="solid"
+                      className="w-full sm:w-auto"
                       disabled={
                         !online ||
                         movementMutation.isPending ||
@@ -607,7 +663,7 @@ export function PosShiftCashManagement({
                     >
                       {pendingMovement ? (
                         <RefreshCw size={15} aria-hidden="true" />
-                      ) : kind === 'cash_in' ? (
+                      ) : selectedKind === 'cash_in' ? (
                         <ArrowDownToLine size={15} aria-hidden="true" />
                       ) : (
                         <ArrowUpFromLine size={15} aria-hidden="true" />
@@ -619,118 +675,151 @@ export function PosShiftCashManagement({
                           : t('Record movement')}
                     </PosButton>
                   </div>
+                  {reconciliation.data.manualMovements.length > 0 && (
+                    <details className="rounded-lg border border-border bg-background/60 p-3">
+                      <summary className="cursor-pointer text-sm font-semibold">
+                        {t('Manual cash movements')} ({reconciliation.data.manualMovements.length})
+                      </summary>
+                      <ul className="m-0 mt-3 grid list-none gap-2 p-0 text-xs">
+                        {reconciliation.data.manualMovements.map((movement) => (
+                          <li
+                            key={movement.id}
+                            className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-2"
+                          >
+                            <span>
+                              {movement.kind === 'cash_in'
+                                ? t('Cash added')
+                                : movement.kind === 'cash_drop'
+                                  ? t('Cash dropped to safe')
+                                  : t('Cash removed')}{' '}
+                              · {movement.reason}
+                              {movement.dropReference
+                                ? ` · ${t('Drop reference')}: ${movement.dropReference}`
+                                : ''}{' '}
+                              · {movement.operatorName}
+                            </span>
+                            <strong className="tabular-nums">
+                              {movement.kind === 'cash_in' ? '+' : '−'}
+                              {formatMoney(movement.amount)}
+                            </strong>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                 </form>
               )}
 
-              <form
-                className="grid gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm sm:p-4"
-                onSubmit={handleClose}
-              >
-                <div>
-                  <h3 className="m-0 text-sm font-semibold">{t('Close register shift')}</h3>
-                  <p className="m-0 mt-1 text-xs text-muted-foreground">
-                    {t(
-                      'Ordinary unpaid checks block closing. Pending deliveries require cashier confirmation.',
-                    )}
+              {activeTab === 'close' && (
+                <form
+                  className="grid gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm sm:p-4"
+                  noValidate
+                  onSubmit={handleClose}
+                >
+                  <p id="pos-close-count-hint" className="m-0 text-xs text-muted-foreground">
+                    {t('Count the cash physically present. Expected cash appears after closing.')}
                   </p>
-                </div>
-                <p id="pos-close-count-hint" className="m-0 text-xs text-muted-foreground">
-                  {t('Count the cash physically present. Expected cash appears after closing.')}
-                </p>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
-                    {t('Counted cash (EGP)')}
-                    <Input
-                      aria-describedby="pos-close-count-hint"
-                      type="text"
-                      inputMode="decimal"
-                      required
-                      value={pendingClose?.request.countedCash ?? countedCash}
-                      disabled={
-                        Boolean(pendingClose) ||
-                        closePreviewMutation.isPending ||
-                        closeMutation.isPending
-                      }
-                      onChange={(event) => {
-                        setCountedCash(event.target.value);
-                        setRequiresCloseApproval(false);
-                        setFormError('');
-                      }}
-                      className="min-h-11 text-sm font-semibold tabular-nums"
-                    />
-                  </label>
-                  <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
-                    {t('Variance reason')}
-                    <Input
-                      maxLength={500}
-                      value={pendingClose?.request.reason ?? closeReason}
-                      disabled={
-                        Boolean(pendingClose) ||
-                        closePreviewMutation.isPending ||
-                        closeMutation.isPending
-                      }
-                      onChange={(event) => {
-                        setCloseReason(event.target.value);
-                        setFormError('');
-                      }}
-                      className="min-h-11 text-sm"
-                      placeholder={t('Explain a cash difference if the count is short or over')}
-                    />
-                  </label>
-                </div>
-                {!canApproveClose &&
-                  (requiresCloseApproval ||
-                    (pendingClose &&
-                      (!pendingClose.request.confirmPendingDeliveries ||
-                        Boolean(pendingClose.request.reason)))) && (
-                  <div className="grid gap-3 rounded-lg border border-warning/30 bg-warning/5 p-3 sm:grid-cols-2">
-                    <p className="m-0 text-xs leading-relaxed text-muted-foreground sm:col-span-2">
-                      {t('A cash variance needs approval from a different supervisor.')}
-                    </p>
-                    <SupervisorFields
-                      username={supervisorUsername}
-                      password={supervisorPassword}
-                      setUsername={setSupervisorUsername}
-                      setPassword={setSupervisorPassword}
-                    />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
+                      {t('Counted cash (EGP)')}
+                      <Input
+                        aria-describedby="pos-close-count-hint"
+                        type="text"
+                        inputMode="decimal"
+                        required
+                        value={pendingClose?.request.countedCash ?? countedCash}
+                        disabled={
+                          Boolean(pendingClose) ||
+                          closePreviewMutation.isPending ||
+                          closeMutation.isPending
+                        }
+                        onChange={(event) => {
+                          setCountedCash(event.target.value);
+                          setRequiresCloseApproval(false);
+                          setFormError('');
+                        }}
+                        className="min-h-10 text-sm font-semibold tabular-nums"
+                      />
+                    </label>
+                    <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
+                      {t('Variance reason')}
+                      <Input
+                        maxLength={500}
+                        value={pendingClose?.request.reason ?? closeReason}
+                        disabled={
+                          Boolean(pendingClose) ||
+                          closePreviewMutation.isPending ||
+                          closeMutation.isPending
+                        }
+                        onChange={(event) => {
+                          setCloseReason(event.target.value);
+                          setFormError('');
+                        }}
+                        className="min-h-10 text-sm"
+                        placeholder={t('Explain a cash difference if the count is short or over')}
+                      />
+                    </label>
                   </div>
-                )}
-                {pendingClose && (
-                  <p
-                    className="m-0 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning"
-                    role="status"
-                  >
-                    {t(
-                      'This close request is saved. Retry the exact same count; re-enter supervisor credentials if the count has a variance.',
+                  {!canApproveClose &&
+                    (requiresCloseApproval ||
+                      (pendingClose &&
+                        (!pendingClose.request.confirmPendingDeliveries ||
+                          Boolean(pendingClose.request.reason)))) && (
+                      <SupervisorApproval
+                        note={t('A cash variance needs approval from a different supervisor.')}
+                      >
+                        <SupervisorFields
+                          username={supervisorUsername}
+                          password={supervisorPassword}
+                          setUsername={setSupervisorUsername}
+                          setPassword={setSupervisorPassword}
+                        />
+                      </SupervisorApproval>
                     )}
-                  </p>
-                )}
-                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3">
-                  <span className="text-xs text-muted-foreground">
-                    {t('The close report shows the comparison after the count is accepted.')}
-                  </span>
-                  <PosButton
-                    type="submit"
-                    variant="solid"
-                    disabled={
-                      !online ||
-                      closePreviewMutation.isPending ||
-                      closeMutation.isPending ||
-                      reconciliation.data.unsettledCheckCount > 0 ||
-                      movementMutation.isPending ||
-                      Boolean(pendingMovement)
-                    }
-                  >
-                    {closePreviewMutation.isPending
-                      ? t('Checking count...')
-                      : closeMutation.isPending
-                        ? t('Closing...')
-                        : pendingClose
-                          ? t('Retry shift close')
-                          : t('Close shift and save report')}
-                  </PosButton>
-                </div>
-              </form>
+                  {pendingClose && (
+                    <p
+                      className="m-0 rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning"
+                      role="status"
+                    >
+                      {t(
+                        'This close request is saved. Retry the exact same count; re-enter supervisor credentials if the count has a variance.',
+                      )}
+                    </p>
+                  )}
+                  <div className="flex justify-end border-t border-border pt-3">
+                    <PosButton
+                      type="submit"
+                      variant="solid"
+                      className="w-full sm:w-auto"
+                      disabled={
+                        !online ||
+                        closePreviewMutation.isPending ||
+                        closeMutation.isPending ||
+                        reconciliation.data.unsettledCheckCount > 0 ||
+                        movementMutation.isPending ||
+                        Boolean(pendingMovement)
+                      }
+                    >
+                      {closePreviewMutation.isPending
+                        ? t('Checking count...')
+                        : closeMutation.isPending
+                          ? t('Closing...')
+                          : pendingClose
+                            ? t('Retry shift close')
+                            : t('Close shift and save report')}
+                    </PosButton>
+                  </div>
+                </form>
+              )}
+
+              {activeTab === 'custody' && (
+                <PosCashCustody
+                  key={`${employee.id}:${branchId}:${registerId}`}
+                  employee={employee}
+                  branchId={branchId}
+                  registerId={registerId}
+                />
+              )}
             </>
           ) : null}
         </>
@@ -887,12 +976,15 @@ export function PosShiftCashManagement({
           </PosButton>
         </section>
       )}
-      <PosCashCustody
-        key={`${employee.id}:${branchId}:${registerId}`}
-        employee={employee}
-        branchId={branchId}
-        registerId={registerId}
-      />
+      {/* With an open shift, custody lives in its own tab above. */}
+      {!shift && (
+        <PosCashCustody
+          key={`${employee.id}:${branchId}:${registerId}`}
+          employee={employee}
+          branchId={branchId}
+          registerId={registerId}
+        />
+      )}
     </div>
   );
 
@@ -900,6 +992,26 @@ export function PosShiftCashManagement({
     const numeric = Number(value.replace('−', '-'));
     return formatNumber(numeric, { style: 'currency', currency: 'EGP' });
   }
+}
+
+/** Groups the supervisor credentials under a clear title, with an optional reason line. */
+function SupervisorApproval({ note, children }: { note?: string; children: ReactNode }) {
+  const { t } = useLocale();
+  return (
+    <section
+      aria-label={t('Supervisor approval')}
+      className="grid gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3"
+    >
+      <div className="grid gap-0.5">
+        <strong className="text-xs">{t('Supervisor approval')}</strong>
+        {note && <p className="m-0 text-xs text-muted-foreground">{note}</p>}
+      </div>
+      {children}
+      <p className="m-0 text-[11px] text-muted-foreground">
+        {t('Supervisor credentials are checked by the server and never saved on this device.')}
+      </p>
+    </section>
+  );
 }
 
 function SupervisorFields({
@@ -919,20 +1031,20 @@ function SupervisorFields({
       <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
         {t('Supervisor username')}
         <Input
-          autoComplete="username"
+          autoComplete="off"
           value={username}
           onChange={(event) => setUsername(event.target.value)}
-          className="min-h-11 text-sm"
+          className="min-h-10 text-sm"
         />
       </label>
       <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
         {t('Supervisor password')}
         <Input
           type="password"
-          autoComplete="current-password"
+          autoComplete="new-password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="min-h-11 text-sm"
+          className="min-h-10 text-sm"
         />
       </label>
     </div>

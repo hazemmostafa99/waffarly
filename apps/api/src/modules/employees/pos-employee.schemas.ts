@@ -1,9 +1,10 @@
 /** Checks the details entered when listing, creating or updating staff accounts. */
 import { posUsernameSchema } from '../auth/index.js';
 import { z } from 'zod';
-import { POS_EMPLOYEE_ROLES } from '@waffarly/contracts';
+import { POS_EMPLOYEE_PERMISSIONS, POS_EMPLOYEE_ROLES } from '@waffarly/contracts';
 
 const uuid = z.string().uuid();
+const permissions = z.array(z.enum(POS_EMPLOYEE_PERMISSIONS)).max(POS_EMPLOYEE_PERMISSIONS.length);
 
 export const listPosEmployeesSchema = z
   .object({
@@ -22,6 +23,7 @@ export const createPosEmployeeSchema = z
     displayName: z.string().trim().min(2).max(160),
     password: z.string().min(6).max(200),
     role: z.enum(POS_EMPLOYEE_ROLES).nullable().optional(),
+    permissions: permissions.optional(),
     branchId: uuid,
   })
   .strict();
@@ -32,6 +34,7 @@ export const updatePosEmployeeSchema = z
     displayName: z.string().trim().min(2).max(160),
     active: z.boolean(),
     role: z.enum(POS_EMPLOYEE_ROLES).nullable().optional(),
+    permissions: permissions.optional(),
     branchId: uuid,
     password: z.string().min(6).max(200).optional(),
   })

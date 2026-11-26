@@ -40,6 +40,8 @@ const employee: PosEmployeeSession = {
   role: 'cashier',
   permissions: ['accept_recipe_orders', 'open_register_shift', 'sell', 'start_preparation'],
   branch: { id: branchId, name: 'Main', archivedAt: null },
+  // POS write requests need a browser paired with a register.
+  deviceRegister: { id: registerId, branchId, name: 'Front' },
 };
 
 describe('POS register and shift endpoints', () => {
@@ -227,8 +229,16 @@ describe('POS register and shift endpoints', () => {
 
     employeeAuthorized = true;
     currentEmployee = { ...employee, role: null, permissions: ['accept_recipe_orders'] };
-    await request(app.getHttpServer()).get('/pos/registers').query({ branchId }).expect(403);
-    assert.equal(calls.length, 0);
+    // Any employee may list registers so the browser can be paired; shift work needs the grant.
+    await request(app.getHttpServer()).get('/pos/registers').query({ branchId }).expect(200);
+    await request(app.getHttpServer())
+      .post('/pos/shifts/open')
+      .send({ registerId, requestId, openingFloat: '10.00' })
+      .expect(403);
+    assert.equal(
+      calls.some((call) => call.method === 'openShift'),
+      false,
+    );
   });
 
   it('validates branch/register query boundaries before calling the shifts service', async () => {

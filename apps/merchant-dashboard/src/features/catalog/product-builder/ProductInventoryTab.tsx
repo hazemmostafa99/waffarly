@@ -217,7 +217,7 @@ export function ProductInventoryTab({
   return (
     <div className="builder-fields inventory-smart-setup">
       <div className="builder-section-heading">
-        <span>04</span>
+        <span>03</span>
         <div>
           <h2>{t('Inventory per sale', 'المخزون لكل عملية بيع')}</h2>
           <p>

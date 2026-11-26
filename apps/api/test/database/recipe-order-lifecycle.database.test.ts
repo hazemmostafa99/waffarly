@@ -1,10 +1,6 @@
 import { StorefrontOrderStatusService } from '../../src/modules/orders/fulfillment/storefront-order-status.service.js';
 import { createPosOrderServices } from '../support/pos-order-services.js';
-import {
-  enableTestLegacyAccess,
-  openTestBranchShift,
-  deleteTestMerchantSubscriptions,
-} from '../support/merchant-fixtures.js';
+import { deleteTestMerchantSubscriptions, enableTestLegacyAccess, openTestBranchShift, testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { type Prisma } from '@waffarly/database';
@@ -16,6 +12,7 @@ import { ProductService } from '../../src/modules/catalog/products/product.servi
 import { ProductPricingService } from '../../src/modules/catalog/pricing/product-pricing.service.js';
 import { ProductConsumptionService } from '../../src/modules/catalog/products/product-consumption.service.js';
 import { ModifierGroupService } from '../../src/modules/catalog/modifiers/modifier-group.service.js';
+import { InventoryCostService } from '../../src/modules/inventory/inventory-cost.service.js';
 import { InventoryLedgerService } from '../../src/modules/inventory/inventory-ledger.service.js';
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
 import { InventoryLocationsService } from '../../src/modules/inventory/inventory-locations.service.js';
@@ -59,6 +56,7 @@ async function fixture(tx: Prisma.TransactionClient, scoped: never) {
     data: {
       name: 'M6 fixture',
       storefrontSlug: `recipe-${randomUUID()}`,
+      storefrontHandle: testStorefrontHandle(),
       activity: 'restaurant',
       contactPhone: '01000000000',
       ownerName: 'Test',
@@ -144,6 +142,13 @@ async function fixture(tx: Prisma.TransactionClient, scoped: never) {
         baseDelta: '100',
       },
     ],
+  });
+  // Sales can only be confirmed once every stock item has a current cost.
+  await new InventoryCostService(scoped).setOpeningCost(merchantId, actor, item.id, {
+    requestId: randomUUID(),
+    unitCode: 'g',
+    unitCost: '0.10',
+    reason: 'Fixture opening cost',
   });
   const products = new ProductService(scoped);
   const definition = await new ModifierGroupService(scoped).create(merchantId, {
@@ -343,10 +348,12 @@ it(
                 .stockQuantity,
               0,
             );
+            // Online DIRECT lines save their stock requirement and deduct it at acceptance,
+            // so creating the order leaves the variant stock untouched.
             assert.equal(
               (await tx.productVariant.findUniqueOrThrow({ where: { id: f.directVariantId } }))
                 .stockQuantity,
-              9,
+              10,
             );
             assert.equal(await f.balance(), '100');
             await assert.rejects(
@@ -366,8 +373,12 @@ it(
             const savedRequirements = await tx.storefrontOrderLineStockRequirement.findMany({
               where: { merchantId: f.merchantId, orderLine: { orderId: order.id } },
             });
-            assert.equal(savedRequirements.length, 1);
-            assert.equal(savedRequirements[0]?.quantity.toString(), '26');
+            // The recipe line (2 × (10g + 3g extra)) and the online DIRECT line (1g) both
+            // keep their frozen requirement until acceptance.
+            assert.deepEqual(
+              savedRequirements.map((requirement) => requirement.quantity.toString()).sort(),
+              ['1', '26'],
+            );
             await assert.rejects(
               f.lifecycle.accept(randomUUID(), actor, order.id, {
                 requestId: randomUUID(),
@@ -414,7 +425,8 @@ it(
               f.branch.id,
             );
             assert.equal(accepted.status, 'accepted');
-            assert.equal(await f.balance(), '74');
+            // 100g - 26g recipe - 1g direct line, both consumed at acceptance.
+            assert.equal(await f.balance(), '73');
             assert.equal(accepted.inventoryLifecycle?.warehouseId, f.warehouse.id);
             assert.deepEqual(
               await f.lifecycle.accept(f.merchantId, actor, order.id, accept),
@@ -580,7 +592,7 @@ it(
             const f = await fixture(tx, scoped);
             await tx.posEmployee.update({
               where: { id_merchantId: { id: f.employee.id, merchantId: f.merchantId } },
-              data: { role: 'cashier', permissions: ['sell'] },
+              data: { role: 'cashier', permissions: ['open_register_shift', 'sell'] },
             });
             await tx.merchant.update({
               where: { id: f.merchantId },
@@ -668,7 +680,7 @@ it(
                 branchId: f.branch.id,
                 passwordHash: 'database-test-only',
                 role: 'supervisor',
-                permissions: [],
+                permissions: ['open_register_shift', 'sell', 'approve_discounts', 'approve_voids', 'approve_refunds', 'approve_shift_close', 'manage_cash_movements'],
                 createdBy: actor,
                 updatedBy: actor,
               },
@@ -713,14 +725,30 @@ it(
                 selections: [],
                 quantity: 1,
               },
-              {
-                lineId: legacyLineId,
-                productId: legacy.id,
-                variantId: legacyVariantId,
-                selections: [],
-                quantity: 1,
-              },
             ];
+            // A product without inventory configuration and costs cannot be sold at the POS.
+            const legacyLine = {
+              lineId: legacyLineId,
+              productId: legacy.id,
+              variantId: legacyVariantId,
+              selections: [],
+              quantity: 1,
+            };
+            const legacyQuote = await posOrdersSales.quote(cashier, { items: [legacyLine] });
+            await assert.rejects(
+              posOrdersSales.create(cashier, {
+                requestId: randomUUID(),
+                registerId: register.id,
+                fulfillmentType: 'takeaway',
+                items: [
+                  {
+                    ...legacyLine,
+                    expectedProductRevision: legacyQuote.items[0]!.quote.productRevision,
+                  },
+                ],
+              }),
+              /Configure this product inventory/,
+            );
             const quote = await posOrdersSales.quote(cashier, { items });
             const quoteByLine = new Map(quote.items.map((item) => [item.lineId, item.quote]));
             const payload = {
@@ -841,10 +869,11 @@ it(
               }),
               1,
             );
+            // The refused legacy product was never sold, so its stock is unchanged.
             assert.equal(
               (await tx.productVariant.findUniqueOrThrow({ where: { id: legacyVariantId } }))
                 .stockQuantity,
-              9,
+              10,
             );
             const saved = await tx.storefrontOrder.findFirstOrThrow({
               where: { id: created.id, merchantId: f.merchantId },
@@ -1254,6 +1283,7 @@ it(
         await client.storefrontOrderAction.deleteMany({ where });
         await client.storefrontOrderStockBatch.deleteMany({ where });
         await client.storefrontOrderLineStockRequirement.deleteMany({ where });
+        await client.storefrontOrderLineCostSnapshot.deleteMany({ where });
         await client.storefrontOrder.deleteMany({ where });
         await client.productImage.deleteMany({ where });
         await client.productCategory.deleteMany({ where });
@@ -1270,7 +1300,10 @@ it(
         await client.posShift.deleteMany({ where });
         await client.posRegister.deleteMany({ where });
         await client.posEmployee.deleteMany({ where });
+        await client.posBranchOrderSession.deleteMany({ where });
         await client.branch.deleteMany({ where });
+        await client.stockItemCostCurrent.deleteMany({ where });
+        await client.stockItemCostEvent.deleteMany({ where });
         await client.stockItemUnit.deleteMany({ where });
         await client.stockItem.deleteMany({ where });
         await deleteTestMerchantSubscriptions(client, [merchantId]);
@@ -1295,6 +1328,7 @@ it(
             data: {
               name: `POS employee create ${token}`,
               storefrontSlug: `pos-employee-create-${token}`,
+              storefrontHandle: testStorefrontHandle(),
               activity: 'restaurant',
               contactPhone: '01000000000',
               ownerName: 'POS employee test',
@@ -1343,6 +1377,7 @@ it(
             data: {
               name: `POS employee sessions ${token}`,
               storefrontSlug: `pos-employee-sessions-${token}`,
+              storefrontHandle: testStorefrontHandle(),
               activity: 'restaurant',
               contactPhone: '01000000000',
               ownerName: 'POS session test',

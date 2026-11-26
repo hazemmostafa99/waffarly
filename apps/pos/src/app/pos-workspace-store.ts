@@ -37,6 +37,8 @@ export interface PosOrderDraft {
   customerName?: string;
   customerPhone?: string;
   deliveryAddress?: string;
+  /** Delivery only: fee typed by the cashier, as entered (e.g. "25"). */
+  deliveryFee?: string;
   tableId?: string;
   lines: PosDraftLine[];
 }

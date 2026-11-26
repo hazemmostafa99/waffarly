@@ -1,7 +1,7 @@
 import type { PosEmployeeSession, StorefrontOrderSummary } from '@waffarly/contracts';
 import { useMutation, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { cn, useLocale } from '@waffarly/ui';
-import { ArrowRight, ChevronLeft, ChevronRight, Clock3, RefreshCw } from 'lucide-react';
+import { ArrowRight, Banknote, ChevronLeft, ChevronRight, Clock3, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { PosButton } from './components/pos-button.js';
@@ -10,7 +10,13 @@ import {
   orderActionMessage,
   formatOrderActionError,
 } from './features/orders/order-action-errors.js';
+import {
+  isRegisterPairingError,
+  requirePairedRegister,
+} from './features/registers/register-pairing-prompt.js';
 import { PickupCollection } from './features/payments/pickup-collection.js';
+import { PosCheckoutDialog } from './features/payments/pos-checkout-dialog.js';
+import { posOrderTypeKey } from './features/orders/pos-order-type.js';
 import {
   posWorkspaceScope,
   usePosWorkspaceStore,
@@ -41,6 +47,8 @@ export function POSScreen() {
     () => typeof navigator === 'undefined' || navigator.onLine,
   );
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
+  // A ready cashier order that still owes money is paid here, without leaving the kitchen.
+  const [collectingOrderId, setCollectingOrderId] = useState<string | null>(null);
   const [activePageIndex, setActivePageIndex] = useState(0);
   const isWorkspaceHydrated = hydratedScope === scope;
   const branchId = employee.branch.id;
@@ -132,6 +140,8 @@ export function POSScreen() {
             ? 'sell'
             : 'start_preparation';
     if (!employee.permissions.includes(requiredPermission)) return;
+    // Ask for the register before saving a command that this browser cannot send.
+    if (!requirePairedRegister(employee)) return;
     try {
       // Write the exact idempotent command before sending it. A timeout must reuse this payload.
       savePendingAction(employee.merchantId, employee.id, order.id, pending);
@@ -160,7 +170,9 @@ export function POSScreen() {
       setActionErrors((current) => ({ ...current, [order.id]: message }));
       if (
         cause instanceof ApiError &&
-        ([400, 422].includes(cause.statusCode) || cause.errorCode === 'ORDER_SHIFT_REQUIRED')
+        ([400, 422].includes(cause.statusCode) ||
+          cause.errorCode === 'ORDER_SHIFT_REQUIRED' ||
+          isRegisterPairingError(cause))
       ) {
         try {
           removePendingAction(employee.merchantId, employee.id, order.id);
@@ -169,6 +181,21 @@ export function POSScreen() {
         }
       }
     }
+  }
+
+  /**
+   * Collect and hand over in one step: after the kitchen card's checkout closes, re-read the
+   * queue and confirm handover only if that order is now fully paid. Closing without paying
+   * leaves the order untouched.
+   */
+  async function handOverAfterCollection(orderId: string) {
+    const refreshed = await ordersQuery.refetch();
+    const order = refreshed.data?.pages
+      .flatMap((page) => page.items)
+      .find((item) => item.id === orderId);
+    if (!order || order.status !== 'ready' || order.handoverEligible !== true) return;
+    if (pendingActions[orderId]) return;
+    await performAction(order);
   }
 
   function getStatusClass(status: StorefrontOrderSummary['status']) {
@@ -290,6 +317,12 @@ export function POSScreen() {
               order.status === 'ready' &&
               (Boolean(order.kitchenTicket) || order.fulfillmentType === 'pickup');
             const handoverBlocked = canHandover && order.handoverEligible !== true;
+            // Website pickups have their own collection step above; cashier orders pay directly.
+            const canCollectHere =
+              handoverBlocked &&
+              order.source === 'pos' &&
+              !pending &&
+              employee.permissions.includes('sell');
             const canRetry =
               pending &&
               pending.action !== 'item_ready' &&
@@ -321,7 +354,7 @@ export function POSScreen() {
                           {order.customerName ?? t('Walk-in customer')}
                         </strong>
                         <span className="rounded-md bg-card px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                          {t(order.fulfillmentType)}
+                          {t(posOrderTypeKey(order.fulfillmentType))}
                         </span>
                         {order.source && (
                           <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">
@@ -355,7 +388,7 @@ export function POSScreen() {
                         {order.kitchenTicket && (
                           <span>
                             {t('Station: {{station}}', {
-                              station: order.kitchenTicket.station.name,
+                              station: t(order.kitchenTicket.station.name),
                             })}
                             {' · '}
                             {t(order.kitchenTicket.dispatchMode)}
@@ -541,7 +574,18 @@ export function POSScreen() {
                         : t('All checks are paid. The order is ready for handover.')}
                     </p>
                   )}
-                  {(canAct || canRetry) && (
+                  {canCollectHere ? (
+                    <PosButton
+                      variant="solid"
+                      type="button"
+                      disabled={!isOnline}
+                      onClick={() => setCollectingOrderId(order.id)}
+                      className="min-h-9 w-full justify-center text-xs max-[767px]:min-h-11"
+                    >
+                      <Banknote size={16} aria-hidden="true" />
+                      {t('Collect and hand over')}
+                    </PosButton>
+                  ) : (canAct || canRetry) && (
                     <PosButton
                       variant="solid"
                       type="button"
@@ -638,6 +682,20 @@ export function POSScreen() {
             <ChevronRight aria-hidden="true" size={15} className="rtl:rotate-180" />
           </PosButton>
         </nav>
+      )}
+      {collectingOrderId && (
+        <PosCheckoutDialog
+          merchantId={employee.merchantId}
+          employeeId={employee.id}
+          branchId={branchId}
+          orderId={collectingOrderId}
+          requiresRefundApproval={!employee.permissions.includes('approve_refunds')}
+          onClose={() => {
+            const orderId = collectingOrderId;
+            setCollectingOrderId(null);
+            void handOverAfterCollection(orderId);
+          }}
+        />
       )}
     </section>
   );

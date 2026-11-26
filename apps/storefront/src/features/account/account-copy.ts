@@ -14,6 +14,8 @@ const messages = {
     accountNavigation: 'روابط الحساب',
     guestTitle: 'أهلاً بك',
     guestDescription: 'سجّل الدخول لمتابعة طلباتك في هذا المتجر.',
+    guestOrdersNotice:
+      'دي طلبات عملتها كضيف من المتصفح ده، وتقدر تتابعها لمدة تصل إلى 30 يومًا. سجّل الدخول أو اعمل حساب علشان تتحفظ في حسابك.',
     signedInAs: 'مسجّل الدخول باسم',
     loadingAccount: 'جارٍ تحميل الحساب…',
     signOut: 'تسجيل الخروج',
@@ -86,6 +88,8 @@ const messages = {
     accountNavigation: 'Account links',
     guestTitle: 'Welcome',
     guestDescription: 'Sign in to follow your orders from this store.',
+    guestOrdersNotice:
+      'These are orders you placed as a guest on this browser. You can follow them for up to 30 days. Sign in or create an account to keep them in your account.',
     signedInAs: 'Signed in as',
     loadingAccount: 'Loading your account…',
     signOut: 'Sign out',

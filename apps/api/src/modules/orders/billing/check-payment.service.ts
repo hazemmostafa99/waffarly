@@ -69,7 +69,8 @@ export class CheckPaymentService {
                 { source: 'pos' },
                 {
                   source: { in: ['waffarly', 'storefront'] },
-                  fulfillmentType: 'pickup',
+                  // Website pickups and dispatched website deliveries are collected on a shift.
+                  fulfillmentType: { in: ['pickup', 'delivery'] },
                   posShiftId: { not: null },
                   status: { in: ['ready', 'completed'] },
                 },
@@ -148,7 +149,8 @@ export class CheckPaymentService {
                 { source: 'pos' },
                 {
                   source: { in: ['waffarly', 'storefront'] },
-                  fulfillmentType: 'pickup',
+                  // Website pickups and dispatched website deliveries are collected on a shift.
+                  fulfillmentType: { in: ['pickup', 'delivery'] },
                   posShiftId: { not: null },
                   status: { in: ['ready', 'completed'] },
                 },

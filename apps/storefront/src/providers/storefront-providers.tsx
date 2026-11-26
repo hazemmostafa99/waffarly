@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from '
 import { useStore } from 'zustand';
 import type { StoreApi } from 'zustand/vanilla';
 import { createStorefrontStore, type StorefrontState } from '../features/cart/storefront-store';
+import { followSavedStoreAcrossTabs } from '../lib/follow-saved-store-across-tabs';
 
 const StorefrontStoreContext = createContext<StoreApi<StorefrontState> | null>(null);
 
@@ -22,6 +23,7 @@ export function StorefrontProviders({ slug, children }: { slug: string; children
 
   useEffect(() => {
     void store.persist.rehydrate();
+    return followSavedStoreAcrossTabs(store);
   }, [store]);
 
   return (

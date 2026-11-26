@@ -89,7 +89,7 @@ export class StaffService {
   async posEmployeeOptions(merchantId: string, branchId: string) {
     await this.assertActiveBranch(this.prisma, merchantId, branchId);
     return this.prisma.posEmployee.findMany({
-      where: { merchantId, branchId, active: true, staffMember: null },
+      where: { merchantId, branchId, active: true, staffMember: null, ownerAccountId: null },
       select: { id: true, username: true, displayName: true },
       orderBy: [{ displayName: 'asc' }, { id: 'asc' }],
       take: 100,
@@ -280,6 +280,7 @@ export class StaffService {
         id: posEmployeeId,
         merchantId,
         branchId,
+        ownerAccountId: null,
         ...(!preserveExistingLink ? { active: true } : {}),
         ...(currentStaffId
           ? preserveExistingLink

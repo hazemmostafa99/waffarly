@@ -994,6 +994,24 @@ export function ProductBuilderPage() {
                     onInventorySave={saveInventoryDraft}
                     text={text}
                   />
+                  {/* Add-on stock use is edited per choice group; point merchants to it from here. */}
+                  {inventoryEnabled && inventoryMode === 'RECIPE' && groups.length > 0 && (
+                    <div className="products-notice" role="note">
+                      <p className="m-0">
+                        {text(
+                          'Add-ons such as extra cheese can use stock too. In Options, choose Edit stock next to the add-on.',
+                          'الإضافات زي "جبنة إضافية" ممكن تخصم من المخزون كمان. في خطوة الخيارات اضغط «تعديل المخزون» جنب الإضافة.',
+                        )}
+                      </p>
+                      <button
+                        type="button"
+                        className="products-button"
+                        onClick={() => setActiveTab(1)}
+                      >
+                        {text('Link add-ons to stock', 'اربط الإضافات بالمخزون')}
+                      </button>
+                    </div>
+                  )}
                   {inventoryEnabled && (
                     <ProductCostPreviewPanel
                       productId={productId}

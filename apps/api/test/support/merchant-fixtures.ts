@@ -7,12 +7,18 @@ type MerchantFixtureInput = Pick<Prisma.MerchantCreateInput, 'name' | 'storefron
     Pick<Prisma.MerchantCreateInput, 'activity' | 'contactPhone' | 'ownerName' | 'ownerMobile'>
   >;
 
+/** A unique, valid subdomain for a test merchant, e.g. "t-3f2a...". */
+export function testStorefrontHandle(): string {
+  return `t-${randomUUID().replaceAll('-', '')}`;
+}
+
 export function merchantFixture(input: MerchantFixtureInput): Prisma.MerchantCreateInput {
   return {
     activity: 'restaurant',
     contactPhone: '01000000000',
     ownerName: 'Database test owner',
     ownerMobile: '01100000000',
+    storefrontHandle: testStorefrontHandle(),
     ...input,
   };
 }

@@ -1,3 +1,4 @@
+import { testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { BadRequestException } from '@nestjs/common';
@@ -26,6 +27,7 @@ it(
             data: {
               name: `POS operations report ${token}`,
               storefrontSlug: `pos-operations-report-${token}`,
+              storefrontHandle: testStorefrontHandle(),
               activity: 'restaurant',
               contactPhone: '01000000000',
               ownerName: 'POS operations report test',
@@ -56,7 +58,7 @@ it(
               displayName: 'Operations Report Cashier',
               passwordHash: 'database-test-only',
               role: 'cashier',
-              permissions: ['sell'],
+              permissions: ['open_register_shift', 'sell'],
               createdBy: 'pos-operations-report-test',
               updatedBy: 'pos-operations-report-test',
             },
@@ -69,7 +71,7 @@ it(
               displayName: 'Operations Payment Operator',
               passwordHash: 'database-test-only',
               role: 'supervisor',
-              permissions: ['sell'],
+              permissions: ['open_register_shift', 'sell', 'approve_discounts', 'approve_voids', 'approve_refunds', 'approve_shift_close', 'manage_cash_movements'],
               createdBy: 'pos-operations-report-test',
               updatedBy: 'pos-operations-report-test',
             },

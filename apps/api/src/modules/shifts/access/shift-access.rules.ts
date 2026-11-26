@@ -93,7 +93,7 @@ export function assertCurrentPosRegisterPair(
 }
 
 export function requireShiftAccess(employee: PosEmployeeSession): void {
-  if (!isPosEmployeeRole(employee.role) || !employee.permissions.includes('open_register_shift')) {
+  if (!employee.permissions.includes('open_register_shift')) {
     throw new ForbiddenException('This employee is not authorized to use register shifts.');
   }
 }

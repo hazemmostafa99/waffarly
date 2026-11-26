@@ -2,34 +2,38 @@ import type { PosOrderPaymentStateResponse } from '@waffarly/contracts';
 import { useLocale } from '@waffarly/ui';
 import { PosButton } from '../../components/pos-button.js';
 
+/** Customer, order type and table on one line beside the order number. */
 export function PosCheckoutOrderIdentity({ state }: { state: PosOrderPaymentStateResponse }) {
   const { t } = useLocale();
   const context = state.context;
   if (!context) return null;
   return (
-    <div className="mt-1 space-y-1 text-xs" data-testid="checkout-order-identity">
-      <p className="break-words font-medium text-foreground">
+    <p className="m-0 min-w-0 truncate text-xs" data-testid="checkout-order-identity">
+      <span className="font-semibold text-foreground">
         {context.order.customerName || t('Walk-in customer')}
-      </p>
-      <p className="flex flex-wrap gap-x-2 gap-y-1 text-muted-foreground">
-        <span>
-          {t(
-            context.order.fulfillmentType === 'dine_in'
-              ? 'Dine in'
-              : context.order.fulfillmentType === 'delivery'
-                ? 'Delivery'
-                : 'Takeaway',
-          )}
-        </span>
-        {context.tableCode && (
-          <span>
-            {t('Table')} <bdi>{context.tableCode}</bdi>
-          </span>
+      </span>
+      <span className="text-muted-foreground">
+        {' · '}
+        {t(
+          context.order.fulfillmentType === 'dine_in'
+            ? 'Dine in'
+            : context.order.fulfillmentType === 'delivery'
+              ? 'Delivery'
+              : 'Takeaway',
         )}
-      </p>
-    </div>
+        {context.tableCode && (
+          <>
+            {' · '}
+            {t('Table')} <bdi>{context.tableCode}</bdi>
+          </>
+        )}
+      </span>
+    </p>
   );
 }
+
+/** Up to this many lines stay open; longer orders start collapsed behind their count. */
+const OPEN_ITEM_LINE_LIMIT = 3;
 
 export function PosCheckoutOrderContext({
   state,
@@ -59,60 +63,60 @@ export function PosCheckoutOrderContext({
   const itemCount = lines.reduce((sum, line) => sum + line.quantity, 0);
 
   return (
-    <section
-      className="rounded-xl border border-border bg-card"
-      aria-label={t('Order items')}
-      data-testid="checkout-order-context"
-    >
-      <div className="flex items-center justify-between gap-3 border-b border-border px-3 py-2.5">
-        <h3 className="m-0 text-xs font-semibold">{t('Order items')}</h3>
-        <span className="text-xs text-muted-foreground">{formatNumber(itemCount)}</span>
-      </div>
-      <div className="divide-y divide-border px-3">
-        {lines.map((line) => (
-          <article key={line.id} className="flex items-start justify-between gap-3 py-3">
-            <div className="min-w-0 flex-1">
-              <p className="m-0 break-words text-xs font-medium">{line.productName}</p>
-              {line.variantName && (
-                <p className="mb-0 mt-1 break-words text-xs text-muted-foreground">
-                  {line.variantName}
-                </p>
-              )}
-              {line.selections.map((selection, index) => (
-                <p key={index} className="mb-0 mt-1 break-words text-xs text-muted-foreground">
-                  {selection.groupName}: {selection.optionName}
-                  {(selection.quantity ?? 1) > 1 && (
-                    <>
-                      {' '}
-                      <bdi>×{formatNumber(selection.quantity!)}</bdi>
-                    </>
-                  )}
-                </p>
-              ))}
-              {line.note && (
-                <p className="mb-0 mt-1 break-words text-xs text-muted-foreground">
-                  <span className="font-medium">{t('Item note')}: </span>
-                  {line.note}
-                </p>
-              )}
-            </div>
-            <div className="shrink-0 text-end">
-              <p className="m-0 text-xs text-muted-foreground">
-                <bdi>×{formatNumber(line.quantity)}</bdi>
-              </p>
-              <bdi className="mt-1 block whitespace-nowrap text-xs font-semibold tabular-nums">
+    <section aria-label={t('Order items')} data-testid="checkout-order-context">
+      <details open={lines.length <= OPEN_ITEM_LINE_LIMIT} className="group">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-1 text-xs font-semibold text-muted-foreground">
+          <span>
+            {t('Order items')} ({formatNumber(itemCount)})
+          </span>
+          <span aria-hidden="true" className="transition-transform group-open:rotate-180">
+            ⌄
+          </span>
+        </summary>
+        <div className="divide-y divide-border/70">
+          {lines.map((line) => (
+            <article key={line.id} className="flex items-start gap-2 py-1.5 text-xs">
+              <bdi className="shrink-0 tabular-nums text-muted-foreground">
+                ×{formatNumber(line.quantity)}
+              </bdi>
+              <div className="min-w-0 flex-1">
+                <p className="m-0 break-words font-medium">{line.productName}</p>
+                {line.variantName && (
+                  <p className="m-0 break-words text-muted-foreground">{line.variantName}</p>
+                )}
+                {line.selections.map((selection, index) => (
+                  <p key={index} className="m-0 break-words text-muted-foreground">
+                    {selection.groupName}: {selection.optionName}
+                    {(selection.quantity ?? 1) > 1 && (
+                      <>
+                        {' '}
+                        <bdi>×{formatNumber(selection.quantity!)}</bdi>
+                      </>
+                    )}
+                  </p>
+                ))}
+                {line.note && (
+                  <p className="m-0 break-words text-muted-foreground">
+                    <span className="font-medium">{t('Item note')}: </span>
+                    {line.note}
+                  </p>
+                )}
+              </div>
+              <bdi className="shrink-0 whitespace-nowrap font-semibold tabular-nums">
                 {formatNumber(Number(line.lineTotal), {
                   style: 'currency',
                   currency: state.currency,
                 })}
               </bdi>
-            </div>
-          </article>
-        ))}
-        {lines.length === 0 && (
-          <p className="py-3 text-xs text-muted-foreground">{t('No item details available.')}</p>
-        )}
-      </div>
+            </article>
+          ))}
+          {lines.length === 0 && (
+            <p className="m-0 py-1.5 text-xs text-muted-foreground">
+              {t('No item details available.')}
+            </p>
+          )}
+        </div>
+      </details>
     </section>
   );
 }

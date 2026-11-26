@@ -40,11 +40,27 @@ export class CustomerOrderAccessService {
     return this.session.buildOrderAccessScope(request);
   }
   async list(request: Request, cursor?: string) {
+    await this.adoptGuestOrders(request);
     const result = await listCustomerOrders(this.db, await this.scope(request), cursor);
     return { ...result, signedIn: (await this.account(request)) !== null };
   }
   async detail(request: Request, orderId: string) {
+    await this.adoptGuestOrders(request);
     return getCustomerOrderDetails(this.db, await this.scope(request), orderId);
+  }
+  /**
+   * Moves every unexpired guest order made on this browser into the signed-in account,
+   * so signing in or signing up keeps the customer's earlier orders without a manual step.
+   * It relies on the same browser proof as `claim`; matching contact details is not enough.
+   */
+  private async adoptGuestOrders(request: Request) {
+    const account = await this.account(request);
+    const guest = this.guest(request);
+    if (!account || !guest) return;
+    await this.db.customerOrderAccess.updateMany({
+      where: orderIdentityWhere(guest),
+      data: { accountId: account.id, guestHash: null, guestExpiresAt: null, claimedAt: new Date() },
+    });
   }
   async claim(request: Request, orderId: string) {
     // 1. Only a signed-in customer can add a guest order to their account.

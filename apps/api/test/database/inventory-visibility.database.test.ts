@@ -1,3 +1,4 @@
+import { testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 
@@ -31,6 +32,7 @@ it(
             data: {
               name: `Inventory visibility ${token}`,
               storefrontSlug: `inventory-visibility-${token}`,
+              storefrontHandle: testStorefrontHandle(),
               activity: 'restaurant',
               contactPhone: '01000000000',
               ownerName: 'Inventory visibility test',
@@ -41,6 +43,7 @@ it(
             data: {
               name: `Other inventory visibility ${token}`,
               storefrontSlug: `other-inventory-visibility-${token}`,
+              storefrontHandle: testStorefrontHandle(),
               activity: 'restaurant',
               contactPhone: '01000000000',
               ownerName: 'Other inventory visibility test',

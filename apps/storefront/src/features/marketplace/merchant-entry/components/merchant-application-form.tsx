@@ -3,6 +3,7 @@
 import {
   BUSINESS_ACTIVITY_KEYS,
   BUSINESS_ACTIVITY_LABELS,
+  isStorefrontHandle,
   type BusinessActivityKey,
 } from '@waffarly/contracts';
 import Link from 'next/link';
@@ -15,6 +16,7 @@ import { ApiError } from '@/lib/api-client';
 import { useRef, useState, type FormEvent } from 'react';
 
 type MerchantApplication = {
+  storefrontHandle: string;
   name: string;
   activity: BusinessActivityKey;
   contactPhone: string;
@@ -23,6 +25,7 @@ type MerchantApplication = {
 };
 
 const EMPTY_APPLICATION: MerchantApplication = {
+  storefrontHandle: '',
   name: '',
   activity: 'restaurant',
   contactPhone: '',
@@ -31,7 +34,7 @@ const EMPTY_APPLICATION: MerchantApplication = {
 };
 
 const FIELDS: ReadonlyArray<{
-  key: keyof MerchantApplication;
+  key: Exclude<keyof MerchantApplication, 'activity' | 'storefrontHandle'>;
   label: string;
   autocomplete: string;
 }> = [
@@ -60,6 +63,7 @@ export function MerchantApplicationForm({ onSubmitted }: { onSubmitted?: () => v
     try {
       await submitMerchantApplication({
         ...application,
+        storefrontHandle: application.storefrontHandle.trim().toLowerCase(),
         name: application.name.trim(),
         contactPhone: application.contactPhone.trim(),
         ownerName: application.ownerName.trim(),
@@ -71,7 +75,11 @@ export function MerchantApplicationForm({ onSubmitted }: { onSubmitted?: () => v
       setApplication(EMPTY_APPLICATION);
     } catch (failure) {
       setError(
-        isArabic
+        failure instanceof ApiError && failure.statusCode === 409
+          ? isArabic
+            ? 'السب دومين ده مستخدم بالفعل. اختار اسم تاني.'
+            : 'This subdomain is already in use. Choose another one.'
+          : isArabic
           ? failure instanceof ApiError && failure.statusCode === 400
             ? 'راجع البيانات وأرقام التواصل وحاول مرة أخرى.'
             : 'تعذر تأكيد استلام الطلب. تحقق مع فريق وفّرلي قبل إعادة الإرسال لتجنب تكراره.'
@@ -194,6 +202,38 @@ export function MerchantApplicationForm({ onSubmitted }: { onSubmitted?: () => v
             );
           })}
         </div>
+
+        <label className="grid gap-1.5 text-[13px] font-medium text-primary">
+          {isArabic ? 'السب دومين (رابط متجرك)' : 'Subdomain (your store link)'}
+          <Input
+            autoCapitalize="none"
+            autoComplete="off"
+            spellCheck={false}
+            className="h-11 rounded-lg border border-border bg-white px-3 py-2 text-[14px] text-primary placeholder:text-muted-foreground"
+            dir="ltr"
+            maxLength={63}
+            minLength={3}
+            pattern="[a-z0-9]+(-[a-z0-9]+)*"
+            placeholder="abo-ali"
+            aria-describedby="application-handle-hint"
+            aria-invalid={Boolean(
+              application.storefrontHandle && !isStorefrontHandle(application.storefrontHandle),
+            )}
+            onChange={(event) =>
+              setApplication((current) => ({
+                ...current,
+                storefrontHandle: event.target.value.trim().toLowerCase(),
+              }))
+            }
+            required
+            value={application.storefrontHandle}
+          />
+          <span id="application-handle-hint" className="text-[12px] font-normal leading-6 text-muted-foreground">
+            {isArabic
+              ? 'حروف إنجليزية صغيرة وأرقام وشرطة بين الكلمات (3 حروف على الأقل). الكاشير عندك هيدخل نقاط البيع بيه، مثل abo-ali.ali.'
+              : 'Lowercase English letters, digits and hyphens between words (at least 3). Your cashiers sign in to POS with it, e.g. abo-ali.ali.'}
+          </span>
+        </label>
 
         {error && (
           <p

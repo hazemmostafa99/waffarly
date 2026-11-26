@@ -1,6 +1,6 @@
 import { CheckSplitService } from '../../src/modules/orders/billing/check-split.service.js';
 import { createPosOrderServices } from '../support/pos-order-services.js';
-import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { deleteTestMerchantSubscriptions, testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
@@ -35,6 +35,7 @@ it(
         data: {
           name: `POS dining verification ${token}`,
           storefrontSlug: `pos-dining-${token}`,
+          storefrontHandle: testStorefrontHandle(),
           activity: 'restaurant',
           contactPhone: '01000000000',
           ownerName: 'POS dining verification',
@@ -66,7 +67,7 @@ it(
           branchId: branch.id,
           passwordHash: 'database-test-only',
           role: 'cashier',
-          permissions: ['sell'],
+          permissions: ['open_register_shift', 'sell'],
           createdBy: 'pos-dining-test',
           updatedBy: 'pos-dining-test',
         },
@@ -79,7 +80,7 @@ it(
           branchId: otherBranch.id,
           passwordHash: 'database-test-only',
           role: 'cashier',
-          permissions: ['sell'],
+          permissions: ['open_register_shift', 'sell'],
           createdBy: 'pos-dining-test',
           updatedBy: 'pos-dining-test',
         },
@@ -172,7 +173,7 @@ it(
           branchId: branch.id,
           passwordHash: 'database-test-only',
           role: 'supervisor',
-          permissions: [],
+          permissions: ['open_register_shift', 'sell', 'approve_discounts', 'approve_voids', 'approve_refunds', 'approve_shift_close', 'manage_cash_movements'],
           createdBy: 'pos-cancellation-test',
           updatedBy: 'pos-cancellation-test',
         },
@@ -185,7 +186,7 @@ it(
           branchId: branch.id,
           passwordHash: 'database-test-only',
           role: 'kitchen',
-          permissions: ['accept_recipe_orders'],
+          permissions: ['view_orders', 'accept_recipe_orders', 'start_preparation'],
           createdBy: 'pos-cancellation-test',
           updatedBy: 'pos-cancellation-test',
         },
@@ -319,6 +320,9 @@ it(
                     create: [
                       {
                         productId: randomUUID(),
+                        // POS direct-stock sales consume stock at sale time, so kitchen
+                        // acceptance needs no saved requirement or current cost.
+                        stockHandling: 'direct_sale',
                         productName: 'Soup',
                         quantity: 1,
                         unitPrice: '5.00',
@@ -327,6 +331,7 @@ it(
                       },
                       {
                         productId: randomUUID(),
+                        stockHandling: 'direct_sale',
                         productName: 'Bread',
                         quantity: 1,
                         unitPrice: '5.00',
@@ -342,6 +347,7 @@ it(
                       create: [
                         {
                           productId: randomUUID(),
+                          stockHandling: 'direct_sale',
                           productName: 'Two shareable items',
                           quantity: 2,
                           unitPrice: lineUnitPrice,
@@ -1345,6 +1351,7 @@ it(
             await tx.posShift.deleteMany({ where: { merchantId } });
             await tx.posRegister.deleteMany({ where: { merchantId } });
             await tx.posEmployee.deleteMany({ where: { merchantId } });
+            await tx.posBranchOrderSession.deleteMany({ where: { merchantId } });
             await tx.branch.deleteMany({ where: { merchantId } });
             // Remove the subscription created with this test merchant before its parent row.
             await deleteTestMerchantSubscriptions(tx, [merchantId]);

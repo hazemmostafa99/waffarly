@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
-  resolvePosEmployeePermissions,
+  defaultPosEmployeePermissions,
   type PosEmployeeRole,
 } from '../../packages/contracts/src/pos';
 
@@ -64,11 +64,8 @@ for (const locale of ['en', 'ar']) {
         username: 'staff',
         displayName: 'Staff Member',
         role: savedRole,
-        permissions: resolvePosEmployeePermissions(savedRole, [
-          'accept_recipe_orders',
-          'start_preparation',
-        ]),
-        savedPermissions: ['accept_recipe_orders', 'start_preparation'],
+        permissions: defaultPosEmployeePermissions(savedRole),
+        savedPermissions: defaultPosEmployeePermissions(savedRole),
         revision: 1,
         active: true,
         branch,
@@ -95,28 +92,26 @@ for (const locale of ['en', 'ar']) {
     ]) {
       await role.selectOption(value);
       await expect(
-        dialog.getByText(locale === 'ar' ? 'صلاحيات هذا الدور' : 'Permissions for this role', {
-          exact: true,
-        }),
+        dialog.getByText(locale === 'ar' ? 'الصلاحيات' : 'Permissions', { exact: true }),
       ).toBeVisible();
     }
+    // Choosing accountant fills in its defaults: receipts only, no sales.
     await expect(
-      dialog.getByText(
+      dialog.getByLabel(
         locale === 'ar' ? 'عرض الإيصالات وإعادة طباعتها' : 'View and reprint receipts',
-        { exact: true },
       ),
-    ).toBeVisible();
+    ).toBeChecked();
     await expect(
-      dialog.getByText(
+      dialog.getByLabel(
         locale === 'ar' ? 'إنشاء المبيعات وتحصيل المدفوعات' : 'Create sales and collect payments',
-        { exact: true },
       ),
-    ).toHaveCount(0);
+    ).not.toBeChecked();
     await dialog
       .getByRole('button', { name: locale === 'ar' ? 'حفظ الموظف' : 'Save employee', exact: true })
       .click();
     await expect(dialog).not.toBeVisible();
     expect(savedBody?.role).toBe('accountant');
+    expect(savedBody?.permissions).toEqual(['view_receipts']);
     expect(savedBody?.branchId).toBe(branchId);
     await expect(
       page.getByRole('cell', { name: locale === 'ar' ? 'محاسب' : 'Accountant', exact: true }),
@@ -148,11 +143,7 @@ for (const [role, home] of [
           username: 'staff',
           displayName: 'Role Test',
           role,
-          permissions: resolvePosEmployeePermissions(role, [
-            'sell',
-            'accept_recipe_orders',
-            'start_preparation',
-          ]),
+          permissions: defaultPosEmployeePermissions(role),
           branches,
         };
       return { items: [], nextCursor: null };

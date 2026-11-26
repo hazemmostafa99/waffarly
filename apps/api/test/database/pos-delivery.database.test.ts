@@ -1,5 +1,5 @@
 import { createPosOrderServices } from '../support/pos-order-services.js';
-import { deleteTestMerchantSubscriptions } from '../support/merchant-fixtures.js';
+import { deleteTestMerchantSubscriptions, testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import assert from 'node:assert/strict';
@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import { ConflictException, ForbiddenException } from '@nestjs/common';
 
-import { resolvePosEmployeePermissions, type PosEmployeeSession } from '@waffarly/contracts';
+import { POS_EMPLOYEE_ROLE_PERMISSIONS, type PosEmployeeSession } from '@waffarly/contracts';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { PosDeliveryService } from '../../src/modules/orders/delivery/pos-delivery.service.js';
 import { DeliveryCourierService } from '../../src/modules/orders/delivery/delivery-courier.service.js';
@@ -31,6 +31,7 @@ it(
       data: {
         name: `Delivery test ${token}`,
         storefrontSlug: `delivery-${token}`,
+        storefrontHandle: testStorefrontHandle(),
         activity: 'restaurant',
         contactPhone: '01000000000',
         ownerName: 'Test',
@@ -69,7 +70,7 @@ it(
             displayName: name,
             passwordHash: 'test-only',
             role,
-            permissions: [],
+            permissions: [...POS_EMPLOYEE_ROLE_PERMISSIONS[role]],
             createdBy: 'test',
             updatedBy: 'test',
           },
@@ -80,7 +81,7 @@ it(
           username: row.username,
           displayName: row.displayName,
           role,
-          permissions: resolvePosEmployeePermissions(role, []),
+          permissions: [...POS_EMPLOYEE_ROLE_PERMISSIONS[role]],
           branch: { id: branch.id, name: branch.name, archivedAt: null },
         };
       };
@@ -659,6 +660,7 @@ it(
         await tx.posShift.deleteMany({ where: { merchantId } });
         await tx.posRegister.deleteMany({ where: { merchantId } });
         await tx.posEmployee.deleteMany({ where: { merchantId } });
+        await tx.posBranchOrderSession.deleteMany({ where: { merchantId } });
         await tx.branch.deleteMany({ where: { merchantId } });
         await deleteTestMerchantSubscriptions(tx, [merchantId]);
         await tx.merchant.delete({ where: { id: merchantId } });

@@ -41,10 +41,8 @@ export async function listDeliveryHandoverRecipients(
     active: true,
     branchId: q.branchId,
     branch: { archivedAt: null },
-    OR: [
-      { role: { in: ['cashier', 'supervisor', 'branch_manager'] } },
-      { role: null, permissions: { hasEvery: ['sell', 'open_register_shift'] } },
-    ],
+    // Saved permissions are exact, so any employee who can sell and open shifts qualifies.
+    permissions: { hasEvery: ['sell', 'open_register_shift'] },
   };
   if (q.cursor)
     assertScopedCursor(

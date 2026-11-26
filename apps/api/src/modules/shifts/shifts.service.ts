@@ -70,7 +70,7 @@ import {
   toMatchingRetry,
   toShiftSummary,
 } from './shift.mapper.js';
-import { normalizeOpeningFloat } from './shifts.rules.js';
+import { normalizeOpeningFloat, safeDropFallbackReference } from './shifts.rules.js';
 import {
   closePosShiftSchema,
   openPosShiftSchema,
@@ -252,7 +252,7 @@ export class ShiftsService {
               movementId: movement.id,
               requestId: request.requestId,
               amount: request.amount,
-              reference: request.dropReference!,
+              reference: request.dropReference ?? safeDropFallbackReference(movement.id),
               reason: request.reason,
               actor: `pos:${employee.id}`,
               fingerprint,

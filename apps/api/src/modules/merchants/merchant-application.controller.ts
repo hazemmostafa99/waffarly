@@ -21,9 +21,11 @@ import { z } from 'zod';
 import { parseRequest } from '../../common/http/zod-validation.pipe.js';
 import { AdminGuard, CurrentAdmin } from '../auth/index.js';
 import { MerchantService } from './merchant.service.js';
+import { storefrontHandleSchema } from './storefront-address.schemas.js';
 
 const applicationSchema = z
   .object({
+    storefrontHandle: storefrontHandleSchema,
     name: z.string().trim().min(1).max(160),
     activity: z.enum(BUSINESS_ACTIVITY_KEYS).default('other'),
     contactPhone: z.string().trim().min(3).max(32),
@@ -34,6 +36,7 @@ const applicationSchema = z
 
 const approvalSchema = z
   .object({
+    storefrontHandle: storefrontHandleSchema,
     username: z
       .string()
       .trim()

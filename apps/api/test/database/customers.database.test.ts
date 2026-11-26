@@ -1,3 +1,4 @@
+import { testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 
@@ -27,10 +28,10 @@ it(
               ownerMobile: '01100000000',
             };
             const a = await tx.merchant.create({
-              data: { ...data, storefrontSlug: `customers-a-${randomUUID()}` },
+              data: { ...data, storefrontSlug: `customers-a-${randomUUID()}`, storefrontHandle: testStorefrontHandle() },
             });
             const b = await tx.merchant.create({
-              data: { ...data, storefrontSlug: `customers-b-${randomUUID()}` },
+              data: { ...data, storefrontSlug: `customers-b-${randomUUID()}`, storefrontHandle: testStorefrontHandle() },
             });
             // Share one rollback transaction, including application-owned transaction callbacks.
             const client = new Proxy(tx, {
@@ -197,10 +198,10 @@ it(
             ownerMobile: '01100000000',
           };
           const a = await tx.merchant.create({
-            data: { ...data, storefrontSlug: `customer-fk-a-${randomUUID()}` },
+            data: { ...data, storefrontSlug: `customer-fk-a-${randomUUID()}`, storefrontHandle: testStorefrontHandle() },
           });
           const b = await tx.merchant.create({
-            data: { ...data, storefrontSlug: `customer-fk-b-${randomUUID()}` },
+            data: { ...data, storefrontSlug: `customer-fk-b-${randomUUID()}`, storefrontHandle: testStorefrontHandle() },
           });
           const customer = await tx.merchantCustomer.create({
             data: {

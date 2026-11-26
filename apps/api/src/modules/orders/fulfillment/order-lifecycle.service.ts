@@ -43,6 +43,7 @@ import { ProductConsumptionService } from '../../catalog/index.js';
 import { InventoryLedgerService } from '../../inventory/index.js';
 import { toSummary } from '../mapping/order.mapper.js';
 import { lockBranchOperationShift } from '../../shifts/index.js';
+import { assignOnlineOrderBranchNumber } from '../pos-sales/pos-order-number.persistence.js';
 
 import {
   acceptRecipeOrderSchema,
@@ -213,7 +214,7 @@ export class OrderLifecycleService {
       .update(JSON.stringify({ orderId, ...command }))
       .digest('hex');
     try {
-      return await this.prisma.$transaction(
+      const result = await this.prisma.$transaction(
         async (tx) => {
           // 1. Keep the shift and order stable while this change is saved.
           // Lock the shift first to match payment and shift-close operations.
@@ -352,6 +353,17 @@ export class OrderLifecycleService {
         },
         { isolationLevel: 'Serializable' },
       );
+      // An online order placed while the branch was closed gets its #number once accepted.
+      if (command.action === 'accept' && result.branchOrderNumber == null) {
+        await assignOnlineOrderBranchNumber(this.prisma, merchantId, orderId).catch(() => undefined);
+        const numbered = await this.prisma.storefrontOrder.findFirst({
+          where: { id: orderId, merchantId },
+          select: { branchOrderNumber: true },
+        });
+        if (numbered?.branchOrderNumber != null)
+          return { ...result, branchOrderNumber: numbered.branchOrderNumber };
+      }
+      return result;
     } catch (error) {
       if (isSerializationConflict(error) || isUniqueConstraintError(error))
         throw new ConflictException(

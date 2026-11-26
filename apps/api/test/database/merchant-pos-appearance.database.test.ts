@@ -1,3 +1,4 @@
+import { testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 
@@ -27,10 +28,10 @@ it(
             ownerMobile: '01100000000',
           };
           const merchant = await tx.merchant.create({
-            data: { ...merchantData, storefrontSlug: `pos-appearance-${token}` },
+            data: { ...merchantData, storefrontSlug: `pos-appearance-${token}`, storefrontHandle: testStorefrontHandle() },
           });
           const other = await tx.merchant.create({
-            data: { ...merchantData, storefrontSlug: `pos-appearance-other-${token}` },
+            data: { ...merchantData, storefrontSlug: `pos-appearance-other-${token}`, storefrontHandle: testStorefrontHandle() },
           });
           const service = new MerchantPosAppearanceService(tx as never);
 

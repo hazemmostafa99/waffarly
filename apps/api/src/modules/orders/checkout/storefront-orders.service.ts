@@ -7,6 +7,7 @@ import {
   currentCairoDate,
   quoteCheckoutDiscount,
   resolveRestaurantReceivingBranch,
+  soleActiveBranch,
 } from './checkout-policy.js';
 import {
   listOwnerStorefrontOrders,
@@ -41,6 +42,7 @@ import { InventoryLedgerService } from '../../inventory/index.js';
 import { SubscriptionService } from '../../subscriptions/index.js';
 
 import { toReceipt } from '../mapping/order.mapper.js';
+import { assignOnlineOrderBranchNumber } from '../pos-sales/pos-order-number.persistence.js';
 import { CustomersService } from '../../customers/index.js';
 
 const MAX_ORDER_TOTAL_CENTS = 999_999_999_999n;
@@ -108,6 +110,8 @@ export class StorefrontOrdersService {
           input.deliveryAreaId,
           undefined,
           input.pickupBranchId,
+          // Marketplace pages exist only for published restaurants, so quotes use storefront rules.
+          'storefront',
         );
         const branch = policy
           ? policy.receivingBranch ?? await resolveRestaurantReceivingBranch(db, merchant.id)
@@ -144,6 +148,7 @@ export class StorefrontOrdersService {
     identity?: OrderIdentity,
     replayScope?: Prisma.CustomerOrderAccessWhereInput,
     merchantCustomerId?: string,
+    storefrontGuest?: OrderIdentity,
   ): Promise<StorefrontOrderReceipt> {
     const merchant = await this.prisma.merchant.findUnique({
       where: { storefrontSlug: slug },
@@ -181,7 +186,7 @@ export class StorefrontOrdersService {
 
     try {
       // 2. Save the order, its stock commitments and customer access together.
-      return await this.prisma.$transaction(
+      const receipt = await this.prisma.$transaction(
         async (transaction) => {
           await this.subscriptions.requireActive(merchant.id, transaction);
           if (merchantCustomerId)
@@ -263,13 +268,15 @@ export class StorefrontOrdersService {
             input.deliveryAreaId,
             input.restaurantSettingsRevision,
             input.pickupBranchId,
+            // Identity-aware checkout is the Waffarly marketplace; it requires publication.
+            identity ? 'marketplace' : 'storefront',
           );
           if ((policy?.quoteKey ?? undefined) !== input.fulfillmentQuoteKey
               || (policy?.quoteKey && input.reviewedTotal === undefined))
             throw new ConflictException('الفرع أو إعدادات التوصيل اتغيرت. راجع الطلب من جديد.');
           const receivingBranch = policy
             ? policy.receivingBranch ?? await resolveRestaurantReceivingBranch(transaction, merchant.id)
-            : null;
+            : await soleActiveBranch(transaction, merchant.id);
           const deliveryFeeCents = policy?.fee ?? 0n;
           const totalCents = orderTotalCents - discountCents + deliveryFeeCents;
           if (input.reviewedTotal !== undefined && toCents(input.reviewedTotal) !== totalCents)
@@ -327,14 +334,20 @@ export class StorefrontOrdersService {
             },
             include: { discountRedemption: true },
           });
-          if (identity)
+          // Marketplace orders record their owner; a merchant-website guest records this
+          // browser so the guest can follow the order and keep it after signing in.
+          const access = identity ?? storefrontGuest;
+          if (access)
             await transaction.customerOrderAccess.create({
-              data: { orderId: saved.id, merchantId: merchant.id, ...identity },
+              data: { orderId: saved.id, merchantId: merchant.id, ...access },
             });
           return toReceipt(saved);
         },
         { isolationLevel: 'Serializable' },
       );
+      // 6. Number the order like cashier sales when its branch is open; acceptance retries this.
+      await assignOnlineOrderBranchNumber(this.prisma, merchant.id, receipt.id).catch(() => undefined);
+      return receipt;
     } catch (error) {
       const completed = await replay();
       if (completed) return completed;

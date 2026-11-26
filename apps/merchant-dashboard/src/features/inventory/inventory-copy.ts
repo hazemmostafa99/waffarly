@@ -345,6 +345,7 @@ export function inventoryCopy(
     'No branches match these filters.': 'لا توجد فروع تطابق عوامل التصفية هذه.',
     'Enter a branch name.': 'أدخل اسم الفرع.',
     'Enter a default warehouse name.': 'أدخل اسم المخزن الافتراضي.',
+    'Main warehouse': 'المخزن الرئيسي',
     'Enter a warehouse name.': 'أدخل اسم المخزن.',
     Warehouses: 'المخازن',
     Warehouse: 'المخزن',

@@ -32,8 +32,12 @@ import { PageHeader } from '../../components/PageHeader.js';
 import { adminQueryKeys } from '../../app/query-keys.js';
 import { apiRequest } from '../../lib/api-client.js';
 import { isPendingMerchantApplication, useMerchantApplicationsQuery } from './merchant-queries.js';
+import { StorefrontHandleField } from './StorefrontHandleField.js';
 
-const emptyOwnerCredentials: ApproveMerchantApplicationRequest = { username: '', password: '' };
+/** Approval starts from the subdomain the applicant asked for; Super Admin may change it. */
+function initialApproval(application: MerchantApplicationSummary): ApproveMerchantApplicationRequest {
+  return { storefrontHandle: application.storefrontHandle ?? '', username: '', password: '' };
+}
 type CredentialsToSend = { username: string; password: string; ownerMobile: string };
 function errorMessage(cause: unknown) {
   return cause instanceof Error ? cause.message : 'Something went wrong.';
@@ -68,21 +72,22 @@ export function ApplicationsPage() {
   }
 
   function setApplicationCredential(
-    applicationId: string,
+    application: MerchantApplicationSummary,
     key: keyof ApproveMerchantApplicationRequest,
     value: string,
   ) {
     setApplicationCredentials((current) => ({
       ...current,
-      [applicationId]: {
-        ...(current[applicationId] ?? emptyOwnerCredentials),
+      [application.id]: {
+        ...(current[application.id] ?? initialApproval(application)),
         [key]: value,
       },
     }));
   }
 
   async function approveApplication(application: MerchantApplicationSummary) {
-    const ownerCredentials = applicationCredentials[application.id] ?? emptyOwnerCredentials;
+    const ownerCredentials =
+      applicationCredentials[application.id] ?? initialApproval(application);
     if (
       !window.confirm(
         t('Approve {{name}} and create its owner account?', { name: application.name }),
@@ -107,7 +112,7 @@ export function ApplicationsPage() {
       });
       setApplicationCredentials((current) => ({
         ...current,
-        [application.id]: emptyOwnerCredentials,
+        [application.id]: initialApproval(application),
       }));
       setNotice(
         'Application approved. The business and owner account are created. Subscription access is still inactive.',
@@ -266,7 +271,7 @@ export function ApplicationsPage() {
               <div className="grid min-w-0">
                 {visibleApplications.map((application) => {
                   const credentials =
-                    applicationCredentials[application.id] ?? emptyOwnerCredentials;
+                    applicationCredentials[application.id] ?? initialApproval(application);
                   return (
                     <article className="application application-review-card" key={application.id}>
                       <div className="application-summary admin-section">
@@ -362,6 +367,14 @@ export function ApplicationsPage() {
                             <ShieldCheck size={16} aria-hidden="true" />
                             <h4>{t('Approve and create owner account')}</h4>
                           </div>
+                          <StorefrontHandleField
+                            id={`application-handle-${application.id}`}
+                            value={credentials.storefrontHandle}
+                            disabled={busy}
+                            onChange={(value) =>
+                              setApplicationCredential(application, 'storefrontHandle', value)
+                            }
+                          />
                           <label>
                             {t('Owner username')}{' '}
                             <Input
@@ -373,7 +386,7 @@ export function ApplicationsPage() {
                               value={credentials.username}
                               onChange={(event) =>
                                 setApplicationCredential(
-                                  application.id,
+                                  application,
                                   'username',
                                   event.target.value,
                                 )
@@ -391,7 +404,7 @@ export function ApplicationsPage() {
                               value={credentials.password}
                               onChange={(event) =>
                                 setApplicationCredential(
-                                  application.id,
+                                  application,
                                   'password',
                                   event.target.value,
                                 )

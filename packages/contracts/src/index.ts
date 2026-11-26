@@ -1,4 +1,9 @@
-export { RESERVED_STOREFRONT_HANDLES, isStorefrontHandle } from './storefront-address.js';
+export {
+  RESERVED_STOREFRONT_HANDLES,
+  formatPosSignInName,
+  isStorefrontHandle,
+  parsePosSignInName,
+} from './storefront-address.js';
 export type {
   AssignStorefrontHandleRequest,
   PublicStorefrontAddress,
@@ -238,6 +243,8 @@ export {
   POS_EMPLOYEE_ROLE_PERMISSIONS,
   POS_LEGACY_EMPLOYEE_PERMISSIONS,
   isPosEmployeeRole,
+  defaultPosEmployeePermissions,
+  normalizePosEmployeePermissions,
   resolvePosEmployeePermissions,
   hasPosEmployeePermission,
   posEmployeeHome,

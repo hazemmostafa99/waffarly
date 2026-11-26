@@ -1,3 +1,4 @@
+import { testStorefrontHandle } from '../support/merchant-fixtures.js';
 import { createTestDatabaseClient } from '../support/test-database.js';
 import { getTestDatabaseUrl } from '../support/test-database-environment.js';
 import assert from 'node:assert/strict';
@@ -24,6 +25,7 @@ it(
             id,
             name: 'Address test fixture',
             storefrontSlug: `technical-${id}`,
+            storefrontHandle: testStorefrontHandle(),
             contactPhone: '000000',
             ownerName: 'Test fixture',
             ownerMobile: '000000',
@@ -48,10 +50,11 @@ it(
       await service.assignStorefrontHandle(winner.id, handle, 'other-admin');
       const replay = await prisma.merchant.findUniqueOrThrow({ where: { id: winner.id } });
       assert.equal(replay.storefrontHandleAssignedBy, 'address-test');
-      await assert.rejects(
-        service.assignStorefrontHandle(winner.id, `replacement-${randomUUID()}`, 'address-test'),
-        { status: 409 },
-      );
+      // Super Admin may change a subdomain; the old one stops resolving.
+      const replacement = `replacement-${randomUUID()}`;
+      const changed = await service.assignStorefrontHandle(winner.id, replacement, 'change-admin');
+      assert.equal(changed.storefrontHandle, replacement);
+      await assert.rejects(service.resolveStorefrontHandle(handle), { status: 404 });
       await assert.rejects(service.assignStorefrontHandle(ids[2]!, 'admin', 'address-test'), {
         status: 400,
       });

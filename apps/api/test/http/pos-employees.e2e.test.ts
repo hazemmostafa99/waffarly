@@ -52,6 +52,8 @@ const employee: PosEmployeeSession = {
   role: null,
   permissions: ['accept_recipe_orders', 'start_preparation', 'sell'],
   branch: { id: branchId, name: 'Main', archivedAt: null },
+  // POS write requests need a browser paired with a register; sales name this one.
+  deviceRegister: { id: '99999999-9999-4999-8999-999999999999', branchId, name: 'Front' },
 };
 
 describe('POS employee endpoints', () => {
@@ -243,13 +245,13 @@ describe('POS employee endpoints', () => {
   it('normalizes the business login and limits POS order reads to assigned branches', async () => {
     await request(app.getHttpServer())
       .post('/auth/pos/login')
-      .send({ storefrontSlug: 'My-Store', username: 'Cashier1', password: 'staff-password' })
+      .send({ login: ' My-Store.Cashier1 ', password: 'staff-password' })
       .expect(200);
-    assert.deepEqual(calls[0]?.args[0], {
-      storefrontSlug: 'my-store',
-      username: 'cashier1',
-      password: 'staff-password',
-    });
+    assert.deepEqual(calls[0]?.args[0], { login: 'my-store.cashier1', password: 'staff-password' });
+    await request(app.getHttpServer())
+      .post('/auth/pos/login')
+      .send({ login: 'cashier1', password: 'staff-password' })
+      .expect(400);
 
     employeeAuthorized = false;
     await request(app.getHttpServer()).get(`/pos/orders?branchId=${branchId}`).expect(401);

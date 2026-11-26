@@ -25,7 +25,8 @@ export class PosReceiptQueryService {
           { source: 'pos' },
           {
             source: { in: ['waffarly', 'storefront'] },
-            fulfillmentType: 'pickup',
+            // Website pickups and dispatched website deliveries are collected on a shift.
+            fulfillmentType: { in: ['pickup', 'delivery'] },
             posShiftId: { not: null },
             status: { in: ['ready', 'completed'] },
           },
@@ -44,12 +45,14 @@ export class PosReceiptQueryService {
     const snapshot = order?.checks[0]?.receipt?.snapshot;
     if (!snapshot || !order) throw new NotFoundException('The POS receipt was not found.');
     const receipt = parseStoredPosReceipt(snapshot);
+    const branchOrderNumber = receipt.branchOrderNumber ?? order.branchOrderNumber;
     return {
       ...receipt,
       ...(order.source === 'waffarly' || order.source === 'storefront' || order.source === 'pos'
         ? { source: order.source }
         : {}),
-      branchOrderNumber: receipt.branchOrderNumber ?? order.branchOrderNumber,
+      // Same shape as a freshly issued receipt: the number is left out when there is none.
+      ...(branchOrderNumber != null ? { branchOrderNumber } : {}),
     };
   }
 

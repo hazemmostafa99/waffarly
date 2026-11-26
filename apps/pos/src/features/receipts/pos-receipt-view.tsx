@@ -127,13 +127,12 @@ function ReceiptDocument({
     timeStyle: 'short',
   }).format(new Date(receipt.issuedAt));
   const fulfillmentLabel =
-    receipt.fulfillmentType === 'pickup'
-      ? t('Pickup')
-      : receipt.fulfillmentType === 'dine_in'
-        ? t('Dine in')
-        : receipt.fulfillmentType === 'delivery'
-          ? t('Delivery')
-          : t('Takeaway');
+    // Website pickup is collected at the counter, so it prints as takeaway.
+    receipt.fulfillmentType === 'dine_in'
+      ? t('Dine in')
+      : receipt.fulfillmentType === 'delivery'
+        ? t('Delivery')
+        : t('Takeaway');
   const cashierName = isReadablePosLabel(receipt.cashierName)
     ? receipt.cashierName.trim()
     : t('Cashier name unavailable');

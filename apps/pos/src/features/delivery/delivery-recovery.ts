@@ -29,8 +29,11 @@ export function decodeDeliveryRecovery(value: unknown): PendingDeliveryWrite {
     throw new Error('Invalid saved delivery action.');
   if (value.kind === 'action' && keys(value, ['branchId', 'orderId', 'kind', 'request'])) {
     const allowed = ['requestId', 'revision', 'action'];
-    if (r.action === 'dispatch' && uuid(r.courierId)) allowed.push('courierId');
-    else if (
+    if (r.action === 'dispatch' && uuid(r.courierId)) {
+      allowed.push('courierId');
+      // Optional register that links a website delivery to this device's open shift.
+      if (r.registerId !== undefined && uuid(r.registerId)) allowed.push('registerId');
+    } else if (
       r.action === 'dispatch' &&
       typeof r.courierName === 'string' &&
       r.courierName.trim() &&
