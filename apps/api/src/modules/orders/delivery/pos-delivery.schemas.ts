@@ -5,7 +5,14 @@ import { z } from 'zod';
 
 const base = { requestId: z.string().uuid(), revision: z.number().int().positive() };
 export const posDeliveryCommandSchema = z.union([
-  z.object({ ...base, action: z.literal('dispatch'), courierId: z.string().uuid() }).strict(),
+  z
+    .object({
+      ...base,
+      action: z.literal('dispatch'),
+      courierId: z.string().uuid(),
+      registerId: z.string().uuid().optional(),
+    })
+    .strict(),
   z
     .object({
       ...base,

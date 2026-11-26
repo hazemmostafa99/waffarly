@@ -461,6 +461,8 @@ export function PosDeliveryScreen() {
                         requestId: crypto.randomUUID(),
                         revision: order.revision,
                         courierId,
+                        // Links a website delivery to this register's open shift.
+                        ...(registerId ? { registerId } : {}),
                       },
                     })
                   }

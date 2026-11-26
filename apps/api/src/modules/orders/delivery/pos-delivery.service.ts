@@ -35,6 +35,10 @@ import { toCents } from '../../../common/money/money.js';
 import { parseRequest } from '../../../common/http/zod-validation.pipe.js';
 import { readDeliveryBalances, ShiftsService } from '../../shifts/index.js';
 import { posDeliveryCommandSchema } from './pos-delivery.schemas.js';
+import {
+  deliveryDeskOrderWhere,
+  needsShiftLinkOnDispatch,
+} from './delivery-order-sources.rules.js';
 
 @Injectable()
 export class PosDeliveryService {
@@ -45,12 +49,7 @@ export class PosDeliveryService {
 
   async requestStatus(employee: PosEmployeeSession, orderId: string, requestId: string) {
     const order = await this.db.storefrontOrder.findFirst({
-      where: {
-        id: orderId,
-        merchantId: employee.merchantId,
-        source: 'pos',
-        fulfillmentType: 'delivery',
-      },
+      where: deliveryDeskOrderWhere(employee.merchantId, orderId),
       select: { branchId: true },
     });
     if (!order?.branchId) throw new NotFoundException('The delivery order was not found.');
@@ -81,12 +80,7 @@ export class PosDeliveryService {
   async abandonRequest(employee: PosEmployeeSession, orderId: string, requestId: string) {
     return this.db.$transaction(async (tx) => {
       const order = await tx.storefrontOrder.findFirst({
-        where: {
-          id: orderId,
-          merchantId: employee.merchantId,
-          source: 'pos',
-          fulfillmentType: 'delivery',
-        },
+        where: deliveryDeskOrderWhere(employee.merchantId, orderId),
         select: { branchId: true },
       });
       if (!order?.branchId) throw new NotFoundException('The delivery order was not found.');
@@ -186,22 +180,32 @@ export class PosDeliveryService {
         async (tx) => {
           // 2. Check the branch and shifts before changing responsibility or money.
           const observed = await tx.storefrontOrder.findFirst({
-            where: {
-              id: orderId,
-              merchantId: employee.merchantId,
-              source: 'pos',
-              fulfillmentType: 'delivery',
-            },
+            where: deliveryDeskOrderWhere(employee.merchantId, orderId),
             select: {
               branchId: true,
+              source: true,
               posShiftId: true,
               delivery: { select: { followupShiftId: true } },
             },
           });
-          if (!observed?.branchId || !observed.posShiftId)
+          const linkShift = observed ? needsShiftLinkOnDispatch(observed) : false;
+          if (!observed?.branchId || (!observed.posShiftId && !linkShift))
             throw new NotFoundException('The POS delivery order was not found.');
           assertDeliveryBranchAccess(employee, observed.branchId);
           await readCurrentDeliveryPermissions(tx, employee, observed.branchId);
+          // A website delivery takes the dispatching register's open shift as its source shift.
+          let sourceShiftId = observed.posShiftId;
+          if (linkShift) {
+            if (command.action !== 'dispatch' || !('registerId' in command) || !command.registerId)
+              throw new ConflictException(
+                'Open a register shift on this device before dispatching this website order.',
+              );
+            const shift = await this.shifts.lockOpenShiftForSale(tx, employee, command.registerId);
+            if (shift.branchId !== observed.branchId)
+              throw new ConflictException('This website order belongs to another branch.');
+            sourceShiftId = shift.id;
+          }
+          if (!sourceShiftId) throw new NotFoundException('The POS delivery order was not found.');
           const shiftIds = [
             ...new Set(
               [
@@ -247,9 +251,32 @@ export class PosDeliveryService {
               await this.shifts.lockOpenShiftForPayment(tx, {
                 merchantId: employee.merchantId,
                 branchId: observed.branchId,
-                shiftId: observed.posShiftId,
+                shiftId: sourceShiftId,
                 employee,
               });
+            if (linkShift) {
+              // Same collection setup as a website pickup: one whole-order check on this shift.
+              if (order.posShiftId !== null)
+                throw new ConflictException('The delivery order changed. Refresh and retry.');
+              await tx.storefrontOrder.update({
+                where: { id: orderId },
+                data: { posShiftId: sourceShiftId },
+              });
+              const existingChecks = await tx.posOrderCheck.count({
+                where: { merchantId: employee.merchantId, orderId },
+              });
+              if (existingChecks)
+                throw new ConflictException('Review this order collection before dispatching.');
+              await tx.posOrderCheck.create({
+                data: {
+                  merchantId: employee.merchantId,
+                  orderId,
+                  position: 0,
+                  amount: order.total,
+                  splitMethod: 'whole',
+                },
+              });
+            }
             if (order.delivery) {
               const [balance] = await readDeliveryBalances(tx, employee.merchantId, {
                 orderId,
@@ -274,7 +301,7 @@ export class PosDeliveryService {
                 orderId,
                 merchantId: employee.merchantId,
                 branchId: observed.branchId,
-                followupShiftId: observed.posShiftId,
+                followupShiftId: sourceShiftId,
                 custodianEmployeeId: employee.id,
                 courierId: courier.id,
                 courierName: courier.name,
