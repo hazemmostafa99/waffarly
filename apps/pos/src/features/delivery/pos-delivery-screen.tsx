@@ -682,14 +682,14 @@ export function PosDeliveryScreen() {
                   key={id}
                   className="overflow-hidden rounded-xl border border-border bg-card shadow-sm"
                 >
-                  <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/30 p-3 sm:px-4">
-                    <div className="flex items-center gap-3">
-                      <span className="flex size-10 items-center justify-center rounded-full bg-primary/15 text-primary">
-                        <Bike aria-hidden="true" size={19} />
+                  <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/30 px-3 py-2 sm:px-4">
+                    <div className="flex items-center gap-2">
+                      <span className="flex size-8 items-center justify-center rounded-full bg-primary/15 text-primary">
+                        <Bike aria-hidden="true" size={15} />
                       </span>
                       <div className="grid">
-                        <h3 className="m-0 text-base font-bold">{courierName}</h3>
-                        <p className="m-0 text-xs text-muted-foreground">
+                        <h3 className="m-0 text-sm font-bold">{courierName}</h3>
+                        <p className="m-0 text-[11px] text-muted-foreground">
                           {text(
                             `${orders.length} order${orders.length === 1 ? '' : 's'} with cash`,
                             `${orders.length} طلب معاه كاش منهم`,
@@ -697,11 +697,11 @@ export function PosDeliveryScreen() {
                         </p>
                       </div>
                     </div>
-                    <div className="grid rounded-lg border border-warning/40 bg-warning/10 px-3 py-1.5 text-end">
-                      <span className="text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 px-2.5 py-1">
+                      <span className="text-[11px] text-muted-foreground">
                         {text('Total cash with courier', 'إجمالي الكاش مع الطيار')}
                       </span>
-                      <strong className="text-lg tabular-nums">
+                      <strong className="text-sm tabular-nums">
                         <bdi dir="ltr">
                           {formatCents(totalCents, locale)} {text('EGP', 'ج.م.')}
                         </bdi>
@@ -1140,141 +1140,175 @@ function CourierCashOrder({
   submit: (saved: PendingDeliveryWrite) => void;
 }) {
   const openPayments = d.courierPayments.filter((payment) => payment.remaining !== '0.00');
+  const [open, setOpen] = useState(false);
   const [paymentId, setPaymentId] = useState(openPayments[0]?.id ?? '');
   const [amount, setAmount] = useState(openPayments[0]?.remaining ?? '');
   const mine = employee.permissions.includes('sell') && employee.branch.id === d.branchId;
   const selectedPayment = d.courierPayments.find((payment) => payment.id === paymentId);
   const moneyValid = /^(?=.*[1-9])\d{1,10}(?:\.\d{1,2})?$/.test(amount);
+  const orderNumber = getPosOrderNumber({
+    id: d.orderId,
+    orderReference: d.orderReference,
+    branchOrderNumber: d.branchOrderNumber,
+  });
 
   return (
-    <article className="grid gap-3 p-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,26rem)] lg:items-center">
-      <div className="grid min-w-0 gap-1.5">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="m-0 font-bold">
-            {text('Order', 'طلب')}{' '}
-            <bdi dir="ltr">
-              #
-              {getPosOrderNumber({
-                id: d.orderId,
-                orderReference: d.orderReference,
-                branchOrderNumber: d.branchOrderNumber,
-              })}
-            </bdi>
-          </p>
-          <span
-            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-              d.status === 'delivered'
-                ? 'bg-success/15 text-success'
-                : d.status === 'failed'
-                  ? 'bg-warning/15 text-warning'
-                  : 'bg-primary/10 text-primary'
-            }`}
-          >
-            {d.status === 'delivered'
-              ? text('Delivered', 'وصل للعميل')
+    <article className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4">
+      {/* Compact row: the receive form opens in a popup so long lists stay clean. */}
+      <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+        <strong className="text-sm">
+          {text('Order', 'طلب')} <bdi dir="ltr">#{orderNumber}</bdi>
+        </strong>
+        <span
+          className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+            d.status === 'delivered'
+              ? 'bg-success/15 text-success'
               : d.status === 'failed'
-                ? text('Not delivered', 'ما وصلش')
-                : text('Out with courier', 'مع الطيار')}
+                ? 'bg-warning/15 text-warning'
+                : 'bg-primary/10 text-primary'
+          }`}
+        >
+          {d.status === 'delivered'
+            ? text('Delivered', 'وصل للعميل')
+            : d.status === 'failed'
+              ? text('Not delivered', 'ما وصلش')
+              : text('Out with courier', 'مع الطيار')}
+        </span>
+        {d.customerDue !== '0.00' && (
+          <span className="text-[11px] text-muted-foreground">
+            {text('Customer still owes', 'لسه على العميل')} <bdi dir="ltr">{d.customerDue}</bdi>
           </span>
-        </div>
-        <p className="m-0 text-sm">
-          {text('Cash to receive', 'الكاش المطلوب تستلمه')}:{' '}
-          <strong className="text-base tabular-nums">
+        )}
+      </span>
+      <span className="flex items-center gap-2">
+        <span className="rounded-lg bg-warning/10 px-2 py-1 text-xs">
+          {text('To receive', 'المطلوب')}{' '}
+          <strong className="tabular-nums">
             <bdi dir="ltr">
               {d.courierCashHeld} {text('EGP', 'ج.م.')}
             </bdi>
           </strong>
-        </p>
-        {d.customerDue !== '0.00' && (
-          <p className="m-0 text-xs text-muted-foreground">
-            {text('Customer still owes', 'لسه على العميل')}:{' '}
-            <bdi dir="ltr">
-              {d.customerDue} {text('EGP', 'ج.م.')}
-            </bdi>
-          </p>
-        )}
-        {!mine && (
-          <p className="m-0 text-xs text-muted-foreground">
-            {text(
-              'A cashier with delivery access for this branch can receive this cash.',
-              'أي كاشير عنده صلاحية دليفري للفرع يقدر يستلم الكاش ده.',
-            )}
-          </p>
-        )}
-      </div>
-      {mine && (
-        <form
-          className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!shift || !paymentId || !moneyValid) return;
-            submit({
-              branchId: d.branchId,
-              orderId: d.orderId,
-              kind: 'action',
-              request: {
-                requestId: crypto.randomUUID(),
-                revision: d.revision,
-                action: 'remit',
-                receivingShiftId: shift.id,
-                paymentId,
-                amount,
-              },
-            });
-          }}
-        >
-          {openPayments.length > 1 && (
-            <label className="grid gap-1 text-sm font-medium sm:col-span-2">
-              {text('Which payment?', 'أنهي دفعة؟')}
-              <select
-                className="min-h-11 w-full rounded-lg border border-input bg-background px-3"
-                value={paymentId}
-                onChange={(event) => {
-                  const nextPaymentId = event.target.value;
-                  setPaymentId(nextPaymentId);
-                  setAmount(
-                    d.courierPayments.find((payment) => payment.id === nextPaymentId)?.remaining ??
-                      '',
-                  );
-                }}
-              >
-                {openPayments.map((payment) => (
-                  <option key={payment.id} value={payment.id}>
-                    #{payment.id.slice(0, 8)} · {payment.remaining} {text('EGP', 'ج.م.')}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <label className="grid gap-1 text-sm font-medium">
-            {text('Amount received (EGP)', 'المبلغ اللي استلمته (ج.م.)')}
-            <Input
-              inputMode="decimal"
-              dir="ltr"
-              required
-              className="min-h-11 text-base font-semibold tabular-nums"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-            />
-          </label>
+        </span>
+        {mine ? (
           <PosButton
-            type="submit"
+            type="button"
             variant="solid"
-            className="min-h-11"
-            disabled={disabled || !shift || !paymentId || !selectedPayment || !moneyValid}
+            size="sm"
+            className="min-h-9"
+            aria-haspopup="dialog"
+            onClick={() => setOpen(true)}
           >
-            <Wallet aria-hidden="true" size={17} />
-            {text('Confirm cash received', 'أكّد إنك استلمت الكاش')}
+            <Wallet aria-hidden="true" size={14} />
+            {text('Receive cash', 'استلم الكاش')}
           </PosButton>
-          {!shift && (
-            <p className="m-0 text-xs text-muted-foreground sm:col-span-2">
+        ) : (
+          <span className="max-w-48 text-[11px] text-muted-foreground">
+            {text(
+              'A cashier with delivery access for this branch can receive it.',
+              'كاشير عنده صلاحية دليفري للفرع يقدر يستلمه.',
+            )}
+          </span>
+        )}
+      </span>
+
+      {mine && (
+        <Dialog
+          open={open}
+          onOpenChange={setOpen}
+          title={`${text('Receive cash', 'استلام كاش')} · ${text('Order', 'طلب')} #${orderNumber} · ${d.courierName}`}
+          closeLabel={text('Close', 'إغلاق')}
+          className="w-[min(480px,calc(100%-24px))] [&_[data-slot=dialog-header]]:px-4 [&_[data-slot=dialog-header]]:py-3 [&_[data-slot=dialog-header]_h2]:text-base [&_[data-slot=dialog-header]_button]:size-9"
+        >
+          <form
+            className="grid gap-2.5 p-3 sm:p-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!shift || !paymentId || !moneyValid) return;
+              submit({
+                branchId: d.branchId,
+                orderId: d.orderId,
+                kind: 'action',
+                request: {
+                  requestId: crypto.randomUUID(),
+                  revision: d.revision,
+                  action: 'remit',
+                  receivingShiftId: shift.id,
+                  paymentId,
+                  amount,
+                },
+              });
+            }}
+          >
+            <MoneyStat
+              label={text('Cash with the courier', 'الكاش اللي مع الطيار')}
+              amount={d.courierCashHeld}
+              settledLabel={text('Nothing to collect', 'مفيش كاش معاه')}
+              text={text}
+            />
+            <p className="m-0 text-[11px] leading-snug text-muted-foreground">
               {text(
-                'Open a shift to receive the cash into a drawer.',
-                'افتح وردية عشان تستلم الكاش في الدرج.',
+                'Count the money, put it in the drawer, then confirm. This does not charge the customer again.',
+                'عِد الفلوس وحطها في الدرج، وبعدين أكّد. ده مش تحصيل تاني من العميل.',
               )}
             </p>
-          )}
-        </form>
+            {openPayments.length > 1 && (
+              <label className="grid gap-1 text-xs font-medium">
+                {text('Which payment?', 'أنهي دفعة؟')}
+                <select
+                  className="min-h-10 w-full rounded-lg border border-input bg-background px-3 text-sm"
+                  value={paymentId}
+                  onChange={(event) => {
+                    const nextPaymentId = event.target.value;
+                    setPaymentId(nextPaymentId);
+                    setAmount(
+                      d.courierPayments.find((payment) => payment.id === nextPaymentId)
+                        ?.remaining ?? '',
+                    );
+                  }}
+                >
+                  {openPayments.map((payment) => (
+                    <option key={payment.id} value={payment.id}>
+                      #{payment.id.slice(0, 8)} · {payment.remaining} {text('EGP', 'ج.م.')}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label className="grid gap-1 text-xs font-medium">
+              {text('Amount received (EGP)', 'المبلغ اللي استلمته (ج.م.)')}
+              <Input
+                inputMode="decimal"
+                dir="ltr"
+                required
+                className="min-h-10 text-sm font-semibold tabular-nums"
+                value={amount}
+                onChange={(event) => setAmount(event.target.value)}
+              />
+            </label>
+            {!shift && (
+              <p className="m-0 text-[11px] text-muted-foreground">
+                {text(
+                  'Open a shift to receive the cash into a drawer.',
+                  'افتح وردية عشان تستلم الكاش في الدرج.',
+                )}
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <PosButton
+                type="submit"
+                variant="solid"
+                className="min-h-10"
+                disabled={disabled || !shift || !paymentId || !selectedPayment || !moneyValid}
+              >
+                <Check aria-hidden="true" size={15} />
+                {text('Confirm cash received', 'أكّد إنك استلمت الكاش')}
+              </PosButton>
+              <PosButton type="button" className="min-h-10" onClick={() => setOpen(false)}>
+                {text('Cancel', 'إلغاء')}
+              </PosButton>
+            </div>
+          </form>
+        </Dialog>
       )}
     </article>
   );
