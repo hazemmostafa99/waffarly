@@ -45,14 +45,19 @@ export class CustomerOrderSession {
   }
   async prepareOrderSession(request: Request, response: Response) {
     const account = await this.resolveAccount(request);
-    if (!this.readGuestIdentity(request))
-      response.cookie(guestOrderCookieName, randomBytes(32).toString('base64url'), {
-        httpOnly: true,
-        secure: this.config.isProduction,
-        sameSite: 'lax',
-        path: '/',
-        maxAge: guestOrderLifetimeMs,
-      });
+    // Re-send the existing guest token (or a new one) on every checkout review. Each order is
+    // followable for 30 days, so the browser cookie must also restart its 30 days; otherwise a
+    // cookie from an older order would expire before the newest order's tracking period ends.
+    const token = this.readGuestIdentity(request)
+      ? readOrderCookie(request, guestOrderCookieName)!
+      : randomBytes(32).toString('base64url');
+    response.cookie(guestOrderCookieName, token, {
+      httpOnly: true,
+      secure: this.config.isProduction,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: guestOrderLifetimeMs,
+    });
     return { signedIn: account !== null, guestLifetimeDays: 30 };
   }
   async resolveOrderIdentity(request: Request): Promise<OrderIdentity> {
