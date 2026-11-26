@@ -238,6 +238,8 @@ export {
   POS_EMPLOYEE_ROLE_PERMISSIONS,
   POS_LEGACY_EMPLOYEE_PERMISSIONS,
   isPosEmployeeRole,
+  defaultPosEmployeePermissions,
+  normalizePosEmployeePermissions,
   resolvePosEmployeePermissions,
   hasPosEmployeePermission,
   posEmployeeHome,
