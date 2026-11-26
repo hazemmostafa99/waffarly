@@ -105,12 +105,22 @@ export function useLocale() {
         );
       },
       errorText: (text: string) => {
-        if (context.locale === 'en') return formatDigits(text, context.locale);
         if (ar[text]) return formatDigits(String(translate(text)), context.locale);
-        return formatDigits(
-          String(translate('Something went wrong.')),
-          context.locale,
-        );
+        const message = text.trim();
+        if (
+          !message ||
+          message.startsWith('API request failed with status ') ||
+          message === 'API returned an invalid paginated response.' ||
+          message.startsWith('VITE_API_BASE_URL ') ||
+          message.startsWith('Unexpected token ') ||
+          message === 'Unexpected end of JSON input' ||
+          message === 'Internal server error' ||
+          message === 'Failed to fetch' ||
+          message === 'NetworkError when attempting to fetch resource.'
+        ) {
+          return formatDigits(String(translate('Something went wrong.')), context.locale);
+        }
+        return formatDigits(message, context.locale);
       },
       formatDigits: (value: string | number) => formatDigits(value, context.locale),
       formatNumber: (value: number, options?: Intl.NumberFormatOptions) =>
