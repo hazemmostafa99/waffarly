@@ -40,10 +40,22 @@ export function StorefrontSignInLink(props: Omit<ComponentProps<typeof Link>, 'h
   );
 }
 
+/**
+ * True when a return path has a backslash or an ASCII control character (codes 0-31),
+ * which browsers may normalise into another destination.
+ * Example: "/menu" -> false, "/\evil.com" -> true, "/menu" + newline -> true.
+ */
+function hasUnsafePathCharacter(value: string): boolean {
+  for (const character of value) {
+    if (character === '\\' || character.charCodeAt(0) < 0x20) return true;
+  }
+  return false;
+}
+
 /** Accept only paths inside this storefront, never external URLs or another tenant. */
 export function storefrontReturnPath(value: string | null, base: string): string {
   const home = base || '/';
-  if (!value || !value.startsWith('/') || value.startsWith('//') || /[\\\u0000-\u001f]/.test(value))
+  if (!value || !value.startsWith('/') || value.startsWith('//') || hasUnsafePathCharacter(value))
     return home;
   try {
     const url = new URL(value, window.location.origin);
@@ -54,7 +66,7 @@ export function storefrontReturnPath(value: string | null, base: string): string
     const allowedPage =
       /^\/(?:menu|offers|about|branches|favorites|cart|checkout|account(?:\/(?:profile|orders|addresses))?|(?:order|products)\/[a-zA-Z0-9_-]+)\/?$/;
     if (localPath && localPath !== '/' && !allowedPage.test(localPath)) return home;
-    if (/[\\\u0000-\u001f]/.test(path)) return home;
+    if (hasUnsafePathCharacter(path)) return home;
     return url.pathname + url.search + url.hash;
   } catch {
     return home;
