@@ -717,6 +717,10 @@ export const ar: Record<string, string> = {
   'Super Admin credentials are not configured.': 'لم تتم تهيئة حساب إدارة المنصة.',
   'Username and password are required.': 'اسم المستخدم وكلمة المرور مطلوبان.',
   'Username is already in use.': 'اسم المستخدم مستخدم بالفعل.',
+  'Username or subdomain is already in use.': 'اسم المستخدم أو السب دومين مستخدم بالفعل.',
+  'This subdomain is already in use.': 'السب دومين ده مستخدم بالفعل.',
+  'This subdomain is already in use. Choose another one.':
+    'السب دومين ده مستخدم بالفعل. اختار اسم تاني.',
   'Plan was not found.': 'لم يتم العثور على الباقة.',
   'Plan changed since you opened it. Reload plans before editing again.':
     'تم تغيير الباقة. حدّث الباقات قبل التعديل مجددًا.',
