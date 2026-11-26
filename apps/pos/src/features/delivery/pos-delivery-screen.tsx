@@ -5,7 +5,7 @@ import {
   Bike,
   Check,
   CheckCircle2,
-  ChevronDown,
+  ChevronRight,
   Clock3,
   History as HistoryIcon,
   LoaderCircle,
@@ -27,7 +27,7 @@ import type {
   PosEmployeeSession,
   PosShiftSummary,
 } from '@waffarly/contracts';
-import { Input, useLocale } from '@waffarly/ui';
+import { Dialog, Input, useLocale } from '@waffarly/ui';
 import { usePosWorkspaceStore } from '../../app/pos-workspace-store.js';
 import { PosButton } from '../../components/pos-button.js';
 import { getPosOrderNumber } from '../orders/pos-order-number.js';
@@ -263,12 +263,8 @@ export function PosDeliveryScreen() {
     ? cashGroups.filter((group) => group.id === courierFilter)
     : cashGroups;
   function toggleOrder(orderId: string) {
-    setOpenOrders((current) => {
-      const next = new Set(current);
-      if (next.has(orderId)) next.delete(orderId);
-      else next.add(orderId);
-      return next;
-    });
+    // One order popup at a time; reopening the same order closes it.
+    setOpenOrders((current) => (current.has(orderId) ? new Set() : new Set([orderId])));
   }
   const disabled =
     !online ||
@@ -1567,8 +1563,7 @@ function DeliveryCard({
       {/* Compact summary row: many orders stay scannable; tap to open the steps. */}
       <button
         type="button"
-        aria-expanded={expanded}
-        aria-controls={`delivery-${d.orderId}-details`}
+        aria-haspopup="dialog"
         onClick={onToggle}
         className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 p-3 text-start hover:bg-secondary/40 sm:px-4"
       >
@@ -1631,26 +1626,24 @@ function DeliveryCard({
               </strong>
             </span>
           )}
-          <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
-            {expanded
-              ? text('Hide', 'إخفاء')
-              : readOnly
-                ? text('Details', 'التفاصيل')
-                : text('Open steps', 'افتح الخطوات')}
-            <ChevronDown
-              aria-hidden="true"
-              size={16}
-              className={`transition-transform ${expanded ? 'rotate-180' : ''}`}
-            />
+          <span className="inline-flex min-h-9 items-center gap-1 rounded-lg bg-primary/10 px-3 text-xs font-semibold text-primary">
+            {readOnly ? text('Details', 'التفاصيل') : text('Open order', 'افتح الطلب')}
+            <ChevronRight aria-hidden="true" size={15} className="rtl:rotate-180" />
           </span>
         </span>
       </button>
 
-      {expanded && (
-        <div
-          id={`delivery-${d.orderId}-details`}
-          className="grid gap-3 border-t border-border p-3 sm:p-4"
-        >
+      {/* The steps open in a popup so a long list of orders stays a clean list. */}
+      <Dialog
+        open={expanded}
+        onOpenChange={(open) => {
+          if (!open) onToggle();
+        }}
+        title={`${text('Order', 'طلب')} #${orderNumber} · ${d.courierName}`}
+        closeLabel={text('Close', 'إغلاق')}
+        className="w-[min(760px,calc(100%-24px))]"
+      >
+        <div id={`delivery-${d.orderId}-details`} className="grid gap-3 p-4 sm:p-5">
           <StepTrack d={d} text={text} />
 
           <div className="grid gap-2 sm:grid-cols-2">
@@ -2022,7 +2015,7 @@ function DeliveryCard({
             </details>
           )}
         </div>
-      )}
+      </Dialog>
     </article>
   );
 }
