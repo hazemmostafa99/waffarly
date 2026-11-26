@@ -35,9 +35,11 @@ export class PosEmployeeGuard implements CanActivate {
     const requestedRegisterIds = [request.query.registerId, body?.registerId, body?.request?.registerId];
 
     if (!employee.deviceRegister) {
-      // An unpaired browser must not read or act on any one register's data.
+      // An unpaired browser must not read or act on any one register's data,
+      // except when choosing the register to pair with.
+      const isBindRequest = request.method === 'POST' && path.endsWith('/pos/registers/bind');
       const namesRegister = requestedRegisterIds.some((id) => typeof id === 'string');
-      if (namesRegister || !isAllowedWithoutRegister(request.method, path)) {
+      if ((namesRegister && !isBindRequest) || !isAllowedWithoutRegister(request.method, path)) {
         throw new ForbiddenException(PAIR_REGISTER_MESSAGE);
       }
     } else {
