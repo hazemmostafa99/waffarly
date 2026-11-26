@@ -1372,18 +1372,18 @@ function MoneyStat({
   const settled = amount === '0.00';
   return (
     <div
-      className={`grid gap-0.5 rounded-lg border p-3 ${
+      className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2 ${
         settled ? 'border-border bg-muted/20' : 'border-warning/40 bg-warning/10'
       }`}
     >
       <span className="text-xs text-muted-foreground">{label}</span>
       {settled ? (
-        <strong className="flex items-center gap-1.5 text-sm text-success">
-          <CheckCircle2 aria-hidden="true" size={15} />
+        <strong className="flex items-center gap-1 text-xs text-success">
+          <CheckCircle2 aria-hidden="true" size={13} />
           {settledLabel}
         </strong>
       ) : (
-        <strong className="text-lg tabular-nums">
+        <strong className="text-sm tabular-nums">
           <bdi dir="ltr">
             {amount} {text('EGP', 'ج.م.')}
           </bdi>
@@ -1406,14 +1406,14 @@ function StepSection({
   children: ReactNode;
 }) {
   return (
-    <section className="grid gap-3 rounded-xl border border-border bg-background/40 p-3">
-      <header className="flex items-start gap-2.5">
-        <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+    <section className="grid gap-2 rounded-lg border border-border bg-background/40 p-2.5">
+      <header className="flex items-start gap-2">
+        <span className="mt-px flex size-5 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
           {number}
         </span>
-        <div className="grid gap-0.5">
-          <h4 className="m-0 text-sm font-semibold">{title}</h4>
-          {hint && <p className="m-0 text-xs leading-relaxed text-muted-foreground">{hint}</p>}
+        <div className="grid">
+          <h4 className="m-0 text-[13px] font-semibold">{title}</h4>
+          {hint && <p className="m-0 text-[11px] leading-snug text-muted-foreground">{hint}</p>}
         </div>
       </header>
       {children}
@@ -1443,17 +1443,17 @@ function ChoiceButton({
       aria-checked={selected}
       disabled={disabled}
       onClick={onClick}
-      className={`grid min-h-16 gap-1 rounded-lg border p-3 text-start transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+      className={`grid gap-0.5 rounded-lg border px-2.5 py-2 text-start transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
         selected
           ? 'border-primary bg-primary/10 ring-1 ring-primary'
           : 'border-border bg-card hover:bg-secondary'
       }`}
     >
-      <span className="flex items-center gap-2 text-sm font-semibold">
+      <span className="flex items-center gap-1.5 text-[13px] font-semibold">
         {icon}
         {title}
       </span>
-      <span className="text-xs leading-snug text-muted-foreground">{description}</span>
+      <span className="text-[11px] leading-snug text-muted-foreground">{description}</span>
     </button>
   );
 }
@@ -1641,9 +1641,9 @@ function DeliveryCard({
         }}
         title={`${text('Order', 'طلب')} #${orderNumber} · ${d.courierName}`}
         closeLabel={text('Close', 'إغلاق')}
-        className="w-[min(760px,calc(100%-24px))]"
+        className="w-[min(620px,calc(100%-24px))] [&_[data-slot=dialog-header]]:px-4 [&_[data-slot=dialog-header]]:py-3 [&_[data-slot=dialog-header]_h2]:text-base [&_[data-slot=dialog-header]_button]:size-9"
       >
-        <div id={`delivery-${d.orderId}-details`} className="grid gap-3 p-4 sm:p-5">
+        <div id={`delivery-${d.orderId}-details`} className="grid gap-2.5 p-3 sm:p-4">
           <StepTrack d={d} text={text} />
 
           <div className="grid gap-2 sm:grid-cols-2">
@@ -1704,19 +1704,19 @@ function DeliveryCard({
                 <div className="grid gap-2 sm:grid-cols-2">
                   <PosButton
                     variant="solid"
-                    className="min-h-12"
+                    className="min-h-10"
                     disabled={disabled}
                     onClick={() => action({ ...base(), action: 'delivered' })}
                   >
-                    <Check aria-hidden="true" size={17} />
+                    <Check aria-hidden="true" size={15} />
                     {text('Yes, delivered', 'أيوه، وصل')}
                   </PosButton>
                   <PosButton
-                    className="min-h-12"
+                    className="min-h-10"
                     disabled={disabled}
                     onClick={() => setReporting(true)}
                   >
-                    <X aria-hidden="true" size={17} />
+                    <X aria-hidden="true" size={15} />
                     {text('No, not delivered', 'لأ، ما وصلش')}
                   </PosButton>
                 </div>
@@ -1728,7 +1728,7 @@ function DeliveryCard({
                     action({ ...base(), action: 'failed', reason: reason.trim() });
                   }}
                 >
-                  <label className="grid gap-1 text-sm font-medium">
+                  <label className="grid gap-1 text-xs font-medium">
                     {text('What happened?', 'إيه اللي حصل؟')}
                     <Input
                       autoFocus
@@ -1743,14 +1743,14 @@ function DeliveryCard({
                     <PosButton
                       type="submit"
                       variant="destructive"
-                      className="min-h-11"
+                      className="min-h-10"
                       disabled={disabled || !reason.trim()}
                     >
                       {text('Save: not delivered', 'سجّل إنه ما وصلش')}
                     </PosButton>
                     <PosButton
                       type="button"
-                      className="min-h-11"
+                      className="min-h-10"
                       onClick={() => {
                         setReporting(false);
                         setReason('');
@@ -1818,10 +1818,10 @@ function DeliveryCard({
                 )}
                 <div className="grid gap-2 sm:grid-cols-2">
                   {openChecks.length > 1 && (
-                    <label className="grid gap-1 text-sm font-medium">
+                    <label className="grid gap-1 text-xs font-medium">
                       {text('Which bill?', 'أنهي حساب؟')}
                       <select
-                        className="min-h-11 w-full rounded-lg border border-input bg-background px-3"
+                        className="min-h-10 w-full rounded-lg border border-input bg-background px-3"
                         value={checkId}
                         onChange={(e) => {
                           setCheckId(e.target.value);
@@ -1839,13 +1839,13 @@ function DeliveryCard({
                       </select>
                     </label>
                   )}
-                  <label className="grid gap-1 text-sm font-medium">
+                  <label className="grid gap-1 text-xs font-medium">
                     {text('Amount paid (EGP)', 'المبلغ المدفوع (ج.م.)')}
                     <Input
                       inputMode="decimal"
                       dir="ltr"
                       required
-                      className="min-h-11 text-base font-semibold tabular-nums"
+                      className="min-h-10 text-sm font-semibold tabular-nums"
                       value={customerPaymentAmount}
                       onChange={(event) => setCustomerPaymentAmount(event.target.value)}
                     />
@@ -1854,12 +1854,12 @@ function DeliveryCard({
                 <PosButton
                   type="submit"
                   variant="solid"
-                  className="min-h-12 sm:justify-self-start"
+                  className="min-h-10 sm:justify-self-start"
                   disabled={
                     disabled || !customerMoneyValid || !checkId || (method !== 'courier' && !shift)
                   }
                 >
-                  <Check aria-hidden="true" size={17} />
+                  <Check aria-hidden="true" size={15} />
                   {customerMoneyValid
                     ? text(
                         `Save payment of ${customerPaymentAmount} EGP`,
@@ -1894,10 +1894,10 @@ function DeliveryCard({
                 }}
               >
                 {openCourierPayments.length > 1 && (
-                  <label className="grid gap-1 text-sm font-medium sm:col-span-2">
+                  <label className="grid gap-1 text-xs font-medium sm:col-span-2">
                     {text('Which payment?', 'أنهي دفعة؟')}
                     <select
-                      className="min-h-11 w-full rounded-lg border border-input bg-background px-3"
+                      className="min-h-10 w-full rounded-lg border border-input bg-background px-3"
                       value={paymentId}
                       onChange={(e) => {
                         setPaymentId(e.target.value);
@@ -1914,13 +1914,13 @@ function DeliveryCard({
                     </select>
                   </label>
                 )}
-                <label className="grid gap-1 text-sm font-medium">
+                <label className="grid gap-1 text-xs font-medium">
                   {text('Amount received (EGP)', 'المبلغ اللي استلمته (ج.م.)')}
                   <Input
                     inputMode="decimal"
                     dir="ltr"
                     required
-                    className="min-h-11 text-base font-semibold tabular-nums"
+                    className="min-h-10 text-sm font-semibold tabular-nums"
                     value={remitAmount}
                     onChange={(event) => setRemitAmount(event.target.value)}
                   />
@@ -1928,10 +1928,10 @@ function DeliveryCard({
                 <PosButton
                   type="submit"
                   variant="solid"
-                  className="min-h-11"
+                  className="min-h-10"
                   disabled={disabled || !shift || !paymentId || !remitMoneyValid}
                 >
-                  <Wallet aria-hidden="true" size={17} />
+                  <Wallet aria-hidden="true" size={15} />
                   {text('Confirm cash received', 'أكّد إنك استلمت الكاش')}
                 </PosButton>
               </form>
@@ -1977,7 +1977,7 @@ function DeliveryCard({
                 <PosButton
                   type="submit"
                   variant="solid"
-                  className="min-h-11"
+                  className="min-h-10"
                   disabled={
                     disabled ||
                     !selectedCourierId ||
@@ -1986,7 +1986,7 @@ function DeliveryCard({
                     d.courierCashHeld !== '0.00'
                   }
                 >
-                  <Bike aria-hidden="true" size={17} />
+                  <Bike aria-hidden="true" size={15} />
                   {text('Send again', 'ابعته تاني')}
                 </PosButton>
               </form>
