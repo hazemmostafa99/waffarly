@@ -335,18 +335,6 @@ export function EmployeesPage() {
   return (
     <section className="employee-workspace" dir={locale === 'ar' ? 'rtl' : 'ltr'}>
       <h1 className="sr-only">{text('Employees', 'الموظفون')}</h1>
-      {storeHandle && (
-        <p className="products-notice" role="note">
-          {text(
-            'Cashiers sign in to POS with the store subdomain, a dot, then their username:',
-            'الكاشير يدخل نقاط البيع بالسب دومين بتاع المتجر وبعده نقطة وبعدها اسم المستخدم:',
-          )}{' '}
-          <bdi dir="ltr" className="whitespace-nowrap font-mono font-semibold">
-            {formatPosSignInName(storeHandle, 'username')}
-          </bdi>
-        </p>
-      )}
-
       {error && !editorOpen && (
         <div className="products-error employee-load-error" role="alert">
           <span>{error}</span>
