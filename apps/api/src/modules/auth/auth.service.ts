@@ -182,36 +182,47 @@ export class AuthService {
       select: { id: true },
     });
     if (!branch) throw new ForbiddenException('Select an active branch of your business.');
-    // The linked operator exists only to attribute POS records; it has no usable staff password.
-    const disabledPasswordHash = await hashPassword(randomBytes(32).toString('base64url'));
-    const operator = await this.prisma.posEmployee.upsert({
-      where: { ownerOperatorKey: `${account.id}:${branchId}` },
-      create: {
-        merchantId: owner.merchantId,
-        branchId,
-        ownerAccountId: account.id,
-        ownerOperatorKey: `${account.id}:${branchId}`,
-        username: `@owner:${branchId}`,
-        displayName: owner.ownerName,
-        passwordHash: disabledPasswordHash,
-        role: 'supervisor',
-        // Saved permissions are exact, so the owner's operator holds every POS permission.
-        permissions: [...POS_EMPLOYEE_PERMISSIONS],
-        createdBy: owner.username,
-        updatedBy: owner.username,
-      },
-      update: {
-        displayName: owner.ownerName,
-        active: true,
-        permissions: [...POS_EMPLOYEE_PERMISSIONS],
-      },
-      select: { id: true },
-    });
+    const operator = await this.ownerPosOperator(account.id, owner.merchantId, branchId, owner.ownerName, owner.username);
     const deviceId = this.getOrCreatePosDeviceId(request);
     await this.startSession('POS', operator.id, POS_COOKIE, response, undefined, deviceId);
     response.cookie(POS_DEVICE_COOKIE, deviceId, {
       ...this.cookieOptions(),
       maxAge: POS_DEVICE_COOKIE_LIFETIME_MS,
+    });
+  }
+
+  /** The owner's per-branch POS identity. It only attributes owner POS work and approvals;
+   * it has no usable staff password and always holds every POS permission. */
+  private async ownerPosOperator(
+    accountId: string,
+    merchantId: string,
+    branchId: string,
+    ownerName: string,
+    ownerUsername: string,
+  ): Promise<{ id: string }> {
+    const disabledPasswordHash = await hashPassword(randomBytes(32).toString('base64url'));
+    return this.prisma.posEmployee.upsert({
+      where: { ownerOperatorKey: `${accountId}:${branchId}` },
+      create: {
+        merchantId,
+        branchId,
+        ownerAccountId: accountId,
+        ownerOperatorKey: `${accountId}:${branchId}`,
+        username: `@owner:${branchId}`,
+        displayName: ownerName,
+        passwordHash: disabledPasswordHash,
+        role: 'supervisor',
+        // Saved permissions are exact, so the owner's operator holds every POS permission.
+        permissions: [...POS_EMPLOYEE_PERMISSIONS],
+        createdBy: ownerUsername,
+        updatedBy: ownerUsername,
+      },
+      update: {
+        displayName: ownerName,
+        active: true,
+        permissions: [...POS_EMPLOYEE_PERMISSIONS],
+      },
+      select: { id: true },
     });
   }
 
@@ -327,6 +338,11 @@ export class AuthService {
         branch: { select: { id: true, archivedAt: true } },
       },
     });
+    if (!employee) {
+      // The business owner may approve with their own dashboard credentials.
+      const ownerApprover = await this.verifyOwnerApproval(input);
+      if (ownerApprover) return ownerApprover;
+    }
     if (
       !employee ||
       !employee.active ||
@@ -342,6 +358,36 @@ export class AuthService {
     if (!resolvePosEmployeePermissions(role, employee.permissions).includes(input.permission))
       throw new ForbiddenException('The supervisor is not authorized to approve this action.');
     return employee.id;
+  }
+
+  /** Returns the owner's operator ID for this branch when the credentials are the owner's. */
+  private async verifyOwnerApproval(input: {
+    merchantId: string;
+    branchId: string;
+    actingEmployeeId: string;
+    username: string;
+    password: string;
+  }): Promise<string | null> {
+    const account = await this.prisma.ownerAccount.findFirst({
+      where: { merchantId: input.merchantId, username: input.username.trim().toLowerCase() },
+      select: { id: true, username: true, passwordHash: true, merchant: { select: { ownerName: true } } },
+    });
+    if (!account || !(await verifyPassword(input.password, account.passwordHash))) return null;
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: input.branchId, merchantId: input.merchantId, archivedAt: null },
+      select: { id: true },
+    });
+    if (!branch) throw new ForbiddenException('The supervisor is not assigned to this branch.');
+    const operator = await this.ownerPosOperator(
+      account.id,
+      input.merchantId,
+      input.branchId,
+      account.merchant.ownerName,
+      account.username,
+    );
+    if (operator.id === input.actingEmployeeId)
+      throw new ForbiddenException('A different supervisor must approve this action.');
+    return operator.id;
   }
 
   async logout(
