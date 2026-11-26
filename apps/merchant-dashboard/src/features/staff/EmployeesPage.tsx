@@ -516,7 +516,11 @@ export function EmployeesPage() {
                   {/* The store subdomain is a fixed prefix; only the username after it is saved. */}
                   <span className={`employee-username-field${storeHandle ? ' has-prefix' : ''}`} dir="ltr">
                     {storeHandle && (
-                      <span className="employee-username-prefix" aria-hidden="true">
+                      <span
+                        className="employee-username-prefix"
+                        aria-hidden="true"
+                        title={`${storeHandle}.`}
+                      >
                         {storeHandle}.
                       </span>
                     )}
