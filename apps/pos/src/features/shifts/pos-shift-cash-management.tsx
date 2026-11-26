@@ -13,7 +13,7 @@ import {
   RefreshCw,
   Wallet,
 } from 'lucide-react';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { PosCashCustody, PosSafeSelect } from './pos-cash-custody.js';
 import { isCorrectableShiftCloseRejection } from './shift-close-recovery.js';
@@ -109,6 +109,8 @@ export function PosShiftCashManagement({
     }) => recordPosShiftCashMovement(command.shiftId, command.request, command.approval),
     onSuccess: async (result, variables) => {
       removePendingShiftCashMovement(employee.merchantId, employee.id, variables.request.requestId);
+      // Approval is per action; a leftover username would block the next close silently.
+      setSupervisorUsername('');
       setSupervisorPassword('');
       setAmount('');
       setReason('');
@@ -134,6 +136,7 @@ export function PosShiftCashManagement({
     }) => closePosShift(command.shiftId, command.request, command.approval),
     onSuccess: async (report, variables) => {
       removePendingShiftClose(employee.merchantId, employee.id, variables.request.requestId);
+      setSupervisorUsername('');
       setSupervisorPassword('');
       setCountedCash('');
       setCloseReason('');
@@ -393,10 +396,17 @@ export function PosShiftCashManagement({
     (closePreviewMutation.error instanceof Error ? closePreviewMutation.error.message : '') ||
     (closeMutation.error instanceof Error ? closeMutation.error.message : '');
 
+  // The alert sits above long forms; bring it into view so a rejected close is never silent.
+  const errorRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [error]);
+
   return (
     <div className="grid gap-3" aria-live="polite">
       {error && (
         <p
+          ref={errorRef}
           className="m-0 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
           role="alert"
         >
