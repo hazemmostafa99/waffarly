@@ -396,6 +396,7 @@ it(
       await prisma.posShift.deleteMany({ where: { merchantId: { in: tenants } } });
       await prisma.posRegister.deleteMany({ where: { merchantId: { in: tenants } } });
       await prisma.posEmployee.deleteMany({ where: { merchantId: { in: tenants } } });
+      await prisma.posBranchOrderSession.deleteMany({ where: { merchantId: { in: tenants } } });
       await prisma.branch.deleteMany({ where: { merchantId: { in: tenants } } });
       // Merchant creation also creates a subscription; remove only these test tenants' records.
       await deleteTestMerchantSubscriptions(prisma, tenants);

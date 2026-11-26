@@ -52,6 +52,8 @@ const employee: PosEmployeeSession = {
   role: null,
   permissions: ['accept_recipe_orders', 'start_preparation', 'sell'],
   branch: { id: branchId, name: 'Main', archivedAt: null },
+  // POS write requests need a browser paired with a register; sales name this one.
+  deviceRegister: { id: '99999999-9999-4999-8999-999999999999', branchId, name: 'Front' },
 };
 
 describe('POS employee endpoints', () => {

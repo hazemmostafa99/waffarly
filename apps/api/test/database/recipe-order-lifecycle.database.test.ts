@@ -343,10 +343,12 @@ it(
                 .stockQuantity,
               0,
             );
+            // Online DIRECT lines save their stock requirement and deduct it at acceptance,
+            // so creating the order leaves the variant stock untouched.
             assert.equal(
               (await tx.productVariant.findUniqueOrThrow({ where: { id: f.directVariantId } }))
                 .stockQuantity,
-              9,
+              10,
             );
             assert.equal(await f.balance(), '100');
             await assert.rejects(
@@ -1270,6 +1272,7 @@ it(
         await client.posShift.deleteMany({ where });
         await client.posRegister.deleteMany({ where });
         await client.posEmployee.deleteMany({ where });
+        await client.posBranchOrderSession.deleteMany({ where });
         await client.branch.deleteMany({ where });
         await client.stockItemUnit.deleteMany({ where });
         await client.stockItem.deleteMany({ where });

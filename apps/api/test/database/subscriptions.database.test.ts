@@ -318,6 +318,8 @@ it(
                 subjectId: employee.id,
                 tokenHash: createHash('sha256').update(posToken).digest('hex'),
                 expiresAt: new Date(Date.now() + 60000),
+                // POS sessions belong to one browser.
+                deviceId: randomUUID(),
               },
             });
             const posReq = (path: string) =>

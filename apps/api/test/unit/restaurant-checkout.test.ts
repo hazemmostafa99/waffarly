@@ -84,11 +84,14 @@ test('persisted reference restaurants receive real checkout quotes with authorit
   const { service, counts } = fixture(true);
   assert.deepEqual(await service.quoteCheckout('reference-restaurant-1', input), {
     unitPrices: ['100.25'],
+    originalUnitPrices: ['100.25'],
+    promotions: [null],
     subtotal: '200.50',
     deliveryFee: '25.00',
     total: '225.50',
     currency: 'EGP',
     restaurantSettingsRevision: 3,
+    branch: { id: '33333333-3333-4333-8333-333333333333', name: 'Main branch', address: null },
     demo: false,
   });
   assert.deepEqual(counts(), { pricingCalls: 1, eligibilityCalls: 1 });

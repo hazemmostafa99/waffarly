@@ -39,6 +39,7 @@ it('saves post-coupon line revenue and acceptance time on the legacy storefront 
       variantName: null,
       basePrice: line.lineTotal,
       modifierTotal: decimal('0.00'),
+      promotionDiscount: decimal('0.00'),
       quantity: 1,
       unitPrice: line.lineTotal,
       variantAttributes: [],

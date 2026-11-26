@@ -97,7 +97,17 @@ describe('feature modules and authenticated request actors', () => {
     await request(app.getHttpServer()).patch('/auth/owner/storefront').send(input).expect(200);
     assert.equal(ownerLookups, 1);
     assert.deepEqual(calls, [
-      { merchantId: owner.merchantId, input: { ...input, accentColor: '#abcdef' } },
+      {
+        merchantId: owner.merchantId,
+        // Every hex color is stored lowercase.
+        input: {
+          ...input,
+          primaryColor: '#0f705a',
+          accentColor: '#abcdef',
+          backgroundColor: '#faf8f4',
+          surfaceColor: '#ffffff',
+        },
+      },
     ]);
   });
 

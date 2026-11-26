@@ -659,6 +659,7 @@ it(
         await tx.posShift.deleteMany({ where: { merchantId } });
         await tx.posRegister.deleteMany({ where: { merchantId } });
         await tx.posEmployee.deleteMany({ where: { merchantId } });
+        await tx.posBranchOrderSession.deleteMany({ where: { merchantId } });
         await tx.branch.deleteMany({ where: { merchantId } });
         await deleteTestMerchantSubscriptions(tx, [merchantId]);
         await tx.merchant.delete({ where: { id: merchantId } });

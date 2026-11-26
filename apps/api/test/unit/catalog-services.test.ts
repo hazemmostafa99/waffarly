@@ -82,7 +82,11 @@ describe('catalog service invariants', () => {
       variantAttributes: [],
       currency: 'EGP',
       basePrice: '75.10',
+      // No active promotion: discounted and original prices equal the regular ones.
+      discountedBasePrice: '75.10',
+      promotion: null,
       modifierTotal: '25.35',
+      originalTotalPrice: '100.45',
       totalPrice: '100.45',
       selections: [
         {
@@ -163,7 +167,10 @@ describe('catalog service invariants', () => {
       variantAttributes: [],
       currency: 'EGP',
       basePrice: '80.00',
+      discountedBasePrice: '80.00',
+      promotion: null,
       modifierTotal: '0.00',
+      originalTotalPrice: '80.00',
       totalPrice: '80.00',
       selections: [],
     });
@@ -406,6 +413,11 @@ describe('catalog service invariants', () => {
       name: 'Burger',
       description: null,
       basePrice: '75.00',
+      promotionEnabled: false,
+      promotionType: null,
+      promotionValue: null,
+      promotionStartsAt: null,
+      promotionEndsAt: null,
       availability: 'unavailable',
       createdBy: owner.username,
       updatedBy: owner.username,

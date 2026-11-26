@@ -52,6 +52,8 @@ describe('employee role boundaries', () => {
       role,
       permissions: defaultPosEmployeePermissions(role),
       branch: { id: branchId, name: 'Assigned', archivedAt: null },
+      // POS write requests need a browser paired with a register.
+      deviceRegister: { id: '99999999-9999-4999-8999-999999999999', branchId, name: 'Front' },
     };
   }
 
@@ -195,7 +197,8 @@ describe('employee role boundaries', () => {
       .expect(200, { items: [], nextCursor: null });
     assert.deepEqual(reads[0]?.query.where, {
       merchantId,
-      order: { is: { source: 'pos', branchId } },
+      // History also lists online pickup orders collected at this branch's POS.
+      order: { is: { source: { in: ['waffarly', 'storefront', 'pos'] }, branchId } },
     });
     await request(app.getHttpServer()).get(`/pos/receipts?branchId=${otherBranchId}`).expect(403);
     await request(app.getHttpServer())
@@ -207,7 +210,7 @@ describe('employee role boundaries', () => {
       OR: [
         { source: 'pos' },
         {
-          source: 'storefront',
+          source: { in: ['waffarly', 'storefront'] },
           fulfillmentType: 'pickup',
           posShiftId: { not: null },
           status: { in: ['ready', 'completed'] },

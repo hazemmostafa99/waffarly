@@ -37,6 +37,8 @@ const employee: PosEmployeeSession = {
   role: 'cashier',
   permissions: ['sell'],
   branch: { id: branchId, name: 'Main', archivedAt: null },
+  // POS write requests need a browser paired with a register.
+  deviceRegister: { id: '99999999-9999-4999-8999-999999999999', branchId, name: 'Front' },
 };
 
 describe('POS payment endpoint', () => {

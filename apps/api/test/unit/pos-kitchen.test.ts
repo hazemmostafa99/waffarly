@@ -46,7 +46,7 @@ describe('POS kitchen tickets', () => {
       delivery: { is: null },
       OR: [
         {
-          source: 'storefront',
+          source: { in: ['waffarly', 'storefront'] },
           branchId,
           status: { in: ['pending', 'accepted', 'preparing', 'ready'] },
         },
@@ -55,7 +55,7 @@ describe('POS kitchen tickets', () => {
           OR: [
             {
               status: 'pending',
-              OR: [{ source: 'storefront', branchId: null }, { branchId }],
+              OR: [{ source: { in: ['waffarly', 'storefront'] }, branchId: null }, { branchId }],
             },
             { status: { in: ['accepted', 'preparing', 'ready'] }, branchId },
           ],

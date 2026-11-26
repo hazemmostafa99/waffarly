@@ -72,6 +72,8 @@ describe('cash custody HTTP boundaries', () => {
                 merchantId,
                 permissions: ['open_register_shift'],
                 branch: { id: branchId, archivedAt: null },
+                // POS write requests need a browser paired with a register.
+                deviceRegister: { id, branchId, name: 'Front' },
               };
             },
           },

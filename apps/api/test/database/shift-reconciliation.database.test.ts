@@ -495,7 +495,11 @@ it(
         to: new Date(Date.now() + 366 * 24 * 60 * 60 * 1000).toISOString(),
         limit: 25,
       });
-      assert.deepEqual(outsideRange, { items: [], nextCursor: null });
+      assert.deepEqual(outsideRange, {
+        items: [],
+        nextCursor: null,
+        summary: { closedCount: 0, matchedCount: 0, netVariance: '0.00', varianceCount: 0 },
+      });
       await assert.rejects(
         service.listOwnerCloseReports(merchant.id, {
           ...reportRange,
@@ -520,6 +524,7 @@ it(
             await tx.posShift.deleteMany({ where: { merchantId } });
             await tx.posRegister.deleteMany({ where: { merchantId } });
             await tx.posEmployee.deleteMany({ where: { merchantId } });
+            await tx.posBranchOrderSession.deleteMany({ where: { merchantId } });
             await tx.branch.deleteMany({ where: { merchantId } });
             // Remove the subscription created with this test merchant before its parent row.
             await deleteTestMerchantSubscriptions(tx, [merchantId]);

@@ -12,7 +12,8 @@ function fixture(mode: 'new' | 'replay' | 'foreign' | 'other-shift') {
       findFirst: async ({ where }: { where: Record<string, unknown> }) => {
         assert.equal(where.merchantId, 'merchant');
         assert.equal(where.branchId, 'branch');
-        assert.equal(where.source, 'storefront');
+        // Pickup orders from both online channels can be collected at the POS.
+        assert.deepEqual(where.source, { in: ['waffarly', 'storefront'] });
         assert.equal(where.fulfillmentType, 'pickup');
         if (mode === 'foreign') return null;
         return {
