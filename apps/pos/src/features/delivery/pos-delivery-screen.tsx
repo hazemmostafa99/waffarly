@@ -5,7 +5,6 @@ import {
   Bike,
   Check,
   CheckCircle2,
-  CreditCard,
   RefreshCw,
   Wallet,
   X,
@@ -993,7 +992,8 @@ function CourierCashOrder({
   );
 }
 
-type CustomerPaymentMethod = 'courier' | 'cash' | 'terminal';
+// Card-machine payments are not supported for deliveries yet; only cash is offered.
+type CustomerPaymentMethod = 'courier' | 'cash';
 
 /** Where a delivery order stands, from leaving with the courier to cash in the drawer. */
 function deliveryProgress(d: PosDeliverySummary) {
@@ -1189,7 +1189,6 @@ function DeliveryCard({
     openChecks[0]?.balanceDue ?? '',
   );
   const [method, setMethod] = useState<CustomerPaymentMethod>('courier');
-  const [reference, setReference] = useState('');
   const [paymentId, setPaymentId] = useState(openCourierPayments[0]?.id ?? '');
   const [remitAmount, setRemitAmount] = useState(openCourierPayments[0]?.remaining ?? '');
   const [reporting, setReporting] = useState(false);
@@ -1225,17 +1224,11 @@ function DeliveryCard({
           ? { cashCustody: 'courier' as const }
           : { receivingShiftId: shift!.id }),
         tenders: [
-          method === 'terminal'
-            ? {
-                method: 'terminal',
-                amount: customerPaymentAmount,
-                ...(reference.trim() ? { terminalReference: reference.trim() } : {}),
-              }
-            : {
-                method: 'cash',
-                amount: customerPaymentAmount,
-                receivedAmount: customerPaymentAmount,
-              },
+          {
+            method: 'cash',
+            amount: customerPaymentAmount,
+            receivedAmount: customerPaymentAmount,
+          },
         ],
       },
     });
@@ -1424,7 +1417,7 @@ function DeliveryCard({
             <div
               role="radiogroup"
               aria-label={text('Payment method', 'طريقة الدفع')}
-              className="grid gap-2 sm:grid-cols-3"
+              className="grid gap-2 sm:grid-cols-2"
             >
               <ChoiceButton
                 selected={method === 'courier'}
@@ -1447,23 +1440,12 @@ function DeliveryCard({
                 )}
                 onClick={() => setMethod('cash')}
               />
-              <ChoiceButton
-                selected={method === 'terminal'}
-                disabled={!shift}
-                icon={<CreditCard aria-hidden="true" size={16} />}
-                title={text('Card machine', 'فيزا / ماكينة')}
-                description={text(
-                  'Paid by card on the payment machine.',
-                  'اتدفعت بالكارت على الماكينة.',
-                )}
-                onClick={() => setMethod('terminal')}
-              />
             </div>
             {!shift && (
               <p className="m-0 text-xs text-muted-foreground">
                 {text(
-                  'Open a shift to record drawer or card payments.',
-                  'افتح وردية عشان تقدر تسجل كاش في الدرج أو فيزا.',
+                  'Open a shift to record cash in the drawer.',
+                  'افتح وردية عشان تقدر تسجل كاش في الدرج.',
                 )}
               </p>
             )}
@@ -1501,17 +1483,6 @@ function DeliveryCard({
                   onChange={(event) => setCustomerPaymentAmount(event.target.value)}
                 />
               </label>
-              {method === 'terminal' && (
-                <label className="grid gap-1 text-sm font-medium">
-                  {text('Machine receipt number (optional)', 'رقم إيصال الماكينة (اختياري)')}
-                  <Input
-                    maxLength={80}
-                    className="min-h-11"
-                    value={reference}
-                    onChange={(e) => setReference(e.target.value)}
-                  />
-                </label>
-              )}
             </div>
             <PosButton
               type="submit"
