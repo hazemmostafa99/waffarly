@@ -65,6 +65,14 @@ describe('POS employee role permissions', () => {
     ]);
     assert.equal(
       resolvePosEmployeePermissions('branch_manager', oldGrants).includes('approve_refunds'),
+      true,
+    );
+    assert.equal(
+      resolvePosEmployeePermissions('branch_manager', oldGrants).includes('approve_discounts'),
+      true,
+    );
+    assert.equal(
+      resolvePosEmployeePermissions('branch_manager', oldGrants).includes('approve_voids'),
       false,
     );
     assert.equal(

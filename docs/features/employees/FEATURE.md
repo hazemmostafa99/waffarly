@@ -11,7 +11,7 @@ owner-only. Employee roles cannot confer account ownership or subscription acces
 
 | Preset              | Available access                                                                                                                   |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `branch_manager`    | Incoming recipe orders, acceptance/preparation, sales/payments, register opening, receipts and stock balances in the assigned branch |
+| `branch_manager`    | Incoming recipe orders, acceptance/preparation, sales/payments, register opening, receipts, stock balances, discount and refund approval, shift-close approval and cash movements in the assigned branch |
 | `cashier`           | Sales/payments and register opening; existing saved operational grants are preserved                                               |
 | `inventory_officer` | Read-only stock balances in the assigned branch                                                                                    |
 | `accountant`        | Read-only receipt history, detail and reprint in the assigned branch                                                               |

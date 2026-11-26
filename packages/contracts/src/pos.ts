@@ -28,6 +28,8 @@ export const POS_EMPLOYEE_ROLE_PERMISSIONS = {
     'sell',
     'view_receipts',
     'view_inventory',
+    'approve_discounts',
+    'approve_refunds',
     'approve_shift_close',
     'manage_cash_movements',
   ],
