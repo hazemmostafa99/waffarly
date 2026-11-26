@@ -580,7 +580,7 @@ it(
             const f = await fixture(tx, scoped);
             await tx.posEmployee.update({
               where: { id_merchantId: { id: f.employee.id, merchantId: f.merchantId } },
-              data: { role: 'cashier', permissions: ['sell'] },
+              data: { role: 'cashier', permissions: ['open_register_shift', 'sell'] },
             });
             await tx.merchant.update({
               where: { id: f.merchantId },
@@ -668,7 +668,7 @@ it(
                 branchId: f.branch.id,
                 passwordHash: 'database-test-only',
                 role: 'supervisor',
-                permissions: [],
+                permissions: ['open_register_shift', 'sell', 'approve_discounts', 'approve_voids', 'approve_refunds', 'approve_shift_close', 'manage_cash_movements'],
                 createdBy: actor,
                 updatedBy: actor,
               },

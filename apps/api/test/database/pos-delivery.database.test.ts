@@ -7,7 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { it } from 'node:test';
 import { ConflictException, ForbiddenException } from '@nestjs/common';
 
-import { resolvePosEmployeePermissions, type PosEmployeeSession } from '@waffarly/contracts';
+import { POS_EMPLOYEE_ROLE_PERMISSIONS, type PosEmployeeSession } from '@waffarly/contracts';
 import type { PrismaService } from '../../src/infrastructure/database/prisma.service.js';
 import { PosDeliveryService } from '../../src/modules/orders/delivery/pos-delivery.service.js';
 import { DeliveryCourierService } from '../../src/modules/orders/delivery/delivery-courier.service.js';
@@ -69,7 +69,7 @@ it(
             displayName: name,
             passwordHash: 'test-only',
             role,
-            permissions: [],
+            permissions: [...POS_EMPLOYEE_ROLE_PERMISSIONS[role]],
             createdBy: 'test',
             updatedBy: 'test',
           },
@@ -80,7 +80,7 @@ it(
           username: row.username,
           displayName: row.displayName,
           role,
-          permissions: resolvePosEmployeePermissions(role, []),
+          permissions: [...POS_EMPLOYEE_ROLE_PERMISSIONS[role]],
           branch: { id: branch.id, name: branch.name, archivedAt: null },
         };
       };

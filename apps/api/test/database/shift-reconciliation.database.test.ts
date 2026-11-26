@@ -67,7 +67,7 @@ it(
           displayName: 'Reconciliation supervisor',
           passwordHash: 'database-test-only',
           role: 'supervisor',
-          permissions: [],
+          permissions: ['open_register_shift', 'sell', 'approve_discounts', 'approve_voids', 'approve_refunds', 'approve_shift_close', 'manage_cash_movements'],
           createdBy: 'pos-shift-reconciliation-test',
           updatedBy: 'pos-shift-reconciliation-test',
         },

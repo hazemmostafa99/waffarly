@@ -306,6 +306,7 @@ it(
                 displayName: 'Recovery cashier',
                 passwordHash: 'unused',
                 role: 'cashier',
+                permissions: ['open_register_shift', 'sell'],
                 createdBy: 'subscription-test',
                 updatedBy: 'subscription-test',
               },

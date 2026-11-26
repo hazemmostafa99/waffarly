@@ -9,7 +9,7 @@ import { createPosOrderServices } from '../support/pos-order-services.js';
 import { UnauthorizedException, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
-  resolvePosEmployeePermissions,
+  defaultPosEmployeePermissions,
   type PosEmployeeRole,
   type PosEmployeeSession,
 } from '@waffarly/contracts';
@@ -50,11 +50,7 @@ describe('employee role boundaries', () => {
       username: 'staff',
       displayName: 'Staff',
       role,
-      permissions: resolvePosEmployeePermissions(role, [
-        'accept_recipe_orders',
-        'start_preparation',
-        'sell',
-      ]),
+      permissions: defaultPosEmployeePermissions(role),
       branch: { id: branchId, name: 'Assigned', archivedAt: null },
     };
   }
