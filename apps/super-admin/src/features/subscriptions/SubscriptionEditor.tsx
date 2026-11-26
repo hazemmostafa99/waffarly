@@ -32,6 +32,7 @@ import { useMonthlyPlansQuery } from '../plans/plans-queries.js';
 import { subscriptionStatusLabels } from './subscription-status.js';
 import { availableSubscriptionActions, subscriptionActions } from './subscription-actions.js';
 import { SubscriptionHistory } from './SubscriptionHistory.js';
+import type { SavedSubscription } from './SubscriptionSavedDialog.js';
 
 const actionHints: Record<SubscriptionCommand['action'], string> = {
   assign: 'Select a plan without starting paid coverage.',
@@ -50,9 +51,12 @@ const actionHints: Record<SubscriptionCommand['action'], string> = {
 export function SubscriptionEditor({
   merchantId,
   onClose,
+  onSaved,
 }: {
   merchantId: string;
   onClose: () => void;
+  /** Called after a successful action so the page can leave the editor and confirm it. */
+  onSaved: (saved: SavedSubscription) => void;
 }) {
   const { t, errorText, formatDate, formatNumber, locale } = useLocale();
   const formId = useId();
@@ -67,7 +71,6 @@ export function SubscriptionEditor({
   const [selectedMonths, setMonths] = useState<SubscriptionMonths | null>(null);
   const [reason, setReason] = useState('');
   const [confirmed, setConfirmed] = useState(false);
-  const [notice, setNotice] = useState(false);
   const retry = useRef<{ key: string; requestId: string } | null>(null);
   const s = detail.data;
   const availableActions = s ? availableSubscriptionActions(s) : [];
@@ -100,25 +103,20 @@ export function SubscriptionEditor({
         method: 'POST',
         body: JSON.stringify(body),
       }),
-    onSuccess: async (result) => {
+    onSuccess: async (result, body) => {
       client.setQueryData(['subscriptions', 'detail', merchantId], result);
+      retry.current = null;
+      onSaved({ action: body.action, detail: result });
       await Promise.all([
         client.invalidateQueries({ queryKey: ['subscriptions'] }),
         client.invalidateQueries({ queryKey: adminQueryKeys.merchants }),
       ]);
-      quote.reset();
-      setConfirmed(false);
-      setReason('');
-      retry.current = null;
-      setNotice(true);
-      setAction(null);
     },
   });
   function reset() {
     quote.reset();
     save.reset();
     setConfirmed(false);
-    setNotice(false);
     retry.current = null;
   }
   const validQuote =
@@ -244,12 +242,6 @@ export function SubscriptionEditor({
                 <strong>{t('Existing access is preserved')}</strong>
                 <span>{t('Review the agreed plan before starting a new paid period.')}</span>
               </div>
-            </div>
-          )}
-          {notice && (
-            <div role="status" className="subscription-success">
-              <CheckCircle2 size={18} />
-              {t('Subscription updated.')}
             </div>
           )}
           <form id={formId} onSubmit={submit} className="subscription-workspace">
