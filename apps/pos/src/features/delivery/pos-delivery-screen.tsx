@@ -407,7 +407,8 @@ export function PosDeliveryScreen() {
             onClick={() => {
               void list.refetch();
               void ready.refetch();
-              void shift.refetch();
+              // refetch() ignores `enabled`; an unpaired browser has no register shift to read.
+              if (registerId) void shift.refetch();
               void courierPages.refetch();
             }}
           >
