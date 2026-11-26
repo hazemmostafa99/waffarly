@@ -7,6 +7,7 @@ import {
   currentCairoDate,
   quoteCheckoutDiscount,
   resolveRestaurantReceivingBranch,
+  soleActiveBranch,
 } from './checkout-policy.js';
 import {
   listOwnerStorefrontOrders,
@@ -275,7 +276,7 @@ export class StorefrontOrdersService {
             throw new ConflictException('الفرع أو إعدادات التوصيل اتغيرت. راجع الطلب من جديد.');
           const receivingBranch = policy
             ? policy.receivingBranch ?? await resolveRestaurantReceivingBranch(transaction, merchant.id)
-            : null;
+            : await soleActiveBranch(transaction, merchant.id);
           const deliveryFeeCents = policy?.fee ?? 0n;
           const totalCents = orderTotalCents - discountCents + deliveryFeeCents;
           if (input.reviewedTotal !== undefined && toCents(input.reviewedTotal) !== totalCents)
