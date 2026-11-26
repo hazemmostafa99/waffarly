@@ -153,6 +153,8 @@ export interface PosEmployeeSummary {
 export interface PosEmployeeSession {
   id: string;
   merchantId: string;
+  /** This operator is linked to the merchant owner account, not a staff login. */
+  owner?: boolean;
   username: string;
   displayName: string;
   role: PosEmployeeRole | null;
