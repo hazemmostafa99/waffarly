@@ -298,7 +298,7 @@ export function PosConfirmedOrderPanel({
                   <div className="grid gap-1" role="status">
                     <strong className="text-sm">{t('Sent to kitchen')}</strong>
                     <span className="text-xs text-muted-foreground">
-                      {t('Station: {{station}}', { station: order.kitchenTicket.station.name })} ·{' '}
+                      {t('Station: {{station}}', { station: t(order.kitchenTicket.station.name) })} ·{' '}
                       {formatDate(order.kitchenTicket.dispatchedAt, true)}
                     </span>
                   </div>
@@ -343,7 +343,7 @@ export function PosConfirmedOrderPanel({
                 </strong>
                 {order.kitchenTicket && (
                   <p className="m-0 mt-1 text-xs text-muted-foreground">
-                    {t('Station: {{station}}', { station: order.kitchenTicket.station.name })} ·{' '}
+                    {t('Station: {{station}}', { station: t(order.kitchenTicket.station.name) })} ·{' '}
                     {formatDate(order.kitchenTicket.dispatchedAt, true)}
                   </p>
                 )}

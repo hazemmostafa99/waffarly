@@ -155,7 +155,11 @@ export function CashCustodyPage() {
       setDialog(null);
       setReview(null);
       setRefresh((value) => value + 1);
-      setNotice(text('Cash record saved.', 'تم تسجيل الحركة.'));
+      setNotice(
+        command.path.endsWith('/safes')
+          ? text('Safe added.', 'تمت إضافة الخزنة.')
+          : text('Cash record saved.', 'تم تسجيل الحركة.'),
+      );
     } catch (cause) {
       if (cause instanceof ApiError && cause.statusCode >= 400 && cause.statusCode < 500) {
         localStorage.removeItem(storageKey);

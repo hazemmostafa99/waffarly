@@ -812,7 +812,8 @@ function amountToCents(amount: string) {
 }
 
 function formatCents(cents: number, locale: string) {
-  return new Intl.NumberFormat(locale === 'ar' ? 'ar-EG' : 'en-EG', {
+  // Latin digits keep courier totals consistent with every other amount on the screen.
+  return new Intl.NumberFormat(locale === 'ar' ? 'ar-EG-u-nu-latn' : 'en-EG', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(cents / 100);

@@ -15,7 +15,7 @@ import { InventoryHeader } from './InventoryHeader.js';
 import { InventoryCard } from './InventoryCard.js';
 import { inventoryCopy } from './inventory-copy.js';
 import { StockItemPicker, WarehousePicker } from './components/InventoryPickers.js';
-import { cacheStockItem, stockUnitOptions } from './stock-unit-options.js';
+import { cacheStockItem, stockUnitLabel, stockUnitOptions } from './stock-unit-options.js';
 
 type DraftLine = {
   key: string;
@@ -304,7 +304,12 @@ export function InventoryStockActionPage({ action }: { action: 'waste' | 'transf
                   >
                     {stockUnitOptions(item).map((unit) => (
                       <option key={unit.code} value={unit.code}>
-                        {formatDigits(`${unit.name} (${unit.code})`)}
+                        {/* Base units show their translated name; pack units keep their code. */}
+                        {formatDigits(
+                          unit.name === unit.code
+                            ? stockUnitLabel(unit.code, locale)
+                            : `${unit.name} (${unit.code})`,
+                        )}
                       </option>
                     ))}
                   </select>

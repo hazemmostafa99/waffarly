@@ -204,7 +204,7 @@ export function PosShiftScreen() {
       aria-labelledby="pos-shift-heading"
     >
       <h2 id="pos-shift-heading" className="sr-only">
-        {t('Open register shift')}
+        {t('Register shift')}
       </h2>
 
       {queryError && (

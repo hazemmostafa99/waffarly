@@ -248,7 +248,7 @@ export const ar: Record<string, string> = {
   'Record returned items against the original sale. This does not refund money.':
     '\u0633\u062c\u0651\u0644 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u0627\u0644\u0645\u0631\u062c\u0639\u0629 \u0639\u0644\u0649 \u0627\u0644\u0628\u064a\u0639 \u0627\u0644\u0623\u0635\u0644\u064a. \u0647\u0630\u0627 \u0644\u0627 \u064a\u0631\u062f \u0627\u0644\u0645\u0627\u0644.',
   'Returned items are recorded as waste. The original receipt, payment, and stock are unchanged. Use the refund action separately to return money.':
-    '\u062a\u064f\u0633\u062c\u0651\u0644 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u0627\u0644\u0645\u0631\u062c\u0639\u0629 \u0643\u0647\u0627\u0644\u0643. \u0644\u0627 \u064a\u062a\u063a\u064a\u0631 \u0627\u0644\u0625\u064a\u0635\u0627\u0644 \u0627\u0644\u0623\u0635\u0644\u064a \u0623\u0648 \u0627\u0644\u062f\u0641\u0639 \u0623\u0648 \u0627\u0644\u0645\u062e\u0632\u0648\u0646. \u0644\u0631\u062f \u0627\u0644\u0645\u0627\u0644\u060c \u0627\u0633\u062a\u062e\u062f\u0645 \u0625\u062c\u0631\u0627\u0621 \u0627\u0644\u0627\u0633\u062a\u0631\u062f\u0627\u062f \u0627\u0644\u0645\u0646\u0641\u0635\u0644.',
+    '\u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u0627\u0644\u0645\u0631\u062a\u062c\u0639\u0629 \u0628\u062a\u062a\u0633\u062c\u0644 \u0643\u0647\u0627\u0644\u0643 \u0644\u0644\u0645\u062a\u0627\u0628\u0639\u0629 \u0628\u0633. \u0627\u0644\u0645\u062e\u0632\u0648\u0646 \u0627\u062a\u062e\u0635\u0645 \u0648\u0642\u062a \u0627\u0644\u0628\u064a\u0639 \u0641\u0645\u0634 \u0647\u064a\u062a\u062e\u0635\u0645 \u062a\u0627\u0646\u064a\u060c \u0648\u0627\u0644\u0625\u064a\u0635\u0627\u0644 \u0648\u0627\u0644\u062f\u0641\u0639 \u0645\u0634 \u0647\u064a\u062a\u063a\u064a\u0631\u0648\u0627. \u0644\u0631\u062f \u0627\u0644\u0641\u0644\u0648\u0633 \u0627\u0633\u062a\u062e\u062f\u0645 \u0627\u0644\u0627\u0633\u062a\u0631\u062f\u0627\u062f \u0627\u0644\u0645\u0646\u0641\u0635\u0644.',
   'Loading returnable items...':
     '\u062c\u0627\u0631\u064d \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u0623\u0635\u0646\u0627\u0641 \u0627\u0644\u0642\u0627\u0628\u0644\u0629 \u0644\u0644\u0625\u0631\u062c\u0627\u0639...',
   'Returnable items could not be loaded.':
@@ -286,7 +286,21 @@ export const ar: Record<string, string> = {
   'This record does not replace the original receipt.':
     '\u0647\u0630\u0627 \u0627\u0644\u0633\u062c\u0644 \u0644\u0627 \u064a\u0633\u062a\u0628\u062f\u0644 \u0625\u064a\u0635\u0627\u0644 \u0627\u0644\u0628\u064a\u0639 \u0627\u0644\u0623\u0635\u0644\u064a.',
   'Issued by': '\u0633\u062c\u0651\u0644\u0647',
+  'Supervisor approval credentials are invalid.':
+    'بيانات المشرف غلط، أو الحساب ده ملوش صلاحية الاعتماد في الفرع ده.',
+  'Invalid saved delivery action.': 'فيه طلب توصيل محفوظ مش سليم. حدّث الصفحة وحاول تاني.',
+  'Open a register shift on this device before dispatching this website order.':
+    'افتح وردية كاشير على الجهاز ده قبل ما تسلّم طلب الموقع للطيار.',
+  'This website order belongs to another branch.': 'طلب الموقع ده تبع فرع تاني.',
   'Refund payment': 'استرداد الدفعة',
+  Refund: 'استرداد',
+  Remaining: 'المتبقي',
+  'Approved by': 'اعتمده',
+  'Attribute this refund to products': 'ربط الاسترداد بالأصناف',
+  'New items': 'أصناف جديدة',
+  Product: 'المنتج',
+  cash: 'كاش',
+  terminal: 'ماكينة الدفع',
   'View refunds': 'عرض عمليات الاسترداد',
   'View refund receipt': 'عرض إيصال الاسترداد',
   'POS refund': 'استرداد نقطة البيع',

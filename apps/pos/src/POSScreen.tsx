@@ -363,7 +363,7 @@ export function POSScreen() {
                         {order.kitchenTicket && (
                           <span>
                             {t('Station: {{station}}', {
-                              station: order.kitchenTicket.station.name,
+                              station: t(order.kitchenTicket.station.name),
                             })}
                             {' · '}
                             {t(order.kitchenTicket.dispatchMode)}
