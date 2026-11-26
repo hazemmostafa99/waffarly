@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import type { Prisma } from '@waffarly/database';
 import { toRestaurantSettings } from './restaurant-settings.mapper.js';
-import { restaurantOperatingState } from './restaurant-hours.js';
+import { restaurantOperatingState, type RestaurantOrderChannel } from './restaurant-hours.js';
 import { formatCents, toCents } from '../../common/money/money.js';
 import { deliveryBranches, deliveryDestination, deliveryLocationLabel, deliveryLocations } from '@waffarly/contracts';
 import { restaurantOnlineBranches } from './restaurant-branch-fulfillment.js';
@@ -17,6 +17,7 @@ export class RestaurantOrderPolicyService {
     areaId?: string,
     expectedRevision?: number,
     pickupBranchId?: string,
+    channel: RestaurantOrderChannel = 'marketplace',
   ) {
     const record = await db.restaurantProfile.findUnique({ where: { merchantId } });
     // Existing tenant storefronts without a restaurant profile retain their policy.
@@ -30,8 +31,8 @@ export class RestaurantOrderPolicyService {
       throw new ConflictException(
         'Restaurant settings changed. Review delivery and confirm again.',
       );
-    if (!restaurantOperatingState(settings).acceptingOrders)
-      throw new ConflictException('The restaurant is not accepting orders now.');
+    if (!restaurantOperatingState(settings, new Date(), channel).acceptingOrders)
+      throw new ConflictException('المطعم مش بيستقبل طلبات دلوقتي.');
     if (fulfillment === 'delivery' ? !settings.deliveryEnabled : !settings.pickupEnabled)
       throw new ConflictException('This fulfillment method is unavailable.');
     if (fulfillment === 'pickup' && areaId)
@@ -39,7 +40,7 @@ export class RestaurantOrderPolicyService {
     if (fulfillment === 'delivery' && pickupBranchId)
       throw new BadRequestException('Delivery branches are selected by service area.');
     if (settings.branchFulfillment?.length) {
-      const branches = await restaurantOnlineBranches(db, merchantId, settings);
+      const branches = await restaurantOnlineBranches(db, merchantId, settings, new Date(), channel);
       const coverage = fulfillment === 'delivery' && areaId ? deliveryBranches(branches, areaId) : [];
       const route = coverage.find(({ branch }) => branch.acceptingOrders);
       const location = deliveryLocations.find((entry) => entry.id === areaId)

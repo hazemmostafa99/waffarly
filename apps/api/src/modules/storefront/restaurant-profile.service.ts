@@ -3,7 +3,7 @@ import { BadRequestException, ConflictException, Inject, Injectable, NotFoundExc
 import { PrismaService } from '../../infrastructure/database/prisma.service.js';
 import { restaurantSettingsSchema } from './restaurant.schemas.js';
 import { toRestaurantSettings } from './restaurant-settings.mapper.js';
-import { restaurantOperatingState } from './restaurant-hours.js';
+import { restaurantOperatingState, type RestaurantOrderChannel } from './restaurant-hours.js';
 import { CatalogQueryService } from '../catalog/index.js';
 import { formatCents, toCents } from '../../common/money/money.js';
 import { restaurantOnlineBranches } from './restaurant-branch-fulfillment.js';
@@ -38,7 +38,10 @@ export class RestaurantProfileService {
       referenceData: record.referenceData,
     };
   }
-  private async publicProfile(record: Prisma.RestaurantProfileModel) {
+  private async publicProfile(
+    record: Prisma.RestaurantProfileModel,
+    channel: RestaurantOrderChannel = 'marketplace',
+  ) {
     const { branchFulfillment, ...profile } = this.map(record);
     return {
       ...profile,
@@ -46,7 +49,7 @@ export class RestaurantProfileService {
         onlineBranches: await restaurantOnlineBranches(this.prisma, record.merchantId, {
           ...profile,
           branchFulfillment,
-        }),
+        }, new Date(), channel),
       } : {}),
     };
   }
@@ -162,12 +165,14 @@ export class RestaurantProfileService {
       catalog: await this.catalog.getMarketplaceMenu(slug),
     };
   }
+  /** Delivery and pickup options for the restaurant's own storefront checkout.
+   * Marketplace publication does not apply here; opening hours and pauses still do. */
   async fulfillment(slug: string) {
     const record = await this.prisma.restaurantProfile.findFirst({
-      where: { merchant: { storefrontSlug: slug, activity: 'restaurant' }, published: true },
+      where: { merchant: { storefrontSlug: slug, activity: 'restaurant' } },
     });
     if (!record) return { deliveryAreas: [] };
-    const { deliveryAreas, onlineBranches } = await this.publicProfile(record);
+    const { deliveryAreas, onlineBranches } = await this.publicProfile(record, 'storefront');
     return { deliveryAreas, onlineBranches };
   }
 }

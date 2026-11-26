@@ -108,6 +108,8 @@ export class StorefrontOrdersService {
           input.deliveryAreaId,
           undefined,
           input.pickupBranchId,
+          // Marketplace pages exist only for published restaurants, so quotes use storefront rules.
+          'storefront',
         );
         const branch = policy
           ? policy.receivingBranch ?? await resolveRestaurantReceivingBranch(db, merchant.id)
@@ -263,6 +265,8 @@ export class StorefrontOrdersService {
             input.deliveryAreaId,
             input.restaurantSettingsRevision,
             input.pickupBranchId,
+            // Identity-aware checkout is the Waffarly marketplace; it requires publication.
+            identity ? 'marketplace' : 'storefront',
           );
           if ((policy?.quoteKey ?? undefined) !== input.fulfillmentQuoteKey
               || (policy?.quoteKey && input.reviewedTotal === undefined))
