@@ -12,9 +12,10 @@ import { PosButton } from '../../components/pos-button.js';
 
 type SafeOption = { id: string; branchId: string; name: string };
 type Command = { path: string; body: Record<string, string> };
-const fieldClass = 'grid gap-2 text-sm';
+// Matches the shift screen's other labels: small muted label above a 40px control.
+const fieldClass = 'grid gap-1.5 text-xs font-medium text-muted-foreground';
 const selectClass =
-  'min-h-11 rounded-md border border-input bg-background px-3 text-sm text-foreground';
+  'min-h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground';
 
 export function PosSafeSelect({
   employee,
@@ -65,13 +66,13 @@ export function PosSafeSelect({
           </button>
         </span>
       ) : safes.isSuccess && !safes.data.items.length ? (
-        <small>
+        <small className="text-warning">
           {locale === 'ar'
-            ? 'اطلب من المالك إضافة خزنة لهذا الفرع.'
+            ? 'مفيش خزنة في الفرع ده. اطلب من المالك يضيف خزنة الأول.'
             : 'Ask the owner to create a safe for this branch.'}
         </small>
       ) : null}
-      <span>
+      <span className="empty:hidden">
         {cursor && (
           <button
             type="button"

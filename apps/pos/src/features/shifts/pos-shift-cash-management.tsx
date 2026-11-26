@@ -529,7 +529,7 @@ export function PosShiftCashManagement({
                 role="tablist"
                 aria-label={t('Register shift')}
                 className={cn(
-                  'grid gap-1 rounded-lg border border-border bg-card p-1',
+                  'grid gap-1 rounded-lg bg-secondary/50 p-1',
                   canSell ? 'grid-cols-3' : 'grid-cols-2',
                 )}
               >
@@ -544,10 +544,10 @@ export function PosShiftCashManagement({
                       disabled={Boolean(pendingMovement) && tab.value !== 'cash'}
                       onClick={() => setActiveTab(tab.value)}
                       className={cn(
-                        'min-h-10 rounded-md px-2 text-xs font-semibold transition-colors disabled:opacity-50 sm:text-sm',
+                        'min-h-9 rounded-md px-2 text-xs font-semibold transition-colors disabled:opacity-50 sm:text-sm',
                         activeTab === tab.value
-                          ? 'bg-primary text-primary-foreground'
-                          : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+                          ? 'bg-card text-primary shadow-sm ring-1 ring-border'
+                          : 'text-muted-foreground hover:text-foreground',
                       )}
                     >
                       {t(tab.label)}
@@ -558,6 +558,7 @@ export function PosShiftCashManagement({
               {activeTab === 'cash' && canSell && (
                 <form
                   className="grid gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm sm:p-4"
+                  noValidate
                   onSubmit={handleMovement}
                 >
                   <fieldset className="m-0 grid gap-1.5 border-0 p-0">
@@ -715,6 +716,7 @@ export function PosShiftCashManagement({
               {activeTab === 'close' && (
                 <form
                   className="grid gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm sm:p-4"
+                  noValidate
                   onSubmit={handleClose}
                 >
                   <p id="pos-close-count-hint" className="m-0 text-xs text-muted-foreground">
@@ -999,14 +1001,19 @@ export function PosShiftCashManagement({
 function SupervisorApproval({ note, children }: { note?: string; children: ReactNode }) {
   const { t } = useLocale();
   return (
-    <fieldset className="m-0 grid gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3">
-      <legend className="px-1 text-xs font-semibold">{t('Supervisor approval')}</legend>
-      {note && <p className="m-0 text-xs text-muted-foreground">{note}</p>}
+    <section
+      aria-label={t('Supervisor approval')}
+      className="grid gap-2 rounded-lg border border-warning/30 bg-warning/5 p-3"
+    >
+      <div className="grid gap-0.5">
+        <strong className="text-xs">{t('Supervisor approval')}</strong>
+        {note && <p className="m-0 text-xs text-muted-foreground">{note}</p>}
+      </div>
       {children}
       <p className="m-0 text-[11px] text-muted-foreground">
         {t('Supervisor credentials are checked by the server and never saved on this device.')}
       </p>
-    </fieldset>
+    </section>
   );
 }
 

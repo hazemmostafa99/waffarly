@@ -208,7 +208,8 @@ export function PosShiftScreen() {
 
   return (
     <section
-      className="grid w-full content-start gap-4 p-3 pb-6 md:p-4 md:pb-6"
+      // A capped width keeps forms readable on wide screens instead of stretching inputs.
+      className="mx-auto grid w-full max-w-3xl content-start gap-3 p-3 pb-6 md:p-4 md:pb-6"
       aria-labelledby="pos-shift-heading"
     >
       <h2 id="pos-shift-heading" className="sr-only">
@@ -355,6 +356,7 @@ export function PosShiftScreen() {
       ) : (
         <form
           className="grid gap-3 rounded-lg border border-border bg-card p-3 text-card-foreground shadow-sm sm:p-4"
+          noValidate
           onSubmit={handleOpen}
         >
           <div className="flex items-start justify-between gap-2">

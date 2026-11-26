@@ -2075,7 +2075,7 @@ export const ar: Record<string, string> = {
   'Shift totals stay hidden until the physical count is submitted.':
     'تظل إجماليات الوردية مخفية حتى إرسال قيمة الجرد الفعلي.',
   'Refresh shift status': 'تحديث حالة الوردية',
-  'Explain a cash difference if the count is short or over': 'لو الفلوس ناقصة أو زيادة، اكتب السبب',
+  'Explain a cash difference if the count is short or over': 'اختياري',
   'The close report shows the comparison after the count is accepted.':
     'يعرض تقرير الإغلاق المقارنة بعد اعتماد الجرد.',
   'Checking count...': 'جارٍ التحقق من الجرد...',
