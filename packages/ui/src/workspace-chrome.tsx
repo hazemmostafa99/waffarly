@@ -17,7 +17,7 @@ export function WorkspaceChrome({ children }: { children: ReactNode }) {
           >
             و
           </span>
-          {t('Waffarly')}
+          {t('Wfarly')}
         </span>
       </div>
       {children}

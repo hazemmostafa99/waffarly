@@ -192,7 +192,7 @@ function ReceiptDocument({
               label={t('Order source')}
               value={t(
                 receipt.source === 'waffarly'
-                  ? 'Waffarly'
+                  ? 'Wfarly'
                   : receipt.source === 'storefront'
                     ? 'Storefront'
                       : receipt.source === 'pos'

@@ -401,7 +401,7 @@ export function SubscriptionEditor({
                         {t('Amount to collect')}
                       </span>
                       <strong>{money(quote.data.due)}</strong>
-                      <small>{t('Confirmed outside Waffarly')}</small>
+                      <small>{t('Confirmed outside Wfarly')}</small>
                     </div>
                     <dl className="subscription-price-breakdown">
                       <div>
@@ -434,7 +434,7 @@ export function SubscriptionEditor({
                         onChange={(e) => setConfirmed(e.target.checked)}
                       />
                       <span>
-                        {t('I confirm the displayed amount was collected outside Waffarly.')}
+                        {t('I confirm the displayed amount was collected outside Wfarly.')}
                       </span>
                     </label>
                   </>

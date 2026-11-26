@@ -28,7 +28,7 @@ export function AdminTopbar({ adminName, onSignOut, signingOut }: AdminTopbarPro
         </button>
         <div className="min-w-0">
           <span className="block truncate text-[10px] font-semibold text-waffarly-muted">
-            {t('Waffarly platform')}
+            {t('Wfarly platform')}
           </span>
           <h1 className="m-0 text-base font-bold leading-snug text-waffarly-ink md:text-lg">
             {pageTitle?.title ?? t('Administration workspace')}

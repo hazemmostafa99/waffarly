@@ -147,7 +147,7 @@ function statusLabel(status: StorefrontOrderStatus, t: (message: string) => stri
 }
 
 function sourceLabel(source: StorefrontOrderListItem['source']) {
-  if (source === 'waffarly') return 'Waffarly';
+  if (source === 'waffarly') return 'Wfarly';
   if (source === 'storefront') return 'Storefront';
   if (source === 'pos') return 'POS';
   return source;
@@ -335,7 +335,7 @@ export function Dashboard() {
             )}{' '}
             <span aria-hidden="true">👋</span>
           </h1>
-          <p>{copy('Track orders from Waffarly, Storefront and POS.')}</p>
+          <p>{copy('Track orders from Wfarly, Storefront and POS.')}</p>
         </div>
         <div className="dashboard-date-tools">
           <button type="button" className="dashboard-refresh" onClick={() => navigate('/reports')}>

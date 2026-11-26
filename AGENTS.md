@@ -59,3 +59,26 @@ completion criteria.
 Before planning or implementing a feature that changes the API, database, or shared
 API contracts, read [apps/api/AGENTS.md](apps/api/AGENTS.md). It defines feature
 ownership, dependency boundaries, tenant safety, and the implementation checklist.
+
+## Business activities delivery workflow — 2026-11-24
+
+For work that makes merchant dashboard, POS, catalog, or inventory behavior depend
+on business activity, start with
+[the business activities plan](docs/features/business-activities/README.md),
+[small tasks](docs/features/business-activities/TASKS.md), and
+[handoff](docs/features/business-activities/HANDOFF.md).
+
+- Complete one small, reviewable task at a time. Avoid broad rewrites and large
+  changes that mix unrelated behavior. Keep restaurant behavior working while
+  adding each new activity.
+- Prefer existing patterns and plain, named functions over speculative layers,
+  generic frameworks, or duplicated screens. Make the activity decision easy to
+  find and trace from Super Admin to the affected app behavior.
+- Give a new function a clear name. Add a short purpose comment when its goal or
+  reason for existing is not clear from the name and code. Explain non-obvious
+  conversions and rules. Do not add comments that only restate the code.
+- Use regular expressions only when they make the rule clearer than ordinary
+  string operations. For each non-obvious expression, explain what it matches,
+  what it produces, and show a simple input-to-output example.
+- Review the affected restaurant flow and the new activity flow for each task.
+  Record what was actually checked and update the handoff before stopping.

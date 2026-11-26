@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: StorefrontRouteProps): Promis
   try {
     const catalog = await getStorefrontCatalog(slug);
     return {
-      title: `${catalog.merchantName} | Waffarly`,
+      title: `${catalog.merchantName} | Wfarly`,
       description: `Explore the menu from ${catalog.merchantName}.`,
       openGraph: {
         title: catalog.merchantName,

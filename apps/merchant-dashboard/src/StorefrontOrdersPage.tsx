@@ -221,7 +221,7 @@ export function StorefrontOrdersPage() {
   }
 
   function sourceLabel(value: string) {
-    if (value === 'waffarly') return copy('Waffarly');
+    if (value === 'waffarly') return copy('Wfarly');
     if (value === 'pos') return copy('POS');
     if (value === 'storefront') return copy('Storefront');
     return value;
@@ -259,7 +259,7 @@ export function StorefrontOrdersPage() {
   ];
   const sourceOptions: Array<[OrderSourceFilter, string]> = [
     ['all', 'All sources'],
-    ['waffarly', 'Waffarly'],
+    ['waffarly', 'Wfarly'],
     ['storefront', 'Storefront'],
     ['pos', 'POS'],
   ];

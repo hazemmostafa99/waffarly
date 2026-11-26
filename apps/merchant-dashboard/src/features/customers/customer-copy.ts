@@ -2,8 +2,8 @@ import type { CustomerChannel } from '@waffarly/contracts';
 
 export function channelLabel(channel: CustomerChannel | string, locale: string): string {
   const labels: Record<string, [string, string]> = {
-    waffarly: ['Waffarly', 'وفّرلي'],
-    marketplace: ['Waffarly marketplace', 'سوق وفرلي'],
+    waffarly: ['Wfarly', 'وفّرلي'],
+    marketplace: ['Wfarly marketplace', 'سوق وفرلي'],
     storefront: ['Storefront', 'متجر التاجر'],
     pos: ['POS / branch', 'الكاشير / الفرع'],
     manual: ['Manual entry', 'إضافة يدوية'],

@@ -127,7 +127,7 @@ export function AdminSidebar() {
           <NavLink
             className={`flex min-w-0 items-center gap-2.5 text-inherit no-underline ${isCollapsedDesktop ? 'w-full justify-center' : 'flex-1'}`}
             to="/dashboard"
-            title={isCollapsedDesktop ? 'Waffarly' : undefined}
+            title={isCollapsedDesktop ? 'Wfarly' : undefined}
             onClick={() => setMobileNavigationOpen(false)}
           >
             <span
@@ -138,7 +138,7 @@ export function AdminSidebar() {
             </span>
             {!isCollapsedDesktop && (
               <span className="min-w-0 flex-1">
-                <strong className="block truncate text-sm text-waffarly-ink">Waffarly</strong>
+                <strong className="block truncate text-sm text-waffarly-ink">Wfarly</strong>
                 <small
                   className={`mt-0.5 block text-[9px] font-bold text-waffarly-muted ${locale === 'ar' ? '' : 'tracking-[0.14em]'}`}
                 >

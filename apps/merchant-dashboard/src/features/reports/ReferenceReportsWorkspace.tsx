@@ -116,7 +116,7 @@ export default function ReferenceReportsWorkspace() {
   const branch = live.branches.find((item) => item.id === branchId);
   const showDetail: ShowReportDetail = (title, content) => setDrawer({ title, content });
   useEffect(() => {
-    document.title = `${ar ? route.ar : route.en} | Waffarly`;
+    document.title = `${ar ? route.ar : route.en} | Wfarly`;
   }, [ar, route]);
   useEffect(
     () => () => {

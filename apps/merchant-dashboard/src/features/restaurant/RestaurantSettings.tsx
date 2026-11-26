@@ -396,7 +396,7 @@ export function RestaurantSettings({
           <section hidden={activeSection !== 'publication'} className="rs-editor-section">
             <p className="rs-hint">
               {savedDraft.current.published
-                ? ar ? 'الحالة الحالية: منشور على وفرلي' : 'Current status: Published on Waffarly'
+                ? ar ? 'الحالة الحالية: منشور على وفرلي' : 'Current status: Published on Wfarly'
                 : ar ? 'الحالة الحالية: غير منشور' : 'Current status: Unpublished'}
             </p>
             <div className="rs-publication">
@@ -407,7 +407,7 @@ export function RestaurantSettings({
                   checked={draft.published}
                   onChange={(event) => change('published', event.target.checked)}
                 />
-                {ar ? 'نشر المطعم على وفرلي' : 'Publish restaurant on Waffarly'}
+                {ar ? 'نشر المطعم على وفرلي' : 'Publish restaurant on Wfarly'}
               </label>
               <Field label={ar ? 'ترتيب الظهور' : 'Display order'}>
                 <Input

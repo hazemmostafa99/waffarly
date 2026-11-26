@@ -327,7 +327,7 @@ export function POSScreen() {
                           <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">
                             {t(
                               order.source === 'waffarly'
-                                ? 'Waffarly'
+                                ? 'Wfarly'
                                 : order.source === 'storefront'
                                   ? 'Storefront'
                                   : 'POS',

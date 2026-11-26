@@ -78,7 +78,7 @@ export function Login() {
               W
             </span>
             <span className="grid gap-0.5">
-              <strong className="text-base text-waffarly-ink">Waffarly</strong>
+              <strong className="text-base text-waffarly-ink">Wfarly</strong>
               <small
                 className={`text-[10px] font-bold text-waffarly-muted ${locale === 'ar' ? '' : 'tracking-[0.16em]'}`}
               >
@@ -89,7 +89,7 @@ export function Login() {
           <p
             className={`mb-2 text-xs font-bold text-waffarly-primary ${locale === 'ar' ? '' : 'uppercase tracking-[0.12em]'}`}
           >
-            {t('Waffarly platform')}
+            {t('Wfarly platform')}
           </p>
           <h1 className="m-0 text-3xl font-extrabold tracking-tight text-waffarly-ink">
             {t('Welcome back')}

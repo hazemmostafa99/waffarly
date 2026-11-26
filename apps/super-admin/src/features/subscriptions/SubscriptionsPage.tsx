@@ -158,7 +158,7 @@ export function SubscriptionsPage() {
               <strong className="subscription-stat-money">
                 {dashboard.data ? money(dashboard.data.collected) : '—'}
               </strong>
-              <small>{t('Confirmed outside Waffarly')}</small>
+              <small>{t('Confirmed outside Wfarly')}</small>
             </span>
           </div>
         </div>
