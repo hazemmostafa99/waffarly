@@ -80,12 +80,14 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
   };
   const [quote, setQuote] = useState<StorefrontCheckoutQuote | null>(null);
   const [quoteError, setQuoteError] = useState('');
+  const [addressError, setAddressError] = useState('');
   const [reviewed, setReviewed] = useState<{ key: string; quote: StorefrontCheckoutQuote } | null>(
     null,
   );
   const applySavedAddress = useCallback(
     (address: StorefrontCustomerAddress) => {
       setSelectedSavedAddressId(address.id);
+      setAddressError('');
       setDeliveryAreaId(address.deliveryAreaId);
       setDraft((current) => ({
         ...current,
@@ -289,6 +291,18 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
     event.preventDefault();
     if (orderMutation.isPending || reviewMutation.isPending || session.isPending || session.isError)
       return;
+    if (
+      !attempt.current &&
+      fields.fulfillmentType === 'delivery' &&
+      fields.deliveryAddress.trim().length < 8
+    ) {
+      setAddressError(
+        locale === 'ar'
+          ? 'عنوان التوصيل لازم يكون 8 أحرف على الأقل.'
+          : 'Delivery address must be at least 8 characters.',
+      );
+      return;
+    }
     if (!attempt.current && branchRouting && !reviewedQuote) {
       orderMutation.reset();
       reviewMutation.mutate();
@@ -546,6 +560,7 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                       checked={fields.fulfillmentType === option.value}
                       onChange={() => {
                         setFulfillmentType(option.value);
+                        setAddressError('');
                         setQuote(null);
                         setQuoteError('');
                       }}
@@ -645,14 +660,22 @@ export function StorefrontCheckoutPage({ catalog }: { catalog: PublicStorefrontC
                     value={fields.deliveryAddress}
                     onChange={(event) => {
                       setSelectedSavedAddressId('');
+                      setAddressError('');
                       update('deliveryAddress', event.currentTarget.value);
                     }}
                     placeholder={t.addressPlaceholder}
                     minLength={8}
                     maxLength={1000}
                     required
+                    aria-invalid={Boolean(addressError)}
+                    aria-describedby={addressError ? 'delivery-address-error' : undefined}
                     className="min-h-20 rounded-xl border-store-border bg-white text-sm"
                   />
+                  {addressError && (
+                    <span id="delivery-address-error" role="alert" className="text-store-error">
+                      {addressError}
+                    </span>
+                  )}
                 </label>
               )}
             </Card>
