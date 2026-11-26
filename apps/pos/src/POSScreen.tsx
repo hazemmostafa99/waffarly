@@ -15,6 +15,7 @@ import {
   requirePairedRegister,
 } from './features/registers/register-pairing-prompt.js';
 import { PickupCollection } from './features/payments/pickup-collection.js';
+import { posOrderTypeKey } from './features/orders/pos-order-type.js';
 import {
   posWorkspaceScope,
   usePosWorkspaceStore,
@@ -45,6 +46,8 @@ export function POSScreen() {
     () => typeof navigator === 'undefined' || navigator.onLine,
   );
   const [actionErrors, setActionErrors] = useState<Record<string, string>>({});
+  // A ready cashier order that still owes money is paid here, without leaving the kitchen.
+  const [collectingOrderId, setCollectingOrderId] = useState<string | null>(null);
   const [activePageIndex, setActivePageIndex] = useState(0);
   const isWorkspaceHydrated = hydratedScope === scope;
   const branchId = employee.branch.id;
@@ -298,6 +301,12 @@ export function POSScreen() {
               order.status === 'ready' &&
               (Boolean(order.kitchenTicket) || order.fulfillmentType === 'pickup');
             const handoverBlocked = canHandover && order.handoverEligible !== true;
+            // Website pickups have their own collection step above; cashier orders pay directly.
+            const canCollectHere =
+              handoverBlocked &&
+              order.source === 'pos' &&
+              !pending &&
+              employee.permissions.includes('sell');
             const canRetry =
               pending &&
               pending.action !== 'item_ready' &&
@@ -329,7 +338,7 @@ export function POSScreen() {
                           {order.customerName ?? t('Walk-in customer')}
                         </strong>
                         <span className="rounded-md bg-card px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                          {t(order.fulfillmentType)}
+                          {t(posOrderTypeKey(order.fulfillmentType))}
                         </span>
                         {order.source && (
                           <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary">

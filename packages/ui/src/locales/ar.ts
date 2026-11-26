@@ -1456,6 +1456,7 @@ export const ar: Record<string, string> = {
   'Thank you for your visit.': 'شكرًا لزيارتكم.',
   'Review, print, or save this settled check receipt.': 'راجع إيصال الحساب المسدد واطبعه أو احفظه.',
   'View / print receipt': 'عرض / طباعة الإيصال',
+  'Print receipt': 'طباعة الإيصال',
   Receipts: 'الإيصالات',
   'POS documents': 'مستندات نقاط البيع',
   'Receipts shown': 'الإيصالات المعروضة',

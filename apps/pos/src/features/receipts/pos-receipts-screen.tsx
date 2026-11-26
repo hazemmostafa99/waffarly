@@ -5,13 +5,14 @@ import type {
   StorefrontOrderSummary,
 } from '@waffarly/contracts';
 import { Dialog, Input, useLocale } from '@waffarly/ui';
-import { AlertTriangle, ClipboardList, Printer, RefreshCw, Search } from 'lucide-react';
+import { ClipboardList, Printer, RefreshCw, RotateCcw, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { PosButton } from '../../components/pos-button.js';
 import { getPosOrderNumber } from '../orders/pos-order-number.js';
 import { listPosSales, posOrderKeys, type PosSalesFilters } from '../orders/pos-orders.api.js';
-import { formatMoneyCents, parseMoneyCents } from '../payments/payment-form-model.js';
+import { posOrderTypeKey } from '../orders/pos-order-type.js';
+import { parseMoneyCents } from '../payments/payment-form-model.js';
 import { getPosOrderPaymentState, posPaymentStateKey } from '../payments/pos-payments.api.js';
 import { PosRefundDialog } from '../payments/pos-refund-dialog.js';
 import { getCurrentPosShift, posCurrentShiftKey } from '../shifts/pos-shifts.api.js';
@@ -244,7 +245,6 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
               <option value="dine_in">{t('Dine in')}</option>
               <option value="takeaway">{t('Takeaway')}</option>
               <option value="delivery">{t('Delivery')}</option>
-              <option value="pickup">{t('Pickup')}</option>
             </select>
           </label>
           <label className="grid min-w-0 gap-1 text-[11px] text-muted-foreground">
@@ -355,7 +355,7 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
                   </span>
                   <span className="grid min-w-0 gap-0.5">
                     <span className="truncate text-xs font-semibold">
-                      {order.customerName || t(order.fulfillmentType)}
+                      {order.customerName || t(posOrderTypeKey(order.fulfillmentType))}
                       {order.tableCode ? ` · ${t('Table')} ${order.tableCode}` : ''}
                     </span>
                     <span className="truncate text-[11px] text-muted-foreground">
@@ -367,7 +367,9 @@ function PosOrderHistoryScreen({ employee }: { employee: PosEmployeeSession }) {
                   </span>
                 </button>
                 <div className="flex flex-wrap items-center justify-end gap-1.5">
-                  <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-medium text-muted-foreground">
+                  <span
+                    className={`rounded-full px-2 py-1 text-[11px] font-semibold ${orderStatusTone(order.status)}`}
+                  >
                     {t(order.status)}
                   </span>
                   <strong className="text-xs font-semibold tabular-nums">
@@ -492,18 +494,26 @@ function PosOrderDetailsDialog({
         if (!open) onClose();
       }}
       title={`${t('Order')} #${getDisplayOrderNumber(order)}`}
-      description={order.customerName || t(order.fulfillmentType)}
+      description={order.customerName || t('Walk-in customer')}
       closeLabel={t('Close')}
       className="flex max-h-[calc(100dvh-20px)] flex-col overflow-hidden"
     >
-      <div className="grid min-h-0 gap-3 overflow-y-auto p-3 text-sm sm:p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2">
-          <span className="rounded-full bg-secondary px-2 py-1 text-[11px] font-medium text-muted-foreground">
-            {t(order.status)}
-          </span>
+      <div className="grid min-h-0 gap-4 overflow-y-auto p-3 text-sm sm:p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span
+              className={`rounded-full px-2.5 py-1 text-xs font-semibold ${orderStatusTone(order.status)}`}
+            >
+              {t(order.status)}
+            </span>
+            <span className="rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium">
+              {t(posOrderTypeKey(order.fulfillmentType))}
+              {order.tableCode ? ` · ${t('Table')} ${order.tableCode}` : ''}
+            </span>
+          </div>
           <div className="grid justify-items-end gap-0.5">
-            <span className="text-[10px] text-muted-foreground">{t('Order total')}</span>
-            <strong className="text-sm tabular-nums">
+            <span className="text-[11px] text-muted-foreground">{t('Order total')}</span>
+            <strong className="text-lg font-bold tabular-nums text-primary">
               {formatNumber(Number(order.total), {
                 style: 'currency',
                 currency: order.currency,
@@ -512,24 +522,22 @@ function PosOrderDetailsDialog({
           </div>
         </div>
 
-        <section aria-label={t('Order items')} className="grid gap-1.5">
-          <h3 className="m-0 text-xs font-semibold">{t('Order items')}</h3>
-          <ul className="m-0 grid list-none gap-1.5 p-0">
+        <section aria-label={t('Order items')} className="grid gap-2">
+          <h3 className="m-0 text-xs font-semibold text-muted-foreground">{t('Order items')}</h3>
+          <ul className="m-0 grid list-none divide-y divide-border overflow-hidden rounded-xl border border-border bg-card p-0">
             {order.lines.map((line) => (
-              <li
-                key={line.id}
-                className="grid gap-1 rounded-lg border border-border bg-card px-2.5 py-2"
-              >
+              <li key={line.id} className="grid gap-1 px-3 py-2.5">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 text-xs">
-                    <strong>
-                      <bdi dir="ltr">{formatNumber(line.quantity)}</bdi> × {line.productName}
-                    </strong>
+                  <div className="flex min-w-0 items-center gap-2 text-sm">
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-secondary text-xs font-bold tabular-nums">
+                      {formatNumber(line.quantity)}
+                    </span>
+                    <strong className="font-semibold">{line.productName}</strong>
                     {line.variantName && (
-                      <span className="text-muted-foreground"> · {line.variantName}</span>
+                      <span className="text-xs text-muted-foreground">· {line.variantName}</span>
                     )}
                   </div>
-                  <strong className="shrink-0 text-xs tabular-nums">
+                  <strong className="shrink-0 text-sm tabular-nums">
                     {formatNumber(Number(line.lineTotal), {
                       style: 'currency',
                       currency: order.currency,
@@ -571,20 +579,36 @@ function PosOrderDetailsDialog({
             {t('Loading order details…')}
           </p>
         ) : payment ? (
-          <div className="grid gap-2">
+          <div className="grid gap-3">
             <div className="grid grid-cols-2 gap-2">
-              <div className="grid gap-0.5 rounded-lg border border-border bg-card px-2.5 py-2">
-                <span className="text-[10px] text-muted-foreground">{t('Paid')}</span>
-                <strong className="text-xs tabular-nums">
+              <div className="grid gap-0.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5">
+                <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                  {t('Paid')}
+                </span>
+                <strong className="text-base tabular-nums">
                   {formatNumber(paidAmount, {
                     style: 'currency',
                     currency: payment.currency,
                   })}
                 </strong>
               </div>
-              <div className="grid gap-0.5 rounded-lg border border-border bg-card px-2.5 py-2">
-                <span className="text-[10px] text-muted-foreground">{t('Open balance')}</span>
-                <strong className="text-xs tabular-nums">
+              <div
+                className={`grid gap-0.5 rounded-xl border px-3 py-2.5 ${
+                  balanceDue > 0
+                    ? 'border-amber-500/40 bg-amber-500/10'
+                    : 'border-border bg-card'
+                }`}
+              >
+                <span
+                  className={`text-[11px] font-medium ${
+                    balanceDue > 0
+                      ? 'text-amber-700 dark:text-amber-300'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  {t('Open balance')}
+                </span>
+                <strong className="text-base tabular-nums">
                   {formatNumber(balanceDue, {
                     style: 'currency',
                     currency: payment.currency,
@@ -592,59 +616,52 @@ function PosOrderDetailsDialog({
                 </strong>
               </div>
             </div>
-            {receipts.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {receipts.map(({ checkId, receipt }) => (
-                  <PosButton
-                    key={receipt.id}
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="min-h-9 gap-1.5 text-xs"
-                    onClick={() => onOpenReceipt(checkId)}
-                  >
-                    <Printer aria-hidden="true" size={14} />
-                    {t('View / print receipt')}
-                    <bdi dir="ltr">{receipt.receiptNumber}</bdi>
-                  </PosButton>
-                ))}
-              </div>
-            ) : (
+            {receipts.length === 0 && (
               <span className="text-[11px] text-muted-foreground">
                 {t('Receipt is available after settlement.')}
               </span>
             )}
-            {!['cancelled', 'rejected'].includes(order.status) &&
-              payment.checks.map((check) => {
-                const refundableCents = check.payments.reduce(
-                  (sum, tender) =>
-                    sum + (parseMoneyCents(tender.refundableAmount ?? tender.amount) ?? 0n),
-                  0n,
-                );
-                if (refundableCents <= 0n && !check.refunds?.length) return null;
-                return (
-                  <PosButton
-                    key={`refund-${check.id}`}
-                    type="button"
-                    variant="outline"
-                    className="min-h-9 w-full gap-1.5 text-xs"
-                    disabled={refundableCents > 0n && !canRefund}
-                    onClick={() => onRefund(check.id)}
-                  >
-                    <AlertTriangle aria-hidden="true" size={14} />
-                    {t(refundableCents > 0n ? 'Refund' : 'View refunds')}
-                    {payment.checks.length > 1
-                      ? ` · ${t('Check')} ${formatNumber(check.position + 1)}`
-                      : ''}
-                    <bdi className="ms-auto tabular-nums" dir="ltr">
-                      {formatNumber(Number(formatMoneyCents(refundableCents)), {
-                        style: 'currency',
-                        currency: payment.currency,
-                      })}
-                    </bdi>
-                  </PosButton>
-                );
-              })}
+            {/* Print and refund sit side by side; split checks add one pair per check. */}
+            <div className="grid grid-cols-2 gap-2">
+              {receipts.map(({ checkId, receipt }, index) => (
+                <PosButton
+                  key={receipt.id}
+                  type="button"
+                  variant="solid"
+                  className="min-h-11 gap-2 text-sm font-semibold"
+                  onClick={() => onOpenReceipt(checkId)}
+                >
+                  <Printer aria-hidden="true" size={16} />
+                  {t('Print receipt')}
+                  {receipts.length > 1 ? ` ${formatNumber(index + 1)}` : ''}
+                </PosButton>
+              ))}
+              {!['cancelled', 'rejected'].includes(order.status) &&
+                payment.checks.map((check) => {
+                  const refundableCents = check.payments.reduce(
+                    (sum, tender) =>
+                      sum + (parseMoneyCents(tender.refundableAmount ?? tender.amount) ?? 0n),
+                    0n,
+                  );
+                  if (refundableCents <= 0n && !check.refunds?.length) return null;
+                  return (
+                    <PosButton
+                      key={`refund-${check.id}`}
+                      type="button"
+                      variant="outline"
+                      className="min-h-11 gap-2 border-red-500/60 text-sm font-semibold text-red-600 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:text-red-400"
+                      disabled={refundableCents > 0n && !canRefund}
+                      onClick={() => onRefund(check.id)}
+                    >
+                      <RotateCcw aria-hidden="true" size={16} />
+                      {t(refundableCents > 0n ? 'Refund' : 'View refunds')}
+                      {payment.checks.length > 1
+                        ? ` · ${t('Check')} ${formatNumber(check.position + 1)}`
+                        : ''}
+                    </PosButton>
+                  );
+                })}
+            </div>
             {!canRefund && !['cancelled', 'rejected'].includes(order.status) && paidAmount > 0 && (
               <span className="text-[11px] text-muted-foreground">
                 {t('Open a shift and stay online to refund this order.')}
@@ -838,6 +855,16 @@ function PosReceiptHistoryScreen({ employee }: { employee: PosEmployeeSession })
 
 function getDisplayOrderNumber(order: StorefrontOrderSummary): string {
   return getPosOrderNumber(order);
+}
+
+/** Colors each order status so cashiers can tell them apart at a glance. */
+function orderStatusTone(status: StorefrontOrderSummary['status']): string {
+  if (status === 'pending') return 'bg-amber-500/15 text-amber-700 dark:text-amber-300';
+  if (status === 'accepted' || status === 'preparing')
+    return 'bg-sky-500/15 text-sky-700 dark:text-sky-300';
+  if (status === 'ready' || status === 'completed')
+    return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300';
+  return 'bg-destructive/15 text-destructive';
 }
 
 function toLocalDateBoundary(value: string, endOfDay: boolean): string | undefined {

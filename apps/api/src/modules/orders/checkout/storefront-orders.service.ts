@@ -41,6 +41,7 @@ import { InventoryLedgerService } from '../../inventory/index.js';
 import { SubscriptionService } from '../../subscriptions/index.js';
 
 import { toReceipt } from '../mapping/order.mapper.js';
+import { assignOnlineOrderBranchNumber } from '../pos-sales/pos-order-number.persistence.js';
 import { CustomersService } from '../../customers/index.js';
 
 const MAX_ORDER_TOTAL_CENTS = 999_999_999_999n;
@@ -183,7 +184,7 @@ export class StorefrontOrdersService {
 
     try {
       // 2. Save the order, its stock commitments and customer access together.
-      return await this.prisma.$transaction(
+      const receipt = await this.prisma.$transaction(
         async (transaction) => {
           await this.subscriptions.requireActive(merchant.id, transaction);
           if (merchantCustomerId)
@@ -339,6 +340,9 @@ export class StorefrontOrdersService {
         },
         { isolationLevel: 'Serializable' },
       );
+      // 6. Number the order like cashier sales when its branch is open; acceptance retries this.
+      await assignOnlineOrderBranchNumber(this.prisma, merchant.id, receipt.id).catch(() => undefined);
+      return receipt;
     } catch (error) {
       const completed = await replay();
       if (completed) return completed;

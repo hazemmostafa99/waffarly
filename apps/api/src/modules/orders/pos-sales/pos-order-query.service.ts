@@ -91,7 +91,12 @@ export class PosOrderQueryService {
             ],
           }
         : {}),
-      ...(input.fulfillmentType ? { fulfillmentType: input.fulfillmentType } : {}),
+      // Website pickup orders are collected at the counter, so cashiers see them as takeaway.
+      ...(input.fulfillmentType === 'takeaway' || input.fulfillmentType === 'pickup'
+        ? { fulfillmentType: { in: ['takeaway', 'pickup'] } }
+        : input.fulfillmentType
+          ? { fulfillmentType: input.fulfillmentType }
+          : {}),
       ...(input.settlement === 'open'
         ? { checks: { some: { settledAt: null, cancelledAt: null } } }
         : input.settlement === 'settled'
