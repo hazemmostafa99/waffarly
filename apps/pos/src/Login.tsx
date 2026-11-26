@@ -11,7 +11,7 @@ import '@waffarly/ui/pos-theme.css';
 import './login.css';
 
 export function Login() {
-  const { t, errorText } = useLocale();
+  const { t, errorText, locale } = useLocale();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const theme = usePosAppearanceStore((state) => state.theme);
@@ -20,6 +20,14 @@ export function Login() {
     () => window.matchMedia('(prefers-color-scheme: dark)').matches,
   );
   const [login, setLogin] = useState({ storefrontSlug: '', username: '', password: '' });
+  const [ownerMode, setOwnerMode] = useState(
+    () => new URLSearchParams(window.location.search).get('owner') === '1',
+  );
+  const [ownerCredentials, setOwnerCredentials] = useState({ username: '', password: '' });
+  const [ownerBranches, setOwnerBranches] = useState<Array<{ id: string; name: string }> | null>(null);
+  const [ownerBranchId, setOwnerBranchId] = useState('');
+  const [ownerError, setOwnerError] = useState('');
+  const [ownerPending, setOwnerPending] = useState(false);
   const sessionQuery = useQuery({
     queryKey: posSessionKey,
     queryFn: ({ signal }) => getPosSession(signal),
@@ -49,8 +57,8 @@ export function Login() {
       : null;
 
   useEffect(() => {
-    if (sessionQuery.data) navigate('/', { replace: true });
-  }, [navigate, sessionQuery.data]);
+    if (sessionQuery.data && !ownerMode) navigate('/', { replace: true });
+  }, [navigate, ownerMode, sessionQuery.data]);
 
   useEffect(() => {
     const preference = window.matchMedia('(prefers-color-scheme: dark)');
@@ -62,6 +70,52 @@ export function Login() {
   async function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await loginMutation.mutateAsync(login).catch(() => {});
+  }
+
+  useEffect(() => {
+    if (!ownerMode) return;
+    let active = true;
+    void apiRequest<Array<{ id: string; name: string }>>('/auth/pos/owner-branches')
+      .then((branches) => {
+        if (!active) return;
+        setOwnerBranches(branches);
+        setOwnerBranchId((current) => current || branches[0]?.id || '');
+      })
+      .catch(() => {
+        if (active) setOwnerBranches(null);
+      });
+    return () => { active = false; };
+  }, [ownerMode]);
+
+  async function signInOwner(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setOwnerPending(true);
+    setOwnerError('');
+    try {
+      if (!ownerBranches) {
+        await apiRequest('/auth/owner/login', {
+          method: 'POST',
+          body: JSON.stringify(ownerCredentials),
+        });
+        const branches = await apiRequest<Array<{ id: string; name: string }>>(
+          '/auth/pos/owner-branches',
+        );
+        setOwnerBranches(branches);
+        setOwnerBranchId(branches[0]?.id || '');
+        setOwnerCredentials({ username: '', password: '' });
+      } else {
+        await apiRequest('/auth/pos/owner-login', {
+          method: 'POST',
+          body: JSON.stringify({ branchId: ownerBranchId }),
+        });
+        queryClient.setQueryData(posSessionKey, await getPosSession());
+        navigate('/', { replace: true });
+      }
+    } catch (cause) {
+      setOwnerError(cause instanceof Error ? cause.message : 'Sign in failed.');
+    } finally {
+      setOwnerPending(false);
+    }
   }
 
   return (
@@ -122,7 +176,9 @@ export function Login() {
               <div className="mb-5 flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/20">
                 <LogIn aria-hidden="true" size={22} />
               </div>
-              <p className="text-xs font-medium text-muted-foreground">{t('Cashier workspace')}</p>
+              <p className="text-xs font-medium text-muted-foreground">
+                {ownerMode ? (locale === 'ar' ? 'نقطة بيع التاجر' : 'Merchant POS') : t('Cashier workspace')}
+              </p>
               <h1 id="pos-login-title" className="mt-1.5 text-2xl font-semibold tracking-tight">
                 {t('Sign in')}
               </h1>
@@ -130,8 +186,17 @@ export function Login() {
                 id="pos-login-description"
                 className="mt-2 text-sm leading-6 text-muted-foreground"
               >
-                {t('Sign in with your business code and employee account.')}
+                {ownerMode
+                  ? locale === 'ar'
+                    ? 'ادخل بحساب التاجر للوصول لنقطة البيع الخاصة بفرعك.'
+                    : 'Use your merchant account to access your branch POS.'
+                  : t('Sign in with your business code and employee account.')}
               </p>
+              <button type="button" className="mt-3 text-sm font-medium text-primary underline" onClick={() => setOwnerMode(!ownerMode)}>
+                {ownerMode
+                  ? locale === 'ar' ? 'دخول الموظف' : 'Employee sign in'
+                  : locale === 'ar' ? 'دخول التاجر' : 'Merchant sign in'}
+              </button>
             </div>
 
             {sessionCheckError && (
@@ -154,7 +219,77 @@ export function Login() {
               </div>
             )}
 
-            <form
+            {ownerMode ? (
+              <form className="space-y-5" onSubmit={(event) => void signInOwner(event)}>
+                {ownerBranches ? (
+                  <div className="space-y-2">
+                    <label htmlFor="owner-pos-branch" className="block text-xs font-semibold">
+                      {locale === 'ar' ? 'الفرع' : 'Branch'}
+                    </label>
+                    <select
+                      id="owner-pos-branch"
+                      className="h-12 w-full rounded-lg border border-border bg-background px-3"
+                      value={ownerBranchId}
+                      onChange={(event) => setOwnerBranchId(event.target.value)}
+                      required
+                    >
+                      {ownerBranches.map((branch) => (
+                        <option key={branch.id} value={branch.id}>{branch.name}</option>
+                      ))}
+                    </select>
+                    {ownerBranches.length === 0 && (
+                      <p role="status">
+                        {locale === 'ar'
+                          ? 'أنشئ فرعًا نشطًا من لوحة التاجر أولًا.'
+                          : 'Create an active branch from the merchant dashboard first.'}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <label htmlFor="owner-pos-username" className="block text-xs font-semibold">
+                        {locale === 'ar' ? 'اسم مستخدم التاجر' : 'Merchant username'}
+                      </label>
+                      <Input
+                        id="owner-pos-username"
+                        autoComplete="username"
+                        value={ownerCredentials.username}
+                        onChange={(event) => setOwnerCredentials({ ...ownerCredentials, username: event.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="owner-pos-password" className="block text-xs font-semibold">
+                        {locale === 'ar' ? 'كلمة المرور' : 'Password'}
+                      </label>
+                      <PasswordInput
+                        id="owner-pos-password"
+                        aria-label={locale === 'ar' ? 'كلمة المرور' : 'Password'}
+                        autoComplete="current-password"
+                        value={ownerCredentials.password}
+                        onChange={(event) => setOwnerCredentials({ ...ownerCredentials, password: event.target.value })}
+                        required
+                      />
+                    </div>
+                  </>
+                )}
+                {ownerError && <p role="alert" className="text-destructive">{errorText(ownerError)}</p>}
+                <PosButton
+                  type="submit"
+                  variant="solid"
+                  className="min-h-12 w-full"
+                  disabled={ownerPending || (ownerBranches !== null && ownerBranches.length === 0)}
+                >
+                  {ownerPending
+                    ? locale === 'ar' ? 'جارٍ الدخول…' : 'Signing in…'
+                    : ownerBranches
+                      ? locale === 'ar' ? 'افتح نقطة البيع' : 'Open POS'
+                      : locale === 'ar' ? 'متابعة' : 'Continue'}
+                </PosButton>
+              </form>
+            ) : (
+              <form
               aria-describedby="pos-login-description"
               className="space-y-5"
               onSubmit={(event) => void signIn(event)}
@@ -235,7 +370,8 @@ export function Login() {
                     ? t('Checking session…')
                     : t('Sign in')}
               </PosButton>
-            </form>
+              </form>
+            )}
           </div>
         </section>
       </main>

@@ -37,13 +37,14 @@ export class PosEmployeeService {
     const query = parseRequest(listPosEmployeesSchema, input);
     if (query.cursor) {
       const anchor = await this.prisma.posEmployee.findFirst({
-        where: { id: query.cursor, merchantId },
+        where: { id: query.cursor, merchantId, ownerAccountId: null },
         select: { id: true },
       });
       assertScopedCursor(query.cursor, anchor !== null);
     }
     const where: Prisma.PosEmployeeWhereInput = {
       merchantId,
+      ownerAccountId: null,
       ...(query.role ? { role: query.role } : {}),
       ...(query.status === 'active'
         ? { active: true }
@@ -113,7 +114,7 @@ export class PosEmployeeService {
     const passwordHash = parsed.password ? await hashPassword(parsed.password) : undefined;
     return this.prisma.$transaction(async (tx) => {
       const current = await tx.posEmployee.findFirst({
-        where: { id: employeeId, merchantId },
+        where: { id: employeeId, merchantId, ownerAccountId: null },
         select: { branchId: true, revision: true },
       });
       if (!current) throw new NotFoundException('Employee was not found.');

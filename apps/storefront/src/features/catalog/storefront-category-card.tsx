@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import Link from 'next/link';
+import Link from '../../components/storefront/storefront-link';
 import { Utensils } from 'lucide-react';
 
 type StorefrontCategoryCardProps = {

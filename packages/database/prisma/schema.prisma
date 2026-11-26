@@ -746,16 +746,20 @@ model OwnerAccount {
   passwordResetBy String?   @db.VarChar(80)
   createdAt       DateTime  @default(now()) @db.Timestamptz(6)
   merchant        Merchant  @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  posOperators    PosEmployee[]
 
   @@map("owner_accounts")
 }
 
-// POS staff authenticate within their merchant and receive access only to assigned branches.
+// POS staff authenticate within their merchant; owner-linked operators attribute owner POS work.
 model PosEmployee {
   deliveryCustodies PosDelivery[]
   deliveryRemittances PosDeliveryRemittance[]
   id                   String                 @id @default(uuid()) @db.Uuid
   merchantId           String                 @db.Uuid
+  ownerAccountId       String?                @db.Uuid
+  ownerOperatorKey     String?                @unique @db.VarChar(80)
+  ownerAccount         OwnerAccount?          @relation(fields: [ownerAccountId], references: [id], onDelete: Restrict)
   branchId             String                 @db.Uuid
   username             String                 @db.VarChar(80)
   displayName          String                 @db.VarChar(160)

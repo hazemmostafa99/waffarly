@@ -114,6 +114,9 @@ export function MerchantLayout() {
             />
           </label>
           <div className="merchant-topbar-tools">
+            <a href={new URL('/login?owner=1', import.meta.env.VITE_POS_BASE_URL || 'http://localhost:5175').toString()} className="merchant-signout" target="_blank" rel="noopener noreferrer">
+              {locale === 'ar' ? 'افتح POS' : 'Open POS'}
+            </a>
             <button
               type="button"
               className="merchant-topbar-icon"

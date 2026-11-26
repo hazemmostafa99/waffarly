@@ -69,18 +69,21 @@ export function StorefrontHeader({ catalog }: { catalog: PublicStorefrontCatalog
   );
   const homeHref = useStorefrontBasePath(catalog.slug);
   const menuHref = `${homeHref}/menu`;
+  const categoriesHref = `${homeHref}/categories`;
   const offersHref = `${homeHref}/offers`;
   const cartHref = `${homeHref}/cart`;
   const favoritesHref = `${homeHref}/favorites`;
   const accountHref = `${homeHref}/account`;
   const isHome = currentPath === '/';
   const isMenu = currentPath === '/menu' || currentPath.startsWith('/products/');
+  const isCategories = currentPath === '/categories';
   const isOffers = currentPath === '/offers';
   const isFavorites = currentPath === '/favorites';
   const isCart = currentPath === '/cart' || currentPath === '/checkout';
   const isAccount = currentPath === '/account' || currentPath.startsWith('/account/');
   const desktopLinks = [
     { href: homeHref || '/', label: t.home, active: isHome },
+    { href: categoriesHref, label: t.browseCategories, active: isCategories },
     { href: menuHref, label: t.menu, active: isMenu },
     { href: offersHref, label: t.offers, active: isOffers },
     { href: favoritesHref, label: t.favorites, active: isFavorites },

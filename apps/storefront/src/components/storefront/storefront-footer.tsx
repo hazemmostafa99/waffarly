@@ -62,6 +62,9 @@ export function StorefrontFooter({ catalog }: { catalog: PublicStorefrontCatalog
           <Link className={footerLinkClass} href={menuHref}>
             {t.footerMenu}
           </Link>
+          <Link className={footerLinkClass} href={`${homeHref}/categories`}>
+            {t.browseCategories}
+          </Link>
           <Link className={footerLinkClass} href={`${homeHref}/offers`}>
             {locale === 'ar' ? 'العروض' : 'Offers'}
           </Link>

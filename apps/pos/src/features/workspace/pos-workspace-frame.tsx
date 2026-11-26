@@ -41,7 +41,7 @@ export function PosWorkspaceFrame({
   onSignOut: () => void;
   children: ReactNode;
 }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const location = useLocation();
   const theme = usePosAppearanceStore((state) => state.theme);
   const setTheme = usePosAppearanceStore((state) => state.setTheme);
@@ -257,6 +257,11 @@ export function PosWorkspaceFrame({
               )}
             </div>
             <div className="flex shrink-0 items-center justify-end gap-1.5">
+              {employee.owner && (
+                <Link to="/login?owner=1" className="rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-secondary">
+                  {locale === 'ar' ? 'تغيير الفرع' : 'Change branch'}
+                </Link>
+              )}
               <label
                 className="relative flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary focus-within:ring-2 focus-within:ring-ring"
                 title={t('Theme')}

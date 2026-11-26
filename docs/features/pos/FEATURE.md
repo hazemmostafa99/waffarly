@@ -1605,6 +1605,12 @@ This is an actual browser → authenticated API → migrated PostgreSQL read, un
 
 Manual review: in the isolated local merchant/cashier fixture, choose another accent in the owner POS Registers page, reload the cashier workspace, and verify the saved accent appears across catalog, dining, receipts and shift without changing the local light/dark preference. Do not use a real merchant or create a sale for this check; follow **Merchant POS appearance — saved accent configuration** above.
 
+## Merchant owner POS access (feature branch)
+
+The merchant owner can open POS from the dashboard or choose Merchant sign in on the POS login screen. The owner session lists only that merchant's active branches. Selecting one creates a POS session backed by a linked operator row for that branch, so sales, shifts, receipts, and cash records retain valid POS employee references. The linked row cannot use employee password login, cannot be edited as staff, and does not appear in the employee list or HR linking choices. Owner POS requests still require the owner session, active subscription, active branch, and browser register pairing. Owner POS sign out also signs out the owner session; a password reset revokes both session kinds.
+
+Migration `20261126150000_owner_pos_operator` adds the optional owner link and unique operator key to POS employees. It was applied to the local development database. A browser paired to a register at another branch must be unpaired through merchant POS Registers before switching branches on that browser. Merchant sign-in was verified through the branch selection into the register pairing screen. Pairing, sale, and cashier regression checks remain pending.
+
 ## Pair the register only when register work starts (2026-11-26)
 
 Sign-in no longer stops at a full-screen pairing step. An unpaired browser opens the normal workspace and can browse orders, catalog, dining tables, deliveries and inventory according to the account's permissions.

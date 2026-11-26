@@ -99,7 +99,7 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
             variant="outline"
             className="h-auto min-h-12 min-w-0 flex-1 rounded-xl border-white bg-white px-4 py-2 font-heading text-sm font-extrabold text-store-primary-deep hover:bg-store-cream hover:text-store-primary-deep sm:h-11 sm:min-h-0 sm:px-5 sm:py-0"
           >
-            <Link href={catalog.categories.length ? '#categories' : '#products'}>
+            <Link href={catalog.categories.length ? `/s/${catalog.slug}/categories` : '#products'}>
               {t.browseCategories}
             </Link>
           </Button>
@@ -154,9 +154,9 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
       className="mt-5 scroll-mt-20 lg:scroll-mt-28"
       aria-labelledby="categories-heading"
     >
-      <div className="flex items-end justify-end gap-4">
-        <div className="sr-only">
-          <h2 id="categories-heading" className="sr-only">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <h2 id="categories-heading" className="font-heading text-xl font-extrabold text-store-ink sm:text-2xl">
             {t.categorySectionTitle}
           </h2>
           <p className="mt-1 text-storefront-support text-store-muted">
@@ -164,10 +164,10 @@ export function StorefrontHomePage({ catalog }: { catalog: PublicStorefrontCatal
           </p>
         </div>
         <Link
-          href={`/s/${catalog.slug}/menu`}
+          href={`/s/${catalog.slug}/categories`}
           className="inline-flex items-center gap-2 pb-1 text-sm font-extrabold text-store-accent hover:text-store-primary-deep"
         >
-          {t.allItems}
+          {t.allCategories}
           <Arrow className="size-4" aria-hidden="true" />
         </Link>
       </div>
