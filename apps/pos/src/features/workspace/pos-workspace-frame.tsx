@@ -161,11 +161,12 @@ export function PosWorkspaceFrame({
           <NavLink
             to={posEmployeeHome(employee)}
             aria-label={t('Wfarly POS')}
-            className="mb-8 hidden size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground lg:flex"
+            className="mb-5 hidden size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground lg:flex"
           >
             <LayoutGrid aria-hidden="true" size={24} />
           </NavLink>
-          <div className="flex w-full flex-row gap-1 lg:flex-col lg:gap-3">
+          {/* On desktop the links scroll on their own so the operator below stays visible. */}
+          <div className="flex w-full flex-row gap-1 lg:min-h-0 lg:flex-1 lg:flex-col lg:gap-3 lg:overflow-y-auto lg:overscroll-contain lg:[scrollbar-width:thin]">
             {navigation.map(({ to, label, icon: Icon, end }) => (
               <NavLink
                 key={to}
@@ -186,7 +187,7 @@ export function PosWorkspaceFrame({
               </NavLink>
             ))}
           </div>
-          <div className="mt-auto hidden max-w-full flex-col items-center gap-4 pt-8 lg:flex">
+          <div className="hidden max-w-full shrink-0 flex-col items-center gap-2 border-t border-border pt-3 lg:flex">
             <span className="flex size-10 items-center justify-center rounded-full border-4 border-card bg-[var(--pos-peach)] text-sm font-semibold text-[var(--pos-art-ink)]">
               {hasDisplayName && employeeInitials ? (
                 employeeInitials.toLocaleUpperCase()
