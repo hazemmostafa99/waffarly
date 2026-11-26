@@ -294,6 +294,7 @@ export const ar: Record<string, string> = {
   'This website order belongs to another branch.': 'طلب الموقع ده تبع فرع تاني.',
   'Cancellation is only allowed before preparation starts.':
     'الإلغاء مسموح بس قبل ما التحضير يبدأ.',
+  'Delivery fee (EGP)': 'رسوم التوصيل (ج.م)',
   'Refund payment': 'استرداد الدفعة',
   Refund: 'استرداد',
   Remaining: 'المتبقي',

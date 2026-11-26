@@ -31,6 +31,8 @@ export interface CreatePosOrderRequest {
   customerName?: string | undefined;
   customerPhone?: string | undefined;
   deliveryAddress?: string | undefined;
+  /** Delivery only: decimal EGP fee added to the items total. */
+  deliveryFee?: string | undefined;
   items: Array<{
     lineId: string;
     productId: string;

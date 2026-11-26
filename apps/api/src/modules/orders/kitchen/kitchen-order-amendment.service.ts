@@ -355,7 +355,18 @@ export class KitchenOrderAmendmentService {
               revision: request.revision,
               status: 'pending',
             },
-            data: { total: formatCents(newTotalCents), revision: { increment: 1 } },
+            data: {
+              total: formatCents(newTotalCents),
+              // Keep the items subtotal in step when the order carries a delivery fee.
+              ...(order.subtotal != null
+                ? {
+                    subtotal: formatCents(
+                      toCents(order.subtotal.toString()) + toCents(quote.total),
+                    ),
+                  }
+                : {}),
+              revision: { increment: 1 },
+            },
           });
           if (updatedOrder.count !== 1)
             throw new ConflictException('This order changed. Refresh it before adding items.');

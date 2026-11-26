@@ -108,7 +108,11 @@ export class PosSaleService {
 
             const shift = await this.shifts.lockOpenShiftForSale(tx, employee, request.registerId);
             const quote = await quotePosSaleItems(this.pricing, employee.merchantId, request, tx);
-            const orderTotalCents = toCents(quote.total);
+            // A cashier delivery may carry a typed delivery fee on top of the items.
+            const subtotalCents = toCents(quote.total);
+            const deliveryFeeCents =
+              request.fulfillmentType === 'delivery' ? toCents(request.deliveryFee ?? '0') : 0n;
+            const orderTotalCents = subtotalCents + deliveryFeeCents;
             const orderReference = await allocatePosOrderReference(
               tx,
               employee.merchantId,
@@ -135,6 +139,9 @@ export class PosSaleService {
                 createdByPosEmployeeId: employee.id,
                 branchId: shift.branchId,
                 total: formatCents(orderTotalCents),
+                ...(request.fulfillmentType === 'delivery'
+                  ? { subtotal: formatCents(subtotalCents), deliveryFee: formatCents(deliveryFeeCents) }
+                  : {}),
                 currency: 'EGP',
               },
               select: { id: true },

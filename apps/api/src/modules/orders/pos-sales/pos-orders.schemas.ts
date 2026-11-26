@@ -72,6 +72,8 @@ const createOrderSchema = z
     customerName: z.string().trim().min(2).max(120).optional(),
     customerPhone: phoneSchema.optional(),
     deliveryAddress: z.string().trim().min(8).max(1000).optional(),
+    // Optional delivery charge typed by the cashier, e.g. "25" or "12.50" (EGP, up to two decimals).
+    deliveryFee: z.string().regex(/^\d{1,7}(?:\.\d{1,2})?$/).optional(),
     items: z.array(createLineSchema).min(1).max(30),
   })
   .strict()
@@ -105,6 +107,13 @@ const createOrderSchema = z
           message: 'A delivery address is required for delivery.',
         });
       }
+    }
+    if (request.fulfillmentType !== 'delivery' && request.deliveryFee !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['deliveryFee'],
+        message: 'A delivery fee applies only to delivery orders.',
+      });
     }
     if (request.fulfillmentType === 'dine_in' && !request.tableId) {
       context.addIssue({
