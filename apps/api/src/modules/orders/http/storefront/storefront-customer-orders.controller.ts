@@ -3,22 +3,11 @@
  * (after adding any orders they placed there as a guest on this browser), or this browser's
  * guest orders when they are not signed in.
  */
-import {
-  BadRequestException,
-  Controller,
-  Get,
-  Header,
-  Inject,
-  NotFoundException,
-  Param,
-  Query,
-  Req,
-} from '@nestjs/common';
+import { Controller, Get, Header, Inject, Param, Query, Req } from '@nestjs/common';
 import type { CursorPage, CustomerOrderSummary } from '@waffarly/contracts';
 import type { Request } from 'express';
 import { z } from 'zod';
 import { parseRequest } from '../../../../common/http/zod-validation.pipe.js';
-import { PrismaService } from '../../../../infrastructure/database/prisma.service.js';
 import { StorefrontCustomerAuthService } from '../../../customers/index.js';
 import { OrderCustomerService } from '../../customers/order-customer.service.js';
 import { readStorefrontGuest } from '../../customers/storefront-guest-cookie.js';
@@ -35,7 +24,6 @@ export class StorefrontCustomerOrdersController {
   constructor(
     @Inject(StorefrontCustomerAuthService) private readonly auth: StorefrontCustomerAuthService,
     @Inject(OrderCustomerService) private readonly orders: OrderCustomerService,
-    @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {}
 
   @Get()
@@ -55,17 +43,6 @@ export class StorefrontCustomerOrdersController {
     }
     // 2. A guest sees only this browser's unexpired guest orders at this store.
     if (!guest) return { items: [], nextCursor: null };
-    return this.orders.guestHistory(await this.merchantIdForSlug(slug), guest, page);
-  }
-
-  private async merchantIdForSlug(slug: string) {
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 120)
-      throw new BadRequestException('Storefront address is invalid.');
-    const merchant = await this.prisma.merchant.findUnique({
-      where: { storefrontSlug: slug },
-      select: { id: true },
-    });
-    if (!merchant) throw new NotFoundException('Storefront was not found.');
-    return merchant.id;
+    return this.orders.guestHistoryForStore(slug, guest, page);
   }
 }

@@ -2,7 +2,13 @@
  * Links an order to a customer in the merchant customer book and shows that customer order history.
  * This is separate from ownership of a Marketplace account.
  */
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import type {
   LinkOrderCustomerRequest,
   OrderCustomerLink,
@@ -61,6 +67,23 @@ export class OrderCustomerService {
       { merchantId, merchantCustomerId: null, customerAccess: { is: orderIdentityWhere(guest) } },
       page,
     );
+  }
+
+  /** Lists this browser's guest orders at the merchant website with this storefront address. */
+  async guestHistoryForStore(
+    slug: string,
+    guest: OrderIdentity,
+    page: CursorPageQuery,
+  ): Promise<CursorPage<CustomerOrderSummary>> {
+    // Lowercase words joined by single hyphens: "cairo-grill" passes, "Cairo--grill" does not.
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 120)
+      throw new BadRequestException('Storefront address is invalid.');
+    const merchant = await this.prisma.merchant.findUnique({
+      where: { storefrontSlug: slug },
+      select: { id: true },
+    });
+    if (!merchant) throw new NotFoundException('Storefront was not found.');
+    return this.guestHistory(merchant.id, guest, page);
   }
 
   /**
