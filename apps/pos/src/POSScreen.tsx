@@ -1,7 +1,7 @@
 import type { PosEmployeeSession, StorefrontOrderSummary } from '@waffarly/contracts';
 import { useMutation, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { cn, useLocale } from '@waffarly/ui';
-import { ArrowRight, ChevronLeft, ChevronRight, Clock3, RefreshCw } from 'lucide-react';
+import { ArrowRight, Banknote, ChevronLeft, ChevronRight, Clock3, RefreshCw } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { PosButton } from './components/pos-button.js';
@@ -15,6 +15,7 @@ import {
   requirePairedRegister,
 } from './features/registers/register-pairing-prompt.js';
 import { PickupCollection } from './features/payments/pickup-collection.js';
+import { PosCheckoutDialog } from './features/payments/pos-checkout-dialog.js';
 import { posOrderTypeKey } from './features/orders/pos-order-type.js';
 import {
   posWorkspaceScope,
@@ -558,7 +559,18 @@ export function POSScreen() {
                         : t('All checks are paid. The order is ready for handover.')}
                     </p>
                   )}
-                  {(canAct || canRetry) && (
+                  {canCollectHere ? (
+                    <PosButton
+                      variant="solid"
+                      type="button"
+                      disabled={!isOnline}
+                      onClick={() => setCollectingOrderId(order.id)}
+                      className="min-h-9 w-full justify-center text-xs max-[767px]:min-h-11"
+                    >
+                      <Banknote size={16} aria-hidden="true" />
+                      {t('Collect payment')}
+                    </PosButton>
+                  ) : (canAct || canRetry) && (
                     <PosButton
                       variant="solid"
                       type="button"
@@ -655,6 +667,22 @@ export function POSScreen() {
             <ChevronRight aria-hidden="true" size={15} className="rtl:rotate-180" />
           </PosButton>
         </nav>
+      )}
+      {collectingOrderId && (
+        <PosCheckoutDialog
+          merchantId={employee.merchantId}
+          employeeId={employee.id}
+          branchId={branchId}
+          orderId={collectingOrderId}
+          requiresRefundApproval={!employee.permissions.includes('approve_refunds')}
+          onClose={() => {
+            setCollectingOrderId(null);
+            // Paid orders become eligible, so the card switches to "Confirm handover".
+            void queryClient.invalidateQueries({
+              queryKey: posOrderKeys.branch(employee.merchantId, branchId),
+            });
+          }}
+        />
       )}
     </section>
   );

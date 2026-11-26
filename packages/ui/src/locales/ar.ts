@@ -526,7 +526,7 @@ export const ar: Record<string, string> = {
   '{{item}} ready': '{{item}} جاهز',
   '{{ready}} of {{total}} items ready': 'جاهز {{ready}} من {{total}} أصناف',
   'Ready at {{date}}': 'جاهز منذ {{date}}',
-  'Settle every check before handover.': 'يجب سداد كل الحسابات قبل تسليم الطلب.',
+  'Settle every check before handover.': 'الطلب لسه ما اتدفعش. حصّل الحساب الأول وبعدين سلّمه.',
   'All checks are paid. The order is ready for handover.':
     'تم سداد كل الحسابات. الطلب جاهز للتسليم.',
   ready: 'جاهز',
@@ -2090,5 +2090,6 @@ export const ar: Record<string, string> = {
   'Cash custody': 'العهدة والتوريد',
   'Open orders': 'افتح الطلبات',
   'Cashiers need supervisor approval for this.': 'الكاشير محتاج موافقة المشرف على الحركة دي.',
+  'Collect payment': 'تحصيل الحساب',
 };
 // Delivery custody and shift handover.
