@@ -292,6 +292,8 @@ export const ar: Record<string, string> = {
   'Open a register shift on this device before dispatching this website order.':
     'افتح وردية كاشير على الجهاز ده قبل ما تسلّم طلب الموقع للطيار.',
   'This website order belongs to another branch.': 'طلب الموقع ده تبع فرع تاني.',
+  'Cancellation is only allowed before preparation starts.':
+    'الإلغاء مسموح بس قبل ما التحضير يبدأ.',
   'Refund payment': 'استرداد الدفعة',
   Refund: 'استرداد',
   Remaining: 'المتبقي',

@@ -1045,3 +1045,35 @@
   color: #79526b;
   background: #f7eef4;
 }
+
+/* Branch, fee and total under an expanded order, then owner actions. */
+.orders-expanded-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+.orders-expanded-summary div {
+  display: grid;
+  gap: 2px;
+}
+.orders-expanded-summary dt {
+  font-size: 12px;
+  color: var(--muted-foreground, #6b7280);
+}
+.orders-expanded-summary dd {
+  margin: 0;
+}
+.orders-expanded-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.orders-expanded-actions .products-error {
+  flex-basis: 100%;
+  margin: 0;
+}
